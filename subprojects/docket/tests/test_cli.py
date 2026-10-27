@@ -638,6 +638,82 @@ def test_new_records_nothing_on_an_item_this_branch_claims(
     assert "recurrences:" not in (claimed / "existing.md").read_text(encoding="utf-8")
 
 
+def _filed_once(root: Path, *, on_base: bool) -> tuple[Path, Path]:
+    """A store holding one capture that declares `verify.py`, and that capture's file.
+
+    The capture is filed on the branch `claude/work` and left uncommitted, as a
+    session that has just run `bin/docket new` leaves it. With `on_base`, it is
+    filed and committed on `main` before the branch forks, so the branch did
+    not add it.
+    """
+    store = root / "items"
+    store.mkdir(parents=True)
+    (store / "README.md").write_text("The store.\n", encoding="utf-8")
+    git = ["git", "-C", str(root)]
+    for command in (
+        ["git", "init", "-q", "-b", "main", str(root)],
+        [*git, "config", "user.email", "t@example.com"],
+        [*git, "config", "user.name", "T"],
+        [*git, "add", "-A"],
+        [*git, "commit", "-qm", "base"],
+    ):
+        subprocess.run(command, check=True, capture_output=True)
+    if not on_base:
+        subprocess.run([*git, "switch", "-qc", "claude/work"], check=True, capture_output=True)
+    title = "verify's suppression check reads every added line as code"
+    assert _run_with_git("new", "--touches", VERIFY_PY, title, "--items", str(store)) == 0
+    (first,) = (path for path in store.glob("*.md") if path.name != "README.md")
+    if on_base:
+        for command in (
+            [*git, "add", "-A"],
+            [*git, "commit", "-qm", "file it"],
+            [*git, "switch", "-qc", "claude/work"],
+        ):
+            subprocess.run(command, check=True, capture_output=True)
+    return store, first
+
+
+VERIFY_PY = "subprojects/docket/src/docket/verify.py"
+
+
+def test_new_records_nothing_on_an_item_this_branch_filed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A second finding filed beside the first is not a second filing of it (`PL-8MRM`).
+
+    A session files several findings with one `--touches` value, and each one
+    after the first shares that path with the ones before it. `#1830` filed
+    `PL-0889`, `PL-KHXB` and `PL-MLPT` that way under one feature, and the chain
+    the matches recorded made `PL-0889` the one item the digest named as filed
+    more than once. A recurrence is a filing by a session that did not know the
+    item existed, and this session wrote it. That holds while the first capture
+    is uncommitted and after it is committed on the branch. The same capture
+    made against an item filed on `main` is still recorded, so the branch having
+    added the file is the only thing that decides it.
+    """
+    again = "verify's suppression check reads every added line as code too"
+    store, first = _filed_once(tmp_path / "branch", on_base=False)
+    identifier = first.name[:7]
+    capsys.readouterr()
+
+    assert _run_with_git("new", "--touches", VERIFY_PY, again, "--items", str(store)) == 0
+    assert identifier not in capsys.readouterr().out, "the uncommitted capture is not offered"
+    assert "recurrences:" not in first.read_text(encoding="utf-8")
+
+    git = ["git", "-C", str(tmp_path / "branch")]
+    subprocess.run([*git, "add", "-A"], check=True, capture_output=True)
+    subprocess.run([*git, "commit", "-qm", "file them"], check=True, capture_output=True)
+    assert _run_with_git("new", "--touches", VERIFY_PY, again, "--items", str(store)) == 0
+    assert identifier not in capsys.readouterr().out, "the committed capture is not offered"
+    assert "recurrences:" not in first.read_text(encoding="utf-8")
+
+    store, first = _filed_once(tmp_path / "base", on_base=True)
+    capsys.readouterr()
+    assert _run_with_git("new", "--touches", VERIFY_PY, again, "--items", str(store)) == 0
+    assert f"Recorded on {first.name[:7]}" in capsys.readouterr().out
+    assert "recurrences:" in first.read_text(encoding="utf-8")
+
+
 def test_a_capture_with_no_git_to_read_is_written_exactly_as_before(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

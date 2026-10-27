@@ -323,3 +323,5 @@ agent and whether it is fresh gas or a store. `PL-KFTM` builds those records.
 Nothing calls `liquid_volume_ml` yet, so changing its signature costs nothing
 here. Recommended: take that record, refuse an agent mismatch, and refuse or
 label a store.
+
+**Checked 2026-10-27 (`PL-0S0V`): the liquid precision is derived.** The delivered total in millilitres of liquid is to be shown to a tenth (project owner, 2026-10-27, ratified, over whole millilitres). It carries no partition-coefficient uncertainty, and one SD of the measured density moves it by 0.1 mL only above about 190 mL of liquid sevoflurane. The exhausted total stays in whole millilitres. Read it with `agent_amount_display_precision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID)`. The agent cost View's litre figure should read `(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR)`, the entry the accounting panel uses, so the two match. The stored total is refused in liquid, because a store converted to liquid reads 5.8% high. `docs/MODEL.md` § "Displayed precision" has the derivation.

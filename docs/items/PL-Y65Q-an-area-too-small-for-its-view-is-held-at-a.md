@@ -12,7 +12,7 @@ closed: 2026-10-26
 pr: 1858
 payoff: a reader shown a too-small Area learns how much room its View needs, instead of seeing an empty strip
 verify: grep -q 'def test_an_area_held_at_its_floor_shows_its_whole_notice' tests/integration/test_layout_adapter.py
-recurrences: 2026-10-25 PL-C9XP
+recurrences: 2026-10-25 PL-C9XP withdrawn 2026-10-27 PL-8MRM
 ---
 
 **Problem.** `_structural_minimum` sets the floor to the chooser's width and the header plus one line of height (`app/area_layout.py`). `settle` holds a too-small Area at that floor, and `frame.setMinimumSize` overrides the notice's own minimum. That happens when a kept neighbour takes the rest of a fixed window, and in the all-floors fallback. The adapter tests check only that each frame is at least its minimum.
