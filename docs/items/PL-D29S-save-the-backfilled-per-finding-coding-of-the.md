@@ -1,10 +1,12 @@
 ---
 id: PL-D29S
 title: Save the backfilled per-finding coding of the blind review passes (41 merged pull requests, #1766 to #1863) as docs/blind-review-findings.tsv with a note on how it was coded, because it is the only per-finding data from before the per-pass Blind-review record and exists only in a session's scratch directory
-status: untriaged
+status: done
 feature: review-panel
-added: 2026-10-26
 touches: docs/blind-review-findings.tsv, docs/blind-review-findings.md
+added: 2026-10-26
+closed: 2026-10-27
+pr: 1870
 verify: test "$(tail -n +2 docs/blind-review-findings.tsv | wc -l)" -eq 133 && grep -q 'lower bound, not a point estimate' docs/blind-review-findings.md
 ---
 
