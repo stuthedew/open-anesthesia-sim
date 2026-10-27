@@ -3997,8 +3997,9 @@ An item is delegable when all of: its `status` is `ready`; `model_guidance` is
 silent, which excludes safety- and science-classed work and open decisions by
 the rule that already governs model choice; it names a `verify` command; its
 `touches` is declared and lies wholly outside `protected_paths` *and*
-`gate_paths`; each of its paths outside `tests/` is placed by `workflow_paths`
-or `product_paths`; and its effort is `S` or `M`.
+`gate_paths`, where a directory holding one of their paths is not outside it;
+each of its paths outside `tests/` is placed by `workflow_paths` or
+`product_paths`; and its effort is `S` or `M`.
 
 There is no `delegable: yes`. The only writable control is `not-delegable`,
 which withholds an item that would otherwise qualify, so delegability can be
