@@ -315,8 +315,10 @@ path under `workflow_paths`, whatever the item's lane** (project owner,
 a capture reaching both halves is `crossing`, and keyed on the lane it was
 never asked, so a generator reached through one was queued rather than found.
 
-**Product work is asked too, unless it is classed only as new work** (project
-owner, 2026-10-27, `PL-K5CX`). That means a product path on an item whose
+**Product work is asked too, unless it is classed only as new work.** The
+project owner asked on 2026-10-27 for the generator checks to reach product
+code. The key below is a session's choice that the owner has not yet ratified,
+so ordinary evidence reopens it (`PL-K5CX`). That means a product path on an item whose
 `classes` are not all in `new_work_classes`, which are `feature` and
 `planning`. An item with no classes is asked. Product features keep arriving,
 so a feature is not evidence of a cause. A product defect is, and before this
