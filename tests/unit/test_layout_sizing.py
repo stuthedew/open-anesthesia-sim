@@ -19,9 +19,12 @@ from anesthesia_sim.layout.sizing import (
     PixelSize,
     TooSmall,
     apportion,
+    border_share,
+    drawn_bounds,
     minimum_extent,
     pixel_sizes,
     settle,
+    split_sizes,
 )
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, areas_in
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId
@@ -123,7 +126,7 @@ def test_settle_draws_every_area_the_extent_can_give_its_need() -> None:
     assert fit.apportionment.splits[()] == (932, 260)
 
 
-def test_a_split_whose_halves_the_extent_cannot_hold_leaves_the_halves_too_small() -> None:
+def test_a_split_whose_halves_the_extent_cannot_hold_leaves_a_half_too_small() -> None:
     # Area 2 of a two-Area row was split in two, so Area 4 is new. Three
     # 400 px needs are more than the 1008 - 2 * 8 = 992 px that the row has.
     tree = _row((0.5, 0.25, 0.25), _area(1), _area(2), _area(4))
@@ -131,17 +134,18 @@ def test_a_split_whose_halves_the_extent_cannot_hold_leaves_the_halves_too_small
     floors = _each(tree, PixelSize(40, 30))
     fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
 
-    # The halves are let go to their floors first. Area 1, which the split did
-    # not touch, keeps its need. The fractions then give 496, 248 and 248.
-    assert fit.apportionment.splits[()] == (496, 248, 248)
-    assert fit.drawn == {AreaId(1)}
-    assert fit.too_small == (
-        TooSmall(AreaId(2), PixelSize(400, 100), PixelSize(248, 300)),
-        TooSmall(AreaId(4), PixelSize(400, 100), PixelSize(248, 300)),
-    )
+    # A half is let go to its floor before Area 1, which the split did not
+    # touch. One is enough, since 400 + 400 + 40 = 840 fits in 992. The halves
+    # have equal shares, so the later one, Area 4, is let go. Area 2's share
+    # of 248 is less than 400, so Area 2 is held at 400. Area 1's share of
+    # what is left, 0.5 / 0.75 of 592, is 394.67, also less than 400, so it
+    # is held too. Area 4 takes the other 992 - 800 = 192.
+    assert fit.apportionment.splits[()] == (400, 400, 192)
+    assert fit.drawn == {AreaId(1), AreaId(2)}
+    assert fit.too_small == (TooSmall(AreaId(4), PixelSize(400, 100), PixelSize(192, 300)),)
     assert fit.bounds == {
         AreaId(1): PixelSize(400, 100),
-        AreaId(2): PixelSize(40, 30),
+        AreaId(2): PixelSize(400, 100),
         AreaId(4): PixelSize(40, 30),
     }
 
@@ -204,18 +208,171 @@ def test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_non
     floors = _each(tree, PixelSize(60, 40))
     fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, floors, kept=frozenset())
 
-    # 300 + 8 + 300 = 608 px of width is needed, and the window has only 508.
-    # So every Area is let go to its floor, and the fractions decide. The row's
-    # 500 px give 375 and 125, and the column's 400 give 240 and 160.
+    # 300 + 8 + 300 = 608 px of width and 608 px of height are needed, and
+    # the window has only 508 by 408: 100 px short across and 200 px short
+    # down, 300 px in all. Letting go Area 1 or Area 2 shortens the column to
+    # 300 + 8 + 40 = 348, which leaves only the 100 px across. Area 2 has the
+    # smaller share, 0.75 * 0.4 = 0.3 against 0.45, so it goes first. Then
+    # letting go Area 1 or Area 3 clears the width, and Area 3 has the smaller
+    # share, 0.25. Trying Area 2 at its need again brings back the 200 px
+    # down, so it stays at its floor.
+    #
+    # The row's 500 px give 375 and 125, which hold the column's 300 and Area
+    # 3's 60. The column's 400 px would give 240 and 160, so Area 1 is held at
+    # its 300 and Area 2 takes the other 100.
     assert fit.apportionment.areas == {
-        AreaId(1): PixelSize(375, 240),
-        AreaId(2): PixelSize(375, 160),
+        AreaId(1): PixelSize(375, 300),
+        AreaId(2): PixelSize(375, 100),
         AreaId(3): PixelSize(125, 408),
     }
-    assert [entry.area_id for entry in fit.too_small] == [AreaId(1), AreaId(2), AreaId(3)]
+    assert fit.drawn == {AreaId(1)}
+    assert [entry.area_id for entry in fit.too_small] == [AreaId(2), AreaId(3)]
     assert all(
         size.width_px > 0 and size.height_px > 0 for size in fit.apportionment.areas.values()
     )
+
+
+def test_settle_releases_only_the_areas_that_must_give_way() -> None:
+    """`PL-QZ7Z`: a window a few pixels short blanks only the Areas that must give way."""
+
+    floors_60 = PixelSize(40, 60)
+
+    # A column of three Areas, each needing 300 px of height, in 700 px. The
+    # needs take 3 * 300 + 2 * 8 = 916 px. Letting one Area go leaves
+    # 300 + 300 + 60 + 16 = 676, which fits. Each Area's drop clears the
+    # whole shortfall, so the one with the smallest share, Area 1 at 0.2, goes.
+    column = _column((0.2, 0.4, 0.4), _area(1), _area(2), _area(3))
+    every = frozenset(area.id for area in areas_in(column))
+    fit = settle(
+        column,
+        PixelSize(400, 700),
+        _HANDLE_PX,
+        _each(column, PixelSize(100, 300)),
+        _each(column, floors_60),
+        kept=every,
+    )
+
+    # The column's 684 px would give 136.8, 273.6 and 273.6. Areas 2 and 3 are
+    # held at 300, and Area 1 takes the other 84.
+    assert fit.apportionment.splits[()] == (84, 300, 300)
+    assert fit.drawn == {AreaId(2), AreaId(3)}
+    assert [entry.area_id for entry in fit.too_small] == [AreaId(1)]
+
+    # Two halves, each needing 300 px, in 500 px. The needs take 608, and
+    # one half at a 177 px floor leaves 300 + 8 + 177 = 485, which fits. The
+    # halves' shares are equal, so the later one, Area 2, goes. Area 1 is held
+    # at 300 of the 492 px, and Area 2 takes 192.
+    row = _row((0.5, 0.5), _area(1), _area(2))
+    fit = settle(
+        row,
+        PixelSize(500, 400),
+        _HANDLE_PX,
+        _each(row, PixelSize(300, 100)),
+        _each(row, PixelSize(177, 60)),
+        kept=frozenset({AreaId(1), AreaId(2)}),
+    )
+
+    assert fit.apportionment.splits[()] == (300, 192)
+    assert fit.drawn == {AreaId(1)}
+    assert [entry.area_id for entry in fit.too_small] == [AreaId(2)]
+
+    # An Area above a row of two, each needing 300 px of height, in 590 px.
+    # The needs take 300 + 8 + 300 = 608. Letting go Area 2 or Area 3 alone
+    # leaves the row 300 px tall and gains nothing. Letting go Area 1 leaves
+    # 60 + 8 + 300 = 368, which fits. So Area 1 goes, whether or not the
+    # Areas were kept. The column's 582 px would give 291 each, so the row is
+    # held at 300, and Area 1 takes 282.
+    stacked = _column((0.5, 0.5), _area(1), _row((0.5, 0.5), _area(2), _area(3)))
+    needs = _each(stacked, PixelSize(200, 300))
+    floors = _each(stacked, floors_60)
+
+    for kept in (frozenset(), frozenset(area.id for area in areas_in(stacked))):
+        fit = settle(stacked, PixelSize(600, 590), _HANDLE_PX, needs, floors, kept=kept)
+
+        assert fit.apportionment.splits[()] == (282, 300)
+        assert fit.drawn == {AreaId(2), AreaId(3)}
+        assert [entry.area_id for entry in fit.too_small] == [AreaId(1)]
+
+
+def test_an_area_let_go_before_a_later_drop_made_room_is_drawn_after_all() -> None:
+    # Area 1 is kept, above a row of a new Area 2 and a kept Area 3. Each
+    # needs 300 px of height, and the column has 590 px against 608. Area 2
+    # goes first, as the one Area not kept, but the row is still 300 px tall
+    # with Area 3 in it. Letting go Area 1 or Area 3 would then fit, and Area
+    # 1 has the smaller share, 0.3 against 0.7 * 0.5 = 0.35. So Area 1 goes,
+    # which leaves 60 + 8 + 300 = 368. With Area 1 at its floor, Area 2 fits
+    # at its need again, so it is drawn.
+    stacked = _column((0.3, 0.7), _area(1), _row((0.5, 0.5), _area(2), _area(3)))
+    fit = settle(
+        stacked,
+        PixelSize(600, 590),
+        _HANDLE_PX,
+        _each(stacked, PixelSize(200, 300)),
+        _each(stacked, PixelSize(40, 60)),
+        kept=frozenset({AreaId(1), AreaId(3)}),
+    )
+
+    assert fit.drawn == {AreaId(2), AreaId(3)}
+    assert [entry.area_id for entry in fit.too_small] == [AreaId(1)]
+
+
+def test_drawn_bounds_take_the_larger_of_the_need_and_the_floor_on_each_axis() -> None:
+    needs = {AreaId(1): PixelSize(160, 300), AreaId(2): PixelSize(400, 50)}
+    floors = {AreaId(1): PixelSize(177, 60), AreaId(2): PixelSize(177, 60)}
+
+    assert drawn_bounds(needs, floors) == {
+        AreaId(1): PixelSize(177, 300),
+        AreaId(2): PixelSize(400, 60),
+    }
+
+
+def test_a_border_held_by_its_neighbours_need_maps_the_pointer_through_the_drawn_sizes() -> None:
+    """`PL-97WX`: the share comes from the drawn sizes, not the fractions."""
+
+    # A 0.7 / 0.3 row of 800 px whose right child needs 300. Its share, 240,
+    # is less than that, so it is held at 300 and the border is drawn at 500,
+    # not at the 560 that 0.7 would give.
+    fractions, bounds = (0.7, 0.3), (10, 300)
+
+    assert border_share(fractions, 0, bounds, 800, 500) is None
+    # The right child cannot be drawn narrower, so the border cannot move right.
+    assert border_share(fractions, 0, bounds, 800, 501) is None
+    assert border_share(fractions, 0, bounds, 800, 700) is None
+
+    # One pixel left, the border is drawn at 499. The right child's share,
+    # 301, is then more than its bound, so nothing is held, and the share is
+    # the one the fractions give: 499 / 800.
+    left = border_share(fractions, 0, bounds, 800, 499)
+    assert left == 499 / 800
+    assert split_sizes((left, 1 - left), bounds, 800) == (499, 301)
+
+    # Toward the middle, the share again follows the pointer exactly.
+    assert border_share(fractions, 0, bounds, 800, 400) == 0.5
+
+    # Far to the left, the border stops where the left child reaches its 10 px
+    # bound, and the share is the one that draws it there: 10 / 800.
+    far = border_share(fractions, 0, bounds, 800, 0)
+    assert far == 10 / 800
+    assert split_sizes((far, 1 - far), bounds, 800) == (10, 790)
+
+
+def test_a_border_between_two_unheld_children_maps_the_pointer_by_the_fractions() -> None:
+    # Nothing is held, so the border at 0.5 of 800 is drawn at 400, and 480
+    # is a share of 480 / 800 = 0.6.
+    fractions, bounds = (0.25, 0.25, 0.5), (10, 10, 10)
+
+    assert border_share(fractions, 1, bounds, 800, 400) is None
+
+    moved = border_share(fractions, 1, bounds, 800, 480)
+    assert moved == 0.6
+    assert moved is not None
+    # The first child keeps its 0.25, and only the two beside the border change.
+    assert split_sizes((0.25, moved - 0.25, 1 - moved), bounds, 800) == (200, 280, 320)
+
+
+def test_border_share_refuses_a_border_the_split_does_not_have() -> None:
+    with pytest.raises(IndexError):
+        border_share((0.5, 0.5), 1, (10, 10), 800, 400)
 
 
 def test_settle_holds_a_floor_above_a_need() -> None:

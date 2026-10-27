@@ -27,22 +27,23 @@ than it was arranged at. Such an Area is *too small*, and it is given only its
 notice's title, and a short statement of the size the View needs and the size
 the Area has (`PL-Y65Q`). The adapter draws `PL-DB5G`'s notice in the Area, and
 adds the notice's advice sentence only where the Area has room for it. The
-adapter gives its host the sum of the needs as the adapter's least size
-(`minimum_extent`). A host that can grow, such as the dashboard's scrolling
-page, grows to that size instead, so no Area in it is too small. Nothing is
+adapter gives its host, as the adapter's least size, the `minimum_extent` of
+every Area held at its `drawn_bound`: the larger of its need and its floor. A
+host that can grow, such as the dashboard's scrolling page, grows to that size
+instead, so no Area in it is too small. Nothing is
 clipped, and nothing is collapsed to zero extent. Collapsing to zero is what
 Blender does with `RGN_FLAG_TOO_SMALL` (`docs/interface-provenance.md`).
 
 **Which Areas are too small is decided once per change, by `settle`.** Every
-Area is first tried at its need. When a split cannot fit its children's
-needs, the Areas under it that the latest change did not leave in place drop to
-their floors first. The Areas that the change left in place drop only after
-them.
-So a split's new halves report themselves too small, rather than taking the
-room from an Area the reader did not touch. Then every Area that still has its
-need is drawn, and the rest are too small. A too-small Area is drawn again as
-soon as a later change, such as a border drag or a larger window, can give it
-its need.
+Area is first tried at its need. When the extent cannot hold every need, Areas
+drop to their floors one at a time until the rest fit, so a small shortfall
+blanks only the Areas that must give way (`PL-QZ7Z`). The Areas that the latest
+change did not leave in place drop first. The Areas that the change left in
+place drop only after them. So a split's new halves report themselves too
+small, rather than taking the room from an Area the reader did not touch. Then
+every Area that still has its need is drawn, and the rest are too small. A
+too-small Area is drawn again as soon as a later change, such as a border drag
+or a larger window, can give it its need.
 
 **Pixels are apportioned as the adapter's splitters lay them out.** A split of
 `n` children spends `n - 1` handles, each `handle_px` wide, along its axis,
@@ -54,14 +55,14 @@ here are the sizes on screen.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from types import MappingProxyType
 
 from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.layout.exceptions import InvalidLayout
-from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, areas_in
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, areas_in
 
 __all__ = [
     "Apportionment",
@@ -69,9 +70,12 @@ __all__ = [
     "PixelSize",
     "TooSmall",
     "apportion",
+    "border_share",
+    "drawn_bounds",
     "minimum_extent",
     "pixel_sizes",
     "settle",
+    "split_sizes",
 ]
 
 
@@ -154,10 +158,10 @@ class Fit:
 
     Attributes:
         apportionment: Every Area's and every split's size in pixels.
-        bounds: The least size each Area is held at: its need where it is
-            drawn, and its floor where it is too small. The adapter sets each
-            Area's minimum size to this, so the window's minimum is the sum
-            of these bounds rather than of every need.
+        bounds: The least size each Area is held at: its `drawn_bounds`
+            entry where it is drawn, and its floor where it is too small. The
+            adapter sets each Area's frame's minimum size to this, so Qt never
+            draws an Area below it.
         drawn: The Areas given their need, which draw their View.
         too_small: The Areas that are not given their need, in reading
             order, each with the size it needs and the size it has.
@@ -187,6 +191,131 @@ def pixel_sizes(fractions: tuple[float, ...], available: int) -> tuple[int, ...]
         sizes[index] += 1
 
     return tuple(sizes)
+
+
+def split_sizes(
+    fractions: tuple[float, ...], bounds: tuple[int, ...], available: int
+) -> tuple[int, ...]:
+    """Return the sizes along a split's axis that `apportion` gives its children.
+
+    `bounds` holds each child's bound along the axis, and `available` the
+    pixels the children share once the handles are taken out. Each child is
+    held at its bound where its share would be less, and the others share the
+    rest by their fractions (`_held_sizes`). Where the bounds need more than
+    `available`, the sizes are `pixel_sizes` of the fractions alone.
+    """
+
+    held = _held_sizes(fractions, bounds, available)
+
+    return held if held is not None else pixel_sizes(fractions, available)
+
+
+def drawn_bounds(
+    needs: Mapping[AreaId, PixelSize], floors: Mapping[AreaId, PixelSize]
+) -> dict[AreaId, PixelSize]:
+    """Return the size at which each Area is held while it draws its View.
+
+    That size is the larger of the Area's need and its floor on each axis.
+
+    An Area whose floor is wider or taller than its View's need is held at the
+    floor on that axis, so its header still fits. `settle` holds a drawn Area
+    at this bound, and the adapter's least size is the `minimum_extent` of
+    these bounds (`PL-C9XP`). The sum of the needs alone would understate it.
+
+    Raises:
+        KeyError: `floors` has no size for an Area in `needs`.
+    """
+
+    return {area_id: _larger(need, floors[area_id]) for area_id, need in needs.items()}
+
+
+def border_share(
+    fractions: tuple[float, ...],
+    index: int,
+    bounds: tuple[int, ...],
+    available: int,
+    offset_px: int,
+) -> float | None:
+    """Return the share of a split that lies before border `index` once it is drawn at `offset_px`.
+
+    The split's children have sizes `fractions` and bounds `bounds` along its
+    axis, and share `available` pixels, as `split_sizes` lays them out. Border
+    `index` lies between child `index` and the child after it, and moving it
+    changes only those two children. `offset_px` is where the border is to be
+    drawn: the pixels of the children before it.
+
+    Where a child is held at its bound, every share in a range draws the
+    border in one place. So the pointer is mapped through the drawn sizes, not
+    through the fractions alone (`PL-97WX`). Of the shares that draw the
+    border at `offset_px`, the result is the one nearest `offset_px /
+    available`, the share that the fractions alone would give. Where no child
+    is held, it is that share exactly. The border cannot be drawn past the
+    place where a child beside it reaches its bound, so an `offset_px` past
+    that place is taken as that place.
+
+    The result is None when the border is already drawn at `offset_px`, or as
+    near it as it can be drawn. A press, or a nudge toward an Area held at its
+    bound, then leaves the stored fractions exactly as they were.
+
+    Raises:
+        IndexError: `index` is not a border of the split.
+    """
+
+    if not 0 <= index < len(fractions) - 1:
+        raise IndexError(f"a split of {len(fractions)} children has no border {index}")
+
+    before = math.fsum(fractions[:index])
+    end = math.fsum(fractions[: index + 2])
+
+    def drawn(share: float) -> int:
+        trial = fractions[:index] + (share - before, end - share) + fractions[index + 2 :]
+
+        return sum(split_sizes(trial, bounds, available)[: index + 1])
+
+    # The ends themselves would leave a child with no share at all, so the
+    # border's range is measured one float inside them.
+    first, last = math.nextafter(before, end), math.nextafter(end, before)
+    target = min(max(offset_px, drawn(first)), drawn(last))
+
+    if target == drawn(before + fractions[index]):
+        return None
+
+    # The shares that draw the border at `target` run from the first share
+    # that reaches it to the share just before the first that passes it.
+    reaches = _first_share(first, last, lambda share: drawn(share) >= target)
+    beyond = _first_share(first, last, lambda share: drawn(share) > target)
+    passes = last if beyond is None else math.nextafter(beyond, first)
+    assert reaches is not None, "the target is clamped to where the border can be drawn"
+
+    return min(max(target / available, reaches), passes)
+
+
+def _first_share(first: float, last: float, reached: Callable[[float], bool]) -> float | None:
+    """Return the least share from `first` to `last` at which `reached` holds, or None.
+
+    `reached` fails up to some share and holds from there to `last`. The
+    share is found by halving the interval until no float lies between its
+    ends.
+    """
+
+    if reached(first):
+        return first
+
+    if not reached(last):
+        return None
+
+    low, high = first, last
+
+    while True:
+        middle = (low + high) / 2
+
+        if middle in (low, high):
+            return high
+
+        if reached(middle):
+            high = middle
+        else:
+            low = middle
 
 
 def minimum_extent(tree: Node, handle_px: int, bounds: Mapping[AreaId, PixelSize]) -> PixelSize:
@@ -249,12 +378,14 @@ def apportion(
         available = max(size.along(orientation) - handle_px * (count - 1), count)
         across = size.across(orientation)
         least = [_minimum_extent(child, handle_px, bounds) for child in node.children]
-        held = _held_sizes(node.sizes, tuple(each.along(orientation) for each in least), available)
+        child_bounds = tuple(each.along(orientation) for each in least)
 
-        if held is None or any(each.across(orientation) > across for each in least):
+        if sum(child_bounds) > available or any(
+            each.across(orientation) > across for each in least
+        ):
             unheld.append(path)
 
-        sizes = held if held is not None else pixel_sizes(node.sizes, available)
+        sizes = split_sizes(node.sizes, child_bounds, available)
         splits[path] = sizes
 
         for index, (child, along) in enumerate(zip(node.children, sizes, strict=True)):
@@ -282,12 +413,20 @@ def settle(
 
     `kept` names the Areas that were drawn before the change being settled
     and that the change left with the same View in the same place. Every
-    Area is first tried at its need. While some split cannot fit its
-    children's bounds, the Areas under the first such split that are not in
-    `kept` drop to their floors. When none of those is left to drop, the
-    split's Areas in `kept` drop instead. An Area whose floor is more than its need is held
-    at its floor. Every Area that is then given its need is drawn, and every
-    other Area is too small.
+    Area is first held at its `drawn_bounds` entry, the larger of its need and
+    its floor. While the extent cannot hold those bounds, one Area at a time
+    drops to its floor, so a small shortfall blanks only the Areas that must
+    give way (`PL-QZ7Z`). The Areas not in `kept` drop before any Area in
+    `kept`. Within each group, the next to drop is the one whose drop leaves
+    the least shortfall. A tie goes to the Area with the smaller share of the
+    window, which is the one the reader gave the least room, and then to the
+    later Area in reading order.
+
+    Once the bounds fit, each dropped Area is tried at its need again, the
+    last dropped first. It keeps its need wherever the bounds still fit. So an
+    Area dropped early, before a later drop made room, is drawn after all.
+    Every Area that is then given its need is drawn, and every other Area is
+    too small.
 
     Raises:
         TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
@@ -296,33 +435,49 @@ def settle(
     """
 
     areas = tuple(areas_in(tree))
-    bounds = {area.id: _larger(needs[area.id], floors[area.id]) for area in areas}
+    held = drawn_bounds({area.id: needs[area.id] for area in areas}, floors)
+    bounds = dict(held)
+    shares = _shares(tree)
+    reading = {area.id: index for index, area in enumerate(areas)}
+    dropped: list[AreaId] = []
 
-    while True:
-        laid_out = apportion(tree, extent, handle_px, bounds)
+    def fits() -> bool:
+        return not apportion(tree, extent, handle_px, bounds).unheld
 
-        if not laid_out.unheld:
+    def shortfall_without(area_id: AreaId) -> int:
+        trial = {**bounds, area_id: floors[area_id]}
+        least = _minimum_extent(tree, handle_px, trial)
+
+        return max(0, least.width_px - extent.width_px) + max(0, least.height_px - extent.height_px)
+
+    while not fits():
+        holding = [area.id for area in areas if bounds[area.id] != floors[area.id]]
+        candidates = [area_id for area_id in holding if area_id not in kept] or holding
+
+        if not candidates:
+            # Every Area is already at its floor, so the extent is less than
+            # even the floors need. The splits' sizes then follow their
+            # fractions alone, and every Area smaller than its need is too
+            # small.
             break
 
-        under = tuple(area.id for area in areas_in(_node_at(tree, laid_out.unheld[0])))
-        holding = [area_id for area_id in under if bounds[area_id] != floors[area_id]]
-        let_go = [area_id for area_id in holding if area_id not in kept] or holding
+        drop = min(
+            candidates,
+            key=lambda area_id: (shortfall_without(area_id), shares[area_id], -reading[area_id]),
+        )
+        bounds[drop] = floors[drop]
+        dropped.append(drop)
 
-        if not let_go:
-            # Every Area under the split is already at its floor, so the
-            # extent is less than even the floors need. The split's sizes then
-            # follow its fractions alone, and every Area smaller than its need
-            # is too small.
-            break
+    if fits():
+        for area_id in reversed(dropped):
+            bounds[area_id] = held[area_id]
 
-        for area_id in let_go:
-            bounds[area_id] = floors[area_id]
+            if not fits():
+                bounds[area_id] = floors[area_id]
 
+    laid_out = apportion(tree, extent, handle_px, bounds)
     drawn = frozenset(area.id for area in areas if laid_out.areas[area.id].covers(needs[area.id]))
-    final = {
-        area.id: _larger(needs[area.id], floors[area.id]) if area.id in drawn else floors[area.id]
-        for area in areas
-    }
+    final = {area.id: held[area.id] if area.id in drawn else floors[area.id] for area in areas}
     too_small = tuple(
         TooSmall(area.id, needs[area.id], laid_out.areas[area.id])
         for area in areas
@@ -402,20 +557,27 @@ def _minimum_extent(node: Node, handle_px: int, bounds: Mapping[AreaId, PixelSiz
     return PixelSize(across, along)
 
 
+def _shares(tree: Node) -> dict[AreaId, float]:
+    """Return each Area's share of the window: the product of its fractions on the way down."""
+
+    shares: dict[AreaId, float] = {}
+
+    def visit(node: Node, share: float) -> None:
+        if isinstance(node, Area):
+            shares[node.id] = share
+
+            return
+
+        for child, fraction in zip(node.children, node.sizes, strict=True):
+            visit(child, share * fraction)
+
+    visit(tree, 1.0)
+
+    return shares
+
+
 def _larger(first: PixelSize, second: PixelSize) -> PixelSize:
     return PixelSize(max(first.width_px, second.width_px), max(first.height_px, second.height_px))
-
-
-def _node_at(tree: Node, path: tuple[int, ...]) -> Node:
-    node = tree
-
-    for step in path:
-        if not isinstance(node, Split):
-            raise LookupError(f"the tree has no node at {path}")
-
-        node = node.children[step]
-
-    return node
 
 
 def _require_handle(handle_px: object) -> None:

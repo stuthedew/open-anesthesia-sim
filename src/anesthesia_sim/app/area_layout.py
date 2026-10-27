@@ -210,6 +210,8 @@ from anesthesia_sim.layout.sizing import (
     PixelSize,
     TooSmall,
     apportion,
+    border_share,
+    drawn_bounds,
     minimum_extent,
     pixel_sizes,
     settle,
@@ -802,12 +804,14 @@ class AreaLayout(QWidget):
         self._settle(self._drawn)
 
     def minimum_extent(self) -> PixelSize:
-        """Return the least size at which every Area draws its View: the sum of their needs.
+        """Return the least size at which every Area draws its View.
 
-        This size is the widget's minimum size hint, so a host that can grow
-        never gives the widget less (`PL-K285` Q2). A host that cannot grow
-        gives the widget what it can, and each Area that does not fit shows
-        that it is too small.
+        Each Area is counted at the larger of its View's need and its floor,
+        since an Area is never drawn below its floor (`PL-C9XP`). This size is
+        the widget's minimum size hint, so a host that can grow never gives the
+        widget less (`PL-K285` Q2). A host that cannot grow gives the widget
+        what it can, and each Area that does not fit shows that it is too
+        small.
         """
 
         least = self._least
@@ -1222,9 +1226,11 @@ class AreaLayout(QWidget):
         Before this widget is shown, its size is not yet the size it will be drawn at. So
         until it is shown, every Area keeps its View and is held at its need.
 
-        When the Views' needs add up to a new minimum size for this widget, this method
-        tells the host through `minimumSizeHint`. A host that can grow, such as the
-        dashboard's scrolling page, then gives this widget room for every View.
+        When the Areas' bounds add up to a new minimum size for this widget, this method
+        tells the host through `minimumSizeHint`. Each Area is counted at the larger of
+        its View's need and its floor (`drawn_bounds`), as `settle` holds a drawn Area.
+        A host that can grow, such as the dashboard's scrolling page, then gives this
+        widget room for every View.
         """
 
         if self._settling:
@@ -1239,13 +1245,14 @@ class AreaLayout(QWidget):
             floors = {area_id: self._floor(area_id) for area_id in self._frames}
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
-            least = minimum_extent(tree, AREA_HANDLE_WIDTH, needs)
+            held = drawn_bounds(needs, floors)
+            least = minimum_extent(tree, AREA_HANDLE_WIDTH, held)
 
             if self.isVisible():
                 fit = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
             else:
-                laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, needs)
-                fit = Fit(laid_out, needs, frozenset(needs), ())
+                laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, held)
+                fit = Fit(laid_out, held, frozenset(held), ())
 
             self._fit = fit
             self._drawn = fit.drawn
@@ -1513,11 +1520,17 @@ class AreaLayout(QWidget):
         """Return where in the window the dragged border lies with the pointer at screen point `at`.
 
         The splitter places a handle's leading edge after the children before
-        it and the handles between them. So the share of the split before the
-        border is that edge's offset minus the width of those handles, divided
-        by the splitter's length along its axis minus the width of all its
-        handles. The model's span of the split turns the share into a fraction
-        of the window. The result is None when that length is not positive.
+        it and the handles between them. So the border is to be drawn at that
+        edge's offset minus the width of those handles. `border_share` turns
+        that offset into a share of the split through the sizes the splitter
+        draws, which hold a child at its bound where its fraction would make it
+        smaller (`PL-97WX`). The model's span of the split turns the share into
+        a fraction of the window.
+
+        Where the border is already drawn at the pointer, or as near it as it
+        can be drawn, the result is where the drag started. A press, or a
+        nudge toward an Area held at its need, then changes no fraction. The
+        result is None when the split has no pixels to share.
         """
 
         splitter = handle.owner
@@ -1525,13 +1538,29 @@ class AreaLayout(QWidget):
         local = splitter.mapFromGlobal(at)
         horizontal = splitter.orientation() == Qt.Orientation.Horizontal
         edge = (local.x() if horizontal else local.y()) - drag.offset_px
-        total = _drawable_px(splitter)
+        fit = self._fit
+        drawn = None if fit is None else fit.apportionment.splits.get(splitter.path)
 
-        if total <= 0:
+        if fit is None or drawn is None or sum(drawn) <= 0:
             return None
 
+        split = _split_at(drag.start.windows[MAIN_WINDOW].tree, splitter.path)
+        bounds = tuple(
+            minimum_extent(child, AREA_HANDLE_WIDTH, fit.bounds).along(split.orientation)
+            for child in split.children
+        )
+        share = border_share(
+            split.sizes,
+            drag.handle.index,
+            bounds,
+            sum(drawn),
+            edge - splitter.handleWidth() * (index - 1),
+        )
+
+        if share is None:
+            return drag.start.position(drag.handle)
+
         low, high = drag.start.span(drag.handle)
-        share = (edge - splitter.handleWidth() * (index - 1)) / total
 
         return low + (high - low) * share
 
