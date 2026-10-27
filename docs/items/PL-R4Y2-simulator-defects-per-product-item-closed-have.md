@@ -68,3 +68,69 @@ Of 2026-10-19's three named clusters, stale state is now mostly explained by `PL
 - **A `docs/MODEL.md` claim about the model's computed behaviour that no test computes**: `PL-39KH`, `PL-MLPT`, `PL-M8F6` and `PL-5RPD`. This is `PL-4FBP`'s fact, a document sentence diverged from the fact it restates, where the fact is the model's output rather than a file. Left unrecorded, as the earlier pass left that cluster.
 - **Leads with fewer than three members**: `PL-YH6Z` and `PL-T5NJ` are hovers that derive their own answer instead of reading `read_wash_in` or the clock grid. `PL-97WX` and `PL-C9XP` derive an Area's size again instead of reading `settle`'s held sizes, and `PL-Y65Q` and `PL-QZ7Z` are `settle`'s own policy. `PL-0WFJ`, `PL-S11T` and `PL-WRVX` are `PL-ZGYX`'s fact, a way in that skips a quantity's check. They are listed with the earlier pass's 24 unrecorded `PL-ZGYX` matches.
 - **Already attributed, or not defects of a shared fact**: the `floating-point-domain` items, `PL-HJKN`, `PL-N7MM`, `PL-58D7`, `PL-7FPD`, `PL-PNGQ`, `PL-2T6S`, `PL-G84G`, `PL-Q3G9` and `PL-6YKY` carry their own answer. The `mac-awake-reference-text` and `supported-run-length-text` items misread a source or the model's physiology, one each. `PL-1P15`, `PL-2881`, `PL-KFTM`, `PL-RNYV` and `PL-S79P` are planned work. `PL-88MK`, `PL-FPLQ`, `PL-DQL9`, `PL-QG52`, `PL-QBQX`, `PL-KDZW`, `PL-TPBH`, `PL-VHQX`, `PL-X4X2`, `PL-KHXB` and `PL-X9K0` are one-offs.
+
+**Generator question for the product defects filed 2026-10-26 and 2026-10-27, asked 2026-10-27.** Every triaged product item classed `defect` or `safety` and filed up to 2026-10-27 now has an answer, either in this brief, in its own `**Generator check.**` line, or as a member or re-entry of a head. The two not yet answered by name are answered here. `PL-3HT2`, a stale docstring in `core/uptake_system.py`, is `PL-4FBP`'s fact, a document sentence diverged from the tree fact it restates, and is left unrecorded like the 27 listed above. `PL-T6P0` belongs to the `floating-point-domain` feature, which carries its own answer. Eight untriaged items filed on 2026-10-25 to 2026-10-27 look like product defects: `PL-9B1M`, `PL-PTDZ`, `PL-000W`, `PL-9Z74`, `PL-QVBR`, `PL-D88N`, `PL-D1LR` and `PL-93LV`. They are left to triage. From `PL-K5CX` (#1883, merged 2026-10-27), triage asks every product item that is not classed only as new work the generator question, so a sweep like this one is no longer the only way a product defect is asked.
+
+**Interim reading, 2026-10-27, on `main` at `516b0ce22`.** This is not the re-measurement, which is still due on 2026-11-02. It checks the method and gives one full week after `PL-5JTH`. Organic product defects filed per product item closed, by week starting Monday:
+
+| Week of | Organic defects | Of them, `PL-GTHP`'s replay batch | Items closed | Rate | Rate without the replay batch |
+| --- | --- | --- | --- | --- | --- |
+| 2026-08-31 | 44 | 0 | 69 | 0.64 | 0.64 |
+| 2026-09-07 | 12 | 0 | 87 | 0.14 | 0.14 |
+| 2026-09-14 | 52 | 0 | 80 | 0.65 | 0.65 |
+| 2026-09-21 | 8 | 0 | 34 | 0.24 | 0.24 |
+| 2026-09-28 | 25 | 0 | 30 | 0.83 | 0.83 |
+| 2026-10-05 | 14 | 0 | 24 | 0.58 | 0.58 |
+| 2026-10-12 | 36 | 0 | 52 | 0.69 | 0.69 |
+| 2026-10-19 | 44 | 16 | 94 | 0.47 | 0.30 |
+| 2026-10-26 (2 days) | 0 | 0 | 41 | 0.00 | 0.00 |
+
+Three things limit this reading:
+
+- **The earlier weeks have moved since 2026-10-19.** Recomputed today, 2026-10-05 reads 0.58 where the review read 0.79, and 2026-10-12 reads 0.69 where it read 0.77. The first two weeks reproduce exactly. Triage has since changed some items' `touches` and `classes`, which moves them between lanes and classes. So the 2026-11-02 re-measurement compares each week against the earlier weeks recomputed on the same day, never against the figures in § "Evidence".
+- **The replay batch is a sweep of old faults.** `PL-GTHP` filed 45 items in `a4746bda7` on 2026-10-25, and 16 of them count as organic product defects in the week of 2026-10-19. Each describes a fault that was already present at an older merge, so the last column is the better measure of defects arising from current work.
+- **The latest week is incomplete.** An untriaged item has no `touches`, so it is placed in no lane and is not counted. Triage the eight items named above before taking the 2026-11-02 reading.
+
+On this reading the week after `PL-5JTH` closed is 0.30 without the replay batch, against 0.58 to 0.83 in the four weeks before it. One week is not a trend. Heads now explain 89 of 279 product defects (32%), 16 of them open, up from 73 of 245 (30%) on 2026-10-25.
+
+**How to take the re-measurement.** Run this from the repository root, with the replay batch's ids written to a file first: `git show --diff-filter=A --name-only --format= a4746bda7 -- docs/items | sed -E 's#docs/items/(PL-[0-9A-Z]+)-.*#\1#' > replay.txt`. An organic defect is an item classed `defect` or `safety` with no `reenters:` that was filed before any head naming it in `root-cause-of:`. An item filed on the same day as the head that names it counts as that head's own filing.
+
+```python
+import sys, tomllib
+from collections import Counter
+from datetime import date, timedelta
+from pathlib import Path
+sys.path.insert(0, "subprojects/docket/src")
+from docket.store import read_items
+
+paths = tuple(tomllib.loads(Path("docket.toml").read_text())["docket"]["workflow_paths"])
+items = read_items(Path("docs/items"))
+replay = set(Path("replay.txt").read_text().split())
+named = {}
+for head in items:
+    for member in head.root_cause_of:
+        if head.added and (member not in named or head.added < named[member]):
+            named[member] = head.added
+
+def organic(i):
+    return not i.reenters and (i.identifier not in named or i.added < named[i.identifier])
+
+def week(d):
+    return d - timedelta(days=d.weekday())
+
+filed, swept, closed = Counter(), Counter(), Counter()
+for i in items:
+    if i.lane(paths) != "product":
+        continue
+    if i.closed and i.status == "done":
+        closed[week(i.closed)] += 1
+    if i.added and {"defect", "safety"} & set(i.classes) and organic(i):
+        filed[week(i.added)] += 1
+        swept[week(i.added)] += i.identifier in replay
+w = date(2026, 8, 31)
+while w <= date.today():
+    c = closed[w]
+    print(w, filed[w], swept[w], c, f"{filed[w] / c:.2f}" if c else "-",
+          f"{(filed[w] - swept[w]) / c:.2f}" if c else "-")
+    w += timedelta(days=7)
+```
