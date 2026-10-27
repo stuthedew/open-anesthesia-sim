@@ -14,8 +14,12 @@ agent. These are asserted separately, because they are true for every
 parameter set and not only for these numbers.
 """
 
+import copy
+import io
+import pickle
 from dataclasses import fields
 from math import inf, nan, nextafter
+from types import SimpleNamespace
 from typing import NamedTuple
 
 import numpy
@@ -312,6 +316,146 @@ def test_a_record_cannot_be_built_without_a_vaporizer_maximum() -> None:
 
     with pytest.raises(TypeError, match="max_delivered_concentration_percent"):
         UptakeEquationSettings(**without_a_maximum)
+
+
+PICKLE_PROTOCOLS = range(pickle.HIGHEST_PROTOCOL + 1)
+
+
+class _ForgingPickler(pickle.Pickler):
+    """Write one record as pickle writes it, with one saved field value replaced.
+
+    The record is written in the exact form that the chosen pickle protocol
+    uses, so loading it takes the same path that a saved file would take. Only
+    the saved state differs, in the way that a hand edit of a saved run would
+    change it.
+    """
+
+    def __init__(
+        self, buffer: io.BytesIO, protocol: int, target: object, field: str, value: object
+    ) -> None:
+        super().__init__(buffer, protocol=protocol)
+        self._protocol = protocol
+        self._target = target
+        self._field = field
+        self._value = value
+
+    def reducer_override(self, obj: object) -> object:
+        if obj is not self._target:
+            return NotImplemented
+
+        constructor, arguments, state = obj.__reduce_ex__(self._protocol)[:3]
+        names = [field.name for field in fields(obj)]  # type: ignore[arg-type]
+        forged = list(state)
+        forged[names.index(self._field)] = self._value
+
+        return constructor, arguments, forged
+
+
+def _forged_pickle(
+    record: object, protocol: int, field: str, value: object, outer: object = None
+) -> bytes:
+    """Return `outer` (or `record` itself) pickled with `record`'s `field` saved as `value`."""
+
+    buffer = io.BytesIO()
+    _ForgingPickler(buffer, protocol, record, field, value).dump(record if outer is None else outer)
+
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+def test_a_settings_record_survives_pickling_and_copying_unchanged(protocol: int) -> None:
+    """A record restored through its checks still equals the record that was saved."""
+
+    held = _settings()
+
+    assert pickle.loads(pickle.dumps(held, protocol=protocol)) == held
+    assert (
+        pickle.loads(_forged_pickle(held, protocol, "cardiac_output_l_min", CARDIAC_OUTPUT_L_MIN))
+        == held
+    )
+    assert copy.copy(held) == held
+    assert copy.deepcopy(held) == held
+
+
+FORGED_RECORDS = (
+    pytest.param("cardiac_output_l_min", 1000.0, TypeError, "cardiac_output_l_min", id="bare-1000"),
+    pytest.param("fresh_gas_flow_l_min", nan, TypeError, "fresh_gas_flow_l_min", id="nan-fgf"),
+    pytest.param(
+        "max_delivered_concentration_percent",
+        Percent(1.0),
+        SimulationConfigurationError,
+        "delivered_concentration_percent",
+        id="dial-above-maximum",
+    ),
+)
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+@pytest.mark.parametrize(("field", "value", "error", "match"), FORGED_RECORDS)
+def test_an_unpickled_settings_record_is_rebuilt_through_its_checks(
+    protocol: int, field: str, value: object, error: type[Exception], match: str
+) -> None:
+    """Unpickling used to restore a record through `__setstate__` without any check (`PL-S11T`).
+
+    Before the fix, a saved record loaded even though its state held cardiac
+    output as a bare 1000.0. Its tissue flows still summed to the cardiac
+    output that the record had been built with. A `RunDefinition` opened under
+    that record advanced. A saved fresh gas flow of NaN loaded too. Each forged
+    value is now rejected on load with the constructor's own exception, at
+    every pickle protocol.
+    """
+
+    with pytest.raises(error, match=match):
+        pickle.loads(_forged_pickle(_settings(), protocol, field, value))
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+def test_an_unpickled_tissue_group_record_is_rebuilt_through_its_checks(protocol: int) -> None:
+    """A tissue group's saved blood flow of NaN is refused on load, inside its settings record."""
+
+    held = _settings()
+
+    with pytest.raises(SimulationConfigurationError, match="vessel_rich blood_flow_l_min"):
+        pickle.loads(_forged_pickle(held.tissues[0], protocol, "blood_flow_l_min", nan, held))
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+def test_an_unpickled_settings_record_refuses_tissue_rows_of_another_type(protocol: int) -> None:
+    """A saved row that only looks like a tissue group is refused, so its checks cannot be skipped.
+
+    The review of `PL-S11T` found this gap. Three namespaces loaded as a
+    record's tissue rows. They carried the right flows, a volume of 1e-300 L
+    and a coefficient of 1e-30. `build_system_matrix` then returned a matrix
+    that was not finite.
+    """
+
+    held = _settings()
+    lookalikes = tuple(
+        SimpleNamespace(
+            name=tissue.name,
+            volume_l=1e-300,
+            blood_flow_l_min=tissue.blood_flow_l_min,
+            blood_flow_l_s=tissue.blood_flow_l_s,
+            tissue_blood_partition_coefficient=1e-30,
+            washin_rate_s=inf,
+        )
+        for tissue in held.tissues
+    )
+
+    with pytest.raises(TypeError, match="not a SimpleNamespace"):
+        pickle.loads(_forged_pickle(held, protocol, "tissues", lookalikes))
+
+
+def test_a_settings_record_is_not_restored_from_a_state_of_another_shape() -> None:
+    """A state other than the list of field values that `dataclass` writes is refused."""
+
+    restored = object.__new__(UptakeEquationSettings)
+
+    with pytest.raises(
+        TypeError,
+        match="^UptakeEquationSettings is restored from a list of its field values, not a dict$",
+    ):
+        restored.__setstate__({"cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN})
 
 
 def test_the_matrix_is_square_and_the_right_size() -> None:
