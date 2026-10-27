@@ -114,7 +114,7 @@ verify_required_at_close_from = 2026-09-03
 
 # What the command may *be*, once it is present - the third of the three dates,
 # and the decidable half of the contract `PL-6TP8` settled on 2026-09-19
-# (project owner, ratified): the field records the discriminator, and proving
+# (project owner, 2026-09-19, ratified): the field records the discriminator, and proving
 # the tree is `check_command`'s job, which `docket verify`, `docs/worker.md`
 # and CI each already run. Until now that contract was carried by one table in
 # the `docket` skill - now `.claude/skills/docket/modes/triage.md` - and by
@@ -298,7 +298,7 @@ minor_classes = ["feature"]
 # an item whose work *is* the queue edit from the two brief sections that argue
 # for the work rather than describe it, and refuses it beside any
 # `debt_classes` entry so it cannot become the way to file a defect without a
-# brief. Added 2026-09-19 on `PL-TQFB` (project owner, ratified), after 22
+# brief. Added 2026-09-19 on `PL-TQFB` (project owner, 2026-09-19, ratified), after 22
 # triage-pass items were measured carrying 1,127 lines of brief of which 2 held
 # a finding.
 # Declaring the list at all replaces the derived default entirely, so every
@@ -486,12 +486,13 @@ workflow_paths = [
   "tests/unit/test_headless_worker.py",
   "tests/unit/test_hook_blocks.py",
   "tests/unit/test_worker_runs.py",
-  "tests/unit/test_ignore_check.py",
+  "tests/unit/test_type_ignore_check.py",
   "tests/unit/test_main_ci_status.py",
   "tests/unit/test_model_doc_review.py",
   "tests/unit/test_model_home_check.py",
   "tests/unit/test_new_prose.py",
   "tests/unit/test_blind_review.py",
+  "tests/unit/test_blind_review_report.py",
   "tests/unit/test_import_boundary_check.py",
   "tests/unit/test_literal_home_check.py",
   "tests/unit/test_pr_body_check.py",

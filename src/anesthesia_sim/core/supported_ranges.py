@@ -177,7 +177,7 @@ from anesthesia_sim.core.checked_number import (
     shown,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SimulationStep, require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
 
 # Fresh gas flow into the breathing circuit.
@@ -244,23 +244,37 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # declared envelope argued against that omission, not a number derived from a
 # metabolic rate.
 #
-# **Why 24 hours.** There are three reasons. First, it is longer than every
+# **Why 24 hours.** There are two reasons. First, 24 hours is longer than every
 # anesthetic this simulator exists to teach, by a wide margin. Second, it is
-# about 0.6 of the fat group's time constant of roughly 42 h. So the fat
-# compartment is still visibly loading, and the slow-compartment demonstration
-# survives. A cap of a few hours would cut off the one thing the fat trace
-# exists to show. Third, it lies inside the regime that the source above
-# calls clinically negligible for metabolism. It is near the outer edge of the
-# 0.35-to-9.5 MAC-hour exposure range, which is the only range over which the
-# size of that omission has been measured.
+# about 0.6 of sevoflurane's fat time constant of roughly 42 h. After 0.6 of a
+# time constant, a first-order compartment has gone a little over two fifths of
+# the way to equilibrium. So the fat compartment is still visibly loading when
+# the run stops, and the run can still demonstrate a slow compartment. A cap of
+# a few hours would cut off the one thing the fat trace exists to show.
+#
+# **The 24-hour span is not inside the measured exposure range** (`PL-MLPT`).
+# The review above reports how sevoflurane's metabolism scales with dose only
+# from 0.35 to 9.5 MAC-hours. The cap limits elapsed time, not exposure. A
+# MAC-hour is conventionally counted at the end-tidal concentration, which is
+# this model's alveolar fraction. A run whose alveolar fraction is held near
+# 1 MAC accumulates about one MAC-hour per hour. So such a run leaves the
+# measured range at about 9.5 hours, and reaches about 24 MAC-hours at the cap.
+# Every agent's dial starts at that agent's 1 MAC, and the alveolar fraction
+# stays below the dial during uptake, so a run left at the dial accumulates
+# somewhat less. A run held at a higher setting reaches more. Once a run leaves that range, nobody
+# has measured even how large the omitted metabolism is. So the 24 hours does
+# not rest on that range. It rests on the argument above, that the error from
+# the omission grows progressively and has no cliff.
 #
 # **The fat time constant sets a lower bound on the cap here, not a unit to
-# multiply.** This project already declines to validate over many multiples
-# of the slowest mode. So a cap argued as "several fat time constants" would
-# favour the part of the trace that is most nearly all omission. The fat time
-# constant only bounds the cap from below: with a cap shorter than about one
-# time constant, the fat trace stops teaching. It says nothing about how far
-# above that a run may go.
+# multiply.** This project already declines to validate the model over many
+# multiples of its slowest mode. A cap argued as "several fat time constants"
+# would therefore give most of the run to the late tail, the part of the trace
+# that is most nearly all error from what the model omits. The lower bound is
+# a fraction of the time constant, not a whole one. The cap must be long
+# enough that the fat compartment is still visibly loading when the run stops.
+# A 24-hour cap meets that bound. The bound says nothing about how far above
+# it a run may go.
 #
 # **This is a declared envelope, not a discovered cliff**, exactly as
 # `docs/MODEL.md` § "What a setting outside the range costs" says of the three
@@ -766,10 +780,11 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
         raise SimulationDomainLimitError(
             f"this run has reached {reached}, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
-            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); beyond it "
-            f"this model's omitted metabolism and its fat perfusion dominate the trace, "
-            f'so it is not claimed to represent a patient (docs/MODEL.md, "Supported run '
-            f'length")'
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); this model "
+            f"leaves out metabolism and its fat flow is uncertain, so how far the slow "
+            f"part of the trace can stray from a patient grows as a run goes on, and the "
+            f"model is not claimed to represent a patient past this length (docs/MODEL.md, "
+            f'"Supported run length")'
         )
 
 
@@ -815,6 +830,50 @@ def require_supported_step_count(step_count: StepCount, simulation_step_s: Simul
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
             f"at most {limit} steps of that size; past it this model is not claimed to "
             f'represent a patient (docs/MODEL.md, "Supported run length")'
+        )
+
+
+def require_compartment_step(name: str, simulation_step_s: float) -> None:
+    """Require a step that a compartment stepped on its own may take.
+
+    A compartment's own `advance` takes a plain `float`, not a `SimulationStep`. The run's
+    ceiling, `MAXIMUM_SIMULATION_STEP_S`, limits how long the run holds its settings constant.
+    That ceiling does not apply to a compartment stepped alone, which gives a correct result at a
+    step of 1 s (`PL-WP52`). Instead, each compartment's `advance` calls this function before it
+    changes anything. This function is the one place that states which steps a compartment
+    accepts.
+
+    The floor is `MINIMUM_SIMULATION_STEP_S`. `require_at_least_the_smallest_step` checks it,
+    with the same message that it gives for the run. Below the floor, rounding error is a growing
+    share of the change in each step.
+
+    The ceiling is `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, the supported run length. One step cannot
+    stand for more simulated time than the longest span over which the model is claimed to
+    represent a patient. The ceiling also keeps every quantity computed from the step finite
+    (`PL-YT3T`). Before the ceiling existed, a step of about 1e308 s made a circuit's count of
+    elapsed time constants overflow to `inf`. `BreathingCircuit.advance_fresh_gas` then returned
+    an exhaust of `inf` or `nan` without raising an error. Take the smallest circuit that the
+    numerical envelope allows, at the largest supported fresh gas flow. A step at the ceiling
+    spans about 1.4e6 of its time constants. That count is about 300 orders of magnitude below
+    the largest `float`.
+
+    Raises:
+        TypeError: the step is not an `int` or a `float`, or is a `bool`, as
+            `require_a_number` says.
+        SimulationConfigurationError: the step is not positive and finite, is
+            shorter than `MINIMUM_SIMULATION_STEP_S`, or is longer than
+            `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    require_at_least_the_smallest_step(name, simulation_step_s)
+
+    if simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+        raise SimulationConfigurationError(
+            f"{name} of {simulation_step_s} s is longer than the supported run length of "
+            f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the most "
+            "simulated time this model is claimed to represent a patient over, so no "
+            'single step may be longer (docs/MODEL.md, "Supported simulation step")'
         )
 
 

@@ -3,11 +3,13 @@ id: PL-39KH
 title: docs/MODEL.md's MAC-awake section calls its benchmark a 3-hour 1 MAC sevoflurane case, but the default 2% dial at 4 L/min brings alveolar and vessel-rich only to 1.69% (0.84 MAC) in 3 hours, and it blames the vessel-rich trace's failure to reach the 1 MAC line on a short case, when ongoing uptake keeps every trace below the line however long the case
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: mac-awake-reference-text
 touches: docs/MODEL.md
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1863
 payoff: a learner no longer reads a 1 MAC dial as meaning the brain reaches 1 MAC given time
 verify: ! grep -qF '3-hour 1 MAC sevoflurane case' docs/MODEL.md && ! grep -qF 'because it never equilibrated' docs/MODEL.md
 ---

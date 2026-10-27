@@ -1060,9 +1060,11 @@ pull request, and so does a count that could not be read.
 `blind_count_command` is how `arm` counts the blind review passes a simulator
 change owes (`PL-HDRN`): the package appends nothing, and the command prints
 one whole number or exits non-zero. The pull request holds until the newest
-`Blind-review: passes N, findings F, fixed X, filed Y, rejected Z` trailer on
-the branch records at least that many passes, and holds where the count could
-not be read.
+`Blind-review:` trailer on the branch records at least that many passes, and
+holds where the count could not be read. The trailer lists each finding by pass,
+as `docket.arming.parse_blind_review` reads it, and the older totals form,
+`passes N, findings F, fixed X, filed Y, rejected Z`, still counts its passes
+(`PL-0BRY`).
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the
@@ -4258,7 +4260,7 @@ would delete configuration rather than prose.
 directive - 56 of them, all carrying an explicit error code, and none of them a
 disabled test - and whether an ignore is load-bearing is a question for mypy,
 which `warn_unused_ignores` asks of every directive in the repository:
-`strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
+`strict = true` over `[tool.mypy] files`, and `tools/type_ignore_check.py` over the
 two test trees that list excludes. The four markers that remained had matched a
 real directive zero times, and stayed at that price because a count of zero
 cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).

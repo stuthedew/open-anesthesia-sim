@@ -476,8 +476,9 @@ def mac_awake_band_percent(
     MAC-awake percent was measured in a population that has its own MAC. For
     desflurane, that MAC is not this project's. Chortkoff's 2.60% sits
     against a MAC of 7.25%. Importing that percent onto an axis scaled by a
-    MAC of 6.0% would raise the band by 20%, and would teach a later wake-up
-    than the source supports.
+    MAC of 6.0% would raise the band by 20%. Concentration falls during
+    washout, so a trace crosses a band drawn too high sooner. That band would
+    teach an earlier wake-up than the source supports.
 
     Every argument is keyword-only. The fraction and its standard deviation
     are two dimensionless numbers of the same magnitude. So a positional

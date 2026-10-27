@@ -53,7 +53,7 @@ jobs:
   #
   # What is genuinely local, and is here because it can be read from nowhere
   # else in the tree: **this job entered the required set on 2026-09-17, and was
-  # not in it before** (project owner, on `PL-H8YD`). That gap was not a
+  # not in it before** (project owner, 2026-09-17, on `PL-H8YD`). That gap was not a
   # decision and not an escape hatch. The title check began as a *step inside*
   # `quality.yml`'s `checks` job (`PL-2XTF`, `#227`), where the requirement on
   # `checks` already gated it; `PL-3V8K` (`#256`) moved it out into this

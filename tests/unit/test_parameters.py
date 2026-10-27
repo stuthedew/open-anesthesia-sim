@@ -40,7 +40,7 @@ REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$
 
 def _valid_agent_payload() -> dict[str, object]:
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "id": "test-agent",
         "display_name": "Test Agent",
         "blood_gas_partition_coefficient": 0.5,
@@ -51,6 +51,12 @@ def _valid_agent_payload() -> dict[str, object]:
             "fraction_of_mac": 0.34,
             "standard_deviation_fraction_of_mac": 0.05,
             "mac_reference_basis": "test basis only",
+        },
+        "molar_mass_g_mol": 200.0,
+        "liquid_density": {
+            "g_ml": 1.5,
+            "standard_deviation_g_ml": 0.001,
+            "measured_at_celsius": 20.0,
         },
         "sources": [
             {
@@ -357,7 +363,7 @@ def test_loads_reference_adult_parameters() -> None:
 
 def test_rejects_unknown_schema_version() -> None:
     payload = _valid_agent_payload()
-    payload["schema_version"] = 4
+    payload["schema_version"] = 5
 
     with pytest.raises(SimulationConfigurationError, match="unsupported schema_version"):
         parse_agent_parameters(payload)
@@ -713,7 +719,7 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     strict_base = parameters_module._StrictPayload
     subclasses = strict_base.__subclasses__()
 
-    assert len(subclasses) == 9, "a payload model was added or removed; update this count"
+    assert len(subclasses) == 10, "a payload model was added or removed; update this count"
 
     for model in subclasses:
         assert model.model_config.get("extra") == "forbid", model.__name__
@@ -794,6 +800,168 @@ def test_mac_awake_matches_its_adopted_primary_source(
 
     assert mac_awake.fraction_of_mac == fraction_of_mac
     assert mac_awake.standard_deviation_fraction_of_mac == standard_deviation_fraction_of_mac
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "g_ml", "standard_deviation_g_ml"),
+    [
+        # Laster, Fang and Eger 1994, Abstract: "we obtained the following
+        # values at 20 degrees C: desflurane 1.4651 +/- 0.0004 g/mL (mean +/-
+        # SD); ... isoflurane 1.5019 +/- 0.0006 g/mL; and sevoflurane 1.5203
+        # +/- 0.0008 g/mL."
+        ("sevoflurane", 1.5203, 0.0008),
+        ("isoflurane", 1.5019, 0.0006),
+        ("desflurane", 1.4651, 0.0004),
+    ],
+)
+def test_liquid_density_matches_its_adopted_primary_source(
+    agent_id: str, g_ml: float, standard_deviation_g_ml: float
+) -> None:
+    """Each stored density, its spread and its temperature equal the published ones.
+
+    The expected values are typed from the abstract of Laster, Fang and Eger
+    (PMID 8198275), read on 2026-10-26, not from the data files. The paper is
+    in neither PubMed Central nor the references corpus (`PL-KZ99`).
+    """
+
+    density = load_agent_parameters(agent_id).liquid_density
+
+    assert density.g_ml == g_ml
+    assert density.standard_deviation_g_ml == standard_deviation_g_ml
+    assert density.measured_at_celsius == 20.0
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "molar_mass_g_mol"),
+    [
+        # ChEMBL release 34, read through the ChEMBL MCP server on 2026-10-26:
+        # CHEMBL1200694, C4H3F7O, full_mwt 200.05; CHEMBL1256, C3H2ClF5O,
+        # full_mwt 184.49; CHEMBL1200733, C3H2F6O, full_mwt 168.04.
+        ("sevoflurane", 200.05),
+        ("isoflurane", 184.49),
+        ("desflurane", 168.04),
+    ],
+)
+def test_molar_mass_matches_its_adopted_source(agent_id: str, molar_mass_g_mol: float) -> None:
+    assert load_agent_parameters(agent_id).molar_mass_g_mol == molar_mass_g_mol
+
+
+def test_an_agent_derives_its_vapour_per_liquid_ratio_from_its_density_and_molar_mass() -> None:
+    """At 1.5 g/mL and 200 g/mol, 1 mL of liquid is 0.0075 mol, which fills 0.0075 x 24 055 mL."""
+
+    agent = parse_agent_parameters(_valid_agent_payload())
+
+    assert agent.vapour_volume_per_liquid_volume == pytest.approx(0.0075 * 24_055.1, rel=1e-5)
+
+
+@pytest.mark.parametrize("molar_mass_g_mol", [0.0, -200.0])
+def test_rejects_a_molar_mass_that_is_not_positive(molar_mass_g_mol: float) -> None:
+    payload = _valid_agent_payload()
+    payload["molar_mass_g_mol"] = molar_mass_g_mol
+
+    with pytest.raises(SimulationConfigurationError, match=r"molar_mass_g_mol\n"):
+        parse_agent_parameters(payload)
+
+
+def test_an_agent_record_refuses_a_molar_mass_that_is_not_positive() -> None:
+    agent = load_agent_parameters("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="^molar_mass_g_mol must be"):
+        replace(agent, molar_mass_g_mol=0.0)
+
+
+@pytest.mark.parametrize(
+    ("liquid_density", "shown_and_type"),
+    [(None, "None has type NoneType"), (1.5203, "1.5203 has type float")],
+)
+def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density(
+    liquid_density: object, shown_and_type: str
+) -> None:
+    """A record whose `liquid_density` is not a `LiquidDensity` is refused when built.
+
+    Before this test, `replace(agent, liquid_density=None)` built a record without an error.
+    The record failed only later, at the first conversion that used the density.
+    The first blind review pass on `PL-KZ99` found the problem. One case passes a bare
+    density instead of a `LiquidDensity`. It checks that the error message names the given
+    value and its type.
+    """
+
+    agent = load_agent_parameters("sevoflurane")
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            f"liquid_density must be a LiquidDensity, which checks its own fields, and "
+            f"{shown_and_type}"
+        ),
+    ):
+        replace(agent, liquid_density=liquid_density)
+
+
+def test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows() -> None:
+    """The vapour-to-liquid ratio is formed when the record is built.
+
+    The tissue:blood quotients are formed at the same point. A molar mass of
+    1e-306 g/mol is positive and finite, but the ratio it makes is not. Before
+    this test, the record was built without error, and the overflow appeared
+    only at a conversion (`PL-KZ99`'s first blind review pass).
+    """
+
+    agent = load_agent_parameters("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="give a vapour-to-liquid ratio"):
+        replace(agent, molar_mass_g_mol=1e-306)
+
+
+def test_rejects_a_liquid_density_measured_at_another_temperature_under_its_file_key() -> None:
+    payload = _valid_agent_payload()
+    payload["liquid_density"] = {
+        "g_ml": 1.5,
+        "standard_deviation_g_ml": 0.001,
+        "measured_at_celsius": 25.0,
+    }
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"(?s)liquid_density\n.*a liquid density measured at 25\.0 degrees C cannot be used",
+    ):
+        parse_agent_parameters(payload)
+
+
+@pytest.mark.parametrize(
+    ("measured_at_celsius", "reason"),
+    [("20", "must be a number"), (True, "must be a number"), (math.nan, "must be finite")],
+)
+def test_rejects_a_measurement_temperature_that_is_not_a_finite_number_under_its_file_key(
+    measured_at_celsius: object, reason: str
+) -> None:
+    """The file's temperature is checked to be a number before it is compared with 20 °C.
+
+    It is the temperature at which the liquid density was measured. A string "20" or `true`
+    in the file makes the file malformed. Neither value is a measurement at 20 °C.
+    """
+
+    payload = _valid_agent_payload()
+    payload["liquid_density"] = {
+        "g_ml": 1.5,
+        "standard_deviation_g_ml": 0.001,
+        "measured_at_celsius": measured_at_celsius,
+    }
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"liquid_density\.measured_at_celsius\n +Value error, {reason} \[",
+    ):
+        parse_agent_parameters(payload)
+
+
+@pytest.mark.parametrize("key", ["molar_mass_g_mol", "liquid_density"])
+def test_rejects_an_agent_file_missing_a_liquid_property(key: str) -> None:
+    payload = _valid_agent_payload()
+    del payload[key]
+
+    with pytest.raises(SimulationConfigurationError, match=rf"{key}\n +Field required"):
+        parse_agent_parameters(payload)
 
 
 def test_rejects_a_mac_awake_band_reaching_zero() -> None:
@@ -1179,7 +1347,7 @@ def test_a_version_2_file_is_refused_by_its_version() -> None:
         SimulationConfigurationError,
         match=re.escape(
             "unsupported schema_version: 2; this build reads agent files (data/agents/) at "
-            "schema_version 3"
+            "schema_version 4"
         ),
     ):
         parse_agent_parameters(payload)
@@ -1644,14 +1812,16 @@ def _machine_window_widened_to_4(monkeypatch: Any) -> None:
 
 
 def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: Any) -> None:
-    """Widening one family's version window changes nothing in the other two (`PL-HNWX`).
+    """Widening one family's schema-version window leaves the other two unchanged (`PL-HNWX`).
 
-    One integer, checked by exact equality, used to serve agents, patients and
-    machines together. Raising it for a machine-only change refused the three
-    agent files and the patient file, until each was edited for a change it
-    had nothing to do with. The last assertion checks the independence
-    itself: the machine family reading version 4 must not make the agent
-    family read it too.
+    The data files form three families: agents, patients and machines. One
+    schema-version integer, checked by exact equality, used to serve all three.
+    Raising it for a change to the machine files made the three agent files and
+    the patient file fail to load. Each then had to be edited for a change that
+    had nothing to do with it. The last assertion checks that the families
+    really are independent. The machine family accepting version 3 must not
+    make the agent family accept it too, now that agent files are at version 4
+    (`PL-KZ99`).
     """
 
     _machine_window_widened_to_4(monkeypatch)
@@ -1666,30 +1836,34 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
         assert load_agent_parameters(agent_id).id == agent_id
     assert load_reference_adult_parameters().id == "reference_adult_70kg"
 
-    newer_agent = _valid_agent_payload()
-    newer_agent["schema_version"] = 4
+    older_agent = _valid_agent_payload()
+    older_agent["schema_version"] = 3
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=re.escape("agent files (data/agents/) at schema_version 3 (see"),
+        match=re.escape("agent files (data/agents/) at schema_version 4 (see"),
     ):
-        parse_agent_parameters(newer_agent)
+        parse_agent_parameters(older_agent)
 
 
-@pytest.mark.parametrize("version", (2, 4))
+@pytest.mark.parametrize("offset", (-1, 1))
 @pytest.mark.parametrize(
-    ("parse", "valid_payload", "data_files"),
+    ("parse", "valid_payload", "data_files", "current"),
     (
-        (parse_agent_parameters, _valid_agent_payload, "agent files (data/agents/)"),
+        # Agent files moved to version 4 when they gained the liquid's density
+        # and molar mass (`PL-KZ99`). The other two families are still at 3.
+        (parse_agent_parameters, _valid_agent_payload, "agent files (data/agents/)", 4),
         (
             parse_reference_adult_parameters,
             _valid_patient_payload,
             "patient files (data/patients/)",
+            3,
         ),
         (
             parse_breathing_circuit_parameters,
             _valid_breathing_circuit_payload,
             "machine profiles (data/machines/)",
+            3,
         ),
     ),
 )
@@ -1697,7 +1871,8 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
     parse: Callable[[object], object],
     valid_payload: Callable[[], dict[str, object]],
     data_files: str,
-    version: int,
+    current: int,
+    offset: int,
 ) -> None:
     """A reader of the error can tell a machine-schema problem from an agent one.
 
@@ -1706,6 +1881,7 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
     nothing that loads today changes.
     """
 
+    version = current + offset
     payload = valid_payload()
     payload["schema_version"] = version
 
@@ -1713,7 +1889,7 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
         SimulationConfigurationError,
         match=re.escape(
             f"unsupported schema_version: {version}; this build reads {data_files} "
-            "at schema_version 3 (see SupportedSchemaVersions in core/parameters.py)"
+            f"at schema_version {current} (see SupportedSchemaVersions in core/parameters.py)"
         ),
     ):
         parse(payload)
@@ -1785,3 +1961,55 @@ def test_a_boolean_schema_version_is_refused_even_where_a_window_reads_one(
 
     with pytest.raises(SimulationConfigurationError, match="schema_version must be an integer"):
         parse_agent_parameters(payload)
+
+
+def _with_value(payload: dict[str, object], path: tuple[str, ...], value: float) -> None:
+    """Write `value` at the nested key `path` of a payload."""
+
+    holder: Any = payload
+
+    for key in path[:-1]:
+        holder = holder[key]
+
+    holder[path[-1]] = value
+
+
+@pytest.mark.parametrize(
+    ("parse", "payload", "path"),
+    [
+        (parse_agent_parameters, _valid_agent_payload, ("blood_gas_partition_coefficient",)),
+        *(
+            (parse_agent_parameters, _valid_agent_payload, ("tissue_gas_partition_coefficients", g))
+            for g in ("vessel_rich", "muscle", "fat")
+        ),
+        (parse_reference_adult_parameters, _valid_patient_payload, ("alveolar_gas_volume_l",)),
+        (parse_reference_adult_parameters, _valid_patient_payload, ("venous_pool_volume_l",)),
+        *(
+            (
+                parse_reference_adult_parameters,
+                _valid_patient_payload,
+                ("tissue_groups", g, "volume_l"),
+            )
+            for g in ("vessel_rich", "muscle", "fat")
+        ),
+        (
+            parse_breathing_circuit_parameters,
+            _valid_breathing_circuit_payload,
+            ("circuit_volume_l",),
+        ),
+    ],
+    ids=lambda value: ".".join(value) if isinstance(value, tuple) else "",
+)
+def test_a_value_outside_the_numerical_envelope_is_refused_under_its_file_key(
+    parse: Any, payload: Any, path: tuple[str, ...]
+) -> None:
+    """`PL-QX2G`: a loader builds each volume and coefficient as its type, named by its key path."""
+
+    document = payload()
+    _with_value(document, path, 1e-5)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"^{re.escape('.'.join(path))} of 1e-05 is outside the numerical envelope of ",
+    ):
+        parse(document)

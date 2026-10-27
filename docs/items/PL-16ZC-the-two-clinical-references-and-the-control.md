@@ -15,7 +15,7 @@ verify: python3 tools/doc_check.py check && grep -qF 'Decided 2026-09-15: not hi
 ---
 
 > **Decided 2026-09-15: not hideable, and the question moves to the layout
-> system** (project owner, delegating the call). `docs/MODEL.md` § "Minimum
+> system** (project owner, 2026-09-15, delegating the call). `docs/MODEL.md` § "Minimum
 > displayed outputs" already required it - "The chart entries in this list -
 > the MAC-awake band, the 1 MAC line, the control marks, and $`F_A/F_I`$ - are
 > requirements on the chart itself and are not selectable" - written by
