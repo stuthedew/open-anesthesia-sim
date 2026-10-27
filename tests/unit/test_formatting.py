@@ -1463,9 +1463,9 @@ def test_agent_amounts_precision() -> None:
     uncertainty is 0.016-0.23 L across the supported span. One count of 0.1 L
     lies inside the band that `docs/MODEL.md` § "Displayed precision" derives
     for the concentration readouts, and 0.01 L does not. The three totals
-    share the count, so the accounting panel reads them on one scale. A
-    positive amount that rounds to zero is shown as below the resolution
-    rather than as an empty circuit.
+    share the count, so the accounting panel shows them on one scale. A
+    positive amount that rounds to zero is shown as below the resolution,
+    rather than as zero, which would suggest an empty circuit.
     """
 
     for total in _RUN_TOTALS:
@@ -1485,20 +1485,20 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
 
     One amount shown in two units must not claim a finer resolution in one
     of them (`PL-0S0V`). So the liquid count is the finest power of ten that
-    resolves no finer than one count of the litre display, 0.1 L of vapour,
-    converted into liquid. This test does that conversion from each agent's
-    stored molar mass and density, not from the formatter. At the 20 °C
-    reference, 0.1 L of vapour is about 0.55 mL of sevoflurane, 0.51 mL of
-    isoflurane and 0.48 mL of desflurane liquid. So 1 mL is the finest power of
-    ten at or above all three, and 0.1 mL would claim five times the
+    is no finer than one step of the litre display. That step is 0.1 L of
+    vapour, converted into liquid. This test does that conversion from each
+    agent's stored molar mass and density, not from the formatter. At the
+    20 °C reference, 0.1 L of vapour is about 0.55 mL of sevoflurane, 0.51 mL
+    of isoflurane and 0.48 mL of desflurane liquid. So 1 mL is the finest
+    power of ten at or above all three, and 0.1 mL would claim five times the
     resolution that the litre display claims for the same amount.
 
     The parameter spread gives the same answer. One published SD of a
     partition coefficient moves the exhaust total at 24 h by 0.19 L of
     sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of desflurane
-    (`PL-TG60`). Each agent's own ratio makes that 1.04, 0.92 and 1.10 mL of
-    liquid. One count of 1 mL is then about one SD, and 0.1 mL would be a
-    tenth of one.
+    (`PL-TG60`). Converted with each agent's own ratio of vapour to liquid,
+    those are 1.04, 0.92 and 1.10 mL of liquid. One step of 1 mL is then
+    about one SD, and 0.1 mL would be a tenth of one.
     """
 
     litres = agent_amount_display_precision(total, AgentAmountUnit.LITRES_OF_VAPOUR)
@@ -1525,12 +1525,13 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
 def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
     """A finer count is refused when the precision is built, never clamped.
 
-    The bound is one-sided (`PL-0S0V`). Fewer decimals than the derivation
-    admits claims nothing false. More would claim a resolution the model does
-    not support. Clamping a finer request to the bound would let a caller
-    believe it got the precision it asked for, so the request fails instead.
-    The bound comes from the derivation for the amount and unit, so no caller
-    can pass a looser one.
+    The derived count is an upper bound only (`PL-0S0V`). Showing fewer
+    decimals than the derivation admits claims nothing false. Showing more
+    would claim a resolution that the model does not support. Clamping a
+    finer request to the bound would let a caller believe it got the
+    precision it asked for, so the request fails instead. The bound comes
+    from the derivation for the amount and unit, so no caller can pass a
+    looser one.
     """
 
     coarser = AgentAmountPrecision(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR, 0)
@@ -1559,11 +1560,11 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
 
     It is never formatted at a default precision (`PL-0S0V`). A compartment's
     amount has no entry in any unit until `PL-2881` derives one. The table must
-    not lend it the run totals' litre precision: at 0.1 L, venous blood and the
-    alveoli read below resolution for a whole hour. The stored total has no
-    liquid entry, because a store converted to liquid reads 5.8% high
-    (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid that is already
-    a whole count of 1 mL.
+    not lend it the litre precision of the run totals. At 0.1 L, venous blood
+    and the alveoli would show below resolution for a whole hour. The stored
+    total has no liquid entry, because a store converted to liquid comes out
+    5.8% too high (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid,
+    that error is already one whole step of 1 mL.
     """
 
     refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
