@@ -2929,6 +2929,67 @@ def _a_dial_write_refused_after_the_cards(
     }
 
 
+def _a_dial_moved_on_a_failed_run(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A run whose step failed, then had its cardiac output dial moved (`PL-3B34`).
+
+    The run cannot step again, so every group describes its last completed step, and
+    the dials show the settings that step ran under.
+    """
+
+    failure = _real_step_failure()
+    controller = _StepFailingController(failure)
+    controller._pending_error = None
+    controller.start()
+    _advance(controller, 300.0)
+    run = _shown_view(application, controller).runs[0]
+    controller._pending_error = failure
+
+    _steps(run, 1)
+    assert controller.has_failed is True
+    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+
+    step = _fresh_run(300.0).snapshot()
+
+    return run, {
+        "readouts": _readouts_of(step),
+        "settings": _settings_of(step),
+        "accounting": _accounting_of(step),
+    }
+
+
+def _a_dial_moved_at_the_supported_run_length(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A run stopped at a shortened supported run length, then its cardiac output dial moved.
+
+    The span ends at 300 s, as `maximum_step_count` reads it, for the reason
+    `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
+    gives. Every group describes the step the run stopped on (`PL-3B34`).
+    """
+
+    last_step = round(300.0 / SIMULATION_STEP_S)
+    monkeypatch.setattr(
+        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
+    )
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    assert controller.has_reached_supported_limit is True
+    run = _shown_view(application, controller).runs[0]
+
+    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+
+    step = _fresh_run(300.0).snapshot()
+
+    return run, {
+        "readouts": _readouts_of(step),
+        "settings": _settings_of(step),
+        "accounting": _accounting_of(step),
+    }
+
+
 def _an_accounting_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
@@ -2967,6 +3028,8 @@ _ONE_STATE_SCENARIOS: Final[
     "drawn frame": _a_drawn_frame,
     "halt after an agent change": _a_halt_after_an_agent_change,
     "dial write refused after the cards": _a_dial_write_refused_after_the_cards,
+    "dial moved on a failed run": _a_dial_moved_on_a_failed_run,
+    "dial moved at the supported run length": _a_dial_moved_at_the_supported_run_length,
     "accounting halt": _an_accounting_halt,
 }
 
@@ -3012,6 +3075,55 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
     shown = {group: _SHOWN_GROUPS[group](run) for group in checked}
 
     assert shown == {group: expected[group] for group in checked}
+
+
+# How a stopped run states a dial that it refused (`PL-3B34`). This is written as
+# a literal rather than read from the controller or `dashboard_frame`, so a change
+# to the wording fails here.
+_REFUSED_ON_A_STOPPED_RUN_TEMPLATE: Final = (
+    "Setting refused — the {setting} setting cannot be changed on a stopped run, "
+    "because every value it holds was computed under the settings it stopped with, and no "
+    "step will run under a new one"
+)
+_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN: Final = _REFUSED_ON_A_STOPPED_RUN_TEMPLATE.format(
+    setting="cardiac output"
+)
+
+
+@pytest.mark.parametrize(
+    ("scenario", "way_out"),
+    [
+        ("dial moved on a failed run", "Reset to start a new run, which keeps every setting."),
+        (
+            "dial moved at the supported run length",
+            "To try a different setting, branch at an earlier instant, where each dial starts at "
+            "what it was set to then, or Reset to start a new run, which keeps every setting.",
+        ),
+    ],
+)
+def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, scenario: str, way_out: str
+) -> None:
+    """A dial moved on a stopped run springs back, records nothing, and the banner says why.
+
+    No step runs after a stop, so every value on screen was computed under the
+    settings the run stopped with. Until `PL-3B34` the moved dial was applied.
+    The cardiac output then read 10.0 L/min beside concentrations computed at
+    5.0 L/min, and the record claimed a change at the stop instant that never
+    acted on the patient. The two stopped states name different ways out
+    (project owner, 2026-10-26). The run length is the expected end of a long
+    run, so a branch at an earlier instant can take the new setting. A failure
+    is a fault, so Reset stays its way out. The scenario builds each run and
+    the dials it should show, from a run that never stopped.
+    """
+
+    run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    assert _shown_settings(run) == expected["settings"]
+    assert run.controller.record().control_timeline == ()
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. {way_out}")
 
 
 def test_a_halted_run_shows_the_new_playback_rate(
@@ -3215,17 +3327,19 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     )
 
 
-def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
+def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its_exit(
     application: QApplication,
 ) -> None:
-    """Once the record accepts a setting again, the exit is lifted and Reset clears the run.
+    """A dial moved on the refused run is refused, and only a Reset that takes clears the run.
 
-    The accepted setting also takes the refused-Reset exit off the banner at
-    once. So the reader is sent to a Reset that will succeed, not to a
-    setting already changed. A setting that the stale record refuses leaves
-    the exit on the banner (`PL-M4M0`). Until `PL-HQF5`, the cardiac output
-    change itself repaired the stale flows. No setting repairs a fraction
-    written past its guard, so the test puts the fractions back first.
+    A refused Reset leaves the run failed, and a failed run refuses every dial
+    (`PL-3B34`). So a moved dial leaves the refused-Reset exit on the banner,
+    with the dial's refusal after it, and the cardiac output stays at the
+    reference adult's 5.0 L/min (`data/patients/reference_adult.json`). Until
+    `PL-3B34`, an accepted setting took the exit off the banner (`PL-M4M0`), and
+    until `PL-HQF5` the cardiac output change repaired the stale flows. No
+    shipped code repairs a fraction written past its guard, so the test puts
+    the fractions back, and then Reset takes.
     """
 
     controller = SimulationController()
@@ -3243,7 +3357,10 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
 
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(REFUSED_RESET_WAY_OUT_TEXT)
+    assert notice.endswith(
+        f"{REFUSED_RESET_WAY_OUT_TEXT} "
+        f"{_REFUSED_ON_A_STOPPED_RUN_TEMPLATE.format(setting='fresh gas flow')}."
+    )
 
     _with_the_tissue_fractions_put_back(controller)
     run._handle_cardiac_output_change(6.0)
@@ -3251,7 +3368,11 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     notice = run._notice_text.notice()
     assert notice is not None
     assert notice.startswith("Simulation stopped — SimulationConfigurationError: the tissue groups")
-    assert notice.endswith(RESET_EXIT_TEXT)
+    assert notice.endswith(
+        f"{REFUSED_RESET_WAY_OUT_TEXT} {_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}."
+    )
+    assert controller.settings().cardiac_output_l_min == 5.0
+    assert controller.record().control_timeline == ()
 
     run._reset_button.click()
 
@@ -3272,10 +3393,11 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     Every tissue flow is formed from the cardiac output (`PL-HQF5`), so a new
     output scales them all by one factor and the sum still disagrees with it.
     Until `PL-01GY` the banner said to change the setting the refusal names,
-    which is the cardiac output. This test moves that dial on the refused run
-    and shows that the record is still refused. The exit is still on the
-    banner, and the next Reset is refused again. The expected sentence is
-    written here as a literal rather than read from the constant.
+    which is the cardiac output. This test moves that dial on the refused run.
+    The failed run refuses the dial (`PL-3B34`), so the exit is still on the
+    banner and the refusal follows it, and the next Reset is refused again. The
+    expected sentences are written here as literals rather than read from the
+    constants.
     """
 
     controller = SimulationController()
@@ -3303,7 +3425,7 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
 
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(way_out)
+    assert notice.endswith(f"{way_out} {_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}.")
 
     run._reset_button.click()
 
@@ -3312,7 +3434,7 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     assert controller.snapshot().elapsed_s > 0.0
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(way_out)
+    assert notice.endswith(f"{way_out} {_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}.")
 
 
 def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at(

@@ -207,9 +207,11 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 # run. When Reset itself was refused, `refused_reset_exit` names the other way
 # out instead. Sending a reader back to the control that was just refused
 # would be an instruction that the screen already knows cannot be followed
-# (`PL-M4M0`). The run-length wording keeps its own Reset line. A refused Reset
+# (`PL-M4M0`). The run-length wording ends with `{exit}` too. A refused Reset
 # halts the run as a failure, and a failure outranks the limit, so the
-# run-length banner never needs another exit.
+# run-length banner never names the refused-Reset exit. Its exit changes only
+# when a dial was moved on the stopped run, as the comment above
+# `STOPPED_RUN_SETTING_EXIT_TEMPLATE` says.
 RESET_EXIT_TEXT: Final = "Reset to start a new run."
 FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step. {exit}"
@@ -242,12 +244,40 @@ SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "This model leaves out metabolism, and its fat flow is uncertain. How far the "
     "slow part of the trace can stray from a patient grows as a run goes on, so the "
     "model is not claimed to represent a patient past this span. The values shown "
-    "are the last completed step, inside the supported span. Reset to start a new run."
+    "are the last completed step, inside the supported span. {exit}"
 )
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
+
+# The exit a stopped run's banner names once a dial was moved on it. The
+# controller refuses every setting on a stopped run, so the dial springs back
+# to the setting the stopped values ran under (`SimulationController.
+# _refuse_a_setting_on_a_stopped_run`, `PL-3B34`). Without a sentence the
+# refusal would be a dial that moves and returns for no stated reason. A
+# stopped run outranks a refused setting, so the refusal is stated inside the
+# stopped run's banner, in place of its exit, and followed by that run's own
+# way out to a new setting.
+#
+# The two stopped states have different ways out (project owner, 2026-10-26).
+# The supported run length is the expected end of a long run. A branch opened
+# at an earlier instant can take a different setting, and each of its dials
+# starts at what it was set to at that instant (`_branch_from`). A failure is a
+# fault, so Reset stays its way out. Reset keeps every setting
+# (`SimulationController.reset`), and the banner says so, because a reader
+# could expect Reset to restore the defaults. When Reset itself was refused,
+# the banner already names closing the application, which is the only way out
+# left, so the refusal follows that exit and adds no other. A refusal made
+# while the run was still going is kept until a setting is accepted, as on a
+# running run, so it can appear here too. The way out it is given is still
+# true. The wording is a placeholder.
+STOPPED_RUN_SETTING_EXIT_TEMPLATE: Final = "{refused}. {way_out}"
+SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT: Final = (
+    "To try a different setting, branch at an earlier instant, where each dial starts at "
+    "what it was set to then, or Reset to start a new run, which keeps every setting."
+)
+FAILURE_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every setting."
 
 # The way out when Reset itself was refused, in the two wordings that
 # `refused_reset_exit` chooses between. Reset is refused only for a settings
@@ -1622,7 +1652,9 @@ def notice(
 
     A stopped run outranks a refused setting, because it describes the state
     of everything else on screen, while a refusal describes only one control.
-    A failure in turn outranks the supported run length.
+    A failure in turn outranks the supported run length. A setting refused on
+    a stopped run is stated inside the stopped run's banner, in place of its
+    exit (`_stopped_run_exit`, `PL-3B34`).
 
     `RunView.refresh` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
@@ -1653,11 +1685,15 @@ def notice(
             else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
         )
         return template.format(
-            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+            failure_reason=status.failure_reason,
+            exit=_stopped_run_exit(status, rejected_setting_notice, refused_reset),
         )
 
     if status.supported_limit_reason is not None:
-        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
+        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
+            run_length=format_supported_run_length(),
+            exit=_stopped_run_exit(status, rejected_setting_notice, refused_reset),
+        )
 
     if rejected_setting_notice is not None:
         return REFUSED_SETTING_NOTICE_TEMPLATE.format(refused=rejected_setting_notice)
@@ -1665,7 +1701,12 @@ def notice(
     return None
 
 
-def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str | None:
+def halt_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None = None,
+    *,
+    refused_reset: str | None = None,
+) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
     `RunView.present_halt` writes this banner from the run's status alone,
@@ -1679,13 +1720,16 @@ def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str |
     therefore decided by whether a frame drew, never guessed from the reason
     (`PL-7DJK`). The supported run length keeps its single wording, because
     nothing is wrong with the state it stops on, and the frame that follows
-    draws. A refused setting is not a halt and has no banner here.
+    draws. A refused setting is not a halt, so it has a banner here only
+    inside a stopped run's, as in `notice`.
 
     Args:
         status: The run's status, as `SimulationController.status()` gives
             it. It is read without building any compartment value, which is
             the whole reason this function takes a status rather than a
             snapshot.
+        rejected_setting_notice: As `notice` takes it. A dial moved on a run
+            whose frame is refused springs back and is stated here.
         refused_reset: As `notice` takes it: the way out while Reset itself
             was refused, or None while Reset is the way out.
 
@@ -1695,13 +1739,58 @@ def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str |
 
     if status.failure_reason is not None:
         return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(
-            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+            failure_reason=status.failure_reason,
+            exit=_stopped_run_exit(status, rejected_setting_notice, refused_reset),
         )
 
     if status.supported_limit_reason is not None:
-        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
+        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
+            run_length=format_supported_run_length(),
+            exit=_stopped_run_exit(status, rejected_setting_notice, refused_reset),
+        )
 
     return None
+
+
+def _stopped_run_exit(
+    status: RunStatus, rejected_setting_notice: str | None, refused_reset: str | None
+) -> str:
+    """Return the closing sentences of a stopped run's banner, for `notice` and `halt_notice`.
+
+    The exit is `RESET_EXIT_TEXT` unless something on the stopped run was
+    refused. A refused Reset replaces it with `refused_reset`. A setting
+    refused on the stopped run is stated in its place, followed by that run's
+    own way out to a new setting. After a refused Reset, the refused setting
+    follows the Reset exit instead, because closing the application is then
+    the only way out. The comment above `STOPPED_RUN_SETTING_EXIT_TEMPLATE`
+    gives the reasons.
+
+    Args:
+        status: The stopped run's status. Its failure reason decides which way
+            out a refused setting is given.
+        rejected_setting_notice: The text from `refused_setting_notice`, or
+            None while no setting is refused.
+        refused_reset: The sentence from `refused_reset_exit`, or None while
+            Reset is the way out.
+
+    Returns:
+        The banner's closing sentences.
+    """
+
+    if rejected_setting_notice is None:
+        return refused_reset or RESET_EXIT_TEXT
+
+    if refused_reset is not None:
+        return f"{refused_reset} {rejected_setting_notice}."
+
+    way_out = (
+        FAILURE_SETTING_WAY_OUT_TEXT
+        if status.failure_reason is not None
+        else SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT
+    )
+    return STOPPED_RUN_SETTING_EXIT_TEMPLATE.format(
+        refused=rejected_setting_notice, way_out=way_out
+    )
 
 
 class HaltDisposition(StrEnum):

@@ -917,6 +917,70 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     assert halt_notice(running, refused_reset=first) is None
 
 
+def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() -> None:
+    """A stopped run states a refused dial in place of its exit, followed by its own way out.
+
+    A stopped run refuses every dial (`PL-3B34`), and a stopped run outranks a
+    refused setting, so the refusal is stated inside the stopped run's banner.
+    The supported run length sends the reader to a branch at an earlier
+    instant or to Reset. A failure keeps Reset as its way out. After a refused
+    Reset, closing the application is the only way out, so the refusal follows
+    that exit. A running run's refusal is unchanged. The expected sentences are
+    literals rather than the module's constants.
+    """
+
+    refused = "Setting refused — the cardiac output setting cannot be changed on a stopped run"
+    failed = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="SimulationNumericalError: boom",
+        rejected_accounting=None,
+    )
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason="reached 86400 s of simulated time",
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
+    refused_reset = (
+        "Reset was refused for this reason. No setting can repair this, because only a fault "
+        "in the simulator causes it. Close and reopen the application to start a new run."
+    )
+    reset_keeps = "Reset to start a new run, which keeps every setting."
+    branch_or_reset = (
+        "To try a different setting, branch at an earlier instant, where each dial starts at "
+        "what it was set to then, or Reset to start a new run, which keeps every setting."
+    )
+
+    assert notice(failed, refused) == (
+        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
+        f"completed step. {refused}. {reset_keeps}"
+    )
+    assert halt_notice(failed, refused) == (
+        "Simulation stopped — SimulationNumericalError: boom. No frame of the stopped run "
+        "could be drawn: the chart and the readouts show the last frame drawn before it "
+        f"stopped, and the run itself stands at its last completed step. {refused}. "
+        f"{reset_keeps}"
+    )
+    assert notice(failed, refused, refused_reset=refused_reset) == (
+        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
+        f"completed step. {refused_reset} {refused}."
+    )
+    limit_banner = notice(at_limit, refused)
+    assert limit_banner is not None
+    assert limit_banner.endswith(f"inside the supported span. {refused}. {branch_or_reset}")
+    assert halt_notice(at_limit, refused) == limit_banner
+    assert (notice(at_limit, None) or "").endswith(
+        "inside the supported span. Reset to start a new run."
+    )
+    assert notice(running, refused) == (
+        f"{refused}. The simulation is unchanged and still running its previous setting."
+    )
+
+
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
     for is_running in (True, False):
         snapshot = _snapshot(is_running=is_running)
@@ -1068,7 +1132,12 @@ def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
 
 
 def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
-    """A stopped run describes everything on screen; a refusal describes one control."""
+    """A stopped run describes everything on screen, and a refusal describes one control.
+
+    So the banner opens with the stopped run. Since `PL-3B34` the refusal is
+    stated inside that banner, in place of its exit. It is never stated as a
+    refusal on a run that is still going.
+    """
 
     refused = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
     failed = _snapshot(failure_reason="SimulationNumericalError: boom")
@@ -1077,10 +1146,15 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     failure_banner = notice(failed, refused)
     limit_banner = notice(at_limit, refused)
 
-    assert failure_banner is not None and "boom" in failure_banner
-    assert limit_banner is not None and "supported run length" in limit_banner
-    assert "Setting refused" not in failure_banner
-    assert "Setting refused" not in limit_banner
+    assert failure_banner is not None
+    assert failure_banner.startswith("Simulation stopped — SimulationNumericalError: boom. ")
+    assert limit_banner is not None
+    assert limit_banner.startswith(
+        "Simulation stopped — this run reached the supported run length of "
+    )
+    for banner in (failure_banner, limit_banner):
+        assert "Setting refused — a value the core refused. " in banner
+        assert "still running its previous setting" not in banner
 
 
 def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:

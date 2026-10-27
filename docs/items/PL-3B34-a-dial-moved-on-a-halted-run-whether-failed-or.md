@@ -3,13 +3,15 @@ id: PL-3B34
 title: A dial moved on a halted run, whether failed or stopped at the 24-hour supported run length, is applied to the core and recorded as a control change at the halt instant, so the settings readouts and the control-change record show a setting that no step ever ran under beside concentrations computed under the previous one, while the banner says the values shown are the last completed step
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, ux, safety
 feature: replay-findings
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1846
 payoff: the settings shown beside a halted run's concentrations are the ones those concentrations were computed under, so a learner cannot pair a value with a setting no step ran
-verify: grep -q 'def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_the_values_were_computed_under' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under' tests/integration/test_simulation_view.py
 reenters: PL-X7D5
 ---
 
@@ -33,7 +35,7 @@ standard names. The control-change record also claims an intervention at
 24:00:00 that never acted on the patient. Every long run now ends in this
 state.
 
-**Done when.** A setting moved on a halted run, failed or stopped at the supported run length, is never shown beside the halted values as the setting they were computed under, and the control-change record does not claim it acted on the patient. The controls stay live. `tests/integration/test_simulation_view.py` has `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_the_values_were_computed_under`, which halts a run at a shortened supported run length, moves the cardiac output dial, and checks the settings readout and the record.
+**Done when.** A setting moved on a halted run, failed or stopped at the supported run length, is never shown beside the halted values as the setting they were computed under, and the control-change record does not claim it acted on the patient. The controls stay live. `tests/integration/test_simulation_view.py` has `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under`, which halts a run at a shortened supported run length, moves the cardiac output dial, and checks the settings readout and the record.
 
 **Found by.** `PL-TBQS` reviewer replay on #204, finding r06 F1, and on
 #421, finding r04 F2. Checked against main on 2026-10-25. Reproduced with the
@@ -64,5 +66,21 @@ On either stopped run, the dials show the settings in force at its last complete
 
 1. In `app/controller.py`, the four setters refuse on a stopped run, failed or at the supported run length, before they apply anything. They raise `SimulationConfigurationError`, which `RunView._apply_setting` already treats as a refused setting, so the dial is rewritten from the run and springs back, and nothing is recorded.
 2. `notice` ranks a stopped run above a refused setting, so the refusal text never shows on a stopped run. So when a stopped run's view holds a refused setting, `notice` adds the stopped run's own way out to its banner. At the supported run length: branch at an earlier instant to try a different setting, where each dial shows its setting then, or Reset, which keeps every setting. On a failure: Reset starts a new run and keeps every setting. Check `halt_notice` too.
-3. Tests: `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_the_values_were_computed_under` in `tests/integration/test_simulation_view.py`, at a shortened supported run length and on a failed run, as `PL-J5GC`'s two dial-moved scenarios set them up. Add a controller test in `tests/integration/test_controller.py` that a setter on a stopped run raises and records nothing. Run both against `c2f66e41` and record the failures here. Put `PL-J5GC`'s two dial-moved scenarios back into its guard from `861243aa`, where they fail against `main` on the cardiac output dial (10.0 L/min where the stopped values ran at 5.0). They must then pass. Extend `PL-J5GC`'s row in `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries" with the refused setting.
+3. Tests: `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under` in `tests/integration/test_simulation_view.py`, at a shortened supported run length and on a failed run, as `PL-J5GC`'s two dial-moved scenarios set them up. Add a controller test in `tests/integration/test_controller.py` that a setter on a stopped run raises and records nothing. Run both against `c2f66e41` and record the failures here. Put `PL-J5GC`'s two dial-moved scenarios back into its guard from `861243aa`, where they fail against `main` on the cardiac output dial (10.0 L/min where the stopped values ran at 5.0). They must then pass. Extend `PL-J5GC`'s row in `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries" with the refused setting.
 
+
+**Built, 2026-10-27.** The four setters in `app/controller.py` call `_refuse_a_setting_on_a_stopped_run` first. On a failed run or one standing at the supported run length, it raises `SimulationConfigurationError`, which names the setting, before anything is applied or recorded. `set_agent` is not refused, because it starts a new case and is a way out. `RunView._apply_setting` already treats the error as a refused setting, so the next frame writes the dial back from the run. `dashboard_frame._stopped_run_exit` now chooses the closing sentences of all three stopped-run banners. With no refused setting it is Reset, or the refused-Reset exit. With one, the refusal is stated in place of the exit, followed by that run's way out: "Reset to start a new run, which keeps every setting." after a failure, and a branch at an earlier instant or Reset at the supported run length. The run-length wording therefore ends with `{exit}` like the failure wordings. `halt_notice` takes the refused setting too, so a dial moved on a run whose frame is refused is stated as well. The wording is a placeholder.
+
+**The refused-Reset risk, decided.** A refused Reset always leaves the run failed (`RunView._reset_now` halts it), so the refusal applies there too. No dial is ever accepted on that run, and an agent switch, which starts a new case, is now the only setting that clears the refused-Reset exit. On that run the dial's refusal follows the refused-Reset exit and adds no Reset advice, because closing the application is the only way out left. `test_a_refused_reset_takes_once_the_cardiac_output_is_set_again` tested a path this change removes, so it became `test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its_exit`. `test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart`, which `PL-01GY`'s `verify:` names, keeps its name and now expects the refusal after the exit. A refusal made while the run was going is kept until a setting is accepted, as before, so it can appear on the stopped banner. The way out it is given there is still true, so no new state was added to clear it at the stop.
+
+**A fork route this removes.** `test_a_branch_forked_where_a_dial_moved_on_the_supported_run_length_reads_as_stopped_there` branched at a keyframe that a dial made at 24:00:00 after the run stopped. That keyframe can no longer be made. The test became `test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at`, and `resumed_here`'s docstring now names a mark on the limit as the one fork left there. `test_a_stopped_run_outranks_a_refused_setting_in_the_notice` asserted that a stopped banner never states a refused setting, which this change reverses. It now checks that the banner opens with the stopped run and states the refusal inside it, never as a refusal on a run that is still going.
+
+**Run against the code before the fix (`99254fe3`), 2026-10-27.** The command was `PYTHONPATH=src pytest tests/integration/test_simulation_view.py tests/integration/test_controller.py tests/unit/test_dashboard_frame.py -k "halted_run_is_not_shown or stopped_run_refuses_every_setting or no_dial_makes_a_keyframe or refused_on_a_stopped_run or one_state"`, in a worktree of that commit with the new test files copied in. 14 failed and 4 passed. The four that passed are the guard's earlier scenarios.
+
+- `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under`, both cases: `{'dial 3': ('Cardiac output', '', 0, 100, 100, '10.0 L/min', ...)} != {'dial 3': ('Cardiac output', '', 0, 100, 50, '5.0 L/min', ...)}`.
+- The guard's two restored scenarios: the same mismatch in the settings group.
+- `test_a_stopped_run_refuses_every_setting_and_records_nothing`, all eight cases: `Failed: DID NOT RAISE SimulationConfigurationError`.
+- `test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at`: `DID NOT RAISE SimulationConfigurationError`.
+- `test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out`: `assert 'Simulation s...rt a new run.' == 'Simulation s...very setting.'`.
+
+**Next, after the reset of 2026-10-27.** The close-out reviews for `#1846` are still owed, as `PL-J5GC`'s closing paragraph lists. Run them before marking `#1846` ready.

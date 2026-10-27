@@ -3,15 +3,17 @@ id: PL-J5GC
 title: The run screen's widgets each have one writer since PL-X7D5 and PL-WM5P, but nothing requires values shown together to come from one state, so a label, divisor or verdict can come from a different state than the value beside it: three members filed after PL-WM5P closed
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: defect-review-2026-10
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1846
 payoff: a value and its divisor, setting or verdict are never shown from two different states
 verify: grep -q 'def test_every_value_and_its_qualifiers_on_screen_come_from_one_state' tests/integration/test_simulation_view.py && grep -q 'def _a_dial_moved_at_the_supported_run_length' tests/integration/test_simulation_view.py
 root-cause-of: PL-6RJ0, PL-3B34, PL-HF4B
-generator: live - three members were filed against main after PL-WM5P's fix merged, and its guard compares each widget with itself rather than a group with each other
+generator: spent - closed 2026-10-27 by #1846: test_every_value_and_its_qualifiers_on_screen_come_from_one_state requires each value on the run screen and what qualifies it to describe one step, and fails on a widget added later until it is placed in a group or listed with its reason
 misread: Which widgets state a run's current state, and that each is restated on every path that changes it
 ---
 
@@ -64,4 +66,4 @@ Two notes on what the guard does not check. In the accounting halt, the rejected
 
 **State at the reset, 2026-10-26.** `PL-HF4B` is built and committed (`c2f66e41`), and its scenario passes. The guard is committed after it. The two dial-moved scenarios fail until `PL-3B34` is built, so the pushed guard leaves them out, and `PL-3B34` puts them back with its fix. Their code is in `861243aa` (`_a_dial_moved_on_a_failed_run`, `_a_dial_moved_at_the_supported_run_length`). This item's `verify:` names the second, so it fails until they are back. `PL-3B34`'s brief holds its build plan. `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries" has a row for this head, which `PL-3B34` extends with the refused setting.
 
-**Next.** Build `PL-3B34` as its brief's plan says. Then update `docs/MODEL.md` for all three members: the withheld percents, the accounting panel after a rejected step, and the refused setting on a stopped run. Run the full suite, sweep the docs, close `PL-3B34`, `PL-HF4B` and this head, and mark `#1846` ready.
+**Closed, 2026-10-27.** `PL-3B34` is built, and the guard's two dial-moved scenarios are back in `_ONE_STATE_SCENARIOS` and pass. All three members are done: `PL-6RJ0` on `main`, and `PL-HF4B` and `PL-3B34` on `#1846`. `docs/MODEL.md`'s row for this head names the withheld percents, the accounting panel after a rejected step and the refused setting on a stopped run. The close-out reviews still owed on `#1846` are the blind review passes, the adversarial review, the prose review and `bin/docket verify --self PL-3B34 PL-J5GC`. They run in the session after the reset of 2026-10-27, followed by a rewrite of `#1846`'s body for all three members, and `#1846` stays a draft until they pass.

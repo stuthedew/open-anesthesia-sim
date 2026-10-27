@@ -16,7 +16,12 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationSnapshot,
 )
-from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
+from anesthesia_sim.app.dashboard_frame import (
+    RESET_EXIT_TEXT,
+    SUPPORTED_LIMIT_NOTICE_TEMPLATE,
+    notice,
+    transport,
+)
 from anesthesia_sim.app.formatting import (
     MAC_UNIT_SUFFIX,
     format_mac_multiple,
@@ -763,6 +768,72 @@ def test_a_failed_session_does_not_advance() -> None:
     controller.advance(SimulationStep(0.1))
 
     assert controller.snapshot().elapsed_s == elapsed_at_failure
+
+
+_STOPS: dict[str, Callable[[SimulationController], None]] = {
+    "on a failure": lambda controller: controller.fail("SimulationNumericalError: boom"),
+    "at the supported run length": lambda controller: controller.halt_at_supported_limit(
+        "reached 86400 s of simulated time"
+    ),
+}
+_SETTERS: dict[ControlInput, Callable[[SimulationController], None]] = {
+    ControlInput.FRESH_GAS_FLOW: lambda controller: controller.set_fresh_gas_flow(
+        FreshGasFlow(6.0)
+    ),
+    ControlInput.DELIVERED: lambda controller: controller.set_delivered_concentration_percent(
+        Percent(3.0)
+    ),
+    ControlInput.ALVEOLAR_VENTILATION: lambda controller: controller.set_alveolar_ventilation(
+        AlveolarVentilation(5.0)
+    ),
+    ControlInput.CARDIAC_OUTPUT: lambda controller: controller.set_cardiac_output(
+        CardiacOutput(10.0)
+    ),
+}
+
+
+@pytest.mark.parametrize("stop", list(_STOPS))
+@pytest.mark.parametrize(
+    ("control", "named"),
+    [
+        (ControlInput.FRESH_GAS_FLOW, "fresh gas flow"),
+        (ControlInput.DELIVERED, "delivered agent"),
+        (ControlInput.ALVEOLAR_VENTILATION, "alveolar ventilation"),
+        (ControlInput.CARDIAC_OUTPUT, "cardiac output"),
+    ],
+)
+def test_a_stopped_run_refuses_every_setting_and_records_nothing(
+    stop: str, control: ControlInput, named: str
+) -> None:
+    """No step runs after a stop, so a new setting would sit beside values it never produced.
+
+    Until `PL-3B34` each setter applied the value and recorded a change at the
+    stop instant. The dial then showed a setting that no step ran under, and
+    the record claimed a change that never acted on the patient. Each setter
+    now refuses before it applies anything. The expected settings come from a
+    run built and stepped the same way that never stopped.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.advance(SimulationStep(0.1))
+    _STOPS[stop](controller)
+    never_stopped = SimulationController()
+    never_stopped.start()
+    never_stopped.advance(SimulationStep(0.1))
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=f"^the {named} setting cannot be changed on a stopped run, because every value",
+    ):
+        _SETTERS[control](controller)
+
+    settings, expected = controller.settings(), never_stopped.settings()
+    assert controller.record().control_timeline == ()
+    assert settings.fresh_gas_flow_l_min == expected.fresh_gas_flow_l_min
+    assert settings.delivered_concentration_percent == expected.delivered_concentration_percent
+    assert settings.alveolar_ventilation_l_min == expected.alveolar_ventilation_l_min
+    assert settings.cardiac_output_l_min == expected.cardiac_output_l_min
 
 
 def test_the_first_failure_reason_is_the_one_kept() -> None:
@@ -4937,8 +5008,7 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
 # Stepping a run to 24 hours takes about 30 s. So the two runs that do it are
 # built once per pytest run and shared between xdist workers. Nothing below
 # changes what another test reads from them. A fork leaves its parent
-# untouched, and the one dial moved on a stopped run changes nothing that a
-# stopped run is asked about.
+# untouched, and the one dial moved on a stopped run is refused (`PL-3B34`).
 
 #: A height the fat group cannot reach at 1 MAC delivered. The mark stays
 #: unreached on every run below, so its standing is what the tests check.
@@ -5048,7 +5118,7 @@ def _assert_reads_as_stopped_at_the_supported_run_length(run: SimulationControll
     assert run.snapshot().is_running is False
     assert transport(snapshot).start_enabled is False
     assert notice(snapshot, None) == SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
-        run_length=format_supported_run_length()
+        run_length=format_supported_run_length(), exit=RESET_EXIT_TEXT
     )
 
     if _UNREACHABLE_TARGET in snapshot.bookmarks.mac_targets:
@@ -5120,26 +5190,33 @@ def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_
     _assert_reads_as_stopped_at_the_supported_run_length(branch)
 
 
-def test_a_branch_forked_where_a_dial_moved_on_the_supported_run_length_reads_as_stopped_there(
+def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """The other fork method: a keyframe that a dial made at 24:00:00 after the run stopped.
+    """A dial moved on the stopped trunk is refused, so no branch opens at a keyframe on 24:00:00.
 
-    The dial is moved here, on the shared trunk, because moving a dial on a
-    stopped run changes nothing that a stopped run is asked about. The control
-    change is recorded at the instant where the run is stopped, and the run
-    stays there.
+    Until `PL-3B34`, a dial moved after the run stopped was recorded at
+    24:00:00. That made a keyframe there, and `resumed_at` opened a branch on
+    it that could never step. The stopped run now refuses the dial, so the
+    trunk keeps its one stretch from 0 s, and `resumed_at` rejects the limit as
+    an instant with no keyframe. A mark on the limit is the one fork left
+    there, and `test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there`
+    covers it.
     """
 
     trunk = trunk_stepped_onto_the_limit
-    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
-    assert trunk.run_segments[-1].opening.instant_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^the fresh gas flow setting cannot be changed on a stopped run",
+    ):
+        trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
-    branch = trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-    branch.add_mac_target(_UNREACHABLE_TARGET)
+    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0.0]
 
-    _assert_reads_as_stopped_at_the_supported_run_length(branch)
+    with pytest.raises(SimulationConfigurationError, match="keyframe"):
+        trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
 

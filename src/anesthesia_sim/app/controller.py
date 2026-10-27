@@ -27,6 +27,7 @@ from anesthesia_sim.app.bookmarks import (
 )
 from anesthesia_sim.app.chart_time_base import grid_spacing_s
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_timeline import CONTROL_INPUT_LABELS
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
 # and the import matters. `mac_multiple` contains the whole arithmetic of the second
@@ -1386,9 +1387,10 @@ class SimulationController:
         step is left to take, so a branch opened there could never be run. On
         a dashboard that shows one comparison at a time, only the trunk's
         Reset, which discards the case, would take that branch off the chart.
-        The methods that still fork at the limit, at a keyframe or a mark on
-        the limit, are kept because of what `PL-5291` decided about such a
-        branch.
+        The method that still forks at the limit, at a mark on the limit, is
+        kept because of what `PL-5291` decided about such a branch. A keyframe
+        on the limit was once made by a dial moved after the run stopped, and a
+        stopped run now refuses that dial (`PL-3B34`).
 
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the
@@ -2359,6 +2361,7 @@ class SimulationController:
     # `docs/MODEL.md` § "What is not bounded this way" gives the argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
+        self._refuse_a_setting_on_a_stopped_run(ControlInput.FRESH_GAS_FLOW)
         system = self._state.uptake_system
         previous_value = system.circuit.fresh_gas_flow_l_min
         system.set_fresh_gas_flow(fresh_gas_flow_l_min)
@@ -2370,6 +2373,7 @@ class SimulationController:
         )
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
+        self._refuse_a_setting_on_a_stopped_run(ControlInput.DELIVERED)
         system = self._state.uptake_system
         previous_value = system.circuit.delivered_concentration_percent
         system.set_delivered_concentration_percent(delivered_concentration_percent)
@@ -2381,6 +2385,7 @@ class SimulationController:
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
+        self._refuse_a_setting_on_a_stopped_run(ControlInput.ALVEOLAR_VENTILATION)
         system = self._state.uptake_system
         previous_value = system.alveoli.alveolar_ventilation_l_min
         system.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -2392,6 +2397,7 @@ class SimulationController:
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
+        self._refuse_a_setting_on_a_stopped_run(ControlInput.CARDIAC_OUTPUT)
         system = self._state.uptake_system
         previous_value = system.patient.cardiac_output_l_min
         system.set_cardiac_output(cardiac_output_l_min)
@@ -2400,6 +2406,44 @@ class SimulationController:
             previous_value,
             system.patient.cardiac_output_l_min,
             restore=lambda: system.set_cardiac_output(previous_value),
+        )
+
+    def _refuse_a_setting_on_a_stopped_run(self, control: ControlInput) -> None:
+        """Refuse a setting on a run that has stopped, before anything is applied.
+
+        Each of the four setters calls this first. A run stops on a failure or
+        at the supported run length, and no step runs after either. Every value
+        the run holds was computed under the settings it stopped with. If a
+        setting were applied here, the dial would show a setting that no step
+        ran under, beside values computed under the previous one. The control
+        record would also claim a change at the stop instant that never acted
+        on the patient (`PL-3B34`).
+
+        So the setting is refused, and nothing is applied or recorded.
+        `RunView._apply_setting` treats the error as a refused setting. The
+        dial is written again from the run and springs back, and the banner
+        names the stopped run's way out (`dashboard_frame.notice`). Reset
+        keeps every setting, so the learner sets the dial on the new run. At
+        the supported run length a branch opened at an earlier instant also
+        takes a new setting, and each of its dials starts at what it was set
+        to at that instant (`_branch_from`). `set_agent` is not refused,
+        because it starts a new case and is a way out of a stopped run.
+
+        Args:
+            control: The setting that was asked for, named in the refusal.
+
+        Raises:
+            SimulationConfigurationError: If the run has failed or stands at
+                the supported run length.
+        """
+
+        if self._failure_reason is None and not self.has_reached_supported_limit:
+            return
+
+        raise SimulationConfigurationError(
+            f"the {CONTROL_INPUT_LABELS[control].lower()} setting cannot be changed on a "
+            "stopped run, because every value it holds was computed under the settings it "
+            "stopped with, and no step will run under a new one"
         )
 
     def begin_control_adjustment(self) -> None:

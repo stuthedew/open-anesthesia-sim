@@ -794,7 +794,10 @@ class RunView(QWidget):
 
         record = self.controller.record()
         self._write_statement(
-            record, banner=halt_notice(record, refused_reset=self._refused_reset_notice)
+            record,
+            banner=halt_notice(
+                record, self._rejected_setting_notice, refused_reset=self._refused_reset_notice
+            ),
         )
 
         if self._cards_agent_id != record.agent_id:
@@ -1015,10 +1018,11 @@ class RunView(QWidget):
         That includes an exception from outside the project's own exception classes,
         because the run still cannot continue (`PL-YK2V`). An accepted setting clears
         a refusal that is in effect. It also clears the way out that a refused Reset
-        left on the banner. Whether the next Reset is refused then depends on the
-        run's record as it is at that time (`PL-M4M0`). Until `PL-HQF5`, a change to
-        cardiac output could repair that record, because it recomputed the stored
-        tissue flows.
+        left on the banner (`PL-M4M0`). A refused Reset leaves the run failed, and a
+        failed run refuses every dial (`PL-3B34`), so the setting that clears that
+        way out is an agent switch, which starts a new case. On a stopped run the
+        refusal is stated inside the stopped run's banner, and the dial springs back
+        to the setting the stopped values ran under.
 
         The method leaves the frame for the render tick to draw only when two things
         are true: `coalesce` is set, and no refusal was in effect before the call or

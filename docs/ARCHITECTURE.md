@@ -445,7 +445,9 @@ wash-in lines, and both legends. These stay as the last frame drew them.
 Values shown together still describe one step. After a halt that follows an
 agent change, each readout card withholds its values under the new agent's
 heading and 1 MAC line. After an accounting halt, the accounting panel shows
-the rejected step's check. `test_every_value_and_its_qualifiers_on_screen_come_from_one_state`
+the rejected step's check. A stopped run refuses a dial, so the dials keep
+the settings the stopped values ran under (`PL-3B34`).
+`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`
 checks each value and what qualifies it against one step (`PL-J5GC`).
 `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
 requires every other widget to follow the halt by default. So a widget added
