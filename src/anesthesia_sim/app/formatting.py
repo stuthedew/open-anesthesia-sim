@@ -725,15 +725,26 @@ def mac_awake_band_percent(
             `MacPercent` is checked once, when it is built, to be above zero,
             so a divisor of zero cannot reach this function
             (`core/concentration.py`, `PL-F9TC`).
-        ValueError: If the band's lower edge would not be strictly
-            positive. That band cannot be drawn. `CLAUDE.md` requires an
-            obvious failure over a plausible-looking number. The
-            loader's `_MacAwakePayload` already makes it unreachable from
-            a shipped data file, so one arriving here means something
-            upstream is wrong.
+        ValueError: If the band cannot be drawn as the ordered band it
+            claims to be. This happens when the fraction or its standard
+            deviation is not finite, when the lower edge is not strictly
+            positive, when the upper edge is not strictly above the lower
+            edge, or when the upper edge reaches 1 MAC. A negative standard
+            deviation would otherwise return the upper edge first, and an
+            infinite fraction would return an infinite band. `CLAUDE.md`
+            requires an obvious failure over a plausible-looking number. The
+            loader's `_MacAwakePayload` already makes each of these
+            unreachable from a shipped data file, so one arriving here means
+            something upstream is wrong (`PL-WRVX`).
     """
 
     require_mac_percent("mac_percent", mac_percent)
+
+    if not (isfinite(fraction_of_mac) and isfinite(standard_deviation_fraction_of_mac)):
+        raise ValueError(
+            "the MAC-awake band's fraction and standard deviation must be finite, got "
+            f"{fraction_of_mac!r} and {standard_deviation_fraction_of_mac!r}"
+        )
 
     lower_fraction = fraction_of_mac - standard_deviation_fraction_of_mac
 
@@ -744,6 +755,18 @@ def mac_awake_band_percent(
         )
 
     upper_fraction = fraction_of_mac + standard_deviation_fraction_of_mac
+
+    if not upper_fraction > lower_fraction:
+        raise ValueError(
+            "the MAC-awake band's upper edge must lie above its lower edge, so its "
+            f"standard deviation must be positive, got {standard_deviation_fraction_of_mac!r}"
+        )
+
+    if not upper_fraction < 1.0:
+        raise ValueError(
+            "the MAC-awake band's upper edge must lie below 1 MAC, got "
+            f"{fraction_of_mac!r} + {standard_deviation_fraction_of_mac!r}"
+        )
 
     return lower_fraction * mac_percent, upper_fraction * mac_percent
 

@@ -3,10 +3,12 @@ id: PL-FPLQ
 title: tests/integration/test_qt_chart.py::test_the_hover_answers_the_point_under_the_pointer failed in make check under a load average of about 30 on four cores, reading the previous point's hover, and passed alone in 2.9 s: _wait_for_hover gives delivery only _HOVER_DELIVERY_MS = 1000 ms of wall-clock time
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tests/integration/test_qt_chart.py
 added: 2026-10-24
+closed: 2026-10-27
+pr: 1882
 payoff: the hover test stops failing on a loaded container, so a red Qt test in make check means something again
 verify: ! grep -q '^_HOVER_DELIVERY_MS = 1000$' tests/integration/test_qt_chart.py
 ---

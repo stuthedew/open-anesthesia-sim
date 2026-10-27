@@ -654,9 +654,19 @@ def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -
     )
 
 
-# This is sixty times the hover's own cooldown of 1/60 s, which is the longest
-# the hover holds a pointer position before responding to it.
-_HOVER_DELIVERY_MS = 1000
+# The longest that `_wait_for_hover` waits for the hover to respond. It is
+# Qt's own default for `QTRY_COMPARE`, the idiom that function copies. The
+# wait ends as soon as the hover matches, so a fast run pays none of it. A
+# limit of 1000 ms failed under a load average of about 30 on four cores
+# (`PL-FPLQ`).
+_HOVER_WAIT_MS = 5000
+
+# How long the hide test watches for a hover to come back after the pointer
+# leaves. It is sixty times the hover's own cooldown of 1/60 s, which is the
+# longest the hover holds a pointer position before responding to it. Unlike
+# `_HOVER_WAIT_MS`, this hold always runs to its end, so raising it would
+# lengthen that test.
+_HOVER_HOLD_MS = 1000
 
 # How long the moving-pointer case keeps the pointer moving: twelve cooldowns.
 _SWEEP_MS = 200
@@ -685,7 +695,7 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 
 
 def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -> None:
-    """Run the event loop until the hover says `text` or `_HOVER_DELIVERY_MS` has passed.
+    """Run the event loop until the hover says `text` or `_HOVER_WAIT_MS` has passed.
 
     It waits the way `QTRY_COMPARE` does. A move inside the hover's cooldown
     is handled when the cooldown ends, from a timer rather than inside the
@@ -693,7 +703,7 @@ def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -
     which is how a paused run behaves.
     """
 
-    deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
+    deadline = QDeadlineTimer(_HOVER_WAIT_MS)
 
     while chart.hover_text() != text and not deadline.hasExpired():
         QTest.qWait(10)
@@ -880,7 +890,7 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
     # After the longest time that a held move waits for a response, neither
     # box has come back.
     shown: set[str] = set()
-    held = QDeadlineTimer(_HOVER_DELIVERY_MS)
+    held = QDeadlineTimer(_HOVER_HOLD_MS)
 
     while not held.hasExpired():
         QTest.qWait(10)

@@ -3,11 +3,13 @@ id: PL-WRVX
 title: mac_awake_band_percent checks only that the band's lower edge is positive, so a negative standard deviation returns the band upper edge first, an infinite fraction returns (inf, inf), and a band reaching past 1 MAC is accepted, though its docstring promises lower first and a refusal of an undrawable band
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1882
 payoff: the function the band's safety tests target keeps the promise in its docstring, so an inverted or infinite band cannot be drawn if bad data ever reaches it
 verify: grep -q 'def test_mac_awake_band_percent_refuses_an_inverted_infinite_or_over_one_mac_band' tests/unit/test_formatting.py
 ---
