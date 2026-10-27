@@ -153,3 +153,23 @@ Element-wise reproduction survives. `_open_at` already opens the branch's defini
   6. Run `bin/docket arm`, then push.
   7. Rewrite the body of `#1844` for the owner's rule. Its "What a learner sees differently", the ", before your change" placeholder and the `PL-HSP8` bullet all describe the old rule.
 
+
+**Both defects fixed, 2026-10-27.** Route B was taken, together with the fix at the case's opening, because the two share one change.
+
+- **A branch opens with copies of the parent's changes at the fork** (`SimulationController._changes_opened_at`). Each copy is numbered from 1, so the branch counts its adjustments from its own opening. After the case's opening, the copies are exactly the settings that differ between the two sides, which is what `_open_at` recorded before. At the case's opening, they are the trunk's changes made before Start. So a branch at 0 s now states what it runs under, and the run definition is unchanged.
+- **An opened entry is never merged into or removed.** `_record_in_timeline` stops its search at an opened entry and appends the learner's change after it. `_open_at` takes the opened entries as an argument. It writes them first, and then records each setting in force that differs from the one the branch opened under: the last opened entry's new value, or the stretch's value. A reset passes the branch's own opened entries, so the save-and-restore in `reset()` is gone. `changes_since_opening` now compares whole entries, because an opened entry cannot change, and `_setting_recorded` is deleted.
+- **What a learner sees.** A branch set back to the trunk's earlier value lists two changes in its "Control changes" panel, the trunk's at the fork and then the learner's, and the trunk's Reset asks before it discards it. A branch at 0 s lists the trunk's change made before Start, for example "0s: 2% → 3%".
+
+Each regression test was run against `a248d816`, the branch before the fix, with the new tests copied in, and each failed there (`.claude/rules/test-oracles.md` rule 6):
+
+- `test_a_dial_set_back_at_the_fork_is_work_a_trunk_reset_would_lose`: `assert [(60.0, FRESH_GAS_FLOW, 4.0, 8.0)] == [(60.0, ..., 4.0, 6.0), (60.0, ..., 6.0, 8.0)]`.
+- `test_a_branch_reset_at_the_trunk_s_earlier_value_is_work_a_trunk_reset_would_lose`: `assert [] == [(60.0, FRESH_GAS_FLOW, 4.0, 6.0), (60.0, ..., 6.0, 4.0)]`.
+- `test_a_branch_at_the_case_s_opening_states_the_trunk_s_changes_made_before_start`: `assert [] == [(0.0, DELIVERED, 2.0, 3.0)]`.
+- `test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under`, whose last assertion now expects the copied entry: `assert [] == [(0.0, DELIVERED, 2.0, 4.0)]`.
+- `tests/integration/test_simulation_view.py::test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow`: `assert 1 == 2`, where the one line was "No settings changed yet in this run."
+
+The command was `PYTHONPATH=<worktree>/src python -m pytest <test ids>`, run in a worktree of `a248d816`.
+
+The test that asserted the defect, `test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose`, is replaced by the first test above. The trunk Reset question's `change` case now expects "2 recorded control changes", the opened entry and the learner's. `test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement` now expects the opened entry followed by the learner's 8 L/min.
+
+The eight flagged sentences are fixed. [2] and [7] are true now that a branch at 0 s copies the trunk's changes. [3] and [5] name the opening exception. [9] went with the rewrite of `_open_at`'s docstring. [15], [24] and [28] are rewritten, and `SimulationView._trunk_reset_question` carried the same claim as [28], so it is fixed too.

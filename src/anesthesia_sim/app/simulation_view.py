@@ -975,9 +975,10 @@ class SimulationView(QWidget):
 
         The trunk's Reset drops every branch drawn beside it
         (`_handle_case_restarted`), and a branch is not the run the reader
-        pressed Reset on. So the press asks first wherever a drawn branch
-        holds elapsed time or a recorded control change (`PL-W5WX`). A
-        dashboard with no case drops nothing on a Reset, so it asks nothing.
+        pressed Reset on. So the press asks first wherever a drawn branch has
+        run past its fork, or holds a control change made since it opened
+        (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). A dashboard with no
+        case drops nothing on a Reset, so it asks nothing.
         """
 
         if self._case is None:

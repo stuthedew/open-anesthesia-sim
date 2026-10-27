@@ -5437,9 +5437,11 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
 
     The trunk runs at 2% and a mark at 30 s halts it. Standing there, the
     learner turns the vaporizer to 4%, removes the mark and adds it back under
-    another label, and marks an instant inside the halting step. Each way of
-    branching is used before those edits, after them, and again after the
-    trunk has run on. Each branch is then reset.
+    another label, and marks an instant inside the halting step. Branches
+    are taken here and at the mark before those edits, since no keyframe
+    exists at 30 s yet. All three ways of branching are used after the edits.
+    Branches are taken at the mark and at the keyframe again after the trunk
+    has run on, when it no longer stands at 30 s. Each branch is then reset.
 
     Each branch is checked against the rule that `docs/MODEL.md` states. All
     of them share one provenance, the stretch that the halting step ran
@@ -5676,10 +5678,11 @@ def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_i
     The trunk changes the fresh gas flow from 4 to 6 L/min at 30 s, and a
     branch is taken at that keyframe. The learner runs the branch for 10 s,
     sets 8 L/min and resets. The reset keeps 8 L/min, as a reset keeps
-    settings, and records it as a change at the fork. Replaying the branch's
-    timeline over the stretch it opened from gives the settings it runs
-    under. The reset branch is checked against a branch taken directly at
-    the keyframe and set to 8 L/min there.
+    settings. The timeline keeps the trunk's change that the branch opened
+    with, and records the 8 L/min after it as a change at the fork.
+    Replaying the branch's timeline over the stretch it opened from gives
+    the settings it runs under. The reset branch is checked against a branch
+    taken directly at the keyframe and set to 8 L/min there.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5703,7 +5706,8 @@ def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_i
     assert snapshot.elapsed_s == fork_s
     assert snapshot.fresh_gas_flow_l_min == 8.0
     assert _described(snapshot.control_timeline) == [
-        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 8.0)
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0),
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 8.0),
     ]
     assert _described(snapshot.control_timeline) == _described(
         built_directly.snapshot().control_timeline
@@ -5787,6 +5791,8 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
     is the opening keyframe, whose state no setting produced, and the
     settings it ran under from there. Both stay true of the branch after the
     trunk's edit, so the branch's provenance still states what it runs under.
+    The branch's timeline keeps the trunk's change made before Start, so its
+    own panel states the setting too.
     """
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
@@ -5798,21 +5804,72 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
     assert branch.opened_from.fork == trunk.run_segments[0].opening
     assert branch.opened_from.segment.settings.delivered_concentration_percent == 4.0
     assert branch.snapshot().delivered_concentration_percent == 4.0
-    assert branch.snapshot().control_timeline == ()
+    assert _described(branch.snapshot().control_timeline) == [
+        (0.0, ControlInput.DELIVERED, 2.0, 4.0)
+    ]
+    assert trunk.snapshot().control_timeline == ()
 
 
-def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose() -> None:
-    """Whether a branch holds a change, and how many it holds, both come from one record.
+def test_a_branch_at_the_case_s_opening_states_the_trunk_s_changes_made_before_start() -> None:
+    """A branch taken at 0 s opens with the trunk's changes made before Start.
+
+    The trunk is created at 2% delivered, set to 3% before Start, and a
+    branch is taken at 0 s. The trunk is then set to 4%. The branch runs at
+    3%, exactly as a case created at 3% does. Its timeline holds the change
+    from 2% to 3% at 0 s, while the trunk's holds the change from 2% to 4%.
+    The second blind review pass of the rework found the branch's timeline
+    empty. A learner who read the trunk's "0s: 2% → 4%" beside an empty
+    panel would take the branch to be at 2%.
+
+    The copied entry is where the branch began. So the new branch holds
+    nothing that a trunk Reset would lose, and the learner's first change on
+    it is an adjustment of its own.
+    """
+
+    trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
+    trunk.set_delivered_concentration_percent(Percent(3.0))
+    branch = trunk.resumed_at(CaseInstant(0.0))
+    trunk.set_delivered_concentration_percent(Percent(4.0))
+    created_at_three = SimulationController(delivered_concentration_percent=Percent(3.0))
+
+    assert branch.snapshot().delivered_concentration_percent == 3.0
+    assert branch.run_segments == created_at_three.run_segments
+    assert _described(branch.snapshot().control_timeline) == [
+        (0.0, ControlInput.DELIVERED, 2.0, 3.0)
+    ]
+    assert _described(trunk.snapshot().control_timeline) == [
+        (0.0, ControlInput.DELIVERED, 2.0, 4.0)
+    ]
+    assert branch.snapshot().changes_since_opening == ()
+    assert not branch.snapshot().has_recorded_run
+
+    branch.set_delivered_concentration_percent(Percent(2.0))
+
+    assert [
+        (adjustment.from_value, adjustment.to_value)
+        for adjustment in group_adjustments(branch.snapshot().control_timeline)
+    ] == [(2.0, 3.0), (3.0, 2.0)]
+    assert branch.snapshot().has_recorded_run
+
+
+def test_a_dial_set_back_at_the_fork_is_work_a_trunk_reset_would_lose() -> None:
+    """A branch that the learner sets back to the trunk's earlier value holds the learner's change.
 
     The trunk is paused at 60 s, its fresh gas flow is set from 4 to 6 L/min,
-    and a branch is taken at that keyframe. Setting the branch to 8 L/min at
-    the fork replaces the entry that the branch opened with. The replacement
-    counts as one change made since opening. Setting the branch back to
-    4 L/min removes that entry. The branch then runs under the trunk's
-    settings from before the change, as a branch taken there before the
-    trunk's change would. So it holds nothing that a trunk Reset would lose.
-    The blind review of `PL-ZR49`'s change found that the Reset question
-    named such a branch as having "0 recorded control changes".
+    and a branch is taken at that keyframe. The branch opens at 6 L/min,
+    because every branch opens at what the dial says (project owner,
+    2026-10-26). Setting the branch to 8 L/min at the fork adds the change
+    from 6 to 8 L/min after the opened entry. Setting it to 4 L/min then
+    makes that change one from 6 to 4 L/min. The opened entry stays, so the
+    "Control changes" panel shows both the trunk's change and the learner's.
+    No branch taken at 60 s opens at 4 L/min, so the learner's change is work
+    that a trunk Reset would lose. Both blind review passes of the rework
+    found that the opened entry was deleted instead. The branch then held
+    nothing to lose, and the trunk's Reset discarded it without asking.
+
+    The branch runs exactly the run of a branch taken where the trunk stands
+    after the trunk is set back to 4 L/min. That branch records nothing,
+    because it opened at 4 L/min.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5823,24 +5880,77 @@ def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
     branch = trunk.resumed_at(fork_s)
 
+    assert _described(branch.snapshot().control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0)
+    ]
     assert branch.snapshot().changes_since_opening == ()
     assert not branch.snapshot().has_recorded_run
 
     branch.set_fresh_gas_flow(FreshGasFlow(8.0))
 
-    assert _described(branch.snapshot().changes_since_opening) == [
-        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 8.0)
+    assert _described(branch.snapshot().control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0),
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 8.0),
     ]
-    assert branch.snapshot().has_recorded_run
+    assert _described(branch.snapshot().changes_since_opening) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 8.0)
+    ]
 
     branch.set_fresh_gas_flow(FreshGasFlow(4.0))
     trunk.set_fresh_gas_flow(FreshGasFlow(4.0))
     taken_here = trunk.resumed_here()
 
-    assert branch.snapshot().control_timeline == ()
-    assert branch.snapshot().changes_since_opening == ()
-    assert not branch.snapshot().has_recorded_run
+    assert branch.snapshot().fresh_gas_flow_l_min == 4.0
+    assert _described(branch.snapshot().control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0),
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 4.0),
+    ]
+    assert _described(branch.snapshot().changes_since_opening) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 4.0)
+    ]
+    assert branch.snapshot().has_recorded_run
+    assert len(group_adjustments(branch.snapshot().control_timeline)) == 2
     assert branch.run_segments == taken_here.run_segments
+    assert taken_here.snapshot().control_timeline == ()
+
+
+def test_a_branch_reset_at_the_trunk_s_earlier_value_is_work_a_trunk_reset_would_lose() -> None:
+    """A setting kept through a branch reset counts against what the branch opened at.
+
+    The trunk is paused at 60 s, its fresh gas flow is set from 4 to 6 L/min,
+    and a branch is taken at that keyframe. The learner runs the branch for
+    10 s, sets 4 L/min and resets it. The reset keeps 4 L/min and records it
+    as a change from 6 L/min, the value the branch opened at, after the
+    opened entry. Both blind review passes of the rework found that the
+    reset recorded the difference from the trunk's earlier value instead.
+    That difference was empty, so the trunk's Reset discarded the branch
+    without asking.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.pause()
+    branch.set_fresh_gas_flow(FreshGasFlow(4.0))
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch.snapshot().fresh_gas_flow_l_min == 4.0
+    assert _described(branch.snapshot().control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0),
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 4.0),
+    ]
+    assert _described(branch.snapshot().changes_since_opening) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 6.0, 4.0)
+    ]
+    assert branch.snapshot().has_recorded_run
+    assert _replayed_from_provenance(branch) == branch._state.uptake_system.equation_settings()
 
 
 def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_order_holds() -> None:
@@ -5885,12 +5995,11 @@ def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() 
     The trunk is paused at 60 s and its fresh gas flow set from 4 to 6 L/min,
     and two branches are taken at that keyframe. Each opens with the trunk's
     change at the fork. One branch is set to 4 L/min and then to 6 L/min. The
-    other is set to 8 L/min and then to 6 L/min. Setting 4 L/min removes the
-    opened entry, and setting 6 L/min records it again with a new adjustment
-    number. Both branches then run as a branch freshly taken at that keyframe
-    would. The adversarial review of `PL-ZR49`'s change found that the first
-    branch counted as holding a change, because the comparison included the
-    adjustment number.
+    other is set to 8 L/min and then to 6 L/min. Each detour adds a change
+    after the opened entry, and setting 6 L/min removes that change again.
+    Both branches then run as a branch freshly taken at that keyframe would.
+    An adversarial review of `PL-ZR49`'s change found that an earlier
+    version counted the first branch as holding a change.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))

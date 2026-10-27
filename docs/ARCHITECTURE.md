@@ -568,8 +568,9 @@ Five things in `app/controller.py` implement a branch:
   The stretch's opening and the fork are two instants for every fork except one
   at the case's opening (`PL-B8MK`, `PL-ZR49`). `reset()` goes back through the
   same `_open_at`, with the settings the branch runs under. So a reset opens
-  the branch on the same provenance and records each setting that differs from
-  it (`PL-K5BS`).
+  the branch on the same provenance and keeps the entries it opened with.
+  After them, it records each setting that differs from the one the branch
+  opened under (`PL-K5BS`, `PL-ZR49`).
 - `BranchedCase` holds a trunk and the branches taken from it. It is what makes
   two controllers one case rather than two unrelated sessions. It is also where
   the flat shape stops depending on a refusal. The trunk is the only run that
@@ -590,21 +591,21 @@ every setting the stretch carries, and the agent's displayed references, since
 the agent and patient are read again from their data files. A refusal names
 each value that differs, with both of its values (`PL-NC62`). One rule, the
 same for every way of branching, decides which stretch. The branch names as
-its provenance the stretch that the step reaching the fork ran under, which no
-later change on the trunk can replace. The branch runs under the stretch still
-open at the fork, which is what the dial says there. It records a change that
-the trunk made there as a change of its own (`docs/MODEL.md` § "The canonical
-evaluation rule", `PL-ZR49`). And a branch inherits the bookmarks. That is the
+its provenance the stretch that the step reaching the fork ran under. After the
+case's opening, no later change on the trunk can replace that stretch. The
+branch runs under the stretch still open at the fork, which is what the dial
+says there. Its timeline opens with copies of the changes the trunk made there
+(`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`). And a branch inherits the bookmarks. That is the
 opposite case to the timeline below, and it is settled by the same test. A
 mark is a question about what is still to come, and a comparison is two
 managements answering one question. If a learner had to re-enter the marks,
 two branches could be compared at two different heights with nothing saying
 so. What a branch does not inherit is the trunk's control timeline. The
-branch's record is of what the learner does to *it*. The entries that the
-branch's timeline can open with are the settings it runs under that differ
-from the stretch it opened from, one for each control that differs. They are
-the trunk's changes at the instant the branch was taken, or the learner's
-dials kept by a reset (`RunRecord.opened_with`). `opened_from` is what records
+branch's record is of what the learner does to *it*. The only entries that the
+branch's timeline opens with are copies of the trunk's changes at the instant
+the branch was taken (`RunRecord.opened_with`). A reset keeps them, and records
+after them each setting that the learner changed and the reset kept.
+`opened_from` is what records
 where the fork was taken, and `began_at_s` is the one number to read for the
 fork instant. It is zero on a trunk and the fork instant on a branch. The
 definition's own first segment used to start at the same instant, and it no
@@ -761,9 +762,10 @@ is a property of the display, not of the model:
   are shown. The refusal is visible, and its reason can be read. Resetting the
   *trunk* takes every branch off the dashboard and rebuilds the case on the
   restarted run. This is because a trunk that has started over never passed
-  through the instant at which a branch was taken. Where a branch holds
-  elapsed time or a recorded control change, the trunk's Reset asks first
-  (`PL-W5WX`). The question comes from
+  through the instant at which a branch was taken. Where a branch has run
+  past its fork, or holds a control change made since it opened, the trunk's
+  Reset asks first (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). The
+  question comes from
   `SimulationView._trunk_reset_question`, which `RunView.ask_before_reset`
   hands to the trunk's view. Resetting a *branch* returns it to its own fork
   and leaves the comparison in place. **The lock says which of those two
@@ -814,8 +816,8 @@ complement of what a branch inherits.** A branch carries across the agent,
 the patient, the circuit volume, the four live controls up to the fork, and
 the bookmarks. It then keeps them fixed: `set_agent` refuses on a branch and
 is locked on the trunk while two runs are shown. The control timeline is the
-one thing not carried across. It opens with only the settings that differ at
-the fork, if any. So the difference between two runs after the fork is the
+one thing not carried across. It opens with only the trunk's changes at the
+fork, if any. So the difference between two runs after the fork is the
 difference between two control timelines. The inheritance list
 above is the audit of that claim, not a convenience.
 

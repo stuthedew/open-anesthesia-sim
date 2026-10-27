@@ -215,32 +215,33 @@ class RunRecord(RunSettings):
     core refused is not in the timeline, because that setting never took
     effect and so is not part of the run.
 
-    **A branch's timeline starts with the entries recorded when it opened**
-    (`PL-ZR49`). A branch's run opens on the parent's stretch of constant
-    settings that the step reaching the fork ran under. Each setting at the
-    fork that differs from that stretch is recorded here as a change at the
-    fork. If the trunk changed a setting at the fork, the entry is the
-    trunk's own change there. If the branch was reset after the learner
-    changed its dials, the entries are the learner's new settings.
-    `RunRecord.opened_with` lists the entries that the branch recorded when
-    it first opened.
+    **A branch's timeline starts with the entries it opened with**
+    (`PL-ZR49`). They are copies of the parent's own changes at the fork
+    (`RunRecord.opened_with`). After the case's opening, each one records a
+    setting that the parent changed while it stood at the fork. At the
+    case's opening, each one records a setting that the parent changed
+    before Start, from the value its timeline starts from. A reset of the
+    branch keeps these entries. After them it records each setting that the
+    learner changed from the one the branch opened under.
     """
 
     opened_with: tuple[ControlChange, ...]
-    """The entries that the control timeline held when this run opened.
+    """The entries that the control timeline held when this run first opened.
 
     It is empty on a trunk. A trunk has no parent, so it opens under its own
-    settings and records nothing at its opening. A branch opens on its
-    parent's stretch and records each setting that differs from that stretch
-    as a change at the fork (`PL-ZR49`). Those entries are part of where the
-    branch began, not something done to it since. `changes_since_opening` is
-    the timeline without them.
+    settings and records nothing at its opening. A branch opens with a copy
+    of each change that its parent recorded at the fork, numbered as the
+    branch's own first adjustments (`PL-ZR49`). Those entries are part of
+    where the branch began, not something done to it since.
+    `changes_since_opening` is the timeline without them.
 
-    These are the entries from the branch's first opening. A reset of the
-    branch leaves them unchanged. A setting that the learner changed and then
-    kept through the reset is recorded at the fork too. But it is the
-    learner's work on the branch, so it must still count as a change since
-    the opening.
+    No later change merges into one of these entries or removes it. A change
+    that the learner makes at the fork is recorded as an entry of its own
+    after them (`_record_in_timeline`), and a reset of the branch keeps them.
+    So the branch's "Control changes" panel always states the setting that
+    the branch opened under. A learner who sets a dial back to the parent's
+    earlier value has made a change of their own, and it counts as work on
+    the branch.
     """
 
     @property
@@ -253,30 +254,16 @@ class RunRecord(RunSettings):
         every entry in the branch's timeline instead, because the branch's
         "Control changes" panel lists every entry.
 
-        An entry is compared with the opened entries by the setting that it
-        records: its instant, its control and its two values. The adjustment
-        number is left out, because it only groups entries into the acts that
-        the panel shows. Suppose a learner sets a dial back to its parent's
-        value and then forward again to the value the branch opened with. That
-        leaves an entry with a new adjustment number. The branch's settings are
-        then exactly what it opened with, so it holds nothing new.
-
-        A change that the learner makes at the fork can merge with an entry
-        that the run opened with. A change to a new value replaces that entry,
-        and the replacement is returned here. A change back to the parent's
-        value removes the entry, and nothing is returned for it. The run then
-        uses its parent's setting for that control, as a branch newly opened
-        on the same stretch would. So the run holds nothing new. Removing the
-        entry makes the result independent of order. The sequences "change,
+        Nothing changes an opened entry once it is recorded
+        (`RunRecord.opened_with`). So the opened entries are found by plain
+        equality, and every other entry is a change that the learner made on
+        this run and still holds. A change set back to the value it started
+        from is removed (`_record_in_timeline`). So the sequences "change,
         reset, change back" and "change, change back, reset" leave the same
-        run and return the same result.
+        timeline and return the same result.
         """
 
-        opened = {_setting_recorded(change) for change in self.opened_with}
-
-        return tuple(
-            change for change in self.control_timeline if _setting_recorded(change) not in opened
-        )
+        return tuple(change for change in self.control_timeline if change not in self.opened_with)
 
     def run_record(self) -> RunRecord:
         """Return this record as a plain `RunRecord`, without any field a subclass adds.
@@ -443,7 +430,9 @@ class SimulationSnapshot(RunRecord):
         the branch. On a branch, only the question that the trunk's Reset asks
         before it discards the branch reads this property. That Reset discards
         the trunk's change anyway. A setting that the learner kept through a
-        reset of the branch is their work, so it still counts.
+        reset of the branch is their work, so it still counts. So does a
+        change that sets a dial back to the value the trunk held before its
+        change, because the branch opened at what the dial said.
         `RunRecord.changes_since_opening` returns the entries that count.
         """
 
@@ -468,16 +457,20 @@ class ResumePoint:
     **`segment` is the stretch that the step reaching the fork ran under**
     (`PL-ZR49`). An instant where a run stands has two sides. The step that
     reached the instant ran under one stretch of constant settings. A change
-    made while the run stands there opens the next stretch. The first side
-    can no longer change, because `RunDefinition.record_change` replaces only
-    a stretch that opens at the instant the run stands on
-    (`RunDefinition.reaching_segment_at`). So this provenance stays one of the
-    parent's stretches whatever the parent does at the fork later. Every way
-    of branching names this first side as its provenance. Every way then runs
-    under the other side, which is the stretch still open at the fork and so
-    what the dial says there (`RunDefinition.segment_at`). Each setting that
-    differs between the two sides is recorded at the fork in the branch's
-    own timeline (`RunRecord.opened_with`).
+    made while the run stands there opens the next stretch. After the case's
+    opening, the first side can no longer change.
+    `RunDefinition.record_change` replaces only a stretch that opens at the
+    instant the run stands on, and the first side opens before that instant
+    (`RunDefinition.reaching_segment_at`). So this provenance stays one of
+    the parent's stretches whatever the parent does at the fork later. At
+    the case's opening, no step has closed a stretch. Both sides are then
+    the opening stretch, and a later change at the opening still replaces
+    it. Every way of branching names this first side as its provenance.
+    Every way then runs under the other side, which is the stretch still
+    open at the fork and so what the dial says there
+    (`RunDefinition.segment_at`). The branch's own timeline opens with the
+    parent's changes at the fork (`RunRecord.opened_with`). So it states
+    the settings that the branch opened under, at the case's opening too.
 
     **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
     The stretch that the step reaching the fork ran under opens at a keyframe
@@ -1383,9 +1376,10 @@ class SimulationController:
         (`RunRecord.opened_with`). So the branch's own record states the
         setting that the branch runs under. That record stays true whatever
         the trunk later does at `instant_s`. The trunk may even set the dial
-        back, which removes the trunk's keyframe there (`PL-TNYP`). The stretch
-        named as the branch's provenance is also one that the trunk can no
-        longer replace (`PL-NRR6`). The other two ways of branching,
+        back, which removes the trunk's keyframe there (`PL-TNYP`). After the
+        case's opening, the stretch named as the branch's provenance is also
+        one that the trunk can no longer replace (`PL-NRR6`). The other two
+        ways of branching,
         `resumed_at_mark` and `resumed_here`, take the same provenance at the
         same instant. They also run under the same settings and record the
         same change.
@@ -1647,8 +1641,12 @@ class SimulationController:
         fork (`RunDefinition.segment_at`). They include a change this run made
         at the fork, and no change it made later. The branch's provenance is
         still the stretch that the step reaching the fork ran under
-        (`ResumePoint.segment`). `_open_at` records each setting that differs
-        between the two as a change at the fork. The project owner chose this
+        (`ResumePoint.segment`). The branch's timeline opens with copies of
+        this run's changes at the fork (`_changes_opened_at`). After the
+        case's opening, those are the settings that differ between the two
+        stretches. At the case's opening, both are the opening stretch, and
+        the copies state what this run changed there before Start. The
+        project owner chose this
         as the more intuitive rule: a branch opens at what the dial says and
         does not go back to the previous setting (project owner, 2026-10-26).
 
@@ -1690,9 +1688,9 @@ class SimulationController:
         # marks again, a typed 0.85 against a 0.8 would leave two branches
         # apparently compared at one height but actually compared at two, with
         # nothing on screen to say so. The only entries that a branch's
-        # timeline opens with are settings it was opened under, which
-        # `_open_at` records as changes at the fork. Those entries are where
-        # the branch began rather than something done to it
+        # timeline opens with are this run's own changes at the fork, which
+        # state the settings that the branch opened under. Those entries are
+        # where the branch began rather than something done to it
         # (`RunRecord.opened_with`).
         #
         # A mark that lies before the fork is copied with the rest. It cannot
@@ -1703,12 +1701,28 @@ class SimulationController:
         # with the other reached and not-reached outcomes.
         branch._bookmarks = self._bookmarks
 
-        branch._open_at(resume_point, branch._state.uptake_system.equation_settings())
-        # What the first opening recorded is what the branch opened with. A
-        # reset of the branch keeps this (`reset`).
-        branch._opened_with = branch._control_timeline
+        branch._open_at(
+            resume_point,
+            branch._state.uptake_system.equation_settings(),
+            self._changes_opened_at(fork_at_s),
+        )
 
         return branch
+
+    def _changes_opened_at(self, fork_at_s: CaseInstant) -> tuple[ControlChange, ...]:
+        """Return this run's changes at `fork_at_s`, as a branch taken there opens with them.
+
+        Each copy is numbered from 1, in the order that this run recorded the
+        changes. An adjustment number groups the acts of one run. So the
+        branch counts its adjustments from its own opening, and the learner's
+        first change on it is numbered after every copy.
+        """
+
+        at_fork = (change for change in self._control_timeline if change.elapsed_s == fork_at_s)
+
+        return tuple(
+            replace(change, adjustment=number) for number, change in enumerate(at_fork, start=1)
+        )
 
     def _disagreements_with(
         self, branch: SimulationController, settings_at_fork: UptakeEquationSettings
@@ -1774,7 +1788,12 @@ class SimulationController:
             if in_run != on_branch
         )
 
-    def _open_at(self, resume_point: ResumePoint, settings: UptakeEquationSettings) -> None:
+    def _open_at(
+        self,
+        resume_point: ResumePoint,
+        settings: UptakeEquationSettings,
+        opened_with: tuple[ControlChange, ...],
+    ) -> None:
         """Put this run at `resume_point`'s state, on its clock and its accounting.
 
         This is a separate method because `reset()` needs exactly the same
@@ -1798,23 +1817,25 @@ class SimulationController:
 
         **The run definition always opens at the parent's stretch, under the
         parent's settings** (`PL-B8MK`). That stretch is the one that the step
-        reaching the fork ran under (`ResumePoint.segment`). Each setting in
-        force that differs from it is recorded as a change at the fork, in the
-        run definition and the control timeline alike (`PL-ZR49`). If the
-        trunk changed a setting at the fork, the change recorded is the
-        trunk's own change there. If the branch was reset after the learner
-        changed its dials, the changes are the learner's new settings
-        (`PL-K5BS`). So the two records agree on the settings that the branch
-        runs under, and `opened_from` names the stretch that both records
-        start from. The definition keeps propagating from the same keyframe as
-        its parent. That alone provides the element-wise guarantee, which is
-        that the branch reproduces each element of its parent's state exactly.
-        The keyframe that this method records carries
-        `_canonical_state_at(fork)`, the same expression that
-        `resume_point.fork.state` came from. In the reproducing case, no
-        setting differs and nothing is recorded. That case covers every fork
-        at an instant where the trunk changed no setting, and every reset
-        that changed nothing.
+        reaching the fork ran under (`ResumePoint.segment`). The settings in
+        force are then recorded as a change at the fork. Where they match the
+        stretch, `RunDefinition.record_change` records nothing. The definition
+        keeps propagating from the same keyframe as its parent. That alone
+        provides the element-wise guarantee, which is that the branch
+        reproduces each element of its parent's state exactly. A keyframe
+        that this method records carries `_canonical_state_at(fork)`, the
+        same expression that `resume_point.fork.state` came from.
+
+        **The control timeline opens with `opened_with`, kept as it was
+        recorded** (`PL-ZR49`, `PL-K5BS`). On the first opening, these are the
+        parent's changes at the fork (`_changes_opened_at`). On a reset, they
+        are the same entries again. After them, the timeline records each
+        setting in force that differs from the one the branch opened under.
+        That value is the new value of the control's last opened entry, or
+        the stretch's value where no entry names the control. Nothing follows
+        the opened entries on a first opening, because the branch is built
+        under the settings it opened under. After a reset, what follows is
+        each setting that the learner changed and kept.
 
         **Choosing the opening from the settings instead would make the result
         depend on the order of two reversible actions.** That is why it is not
@@ -1829,10 +1850,10 @@ class SimulationController:
         differed, the worst by 1.21e-15, and nothing on screen said so.
         Recording the change instead lets the collapse rules of
         `record_change` and `_record_in_timeline` detect the dial-back. The
-        fork segment ends up with the settings that the stretch before it
-        already had, so the fork segment is removed entirely, and so is the
-        timeline entry. The two sequences then leave the same branch in every
-        record, including `opened_with`, which a reset does not replace.
+        fork segment returns to the settings that the branch opened under, or
+        is removed where those match the stretch before it. The learner's
+        timeline entry is removed too. The two sequences then leave the same
+        branch in every record, including `opened_with`.
         """
 
         segment = resume_point.segment
@@ -1868,19 +1889,25 @@ class SimulationController:
         # it may be drawn from.
         self._run_definition.advance_to(resume_point.fork.instant_s)
         self._opened_from = resume_point
-        # Then record each setting that differs from the parent's stretch, at
-        # the fork, in both records. The run definition takes the whole
-        # settings record once, and the timeline takes one entry per control.
+        # Then record the settings in force at the fork. The run definition
+        # takes the whole settings record once. The timeline opens with the
+        # opened entries, and then takes one entry for each control whose
+        # setting differs from the one the branch opened under. The counter
+        # starts after the opened entries' numbers, so no later entry can
+        # equal one of them.
         self._clear_control_timeline()
         self._run_definition.record_change(settings)
         self._note_recorded_settings()
+        self._opened_with = opened_with
+        self._control_timeline = opened_with
+        self._adjustment_count = max((change.adjustment for change in opened_with), default=0)
 
         for control in ControlInput:
-            previous_value = _control_value(segment.settings, control)
+            opened_value = _opened_value(segment.settings, opened_with, control)
             new_value = _control_value(settings, control)
 
-            if new_value != previous_value:
-                self._record_in_timeline(control, previous_value, new_value)
+            if new_value != opened_value:
+                self._record_in_timeline(control, opened_value, new_value)
 
         # The learner's first change after this starts an adjustment of its
         # own, rather than joining the last control recorded here.
@@ -2377,19 +2404,19 @@ class SimulationController:
         left to spend. So a reset leaves it stopped at the limit, rather than
         offering a Start that the core would refuse (`PL-5291`).
 
-        **A reset branch keeps its settings and records how they differ from
-        its fork** (`PL-K5BS`, `PL-ZR49`). A trunk reopens under its current
-        settings, because nothing comes before its opening. A branch reopens
-        on its parent's stretch (`opened_from.segment`). The branch cannot
-        change that stretch without losing its element-wise agreement with
-        its parent. So each setting that differs from that stretch is recorded
-        at the fork, in the run definition and in the control timeline, as
-        `_open_at` does for every branch. The branch's record and its
-        provenance then agree on the settings it runs under. A reset branch
-        whose settings match the stretch records nothing. The branch keeps
-        `opened_with` from its first opening. So a setting that the learner
-        changed and kept through the reset still counts as their work. The
-        trunk's Reset then asks before it discards that work
+        **A reset branch keeps its settings and the entries it opened with**
+        (`PL-K5BS`, `PL-ZR49`). A trunk reopens under its current settings,
+        because nothing comes before its opening. A branch reopens on its
+        parent's stretch (`opened_from.segment`). The branch cannot change
+        that stretch without losing its element-wise agreement with its
+        parent. So the settings in force are recorded at the fork in the run
+        definition, as `_open_at` does for every branch. The control timeline
+        opens with the entries that the branch first opened with
+        (`RunRecord.opened_with`). After them it records each setting that
+        differs from the one the branch opened under. A reset branch whose
+        learner kept no change records nothing after them. A setting that the
+        learner changed and kept still counts as their work. So the trunk's
+        Reset asks before it discards that work
         (`RunRecord.changes_since_opening`).
 
         Raises:
@@ -2427,9 +2454,7 @@ class SimulationController:
             # a cleared system would put the patient at zero agent at a case
             # time when the model says the patient is loaded. That is a
             # plausible state that never happened, not the start of anything.
-            opened_with = self._opened_with
-            self._open_at(self._opened_from, settings)
-            self._opened_with = opened_with
+            self._open_at(self._opened_from, settings, self._opened_with)
             return
 
         self._run_definition = RunDefinition(
@@ -2659,12 +2684,12 @@ class SimulationController:
         """Add one accepted setting change to the control timeline, at the run's clock.
 
         `_record_control_change` calls this for a learner's change. `_open_at`
-        calls it for each setting that a branch opens under and that differs
-        from its parent's stretch. Both have already recorded the settings in
-        the run definition. The grouping and collapsing rules below are in one
-        place, so a learner's change made at a branch's fork collapses into
-        the change the branch opened with, as it would into any other change
-        made at that instant.
+        calls it for each setting in force that differs from the one a branch
+        opened under. Both have already recorded the settings in the run
+        definition. The grouping and collapsing rules below are in one place.
+        A change collapses into an earlier change to the same control at the
+        same instant. The exception is an entry that the run opened with,
+        which stays as it was recorded (`RunRecord.opened_with`).
         """
 
         if control is not self._open_adjustment_control:
@@ -2700,6 +2725,15 @@ class SimulationController:
 
             if entry.control is not control:
                 continue
+
+            # An entry that the run opened with states where a branch began,
+            # so a change at the fork is added after it rather than merged
+            # into it (`PL-ZR49`). A dial set back to the parent's earlier
+            # value then stays on the record as the learner's change. Merged,
+            # it would delete the opened entry, and the trunk's Reset would
+            # discard a branch that the learner had changed without asking.
+            if entry in self._opened_with:
+                break
 
             if entry.previous_value == new_value:
                 self._control_timeline = (
@@ -3081,17 +3115,21 @@ def _reached_heights(crossing: BookmarkCrossing) -> frozenset[tuple[RecordedQuan
     return frozenset(target.crossing_key for target in crossing.mac_targets)
 
 
-def _setting_recorded(change: ControlChange) -> tuple[CaseInstant, ControlInput, float, float]:
-    """Return the setting that `change` records: its instant, its control and its two values.
+def _opened_value(
+    stretch: UptakeEquationSettings, opened_with: tuple[ControlChange, ...], control: ControlInput
+) -> float:
+    """Return the value that `control` had when a branch opened, in the control's own unit.
 
-    Two entries for which this returns the same tuple put the run under the
-    same setting, whatever their adjustment numbers. The adjustment number
-    groups entries into the acts that the "Control changes" panel shows. It
-    says nothing about what the model ran under
-    (`RunRecord.changes_since_opening`).
+    It is the new value of the last opened entry for `control`. Where no
+    opened entry names the control, it is the value of `stretch`, the
+    parent's stretch that the branch opens on (`_open_at`).
     """
 
-    return (change.elapsed_s, change.control, change.previous_value, change.new_value)
+    for change in reversed(opened_with):
+        if change.control is control:
+            return change.new_value
+
+    return _control_value(stretch, control)
 
 
 def _control_value(settings: UptakeEquationSettings, control: ControlInput) -> float:

@@ -6551,20 +6551,28 @@ branch now follows one rule:
   (`PL-HSP8`). The project owner chose this rule as the more intuitive one: a
   branch opens at what the dial says and does not go back to the previous
   setting (project owner, 2026-10-26).
-- **Each setting that differs from the first side is recorded at the fork.**
-  The difference goes into the branch's run definition and into its own
-  control timeline alike. So the two records agree, and both start from the
-  provenance. A branch whose settings match that stretch records nothing. So a
-  branch's timeline states the setting it runs under, whatever the trunk does
-  at the fork instant afterwards (`PL-TNYP`).
-- **A reset branch keeps its settings and records the difference** (`PL-K5BS`).
-  It reopens at the fork on the same provenance. Each setting that differs from
-  that provenance is recorded at the fork, as at any branch's opening. So a
-  reset branch's record and its provenance agree on what it runs under. An
-  entry that the branch's first opening recorded is where the branch began, not
-  something done to it since. So it does not count as something a Reset of the
-  trunk would discard (`RunRecord.opened_with`). An entry for a setting that
-  the learner changed on the branch and kept through its reset does count.
+- **The branch's timeline opens with the parent's changes at the fork.** The
+  branch's run definition records the settings it runs under as a change at
+  the fork, which records nothing where they match the provenance. Its control
+  timeline opens with a copy of each change that the parent recorded at the
+  fork (`RunRecord.opened_with`). After the case's opening, those copies are
+  the settings that differ between the two sides, so the two records agree. At
+  the case's opening, they are the parent's changes made before Start, from the
+  values that the parent's own timeline starts from. Either way, the branch's
+  timeline states the settings it opened under, whatever the trunk does at the
+  fork instant afterwards (`PL-TNYP`). No later change merges into a copied
+  entry or removes it. A change that the learner makes at the fork is recorded
+  after it.
+- **A reset branch keeps its settings and the entries it opened with**
+  (`PL-K5BS`). It reopens at the fork on the same provenance. Its timeline
+  opens with the entries from its first opening. After them, it records each
+  setting that differs from the one the branch opened under. An opened entry is
+  where the branch began, not something done to it since. So it does not count
+  as something a Reset of the trunk would discard (`RunRecord.opened_with`).
+  Every later entry does count. That includes a setting that the learner
+  changed and kept through a reset. It also includes a dial set back to the
+  value the trunk held before its change at the fork, because the branch
+  opened at what the dial said.
 - **The halt record names the marks as they are.** A run's halt record is what
   the step it stopped on crossed. That step is the step that halted a trunk, or
   the step that reached a branch's fork. The record is computed again whenever
@@ -6582,7 +6590,8 @@ both sides. A trunk edit at the opening still replaces the opening stretch,
 after a branch was taken there as before. The branch then names settings the
 trunk no longer opens under. Nothing it names has become false, because the
 opening keyframe is a state that no setting produced, and the branch did run
-under those settings from there.
+under those settings from there. Its own timeline still states them, as its
+copy of the trunk's changes made before Start.
 
 **Returning to a marked instant the run has already passed is that fork taken
 late** (`PL-W4XQ`, 2026-10-12). Consider a learner paused at three hours who
@@ -6621,9 +6630,9 @@ what that reproduces, and what it does not:
 - **It does not open at the typed instant.** The fork is the end of the step
   that reaches the mark, at the mark or one step past it. For a typed 45.3 s at
   the 0.1 s step the fork is at 45.300000000000004 s, and for a typed 45.35 s
-  it is at 45.4 s. That is the instant a halt would have stopped on. The
-  crossing rule itself finds it (`TimeBookmark.steps_to_reach`), not a rounding
-  of the typed value. In the first hour, 12 767 of the 36 001 one-decimal
+  it is at 45.400000000000006 s. That is the instant a halt would have stopped
+  on. The crossing rule itself finds it (`TimeBookmark.steps_to_reach`), not a
+  rounding of the typed value. In the first hour, 12 767 of the 36 001 one-decimal
   instants are not a whole number of steps in binary. Rounding would put a mark
   that lies inside a step onto the step before it. The branch treats its mark
   as passed, not as "before this branch opened", even when the fork is one step
