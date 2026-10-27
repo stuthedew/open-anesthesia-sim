@@ -20,6 +20,7 @@ from docket.model import (
     LANE_WORKFLOW,
     LIST_FIELDS,
     MISREAD_LIMIT,
+    DelegationPaths,
     FrontMatterDeclines,
     Item,
     block_list_keys,
@@ -436,6 +437,15 @@ PROTECTED = ("src/anesthesia_sim/core", "docs/MODEL.md")
 # unlike the real one, so a test asserting a reason string is asserting the
 # rule rather than this repository's configuration.
 GATES = ("Makefile", ".claude", "docket.toml")
+PATHS = DelegationPaths(protected=PROTECTED, gates=GATES)
+# The two lane lists, for the placement condition. Like `GATES`, short and
+# unlike the real ones.
+PLACED = DelegationPaths(
+    protected=PROTECTED,
+    gates=GATES,
+    workflow=("tools", "docs/items", "docket.toml"),
+    product=("src", "docs/MODEL.md", "README.md", "docs/consultant-brief.md"),
+)
 
 
 def _delegable(**overrides: object) -> Item:
@@ -452,38 +462,38 @@ def _delegable(**overrides: object) -> Item:
 
 
 def test_an_item_meeting_every_condition_is_delegable() -> None:
-    assert _delegable().delegability(PROTECTED, GATES) is None
+    assert _delegable().delegability(PATHS) is None
 
 
 def test_a_safety_classed_item_is_never_delegable() -> None:
     item = _delegable(classes=("safety",))
-    assert item.delegability(PROTECTED, GATES) == "safety-tagged"
+    assert item.delegability(PATHS) == "safety-tagged"
 
 
 def test_a_science_classed_item_is_never_delegable() -> None:
-    assert _delegable(classes=("science",)).delegability(PROTECTED, GATES) == "science-tagged"
+    assert _delegable(classes=("science",)).delegability(PATHS) == "science-tagged"
 
 
 def test_an_open_decision_is_never_delegable() -> None:
     item = _delegable(status="needs-decision")
-    assert item.delegability(PROTECTED, GATES) == "status is needs-decision, not ready"
+    assert item.delegability(PATHS) == "status is needs-decision, not ready"
 
 
 def test_an_item_touching_a_protected_directory_is_not_delegable() -> None:
     item = _delegable(touches=("src/anesthesia_sim/core/blood.py",))
-    assert item.delegability(PROTECTED, GATES) == (
+    assert item.delegability(PATHS) == (
         "touches protected path(s) src/anesthesia_sim/core/blood.py"
     )
 
 
 def test_an_item_touching_a_protected_file_is_not_delegable() -> None:
     item = _delegable(touches=("docs/MODEL.md",))
-    assert item.delegability(PROTECTED, GATES) == "touches protected path(s) docs/MODEL.md"
+    assert item.delegability(PATHS) == "touches protected path(s) docs/MODEL.md"
 
 
 def test_one_protected_path_among_several_is_enough_to_refuse() -> None:
     item = _delegable(touches=("tests/unit/test_blood.py", "src/anesthesia_sim/core/blood.py"))
-    assert item.delegability(PROTECTED, GATES) is not None
+    assert item.delegability(PATHS) is not None
 
 
 def test_a_protected_prefix_does_not_match_a_merely_similar_path() -> None:
@@ -492,11 +502,29 @@ def test_a_protected_prefix_does_not_match_a_merely_similar_path() -> None:
     Matching by bare string prefix would over-protect here and, in a project
     whose protected list happened to be a suffix of a real path, under-protect.
     """
-    assert (
-        _delegable(touches=("src/anesthesia_sim/core_helpers.py",)).delegability(PROTECTED, GATES)
-        is None
+    assert _delegable(touches=("src/anesthesia_sim/core_helpers.py",)).delegability(PATHS) is None
+    assert _delegable(touches=("docs/MODEL.md.bak",)).delegability(PATHS) is None
+
+
+def test_a_directory_holding_a_protected_path_is_not_delegable() -> None:
+    """A worker confined to `src/anesthesia_sim` may still edit the protected code inside it.
+
+    `PL-93B3` was offered on 2026-10-27 with `touches: src/anesthesia_sim`,
+    which holds `src/anesthesia_sim/core`. `is_under` asks only whether a
+    declared path lies inside a root, so the directory above one passed.
+    """
+    item = _delegable(touches=("src/anesthesia_sim",))
+    assert item.delegability(PATHS) == (
+        "touches protected path(s) src/anesthesia_sim (holding src/anesthesia_sim/core)"
     )
-    assert _delegable(touches=("docs/MODEL.md.bak",)).delegability(PROTECTED, GATES) is None
+
+
+def test_a_directory_holding_a_gate_path_is_not_delegable() -> None:
+    item = _delegable(touches=("tools/", ".claude/skills"))
+    gates = DelegationPaths(protected=PROTECTED, gates=("tools/ruff.toml", ".claude"))
+    assert item.delegability(gates) == (
+        "touches the checks themselves: tools/ (holding tools/ruff.toml), .claude/skills"
+    )
 
 
 def test_an_item_touching_the_checks_themselves_is_not_delegable() -> None:
@@ -509,13 +537,13 @@ def test_an_item_touching_the_checks_themselves_is_not_delegable() -> None:
     it.
     """
     item = _delegable(touches=("docket.toml",))
-    assert item.delegability(PROTECTED, GATES) == "touches the checks themselves: docket.toml"
+    assert item.delegability(PATHS) == "touches the checks themselves: docket.toml"
 
 
 def test_a_gate_directory_covers_the_files_beneath_it() -> None:
     """Seven of the fifteen declared a file under `.claude/`, not `.claude` itself."""
     item = _delegable(touches=(".claude/skills/docket/SKILL.md",))
-    assert item.delegability(PROTECTED, GATES) == (
+    assert item.delegability(PATHS) == (
         "touches the checks themselves: .claude/skills/docket/SKILL.md"
     )
 
@@ -523,13 +551,13 @@ def test_a_gate_directory_covers_the_files_beneath_it() -> None:
 def test_a_protected_path_is_reported_ahead_of_a_gate_path() -> None:
     """Both refuse, and the clinical one is the reason worth reading first."""
     item = _delegable(touches=("docket.toml", "docs/MODEL.md"))
-    assert item.delegability(PROTECTED, GATES) == "touches protected path(s) docs/MODEL.md"
+    assert item.delegability(PATHS) == "touches protected path(s) docs/MODEL.md"
 
 
 def test_a_gate_prefix_does_not_match_a_merely_similar_path() -> None:
     """`.claude` must not cover `.claudeignore`, nor `Makefile` cover `Makefile.bak`."""
-    assert _delegable(touches=(".claudeignore",)).delegability(PROTECTED, GATES) is None
-    assert _delegable(touches=("Makefile.bak",)).delegability(PROTECTED, GATES) is None
+    assert _delegable(touches=(".claudeignore",)).delegability(PATHS) is None
+    assert _delegable(touches=("Makefile.bak",)).delegability(PATHS) is None
 
 
 def test_an_empty_gate_list_does_not_withhold_the_way_an_empty_protected_list_does() -> None:
@@ -541,32 +569,69 @@ def test_an_empty_gate_list_does_not_withhold_the_way_an_empty_protected_list_do
     telling `verify` to stop auditing its checks, which is not a request for
     this to start.
     """
-    assert _delegable(touches=("docket.toml",)).delegability(PROTECTED, ()) is None
+    assert (
+        _delegable(touches=("docket.toml",)).delegability(DelegationPaths(protected=PROTECTED))
+        is None
+    )
+
+
+def test_an_item_touching_an_unplaced_path_is_not_delegable() -> None:
+    """A file the work tracks there fails the lane check, and the worker can only block.
+
+    `PL-928V` was offered with `docs/workflow.md` in its `touches`, a file that
+    did not exist and that neither lane list placed. Tracking it fails
+    `tools/workflow_paths_check.py` until `docket.toml` places it, and a
+    delegated diff may not edit `docket.toml` (`PL-GKX6`).
+    """
+    item = _delegable(touches=("docs/workflow.md", "README.md", "docs/consultant-brief.md"))
+    assert item.delegability(PLACED) == (
+        "touches path(s) that neither workflow_paths nor product_paths places: "
+        "docs/workflow.md, so the lane check refuses a file tracked there until the "
+        "settings file places it"
+    )
+
+
+def test_a_path_under_tests_is_placed_by_its_imports_rather_than_by_the_lists() -> None:
+    """The lane check sides a test file by what it imports, so neither list need name it."""
+    item = _delegable(touches=("tests/unit/test_new_check.py", "tools/new_check.py"))
+    assert item.delegability(PLACED) is None
+
+
+def test_the_placement_condition_declines_while_either_lane_list_is_empty() -> None:
+    """The lane check declines then, so the work it would refuse is refused by nothing."""
+    workflow_only = DelegationPaths(protected=PROTECTED, gates=GATES, workflow=("tools",))
+    assert _delegable(touches=("docs/workflow.md",)).delegability(workflow_only) is None
+
+
+def test_the_settings_file_is_reported_as_a_check_ahead_of_an_unplaced_path() -> None:
+    """Naming `docket.toml` cannot make the item delegable, so that is the reason given."""
+    item = _delegable(touches=("docs/workflow.md", "docket.toml"))
+    assert item.delegability(PLACED) == "touches the checks themselves: docket.toml"
 
 
 def test_an_item_without_a_verify_command_is_not_delegable() -> None:
-    assert _delegable(verify="").delegability(PROTECTED, GATES) == "no `verify:` command"
+    assert _delegable(verify="").delegability(PATHS) == "no `verify:` command"
 
 
 def test_an_item_declaring_no_touches_is_not_delegable() -> None:
     """No declared scope means no bound on the diff, so nothing to verify against."""
-    assert _delegable(touches=()).delegability(PROTECTED, GATES) == "declares no `touches`"
+    assert _delegable(touches=()).delegability(PATHS) == "declares no `touches`"
 
 
 def test_an_l_effort_item_is_not_delegable() -> None:
-    assert _delegable(effort="L").delegability(PROTECTED, GATES) == "effort L is not S or M"
+    assert _delegable(effort="L").delegability(PATHS) == "effort L is not S or M"
 
 
 def test_not_delegable_withholds_an_otherwise_qualifying_item() -> None:
     item = _delegable(not_delegable="the message wording needs a judgement call")
-    assert item.delegability(PROTECTED, GATES) == (
-        "withheld: the message wording needs a judgement call"
-    )
+    assert item.delegability(PATHS) == ("withheld: the message wording needs a judgement call")
 
 
 def test_nothing_is_delegable_when_no_protected_paths_are_configured() -> None:
     """Fail closed: an unconfigured project gets no lane rather than an unguarded one."""
-    assert _delegable().delegability((), GATES) == "no protected paths configured"
+    assert (
+        _delegable().delegability(DelegationPaths(gates=GATES)) == "no protected paths configured"
+    )
 
 
 def test_there_is_no_field_that_grants_delegability() -> None:

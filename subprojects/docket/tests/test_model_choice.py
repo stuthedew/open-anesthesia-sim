@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from docket.config import load
-from docket.model import Item
+from docket.model import NO_DELEGATION, DelegationPaths, Item
 from docket.model_choice import Choice, ModelTable, item_facts, parse
 from docket.plan import choose_model, recommend
 
@@ -99,9 +99,11 @@ def test_an_item_gives_its_class_size_area_and_role() -> None:
 
 def test_next_prints_the_table_s_choice_beside_the_flag() -> None:
     table = _table(rule=[{"match": {"role": "delegable"}, "model": "model-b"}])
-    (rec,) = recommend([_item()], models=table, protected_paths=("src/",), gate_paths=("G.md",))
+    (rec,) = recommend(
+        [_item()], models=table, delegation=DelegationPaths(protected=("src/",), gates=("G.md",))
+    )
     assert "delegable - a cheaper model may take this, model-b at high effort" in rec.describe()
-    assert choose_model(_item(), None, (), (), ()) is None
+    assert choose_model(_item(), None, (), NO_DELEGATION) is None
 
 
 def test_the_project_table_loads_and_prices_its_default() -> None:

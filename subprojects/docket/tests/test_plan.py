@@ -13,7 +13,7 @@ from datetime import date
 
 import pytest
 
-from docket.model import Item, ModelEvidence
+from docket.model import DelegationPaths, Item, ModelEvidence
 from docket.plan import (
     HELD,
     NOWHERE,
@@ -364,8 +364,7 @@ def test_a_recommendation_with_no_payoff_reads_as_it_always_did() -> None:
 #: `ready`, no safety or science class, a command that proves it, `S` effort,
 #: and one declared path outside both lists below.
 _DELEGABLE = {"verify": "pytest -q", "touches": ("tools/x.py",)}
-_PROTECTED = ("src/core",)
-_GATES = ("Makefile",)
+_DELEGATION = DelegationPaths(protected=("src/core",), gates=("Makefile",))
 
 
 def test_a_recommendation_offers_a_cheaper_model_when_the_item_qualifies() -> None:
@@ -375,9 +374,7 @@ def test_a_recommendation_offers_a_cheaper_model_when_the_item_qualifies() -> No
     said nothing about it, so the queue answered "what should I work on" and
     "what may a cheaper model work" in two different places (`PL-4MVC`).
     """
-    (pick,) = recommend(
-        [_item("PL-1111", **_DELEGABLE)], limit=1, protected_paths=_PROTECTED, gate_paths=_GATES
-    )
+    (pick,) = recommend([_item("PL-1111", **_DELEGABLE)], limit=1, delegation=_DELEGATION)
 
     assert pick.delegable
     assert "cheaper model" in pick.describe()
@@ -406,8 +403,7 @@ def test_the_strongest_model_mark_wins_over_the_cheaper_one() -> None:
     (pick,) = recommend(
         [_item("PL-1111", classes=("safety",), priority="P1", **_DELEGABLE)],
         limit=1,
-        protected_paths=_PROTECTED,
-        gate_paths=_GATES,
+        delegation=_DELEGATION,
     )
 
     said = pick.describe()
@@ -420,8 +416,7 @@ def test_an_item_touching_a_protected_path_is_not_offered_cheaply() -> None:
     (pick,) = recommend(
         [_item("PL-1111", verify="pytest -q", touches=("src/core/pk.py",))],
         limit=1,
-        protected_paths=_PROTECTED,
-        gate_paths=_GATES,
+        delegation=_DELEGATION,
     )
 
     assert not pick.delegable
