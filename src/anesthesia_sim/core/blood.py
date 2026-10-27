@@ -43,13 +43,13 @@ class VenousBloodCompartmentState:
 class VenousBloodCompartment:
     """One ideal, well-mixed venous blood compartment.
 
-    The pool holds the patient's one blood:gas partition coefficient
-    (`PL-DQL9`). The coefficient is a property of the blood, and the pool is the
-    patient's blood. The tissue groups store none, and the patient passes this
-    one to each tissue group's methods. `PatientCompartments.from_parameters`
-    reads it from the agent's parameter file. The coefficient is written once,
-    when the pool is built, so it cannot drift from the value the patient was
-    built with.
+    This compartment, called the venous pool, holds the patient's one blood:gas
+    partition coefficient (`PL-DQL9`). The coefficient is a property of the blood,
+    and the pool is the patient's blood. The tissue groups store no copy. The
+    patient passes the pool's coefficient to each tissue group's methods.
+    `PatientCompartments.from_parameters` reads it from the agent's parameter file.
+    The coefficient is written once, when the pool is built, so it cannot drift
+    from the value the patient was built with.
     """
 
     volume_l: CompartmentVolume
@@ -75,7 +75,7 @@ class VenousBloodCompartment:
             direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
             this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
             this method, and its docstring says why. Nothing is written when a value is
-            refused, and the constructor makes no check of its own. Until `PL-19Y0`, the
+            refused. The constructor makes no check of its own. Until `PL-19Y0`, the
             constructor made the only check. So an agent amount larger than the capacity
             could be written onto a pool that was already built. The amount was stored,
             and the pool then reported a partial pressure fraction of 1.0000001.
@@ -90,11 +90,11 @@ class VenousBloodCompartment:
 
             The blood:gas coefficient is written once, when the pool is built, and a
             later write is refused (`PL-DQL9`). The tissue groups' tissue:blood
-            coefficients are formed from it, and the patient checks them only when it is
-            built or a compartment is replaced. A later write checks the new value first,
-            so a value the constructor would refuse is refused in the constructor's words.
-            A copy and a pickle write the coefficient onto a new pool, which has none
-            yet, so both still work.
+            coefficients are formed from it. The patient checks those coefficients only
+            when the patient is built or a compartment is replaced. A later write checks
+            the new value first, so a value that the constructor would refuse gets the
+            constructor's own error message. A copy and a pickle write the coefficient
+            onto a new pool, which has none yet, so both still work.
 
             The volume and the coefficient are checked types, built only inside the numerical
             envelope (`core/numerical_envelope.py`). So their product, the capacity, is
@@ -109,9 +109,9 @@ class VenousBloodCompartment:
                     not an `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the agent amount is negative or not
                     finite, or would be more than the pool holds at a partial
-                    pressure of one atmosphere. The last check runs whichever of the
-                    amount and the volume is written. Also raised when
-                    the blood:gas coefficient is written to a pool that already has one.
+                    pressure of one atmosphere. That last check runs when either the
+                    amount or the volume is written. Also raised when the blood:gas
+                    coefficient is written to a pool that already has one.
             """
 
             # Every compartment holds an agent amount, and the tissue groups also hold a

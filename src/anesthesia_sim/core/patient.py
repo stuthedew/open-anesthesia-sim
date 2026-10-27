@@ -114,48 +114,49 @@ class PatientCompartments:
             as `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is
             written when a value is refused.
 
-            Every compartment's blood flow is formed from this field when it
-            is read, so no flow can be left at an old output. A new output
-            written straight to the field of a built patient is still
-            refused, and the refusal names `set_cardiac_output`, which is the
-            one way to change it (`PL-KFNP`). Before `PL-HQF5` that refusal
-            kept stored flows matched to the output. It is kept so that a
-            cardiac output has one way in. Writing the value the field
-            already holds is accepted. The constructor, a copy and a pickle
-            write the field onto a patient that has none yet, so only its type
-            is checked there.
+            Every compartment's blood flow is computed from this field each
+            time the flow is read, so no flow can be left at an old cardiac
+            output. A new output written straight to the field of a built
+            patient is still refused. The refusal names `set_cardiac_output`,
+            which is the one way to change it (`PL-KFNP`). Before `PL-HQF5`,
+            that refusal kept stored flows matched to the output. It is kept so
+            that there is only one way to set a cardiac output. Writing the
+            value the field already holds is accepted. The constructor, a copy
+            and a pickle write the field onto a patient that has none yet, so
+            only its type is checked there.
 
-            A tissue group written to a built patient replaces one whose
+            A tissue group written to a built patient replaces a group whose
             perfusion fraction the patient has already checked. So the new
             group is refused unless the three fractions still sum to 1, as
             `__post_init__` requires (`PL-Z0HN`). The constructor, a copy and
-            a pickle write each tissue group first onto a patient that has
-            none, and those writes are left to `__post_init__`. The new group's
-            tissue:blood coefficient, formed from the venous pool's blood:gas
-            coefficient, must also lie inside the numerical envelope.
+            a pickle each write a tissue group for the first time, onto a
+            patient that has none. This method leaves those writes to
+            `__post_init__`. The new group's tissue:blood coefficient must also
+            lie inside the numerical envelope. That coefficient is computed
+            from the venous pool's blood:gas coefficient.
 
             A venous pool written to a built patient is refused unless its
             blood:gas coefficient equals the one the patient holds (`PL-DQL9`).
-            Every tissue group's tissue:blood coefficient is formed from that
-            one coefficient. A pool replaced at 0.1 beside tissue groups built
-            for sevoflurane at 0.65 once ran on with uptake curves that looked
-            plausible and were wrong.
+            Every tissue group's tissue:blood coefficient is computed from that
+            one coefficient. Once, a replacement pool with a coefficient of 0.1,
+            beside tissue groups built for sevoflurane at 0.65, let the run keep
+            going with uptake curves that looked plausible and were wrong.
 
             Raises:
                 TypeError: `name` is `cardiac_output_l_min` and `value` was not
-                    built as a `CardiacOutput` (`require_cardiac_output`), or
-                    `name` names a tissue group and `value` is not a
-                    `TissueGroup`, or `name` is `venous_blood` and `value` is
-                    not a `VenousBloodCompartment`.
+                    built as a `CardiacOutput` (`require_cardiac_output`). Also
+                    raised when `name` names a tissue group and `value` is not
+                    a `TissueGroup`, or when `name` is `venous_blood` and
+                    `value` is not a `VenousBloodCompartment`.
                 SimulationConfigurationError: `name` is `cardiac_output_l_min`
                     on a built patient and `value` differs from the output it
-                    holds; or `name` names a tissue group of a built patient,
-                    and with `value` in its place the tissue perfusion
-                    fractions would not sum to 1, or its tissue:blood
-                    coefficient would lie outside the numerical envelope; or
-                    `name` is `venous_blood` on a built patient and the new
-                    pool's blood:gas coefficient differs from the one the
-                    patient holds.
+                    holds. Also raised when `name` names a tissue group of a
+                    built patient and, with `value` in its place, the tissue
+                    perfusion fractions would not sum to 1 or the new group's
+                    tissue:blood coefficient would lie outside the numerical
+                    envelope. Also raised when `name` is `venous_blood` on a
+                    built patient and the new pool's blood:gas coefficient
+                    differs from the one the patient holds.
             """
 
             if name == "cardiac_output_l_min":
@@ -225,10 +226,10 @@ class PatientCompartments:
 
         The data file's default cardiac output is parsed into its checked type
         here, where the patient is built from it. So a file that names a value
-        outside the supported range is rejected in the same words used for a
-        rejected control (`core/supported_ranges.py`). `core/parameters.py`
-        checks the value only for sign and finiteness, and keeps no copy of the
-        range.
+        outside the supported range is rejected with the same message used when
+        a control's value is rejected (`core/supported_ranges.py`).
+        `core/parameters.py` checks the value only for sign and finiteness, and
+        keeps no copy of the range.
 
         The agent's blood:gas coefficient is written once, into the venous pool,
         which is the patient's blood. The tissue groups store none (`PL-DQL9`).

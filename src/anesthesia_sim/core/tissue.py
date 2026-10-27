@@ -59,11 +59,11 @@ class TissueGroup:
     method that needs it takes it as an argument, as `blood_flow_l_min_at` takes
     the cardiac output. Until `PL-DQL9` each group stored a copy of its own. The
     solver read the venous pool's copy for the lung and each group's copy for
-    that group's tissue:blood coefficient, and nothing checked that the four
-    agreed. A fat group built at 0.6565 beside a pool at 0.65 halted
-    sevoflurane on step 4 with an accounting error. A pool replaced at 0.1
-    beside groups at 0.65 ran on, with uptake curves that looked plausible and
-    were wrong.
+    that group's tissue:blood coefficient. Nothing checked that the four copies,
+    the pool's and the three groups', agreed. A fat group built at 0.6565 beside
+    a pool at 0.65 halted the sevoflurane run at step 4 with an accounting
+    error. When the pool was replaced by one at 0.1 beside groups at 0.65, the
+    run kept going, with uptake curves that looked plausible and were wrong.
     """
 
     name: str
@@ -92,7 +92,7 @@ class TissueGroup:
             direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
             this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
             this method, and its docstring says why. Nothing is written when a value is
-            refused, and the constructor makes no check of its own.
+            refused. The constructor makes no check of its own.
 
             The tissue's partial pressure is its agent amount divided by its capacity, and
             the capacity is the volume times the tissue:gas partition coefficient. So the
@@ -112,13 +112,14 @@ class TissueGroup:
             product (`PL-8LQZ`, `PL-FNH3`). The tissue:blood coefficient must lie inside
             the envelope too, because the quotient of two coefficients inside it can lie
             far outside it (`PL-QX2G`). The group stores no blood:gas coefficient, so it
-            cannot form that quotient. `PatientCompartments` checks it when the patient
-            is built and when a group is replaced (`PL-DQL9`). So the tissue:gas
-            coefficient is written once, like the perfusion fraction below, and a later
-            write is refused. A group with another coefficient is built and put in the
-            patient's place, where the quotient is checked. Before this rule, a write
-            straight onto a group in a built patient was accepted. The next step then
-            halted with an error that blamed the numerics (found at review).
+            cannot compute that quotient. `PatientCompartments` checks the quotient when
+            the patient is built and when a group is replaced (`PL-DQL9`). So the
+            tissue:gas coefficient is written once, like the perfusion fraction below,
+            and a later write is refused. A group that needs another coefficient is
+            built new and put into the patient in place of the old group, and the
+            patient then checks the quotient. Before this rule, a write straight onto a
+            group in a built patient was accepted. The next step then halted with an
+            error that blamed the numerics (found at review).
 
             Each refusal names the group as well as the field, as in `"muscle volume_l"`,
             because all three groups hold every field (`PL-2TZT`).
@@ -129,9 +130,9 @@ class TissueGroup:
             patient it belongs to. A fraction changed afterwards would change the group's
             blood flow, which is its fraction of the cardiac output. Nothing would then
             check that the flows still add up to the cardiac output. A later write checks
-            the new value first, so a value that the constructor would refuse is refused
-            in the constructor's words. A copy and a pickle write the fraction onto a new
-            group, which has none yet, so both still work.
+            the new value first, so a value that the constructor would refuse gets the
+            constructor's own error message. A copy and a pickle write the fraction onto
+            a new group, which has none yet, so both still work.
 
             Raises:
                 TypeError: the field written is `name` and `value` is not a `str`.
@@ -141,13 +142,12 @@ class TissueGroup:
                     field is not an `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the name is blank. Also raised when
                     the perfusion fraction is not positive and finite, or is above
-                    1, or is written to a group that already has one, and when a
-                    tissue:gas coefficient is written to a group that already has
-                    one. Also raised
-                    when the agent amount is negative or not finite, or would be more
-                    than the tissue holds at a partial pressure of one atmosphere.
-                    That last check applies whichever of the amount, the volume
-                    and the tissue:gas coefficient is written.
+                    1, or is written to a group that already has one. Also raised
+                    when a tissue:gas coefficient is written to a group that
+                    already has one. Also raised when the agent amount is negative
+                    or not finite, or would be more than the tissue holds at a
+                    partial pressure of one atmosphere. That last check runs when
+                    the amount, the volume or the tissue:gas coefficient is written.
             """
 
             if name == "name":
@@ -290,23 +290,23 @@ class TissueGroup:
 
     @property
     def venous_outflow_partial_pressure_fraction(self) -> float:
-        """The partial-pressure fraction of the blood leaving this tissue.
+        """Return the partial-pressure fraction of the blood leaving this tissue.
 
-        It returns `partial_pressure_fraction` unchanged. It is kept as a
-        separate name, rather than folded into its one caller, because that
-        equality is an assumption rather than an identity. `docs/MODEL.md`
-        § "Assumptions" states it as "tissue venous blood equilibrates with
-        its tissue group", which holds because each group is perfusion
-        limited. A diffusion-limited group would need a real calculation
-        here. So the place that relies on the assumption is the place that
-        should name it.
+        The value is `partial_pressure_fraction`, unchanged. It is kept as a
+        separate name, rather than folded into its one caller, because the
+        equality of the two is an assumption rather than an identity.
+        `docs/MODEL.md` § "Assumptions" states it as "tissue venous blood
+        equilibrates with its tissue group", which holds because each group is
+        perfusion limited. A diffusion-limited group would need a real
+        calculation here. So the place that relies on the assumption is the
+        place that should name it.
 
         It is a *second* quantity on this class rather than an alias. That is
         why its name has a prefix and the tissue's own fraction does not. The
         two agree only in partial pressure. The concentrations on either side
-        of the tissue-blood boundary differ by a factor of
-        `tissue_blood_partition_coefficient_for`. That difference is the whole
-        reason this model states every compartment in
+        of the tissue-blood boundary differ by the factor that
+        `tissue_blood_partition_coefficient_for` returns. That difference is
+        the whole reason this model states every compartment in
         partial-pressure-equivalent fractions, and this property is where
         that choice pays for itself. Written in concentrations, the same
         physiology would need the coefficient applied here.
@@ -341,10 +341,10 @@ class TissueGroup:
     def time_constant_s(
         self, blood_flow_l_min: float, blood_gas_partition_coefficient: PartitionCoefficient
     ) -> float:
-        """The perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
+        """Return the perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
         `docs/MODEL.md` § "Tissue uptake and return" defines it. That section
-        also gives the zero-flow case, for which this method returns `inf`: an
+        also gives the zero-flow case, for which this method returns `inf`. An
         unperfused tissue exchanges nothing, so it never reaches equilibrium.
         The seconds-per-minute factor appears here because $`Q_i`$ is given in
         litres per minute, while every time in the model is in seconds.
@@ -406,8 +406,8 @@ class TissueGroup:
         for zero flow. `docs/MODEL.md` § "Tissue uptake and return" gives the
         equation.
 
-        The blood flow and the blood:gas coefficient are the arguments that
-        `time_constant_s` takes, for the reason it gives.
+        The blood flow and the blood:gas coefficient are arguments, as they are for
+        `time_constant_s`, because the group stores neither.
 
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return

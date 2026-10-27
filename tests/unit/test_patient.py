@@ -260,16 +260,17 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
 
 
 def test_a_patient_holds_one_blood_gas_coefficient() -> None:
-    """Regression (`PL-DQL9`): the patient's blood carries the agent at one solubility.
+    """The patient's blood carries the agent at one solubility (a regression test, `PL-DQL9`).
 
     Each tissue group and the venous pool used to store a blood:gas coefficient
-    of its own, and nothing checked that the four agreed. The lung read the
-    pool's copy and each tissue:blood coefficient read its group's copy. A pool
-    replaced at 0.1 beside groups at sevoflurane's 0.65 ran on, conserving
-    agent, with uptake curves that looked plausible and were wrong. Now the
-    groups store none, the pool's copy is written once, and a replacement pool
-    must carry the coefficient the patient holds. The refused replacement
-    leaves the patient as it was. A pool at the same coefficient is accepted.
+    of its own, and nothing checked that the four copies agreed. The lung read
+    the pool's copy, and each tissue:blood coefficient read its group's copy.
+    When the pool was replaced by one at 0.1 beside groups at sevoflurane's
+    0.65, the run kept going and conserved agent, but its uptake curves looked
+    plausible and were wrong. Now the groups store none, the pool's copy is
+    written once, and a replacement pool must carry the coefficient the
+    patient holds. The refused replacement leaves the patient as it was. A
+    pool at the same coefficient is accepted.
     """
 
     patient = _build_patient()

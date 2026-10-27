@@ -288,7 +288,7 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 
 
 def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() -> None:
-    """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
+    """A capacity may equal the agent held, and `replace`, a copy and a pickle get the same checks.
 
     A volume or a tissue:gas coefficient that gives a capacity equal to the agent held means
     a partial pressure of exactly one atmosphere, and that value is written. The

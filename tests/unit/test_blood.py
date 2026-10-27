@@ -204,12 +204,12 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
 def test_the_blood_gas_coefficient_is_written_once_and_a_copy_keeps_it() -> None:
     """The pool holds the patient's one blood:gas coefficient, so a later write is refused.
 
-    Every tissue group's tissue:blood coefficient is formed from this one, and
-    the patient checks those quotients only when it is built or a compartment
-    is replaced (`PL-DQL9`). A write of 0.4 would also have left room for the
-    agent held, so only the write-once rule refuses it. A copy and a pickle
-    write the coefficient onto a new pool, so both keep it. A deletion would
-    let a later write pass the write-once rule, so it is refused too.
+    Every tissue group's tissue:blood coefficient is formed from this one. The
+    patient checks those quotients only when the patient is built or a
+    compartment is replaced (`PL-DQL9`). A write of 0.4 would also have left
+    room for the agent held, so only the write-once rule refuses it. A copy and
+    a pickle write the coefficient onto a new pool, so both keep it. A deletion
+    would let a later write pass the write-once rule, so it is refused too.
     """
 
     venous = VenousBloodCompartment(
