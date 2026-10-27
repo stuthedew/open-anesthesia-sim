@@ -102,6 +102,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_COMPARTMENT_VALUE,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
+    WITHHELD_ACCOUNTING,
     BookmarkPanel,
     BranchAtStake,
     ComparedRuns,
@@ -134,6 +135,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readouts,
     refused_reset_exit,
     refused_setting_notice,
+    rejected_step_accounting,
     run_label,
     run_statement,
     setting_readouts,
@@ -2288,6 +2290,55 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
     assert "The rejected step's totals: " in banner
     assert "delivered=4.240000e+00 L" in banner
     assert "except the agent accounting panel, which shows the rejected step" in banner
+
+
+def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_in_litres() -> None:
+    """The unaccounted and absolute-error lines show the rejected step's residual in litres.
+
+    The check also holds a relative error, which is a ratio and has no unit. In
+    the test above, the residual and the relative error lie in the same power of
+    ten, so a panel that showed the ratio on either line would still pass it.
+    Here they do not. The expected lines are worked out by hand: 40.0 L
+    delivered, 20.0 L exhausted and 14.0 L stored leave 6.0 L unaccounted, which
+    lies below 1e+01 L. The relative error is 6.0 / 40.0 = 0.15, which lies
+    below 1e+00 (test-strength review of `PL-J5GC`).
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=40.0, exhausted_agent_l=20.0)
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        validator.require_valid_agent_accounting(currently_stored_agent_l=14.0)
+
+    rejected = raised.value.check
+    assert rejected is not None
+
+    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
+        "Unaccounted: <1e+01 L",
+        "Absolute error: <1e+01 L",
+    ]
+
+
+def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None:
+    """After the run starts over, the panel claims nothing until a frame is drawn.
+
+    `RunView.present_halt` shows this panel on a halt when no frame has been
+    drawn since a Reset or an agent change. The integration tests compare the
+    panel with this same constant, so only this test says what it must read.
+    A verdict or an amount here would describe the discarded run (blind and
+    adversarial reviews of `PL-J5GC`).
+    """
+
+    assert WITHHELD_ACCOUNTING.status.text == "—"
+    assert WITHHELD_ACCOUNTING.status.emphasis is Emphasis.MUTED
+    assert WITHHELD_ACCOUNTING.detail == "No frame has been drawn since the run started over."
+    assert WITHHELD_ACCOUNTING.amounts.splitlines() == [
+        "Delivered: —",
+        "Exhausted: —",
+        "Stored: —",
+        "Unaccounted: —",
+        "Absolute error: —",
+    ]
 
 
 def test_the_accounting_unit_caption_names_litres_of_agent_gas() -> None:
