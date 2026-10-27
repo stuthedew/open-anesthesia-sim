@@ -3,13 +3,15 @@ id: PL-0S0V
 title: AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, anticipated
 feature: preferences-store
-touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit
+touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit, ROADMAP.md, docs/items/PL-2881-specify-the-compartment-schematic-in-docs-model.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-GL5X-load-factory-preferences-needs-shipped-defaults.md
 blocked-by: PL-KZ99
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - agent amounts show in one fixed unit with no selector, so displayed precision is one quantity's
 added: 2026-09-16
+closed: 2026-10-27
+pr: 1878
 payoff: every agent amount on screen is shown at a precision derived for its quantity and its unit, so a liquid-equivalent millilitre figure claims no more precision than the model supports
 verify: grep -q 'def test_a_precision_finer_than_its_derived_band_is_refused' tests/unit/test_formatting.py && grep -q 'def test_a_unit_with_no_derived_precision_is_refused' tests/unit/test_formatting.py
 ---
@@ -103,3 +105,15 @@ millilitres of vapour per millilitre of liquid: 182.8 for sevoflurane, 195.8
 for isoflurane and 209.7 for desflurane. `core/liquid_agent.py`'s
 `liquid_volume_ml` converts an amount with it. Nothing else holds this item.
 `PL-B396` uses this item's derivation, so this item comes first.
+
+**Re-confirmed 2026-10-27: still true, worked to the 2026-10-25 sweep's reading.** The constants were as the brief says, and `docs/MODEL.md` derived one precision per quantity.
+
+**What was built, 2026-10-27.**
+
+- `app/formatting.py` replaces `AGENT_VOLUME_DISPLAY_DECIMALS` and `AGENT_VOLUME_DISPLAY_RESOLUTION_L` with `AGENT_AMOUNT_DISPLAY_PRECISION`, keyed by `AgentAmount` and `AgentAmountUnit`. Each entry is a `DisplayPrecision`, which holds the count shown and the finest count derived, and refuses a finer count when it is built. `agent_amount_display_precision` refuses a pair with no entry. `format_agent_volume` reads the run totals' litre entry.
+- Two entries. A run total in litres of vapour keeps one decimal (`PL-TG60`). A run total in millilitres of liquid is shown in whole millilitres: one count of 0.1 L of vapour is 0.48-0.55 mL of liquid across the three agents, and 1 mL is the finest power of ten at or above that. The parameter spread agrees: the 24 h exhaust shift is 1.0-1.3 mL of liquid. A compartment's amount has no entry until `PL-2881` derives one, and money is `PL-1P15`'s.
+- `docs/MODEL.md` § "Displayed precision" has the per-amount, per-unit table, the liquid derivation, what is not yet derived, and the two couplings: the concentration and flow counts set the slider steps, and the concentration resolution sets the F_A/F_I denominator floor. `formatting.py` states both couplings at the constants, and the stale Flet wording in the `FLOW_DISPLAY_DECIMALS` comment is corrected.
+- Concentration, flow, MAC and F_A/F_I keep one count each. Each is shown in one unit in v0.7.0, so a per-unit table for them would have one entry each. `docs/MODEL.md` says a unit selector for any of them moves its count into a table of the same shape.
+- Tests in `tests/unit/test_formatting.py`: `test_a_precision_finer_than_its_derived_band_is_refused`, `test_a_unit_with_no_derived_precision_is_refused`, and `test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour`, which re-derives the liquid count from each agent's stored molar mass and density. The new tests need the new interface, so they cannot be collected on the code before this change. Nothing displayed changed, so there is no regression to replay.
+- Briefs of `PL-2881`, `PL-B396` and `PL-1P15` carry a dated note saying where their entry goes, and `ROADMAP.md`'s scope entry 1 and `PL-GL5X` name the new table.
+

@@ -17,8 +17,8 @@ verify: grep -q 'factory' Makefile
 
 **What Blender's fourth menu entry needs.** "Load Factory Preferences"
 restores a known factory state. Today this project's display defaults are
-`Final` constants in `app/formatting.py` — `AGENT_VOLUME_DISPLAY_DECIMALS`,
-`FLOW_DISPLAY_DECIMALS` and the rest — so there is no artifact to restore
+`Final` constants in `app/formatting.py` — `FLOW_DISPLAY_DECIMALS`, the
+agent amounts' `AGENT_AMOUNT_DISPLAY_PRECISION` (`PL-0S0V`) and the rest — so there is no artifact to restore
 *from*; a factory reset would have to reach into module state and re-derive
 what the code already hardcodes.
 

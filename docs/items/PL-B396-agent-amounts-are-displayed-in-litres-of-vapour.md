@@ -323,3 +323,5 @@ agent and whether it is fresh gas or a store. `PL-KFTM` builds those records.
 Nothing calls `liquid_volume_ml` yet, so changing its signature costs nothing
 here. Recommended: take that record, refuse an agent mismatch, and refuse or
 label a store.
+
+**Checked 2026-10-27 (`PL-0S0V`): the liquid precision is derived.** A run total in millilitres of liquid is shown in whole millilitres. One count of 0.1 L of vapour is 0.48-0.55 mL of liquid across the three agents, and 1 mL is the finest power of ten at or above that. Read it with `agent_amount_display_precision(AgentAmount.RUN_TOTAL, AgentAmountUnit.MILLILITRES_OF_LIQUID)`. The litre figure on the agent cost View reads the run totals' litre entry, so it matches the accounting panel. `docs/MODEL.md` § "Displayed precision" has the derivation.

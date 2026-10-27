@@ -1,7 +1,7 @@
 """Render modeled values as the strings the interface displays.
 
-This module is pure formatting, independent of Flet and of the scientific
-core. Every function here takes a number that the model produced and returns
+This module is pure formatting, independent of the Qt toolkit and of the
+scientific core. Every function here takes a number that the model produced and returns
 the text that a reader sees. Nothing in this module builds a control, reads
 simulation state, or performs a physiological calculation.
 
@@ -25,6 +25,17 @@ upstream carries full binary64 precision: the compartment states, every
 integration step, and every state of the `DrawnWindow` that the chart is drawn
 from. The rounding happens exactly once, here.
 
+Two of the counts here are not display-only, and their comments say so.
+`CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS` set the slider
+steps, so they decide which settings can reach the model. The concentration
+resolution also sets the smallest inspired fraction an F_A/F_I ratio is formed
+from. So a finer count is a change to the model's inputs, not only to its text.
+
+An agent amount's precision depends on its unit as well as on the amount
+(`PL-0S0V`). One amount in litres of vapour and in millilitres of liquid needs
+two derivations, not one. So `AGENT_AMOUNT_DISPLAY_PRECISION` holds one entry
+per amount and unit, and an amount in a unit with no entry is refused.
+
 The module has two display units and one resolution. A compartment is shown as
 a percent of one atmosphere and as a multiple of the running agent's 1 MAC. The
 MAC multiple is the unit that clinicians reason in, and the only one that means
@@ -39,8 +50,12 @@ pressure, never about a depth of anesthesia. The divisor is a tier-3
 parameter, and the interface displays its provenance.
 """
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from decimal import Decimal
+from enum import Enum
 from math import isfinite
+from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.display_units import DisplayUnit
@@ -56,13 +71,15 @@ from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
 __all__ = [
-    "AGENT_VOLUME_DISPLAY_DECIMALS",
-    "AGENT_VOLUME_DISPLAY_RESOLUTION_L",
+    "AGENT_AMOUNT_DISPLAY_PRECISION",
     "CHART_AXIS_TOP_MAC",
     "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
     "DECIMAL_BASE",
+    "AgentAmount",
+    "AgentAmountUnit",
+    "DisplayPrecision",
     "FLOW_DISPLAY_DECIMALS",
     "MAC_AXIS_STEP_LADDER_MAC",
     "MAC_DISPLAY_DECIMALS",
@@ -70,6 +87,7 @@ __all__ = [
     "MAC_UNIT_SUFFIX",
     "MAX_MAC_AXIS_INTERVALS",
     "WASH_IN_DISPLAY_DECIMALS",
+    "agent_amount_display_precision",
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
     "format_agent_residual",
@@ -119,46 +137,185 @@ DECIMAL_BASE: Final = 10.0
 # because it would assert a resolution that the parameters do not support, so
 # revise the documented derivation along with it. The figures behind both ends
 # of the band are in that section and are deliberately not restated here.
+#
+# **Two things outside the display are set by this count** (`PL-0S0V`). It sets
+# the delivered dial's slider step, through `ParameterControl.decimals`, so it
+# decides which dial settings can reach the model. And `app/wash_in.py` derives
+# `WASH_IN_DENOMINATOR_FLOOR_FRACTION` from the resolution below: the smallest
+# inspired fraction that an F_A/F_I ratio may be formed from. One more decimal
+# moves that floor down by a factor of ten.
 CONCENTRATION_DISPLAY_DECIMALS: Final = 2
 # Smallest percentage-point difference the concentration readouts resolve.
 CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = DECIMAL_BASE**-CONCENTRATION_DISPLAY_DECIMALS
 
-# Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
-# readouts beside them. Flet's default is 0, which would make a slider's own
-# label disagree with the text next to it during a drag.
+# Decimals shown on a flow readout and on the flow sliders' drag labels.
 #
 # **A choice, and revisable** (`PL-88GQ`). No model bound sets it. A flow is a
-# setting that the reader dialled, not a modelled output being rounded. The
-# sliders also carry no `divisions`, so a value reaches `core/` unquantized, and
-# a second decimal would display something real rather than noise. One decimal
-# is used because flowmeters are read at that resolution, so the number on
-# screen matches what the same setting looks like on a machine. Changing it
-# re-derives nothing.
+# setting that the reader dialled, not a modelled output being rounded. One
+# decimal is used because flowmeters are read at that resolution, so the number
+# on screen matches what the same setting looks like on a machine. Changing it
+# re-derives nothing in `core/`.
+#
+# **It is not display-only.** `ParameterControl.decimals` in
+# `app/dashboard_frame.py` reads it to set each flow slider's step, so it also
+# sets which flows a reader can apply to the model (`PL-25KS`). A second decimal
+# would make 0.05 L/min steps reachable inputs. `CONCENTRATION_DISPLAY_DECIMALS`
+# sets the delivered dial's step the same way.
 FLOW_DISPLAY_DECIMALS: Final = 1
 
-# Decimals shown on the accounting panel's three agent amounts (delivered,
-# exhausted and stored), in litres of equivalent pure agent gas.
+
+class AgentAmount(Enum):
+    """Which agent amount a displayed precision was derived for.
+
+    A precision is derived for a quantity *in a unit*, not for the quantity
+    alone (`PL-0S0V`). So this is the first half of the key of
+    `AGENT_AMOUNT_DISPLAY_PRECISION`, and `AgentAmountUnit` is the second.
+    Two amounts share a member when one derivation covers both.
+
+    Attributes:
+        RUN_TOTAL: One of a run's three totals: the agent delivered, exhausted
+            or stored. The accounting panel shows all three, and the agent cost
+            View shows the delivered total.
+        COMPARTMENT: One compartment's amount, which the compartment schematic
+            labels. `PL-2881` derives its precision. Until it does, no unit of
+            this amount has an entry, so formatting one is refused.
+    """
+
+    RUN_TOTAL = "run total"
+    COMPARTMENT = "compartment"
+
+
+class AgentAmountUnit(Enum):
+    """The unit an agent amount is shown in, as the precision table keys it.
+
+    A member identifies the unit and carries no spelling. How each unit is
+    written beside a value is `PL-2881`'s to decide, and the spellings will be
+    `DisplayUnit` members. Every member names whether it measures vapour or
+    liquid, because about 183 mL of sevoflurane vapour come from 1 mL of
+    liquid, and a bare "mL" cannot say which is meant.
+
+    Attributes:
+        LITRES_OF_VAPOUR: Litres of pure agent vapour at the model's reference
+            condition (`docs/MODEL.md` § "Agent amount").
+        MILLILITRES_OF_LIQUID: Millilitres of the liquid agent that the vapour
+            came from, converted with `AgentParameters.vapour_volume_per_liquid_volume`.
+        MILLILITRES_OF_VAPOUR: Millilitres of pure agent vapour at the same
+            reference condition.
+    """
+
+    LITRES_OF_VAPOUR = "litres of vapour"
+    MILLILITRES_OF_LIQUID = "millilitres of liquid"
+    MILLILITRES_OF_VAPOUR = "millilitres of vapour"
+
+
+@dataclass(frozen=True)
+class DisplayPrecision:
+    """A displayed decimal count, and the finest count its derivation admits.
+
+    The bound is one-sided (`PL-0S0V`). Showing fewer decimals than the
+    derivation admits loses detail but claims nothing false. Showing more
+    claims a resolution that the model's parameters or its conversion
+    factors do not support. So a finer count is refused when the precision
+    is built, rather than clamped to the bound. A precision that a reader
+    could set would be built through this type too, so it could not be set
+    finer either.
+
+    Attributes:
+        decimals: The number of decimals shown.
+        finest_decimals: The largest count that `docs/MODEL.md`
+            § "Displayed precision" derives for this amount in this unit.
+
+    Raises:
+        ValueError: If either count is not a non-negative whole number, or if
+            `decimals` is greater than `finest_decimals`.
+    """
+
+    decimals: int
+    finest_decimals: int
+
+    def __post_init__(self) -> None:
+        for name, count in (("decimals", self.decimals), ("finest_decimals", self.finest_decimals)):
+            if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+                raise ValueError(
+                    f"A displayed precision's {name} must be a whole number of 0 or more, "
+                    f"not {count!r}."
+                )
+
+        if self.decimals > self.finest_decimals:
+            raise ValueError(
+                f"{self.decimals} decimals is finer than the {self.finest_decimals} that "
+                "docs/MODEL.md § 'Displayed precision' derives for this amount. A finer count "
+                "would claim a resolution the model does not support, so it is refused."
+            )
+
+    @property
+    def resolution(self) -> float:
+        """Return the smallest difference that this count of decimals resolves."""
+
+        return DECIMAL_BASE**-self.decimals
+
+
+# The displayed precision of each agent amount, in each unit it is offered in.
+# `docs/MODEL.md` § "Displayed precision" derives every entry, and its table
+# lists the same pairs. The figures behind each one are there and are not
+# restated here.
 #
-# **Derived from the same band as the concentration readouts** (`PL-TG60`,
-# `docs/MODEL.md` § "Displayed precision"). The exhaust total is the exact
-# propagator's own state (`PL-GS5X`). Its numerical residual, 1e-12 to
-# 1e-11 L over an hour, limits no digit that a reader can see. The parameters
-# are what limit the displayed resolution. One published standard deviation of
-# a partition coefficient moves the exhaust total by 0.016-0.042 L at 3600 s
-# and by 0.18-0.23 L at the 24 h supported limit (sevoflurane 0.024 and
-# 0.19 L, isoflurane 0.016 and 0.18 L, desflurane 0.042 and 0.23 L). The
-# blood:gas coefficient dominates that effect. So one count of 0.1 L lies
-# between a quarter of an SD and six SDs across the whole supported span. That
-# is the band inside which the concentration readouts' two decimals were
-# chosen. A count of 0.01 L falls to a fiftieth of an SD by 24 h, which is a
-# digit the parameters do not support. Delivered agent has no parameter
-# uncertainty (dial x flow x time). It takes the same resolution so that the
-# three amounts can be read against each other on one scale. The Flet panel
-# printed six decimals, which asserted a resolution nine orders of magnitude
-# finer than this.
-AGENT_VOLUME_DISPLAY_DECIMALS: Final = 1
-#: Smallest difference in litres of agent gas the accounting panel resolves.
-AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = DECIMAL_BASE**-AGENT_VOLUME_DISPLAY_DECIMALS
+# - A run total in litres of vapour: one decimal, the finest the parameters
+#   support (`PL-TG60`).
+# - A run total in millilitres of liquid: no decimals. One count of 0.1 L of
+#   vapour is about half a millilitre of liquid for every shipped agent, and
+#   1 mL is the finest power of ten that resolves no finer than that. So the
+#   two units claim the same resolution for one amount.
+#
+# A pair with no entry has no derivation behind it.
+# `agent_amount_display_precision` refuses it rather than formatting at a
+# default. Money is not here: a cost's resolution depends on the price the
+# reader sets, and `PL-1P15` derives it.
+AGENT_AMOUNT_DISPLAY_PRECISION: Final[
+    Mapping[tuple[AgentAmount, AgentAmountUnit], DisplayPrecision]
+] = MappingProxyType(
+    {
+        (AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR): DisplayPrecision(
+            decimals=1, finest_decimals=1
+        ),
+        (AgentAmount.RUN_TOTAL, AgentAmountUnit.MILLILITRES_OF_LIQUID): DisplayPrecision(
+            decimals=0, finest_decimals=0
+        ),
+    }
+)
+
+
+def agent_amount_display_precision(amount: AgentAmount, unit: AgentAmountUnit) -> DisplayPrecision:
+    """Return the displayed precision derived for an agent amount in a unit.
+
+    Args:
+        amount: Which agent amount is shown.
+        unit: The unit it is shown in.
+
+    Returns:
+        The precision that `docs/MODEL.md` § "Displayed precision" derives
+        for that amount in that unit.
+
+    Raises:
+        ValueError: If no precision has been derived for that amount in that
+            unit. A unit offered with no derivation behind it fails here rather
+            than being shown at a default precision.
+    """
+
+    try:
+        return AGENT_AMOUNT_DISPLAY_PRECISION[(amount, unit)]
+    except KeyError:
+        raise ValueError(
+            f"No displayed precision is derived for a {amount.value} in {unit.value}. "
+            "Derive one in docs/MODEL.md § 'Displayed precision' and add it to "
+            "AGENT_AMOUNT_DISPLAY_PRECISION before showing this amount in this unit."
+        ) from None
+
+
+# The precision of the accounting panel's three amounts.
+_RUN_TOTAL_LITRES: Final = agent_amount_display_precision(
+    AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR
+)
 
 # Decimals shown on a MAC multiple, and the resolution that follows from them.
 # This value is *derived*, not chosen. A MAC multiple is a percent divided by
@@ -1030,7 +1187,7 @@ def format_case_discard_warning(
     This function lives here rather than in the view for the same reason as
     every other display string in this module. What a reader is told is a
     question of presentation correctness, and this string can be read and
-    tested without loading Flet.
+    tested without loading the Qt toolkit.
 
     Args:
         agent_display_name: The agent the current run is using.
@@ -1152,10 +1309,11 @@ def format_delivered_label(agent_display_name: str) -> str:
 def format_agent_volume(litres: float) -> str:
     """Render an agent amount of the accounting panel, in litres of agent gas.
 
-    The amount is rendered at `AGENT_VOLUME_DISPLAY_RESOLUTION_L`. The
-    comment on `AGENT_VOLUME_DISPLAY_DECIMALS` records how that resolution
-    was derived (`PL-TG60`). This function follows the same three rules as
-    `format_percent`, for the same reasons. It rounds rather than truncates.
+    The amount is rendered at the precision that
+    `AGENT_AMOUNT_DISPLAY_PRECISION` holds for a run total in litres of
+    vapour. `docs/MODEL.md` § "Displayed precision" derives it (`PL-TG60`).
+    This function follows the same three rules as `format_percent`, for the
+    same reasons. It rounds rather than truncates.
     It marks a positive value that rounds to zero as below the resolution,
     rather than showing it as `0.0 L`. In the first minute of a run the
     exhausted and stored amounts are real and small, and `0.0 L` there would
@@ -1174,12 +1332,11 @@ def format_agent_volume(litres: float) -> str:
         below-resolution form for a positive value that rounds to zero.
     """
 
-    rendered = f"{litres:.{AGENT_VOLUME_DISPLAY_DECIMALS}f}"
+    decimals = _RUN_TOTAL_LITRES.decimals
+    rendered = f"{litres:.{decimals}f}"
 
     if litres > 0.0 and float(rendered) == 0.0:
-        resolution = AGENT_VOLUME_DISPLAY_RESOLUTION_L
-
-        return f"<{resolution:.{AGENT_VOLUME_DISPLAY_DECIMALS}f} L"
+        return f"<{_RUN_TOTAL_LITRES.resolution:.{decimals}f} L"
 
     return f"{rendered} L"
 
