@@ -373,7 +373,7 @@ def _restore_through_checks(record: object, state: object) -> None:
 
     if not isinstance(state, (list, tuple)):
         raise TypeError(
-            f"a {type(record).__name__} is restored from a list of its field values, "
+            f"{type(record).__name__} is restored from a list of its field values, "
             f"not a {type(state).__name__}"
         )
 

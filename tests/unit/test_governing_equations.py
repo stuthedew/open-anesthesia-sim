@@ -451,7 +451,10 @@ def test_a_settings_record_is_not_restored_from_a_state_of_another_shape() -> No
 
     restored = object.__new__(UptakeEquationSettings)
 
-    with pytest.raises(TypeError, match="list of its field values, not a dict"):
+    with pytest.raises(
+        TypeError,
+        match="^UptakeEquationSettings is restored from a list of its field values, not a dict$",
+    ):
         restored.__setstate__({"cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN})
 
 
