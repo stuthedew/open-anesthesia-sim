@@ -76,6 +76,19 @@ decides the details.
    price the same way, and showing the price per mL it implies, makes a bottle
    price typed into a per-mL field visible. That mistake multiplies the cost by the
    bottle volume in mL, which is 100 to 250 for the volatile agents in Gas
-   Man's defaults (Appendix C, printed pp. 171-172). Whether to take the
-   price per bottle is `PL-VJZK`'s decision, because `PL-VJZK` stores the
-   price.
+   Man's defaults (Appendix C, printed pp. 171-172). `PL-VJZK` decided on
+   2026-10-26 to take the price per bottle, as the paragraph below says.
+
+**Built to `docs/MODEL.md` § "A cost at the reader's price"** (`PL-VJZK`,
+2026-10-26). That section is the specification this readout builds to. It
+says what a stored price carries, the six things shown beside a cost, and when
+no cost is shown. It takes the price per bottle, with the bottle's volume, and
+derives the price per millilitre. It shows the currency as its ISO 4217 code,
+so part 2's example reads "USD 0.2047/mL" rather than "US$0.2047/mL". Two
+parts of that section are this item's work:
+
+- Derive the cost's displayed precision in § "Displayed precision". It depends
+  on the price, so `PL-0S0V` cannot derive it in advance.
+- Replace `no test yet (`PL-1P15`)` in the hazard table's two cost rows with
+  the tests that enforce them. `tools/doc_check.py` fails once this item
+  closes with either row still naming it.

@@ -196,6 +196,8 @@ remains a question for a reviewer.
 | comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run is reported at the run's drawn instant nearest the pointer in time. So the instant that labels a value depends only on the pointer's position along the time axis. The pointer's height decides only what is in reach. Before this, each trace's own nearest point had been taken in both dimensions. That labelled 70.1% of the single-run chart's multi-reading boxes with two instants, up to fifteen minutes apart on the 12-hour axis (§ "Where more than one trace answers", `PL-1K9G`) | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
 | reading the hover's value as a live readout after the pointer has left the plot | the box responds only while the pointer is over the plot (§ "When it answers"). Leaving the plot takes the box down at once, along with any pointer move still waiting for a response, so no later frame responds for a pointer that has gone. If the box were left up, it would update again on every frame. While a run plays, it would climb with the run, for an instant the reader is not looking at (`PL-LTKL`) | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown. First, it is named on each run's own readout panel (§ "Minimum displayed outputs"). Second, while more than one run is drawn, it is named in the chart's hover readout: on its first line where one run answers (§ "The hover and the run it belongs to"), and on each value line where several do. Every run inside the hover radius is reported, so no hand movement can swap which run is read (§ "Where more than one trace answers"). This is needed because the hover floats free of the legend, and line width has no textual equivalent. Third, it is named on the three advisories that sit in a chart rather than on either run's panel: the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`). These stack one line per run, so they are named for the same reason as the hover. Stacking order is declared nowhere on screen, and the run names sit in the unconditional region above the charts. Without names, the branch's F_A/F_I would be readable as the trunk's, and its off-scale notice could be attributed to a run whose traces are all inside the axis (`PL-25DD`). Fourth, it is named in the headings of the two record panels: the agent-accounting validation in the sidebar, and the control-change record in the right column of the unconditional region. Each of these stacks whole panels rather than lines, one per run. So the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column. This matters because "What was changed during this run" over a list of settings, read as the other run's, says the trunk received an intervention it never got (`PL-C3GS`). Fifth, it is named on the notice banner. The runs share one place for this banner, between their transport rows and their readouts. The banner qualifies the values rather than showing one. "The values shown are the last completed step", read as applying to the whole dashboard, says both runs' readouts are frozen at a failed step when one is still going. "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these banners at all, because a banner with nothing to say is hidden and takes no room. With one run halted, its banner appears in the same place whichever run it belongs to, and the words are identical (`PL-TSZM`, `PL-T91K`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height` |
+| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
+| reading a cost computed from a bottle price entered as a price per millilitre, or from a price in another currency | the price is taken per bottle, with the bottle's volume, and the readout shows the price per millilitre that they give. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
@@ -11384,6 +11386,139 @@ printing the instant to four decimals would claim a resolution that no other
 display on the screen has. `tests/unit/test_chart_frame.py` holds both worked
 examples above verbatim, and `tests/integration/test_qt_chart.py` tests the
 rendered readout against a real run.
+
+### A cost at the reader's price
+
+This section specifies what a stored agent price carries, and what a readout
+that shows a cost must show beside it (`PL-VJZK`). Nothing in `src/` stores a
+price or shows a cost yet. `PL-93B3` builds the store, and `PL-1P15` builds
+the cost on the agent cost View.
+
+**A price is neither modelled nor measured.** This document separates
+modelled values from measured ones, and every value the interface shows today
+is modelled. A price is a third kind of value: a number the reader supplies.
+A cost multiplies a modelled amount by that number. A wrong price therefore
+makes a correct amount lead to a wrong conclusion. So the readout must show
+which part of a cost is the model's and which part is the reader's. That is
+why the safety standard in `CLAUDE.md` applies to a cost, although money is
+not a clinical quantity.
+
+**The project ships no price.** A shipped price goes stale, and it differs
+from one institution to the next. The reference implementation shows both
+problems. Gas Man's parameter file prices isoflurane at $20.47 for a 100 mL
+bottle (Philip JH, *Workbook for Gas Man*, Appendix C, printed p. 171).
+Chapter 14 of the same book gives $78.00 per 100 mL bottle "on March 5, 2008"
+(printed p. 141). Chapter 14's first exercise prints its costs beside the
+price they used, "a bottle cost of US$20.47 per 100 ml" (printed p. 133). The
+costs of both isoflurane exercises are reproduced at that price
+(`tests/reference/test_published_vapour_to_liquid.py`). Without the price
+beside them, a reader could not tell which of the two prices produced those
+costs. So, until the reader sets a price, the readout says that no price is
+set, and it shows no cost.
+
+**What a stored price carries.** The store holds at most one price for each
+agent. Each price records five things:
+
+- the agent it prices;
+- the price of one bottle, in the price's currency;
+- the volume of that bottle, in millilitres of liquid agent;
+- the currency, as its three-letter ISO 4217 code, such as `USD` or `EUR`;
+  and
+- the date on which the reader set the price, as an ISO 8601 calendar date,
+  such as `2026-10-26`.
+
+Every stored price is the reader's own, because the project ships none. So
+the record has no field that says who set the price. If a release ever ships
+a default price, the record gains that field. The readout must then mark a
+default price as one the project supplied, with its date.
+
+**The price is taken per bottle, and the price per millilitre is derived**
+(decided by `PL-VJZK` on 2026-10-26, over asking for a price per millilitre).
+An institution buys agent by the bottle, and its pharmacy quotes a price per
+bottle. Gas Man's Set Cost command takes "the bottle volume and bottle cost"
+in the same way (printed p. 15). A field that asked for a price per
+millilitre would make the reader divide first. A bottle price typed into such
+a field would multiply every cost by the bottle's volume in millilitres. That
+volume is 100 to 250 for the volatile agents in Gas Man's defaults (printed
+pp. 171-172). Taking the bottle price and the bottle volume, and showing the
+price per millilitre that they give, makes that mistake visible. One function
+derives the price per millilitre from the two stored figures. The store never
+holds it, so it cannot disagree with them.
+
+**Why a currency code, and why that form of date.** The sign "$" names the
+United States, Canadian and Australian dollars, among others. So a cost in "$"
+does not say which currency it is in. Gas Man shows the problem: its parameter
+file labels each bottle cost "Bottle cost in $US" (printed p. 171), while its
+menu says the cost is typed "in the local currency" (printed p. 15). An
+ISO 4217 code names exactly one currency. A date written 03/05/2008 means
+March or May depending on the reader's country, and the ISO 8601 form
+2008-03-05 does not. Both standards are cited here by their numbers,
+ISO 4217:2015 and ISO 8601-1:2019, and neither was read for this section.
+
+**What the store refuses.** It refuses a bottle price or a bottle volume that
+is not a positive finite number. A price of zero is refused too, because it is
+far more likely to be an empty field than an agent given away. It refuses a
+currency that is not three capital letters, and a date that is not a real
+calendar date. It refuses each of these when the reader enters it, and again
+when it reads the preferences file. A refused price is never replaced by a
+default. The readout says instead that no valid price is set for the agent.
+Whether the store also checks the three letters against the codes that
+ISO 4217 assigns is `PL-93B3`'s decision.
+
+**What a cost readout shows.** A cost is never shown alone. Beside it, the
+readout shows these six things:
+
+1. the delivered agent in millilitres of liquid equivalent. This is the
+   modelled figure that the cost multiplies. It stays on screen, so that a
+   number the reader supplied is never the only carrier of a modelled
+   quantity;
+2. the price per millilitre that it multiplied by, so that a reader can check
+   the product by eye;
+3. the bottle price and the bottle volume that the price per millilitre came
+   from;
+4. the currency's code, on the cost and on each price;
+5. the date on which the reader set the price; and
+6. words saying that the cost is at the reader's price. Words are required,
+   not only a colour or a style, so that the statement reaches every reader.
+
+For Gas Man's Exercise 14-1 at 60 min, the readout could read "39.4 mL x
+USD 0.2047/mL = USD 8.07, at your price of USD 20.47 per 100 mL bottle, set
+2026-10-26". The wording and the layout are placeholders, and the six facts
+are the requirement. The book prints $8.06, because Gas Man rounds
+isoflurane's vapour-to-liquid ratio to 196 (§ "Agent amount").
+
+**How the cost is computed.** The cost is the delivered agent's liquid
+equivalent times the price per millilitre. The delivered agent is the basis,
+because it is what left the bottle (`ROADMAP.md`, planned-milestone item 28,
+and `PL-H4N8`). § "Agent amount" converts the delivered agent to liquid
+exactly. The price is the one stored for the agent whose amount is priced.
+The cost depends only on the delivered amount, the agent's vapour-to-liquid
+ratio and the stored price. The date is shown and never used in the
+arithmetic, and nothing reads the clock to compute a cost. The cost is
+computed from the unrounded liquid volume and rounded only for display. So the
+product of the two rounded figures on screen can differ from the cost in its
+last digit.
+
+**When no cost is shown.** The readout shows no cost, and says why, in each
+of these cases:
+
+- no price is set for the agent;
+- the stored price was refused; or
+- the delivered amount cannot be converted to liquid (§ "Agent amount").
+
+It never shows a cost of zero in place of one of these cases. It never shows
+a cost left over from an earlier instant or from another agent. When two runs
+are compared, each run's cost uses the price of its own agent. A cost is
+never added to, or subtracted from, a cost in another currency.
+
+**Displayed precision.** How many decimals a cost can justify depends on the
+price, so it is not a constant that can be derived before a price is known
+(`PL-0S0V`). `PL-1P15` derives the cost's displayed precision in
+§ "Displayed precision" before it shows a cost.
+
+**Tests.** No test enforces this section yet. Its two rows in the hazard table
+(§ "Reasonably foreseeable misuse, and the hazards the presentation carries")
+name `PL-1P15` as the item that owes them.
 
 ## Assumptions
 
