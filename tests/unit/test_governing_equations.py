@@ -324,9 +324,10 @@ PICKLE_PROTOCOLS = range(pickle.HIGHEST_PROTOCOL + 1)
 class _ForgingPickler(pickle.Pickler):
     """Write one record as pickle writes it, with one saved field value replaced.
 
-    The record is written in the exact form that its protocol uses, so loading
-    it takes the path that a saved file would take. Only the state differs,
-    as a hand edit of a saved run would leave it.
+    The record is written in the exact form that the chosen pickle protocol
+    uses, so loading it takes the same path that a saved file would take. Only
+    the saved state differs, in the way that a hand edit of a saved run would
+    change it.
     """
 
     def __init__(
@@ -394,13 +395,14 @@ FORGED_RECORDS = (
 def test_an_unpickled_settings_record_is_rebuilt_through_its_checks(
     protocol: int, field: str, value: object, error: type[Exception], match: str
 ) -> None:
-    """`PL-S11T`: unpickling restored a record through `__setstate__`, so no check ran.
+    """Unpickling used to restore a record through `__setstate__` without any check (`PL-S11T`).
 
-    Before the fix, a saved record whose state held cardiac output as a bare
-    1000.0 loaded, with its tissue flows still summing to the cardiac output it
-    had been built with, and a `RunDefinition` opened under it advanced. A
-    fresh gas flow of NaN loaded too. Each forged value is now refused on load
-    with the constructor's own exception, at every protocol.
+    Before the fix, a saved record loaded even though its state held cardiac
+    output as a bare 1000.0. Its tissue flows still summed to the cardiac
+    output that the record had been built with. A `RunDefinition` opened under
+    that record advanced. A saved fresh gas flow of NaN loaded too. Each forged
+    value is now rejected on load with the constructor's own exception, at
+    every pickle protocol.
     """
 
     with pytest.raises(error, match=match):
@@ -421,9 +423,10 @@ def test_an_unpickled_tissue_group_record_is_rebuilt_through_its_checks(protocol
 def test_an_unpickled_settings_record_refuses_tissue_rows_of_another_type(protocol: int) -> None:
     """A saved row that only looks like a tissue group is refused, so its checks cannot be skipped.
 
-    Found at review of `PL-S11T`. Three namespaces carrying the right flows, a
-    volume of 1e-300 L and a coefficient of 1e-30 loaded as a record's tissue
-    rows, and `build_system_matrix` returned a matrix that was not finite.
+    The review of `PL-S11T` found this gap. Three namespaces loaded as a
+    record's tissue rows. They carried the right flows, a volume of 1e-300 L
+    and a coefficient of 1e-30. `build_system_matrix` then returned a matrix
+    that was not finite.
     """
 
     held = _settings()

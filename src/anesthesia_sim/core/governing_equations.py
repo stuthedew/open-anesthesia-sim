@@ -336,35 +336,39 @@ def _restore_through_checks(record: object, state: object) -> None:
     saved field values to `__setstate__`. The `__setstate__` that `dataclass`
     generates writes each value straight into its slot, so `__post_init__`
     never runs. A saved record whose state held a cardiac output of 1000.0 as
-    a bare `float` and a fresh gas flow of NaN loaded without error, and a
-    `RunDefinition` opened under it advanced (`PL-S11T`, measured 2026-10-25).
-    `CheckedQuantity.__reduce__` (`core/checked_number.py`) protects a flow
-    pickled as its checked type, but not a field whose saved state holds a
-    bare number.
+    a bare `float` loaded without error, and a `RunDefinition` opened under it
+    advanced. A saved fresh gas flow of NaN also loaded (`PL-S11T`, measured
+    2026-10-25). `CheckedQuantity.__reduce__` (`core/checked_number.py`)
+    protects a flow that was pickled as its checked type. It does not protect
+    a field whose saved state holds a bare number.
 
-    So each record's `__setstate__` calls this function. It builds a new record
-    from the saved values, which runs every check the constructor runs, and
-    copies the checked fields into the restored object. A state the
-    constructor would refuse is refused on load with the constructor's own
-    exception. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore
-    the record through `__setstate__`, and so does a pickle written before
-    this function existed. A `__reduce__` that called the constructor would
-    change only how a record is written from now on. A saved or edited state
-    in the form `dataclass` writes would still load through `__setstate__`.
+    So each record's `__setstate__` calls this function. The function builds a
+    new record from the saved values, which runs every check that the
+    constructor runs. It then copies the checked fields into the restored
+    object. A state that the constructor would reject is rejected on load,
+    with the constructor's own exception.
 
-    This protects against a saved value that is wrong, not against a pickle
-    built to attack. A pickle can call any function that can be imported, so
-    one can still write a record's slots directly. A pickle is trusted input.
+    The check sits in `__setstate__` rather than in `__reduce__` for this
+    reason. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore the
+    record through `__setstate__`, and so does a pickle written before this
+    function existed. A `__reduce__` that called the constructor would change
+    only how a record is written from now on. A saved or edited state in the
+    form that `dataclass` writes would still load through `__setstate__`.
+
+    This function protects against a saved value that is wrong, not against a
+    pickle crafted as an attack. A pickle can call any function that can be
+    imported, so a crafted pickle can still write a record's slots directly.
+    A pickle is trusted input.
 
     The state holds the field values in field order, without their names, as
-    `dataclass` writes it. So a record saved before a change to the order of
-    the fields would load into the wrong fields wherever the values still pass
-    the checks.
+    `dataclass` writes it. Suppose the order of the fields changes. A record
+    saved before that change would then load its values into the wrong fields,
+    wherever those values still pass the checks.
 
     Raises:
         TypeError: the state is not a sequence of the record's field values,
             or a value is not of its field's checked type.
-        SimulationConfigurationError: the constructor refuses a value.
+        SimulationConfigurationError: the constructor rejects a value.
     """
 
     if not isinstance(state, (list, tuple)):
@@ -580,9 +584,9 @@ class UptakeEquationSettings:
                 f"{len(self.tissues)} were given"
             )
 
-        # Each row's own constructor checks its volume, flow and coefficient. An object
-        # of another type that only looks like a row would skip those checks, and a
-        # saved state could hold one (`PL-S11T`, found at review).
+        # Each tissue group's own constructor checks its volume, flow and coefficient.
+        # An object of another type that only has the same attributes would skip those
+        # checks. A saved state could hold such an object (`PL-S11T`, found at review).
         for tissue in self.tissues:
             if not isinstance(tissue, TissueGroupEquationSettings):
                 raise TypeError(
