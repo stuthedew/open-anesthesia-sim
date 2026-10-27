@@ -116,6 +116,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
+    WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     HaltDisposition,
@@ -646,7 +647,10 @@ class RunView(QWidget):
         self._write_statement(
             snapshot,
             banner=notice(
-                snapshot, self._rejected_setting_notice, refused_reset=self._refused_reset_notice
+                snapshot,
+                self._rejected_setting_notice,
+                refused_reset=self._refused_reset_notice,
+                branch_offered=self._branch_offered,
             ),
         )
 
@@ -790,38 +794,53 @@ class RunView(QWidget):
 
         Raises:
             ValueError: If `setting_readouts` rejects the record. By then
-                `_write_statement` has put everything else on screen.
+                `_write_statement` has put everything else on screen, and the
+                old agent's values are withheld.
         """
 
         record = self.controller.record()
+
+        # The values are withheld before the statement is written, because
+        # `_write_statement` can raise after it has named the new agent
+        # (blind review of `PL-J5GC`).
+        if self._cards_agent_id != record.agent_id:
+            self._withhold_the_old_agent_s_values()
+
         self._write_statement(
             record,
             banner=halt_notice(
-                record, self._rejected_setting_notice, refused_reset=self._refused_reset_notice
+                record,
+                self._rejected_setting_notice,
+                refused_reset=self._refused_reset_notice,
+                branch_offered=self._branch_offered,
             ),
         )
 
-        if self._cards_agent_id != record.agent_id:
-            self._withhold_card_values()
-
-    def _withhold_card_values(self) -> None:
-        """Replace each compartment card's percent and ×MAC number with a withheld text.
+    def _withhold_the_old_agent_s_values(self) -> None:
+        """Replace the values that the last frame wrote for the old agent with withheld texts.
 
         `present_halt` calls this when the agent has changed and no frame has yet
-        been drawn for the new agent. The cards then hold the last frame's values:
-        the old agent's concentrations, divided by the old agent's MAC. The heading
-        above them, the 1 MAC line and the delivered line already name the new
-        agent. Showing either number would put a value on screen under a substance
-        or a divisor that did not produce it. `PL-6RJ0` withheld the multiples, and
-        `PL-J5GC`'s guard found the percents still under the new agent's heading.
-        The clock keeps the last frame's instant, which the halt banner states. The
-        next frame writes every card again.
+        been drawn for the new agent. Each compartment card then holds the old
+        agent's concentration, divided by the old agent's MAC. The accounting
+        panel holds the old case's verdict and amounts. The heading, the 1 MAC
+        line and the delivered line name the new agent, whose case has delivered
+        nothing. Showing any of those values would put it on screen under a
+        substance or a divisor that did not produce it. `PL-6RJ0` withheld the
+        multiples, `PL-J5GC`'s guard found the percents still under the new
+        agent's heading, and its blind review found the accounting panel. The
+        clock keeps the last frame's instant, which the halt banner states. The
+        next frame writes every card and the panel again.
         """
 
         for index, panel in enumerate(self._readout_row.panels):
             if index != _CLOCK_PANEL_INDEX:
                 panel.value_label.setText(WITHHELD_CONCENTRATION_TEXT)
                 panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
+
+        self._accounting_shown = WITHHELD_ACCOUNTING
+
+        for accounting_panel in self._accounting_panels:
+            accounting_panel.show_accounting(WITHHELD_ACCOUNTING)
 
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.
@@ -871,6 +890,18 @@ class RunView(QWidget):
         """Whether this run was opened from another, read live from the controller."""
 
         return self.controller.opened_from is not None
+
+    @property
+    def _branch_offered(self) -> bool:
+        """Whether a branch can be taken from this run now, for the stopped run's banner.
+
+        None can be taken while two runs are compared, because `fork_offer`
+        locks the branch control then. None can be taken from a run whose
+        `fork_refusal` gives a reason: a branch, or a trunk whose dashboard
+        failed. Otherwise the control offers at least the run's opening.
+        """
+
+        return not self._comparing and self.controller.fork_refusal is None
 
     def set_comparing(self, comparing: bool) -> None:
         """Record whether a second run is on the chart, and rewrite the transport at once.
@@ -1486,6 +1517,11 @@ class RunView(QWidget):
                 The controller also records an exception from the dashboard,
                 and a trunk with that record offers no branch
                 (`SimulationController.record_failed_frame`).
+
+        Raises:
+            TypeError: If an `AgentSimulationValidationError` carries a check
+                that is not a validation result (`rejected_check`). The run
+                has failed by then.
         """
 
         disposition, reason = halt_disposition(error)
@@ -1497,8 +1533,16 @@ class RunView(QWidget):
             self.controller.halt_at_supported_limit(reason)
         elif isinstance(error, AgentSimulationValidationError):
             # The core rolled the step back, so only the error still holds the
-            # rejected step's check (`PL-HF4B`).
-            self.controller.fail(reason, rejected_accounting=rejected_check(error))
+            # rejected step's check (`PL-HF4B`). A check of the wrong type is a
+            # defect in the code that raised the error, and it must not cancel
+            # the halt. So the run fails before that defect is raised.
+            try:
+                rejected = rejected_check(error)
+            except TypeError:
+                self.controller.fail(reason)
+                raise
+
+            self.controller.fail(reason, rejected_accounting=rejected)
         else:
             self.controller.fail(reason)
 

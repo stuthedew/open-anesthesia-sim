@@ -792,18 +792,19 @@ _SETTERS: dict[ControlInput, Callable[[SimulationController], None]] = {
 }
 
 
+# The name each refusal gives its setting, written out so a change to a label fails here.
+_NAMED: dict[ControlInput, str] = {
+    ControlInput.FRESH_GAS_FLOW: "fresh gas flow",
+    ControlInput.DELIVERED: "delivered agent",
+    ControlInput.ALVEOLAR_VENTILATION: "alveolar ventilation",
+    ControlInput.CARDIAC_OUTPUT: "cardiac output",
+}
+
+
 @pytest.mark.parametrize("stop", list(_STOPS))
-@pytest.mark.parametrize(
-    ("control", "named"),
-    [
-        (ControlInput.FRESH_GAS_FLOW, "fresh gas flow"),
-        (ControlInput.DELIVERED, "delivered agent"),
-        (ControlInput.ALVEOLAR_VENTILATION, "alveolar ventilation"),
-        (ControlInput.CARDIAC_OUTPUT, "cardiac output"),
-    ],
-)
+@pytest.mark.parametrize("control", list(ControlInput))
 def test_a_stopped_run_refuses_every_setting_and_records_nothing(
-    stop: str, control: ControlInput, named: str
+    stop: str, control: ControlInput
 ) -> None:
     """No step runs after a stop, so a new setting would sit beside values it never produced.
 
@@ -811,7 +812,9 @@ def test_a_stopped_run_refuses_every_setting_and_records_nothing(
     stop instant. The dial then showed a setting that no step ran under, and
     the record claimed a change that never acted on the patient. Each setter
     now refuses before it applies anything. The expected settings come from a
-    run built and stepped the same way that never stopped.
+    run built and stepped the same way that never stopped. The test runs once
+    for each `ControlInput`, so a control added without a setter here, or
+    without the refusal, fails it.
     """
 
     controller = SimulationController()
@@ -824,7 +827,7 @@ def test_a_stopped_run_refuses_every_setting_and_records_nothing(
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=f"^the {named} setting cannot be changed on a stopped run, because every value",
+        match=f"^the {_NAMED[control]} setting cannot be changed on a stopped run, because every",
     ):
         _SETTERS[control](controller)
 

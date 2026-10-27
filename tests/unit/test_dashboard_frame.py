@@ -923,10 +923,11 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     A stopped run refuses every dial (`PL-3B34`), and a stopped run outranks a
     refused setting, so the refusal is stated inside the stopped run's banner.
     The supported run length sends the reader to a branch at an earlier
-    instant or to Reset. A failure keeps Reset as its way out. After a refused
-    Reset, closing the application is the only way out, so the refusal follows
-    that exit. A running run's refusal is unchanged. The expected sentences are
-    literals rather than the module's constants.
+    instant or to Reset, but names the branch only while one can be taken. A
+    failure keeps Reset as its way out, even where a branch could be taken.
+    After a refused Reset, closing the application is the only way out, so the
+    refusal follows that exit. A running run's refusal is unchanged. The
+    expected sentences are literals rather than the module's constants.
     """
 
     refused = "Setting refused — the cardiac output setting cannot be changed on a stopped run"
@@ -959,6 +960,7 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
         "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
         f"completed step. {refused}. {reset_keeps}"
     )
+    assert notice(failed, refused, branch_offered=True) == notice(failed, refused)
     assert halt_notice(failed, refused) == (
         "Simulation stopped — SimulationNumericalError: boom. No frame of the stopped run "
         "could be drawn: the chart and the readouts show the last frame drawn before it "
@@ -969,10 +971,15 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
         "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
         f"completed step. {refused_reset} {refused}."
     )
-    limit_banner = notice(at_limit, refused)
+    limit_banner = notice(at_limit, refused, branch_offered=True)
     assert limit_banner is not None
     assert limit_banner.endswith(f"inside the supported span. {refused}. {branch_or_reset}")
-    assert halt_notice(at_limit, refused) == limit_banner
+    assert halt_notice(at_limit, refused, branch_offered=True) == limit_banner
+    # While no branch can be taken, the run at the supported run length names Reset alone.
+    no_branch = notice(at_limit, refused)
+    assert no_branch is not None
+    assert no_branch.endswith(f"inside the supported span. {refused}. {reset_keeps}")
+    assert halt_notice(at_limit, refused, branch_offered=False) == no_branch
     assert (notice(at_limit, None) or "").endswith(
         "inside the supported span. Reset to start a new run."
     )
