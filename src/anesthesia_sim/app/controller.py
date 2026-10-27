@@ -458,21 +458,23 @@ class ResumePoint:
     cannot recover it.
 
     **`segment` is the stretch that the step reaching the fork ran under**
-    (`PL-ZR49`). A stretch is a period of constant settings. Each instant at
-    which a run stands has two sides. The step that reached the instant ran
-    under one stretch. A change made while the run stands at the instant
-    opens the next stretch. For an instant after the case's opening, the
-    first side can no longer change. `RunDefinition.record_change` replaces
-    only a stretch that opens at the instant where the run stands. The first
-    side opens before that instant (`RunDefinition.reaching_segment_at`). So
-    `segment` stays one of the parent's stretches, whatever the parent later
-    does at the fork. At the case's opening, no step has closed a stretch.
-    Both sides are then the opening stretch, and a later change at the
-    opening still replaces it. Every way of branching names the first side
-    as its provenance. Each then runs under the other side. That side is the
-    stretch still open at the fork, so its settings are what the dial says
-    there (`RunDefinition.segment_at`). The branch's own timeline opens with
-    the parent's changes at the fork (`RunRecord.opened_with`). So that
+    (`PL-ZR49`). A stretch is a period of constant settings. A run that is
+    paused or stopped at an instant reached it under one stretch, the
+    reaching stretch (`RunDefinition.reaching_segment_at`). A change made
+    while the run is paused there starts a new stretch at that instant. The
+    stretch in force is the one that runs from the instant on
+    (`RunDefinition.segment_at`). Where nothing changed at the instant, the
+    two are the same stretch. After the case's opening, the reaching stretch
+    opens before the instant. `RunDefinition.record_change` replaces only a
+    stretch that opens at the instant where the run stands, so it cannot
+    replace the reaching stretch. So `segment` stays one of the parent's
+    stretches, whatever the parent later does at the fork. At the case's
+    opening, no step has run yet. The opening stretch is then both the
+    reaching stretch and the stretch in force, and a later change at the
+    opening still replaces it. Every way of branching names the reaching
+    stretch as its provenance. Each runs under the stretch in force, so its
+    settings are what the dial says there. The branch's own timeline opens
+    with the parent's changes at the fork (`RunRecord.opened_with`). So that
     timeline states the settings that the branch opened under. This is also
     true for a fork at the case's opening.
 
