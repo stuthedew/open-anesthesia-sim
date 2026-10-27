@@ -3,11 +3,13 @@ id: PL-K5BS
 title: Resetting a branch after the learner changed a setting keeps the new setting, clears the branch's control timeline and writes the setting over the fork's opening stretch, so the branch runs under settings that neither its control record nor its `opened_from` provenance states, and the `_open_at` docstring's claim that the definition "always opens at the parent's stretch, under the parent's settings" is false at a control-event fork
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1844
 payoff: a reset branch can be rebuilt from its provenance and its record, and the screen says why its trace leaves the trunk's
 verify: grep -q 'def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement' tests/integration/test_controller.py
 ---
@@ -19,3 +21,5 @@ verify: grep -q 'def test_a_branch_reset_after_a_setting_change_keeps_its_record
 **Done when.** A branch reset at a control-event fork runs under settings that its control record and `opened_from` agree on: either the difference from the fork's settings is recorded as a control change at the fork, or the reset restores the fork's settings. `docs/MODEL.md` § "Reset behavior" says which. `tests/integration/test_controller.py` has `test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement`.
 
 **Found by.** `PL-TBQS` reviewer replay on #568: r02 F1, r03 F1, r04 F1, r05 F2 and r06 F1. Checked against main 2026-10-25, reproduced with `scripts/B_branch.py`. `PL-B8MK` changed where the change is recorded, but at a control-event fork the fault remains.
+
+**Closed 2026-10-26 by `PL-ZR49`.** Every branch now takes its provenance from the stretch the step reaching its fork ran under, records how its settings differ from that stretch as a change at the fork, and reads its halt record from the step and the current marks. `tests/integration/test_controller.py::test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement` checks this item's case, and `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there` checks it beside the other doors.

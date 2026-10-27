@@ -1,46 +1,46 @@
 """What a learner marks on a case, and the two collections that hold the marks.
 
-This module holds the vocabulary for addressing a run *by time and by threshold*.
-It sits alongside `app/control_record.py`, which says what a run can be set to, and
-`app/run_series.py`, which says what a trace names. Like both of those modules, it
-holds no simulation state, reads no snapshot and loads no toolkit. A `MacTarget` names
-a compartment and a height whether or not a run exists, exactly as a `RecordedSeries`
-names a trace whether or not one has been drawn.
+This module holds the vocabulary for referring to moments in a run *by time and by
+threshold*. It sits alongside `app/control_record.py`, which says what a run can be set
+to, and `app/run_series.py`, which says what each trace refers to. Like both of those
+modules, it holds no simulation state, reads no snapshot and loads no GUI toolkit. A
+`MacTarget` names a compartment and a height whether or not a run exists, exactly as a
+`RecordedSeries` names a trace whether or not one has been drawn.
 
-**Two kinds, not one kind with a flavour field** (`PL-LPLD`, from the Gas Man
-reference simulator by way of `ROADMAP.md` planned item 26, project owner
+**Two kinds of mark, not one kind with a field that says which** (`PL-LPLD`, from the
+Gas Man reference simulator by way of `ROADMAP.md` planned item 26, project owner
 2026-08-25). A **time bookmark** is an instant. A **MAC target** is a height on a
 named compartment. They are held in two collections because they ask two different
-questions. A single list with a discriminant would make every reader of it work out
-again which kind each entry is before it could do anything with it. Those readers
-are this module, the panel, and the detection that `PL-CTD7` builds. The fields
-differ too: a threshold names a compartment and a height, and an instant names
-neither.
+questions. A single list with a field naming the kind would force each piece of code
+that uses it to work out again which kind each entry is. That code is this module, the
+panel, and the crossing detection that `PL-CTD7` builds. The fields differ too: a
+threshold names a compartment and a height, and an instant names neither.
 
 **What these are not.** A mark is a question the learner asks of the case. It is
 not a record of what happened in the case. `control_record.ControlChange` is that
-record: it has one entry per setting the model integrated under, and re-applying it
-reproduces the run. Nothing here is re-applied, and nothing here changes a run. That
-difference is why the two are carried differently across a fork.
-`SimulationController.resumed_at` starts a branch with an empty control timeline but
-with its trunk's marks, and `docs/ARCHITECTURE.md` § "What a branch is" states the
-rule.
+record. It has one entry for each setting under which the model was integrated, and
+re-applying it reproduces the run. Nothing here is re-applied, and nothing here changes
+a run. That difference is why marks and control changes are carried differently across
+a fork. A branch starts without its trunk's control timeline but with its trunk's
+marks, and `docs/ARCHITECTURE.md` § "What a branch is" states the rule.
 
 **This module detects crossings, but the loop that calls it lives elsewhere**
 (`PL-CTD7`). A mark can report whether it lies between two readings, through
 `TimeBookmark.crossed_between` and `MacTarget.crossed_between`.
 `BookmarkSet.crossings_between` applies that test to every mark in a set.
-`MarkStanding` names where a mark stands on a run once that sweep has been done.
-None of this code *reads* a run. `SimulationController.advance` passes the readings
-in, one pair per completed simulation step.
+`MarkStanding` records a mark's status on a run, such as passed or reached, once
+every mark has been tested. None of this code *reads* a run.
+`SimulationController.advance` passes the readings in, one pair per completed
+simulation step.
 
-That split is what prevents a halt from overshooting a mark. A crossing tested once
-per rendered frame lands up to `multiplier x 0.1` s past the value the learner
-marked. At 300x that is 30 simulated seconds (`app/playback.py`, `PL-NBWP`). So the
-test has to be applied on every step, and applying it is the job of the advance
-loop. Because this module holds no state, it is safe to call from inside that loop.
-A predicate over two numbers cannot overshoot anything, and it cannot carry a
-per-mark armed flag from one run to the next.
+Keeping the test here and the loop in the controller is what stops a halt from
+overshooting a mark. If the crossing test ran only once per rendered frame, a halt
+would land up to `multiplier x 0.1` s past the value the learner marked, where
+`multiplier` is the playback speed. At 300x that is 30 simulated seconds
+(`app/playback.py`, `PL-NBWP`). So the test has to be applied on every step, and
+applying it is the job of the advance loop. Because this module holds no state, it is
+safe to call from inside that loop. A test on two numbers cannot overshoot anything.
+It also cannot carry a per-mark "armed" flag from one run to the next.
 """
 
 from __future__ import annotations

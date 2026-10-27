@@ -2075,10 +2075,11 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
 
 @dataclass(frozen=True, slots=True)
 class ForkPoint:
-    """One entry in the branch selector: where a branch would open, and which method opens it.
+    """One entry in the branch selector.
 
-    A recorded control event and a time bookmark that the trunk has passed
-    are listed together, because both stay on offer until the case itself
+    The entry says where a branch would open and which method opens it. A
+    recorded control event and a time bookmark that the trunk has passed are
+    listed together, because both stay on offer until the case itself
     changes. `fork_offer` explains why that puts them in one list. The two
     kinds are taken through different methods, and `mark` says which.
 
