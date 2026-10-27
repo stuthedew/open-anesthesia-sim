@@ -1,8 +1,17 @@
 ---
 id: PL-0RZN
 title: Re-point the two GAP citations in tests/unit/test_record_writes.py from PL-YXGX, dropped as a duplicate in #1845, to PL-DQL9, the open item it was folded into
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: test
+feature: one-source-of-truth
+touches: tests/unit/test_record_writes.py
 added: 2026-10-27
+closed: 2026-10-27
+pr: 1845
+payoff: the record-writes test passes on #1845, and each blood:gas GAP entry names the open item that holds the fix
+verify: ! grep -qF 'PL-YXGX' tests/unit/test_record_writes.py
 ---
 
 **Problem.** `tests/unit/test_record_writes.py` requires each `GAP` entry to
