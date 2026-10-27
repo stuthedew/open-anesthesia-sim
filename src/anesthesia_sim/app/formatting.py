@@ -223,11 +223,16 @@ class AgentAmountUnit(Enum):
 # - A run total in litres of vapour: one decimal, the finest the parameters
 #   support (`PL-TG60`). The three totals share it, so the accounting panel
 #   shows them on one scale.
-# - The delivered or exhausted total in millilitres of liquid: no decimals.
-#   One step of the litre display, 0.1 L of vapour, is about half a millilitre
-#   of liquid for every shipped agent. 1 mL is the finest power of ten that is
-#   no finer than that step. So the two units claim the same resolution for
-#   one amount.
+# - The delivered total in millilitres of liquid: one decimal (project owner,
+#   2026-10-27, ratified, over whole millilitres). The delivered agent is the
+#   dial times the flow times the time, so no partition coefficient makes it
+#   uncertain. Its one uncertainty in liquid is the measured density's, and
+#   one SD of that reaches 0.1 mL only above about 190 mL of liquid. Its litre
+#   count is coarser than that, which the one-sided bound allows.
+# - The exhausted total in millilitres of liquid: no decimals. One step of the
+#   litre display, 0.1 L of vapour, is about half a millilitre of liquid for
+#   every shipped agent. 1 mL is the finest power of ten that is no finer than
+#   that step. So the two units claim the same resolution for one amount.
 #
 # A pair of amount and unit with no entry has no derivation behind it. It is
 # refused rather than shown at a default. The stored total has no liquid entry,
@@ -244,10 +249,8 @@ _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int
                 (total, AgentAmountUnit.LITRES_OF_VAPOUR): _RUN_TOTAL_LITRE_DECIMALS
                 for total in (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
             },
-            **{
-                (total, AgentAmountUnit.MILLILITRES_OF_LIQUID): 0
-                for total in (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED)
-            },
+            (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID): 1,
+            (AgentAmount.EXHAUSTED, AgentAmountUnit.MILLILITRES_OF_LIQUID): 0,
         }
     )
 )

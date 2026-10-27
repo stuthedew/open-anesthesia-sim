@@ -1477,14 +1477,12 @@ def test_agent_amounts_precision() -> None:
     assert format_agent_volume(0.0) == "0.0 L"
 
 
-@pytest.mark.parametrize("total", [AgentAmount.DELIVERED, AgentAmount.EXHAUSTED])
-def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour(
-    total: AgentAmount,
-) -> None:
-    """Derive the liquid precision from the vapour one, for every shipped agent.
+def test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres() -> None:
+    """Derive the exhausted total's liquid precision from its litre one, for every agent.
 
-    One amount shown in two units must not claim a finer resolution in one
-    of them (`PL-0S0V`). So the liquid count is the finest power of ten that
+    The exhausted total carries the partition coefficients' uncertainty, so
+    in liquid it must not claim a finer resolution than in litres of vapour
+    (`PL-0S0V`). So the liquid count is the finest power of ten that
     is no finer than one step of the litre display. That step is 0.1 L of
     vapour, converted into liquid. This test does that conversion from each
     agent's stored molar mass and density, not from the formatter. At the
@@ -1501,8 +1499,10 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
     about one SD, and 0.1 mL would be a tenth of one.
     """
 
-    litres = agent_amount_display_precision(total, AgentAmountUnit.LITRES_OF_VAPOUR)
-    liquid = agent_amount_display_precision(total, AgentAmountUnit.MILLILITRES_OF_LIQUID)
+    litres = agent_amount_display_precision(AgentAmount.EXHAUSTED, AgentAmountUnit.LITRES_OF_VAPOUR)
+    liquid = agent_amount_display_precision(
+        AgentAmount.EXHAUSTED, AgentAmountUnit.MILLILITRES_OF_LIQUID
+    )
     one_litre_count_in_ml_of_liquid = {
         agent_id: litres.resolution
         * 1000.0
@@ -1520,6 +1520,47 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
         "a finer power of ten would still not over-claim; the derivation has drifted"
     )
     assert (liquid.decimals, liquid.finest_decimals) == (0, 0)
+
+
+def test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth() -> None:
+    """Pin the owner's ruling for the delivered total, and the density limit behind it.
+
+    The delivered agent is the dial times the flow times the time, so no
+    partition coefficient makes it uncertain. The conversion to liquid is
+    exact at the model's 20 °C reference, so its one uncertainty in liquid is
+    the measured density's. So the delivered total is shown to 0.1 mL (project
+    owner, 2026-10-27, ratified, over whole millilitres, `PL-0S0V`). That also
+    lets a reader multiply the two figures beside a cost by eye.
+
+    The limit is computed here from each agent's stored density and its SD,
+    not from the formatter. One SD of the density moves the liquid figure by
+    0.1 mL once it holds about 190 mL of sevoflurane, 250 mL of isoflurane or
+    366 mL of desflurane. Those are 0.1 x 1.5203 / 0.0008, 0.1 x 1.5019 / 0.0006
+    and 0.1 x 1.4651 / 0.0004, from Laster, Fang and Eger's densities as
+    `docs/MODEL.md` § "Agent amount" tabulates them. At Gas Man's Exercise 14-1,
+    39.4 mL of isoflurane, one SD is 0.016 mL, well inside half a step.
+    """
+
+    liquid = agent_amount_display_precision(
+        AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID
+    )
+    litres = agent_amount_display_precision(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR)
+    one_sd_reaches_a_step_at_ml = {
+        agent_id: liquid.resolution
+        * load_agent_parameters(agent_id).liquid_density.g_ml
+        / load_agent_parameters(agent_id).liquid_density.standard_deviation_g_ml
+        for agent_id in AGENT_DATA_FILENAMES
+    }
+    isoflurane = load_agent_parameters("isoflurane").liquid_density
+
+    assert (liquid.decimals, liquid.finest_decimals) == (1, 1)
+    assert (litres.decimals, litres.finest_decimals) == (1, 1)
+    assert one_sd_reaches_a_step_at_ml == pytest.approx(
+        {"sevoflurane": 190.0, "isoflurane": 250.3, "desflurane": 366.3}, abs=0.1
+    )
+    assert 39.4 * isoflurane.standard_deviation_g_ml / isoflurane.g_ml == pytest.approx(
+        0.016, abs=0.001
+    )
 
 
 def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
@@ -1541,7 +1582,9 @@ def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
     with pytest.raises(ValueError, match="2 decimals is finer than the 1"):
         AgentAmountPrecision(AgentAmount.STORED, AgentAmountUnit.LITRES_OF_VAPOUR, 2)
     with pytest.raises(ValueError, match="1 decimals is finer than the 0"):
-        AgentAmountPrecision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID, 1)
+        AgentAmountPrecision(AgentAmount.EXHAUSTED, AgentAmountUnit.MILLILITRES_OF_LIQUID, 1)
+    with pytest.raises(ValueError, match="2 decimals is finer than the 1"):
+        AgentAmountPrecision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID, 2)
 
     for bad_count in (-1, 1.0, True):
         with pytest.raises(ValueError, match="whole number of decimals of 0 or more"):
