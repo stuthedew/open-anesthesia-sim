@@ -35,12 +35,12 @@ clipped, and nothing is collapsed to zero extent. Collapsing to zero is what
 Blender does with `RGN_FLAG_TOO_SMALL` (`docs/interface-provenance.md`).
 
 **Which Areas are too small is decided once per change, by `settle`.** Every
-Area is first tried at its need. When the extent cannot hold every need, Areas
-drop to their floors one at a time until the rest fit, so a small shortfall
-blanks only the Areas that must give way (`PL-QZ7Z`). The Areas that the latest
-change did not leave in place drop first. The Areas that the change left in
-place drop only after them. So a split's new halves report themselves too
-small, rather than taking the room from an Area the reader did not touch. Then
+Area is first tried at its need. When the extent cannot hold every need, the
+fewest Areas that must give way drop to their floors, so a small shortfall
+blanks only those (`PL-QZ7Z`). The Areas that the latest change did not leave in
+place drop first. The Areas that the change left in place drop only where the
+others are not enough. So a split's new halves report themselves too small,
+rather than taking the room from an Area the reader did not touch. Then
 every Area that still has its need is drawn, and the rest are too small. A
 too-small Area is drawn again as soon as a later change, such as a border drag
 or a larger window, can give it its need.
@@ -58,7 +58,9 @@ import math
 from collections.abc import Callable, Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
+from itertools import combinations
 from types import MappingProxyType
+from typing import Final
 
 from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.layout.exceptions import InvalidLayout
@@ -241,17 +243,21 @@ def border_share(
     The split's children have sizes `fractions` and bounds `bounds` along its
     axis, and share `available` pixels, as `split_sizes` lays them out. Border
     `index` lies between child `index` and the child after it, and moving it
-    changes only those two children. `offset_px` is where the border is to be
-    drawn: the pixels of the children before it.
+    changes only those two children's fractions. A held child can still move
+    another border on screen, since it takes its pixels from every child that
+    is not held. `offset_px` is where the border is to be drawn: the pixels of
+    the children before it.
 
     Where a child is held at its bound, every share in a range draws the
     border in one place. So the pointer is mapped through the drawn sizes, not
     through the fractions alone (`PL-97WX`). Of the shares that draw the
     border at `offset_px`, the result is the one nearest `offset_px /
     available`, the share that the fractions alone would give. Where no child
-    is held, it is that share exactly. The border cannot be drawn past the
-    place where a child beside it reaches its bound, so an `offset_px` past
-    that place is taken as that place.
+    is held, it is usually that share. The rounding in `pixel_sizes` can
+    still leave the border drawn one pixel from the pointer, because a larger
+    share does not always round to a larger prefix of pixels. The border
+    cannot be drawn past the place where a child beside it reaches its bound,
+    so an `offset_px` past that place is taken as that place.
 
     The result is None when the border is already drawn at `offset_px`, or as
     near it as it can be drawn. A press, or a nudge toward an Area held at its
@@ -414,19 +420,24 @@ def settle(
     `kept` names the Areas that were drawn before the change being settled
     and that the change left with the same View in the same place. Every
     Area is first held at its `drawn_bounds` entry, the larger of its need and
-    its floor. While the extent cannot hold those bounds, one Area at a time
-    drops to its floor, so a small shortfall blanks only the Areas that must
-    give way (`PL-QZ7Z`). The Areas not in `kept` drop before any Area in
-    `kept`. Within each group, the next to drop is the one whose drop leaves
-    the least shortfall. A tie goes to the Area with the smaller share of the
-    window, which is the one the reader gave the least room, and then to the
-    later Area in reading order.
+    its floor. Where the extent cannot hold those bounds, some Areas drop to
+    their floors. The Areas that drop are the fewest that must give way, so a
+    small shortfall blanks only those (`PL-QZ7Z`). In order, the drop:
 
-    Once the bounds fit, each dropped Area is tried at its need again, the
-    last dropped first. It keeps its need wherever the bounds still fit. So an
-    Area dropped early, before a later drop made room, is drawn after all.
-    Every Area that is then given its need is drawn, and every other Area is
-    too small.
+    1. leaves the least shortfall that dropping Areas can reach. That is no
+       shortfall wherever the floors fit;
+    2. drops the fewest Areas in `kept`, so a change's new Areas give way
+       before the Areas it did not touch;
+    3. drops the fewest Areas in all;
+    4. drops the smallest share of the window, so the Views the reader gave
+       the least room give way first;
+    5. drops the later Areas in reading order.
+
+    Every subset is weighed where the tree has at most
+    `_EXACT_SEARCH_AREAS` Areas. A larger tree drops one Area at a time,
+    choosing each by the same rules, until the shortfall is the least it can
+    be. Every Area that is then given its need is drawn, and every other Area
+    is too small.
 
     Raises:
         TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
@@ -436,46 +447,15 @@ def settle(
 
     areas = tuple(areas_in(tree))
     held = drawn_bounds({area.id: needs[area.id] for area in areas}, floors)
-    bounds = dict(held)
-    shares = _shares(tree)
-    reading = {area.id: index for index, area in enumerate(areas)}
-    dropped: list[AreaId] = []
+    laid_out = apportion(tree, extent, handle_px, held)
 
-    def fits() -> bool:
-        return not apportion(tree, extent, handle_px, bounds).unheld
+    if laid_out.unheld:
+        dropped = _dropped(tree, extent, handle_px, held, floors, kept)
+        bounds = {
+            area.id: floors[area.id] if area.id in dropped else held[area.id] for area in areas
+        }
+        laid_out = apportion(tree, extent, handle_px, bounds)
 
-    def shortfall_without(area_id: AreaId) -> int:
-        trial = {**bounds, area_id: floors[area_id]}
-        least = _minimum_extent(tree, handle_px, trial)
-
-        return max(0, least.width_px - extent.width_px) + max(0, least.height_px - extent.height_px)
-
-    while not fits():
-        holding = [area.id for area in areas if bounds[area.id] != floors[area.id]]
-        candidates = [area_id for area_id in holding if area_id not in kept] or holding
-
-        if not candidates:
-            # Every Area is already at its floor, so the extent is less than
-            # even the floors need. The splits' sizes then follow their
-            # fractions alone, and every Area smaller than its need is too
-            # small.
-            break
-
-        drop = min(
-            candidates,
-            key=lambda area_id: (shortfall_without(area_id), shares[area_id], -reading[area_id]),
-        )
-        bounds[drop] = floors[drop]
-        dropped.append(drop)
-
-    if fits():
-        for area_id in reversed(dropped):
-            bounds[area_id] = held[area_id]
-
-            if not fits():
-                bounds[area_id] = floors[area_id]
-
-    laid_out = apportion(tree, extent, handle_px, bounds)
     drawn = frozenset(area.id for area in areas if laid_out.areas[area.id].covers(needs[area.id]))
     final = {area.id: held[area.id] if area.id in drawn else floors[area.id] for area in areas}
     too_small = tuple(
@@ -485,6 +465,76 @@ def settle(
     )
 
     return Fit(laid_out, MappingProxyType(final), drawn, too_small)
+
+
+# `settle` weighs every subset of a tree's Areas up to this many Areas: at
+# most 1024 subsets, each costing one walk of the tree. That took about 12 ms
+# for ten Areas in a window too small for any, where twelve took 48 ms. A
+# larger tree drops one Area at a time instead, which can drop more than it
+# needs to.
+_EXACT_SEARCH_AREAS: Final = 10
+
+
+def _dropped(
+    tree: Node,
+    extent: PixelSize,
+    handle_px: int,
+    held: Mapping[AreaId, PixelSize],
+    floors: Mapping[AreaId, PixelSize],
+    kept: AbstractSet[AreaId],
+) -> frozenset[AreaId]:
+    """Return the Areas that `settle` drops to their floors, by the rules its docstring lists."""
+
+    order = [area.id for area in areas_in(tree)]
+    reading = {area_id: index for index, area_id in enumerate(order)}
+    shares = _shares(tree)
+    # An Area already held at its floor gains nothing by dropping.
+    holding = [area_id for area_id in order if held[area_id] != floors[area_id]]
+    loose = [area_id for area_id in holding if area_id not in kept]
+    fixed = [area_id for area_id in holding if area_id in kept]
+
+    def shortfall(dropped: AbstractSet[AreaId]) -> int:
+        bounds = {
+            area_id: floors[area_id] if area_id in dropped else held[area_id] for area_id in order
+        }
+        least = _minimum_extent(tree, handle_px, bounds)
+
+        return max(0, least.width_px - extent.width_px) + max(0, least.height_px - extent.height_px)
+
+    def rank(dropped: AbstractSet[AreaId]) -> tuple[float, tuple[int, ...]]:
+        return (
+            math.fsum(shares[area_id] for area_id in dropped),
+            tuple(sorted(-reading[area_id] for area_id in dropped)),
+        )
+
+    best = shortfall(frozenset(holding))
+
+    if len(order) <= _EXACT_SEARCH_AREAS:
+        for from_kept in range(len(fixed) + 1):
+            for from_loose in range(len(loose) + 1):
+                reaching = [
+                    frozenset(first + second)
+                    for first in combinations(fixed, from_kept)
+                    for second in combinations(loose, from_loose)
+                    if shortfall(frozenset(first + second)) == best
+                ]
+
+                if reaching:
+                    return min(reaching, key=rank)
+
+    dropped: frozenset[AreaId] = frozenset()
+
+    while shortfall(dropped) > best:
+        candidates = [area_id for area_id in loose if area_id not in dropped] or [
+            area_id for area_id in fixed if area_id not in dropped
+        ]
+        choice = min(
+            candidates,
+            key=lambda area_id: (shortfall(dropped | {area_id}), rank(dropped | {area_id})),
+        )
+        dropped |= {choice}
+
+    return dropped
 
 
 def _held_sizes(

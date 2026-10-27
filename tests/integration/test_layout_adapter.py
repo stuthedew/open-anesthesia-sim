@@ -2159,6 +2159,9 @@ def test_the_minimum_size_hint_counts_each_area_at_its_floor(
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _NARROW), Area(AreaId(2), _WIDE)), 3)
     waiting = AreaLayout(model, _REQUESTS, registered=_NARROW_AND_WIDE, retired={})
     unshown = waiting.minimumSizeHint()
+    # Before it is shown, the narrow Area is held at its floor, not its need.
+    unshown_floor = waiting.frame(AreaId(1)).chooser.sizeHint().width() + 2 * _HEADER_MARGIN_PX
+    assert waiting.frame(AreaId(1)).minimumWidth() == unshown_floor
 
     page = QScrollArea()
     page.setWidgetResizable(True)
@@ -2261,6 +2264,45 @@ def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_sm
     assert [entry.area_id for entry in container.too_small()] == [AreaId(2)]
     hint = container.minimumSizeHint()
     assert (hint.width(), hint.height()) == (608, 200 + _CHROME_PX)
+
+
+def test_a_keyboard_step_toward_a_held_view_keeps_the_stored_fraction(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-97WX`: a step is mapped through the drawn sizes, as a drag is.
+
+    The row is 0.7 / 0.3 of 800 px, and the Big view on the right is held at
+    300 px, so the border is drawn at 500. A step right would make that View
+    narrower than it needs, so the border stops there. Its line turns WARNING,
+    and the stored 0.7 stays. A step left draws the border at 500 - 20 = 480,
+    a share of 480 / 800 = 0.6.
+    """
+
+    model = _layout(_row((0.7, 0.3), _area(1), Area(AreaId(2), _BIG)), 3)
+    container = _show_sized(application, shown, model, (_SIDE_PX, _SIDE_PX))
+    splitter = _splitters(container)[()]
+    border = splitter.handle(1)
+    assert isinstance(border, _AreaHandle)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+
+    QTest.keyClick(border, Qt.Key.Key_Right)
+    application.processEvents()
+
+    assert container.model == model
+    assert changed == []
+    assert splitter.sizes() == [500, 300]
+    assert border.warning
+
+    QTest.keyClick(border, Qt.Key.Key_Left)
+    application.processEvents()
+
+    assert container.model.position(Handle(0, (), 0)) == (500 - AREA_KEYBOARD_STEP) / 800
+    assert splitter.sizes() == [500 - AREA_KEYBOARD_STEP, 300 + AREA_KEYBOARD_STEP]
+    assert len(changed) == 1
+    assert not border.warning
 
 
 def test_escape_after_a_drag_of_a_focused_border_leaves_the_drag_in_place(

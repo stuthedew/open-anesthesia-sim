@@ -1454,22 +1454,31 @@ class AreaLayout(QWidget):
             keyed = _KeyedBorder(address, self._model)
 
         self._keyed = _KeyedBorder(address, keyed.start, alone)
-        # A step is measured in drawn pixels of the split being moved. It is
-        # turned into a fraction of the window in the same way that
-        # `_position_at` turns a drag's pointer position into one.
-        total = _drawable_px(handle.owner)
-
-        if total <= 0:
-            return
-
         # A keyboard step starts from where the border is drawn, as a drag does.
         # The drawn border can differ from the model's position while an Area is
         # held wider than its share so that its View fits. A step from the model's
         # position would then move nothing on screen until it caught up with the
-        # drawn border (`PL-4L8B`).
-        low, high = self._model.span(address)
-        drawn = sum(handle.owner.sizes()[: address.index + 1]) / total
-        target = low + (high - low) * (drawn + steps * AREA_KEYBOARD_STEP / total)
+        # drawn border (`PL-4L8B`). The step's pixels are turned into a fraction of
+        # the window by `_drawn_position`, as a drag's pointer is (`PL-97WX`).
+        drawn = sum(handle.owner.sizes()[: address.index + 1])
+        reached = self._drawn_position(
+            handle.owner, self._model, address, drawn + steps * AREA_KEYBOARD_STEP
+        )
+
+        if reached is None:
+            return
+
+        target, moves = reached
+
+        if not moves:
+            # The border is already as far as it can be drawn that way, because
+            # an Area beside it is held at its need. So it stops, and nothing in
+            # the layout changes.
+            self._at_minimum = True
+            self._relight()
+
+            return
+
         step = _BorderDrag(address, alone, self._model, 0)
         moved, self._at_minimum = self._farthest(step, target)
         self._resized(moved)
@@ -1521,16 +1530,11 @@ class AreaLayout(QWidget):
 
         The splitter places a handle's leading edge after the children before
         it and the handles between them. So the border is to be drawn at that
-        edge's offset minus the width of those handles. `border_share` turns
-        that offset into a share of the split through the sizes the splitter
-        draws, which hold a child at its bound where its fraction would make it
-        smaller (`PL-97WX`). The model's span of the split turns the share into
-        a fraction of the window.
-
-        Where the border is already drawn at the pointer, or as near it as it
-        can be drawn, the result is where the drag started. A press, or a
-        nudge toward an Area held at its need, then changes no fraction. The
-        result is None when the split has no pixels to share.
+        edge's offset minus the width of those handles, and `_drawn_position`
+        turns that offset into a place in the window. Where the border is
+        already drawn at the pointer, or as near it as it can be drawn, the
+        result is where the drag started. The result is None when the split
+        has no pixels to share.
         """
 
         splitter = handle.owner
@@ -1538,31 +1542,50 @@ class AreaLayout(QWidget):
         local = splitter.mapFromGlobal(at)
         horizontal = splitter.orientation() == Qt.Orientation.Horizontal
         edge = (local.x() if horizontal else local.y()) - drag.offset_px
+        offset = edge - splitter.handleWidth() * (index - 1)
+        reached = self._drawn_position(splitter, drag.start, drag.handle, offset)
+
+        return None if reached is None else reached[0]
+
+    def _drawn_position(
+        self, splitter: _AreaSplitter, start: LayoutModel, address: Handle, offset_px: int
+    ) -> tuple[float, bool] | None:
+        """Return where in the window `address` lies once it is drawn `offset_px` along its split.
+
+        `offset_px` counts the pixels of the children before the border.
+        `border_share` turns it into a share of the split through the sizes the
+        splitter draws, which hold a child at its bound where its fraction would
+        make it smaller (`PL-97WX`). The model's span of the split turns the
+        share into a fraction of the window. A drag and a keyboard step both
+        move a border through this one mapping.
+
+        The result is the position and whether the border moves from where
+        `start` draws it. It does not move where it is already drawn at
+        `offset_px`, or as near it as it can be drawn. The position is then
+        `start`'s own, so a press, or a nudge toward an Area held at its need,
+        changes no fraction while the layout fits the window. The result is
+        None when the split has no pixels to share.
+        """
+
         fit = self._fit
         drawn = None if fit is None else fit.apportionment.splits.get(splitter.path)
 
         if fit is None or drawn is None or sum(drawn) <= 0:
             return None
 
-        split = _split_at(drag.start.windows[MAIN_WINDOW].tree, splitter.path)
+        split = _split_at(start.windows[MAIN_WINDOW].tree, splitter.path)
         bounds = tuple(
             minimum_extent(child, AREA_HANDLE_WIDTH, fit.bounds).along(split.orientation)
             for child in split.children
         )
-        share = border_share(
-            split.sizes,
-            drag.handle.index,
-            bounds,
-            sum(drawn),
-            edge - splitter.handleWidth() * (index - 1),
-        )
+        share = border_share(split.sizes, address.index, bounds, sum(drawn), offset_px)
 
         if share is None:
-            return drag.start.position(drag.handle)
+            return start.position(address), False
 
-        low, high = drag.start.span(drag.handle)
+        low, high = start.span(address)
 
-        return low + (high - low) * share
+        return low + (high - low) * share, True
 
     def _farthest(self, drag: _BorderDrag, position: float) -> tuple[LayoutModel, bool]:
         """Return the layout with the border as near `position` as it goes, and whether it stopped.
