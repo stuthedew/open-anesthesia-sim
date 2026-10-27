@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: preferences-store
-touches: docs/MODEL.md, ROADMAP.md, docs/references/README.md, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-93B3-keep-a-reader-s-preferences-the-agent-price-and.md
+touches: docs/MODEL.md, ROADMAP.md, docs/references/README.md, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-93B3-keep-a-reader-s-preferences-the-agent-price-and.md, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - nothing in src/ stores or displays a price, a currency or a cost
 added: 2026-09-16
 closed: 2026-10-26
