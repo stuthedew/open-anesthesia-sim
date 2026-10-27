@@ -360,7 +360,6 @@ def _system(
             name=name,
             volume_l=CompartmentVolume(corner.tissue_l),
             perfusion_fraction=perfusion_fraction,
-            blood_gas_partition_coefficient=PartitionCoefficient(corner.blood_gas),
             tissue_gas_partition_coefficient=PartitionCoefficient(
                 corner.tissue_blood * corner.blood_gas
             ),
@@ -503,7 +502,6 @@ def _require_the_compartments_alone(corner: Corner) -> None:
                     name="corner",
                     volume_l=CompartmentVolume(corner.tissue_l),
                     perfusion_fraction=1.0,
-                    blood_gas_partition_coefficient=PartitionCoefficient(corner.blood_gas),
                     tissue_gas_partition_coefficient=PartitionCoefficient(
                         corner.tissue_blood * corner.blood_gas
                     ),
@@ -515,10 +513,17 @@ def _require_the_compartments_alone(corner: Corner) -> None:
                 )
                 venous.set_partial_pressure_fraction(Fraction(fraction))
 
-                for compartment in (tissue, venous):
-                    held_l = compartment.agent_amount_l
-                    change_l = compartment.advance(target, step_s, blood_flow_l_min)
+                held_l_by_compartment = (tissue.agent_amount_l, venous.agent_amount_l)
+                changes_l = (
+                    tissue.advance(
+                        target, step_s, blood_flow_l_min, PartitionCoefficient(corner.blood_gas)
+                    ),
+                    venous.advance(target, step_s, blood_flow_l_min),
+                )
 
+                for compartment, held_l, change_l in zip(
+                    (tissue, venous), held_l_by_compartment, changes_l, strict=True
+                ):
                     assert isfinite(change_l)
                     assert change_l == compartment.agent_amount_l - held_l
                     assert (
@@ -572,7 +577,6 @@ def _build_perfusion_fraction(value: float) -> TissueGroup:
         name="edge",
         volume_l=CompartmentVolume(1.0),
         perfusion_fraction=value,
-        blood_gas_partition_coefficient=PartitionCoefficient(1.0),
         tissue_gas_partition_coefficient=PartitionCoefficient(1.0),
     )
 
