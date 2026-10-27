@@ -219,6 +219,15 @@ MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}$")
 # nothing that large has a brief precise enough to be worked without judgment.
 DELEGABLE_EFFORTS = ("S", "M")
 
+#: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
+#: `subprojects/`, so the prefix leaves it to the tooling. A file under it is
+#: placed on one side of the lane boundary by its own imports, not by
+#: `workflow_paths` or `product_paths`, which is why `placed_by_neither` passes it.
+#: Spelt here rather than in `docket.arming`, which re-exports it, because
+#: `Item.delegability` reads it and `arming` imports this module by way of
+#: `claims`.
+TESTS = "tests/"
+
 # The two halves of a project, as `docket next` divides them so that two
 # sessions can run at once without racing for the same item.
 #
@@ -1102,9 +1111,7 @@ class Item:
             return "open design decision"
         return None
 
-    def delegability(
-        self, protected_paths: tuple[str, ...], gate_paths: tuple[str, ...]
-    ) -> str | None:
+    def delegability(self, paths: DelegationPaths) -> str | None:
         """Why this item may *not* be handed to a cheaper model, or None if it may.
 
         Derived, never stored, and that asymmetry is the whole safeguard. There
@@ -1125,23 +1132,30 @@ class Item:
         - a `verify:` command exists, because without one "done" is a
           judgment and there is nothing for a reviewer to trust instead;
         - `touches` is declared and wholly outside the protected paths, so the
-          diff's blast radius is known before the work starts;
+          diff's blast radius is known before the work starts. A declared
+          directory holding a protected path is not outside it;
         - `touches` is also outside the gate paths, because `verify` fails any
           diff that edits them and an item offered here would be refused
           after the work was done rather than before it was started;
+        - every path in `touches` is one the lane lists place, or one under
+          `TESTS`, because a file the work tracks anywhere else fails the
+          lane check until the settings file places it, and the settings
+          file is a gate path (`PL-GKX6`);
         - the effort is one a precise brief can actually cover.
 
-        The two path lists are read differently when *empty*, and the
-        difference is not an oversight. `protected_paths` has no default, so
-        empty means a project has never said which of its files produce
+        The protected and gate lists are read differently when *empty*, and
+        the difference is not an oversight. `protected_paths` has no default,
+        so empty means a project has never said which of its files produce
         consequential output, and the safe reading of silence is to offer
         nothing. `gate_paths` ships with a real default, so empty can only be
         a project that cleared it deliberately - and one that has told
-        `verify` to stop auditing its checks has not asked this to start.
+        `verify` to stop auditing its checks has not asked this to start. The
+        placement condition follows the lane check, which declines where
+        either lane list is empty, so it then withholds nothing.
         """
         if self.not_delegable:
             return f"withheld: {self.not_delegable}"
-        if not protected_paths:
+        if not paths.protected:
             return "no protected paths configured"
         if self.status != "ready":
             return f"status is {self.status or 'unset'}, not ready"
@@ -1152,19 +1166,51 @@ class Item:
             return "no `verify:` command"
         if not self.touches:
             return "declares no `touches`"
-        protected = [path for path in self.touches if is_under(path, protected_paths)]
+        protected = self._reaching(paths.protected)
         if protected:
             return f"touches protected path(s) {', '.join(protected)}"
         # Reported after the protected paths and phrased differently, because
         # the two prohibitions differ in kind: one guards a clinical value and
         # the other guards the measurement. A reader who cannot tell them
         # apart learns to read neither.
-        gates = [path for path in self.touches if is_under(path, gate_paths)]
+        gates = self._reaching(paths.gates)
         if gates:
             return f"touches the checks themselves: {', '.join(gates)}"
+        # After the gates, so an item that already names the settings file
+        # is withheld as editing the checks, which is the reason that stops
+        # it: adding the file to `touches` cannot make it delegable.
+        loose = [
+            path for path in self.touches if placed_by_neither(path, paths.workflow, paths.product)
+        ]
+        if loose:
+            return (
+                f"touches path(s) that neither workflow_paths nor product_paths places: "
+                f"{', '.join(loose)}, so the lane check refuses a file tracked there until "
+                f"the settings file places it"
+            )
         if self.effort not in DELEGABLE_EFFORTS:
             return f"effort {self.effort or 'unset'} is not {' or '.join(DELEGABLE_EFFORTS)}"
         return None
+
+    def _reaching(self, roots: tuple[str, ...]) -> list[str]:
+        """The declared paths that can reach a file under `roots`, for a refusal to name.
+
+        A path inside a root reaches it, and so does a directory holding one:
+        `src/anesthesia_sim` holds `src/anesthesia_sim/core`, so a worker
+        confined to it may still edit the protected code. The paths compare
+        through `covers`, which reads them as paths rather than strings, and
+        a directory is named with the roots it holds. An empty root is
+        skipped, as `is_under` skips one, rather than read as the whole tree.
+        """
+        found = []
+        for path in self.touches:
+            if is_under(path, roots):
+                found.append(path)
+                continue
+            held = [root for root in roots if root.strip().strip("/") and covers(path, root)]
+            if held:
+                found.append(f"{path} (holding {', '.join(held)})")
+        return found
 
     def sort_key(self) -> tuple[int, int, str]:
         """Order for display: priority band, then effort, then id.
@@ -2042,6 +2088,47 @@ def is_under(path: str, roots: tuple[str, ...]) -> bool:
         if candidate == target or candidate.startswith(target + "/"):
             return True
     return False
+
+
+def placed_by_neither(
+    path: str, workflow_paths: tuple[str, ...], product_paths: tuple[str, ...]
+) -> bool:
+    """Whether the lane check refuses a tracked file at `path` as placed by neither list.
+
+    Outside `TESTS`, every tracked path must lie under `workflow_paths` or
+    `product_paths`, and `tools/workflow_paths_check.py` refuses one under
+    neither (`PL-8ZGY`). A file under `TESTS` is placed by its own imports
+    instead, so it is never unplaced here. Nor is any path while either list
+    is empty, because the check then declines rather than refusing.
+
+    Shared by that check and `Item.delegability`, so the delegation lane
+    cannot offer work that the lane check will refuse once it is done.
+    """
+    if not workflow_paths or not product_paths or is_under(path, (TESTS,)):
+        return False
+    return not is_under(path, workflow_paths) and not is_under(path, product_paths)
+
+
+@dataclass(frozen=True)
+class DelegationPaths:
+    """The four path lists from the settings file that `Item.delegability` reads.
+
+    One value rather than four parameters, built once by
+    `Config.delegation`. Every reader of delegability - `list`'s marks,
+    `delegable`, `next` and the model choice - is then handed the same lists,
+    and none can leave one out. Each list defaults to empty, which offers
+    nothing: an empty `protected` closes delegation outright.
+    """
+
+    protected: tuple[str, ...] = ()
+    gates: tuple[str, ...] = ()
+    workflow: tuple[str, ...] = ()
+    product: tuple[str, ...] = ()
+
+
+#: The default for a caller handed no configuration. It offers nothing,
+#: because its `protected` list is empty.
+NO_DELEGATION = DelegationPaths()
 
 
 def parse_item(text: str, path: str = "") -> Item:

@@ -3,11 +3,13 @@ id: PL-DHJ7
 title: The live ROADMAP sections carry about fifteen subset counts of the shape PL-GLBF checked, and unlike v0.2.8's those lists are still growing
 priority: P3
 effort: M
-status: ready
+status: dropped
 classes: docs, infra
 feature: doc-consistency-checks
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
+closed: 2026-10-27
+reason: Gone, checked 2026-10-27: Gate 1's count paragraphs became records when v0.5.0 shipped, their sources moved onto item fields (PL-8QMD, PL-Z64T), and v0.7.0's live gate holds no count that is neither checked nor dated. The field checks the brief asked for would count a different set than the sentences do, so check_gate_counts' docstring now records why none is built.
 verify: grep -q 'def test_a_live_roadmap_subset_count_is_held_or_dated' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
@@ -82,3 +84,49 @@ count paragraphs against the brief's "about fifteen", including two added
 2026-09-19 (`ROADMAP.md:3218`, `:3395`). The decision half is recorded inside
 this brief at `:66-74` and the item is `ready`; what is left is the whole
 implementation.
+
+**Checked 2026-10-27 against `origin/main` at `c95177a`, and dropped: the problem is gone, and the checks this brief asked for would count the wrong set.**
+
+- **The fifteen to thirty-five paragraphs are records now.** They sat in
+  Gate 1's declines, under v0.5.0. v0.5.0 shipped on 2026-09-21, so its
+  section is a shipped release's section. `docs/MODEL.md`'s clause 4 makes
+  every sentence in it a dated record. v0.6.0 shipped on 2026-10-20, so the
+  same applies to Gate 2's prose.
+- **What fed them was moved onto the items.** The per-pass prose subsections
+  moved onto their items on 2026-09-23. A deferral became the
+  `deferred-from:` field that `bin/docket wave` counts (`PL-8QMD`,
+  2026-10-12). The lane groups were collapsed into one (`PL-Z64T`,
+  2026-10-24). `docs/MODEL.md`'s counts rule (`PL-4FBP`, 2026-09-19) covers
+  the rest.
+- **The live gate holds no unchecked, undated count.** Every count in
+  v0.7.0's section was read. Its two group headings are held by
+  `check_gate_counts`. Every other count sits in a paragraph that carries its
+  date ("Frozen 2026-10-25", "Swept for staleness on 2026-10-25"), or it
+  names its ids beside it ("The four entries v0.6.0's gate deferred for item
+  28", "its two other members, `PL-06LS` and `PL-XST1`").
+- **Gate 2 wrote none of the kind either, over its whole life after the
+  counts rule.** Its count sentences were "Thirteen entries were untriaged
+  when this list was frozen", "Five entries are deferred to Gate 3", and
+  "Four of the five are `safety`- or `science`-classed". The first is
+  anchored to the freeze. The other two carry a date and a commit, and each
+  names its ids.
+- **The "decidable" kind turned out to be anchored.** Each such count is the
+  ids of one decision at one commit, not a query over today's store. "Five
+  entries are deferred to Gate 3" names `PL-WZVZ`, which now carries
+  `deferred-from: v0.7.0`. Five of v0.6.0's entries still carry
+  `deferred-from: v0.6.0`, but they include `PL-5B1N` in its place. So a
+  field count would agree for the wrong reason. "Four of the five are
+  `safety`- or `science`-classed" is five of five in today's store, since
+  `PL-B396` gained `safety`. So a field count would fail a correct record.
+  This is the near-miss field `PL-GLBF` warned about, one level up.
+- **The judgment kind needs nothing new.** The counts rule already requires a
+  date, and the writers have followed it.
+- **The anchored kind needs nothing**, as this brief said. That conclusion,
+  with the two worked examples above, is now written into
+  `check_gate_counts`'s docstring in `tools/doc_check.py`. That docstring is
+  where a session would build a check of gate prose, so the next audit finds
+  the answer there.
+
+The `verify:` command names a test that was never written, because no check
+was built. A dropped item's command is printed by `bin/docket verify` and not
+run (`PL-BX1C`).

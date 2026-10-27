@@ -3462,6 +3462,21 @@ def check_gate_counts(root: Path, report: Report) -> None:
     fact that must never change. Judging that is a reader's job, so the prose
     restates no count instead of being guessed at.
 
+    **No count in a gate's prose is decidable from an item field either**
+    (`PL-DHJ7`, measured 2026-10-27). The counts that look decidable, such as
+    "N entries are deferred" or "N of them are `safety`-classed", each count
+    the ids of one decision at one commit. Held to today's fields, they count
+    a different set. v0.6.0's "Five entries are deferred to Gate 3" names
+    `PL-WZVZ`, whose `deferred-from:` now names v0.7.0. Five entries of that
+    list still carry `deferred-from: v0.6.0`, but `PL-5B1N` is one of them,
+    so a check would pass for the wrong reason. The same section's "Four of
+    the five are `safety`- or `science`-classed" is five of five since
+    `PL-B396` gained `safety`, so a check would fail a correct sentence. Such
+    a sentence is a record under `docs/MODEL.md`'s counts rule: it carries its
+    date or commit, or names its ids, and it is never edited to a later fact.
+    That day v0.7.0's gate held no count that was neither checked here nor
+    written that way.
+
     A count in a *heading* is refused rather than read, because no heading is
     one of those two positions and none can be made into one - the reasoning
     is in `_uncheckable_heading_counts`. A heading carries no date either, so
