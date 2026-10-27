@@ -841,11 +841,39 @@ def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
             mac_percent=MacPercent(2.0),
         )
 
+    with pytest.raises(ValueError) as no_finite_band:
+        mac_awake_band_percent(
+            fraction_of_mac=math.inf,
+            standard_deviation_fraction_of_mac=0.05,
+            mac_percent=MacPercent(2.0),
+        )
+
+    with pytest.raises(ValueError) as no_ordered_band:
+        mac_awake_band_percent(
+            fraction_of_mac=0.34,
+            standard_deviation_fraction_of_mac=-0.05,
+            mac_percent=MacPercent(2.0),
+        )
+
+    with pytest.raises(ValueError) as no_band_below_mac:
+        mac_awake_band_percent(
+            fraction_of_mac=0.9, standard_deviation_fraction_of_mac=0.2, mac_percent=MacPercent(2.0)
+        )
+
     with pytest.raises(ValueError) as no_time:
         format_elapsed(-1.0)
 
     assert str(no_band.value) == (
         "the MAC-awake band's lower edge must be strictly positive, got 0.05 - 0.05"
+    )
+    assert str(no_finite_band.value) == (
+        "the MAC-awake band's fraction and standard deviation must be finite, got inf and 0.05"
+    )
+    assert str(no_ordered_band.value) == (
+        "the MAC-awake band's upper edge must lie above its lower edge, got 0.34 ± -0.05"
+    )
+    assert str(no_band_below_mac.value) == (
+        "the MAC-awake band's upper edge must lie below 1 MAC, got 0.9 + 0.2, which is 1.1 MAC"
     )
     assert str(no_time.value) == "duration must be finite and non-negative, got -1.0"
 
