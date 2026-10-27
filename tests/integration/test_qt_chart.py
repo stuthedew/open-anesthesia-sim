@@ -668,9 +668,6 @@ _HOVER_WAIT_MS = 5000
 # lengthen that test.
 _HOVER_HOLD_MS = 1000
 
-# How long the moving-pointer case keeps the pointer moving: twelve cooldowns.
-_SWEEP_MS = 200
-
 
 def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
     """Move the pointer onto one pixel of the chart, as the platform delivers a move.
@@ -771,12 +768,17 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 
     # A pointer that keeps moving gets readouts while it moves, not only once
     # it stops: about one readout per cooldown. The moves are sent back to
-    # back, with the event loop run between them.
+    # back, with the event loop run between them. The sweep stops at the
+    # third readout, or after `_HOVER_WAIT_MS`. A fixed sweep of 200 ms would
+    # need three timer deliveries inside it, and under load a single delivery
+    # has taken more than 1000 ms (`PL-FPLQ`). A hover that answered only
+    # once the pointer stopped would answer none of these moves while they
+    # arrive faster than its cooldown, however long the sweep ran.
     answered: set[str] = set()
-    sweep = QDeadlineTimer(_SWEEP_MS)
+    sweep = QDeadlineTimer(_HOVER_WAIT_MS)
     index = earlier
 
-    while not sweep.hasExpired():
+    while len(answered) < 3 and not sweep.hasExpired():
         _move_pointer(chart, pixel(index))
         application.processEvents()
         shown = chart.hover_text()
