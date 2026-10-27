@@ -19,6 +19,7 @@ import io
 import pickle
 from dataclasses import fields
 from math import inf, nan, nextafter
+from types import SimpleNamespace
 from typing import NamedTuple
 
 import numpy
@@ -414,6 +415,32 @@ def test_an_unpickled_tissue_group_record_is_rebuilt_through_its_checks(protocol
 
     with pytest.raises(SimulationConfigurationError, match="vessel_rich blood_flow_l_min"):
         pickle.loads(_forged_pickle(held.tissues[0], protocol, "blood_flow_l_min", nan, held))
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+def test_an_unpickled_settings_record_refuses_tissue_rows_of_another_type(protocol: int) -> None:
+    """A saved row that only looks like a tissue group is refused, so its checks cannot be skipped.
+
+    Found at review of `PL-S11T`. Three namespaces carrying the right flows, a
+    volume of 1e-300 L and a coefficient of 1e-30 loaded as a record's tissue
+    rows, and `build_system_matrix` returned a matrix that was not finite.
+    """
+
+    held = _settings()
+    lookalikes = tuple(
+        SimpleNamespace(
+            name=tissue.name,
+            volume_l=1e-300,
+            blood_flow_l_min=tissue.blood_flow_l_min,
+            blood_flow_l_s=tissue.blood_flow_l_s,
+            tissue_blood_partition_coefficient=1e-30,
+            washin_rate_s=inf,
+        )
+        for tissue in held.tissues
+    )
+
+    with pytest.raises(TypeError, match="not a SimpleNamespace"):
+        pickle.loads(_forged_pickle(held, protocol, "tissues", lookalikes))
 
 
 def test_a_settings_record_is_not_restored_from_a_state_of_another_shape() -> None:

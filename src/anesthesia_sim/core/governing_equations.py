@@ -349,8 +349,17 @@ def _restore_through_checks(record: object, state: object) -> None:
     exception. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore
     the record through `__setstate__`, and so does a pickle written before
     this function existed. A `__reduce__` that called the constructor would
-    change only how a record is written from now on. A saved or forged state
+    change only how a record is written from now on. A saved or edited state
     in the form `dataclass` writes would still load through `__setstate__`.
+
+    This protects against a saved value that is wrong, not against a pickle
+    built to attack. A pickle can call any function that can be imported, so
+    one can still write a record's slots directly. A pickle is trusted input.
+
+    The state holds the field values in field order, without their names, as
+    `dataclass` writes it. So a record saved before a change to the order of
+    the fields would load into the wrong fields wherever the values still pass
+    the checks.
 
     Raises:
         TypeError: the state is not a sequence of the record's field values,
@@ -526,7 +535,8 @@ class UptakeEquationSettings:
             (`core/numerical_envelope.py`). Also raised when the delivered
             concentration or the vaporizer maximum was not built as a
             `Percent` from `core/concentration.py`, or when the record was
-            built without a vaporizer maximum.
+            built without a vaporizer maximum, or when a tissue group is not a
+            `TissueGroupEquationSettings`.
     """
 
     circuit_volume_l: CompartmentVolume
@@ -569,6 +579,16 @@ class UptakeEquationSettings:
                 f"the model has {TISSUE_GROUP_COUNT} tissue groups but "
                 f"{len(self.tissues)} were given"
             )
+
+        # Each row's own constructor checks its volume, flow and coefficient. An object
+        # of another type that only looks like a row would skip those checks, and a
+        # saved state could hold one (`PL-S11T`, found at review).
+        for tissue in self.tissues:
+            if not isinstance(tissue, TissueGroupEquationSettings):
+                raise TypeError(
+                    f"each tissue group is a TissueGroupEquationSettings, not a "
+                    f"{type(tissue).__name__}"
+                )
 
         tissue_blood_flow_l_s = sum(tissue.blood_flow_l_s for tissue in self.tissues)
 

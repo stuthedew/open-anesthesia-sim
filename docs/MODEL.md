@@ -6858,8 +6858,11 @@ cardiac output of 1000.0 as a bare `float` loaded, and a run opened under it
 advanced. `UptakeEquationSettings` and `TissueGroupEquationSettings` now
 restore their state by building a new record from the saved values. So a
 saved value that the constructor would refuse is refused on load, at every
-pickle protocol, with the constructor's own exception. Nothing in `src/`
-loads a pickle yet. This applies from the first saved-run loader.
+pickle protocol, with the constructor's own exception. This protects against
+a saved value that is wrong, not against a pickle built to attack, because a
+pickle can call any importable function. Nothing in `src/` loads a pickle yet.
+The other records that a saved run holds, such as `RunDefinition` and
+`Keyframe`, do not yet check their state on load (`PL-8W1Q`).
 
 **An assignment straight onto the field meets the same refusal, at the write**
 (`PL-LBQY`; project owner, 2026-10-04, ratified, over frozen compartments, at
