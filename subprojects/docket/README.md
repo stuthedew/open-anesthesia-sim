@@ -108,7 +108,13 @@ and a recurrence is a filing by a session that did not. The working tree is
 also changing that item's files, which is why the search kept finding it: on
 2026-10-25, 68 of the store's 178 recorded entries had been matched onto the
 item the filing branch was working, and sessions had withdrawn 28 of them by
-hand (`PL-PNSV`, recounted by `PL-TBX9`). Where git answers nothing the search keys on what the
+hand (`PL-PNSV`, recounted by `PL-TBX9`). An item whose file the branch added,
+committed since the default branch or not yet committed, is left out for the
+same reason: the session filed it, so it knew the item existed. A session files
+several findings with one `--touches` value, and each one after the first
+shared that path with the ones before it. Sessions withdrew 15 of the 23 entries
+recorded that way, and two of the rest made `PL-0889` look filed twice
+(`PL-8MRM`). Where git answers nothing the search keys on what the
 capture names, an id in its title or its `--feature`; with neither it finds nothing, and the command behaves as it did
 before any of this existed; it does not fall back to that refuted title-only
 key.
