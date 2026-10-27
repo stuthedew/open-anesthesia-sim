@@ -3,12 +3,14 @@ id: PL-8MRM
 title: bin/docket new records a capture as a recurrence of an item the same branch filed earlier, though the session filing both knew the first existed: 15 of 23 such entries were withdrawn, and the 8 still standing include the two that make PL-0889, three items #1830 filed together under one feature, the only promotion candidate the digest names
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: recurrence-signal
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-0TD9-bin-docket-claim-and-yield-write-the-claim-and.md, docs/items/PL-8MHZ-yaml-scalar-and-line-grammar-is-respelt-outside.md, docs/items/PL-9NZ3-six-more-tools-read-the-python-files-on-disk.md, docs/items/PL-KHXB-the-banner-shown-when-a-run-reaches-the-24-hour.md, docs/items/PL-MLPT-docs-model-md-and-core-supported-ranges-py.md, docs/items/PL-NRR6-a-branch-can-be-taken-at-the-keyframe-where-the.md, docs/items/PL-Y65Q-an-area-too-small-for-its-view-is-held-at-a.md, docs/items/PL-YHR3-with-every-frame-failing-the-bookmark-panel.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-0TD9-bin-docket-claim-and-yield-write-the-claim-and.md, docs/items/PL-8MHZ-yaml-scalar-and-line-grammar-is-respelt-outside.md, docs/items/PL-9NZ3-six-more-tools-read-the-python-files-on-disk.md, docs/items/PL-KHXB-the-banner-shown-when-a-run-reaches-the-24-hour.md, docs/items/PL-MLPT-docs-model-md-and-core-supported-ranges-py.md, docs/items/PL-NRR6-a-branch-can-be-taken-at-the-keyframe-where-the.md, docs/items/PL-Y65Q-an-area-too-small-for-its-view-is-held-at-a.md, docs/items/PL-YHR3-with-every-frame-failing-the-bookmark-panel.md, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.7.0 - captured after the freeze by PL-TBX9's measurement; the generator tier ranks it, not the gate
 added: 2026-10-27
+closed: 2026-10-27
+pr: 1879
 payoff: A batch of related findings filed by one session no longer counts as a defect firing again, so the promotion candidates bin/docket next names rest only on filings by sessions that did not know the item existed
 verify: grep -q 'def test_new_records_nothing_on_an_item_this_branch_filed' subprojects/docket/tests/test_cli.py
 impairs-generators: docket.cli.cmd_new records a recurrence on an item the filing branch itself added, through duplicates.near_duplicates' declared-touches key, so plan.recurrence_chains counts filings by a session that knew the item existed toward the promotion floor and names PL-0889 as a candidate on two such entries

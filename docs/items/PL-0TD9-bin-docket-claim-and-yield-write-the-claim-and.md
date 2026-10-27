@@ -15,7 +15,7 @@ closed: 2026-09-24
 pr: 987
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -q 'bin/docket claim' .claude/skills/docket/modes/start.md && grep -q 'Yield: ' subprojects/docket/src/docket/claiming.py && grep -q 'def test_a_push_that_fails_exits_4' subprojects/docket/tests/test_claiming.py
-recurrences: 2026-09-24 PL-DDYD
+recurrences: 2026-09-24 PL-DDYD withdrawn 2026-10-27 PL-8MRM
 ---
 
 **Problem.** bin/docket claim and yield write the claim, and start mode is rewritten around them
