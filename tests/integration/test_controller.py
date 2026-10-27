@@ -4411,16 +4411,17 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
 
 
 def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyframe_fork() -> None:
-    """The halt fork and the control-event fork at one instant agree after a change there.
+    """A branch at a halt and one at a control event agree after a change at that instant.
 
     A halt is an ordinary pause, and the setters apply unconditionally. So a
     learner may stop on a mark and dial something before branching. The
-    change opens a segment at the halt instant, so the halt is now a keyframe
-    as well. Both ways of branching at that instant name as their provenance
-    the stretch that the halting step ran under (`PL-ZR49`). Both run under
-    the change, which is what the dial says there, and record it in their own
-    timeline (project owner, 2026-10-26). Both reproduce the trunk, which
-    made the change, element for element.
+    change starts a new stretch at the halt instant, so the halt is now a
+    keyframe as well. Both ways of branching at that instant name the same
+    stretch as their provenance. It is the stretch that the halting step ran
+    under (`PL-ZR49`). Both branches run under the change, which is what the
+    dial shows at that instant. Each records the change in its own timeline
+    (project owner, 2026-10-26). Both match, element for element, the trunk
+    that made the change.
     """
 
     marked = SimulationController()
@@ -5373,16 +5374,17 @@ def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
 
 # --- Edits made at a paused instant (PL-ZR49) --------------------------------
 #
-# A run that is paused or stopped at an instant reached it under one stretch
-# of settings, the reaching stretch, which nothing can change any more. A
-# setting changed while the run is paused there starts a new stretch, so the
-# stretch in force from that instant on can differ. Every branch takes its
-# provenance from the reaching stretch and runs under the stretch in force,
-# which is what the dial says at that instant. The branch records each setting
-# that differs between the two as a change at the fork. The halt record lists
-# what the step crossed, tested against the marks as they are now.
-# `docs/MODEL.md` § "The canonical evaluation rule" states the rule that these
-# tests check each way of branching against.
+# When a run is paused or stopped at an instant, the step that brought it there
+# ran under one stretch of settings, called the reaching stretch. After the
+# case's opening, nothing can change the reaching stretch any more. A setting
+# changed while the run is paused there starts a new stretch, so the stretch in
+# force from that instant on can differ from the reaching stretch. Every branch
+# takes its provenance from the reaching stretch. It runs under the stretch in
+# force, which is what the dial shows at that instant. The branch records each
+# setting that differs between the two as a change at the fork. The halt record
+# lists the marks that the step ending at that instant crossed, tested against
+# the marks as they are now. These tests check each way of branching against
+# the rule in `docs/MODEL.md` § "The canonical evaluation rule".
 
 
 def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
@@ -5434,29 +5436,30 @@ def _states_agree_after_the_fork(
 
 
 def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> None:
-    """`PL-ZR49`: every way of branching at one instant uses the same two stretches.
+    """Every way of branching at one instant uses the same two stretches (`PL-ZR49`).
 
-    The trunk runs at 2% and a mark at 30 s halts it. While the trunk stands
-    there, the learner turns the vaporizer to 4%, removes the mark and adds it
-    back under another label, and marks an instant inside the halting step.
-    Before those edits, branches are taken where the trunk stands and at the
-    mark. Only those two ways are used, since no keyframe exists at 30 s yet.
-    All three ways of branching are used after the edits. Branches are taken
-    at the mark and at the keyframe again after the trunk has run on, when it
-    no longer stands at 30 s. Each branch is then reset.
+    The trunk runs at 2% and a mark at 30 s halts it. While the trunk is
+    halted there, the learner turns the vaporizer to 4%, removes the mark and
+    adds it back under another label, and marks an instant inside the halting
+    step. Before those edits, branches are taken where the trunk is halted and
+    at the mark. Only those two ways are used, since no keyframe exists at
+    30 s yet. After the edits, all three ways of branching are used. Once the
+    trunk has run on past 30 s, branches are taken at the mark and at the
+    keyframe again. Each branch is then reset.
 
     Each branch is checked against the rule that `docs/MODEL.md` states. All
     of them share one provenance, the stretch that the halting step ran
-    under. Each runs under what the dial said when it was taken. So a branch
-    taken before the edits runs under 2%. Every branch taken after them runs
-    under 4% and records the change at the fork in its own timeline (project
-    owner, 2026-10-26). In its halt record, every branch taken after the edits
-    names the marks as they now are, as the trunk does while it stands there.
-    A reset reopens each branch on the same record. The expected settings are
-    the literal values that the test dialled, and the expected marks are the
-    instants and labels that the test gave them. The run that each record
-    describes is checked against a run built directly, which is either a 2%
-    case nobody changed or the trunk.
+    under. Each runs under what the dial showed when it was taken. So a
+    branch taken before the edits runs under 2%. Every branch taken after
+    them runs under 4% and records the change at the fork in its own timeline
+    (project owner, 2026-10-26). In its halt record, every branch taken after
+    the edits names the marks as they now are, as the trunk does while it is
+    halted there. A reset reopens each branch with the same provenance,
+    timeline, settings and halt record. The expected settings are the literal
+    values that the test dialled. The expected marks are the instants and
+    labels that the test gave them. The run that each branch describes is
+    checked against a run built directly. That run is either a 2% case that
+    nobody changed or the trunk.
     """
 
     first = TimeBookmark(CaseInstant(30.0), "first")
@@ -5786,16 +5789,17 @@ def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_a
 
 
 def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> None:
-    """A branch at the case's opening reaches and runs under the opening stretch.
+    """A branch at the case's opening has the opening stretch as provenance and runs under it.
 
-    No step has run yet at the case's opening. A trunk edit at the
-    opening still replaces the opening stretch, as it did before, even after
-    a branch was taken there. The branch's provenance is the opening
-    keyframe, whose state no setting produced, together with the settings
-    that the branch ran under from there. Both stay true of the branch after
-    the trunk's edit, so the branch's provenance still states what the
-    branch runs under. The branch's timeline keeps the trunk's change made
-    before Start, so the branch's own panel states the setting too.
+    No step has run yet at the case's opening. A trunk edit at the opening
+    still replaces the opening stretch, even after a branch was taken there,
+    as it did before `PL-ZR49`. The branch's provenance is the opening
+    keyframe together with the settings that the branch ran under from there.
+    No setting produced the opening keyframe's state. Both parts of the
+    provenance still describe the branch after the trunk's edit, so the
+    provenance still states what the branch runs under. The branch's timeline
+    keeps the change that the trunk made before Start, so the branch's own
+    panel shows the setting too.
     """
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))

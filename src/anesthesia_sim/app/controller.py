@@ -453,47 +453,51 @@ class ResumePoint:
     never happened.
 
     `SimulationController.reset()` also reads this object. Reset returns a
-    run to its own beginning. A branch begins at the fork, not at the case's
-    induction. The branch does not hold the case's induction state and
-    cannot recover it.
+    run to its own beginning. A branch begins at the fork, the instant where
+    it was taken, not at the case's induction. The branch does not hold the
+    case's induction state and cannot recover it.
 
-    **`segment` is the stretch that the step reaching the fork ran under**
-    (`PL-ZR49`). A stretch is a period of constant settings. A run that is
-    paused or stopped at an instant reached it under one stretch, the
-    reaching stretch (`RunDefinition.reaching_segment_at`). A change made
-    while the run is paused there starts a new stretch at that instant. The
-    stretch in force is the one that runs from the instant on
+    **`segment` is the stretch that applied during the step that ends at the
+    fork** (`PL-ZR49`). A stretch is a period of constant settings. When a
+    run is paused or stopped at an instant, the step that brought it there
+    ran under one stretch, which is called the reaching stretch
+    (`RunDefinition.reaching_segment_at`). A change made while the run is
+    paused there starts a new stretch at that instant. The stretch in force
+    is the one that applies from that instant onward
     (`RunDefinition.segment_at`). Where nothing changed at the instant, the
-    two are the same stretch. After the case's opening, the reaching stretch
-    opens before the instant. `RunDefinition.record_change` replaces only a
-    stretch that opens at the instant where the run stands, so it cannot
-    replace the reaching stretch. So `segment` stays one of the parent's
-    stretches, whatever the parent later does at the fork. At the case's
-    opening, no step has run yet. The opening stretch is then both the
-    reaching stretch and the stretch in force, and a later change at the
-    opening still replaces it. Every way of branching names the reaching
-    stretch as its provenance. Each runs under the stretch in force, so its
-    settings are what the dial says there. The branch's own timeline opens
-    with the parent's changes at the fork (`RunRecord.opened_with`). So that
-    timeline states the settings that the branch opened under. This is also
-    true for a fork at the case's opening.
+    two are the same stretch.
+
+    At any instant after the case's opening, the reaching stretch began
+    before that instant. `RunDefinition.record_change` replaces only a
+    stretch that begins at the run's current instant, so it cannot replace
+    the reaching stretch. So `segment` stays one of the parent's stretches,
+    whatever the parent later does at the fork. At the case's opening, no
+    step has run yet. The opening stretch is then both the reaching stretch
+    and the stretch in force, and a later change at the opening still
+    replaces it.
+
+    Every way of branching names the reaching stretch as its provenance.
+    Each branch runs under the stretch in force, so its settings are what
+    the dial shows at the fork. The branch's own timeline opens with the
+    changes that the parent made at the fork (`RunRecord.opened_with`). So
+    that timeline states the settings that the branch opened under. It does
+    so for a fork at the case's opening too.
 
     **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
-    The stretch that the step reaching the fork ran under opens at a keyframe
-    before the fork, even when the fork is itself a keyframe. Recording a
-    keyframe at a bookmark or a pause would change the trunk's own later
-    results. So a branch opens its run definition at the keyframe where the
-    parent's stretch begins, while the branch itself stands at the fork. Both
-    are instants on the case's own time axis, which has been the only time
-    axis since `PL-ZMRT`. They are equal only for a fork at the case's
-    opening.
+    After the case's opening, `segment` begins at a keyframe before the fork,
+    even when the fork is itself a keyframe. Recording a keyframe at a
+    bookmark or a pause would change the trunk's own later results. So a
+    branch opens its run definition at the keyframe where `segment` begins,
+    while the branch itself starts at the fork. Both are instants on the
+    case's own time axis, which has been the only time axis since `PL-ZMRT`.
+    They are equal only for a fork at the case's opening.
 
     Attributes:
-        segment: The parent's stretch that the step reaching the fork ran
-            under. It carries both its settings and the keyframe they start
-            from. The branch's own run definition opens at that keyframe,
-            which lies before the fork. For a fork at the case's opening, the
-            keyframe is at the fork.
+        segment: The parent's stretch that applied during the step that ends
+            at the fork. It carries both its settings and the keyframe they
+            start from. The branch's own run definition opens at that
+            keyframe, which lies before the fork. For a fork at the case's
+            opening, the keyframe is at the fork.
         fork: The instant at which the branch was taken, and the canonical
             state that the parent held there. The state is the result of one
             propagation from `segment`'s keyframe. At the case's opening, it
@@ -516,16 +520,17 @@ class ResumePoint:
         stepped_from: The instant one step before the fork and the parent's
             canonical state there, or `None` for a fork at the case's
             opening, where no step ends. Together with `fork`, it gives the
-            step that ends at the fork, where the branch stands when it
-            opens. Each time the branch's mark standings (`MarkStanding`) are
+            step that ends at the fork. The branch opens at the end of that
+            step. Each time the branch's mark standings (`MarkStanding`) are
             read, the branch tests that step against the marks as they are at
             that moment. So a mark added after the fork is treated as it
             would have been if it had existed before the fork (`PL-1ZQ4`).
             The halt record that a branch opens with is computed from the
-            same step (`SimulationSnapshot.bookmark_halt`). No mark crossing
-            is stored here. A stored crossing would name the marks as they
-            were at the fork. If a mark were then removed and added back, the
-            stored crossing would still name the old mark (`PL-XV0D`).
+            same step (`SimulationSnapshot.bookmark_halt`). This object
+            stores no mark crossing, because a stored crossing would name the
+            marks as they were at the fork. If a mark were then removed and
+            added back, the stored crossing would still name the old mark
+            (`PL-XV0D`).
     """
 
     segment: RunSegment
