@@ -2382,9 +2382,10 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `AgentParameters` holds both factors, so it checks the
 quotient whenever a factor is written. A `TissueGroup` holds only the tissue:gas
 coefficient, so `PatientCompartments` checks each group's quotient when the
-patient is built and when a group is replaced (`PL-DQL9`). A tissue:gas
-coefficient written straight onto a group in a built patient is checked when
-the next step forms the quotient, and that step halts.
+patient is built and when a group is replaced (`PL-DQL9`). A group's tissue:gas
+coefficient is written once, when the group is built, and a later write is
+refused. A new coefficient therefore enters the patient only on a replaced
+group, where its quotient is checked.
 
 **Every input to `core/` has an interval, and one sweep tests them**
 (`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`

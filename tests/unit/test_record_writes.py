@@ -288,9 +288,7 @@ WRITES: dict[str, dict[str, Write]] = {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),
         "volume_l": Write(CHECKED, _tissue_group, lambda group: CompartmentVolume(1.0)),
         "perfusion_fraction": Write(ONCE, _tissue_group),
-        "tissue_gas_partition_coefficient": Write(
-            CHECKED, _tissue_group, lambda group: PartitionCoefficient(0.1)
-        ),
+        "tissue_gas_partition_coefficient": Write(ONCE, _tissue_group),
         "agent_amount_l": Write(CHECKED, _tissue_group, lambda group: 40.0),
     },
     "uptake_system.AgentUptakeSystem": {

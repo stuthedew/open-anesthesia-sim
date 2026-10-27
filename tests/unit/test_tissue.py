@@ -237,6 +237,14 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             id="perfusion-fraction-rewritten",
         ),
         pytest.param(
+            "tissue_gas_partition_coefficient",
+            PartitionCoefficient(3.0),
+            SimulationConfigurationError,
+            "^the test tissue group's tissue:gas partition coefficient of 2.0 cannot be written "
+            "again, as 3.0, once the group is built",
+            id="tissue-gas-coefficient-rewritten",
+        ),
+        pytest.param(
             "blood_flow_l_min",
             1.0,
             AttributeError,
@@ -285,7 +293,8 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
     A volume or a tissue:gas coefficient that gives a capacity equal to the agent held means
     a partial pressure of exactly one atmosphere, and that value is written. The
     coefficient's capacity is formed with the volume. The group stores no blood:gas
-    coefficient, so none enters the capacity (`PL-DQL9`).
+    coefficient, so none enters the capacity (`PL-DQL9`). The tissue:gas coefficient is
+    written once, so its case is a new tissue built with `replace`.
     `dataclasses.replace` builds a new tissue through its constructor's writes. A copy and a
     pickle restore the fields one at a time through `__setattr__`. So a perfusion fraction
     planted by bypassing the guard is refused when a copy or a pickle is made, rather than
@@ -312,8 +321,8 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 
     assert tissue.partial_pressure_fraction == 1.0
 
-    tissue.volume_l = CompartmentVolume(2.0)
-    tissue.tissue_gas_partition_coefficient = PartitionCoefficient(1.0)
+    tissue = replace(tissue, volume_l=CompartmentVolume(2.0))
+    tissue = replace(tissue, tissue_gas_partition_coefficient=PartitionCoefficient(1.0))
 
     assert tissue.partial_pressure_fraction == 1.0
 

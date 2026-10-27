@@ -113,9 +113,12 @@ class TissueGroup:
             the envelope too, because the quotient of two coefficients inside it can lie
             far outside it (`PL-QX2G`). The group stores no blood:gas coefficient, so it
             cannot form that quotient. `PatientCompartments` checks it when the patient
-            is built and when a group is replaced. A tissue:gas coefficient written
-            straight onto a group in a built patient is checked against the quotient when
-            the next step forms it (`PL-DQL9`).
+            is built and when a group is replaced (`PL-DQL9`). So the tissue:gas
+            coefficient is written once, like the perfusion fraction below, and a later
+            write is refused. A group with another coefficient is built and put in the
+            patient's place, where the quotient is checked. Before this rule, a write
+            straight onto a group in a built patient was accepted. The next step then
+            halted with an error that blamed the numerics (found at review).
 
             Each refusal names the group as well as the field, as in `"muscle volume_l"`,
             because all three groups hold every field (`PL-2TZT`).
@@ -138,7 +141,9 @@ class TissueGroup:
                     field is not an `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the name is blank. Also raised when
                     the perfusion fraction is not positive and finite, or is above
-                    1, or is written to a group that already has one. Also raised
+                    1, or is written to a group that already has one, and when a
+                    tissue:gas coefficient is written to a group that already has
+                    one. Also raised
                     when the agent amount is negative or not finite, or would be more
                     than the tissue holds at a partial pressure of one atmosphere.
                     That last check applies whichever of the amount, the volume
@@ -193,6 +198,7 @@ class TissueGroup:
                     )
             elif name == "tissue_gas_partition_coefficient":
                 require_coefficient(field, value)
+
                 # The constructor, a copy and a pickle write the volume first, so it
                 # is always there to multiply.
                 require_a_capacity_with_room_for_the_agent(
@@ -204,6 +210,16 @@ class TissueGroup:
                     compartment,
                     "Tissue compartments",
                 )
+
+                if hasattr(self, "tissue_gas_partition_coefficient"):
+                    raise SimulationConfigurationError(
+                        f"the {self.name} tissue group's tissue:gas partition coefficient of "
+                        f"{self.tissue_gas_partition_coefficient} cannot be written again, as "
+                        f"{value}, once the group is built, because the patient checks the "
+                        "group's tissue:blood coefficient only when the group is put in its "
+                        'place (docs/MODEL.md, "Tissue groups"): replace the group with one '
+                        "built with the new coefficient"
+                    )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
                 require_within_the_capacity(

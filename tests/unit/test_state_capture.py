@@ -238,11 +238,15 @@ def _perturb_every_field(compartment: Any) -> dict[str, object]:
 
         assert replacement != original, compartment_field.name
 
-        if compartment_field.name in ("perfusion_fraction", "blood_gas_partition_coefficient"):
-            # A tissue's perfusion fraction and the venous pool's blood:gas
-            # coefficient can each be written only once, when the compartment is
-            # built (`PL-Z0HN`, `PL-DQL9`). So the changed value is written in a
-            # way that bypasses that guard.
+        if compartment_field.name in (
+            "perfusion_fraction",
+            "tissue_gas_partition_coefficient",
+            "blood_gas_partition_coefficient",
+        ):
+            # A tissue's perfusion fraction and tissue:gas coefficient, and the
+            # venous pool's blood:gas coefficient, can each be written only once,
+            # when the compartment is built (`PL-Z0HN`, `PL-DQL9`). So the changed
+            # value is written in a way that bypasses that guard.
             object.__setattr__(compartment, compartment_field.name, replacement)
         else:
             setattr(compartment, compartment_field.name, replacement)
@@ -569,10 +573,11 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             "a tissue blood flow, moved through a perfusion fraction written past its guard",
         ),
         (
-            lambda s: setattr(
+            lambda s: object.__setattr__(
                 s.patient.tissues[2], "tissue_gas_partition_coefficient", PartitionCoefficient(90.0)
             ),
-            "a tissue partition coefficient, moved through the gas coefficient it derives from",
+            "a tissue partition coefficient, moved through a tissue:gas coefficient written "
+            "past its guard",
         ),
     ],
 )

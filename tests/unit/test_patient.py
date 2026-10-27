@@ -5,7 +5,7 @@ import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     FLOW_FRACTION_TOLERANCE,
@@ -313,9 +313,11 @@ def test_a_tissue_blood_quotient_outside_the_envelope_is_refused_where_the_patie
     A tissue:gas coefficient of 1e4 against sevoflurane's blood:gas of 0.65
     gives a tissue:blood coefficient of about 1.5e4, above the envelope's 1e4
     (`core/numerical_envelope.py`). The patient refuses such a group when it is
-    built and when the group replaces one (`PL-DQL9`). A tissue:gas coefficient
-    written straight onto a group cannot be seen by the patient. The next step
-    forms the quotient and halts, naming the coefficient.
+    built and when the group replaces one (`PL-DQL9`). The patient cannot see a
+    tissue:gas coefficient written straight onto a group, so the group refuses
+    that write and keeps the coefficient it was built with. Before, the write
+    was accepted, and the next step halted with an error that blamed the
+    numerics (found at review).
     """
 
     agent = load_sevoflurane_parameters()
@@ -335,11 +337,10 @@ def test_a_tissue_blood_quotient_outside_the_envelope_is_refused_where_the_patie
     with pytest.raises(SimulationConfigurationError, match="^fat tissue_blood_partition_coeff"):
         patient.fat = too_soluble
 
-    system = AgentUptakeSystem.default()
-    system.patient.fat.tissue_gas_partition_coefficient = PartitionCoefficient(1e4)
+    with pytest.raises(SimulationConfigurationError, match="cannot be written again, as 10000.0"):
+        patient.fat.tissue_gas_partition_coefficient = PartitionCoefficient(1e4)
 
-    with pytest.raises(SimulationNumericalError, match="fat tissue_blood_partition_coeff"):
-        system.advance(SimulationStep(0.1))
+    assert patient.fat.tissue_gas_partition_coefficient == 34.0
 
 
 def test_tissue_return_is_flow_weighted() -> None:
