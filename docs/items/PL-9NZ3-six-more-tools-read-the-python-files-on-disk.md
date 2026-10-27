@@ -14,7 +14,7 @@ closed: 2026-10-12
 pr: 1457
 payoff: every check reads the files the repository holds, by one list
 verify: grep -q 'def test_an_untracked_module_is_not_read' tests/unit/test_import_boundary_check.py
-recurrences: 2026-10-12 PL-8W1J, 2026-10-12 PL-J4YY
+recurrences: 2026-10-12 PL-8W1J withdrawn 2026-10-27 PL-8MRM, 2026-10-12 PL-J4YY
 ---
 
 **Problem.** Six more tools read the Python files on disk where tracked_files asks git - import_boundary, core_vocabulary and literal_home's _sources, contrast_check.app_modules, agent_identity.read_modules, workflow_paths_check.problems - and doc_check measures nested .claude/rules files that rules_paths_check never reads
