@@ -26,8 +26,10 @@ from .model import (
     LANE_CROSSING,
     LANE_UNPLACED,
     MIN_RECURRENCES,
+    NO_DELEGATION,
     PRIORITIES,
     SELECTABLE_LANES,
+    DelegationPaths,
     Item,
     ModelEvidence,
     impairs_generators_soundly,
@@ -478,10 +480,10 @@ class Recommendation:
     unblocks_defects: tuple[str, ...] = ()
     #: Whether a cheaper model may take this item, from `Item.delegability`.
     #: Carried here for the reason `scoped_to` and `generator` are: the answer
-    #: needs `protected_paths` and `gate_paths`, which `describe` cannot
-    #: reach. Defaults to `False`, so a caller threading no configuration
-    #: offers nothing - the same fail-closed reading `delegability` gives an
-    #: empty `protected_paths`, arrived at from the other end.
+    #: needs the settings file's path lists, which `describe` cannot reach.
+    #: Defaults to `False`, so a caller threading no configuration offers
+    #: nothing - the same fail-closed reading `delegability` gives an empty
+    #: `protected_paths`, arrived at from the other end.
     delegable: bool = False
     #: The row of `model-evidence.toml` this item matches, from
     #: `Item.model_evidence`, or `None`. Carried for the reason `delegable` is:
@@ -1513,13 +1515,12 @@ def choose_model(
     item: Item,
     models: ModelTable | None,
     workflow_paths: tuple[str, ...],
-    protected_paths: tuple[str, ...],
-    gate_paths: tuple[str, ...],
+    delegation: DelegationPaths,
 ) -> Choice | None:
     """The model and effort the `[models]` table chooses for `item`, or `None` with no table."""
     if models is None:
         return None
-    delegable = item.delegability(protected_paths, gate_paths) is None
+    delegable = item.delegability(delegation) is None
     return models.choose(item_facts(item, models, workflow_paths, delegable=delegable))
 
 
@@ -1533,8 +1534,7 @@ def recommend(
     lane: str | None = None,
     workflow_paths: tuple[str, ...] = (),
     generator_paths: tuple[str, ...] = (),
-    protected_paths: tuple[str, ...] = (),
-    gate_paths: tuple[str, ...] = (),
+    delegation: DelegationPaths = NO_DELEGATION,
     model_evidence: tuple[ModelEvidence, ...] = (),
     models: ModelTable | None = None,
 ) -> list[Recommendation]:
@@ -1813,9 +1813,9 @@ def recommend(
                 unblocks_defects=_unblocked(
                     unblocking.get(item.identifier, ()), standings, heads=False
                 ),
-                delegable=item.delegability(protected_paths, gate_paths) is None,
+                delegable=item.delegability(delegation) is None,
                 evidence=item.model_evidence(model_evidence, workflow_paths),
-                choice=choose_model(item, models, workflow_paths, protected_paths, gate_paths),
+                choice=choose_model(item, models, workflow_paths, delegation),
             )
         )
 
@@ -1870,8 +1870,7 @@ def longest_waiting(
     lane: str | None = None,
     workflow_paths: tuple[str, ...] = (),
     generator_paths: tuple[str, ...] = (),
-    protected_paths: tuple[str, ...] = (),
-    gate_paths: tuple[str, ...] = (),
+    delegation: DelegationPaths = NO_DELEGATION,
     model_evidence: tuple[ModelEvidence, ...] = (),
     models: ModelTable | None = None,
 ) -> Waiting:
@@ -1942,9 +1941,9 @@ def longest_waiting(
                 unblocks_defects=_unblocked(
                     unblocking.get(item.identifier, ()), standings, heads=False
                 ),
-                delegable=item.delegability(protected_paths, gate_paths) is None,
+                delegable=item.delegability(delegation) is None,
                 evidence=item.model_evidence(model_evidence, workflow_paths),
-                choice=choose_model(item, models, workflow_paths, protected_paths, gate_paths),
+                choice=choose_model(item, models, workflow_paths, delegation),
             )
         )
     # No new-work filter: `is_debt` keeps every `needs-decision` item owed.

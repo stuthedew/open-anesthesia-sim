@@ -26,7 +26,7 @@ from .checks import (
 )
 from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings, Unclaimed
 from .concurrency import undeclared
-from .config import Config
+from .config import CONFIG_NAME, Config
 from .duplicates import Candidate
 from .inflow import UNBANDED, Inflow
 from .lines import split_lines
@@ -36,8 +36,11 @@ from .model import (
     LANE_UNPLACED,
     LANE_WORKFLOW,
     MIN_RECURRENCES,
+    NO_DELEGATION,
     PRIORITIES,
     SELECTABLE_LANES,
+    TESTS,
+    DelegationPaths,
     Item,
     is_under,
     live_recurrences,
@@ -295,10 +298,7 @@ def format_unread(flight: FlightReport) -> str:
 
 
 def _marks(
-    item: Item,
-    in_flight: Collection[str],
-    protected: tuple[str, ...] = (),
-    gates: tuple[str, ...] = (),
+    item: Item, in_flight: Collection[str], delegation: DelegationPaths = NO_DELEGATION
 ) -> str:
     marks = [m for m in (item.effort, item.status) if m]
     if item.milestone:
@@ -307,7 +307,7 @@ def _marks(
         marks.append("IN FLIGHT")
     if item.model_guidance is not None:
         marks.append(f"{item.model_guidance}, strongest model")
-    elif item.delegability(protected, gates) is None:
+    elif item.delegability(delegation) is None:
         marks.append("delegable")
     return ", ".join(marks)
 
@@ -315,8 +315,7 @@ def _marks(
 def format_list(
     report: Report,
     in_flight: FlightReport | None = None,
-    protected_paths: tuple[str, ...] = (),
-    gate_paths: tuple[str, ...] = (),
+    delegation: DelegationPaths = NO_DELEGATION,
 ) -> str:
     """One line per open item: the queue without the briefs."""
     flight = in_flight or FlightReport()
@@ -329,7 +328,7 @@ def format_list(
     for item in ordered:
         lines.append(
             f"{item.priority} {item.identifier:<{width}} {item.title} "
-            f"({_marks(item, flight.ids, protected_paths, gate_paths)})"
+            f"({_marks(item, flight.ids, delegation)})"
         )
 
     if report.untriaged:
@@ -344,10 +343,7 @@ def format_list(
 
 
 def delegable_items(
-    report: Report,
-    in_flight: FlightReport,
-    protected_paths: tuple[str, ...],
-    gate_paths: tuple[str, ...],
+    report: Report, in_flight: FlightReport, delegation: DelegationPaths
 ) -> list[Item]:
     """The open items a worker may take, best-first, leaving out any in flight.
 
@@ -357,17 +353,11 @@ def delegable_items(
     return [
         item
         for item in sorted(report.open_items, key=lambda i: i.sort_key())
-        if item.delegability(protected_paths, gate_paths) is None
-        and item.identifier not in in_flight.ids
+        if item.delegability(delegation) is None and item.identifier not in in_flight.ids
     ]
 
 
-def format_delegable(
-    report: Report,
-    in_flight: FlightReport,
-    protected_paths: tuple[str, ...],
-    gate_paths: tuple[str, ...],
-) -> str:
+def format_delegable(report: Report, in_flight: FlightReport, delegation: DelegationPaths) -> str:
     """The worker's whole reading list: what may be worked, and what proves it.
 
     A separate answer from `next`, deliberately. `next` answers "what should
@@ -376,7 +366,7 @@ def format_delegable(
     touch, with each item's proof command beside it, so a batch can be started
     without opening a single file first.
     """
-    candidates = delegable_items(report, in_flight, protected_paths, gate_paths)
+    candidates = delegable_items(report, in_flight, delegation)
     unread = format_unread(in_flight)
     if not candidates:
         return "\n".join(
@@ -387,7 +377,8 @@ def format_delegable(
                     "An item qualifies when it is ready, is not safety- or science-classed, "
                     "names a `verify:` command,",
                     "and declares `touches` outside both the protected paths and the "
-                    "checks themselves. `docket list` shows what is open.",
+                    "checks themselves, each placed by the lane lists. `docket list` shows "
+                    "what is open.",
                     unread,
                 ),
             )
@@ -492,8 +483,7 @@ def format_digest(
     orphaned: OrphanedReport | None = None,
     cuts: CutsInFlight | None = None,
     generator_paths: tuple[str, ...] = (),
-    protected_paths: tuple[str, ...] = (),
-    gate_paths: tuple[str, ...] = (),
+    delegation: DelegationPaths = NO_DELEGATION,
     now: datetime | None = None,
     read: Holdings | None = None,
     interrupted: str = "",
@@ -583,7 +573,7 @@ def format_digest(
         lines.append(
             "  P0 (before feature work): "
             f"{item.identifier} {item.title} "
-            f"({_marks(item, flight.ids, protected_paths, gate_paths)})"
+            f"({_marks(item, flight.ids, delegation)})"
         )
 
     picks = recommend(
@@ -602,7 +592,7 @@ def format_digest(
             f"  {label}: nothing in the {focus} lane can start; `docket next` ranks every lane."
         )
     if top is not None and top.item.priority != "P0":
-        marks = _marks(top.item, flight.ids, protected_paths, gate_paths)
+        marks = _marks(top.item, flight.ids, delegation)
         # The one line every session reads before it has run anything. A
         # generator outranks every band but `P0`, so without this the digest
         # opens with a `P2` leading a queue that has `P1`s in it and nothing
@@ -3007,6 +2997,14 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
                 "non-delegable for a second reason: `docket verify` fails any diff "
                 "that edits the checks, so offering the work would mean refusing it "
                 "once done."
+            )
+        if config.workflow_paths and config.product_paths:
+            rules.append(
+                "`touches` naming a path outside "
+                f"{TESTS} that neither workflow_paths nor product_paths places makes the "
+                "item non-delegable too: `tools/workflow_paths_check.py` refuses a file "
+                f"tracked there until {CONFIG_NAME} places it, so place the path now or "
+                "expect no cheaper model to take the item."
             )
     if config.verify_required_at_close_from is not None:
         rules.append(
