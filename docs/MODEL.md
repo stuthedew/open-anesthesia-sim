@@ -7852,11 +7852,12 @@ Reset must:
 branch never held the case's induction (§ "The canonical evaluation rule").
 Its clock, its state and its accounting go back to the fork. Its settings are
 preserved as a trunk's are. A trunk's fresh run definition opens under those
-settings. A branch's opens on the parent's stretch it was taken from, so each
-preserved setting that differs from that stretch is recorded as a change at
-the fork. The control-input timeline is cleared and then holds exactly those
-changes. So a reset branch's timeline and its provenance agree on the settings
-it runs under (`PL-K5BS`, `PL-ZR49`).
+settings. A branch's opens on the parent's stretch it was taken from, so the
+preserved settings are recorded in it as a change at the fork. The
+control-input timeline is cleared. It then holds the entries that the branch
+first opened with, followed by each preserved setting that differs from the
+one the branch opened under. So a reset branch's timeline and its provenance
+agree on the settings it runs under (`PL-K5BS`, `PL-ZR49`).
 
 A Reset that the core refuses does none of these things. The fresh run
 definition opens on a settings record, which is built from the compartments.
@@ -7916,14 +7917,17 @@ run** (project owner, 2026-10-18, ratified, over extending it to every run the
 press takes with it, `PL-W5WX`). Pressing a run's Reset is the request to
 discard that run. The trunk's Reset also drops every branch drawn beside it,
 because a branch cannot outlive the run it was taken from. But the reader did
-not press Reset on the branch. So when a drawn branch holds elapsed simulated
-time or a recorded control change, the trunk's Reset states what that branch
-holds and asks before it discards anything, as the list above requires. The
+not press Reset on the branch. So when a drawn branch has run past its fork, or
+holds a control change made since it opened, the trunk's Reset states what
+that branch holds and asks before it discards anything, as the list above
+requires. A change that sets a dial back to the trunk's value before the fork
+counts, because the branch opened at what the dial said. The
 trunk's Reset also asks about a branch whose state cannot be read, because
 what that branch holds is not known to be nothing. A branch that holds
-neither is dropped without a question. Three tests in
+neither is dropped without a question. Four tests in
 `tests/integration/test_simulation_view.py` enforce this rule:
 `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
+`test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow`,
 `test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
 `test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch`.
 
@@ -8004,14 +8008,12 @@ a reader's agreement to leave it alone:**
 
 **What differs is the control timeline after the fork, and nothing else.** A
 branch opens with a timeline of its own, which holds none of the trunk's
-earlier changes. The entries it can open with are the settings it runs under
-that differ from the stretch it opened from, one for each control that
-differs. If the trunk changed a setting at the fork, those entries are the
-trunk's changes there
+earlier changes. The only entries it opens with are copies of the trunk's
+changes at the fork
 (`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`). A
-reset branch can open with the learner's settings, as § "Reset behavior" says.
-Each entry is a setting that differs after the fork, so the sentence below is
-still true. Forking leaves the trunk untouched
+reset branch keeps them, and can record the learner's settings after them, as
+§ "Reset behavior" says. Each entry states a setting in force from the fork
+on, so the sentence below is still true. Forking leaves the trunk untouched
 (`test_forking_leaves_the_trunk_untouched`). So everything that either run
 records after the fork is what its learner did to it. **A difference between
 the two runs at an instant past the fork is therefore caused by the settings
