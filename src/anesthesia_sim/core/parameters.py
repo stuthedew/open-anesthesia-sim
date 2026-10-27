@@ -286,6 +286,68 @@ class MacAwakeReference:
     mac_reference_basis: str
 
 
+def mac_awake_band_fractions(
+    *, fraction_of_mac: float, standard_deviation_fraction_of_mac: float
+) -> tuple[float, float]:
+    """Return the MAC-awake band's edges as fractions of MAC, lower first, or refuse the band.
+
+    The band is the mean one standard deviation either side, so its edges are
+    `fraction_of_mac - standard_deviation_fraction_of_mac` and
+    `fraction_of_mac + standard_deviation_fraction_of_mac`. Both edges are
+    drawn, so both are values a reader acts on. This function is the one
+    statement of which bands can be drawn. The loader's `_MacAwakePayload`
+    calls it when it reads a data file, and `mac_awake_band_percent` in
+    `app/formatting.py` calls it before it places the band on the chart. So a
+    band that one accepts cannot be refused by the other (`PL-WRVX`).
+
+    Every argument is keyword-only. The mean and its standard deviation are
+    two dimensionless numbers of the same magnitude, so a positional call is
+    one transposition away from a band centred on the spread.
+
+    Raises:
+        ValueError: If either number is not finite, if the lower edge is not
+            strictly above zero, if the upper edge is not strictly above the
+            lower edge, or if the upper edge is not strictly below 1 MAC. A
+            lower edge at or below zero is not a concentration. A negative
+            standard deviation would put the upper edge first. A standard
+            deviation too small to separate the two edges in floating point
+            leaves no band to draw. An upper edge at or above 1 MAC would put
+            the awakening reference on top of the anesthetizing one. That
+            contradicts what MAC-awake is, and it would hide the decrease
+            from MAC to MAC-awake that the two references exist to show.
+    """
+
+    if not (isfinite(fraction_of_mac) and isfinite(standard_deviation_fraction_of_mac)):
+        raise ValueError(
+            "the MAC-awake band's fraction and standard deviation must be finite, got "
+            f"{shown(fraction_of_mac)} and {shown(standard_deviation_fraction_of_mac)}"
+        )
+
+    lower = fraction_of_mac - standard_deviation_fraction_of_mac
+    upper = fraction_of_mac + standard_deviation_fraction_of_mac
+
+    if not lower > 0.0:
+        raise ValueError(
+            "the MAC-awake band's lower edge must be strictly positive, got "
+            f"{shown(fraction_of_mac)} - {shown(standard_deviation_fraction_of_mac)}"
+        )
+
+    if not upper > lower:
+        raise ValueError(
+            "the MAC-awake band's upper edge must lie above its lower edge, got "
+            f"{shown(fraction_of_mac)} ± {shown(standard_deviation_fraction_of_mac)}"
+        )
+
+    if not upper < 1.0:
+        raise ValueError(
+            "the MAC-awake band's upper edge must lie below 1 MAC, got "
+            f"{shown(fraction_of_mac)} + {shown(standard_deviation_fraction_of_mac)}, "
+            f"which is {upper:.3g} MAC"
+        )
+
+    return lower, upper
+
+
 @dataclass(frozen=True, slots=True)
 class AgentParameters:
     """Validated partition parameters for one volatile anesthetic.
@@ -991,30 +1053,16 @@ class _MacAwakePayload(_StrictPayload):
 
     @model_validator(mode="after")
     def _band_must_lie_strictly_between_zero_and_one_mac(self) -> _MacAwakePayload:
-        """Reject a band that reaches zero or 1 MAC.
+        """Reject a band that cannot be drawn, by the rule `mac_awake_band_fractions` states.
 
-        Both edges are drawn, so both are values a reader acts on. A lower
-        edge at or below zero is not a concentration. An upper edge at or
-        above 1 MAC would put the awakening reference on top of the
-        anesthetizing one. That is not just a drawing problem. It contradicts
-        what MAC-awake is, and it would hide the very decrease from MAC to
-        MAC-awake that the two references exist to show.
+        The rule is that function's, so the chart and the loader cannot
+        disagree about which bands can be drawn (`PL-WRVX`).
         """
 
-        lower = self.fraction_of_mac - self.standard_deviation_fraction_of_mac
-        upper = self.fraction_of_mac + self.standard_deviation_fraction_of_mac
-
-        if lower <= 0.0:
-            raise ValueError(
-                "fraction_of_mac minus standard_deviation_fraction_of_mac must be positive "
-                f"({self.fraction_of_mac} - {self.standard_deviation_fraction_of_mac})"
-            )
-
-        if upper >= 1.0:
-            raise ValueError(
-                "fraction_of_mac plus standard_deviation_fraction_of_mac must be below 1 MAC "
-                f"({self.fraction_of_mac} + {self.standard_deviation_fraction_of_mac})"
-            )
+        mac_awake_band_fractions(
+            fraction_of_mac=self.fraction_of_mac,
+            standard_deviation_fraction_of_mac=self.standard_deviation_fraction_of_mac,
+        )
 
         return self
 
