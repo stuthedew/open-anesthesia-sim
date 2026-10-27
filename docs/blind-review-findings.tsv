@@ -1,0 +1,134 @@
+pr	pass	finding_label	severity	outcome	repeat_of	category	target	summary	body_line
+1772	?	-	?	fixed	-	test-gap	simulator-tests	Reference suites hard-coded the circuit volume while reading the patient from its data file.	63
+1772	?	-	?	fixed	-	doc-unclear	simulator-code	The MAC refusal message read as if it were about a dial setting.	64
+1772	?	-	?	fixed	-	other	?	Three type: ignore comments sat on the wrong line of a call the change split.	65
+1775	1	F1	blocking	fixed	-	test-gap	simulator-tests	46 test expectations anchored the old refusal message, so the suite failed.	48
+1775	2	F1	blocking	fixed	1F1	test-gap	simulator-tests	46 test expectations anchored the old refusal message, so the suite failed.	48
+1775	1	F2	optional	fixed	-	code-bug	apparatus	The raising-docstring rule skipped special methods such as __post_init__ as private names.	52
+1775	2	F2	optional	fixed	1F2	code-bug	apparatus	The raising-docstring rule skipped special methods such as __post_init__ as private names.	52
+1782	1	-	?	fixed	-	code-bug	apparatus	A marker cleared every same-numbered figure in its paragraph regardless of unit or home.	27
+1782	2	-	?	fixed	1?	code-bug	apparatus	A marker cleared every same-numbered figure in its paragraph regardless of unit or home.	27
+1782	?	-	?	fixed	-	code-bug	apparatus	mac_awake.fraction_of_mac was read as in MAC, so MAC-awake fractions were never checked.	31
+1782	?	-	?	fixed	-	code-bug	apparatus	State-vector index constants were read as volumes by the untied-restatement check.	34
+1782	?	-	?	fixed	-	code-bug	apparatus	CARDIAC_OUTPUT_TOLERANCE_L_S was read in seconds rather than L/s.	36
+1782	?	-	?	fixed	-	code-bug	apparatus	For a figure matching several values, the error suggested a marker for the first only.	38
+1782	?	-	?	fixed	-	code-bug	apparatus	A list's marker scope reached back over a block quote above it.	41
+1782	?	-	?	filed	-	missing-guard	apparatus	Figures in other spellings were skipped; math spans, slash lists, lower-case units filed as PL-2T6S.	43
+1782	?	-	?	?	-	?	?	Ninth finding counted in the totals but not described in the body.	25
+1784	1	-	?	fixed	-	code-bug	simulator-code	A run opened with the agent's MacPercent as its dial, so a dial passed as MAC was accepted.	13
+1784	2	-	?	fixed	1?	code-bug	simulator-code	A run opened with the agent's MacPercent as its dial, so a dial passed as MAC was accepted.	13
+1784	?	-	?	fixed	-	doc-claim-wrong	MODEL.md-or-README	Documents claimed the zero check rules out infinite MAC multiples; a MAC just above zero still gives them.	40
+1778	1	-	should-fix	fixed	-	code-bug	apparatus	restated_constants judged a test by its file, missing copies in files importing the name elsewhere.	56
+1778	2	-	should-fix	fixed	1?	code-bug	apparatus	restated_constants judged a test by its file, missing copies in files importing the name elsewhere.	56
+1778	1	-	should-fix	fixed	-	missing-guard	MODEL.md-or-README	The MODEL.md section declaring the supported run length carried no provenance marker.	60
+1778	2	-	should-fix	fixed	1?	missing-guard	MODEL.md-or-README	The MODEL.md section declaring the supported run length carried no provenance marker.	60
+1778	2	-	optional	fixed	-	code-bug	apparatus	"A grouped derived figure such as ""86 400 000 steps"" was looked for as 86."	64
+1778	1	-	optional	fixed	-	code-bug	apparatus	A tripwire excused its test whichever limit moved, not only the limit it guards.	67
+1798	2	-	optional	fixed	-	doc-claim-wrong	simulator-code	time_constant_s docstring gave a minutes quotient as the seconds return value, 60 times too small.	72
+1806	1	F1	should-fix	fixed	-	doc-claim-wrong	MODEL.md-or-README	Two sentences stating the stored 4 l/min alveolar ventilation were wrongly marked not-restated.	42
+1806	2	F1	should-fix	fixed	1F1	doc-claim-wrong	MODEL.md-or-README	Two sentences stating the stored 4 l/min alveolar ventilation were wrongly marked not-restated.	42
+1806	1	F2	should-fix	fixed	-	missing-guard	apparatus	Math-span reading missed \%, \text{L}, ~, \approx, L\,min^{-1} and all but the last symbol.	47
+1806	2	F2	should-fix	fixed	1F2	missing-guard	apparatus	Math-span reading missed \%, \text{L}, ~, \approx, L\,min^{-1} and all but the last symbol.	47
+1806	1	F4	optional	fixed	-	missing-guard	apparatus	A slash-joined list with spaces was not read as a list.	50
+1806	2	F3	optional	fixed	-	code-bug	apparatus	0.42/min had stopped being read as a bare number.	52
+1806	1	F3	optional	filed	-	missing-guard	apparatus	A math span split across two lines is read on neither line; filed as PL-P0RG.	54
+1808	?	-	?	fixed	-	doc-claim-wrong	MODEL.md-or-README	Rewrite said a pin carries the saving session's token, not the run-placing session's.	26
+1808	?	-	?	fixed	-	doc-claim-wrong	MODEL.md-or-README	Rewrite overstated the elimination-tail shortfall as spanning the whole stretch, not its widest point.	28
+1829	1	F1	should-fix	fixed	-	doc-claim-wrong	MODEL.md-or-README	"The claim that setting-change trajectories ""bracket what a turning run does"" is false under the exact step."	55
+1829	1	F2	should-fix	fixed	-	doc-claim-wrong	simulator-tests	Three test passages say muscle is never the worst state on a gate trajectory.	58
+1829	1	F3	optional	fixed	-	doc-claim-wrong	?	"Text says ""the same trajectories"" at 0.05 s and 0.025 s, but the step test drives three of five; also filed PL-F67Q."	60
+1829	2	F1	should-fix	fixed	-	doc-claim-wrong	MODEL.md-or-README	The end-of-run peak pattern holds only at the shipped step.	64
+1829	2	F2	should-fix	fixed	1F3	doc-claim-wrong	?	Same as pass 1 F3: the step test drives three of five trajectories.	66
+1829	2	F3	optional	fixed	-	doc-claim-wrong	MODEL.md-or-README	The step-count explanation of the unperfused load's small figure is unsupported.	67
+1829	2	F4	optional	fixed	1F2	doc-claim-wrong	simulator-tests	Same as pass 1 F2: muscle-never-worst passages are false.	70
+1827	1	F1	should-fix	fixed	-	test-gap	simulator-tests	Fields held by the accounting identity were labelled OWN in the record-write test.	73
+1827	1	F2	optional	rejected	-	missing-guard	simulator-code	Parts stay shared after a rebuild or dataclasses.replace; rejected beyond documenting it.	76
+1827	1	F3	optional	fixed	-	doc-unclear	MODEL.md-or-README	"The new MODEL.md paragraph broke the next paragraph's referent for ""It""."	79
+1827	2	F1	should-fix	fixed	-	test-gap	simulator-tests	venous_blood and blood:gas coefficient labelled OWN though four unchecked copies exist; GAP kind, PL-YXGX.	81
+1827	2	F2	optional	fixed	-	doc-claim-wrong	simulator-code	Docstrings overstated what the accounting anchor guarantees.	86
+1817	1	F1	should-fix	fixed	-	doc-claim-wrong	simulator-code	CONTROL_MARK_COLOR comment still called the mark the only vertical line and credited its dash.	65
+1817	2	F2	should-fix	fixed	1F1	doc-claim-wrong	simulator-code	CONTROL_MARK_COLOR comment still called the mark the only vertical line and credited its dash.	65
+1817	2	F1	should-fix	fixed	-	clinical-accuracy	simulator-tests	Reference module misdated the methods reading and extended the open circuit to the elimination.	69
+1817	1	F2	optional	fixed	-	doc-claim-wrong	simulator-code	Swatch comment wrongly named the band as the only swatch of another size.	72
+1817	1	F3	optional	fixed	-	doc-unclear	?	"Bookmark section comment gave ""reached"" a narrower meaning than MarkStanding.REACHED."	75
+1831	1	-	?	fixed	-	code-bug	simulator-code	A nested halt gate halted twice when showing the halt raised, citing the halt's own exception.	93
+1831	2	-	?	fixed	1?	code-bug	simulator-code	A nested halt gate halted twice when showing the halt raised, citing the halt's own exception.	93
+1831	1	-	?	fixed	-	test-gap	simulator-tests	Structural slot test let connect(run.controller.pause) and lambdas passed to non-connect calls through.	96
+1819	1	F1	?	fixed	-	clinical-accuracy	MODEL.md-or-README	Direction argument against circuit-wall absorption was backwards for desflurane's elimination residual.	76
+1819	1	F2	?	fixed	-	clinical-accuracy	MODEL.md-or-README	Stored tissue:gas values were called one lab's means / Yasuda's measurements rounded by Gas Man.	79
+1819	2	F1	?	fixed	1F2	clinical-accuracy	MODEL.md-or-README	Stored tissue:gas values were called one lab's means / Yasuda's measurements rounded by Gas Man.	79
+1819	1	F3	?	fixed	-	process	apparatus	PL-P1P6's verify command grepped for a test name that was never written.	86
+1819	2	F3	?	fixed	1F3	process	apparatus	PL-P1P6's verify command grepped for a test name that was never written.	86
+1819	1	F4	?	fixed	-	clinical-accuracy	MODEL.md-or-README	Both other sets put muscle lower omitted Lowe's higher isoflurane values.	89
+1819	2	F2	?	fixed	-	clinical-accuracy	MODEL.md-or-README	The 1986 set's blood:gas values hide part of its isoflurane vessel-rich gap rather than adding to it.	92
+1835	1	F1	optional	fixed	-	code-bug	apparatus	claimed_here counted claims carried in by merging another unlanded branch.	58
+1835	2	F2	?	fixed	1F1	code-bug	apparatus	claimed_here counted claims carried in by merging another unlanded branch.	58
+1835	2	F3	optional	fixed	-	doc-claim-wrong	simulator-tests	Docstring and tolerance comment called 5.8870e-14 the module's largest residual; wider point filed PL-4R21.	62
+1835	2	F1	should-fix	filed	-	code-bug	apparatus	With the claimed item excluded, another open item on the branch's paths can become the anchor; PL-TBX9.	69
+1826	1	-	optional	fixed	-	doc-claim-wrong	MODEL.md-or-README	The O(n u^2) term at 8.64e7 steps is about 1e-24, not 1e-27, in MODEL.md and a test comment.	73
+1826	2	-	optional	fixed	1?	doc-claim-wrong	MODEL.md-or-README	The O(n u^2) term at 8.64e7 steps is about 1e-24, not 1e-27, in MODEL.md and a test comment.	73
+1826	?	-	optional	fixed	-	doc-claim-wrong	?	2u is about 450,000 times below a tenth of the tolerance, not 4.5 million.	74
+1826	?	-	optional	fixed	-	doc-claim-wrong	?	The 1 ms step is worst because of most additions, not the largest transfer.	76
+1826	?	-	optional	fixed	-	doc-unclear	simulator-code	Validator docstring did not say dataclasses.replace() starts a copy with zero compensation terms.	77
+1837	2	F1	optional	fixed	-	doc-claim-wrong	simulator-code	advance docstring said the refusal names two flows as set, but only cardiac output is set.	23
+1841	?	-	?	fixed	-	doc-claim-wrong	MODEL.md-or-README	A branch's opening-readout margin of 4.9e-14 was called ten orders below 1e-4; it is about nine.	12
+1841	?	-	?	filed	-	doc-claim-wrong	MODEL.md-or-README	Two litre margins are sized against six decimals though the panel shows 0.1 L; filed PL-D1LR.	27
+1840	1	F1	should-fix	fixed	-	code-bug	simulator-code	The 1 MAC line written with the cards contradicted delivered xMAC and heading on the same halt.	46
+1840	1	F2	should-fix	fixed	-	code-bug	simulator-code	A halt on a run's first frame left the 1 MAC line blank.	48
+1840	2	F1	should-fix	fixed	1F1	code-bug	simulator-code	Same as pass 1 F1: 1 MAC line contradicted delivered xMAC and heading on a halt.	51
+1853	1	F1	should-fix	fixed	-	doc-claim-wrong	apparatus	The Anesth Analg extraction note said recovery values were unused, but MODEL.md and a test cite them.	55
+1853	2	F1	should-fix	fixed	1F1	doc-claim-wrong	apparatus	The Anesth Analg extraction note said recovery values were unused, but MODEL.md and a test cite them.	55
+1853	2	F2	should-fix	fixed	-	doc-claim-wrong	apparatus	The Anesthesiology note said halothane ratios were unused, but MODEL.md uses the five-minute 0.25.	58
+1853	1	F2	?	fixed	-	clinical-accuracy	MODEL.md-or-README	MODEL.md called the zero inspired fraction stated by the papers; neither states it, so it is inference.	61
+1853	2	F3	?	fixed	1F2	clinical-accuracy	MODEL.md-or-README	MODEL.md called the zero inspired fraction stated by the papers; neither states it, so it is inference.	61
+1853	1	F3	optional	fixed	-	doc-claim-wrong	apparatus	References README route line missed methods pages; its placement rule contradicted separate note files.	64
+1853	2	F4	optional	fixed	1F3	doc-claim-wrong	apparatus	References README route line missed methods pages; its placement rule contradicted separate note files.	64
+1855	1	F1	should-fix	fixed	-	doc-claim-wrong	MODEL.md-or-README	First wording said only the circuit could halt one count past its mark; alveolar halts go further.	37
+1855	2	F1	should-fix	fixed	1F1	doc-claim-wrong	MODEL.md-or-README	First wording said only the circuit could halt one count past its mark; alveolar halts go further.	37
+1855	1	F2	optional	fixed	-	doc-claim-wrong	MODEL.md-or-README	MODEL.md gave counts from a scratch script, such as 13 of 59 circuit targets, that no test produced.	42
+1855	2	F2	optional	fixed	1F2	doc-claim-wrong	MODEL.md-or-README	MODEL.md gave counts from a scratch script, such as 13 of 59 circuit targets, that no test produced.	42
+1855	1	F3	optional	fixed	-	test-gap	simulator-tests	The new test's second assertion restated its first.	46
+1855	2	F3	optional	fixed	1F3	test-gap	simulator-tests	The new test's second assertion restated its first.	46
+1833	1	-	should-fix	fixed	-	doc-claim-wrong	MODEL.md-or-README	Section implied a corner run proceeds until a stretch outlasts 1,610 s; mass-balance halts it sooner.	90
+1836	?	-	?	fixed	-	doc-claim-wrong	simulator-code	Docstring and refusal called the count grid columns, but it can exceed drawn columns by one.	38
+1836	?	-	?	fixed	-	other	simulator-code	The window refusal printed a 300-digit count; now six significant figures.	41
+1836	?	-	?	fixed	-	test-gap	simulator-tests	The 8K test compared two constants instead of calling chart_columns.	43
+1861	?	-	?	rejected	-	?	?	One rejected finding; the body gives no detail of it.	0
+1860	1	F1	blocking	fixed	-	doc-unclear	simulator-code	"Banner wording ""not validated past this span"" implies the model is validated inside it."	65
+1860	2	F1	blocking	fixed	1F1	doc-unclear	simulator-code	"Banner wording ""not validated past this span"" implies the model is validated inside it."	65
+1860	1	F2	should-fix	fixed	-	clinical-accuracy	simulator-code	Its fat flow differs from measurement calls the flow wrong; the human sources disagree on direction.	67
+1860	2	F2	should-fix	fixed	-	doc-unclear	simulator-code	Because made both limitations sound as if they began at the 24 h boundary.	69
+1860	2	F3	optional	fixed	-	clinical-accuracy	MODEL.md-or-README	MAC-hour figures were counted at the dial, not end-tidal.	72
+1863	1	-	?	fixed	-	clinical-accuracy	MODEL.md-or-README	New paragraph called the desflurane band 9% too low while the next said a direct measurement agrees.	47
+1863	2	-	?	fixed	1?	clinical-accuracy	MODEL.md-or-README	New paragraph called the desflurane band 9% too low while the next said a direct measurement agrees.	47
+1863	?	-	?	fixed	-	clinical-accuracy	MODEL.md-or-README	Related finding on the stated sevoflurane and isoflurane MAC-divisor gap sizes.	50
+1863	?	-	?	filed	-	test-gap	simulator-tests	No test pins the MAC-awake washout crossing figures; filed as PL-PTDZ.	51
+1862	1	-	?	fixed	-	test-gap	simulator-tests	A uniform 32-squaring tolerance let a 1e-6 balance error through at ordinary corners.	78
+1862	2	-	?	fixed	1?	test-gap	simulator-tests	A uniform 32-squaring tolerance let a 1e-6 balance error through at ordinary corners.	78
+1862	?	-	?	fixed	-	doc-claim-wrong	MODEL.md-or-README	MODEL.md claimed every fraction stays at or below 1; the display path draws up to 1.000033.	79
+1862	?	-	?	fixed	-	code-bug	simulator-code	A playback bound of 100 000 steps per tick would have frozen the interface about 5 s per tick.	81
+1862	?	-	?	fixed	-	test-gap	simulator-tests	The sweep accepted the canonical-path refusal by exception type only.	82
+1862	?	-	?	fixed	-	test-gap	simulator-tests	The sweep accepted the PL-9B1M step refusal with no bound and no rollback check.	83
+1862	?	-	?	filed	-	missing-guard	simulator-code	A run's opening state has no interval; fractions at 1e308 give an inf total; recorded on PL-0WFJ.	84
+1773	1	-	?	fixed	-	code-bug	apparatus	With the coverage threshold on, apparatus-only PRs would fail on a gap left by product changes.	55
+1773	1	-	?	fixed	-	doc-claim-wrong	apparatus	A workflow comment overstated the costly tests' independence from apparatus files.	55
+1773	1	-	?	fixed	-	test-gap	apparatus	No test covered the part pair that CI actually runs.	56
+1766	1	F1	blocking	fixed	-	test-gap	simulator-tests	Dashboard-frame test fixture built its snapshot instant as a bare float, which the frame now refuses.	53
+1766	1	F2	optional	fixed	-	missing-guard	simulator-code	fit_to_run would hang on an infinite instant from a caller the type checker does not read.	56
+1766	1	F3	optional	fixed	-	test-gap	simulator-tests	Nothing tested a mark placed before a sliding window's start.	60
+1774	1	-	?	fixed	-	missing-guard	apparatus	In ast_identity.py a misspelt path beside a real one dropped out of the comparison unseen.	56
+1774	1	-	?	fixed	-	code-bug	apparatus	ast_identity.py reported a git silence as an unreadable revision.	57
+1779	1	-	?	fixed	-	code-bug	simulator-code	The open Reset question could go stale while a branch kept running.	39
+1779	1	-	?	fixed	-	test-gap	simulator-tests	The surface guard test never made the branch refusal its docstring described.	40
+1792	1	F1	blocking	fixed	-	code-bug	apparatus	Refusals from guards firing after record were never copied to the tracked log; fixed in part.	75
+1792	1	F2	should-fix	fixed	-	code-bug	apparatus	Per-session hook-block files could conflict at merge between branches.	82
+1792	1	F3	should-fix	fixed	-	code-bug	apparatus	Hand-run guards were logged as real refusals.	85
+1792	1	F4	optional	fixed	-	code-bug	apparatus	One-second timestamps merged distinct refusals.	87
+1792	1	F5	optional	filed	-	missing-guard	apparatus	pr-body-email-guard.sh logs nothing; docs now say so, logging filed as PL-HHKC.	89
+1797	1	F1	should-fix	fixed	-	code-bug	apparatus	test_bytecode_guard re-ran the root-conftest guard mid-collection, leaving about a fifth of modules uncached.	53
+1805	1	-	?	filed	-	doc-claim-wrong	simulator-tests	test_controller.py misquotes the WORST_SHARED_COLUMN_DIVERGENCE margins; filed as PL-KYVR.	59
+1805	1	-	?	filed	-	doc-claim-wrong	simulator-tests	Three test files name a missing test_simulation_view.py and the old Flet interface; added to PL-3TWT.	64
+1816	1	-	optional	fixed	-	doc-claim-wrong	simulator-tests	_envelope_corner still said rounding is set by the step count, contradicting its own figures.	50
+1852	1	-	?	fixed	-	doc-claim-wrong	apparatus	Scope-step comment and conftest docstring still said only part 2 asks for the costly-test skip.	50
+1858	1	F1	should-fix	fixed	-	code-bug	simulator-code	The split check still used header plus one line, so halves could fall below the new floor.	44
+1858	1	F2	should-fix	filed	-	code-bug	simulator-code	The floor is measured at the chooser's width, so wide stacked Areas reserve 30 to 50 px unused; PL-9Z74.	47
