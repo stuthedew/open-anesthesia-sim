@@ -7673,11 +7673,17 @@ def test_a_required_test_subsection_naming_nothing_is_an_error(tmp_path: Path) -
     assert "this member names no test" in errors[0]
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
 
     A family joins that tuple only once its annotation pass has landed, so this
     is the assertion that the tuple never runs ahead of the document.
+
+    It reads the item store, because a member declaring `no test yet` names
+    the open item that owes its test. The hazard table's two cost rows have
+    declared one against `PL-1P15` since `PL-VJZK`. Closing that item in a
+    pull request that changes only item files must still run this test.
     """
     report = doc_check.Report()
     doc_check.check_bound_families(Path(__file__).resolve().parents[2], report)
