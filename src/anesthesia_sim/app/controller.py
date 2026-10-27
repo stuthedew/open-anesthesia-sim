@@ -2361,57 +2361,82 @@ class SimulationController:
     # `docs/MODEL.md` § "What is not bounded this way" gives the argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
-        self._refuse_a_setting_on_a_stopped_run(ControlInput.FRESH_GAS_FLOW)
-        system = self._state.uptake_system
-        previous_value = system.circuit.fresh_gas_flow_l_min
-        system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.FRESH_GAS_FLOW,
-            previous_value,
-            system.circuit.fresh_gas_flow_l_min,
-            restore=lambda: system.set_fresh_gas_flow(previous_value),
+            fresh_gas_flow_l_min,
+            held=lambda system: system.circuit.fresh_gas_flow_l_min,
+            apply=AgentUptakeSystem.set_fresh_gas_flow,
         )
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        self._refuse_a_setting_on_a_stopped_run(ControlInput.DELIVERED)
-        system = self._state.uptake_system
-        previous_value = system.circuit.delivered_concentration_percent
-        system.set_delivered_concentration_percent(delivered_concentration_percent)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.DELIVERED,
-            previous_value,
-            system.circuit.delivered_concentration_percent,
-            restore=lambda: system.set_delivered_concentration_percent(previous_value),
+            delivered_concentration_percent,
+            held=lambda system: system.circuit.delivered_concentration_percent,
+            apply=AgentUptakeSystem.set_delivered_concentration_percent,
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
-        self._refuse_a_setting_on_a_stopped_run(ControlInput.ALVEOLAR_VENTILATION)
-        system = self._state.uptake_system
-        previous_value = system.alveoli.alveolar_ventilation_l_min
-        system.set_alveolar_ventilation(alveolar_ventilation_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.ALVEOLAR_VENTILATION,
-            previous_value,
-            system.alveoli.alveolar_ventilation_l_min,
-            restore=lambda: system.set_alveolar_ventilation(previous_value),
+            alveolar_ventilation_l_min,
+            held=lambda system: system.alveoli.alveolar_ventilation_l_min,
+            apply=AgentUptakeSystem.set_alveolar_ventilation,
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
-        self._refuse_a_setting_on_a_stopped_run(ControlInput.CARDIAC_OUTPUT)
-        system = self._state.uptake_system
-        previous_value = system.patient.cardiac_output_l_min
-        system.set_cardiac_output(cardiac_output_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.CARDIAC_OUTPUT,
-            previous_value,
-            system.patient.cardiac_output_l_min,
-            restore=lambda: system.set_cardiac_output(previous_value),
+            cardiac_output_l_min,
+            held=lambda system: system.patient.cardiac_output_l_min,
+            apply=AgentUptakeSystem.set_cardiac_output,
+        )
+
+    def _change_setting[Setting: float](
+        self,
+        control: ControlInput,
+        value: Setting,
+        *,
+        held: Callable[[AgentUptakeSystem], Setting],
+        apply: Callable[[AgentUptakeSystem, Setting], None],
+    ) -> None:
+        """Apply one setting through the core and record the change, for each of the four setters.
+
+        Every setter takes the same four steps, in this order. A stopped run
+        refuses the setting before anything is applied
+        (`_refuse_a_setting_on_a_stopped_run`). The value in force is read. The
+        new value goes through the core's own setter, which refuses a value
+        outside its supported range. `_record_control_change` then records the
+        change, with a way to write the old value back if the settings record
+        refuses it. Each public setter keeps the checked type that only its
+        range check builds. Only the steps are shared, so a fifth control gets
+        the refusal, the record and the write-back by calling this method
+        (`PL-M7K2`).
+
+        Args:
+            control: The control the setting belongs to.
+            value: The new setting, already of its checked type.
+            held: Reads the setting in force from the uptake system.
+            apply: The uptake system's setter for this control.
+
+        Raises:
+            SimulationConfigurationError: If the run has stopped, if the core
+                refuses the value, or if the settings record refuses it. In
+                each case the run is left as it was.
+        """
+
+        self._refuse_a_setting_on_a_stopped_run(control)
+        system = self._state.uptake_system
+        previous_value = held(system)
+        apply(system, value)
+        self._record_control_change(
+            control, previous_value, held(system), restore=lambda: apply(system, previous_value)
         )
 
     def _refuse_a_setting_on_a_stopped_run(self, control: ControlInput) -> None:
         """Refuse a setting on a run that has stopped, before anything is applied.
 
-        Each of the four setters calls this first. A run stops on a failure or
+        `_change_setting` calls this first. A run stops on a failure or
         at the supported run length, and no step runs after either. If a
         setting were applied here, the dial would show a setting that no step
         will ever run under, beside values it did not produce. The control
