@@ -85,6 +85,4 @@ def test_the_fork_point_entry_is_sized_from_the_clocks_own_format() -> None:
 
     entry = widest_fork_point_label(advance_px)
 
-    # The widest entry is a mark on a setting change, whose label ends with
-    # the clause that says the branch opens before it (`PL-ZR49`).
-    assert entry == MARK_FORK_LABEL_TEMPLATE.format(instant="19h19m19.9s") + ", before your change"
+    assert entry == MARK_FORK_LABEL_TEMPLATE.format(instant="19h19m19.9s")

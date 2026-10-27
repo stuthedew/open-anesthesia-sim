@@ -523,18 +523,6 @@ HERE_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}"
 # a learner who misreads it or a measurement. But a rewrite must not
 # reintroduce the wording it was chosen over.
 HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
-# This clause ends either label above, or a mark's entry in the selector below,
-# when the trunk changed a setting at the instant where the branch opens.
-# `HereForkPoint.setting_changed_here` and `MarkForkPoint.setting_changed_at_fork`
-# record whether the trunk did. A branch taken where the trunk stands, or at a
-# mark, opens under the settings from before that change. The selector's
-# keyframe entry at the same instant opens under the change (`PL-ZR49`).
-# Without the clause, two controls would show one instant and open under
-# different settings. The wording is a placeholder chosen in `PL-ZR49`. The
-# project owner's rule of 2026-10-18 lets the session doing the work decide
-# wording while the interface is being built. The clause follows the ratified
-# words of each label and does not change them.
-BEFORE_CHANGE_FORK_LABEL_SUFFIX: Final = ", before your change"
 # A time bookmark that the trunk has passed, as an entry in the selector beside
 # the control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
 # instant at which the branch opens, never the value typed for the mark.** A
@@ -597,24 +585,21 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
 
     The selector has a fixed width, so it reserves the width of its widest
     entry once, when it is built (`PL-NC0D`). The entry for a mark that the
-    run has passed is the widest kind of entry. It holds a clock reading, as
-    a control event's entry does, followed by the words of
-    `MARK_FORK_LABEL_TEMPLATE`. Where the trunk changed a setting at the
-    mark's fork, `BEFORE_CHANGE_FORK_LABEL_SUFFIX` comes last. The widest
-    clock reading is found by measuring, not by counting characters. A
-    proportional font gives its digits different widths, so 23h59m59.9s, the
-    reading at the last step, is not the widest. Hours, minutes and seconds
-    vary independently. So the widest value of each, put together, is the
-    widest reading that `format_elapsed` writes within the supported length
-    of a run.
+    run has passed is the widest kind of entry. It is the clock reading of a
+    control event, followed by the words of `MARK_FORK_LABEL_TEMPLATE`. The
+    widest clock reading is found by measuring, not by counting characters.
+    A proportional font gives its digits different widths, so 23h59m59.9s,
+    the reading at the last step, is not the widest. Hours, minutes and
+    seconds vary independently. So the widest value of each, put together,
+    is the widest reading that `format_elapsed` writes within the supported
+    run.
 
     Args:
         advance_px: How wide a string draws in the selector's font, in
             pixels.
 
     Returns:
-        The entry for a mark passed at the instant with the widest reading,
-        with the clause for a setting changed there.
+        The entry for a mark passed at the instant with the widest reading.
     """
 
     # Each part is measured as `format_elapsed` writes it alone, so the
@@ -631,10 +616,7 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
         hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
     )
 
-    return (
-        MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
-        + BEFORE_CHANGE_FORK_LABEL_SUFFIX
-    )
+    return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
 
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
@@ -2113,11 +2095,8 @@ class ForkPoint:
         instant_s: Where a branch taken here opens, in seconds of the case.
             It is either a keyframe of the trunk or a passed mark's
             `MarkForkPoint.fork_s`.
-        label: What the selector shows for the entry. It is `instant_s` as
-            `format_elapsed` writes it. For a mark, that reading is placed
-            inside `MARK_FORK_LABEL_TEMPLATE`, followed by
-            `BEFORE_CHANGE_FORK_LABEL_SUFFIX` where the trunk changed a
-            setting at `instant_s`.
+        label: What the selector shows for the entry: `format_elapsed` of
+            `instant_s`, placed inside `MARK_FORK_LABEL_TEMPLATE` for a mark.
         mark: None for a recorded control event, which is taken through
             `BranchedCase.fork_at` at `instant_s`. For a passed mark, it is
             the time bookmark itself, as the trunk holds it, and the entry is
@@ -2165,8 +2144,7 @@ class ForkOffer:
             using `HERE_FORK_LABEL_TEMPLATE`. When a mark stopped the trunk
             there, it adds that fact, using `HALT_FORK_LABEL_TEMPLATE`. The
             comment on that template explains why those are two clauses
-            rather than one. When a setting was changed there, it ends with
-            `BEFORE_CHANGE_FORK_LABEL_SUFFIX`.
+            rather than one.
         refusal: Why the most recently requested branch was not taken, for
             the notice banner, or None. It is never set while `locked`. The
             control that produced the refusal is gone, so the message would
@@ -2303,7 +2281,12 @@ def fork_offer(
         ForkPoint(instant_s, format_elapsed(instant_s), None) for instant_s in fork_points_s
     )
     passed_marks = tuple(
-        ForkPoint(point.fork_s, _mark_fork_label(point), point.bookmark) for point in marks
+        ForkPoint(
+            point.fork_s,
+            MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(point.fork_s)),
+            point.bookmark,
+        )
+        for point in marks
     )
     # The comparison cap refuses every way of branching. So it is applied
     # once, here, rather than checked separately for each field.
@@ -2319,36 +2302,16 @@ def fork_offer(
     )
 
 
-def _mark_fork_label(point: MarkForkPoint) -> str:
-    """Return the selector's label for a mark the trunk has passed.
-
-    The label gives the instant where the branch opens, and whether the
-    branch opens before a setting change made there.
-
-    Args:
-        point: The mark and where its branch opens, from
-            `BranchedCase.mark_fork_points`.
-    """
-
-    suffix = BEFORE_CHANGE_FORK_LABEL_SUFFIX if point.setting_changed_at_fork else ""
-
-    return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(point.fork_s)) + suffix
-
-
 def _here_fork_label(here: HereForkPoint) -> str:
-    """Return the label of the fork where the trunk stands.
-
-    The label gives the instant, any mark that stopped the trunk there, and
-    whether the branch opens before a setting change made there.
+    """Return the label of the fork where the trunk stands: its instant, and any stopping mark.
 
     Args:
         here: Where the trunk stands, from `BranchedCase.here_fork_point`.
     """
 
     template = HALT_FORK_LABEL_TEMPLATE if here.stopped_on_mark else HERE_FORK_LABEL_TEMPLATE
-    suffix = BEFORE_CHANGE_FORK_LABEL_SUFFIX if here.setting_changed_here else ""
 
-    return template.format(instant=format_elapsed(here.fork_s)) + suffix
+    return template.format(instant=format_elapsed(here.fork_s))
 
 
 def delivered_line(delivered: SettingReadout) -> str:

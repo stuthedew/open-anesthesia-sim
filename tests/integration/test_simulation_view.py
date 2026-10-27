@@ -82,7 +82,6 @@ from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustm
 from anesthesia_sim.app.controller import BranchedCase, MarkForkPoint, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
-    BEFORE_CHANGE_FORK_LABEL_SUFFIX,
     BRANCH_AGENT_LOCK_TEXT,
     BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
@@ -7137,12 +7136,7 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
 
     assert button.isHidden() is False
     assert button.isEnabled() is True
-    # The fixture's setting change was made at the instant where the trunk
-    # stands, so the label says the branch opens before it (`PL-ZR49`).
-    assert button.text() == (
-        HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
-        + BEFORE_CHANGE_FORK_LABEL_SUFFIX
-    )
+    assert button.text() == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
 
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S)))
     case.trunk.start()
@@ -8740,7 +8734,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     panel.set_offer(
         fork_offer(
             case.fork_points_s,
-            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1), setting_changed_at_fork=False),),
+            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
             comparing=None,
             here=None,
         )
@@ -9682,10 +9676,8 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     23h59m59.9s, the reading at the last step, is not the widest reading.
     Hours, minutes and seconds vary independently, so the widest value of
     each, put together, is the widest clock reading that `format_elapsed`
-    can write. The widest entry is also a mark on a setting change, whose
-    label ends with the clause for that change (`PL-ZR49`). The test passes
-    the entry through `fork_offer` and reads it back from the selector,
-    rather than measuring it as a bare string.
+    can write. The test passes the entry through `fork_offer` and reads it
+    back from the selector, rather than measuring it as a bare string.
 
     Returns:
         The entry's advance, which is its drawn width, and the width of the
@@ -9714,12 +9706,12 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     panel.set_offer(
         fork_offer(
             (CaseInstant(0.0),),
-            marks=(MarkForkPoint(TimeBookmark(instant), instant, setting_changed_at_fork=True),),
+            marks=(MarkForkPoint(TimeBookmark(instant), instant),),
             comparing=None,
             here=None,
         )
     )
-    _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark, before your change")
+    _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark")
     option = QStyleOptionComboBox()
     panel.point_selector.initStyleOption(option)
     field = panel.point_selector.style().subControlRect(

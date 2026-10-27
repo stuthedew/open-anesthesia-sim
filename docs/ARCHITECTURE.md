@@ -530,14 +530,13 @@ Five things in `app/controller.py` implement a branch:
   written. So the two runs share no compartment, no accounting and no clock,
   and that is what lets both be advanced.
 - `SimulationController.resumed_here()` makes a branch where the paused trunk
-  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). It shares
-  `_branch_from` with `resumed_at`, but it opens under the settings of the
-  stretch that the step reaching the fork ran under. So a setting the learner
-  changed on the trunk while it stood there stays the trunk's (`PL-HSP8`,
-  `PL-ZR49`). At an instant where such a change was made, this branch and the
-  `resumed_at` branch open under different settings. The
-  method deliberately takes no instant, because the fork is the clock. So a
-  caller has no float with which to name an instant the run has not reached.
+  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). The branch
+  it makes is the one the bullet above describes, because the two methods share
+  `_branch_from`. Only the place where the fork may be taken differs. So a
+  setting the learner changed on the trunk while it stood there is on the
+  branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
+  because the fork is the clock. So a caller has no float with which to name
+  an instant the run has not reached.
   Nor can anyone confuse the instant a learner *marked* with the step instant
   the run actually stopped on. It refuses a running trunk, a failed one, and
   one standing at its opening. It also refuses one at the supported run length,
@@ -589,11 +588,12 @@ then checked against those settings rather than trusted. The check covers
 every setting the stretch carries, and the agent's displayed references, since
 the agent and patient are re-read from their data files. A refusal names each
 value that differs, with both of its values (`PL-NC62`). Which stretch is
-settled by one rule for every way of branching. It is the stretch the step
-reaching the fork ran under, which no later change on the trunk can replace.
-Only a branch taken at a setting change runs under that change instead, and it
-records the change as its own (`docs/MODEL.md` § "The canonical evaluation
-rule", `PL-ZR49`). And a branch inherits the
+settled by one rule for every way of branching. The branch names as its
+provenance the stretch the step reaching the fork ran under, which no later
+change on the trunk can replace. It runs under the stretch still open at the
+fork, which is what the dial says there, and it records a change the trunk made
+there as its own (`docs/MODEL.md` § "The canonical evaluation rule",
+`PL-ZR49`). And a branch inherits the
 bookmarks. That is the opposite case to the timeline below, and it is settled
 by the same test. A mark is a question about what is still to come, and a
 comparison is two managements answering one question. If a learner had to
@@ -603,7 +603,7 @@ timeline. The branch's record is of what the learner does to *it*, and
 `opened_from` is what records where the fork was taken. The entries it can
 open with are the settings it runs under that differ from the stretch it opened
 from, one for each control that differs. They are the trunk's changes at the
-keyframe it was taken at, or the learner's dials kept by a reset
+instant it was taken at, or the learner's dials kept by a reset
 (`RunRecord.opened_with`).
 `began_at_s` is the one number to read for that. It is zero on a trunk and the
 fork instant on a branch. The definition's own first segment used to start at
@@ -725,16 +725,13 @@ is a property of the display, not of the model:
   point and no comparison is shown. It is labelled
   "Branch here: 1h23m" with the instant at which the branch will open. When a
   mark stopped the trunk there, the label is
-  "..., stopped on your mark". When a setting was changed while the trunk
-  stood there, the label ends ", before your change". The branch opens under
-  the settings before that change. The selector's keyframe entry at the same
-  instant opens under the change. A mark's entry at that instant opens before
-  the change, and its label ends with the same clause (`PL-ZR49`). Pausing
-  records no keyframe, so the paused
-  point adds nothing to `fork_points_s`. The selector therefore never loses a
-  row as the run moves. It gains a row as the clock passes a mark. It loses a
-  row only when the learner unmarks that mark or the trunk starts over. The
-  project owner chose this shape (2026-09-21,
+  "..., stopped on your mark". Every entry and the button open under what the
+  dial says at their instant. So two controls labelled with one instant open
+  under the same settings (`PL-ZR49`). Pausing records no keyframe, so the
+  paused point adds nothing to `fork_points_s`. The selector therefore never
+  loses a row as the run moves. It gains a row as the clock passes a mark. It
+  loses a row only when the learner unmarks that mark or the trunk starts over.
+  The project owner chose this shape (2026-09-21,
   ratified, over one list that grows a row while the run is halted; and
   2026-10-12, ratified, over a row at the top of the selector selected by
   default). The reasons are these. A row that vanishes from a list can be
@@ -816,8 +813,9 @@ complement of what a branch inherits.** A branch carries across the agent,
 the patient, the circuit volume, the four live controls up to the fork, and
 the bookmarks. It then keeps them fixed: `set_agent` refuses on a branch and
 is locked on the trunk while two runs are shown. The control timeline is the
-one thing that starts empty. So the difference between two runs after the
-fork is the difference between two control timelines. The inheritance list
+one thing not carried across. It opens with only the settings that differ at
+the fork, if any. So the difference between two runs after the fork is the
+difference between two control timelines. The inheritance list
 above is the audit of that claim, not a convenience.
 
 **The shared history is the same object, not a reproduction of one.** A

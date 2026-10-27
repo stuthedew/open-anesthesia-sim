@@ -3332,9 +3332,7 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 #: therefore two different numbers, and a test can tell which one an entry
 #: carries.
 _MARK_INSIDE_A_STEP = MarkForkPoint(
-    TimeBookmark(CaseInstant(45.35), "the decision point"),
-    CaseInstant(454 * 0.1),
-    setting_changed_at_fork=False,
+    TimeBookmark(CaseInstant(45.35), "the decision point"), CaseInstant(454 * 0.1)
 )
 
 
@@ -3448,7 +3446,7 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     branch at without inferring it from the run clock.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False, setting_changed_here=False)
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
 
     offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=here)
 
@@ -3460,37 +3458,6 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     # looks away.
     assert _offered_instants(offer) == (0.0, 60.0)
     assert _offered_labels(offer) == tuple(format_elapsed(instant_s) for instant_s in (0.0, 60.0))
-
-
-def test_the_fork_here_says_it_opens_before_a_setting_changed_there() -> None:
-    """The label ends with the before-change clause only when a setting was changed there.
-
-    The selector's entry at the same instant opens under that change, so
-    without the clause two controls would show one instant and open under
-    different settings (`PL-ZR49`). The clause is added after the ratified
-    wording of the halt label rather than replacing it.
-    """
-
-    instant = format_elapsed(45.0)
-    labels = {
-        (stopped, changed): fork_offer(
-            (0.0, 45.0),
-            marks=(),
-            comparing=None,
-            here=HereForkPoint(
-                CaseInstant(45.0), stopped_on_mark=stopped, setting_changed_here=changed
-            ),
-        ).here_label
-        for stopped in (False, True)
-        for changed in (False, True)
-    }
-
-    assert labels[(False, False)] == f"Branch here: {instant}"
-    assert labels[(False, True)] == f"Branch here: {instant}, before your change"
-    assert labels[(True, False)] == f"Branch here: {instant}, stopped on your mark"
-    assert labels[(True, True)] == (
-        f"Branch here: {instant}, stopped on your mark, before your change"
-    )
 
 
 def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
@@ -3505,8 +3472,8 @@ def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
     """
 
     halted_s = 45.4
-    halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True, setting_changed_here=False)
-    paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False, setting_changed_here=False)
+    halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True)
+    paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False)
 
     on_the_mark = fork_offer((0.0,), marks=(), comparing=None, here=halted).here_label
     on_a_pause = fork_offer((0.0,), marks=(), comparing=None, here=paused).here_label
@@ -3529,7 +3496,7 @@ def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     """
 
     for stopped_on_mark in (False, True):
-        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark, setting_changed_here=False)
+        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark)
 
         offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=here)
 
@@ -3568,14 +3535,8 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
     are passed in.
     """
 
-    early = MarkForkPoint(
-        TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0), setting_changed_at_fork=False
-    )
-    late = MarkForkPoint(
-        TimeBookmark(CaseInstant(120.0), "what if"),
-        CaseInstant(120.0),
-        setting_changed_at_fork=False,
-    )
+    early = MarkForkPoint(TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0))
+    late = MarkForkPoint(TimeBookmark(CaseInstant(120.0), "what if"), CaseInstant(120.0))
 
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0), CaseInstant(185.0)),
@@ -3625,22 +3586,10 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     case's opening, at 0 s, is the boundary case. No step reaches a mark
     there. Its branch opens at the opening keyframe, and the mark is listed
     after that keyframe.
-
-    A branch taken at a mark on a control event opens before the change made
-    there, and the keyframe entry opens under the change. So the mark's label
-    ends with the clause that says so (`PL-ZR49`). The opening has only one
-    stretch of settings, the one that starts there, so the mark there has no
-    clause.
     """
 
-    at_opening = MarkForkPoint(
-        TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0), setting_changed_at_fork=False
-    )
-    on_the_change = MarkForkPoint(
-        TimeBookmark(CaseInstant(60.0), "the change"),
-        CaseInstant(60.0),
-        setting_changed_at_fork=True,
-    )
+    at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))
+    on_the_change = MarkForkPoint(TimeBookmark(CaseInstant(60.0), "the change"), CaseInstant(60.0))
 
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0)),
@@ -3658,7 +3607,9 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
         ),
         ForkPoint(CaseInstant(60.0), format_elapsed(60.0), None),
         ForkPoint(
-            CaseInstant(60.0), "1m, on your mark, before your change", on_the_change.bookmark
+            CaseInstant(60.0),
+            MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(60.0)),
+            on_the_change.bookmark,
         ),
     )
 
@@ -3697,7 +3648,7 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
     control that the lock replaces, not a further control the cap could miss.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True, setting_changed_here=False)
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True)
     refusal = "Setting refused: no keyframe at 30.0 s"
     keyframes = (CaseInstant(0.0), CaseInstant(60.0))
 

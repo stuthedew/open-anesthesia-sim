@@ -1009,7 +1009,7 @@ class SimulationView(QWidget):
         The count covers the whole control timeline, grouped as the branch's
         "Control changes" panel lists it. So the Reset question and the panel
         give the same number. The count includes a change that the branch
-        opened with, such as the trunk's change at the keyframe where the
+        opened with, such as the trunk's change at the instant where the
         branch was taken (`PL-ZR49`). `has_recorded_run` decides whether to
         ask at all, and it counts only the changes made since the branch
         opened. A branch that holds such a change also holds a timeline
