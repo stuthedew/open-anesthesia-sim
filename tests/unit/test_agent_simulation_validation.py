@@ -12,6 +12,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     MINIMUM_RELATIVE_SCALE_L,
     AgentSimulationValidationResult,
     AgentSimulationValidator,
+    rejected_check,
 )
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
@@ -198,6 +199,35 @@ def test_require_valid_agent_accounting_reads_the_validators_own_state() -> None
 
     assert "delivered=2.000000e+00 L" in str(raised.value)
     assert "unaccounted=1.000000e+00 L" in str(raised.value)
+
+
+def test_the_rejected_check_travels_with_the_error_and_nothing_else_does() -> None:
+    """The error carries the rejected step's own check, which the panel shows (`PL-HF4B`).
+
+    The check is held as `object` on the error, because `core/exceptions.py`
+    imports nothing from the core. `rejected_check` gives it back its type, and
+    refuses anything that is not a check rather than passing it on. The
+    expected totals are the ones this test recorded: 2.0 L delivered, 0.25 L
+    exhausted and 0.75 L stored leave 1.0 L unaccounted.
+    """
+
+    short = AgentSimulationValidator()
+    short.record_external_agent_transfer(delivered_agent_l=2.0, exhausted_agent_l=0.25)
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        short.require_valid_agent_accounting(currently_stored_agent_l=0.75)
+
+    check = rejected_check(raised.value)
+
+    assert check is not None
+    assert check.passes_validation is False
+    assert (check.delivered_agent_l, check.exhausted_agent_l) == (2.0, 0.25)
+    assert check.currently_stored_agent_l == 0.75
+    assert check.unaccounted_agent_l == 1.0
+    assert rejected_check(AgentSimulationValidationError("no check")) is None
+
+    with pytest.raises(TypeError, match="carries str, but its check must be"):
+        rejected_check(AgentSimulationValidationError("wrong", check="not a check"))
 
 
 def test_accounting_exception_inherits_project_hierarchy() -> None:

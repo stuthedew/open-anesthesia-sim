@@ -37,11 +37,6 @@ acts on the difference:
   reason, and the interface must say so in different words.
 """
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-
 
 class AnesthesiaSimulationError(Exception):
     """Base exception for errors raised by the simulation project."""
@@ -131,15 +126,18 @@ class AgentSimulationValidationError(SimulationNumericalError):
     it (`PL-HF4B`).
     """
 
-    def __init__(
-        self, message: str, *, check: AgentSimulationValidationResult | None = None
-    ) -> None:
+    def __init__(self, message: str, *, check: object = None) -> None:
         """Build the error.
+
+        `check` is typed `object` because this module imports nothing from the
+        core. Every core module imports this one, so an import of the check's
+        type here would make a cycle. `agent_simulation_validation.rejected_check`
+        reads the check back as its own type.
 
         Args:
             message: What failed, with the rejected step's totals.
-            check: The failing check of the rejected step, or `None` where the
-                error was raised without one.
+            check: The failing `AgentSimulationValidationResult` of the rejected
+                step, or `None` where the error was raised without one.
         """
 
         super().__init__(message)

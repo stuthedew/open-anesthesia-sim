@@ -181,6 +181,7 @@ from anesthesia_sim.app.theme import (
     RUNNING_AGENT_DISPLAY_PADDING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
+from anesthesia_sim.core.agent_simulation_validation import rejected_check
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
@@ -1497,7 +1498,7 @@ class RunView(QWidget):
         elif isinstance(error, AgentSimulationValidationError):
             # The core rolled the step back, so only the error still holds the
             # rejected step's check (`PL-HF4B`).
-            self.controller.fail(reason, rejected_accounting=error.check)
+            self.controller.fail(reason, rejected_accounting=rejected_check(error))
         else:
             self.controller.fail(reason)
 

@@ -338,3 +338,32 @@ class AgentSimulationValidator:
         self.exhausted_agent_l = 0.0
         self.delivered_compensation_l = 0.0
         self.exhausted_compensation_l = 0.0
+
+
+def rejected_check(error: AgentSimulationValidationError) -> AgentSimulationValidationResult | None:
+    """Return the failing check that an accounting error carries, or None where it carries none.
+
+    `AgentSimulationValidationError` holds its check as `object`, because
+    `core/exceptions.py` imports nothing from the core. This function gives the
+    check back its type, for the interface that shows it (`PL-HF4B`).
+
+    Args:
+        error: The error that `require_valid_agent_accounting` raised.
+
+    Returns:
+        The rejected step's check, or None.
+
+    Raises:
+        TypeError: If the error carries something other than a check, which
+            no code in this package does.
+    """
+
+    check = error.check
+
+    if check is None or isinstance(check, AgentSimulationValidationResult):
+        return check
+
+    raise TypeError(
+        f"an AgentSimulationValidationError carries {type(check).__name__}, but its check "
+        "must be an AgentSimulationValidationResult or None"
+    )
