@@ -10785,26 +10785,30 @@ the clinical readouts.
 
 **An agent amount's precision is derived for the amount in a unit, not for the
 amount alone** (`PL-0S0V`, 2026-10-27). The derivation above is about the
-litre of vapour, and it does not carry over to another unit. v0.7.0 shows the
-delivered total in millilitres of liquid on the agent cost View, and each
-compartment's amount in millilitres of vapour on the compartment schematic.
-So `app/formatting.py` keys each precision by the amount and the unit,
-in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is a `DisplayPrecision`. It
-holds the count shown and the finest count this section derives. The bound is
-one-sided. A count coarser than the derivation loses detail but claims nothing
-false. A finer one claims a resolution that the parameters or the conversion
-do not support, so `DisplayPrecision` refuses it when it is built rather than
-clamping it. A precision that a reader could set would be built the same way.
-An amount in a unit that has no entry is refused by
-`agent_amount_display_precision`, rather than shown at a default.
+litre of vapour, and it does not carry over to another unit. v0.7.0 is
+scoped to show the delivered total in millilitres of liquid on the agent cost
+View (`PL-B396`), and each compartment's amount in millilitres of vapour on
+the compartment schematic (`PL-2881`). Neither is built yet. So
+`app/formatting.py` keys each precision by the amount and the unit, in
+`AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an `AgentAmountPrecision`,
+which holds the amount, the unit and the count shown. It reads the finest
+count from the derivation for that amount and unit, so no caller can pass a
+looser bound. The bound is one-sided. A count coarser than the derivation loses
+detail but claims nothing false. A finer one claims a resolution that the
+parameters or the conversion do not support, so `AgentAmountPrecision` refuses
+it when it is built rather than clamping it. A precision that a reader could
+set would be built the same way. An amount in a unit that has no derivation is
+refused, rather than shown at a default.
 
 | Amount | Unit | Decimals | Resolution | Derived from |
 | --- | --- | --- | --- | --- |
 | A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above (`PL-TG60`) |
-| A run total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
+| The delivered or exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
+| The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
 | One compartment's amount | Millilitres of vapour | None yet | - | `PL-2881` derives it |
 
-**A run total in millilitres of liquid is shown in whole millilitres.** One
+**The delivered or exhausted total in millilitres of liquid is shown in whole
+millilitres.** One
 amount shown in two units must not claim a finer resolution in one of them.
 Otherwise a reader who switches the unit sees the model resolve a difference in
 one unit that it does not resolve in the other. So the liquid count is derived
@@ -10813,18 +10817,25 @@ the finest power of ten that resolves no finer than one count of the litre
 display converted into liquid. At the 20 °C reference of § "Agent amount",
 0.1 L of vapour is 0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and
 0.48 mL of desflurane. So 1 mL is the finest power of ten at or above all
-three. The parameter spread gives the same answer independently. The exhaust
-total's shift of 0.18 to 0.23 L of vapour at 24 h is 1.0 to 1.3 mL of liquid.
-One count of 1 mL is then about one SD, and 0.1 mL would be a tenth of one.
-The delivered total has no parameter uncertainty, as above, so for it the
-conversion is the only argument. The conversion is exact for the delivered
-total. A store converted to liquid reads 5.8% high (§ "Known limitations"),
-which moves none of these figures across a power of ten.
+three. The parameter spread gives the same answer independently. At 24 h the
+exhaust total's shift is 0.19 L of sevoflurane vapour, 0.18 L of isoflurane
+and 0.23 L of desflurane. Each agent's own ratio makes that 1.04, 0.92 and
+1.10 mL of liquid. One count of 1 mL is then about one SD, and 0.1 mL would be
+a tenth of one. The delivered total has no parameter uncertainty, as above, so
+for it the conversion is the only argument. Both totals are gas at room
+temperature, so the conversion is exact for them.
+<!-- not-restated: 1.10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**The stored total has no liquid precision, and is refused in liquid.** A store
+converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
+with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
+a long run it is several. No count of decimals can make a figure with a known
+bias of several counts read correctly. So the stored total keeps litres of
+vapour, as the accounting panel shows it.
 `test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour`
 repeats the conversion for every shipped agent from the stored molar mass and
 density.
-<!-- not-restated: 0.18, 1.3 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What this section does not yet derive.** A compartment's amount needs its
 own derivation, which `PL-2881` writes. At the totals' 0.1 L, venous blood and

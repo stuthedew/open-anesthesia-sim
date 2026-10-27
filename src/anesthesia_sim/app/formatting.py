@@ -79,7 +79,7 @@ __all__ = [
     "DECIMAL_BASE",
     "AgentAmount",
     "AgentAmountUnit",
-    "DisplayPrecision",
+    "AgentAmountPrecision",
     "FLOW_DISPLAY_DECIMALS",
     "MAC_AXIS_STEP_LADDER_MAC",
     "MAC_DISPLAY_DECIMALS",
@@ -167,22 +167,28 @@ FLOW_DISPLAY_DECIMALS: Final = 1
 class AgentAmount(Enum):
     """Which agent amount a displayed precision was derived for.
 
-    A precision is derived for a quantity *in a unit*, not for the quantity
+    A precision is derived for an amount *in a unit*, not for the amount
     alone (`PL-0S0V`). So this is the first half of the key of
     `AGENT_AMOUNT_DISPLAY_PRECISION`, and `AgentAmountUnit` is the second.
-    Two amounts share a member when one derivation covers both.
+    The three totals are separate members because one unit can suit one
+    total and not another: a store converted to liquid reads 5.8% high, and
+    the delivered and exhausted agent convert exactly.
 
     Attributes:
-        RUN_TOTAL: One of a run's three totals: the agent delivered, exhausted
-            or stored. The accounting panel shows all three, and the agent cost
-            View shows the delivered total.
+        DELIVERED: The agent a run has delivered. The accounting panel and the
+            agent cost View show it.
+        EXHAUSTED: The agent a run has exhausted. The accounting panel shows it.
+        STORED: The agent a run holds in the circuit and the body. The
+            accounting panel shows it.
         COMPARTMENT: One compartment's amount, which the compartment schematic
             labels. `PL-2881` derives its precision. Until it does, no unit of
             this amount has an entry, so formatting one is refused.
     """
 
-    RUN_TOTAL = "run total"
-    COMPARTMENT = "compartment"
+    DELIVERED = "delivered total"
+    EXHAUSTED = "exhausted total"
+    STORED = "stored total"
+    COMPARTMENT = "compartment's amount"
 
 
 class AgentAmountUnit(Enum):
@@ -208,45 +214,108 @@ class AgentAmountUnit(Enum):
     MILLILITRES_OF_VAPOUR = "millilitres of vapour"
 
 
+# The finest decimal count that `docs/MODEL.md` § "Displayed precision"
+# derives for each agent amount in each unit. The figures behind each count
+# are there and are not restated here.
+#
+# - A run total in litres of vapour: one decimal, the finest the parameters
+#   support (`PL-TG60`). The three totals share it, so the accounting panel
+#   reads them on one scale.
+# - The delivered or exhausted total in millilitres of liquid: no decimals.
+#   One count of 0.1 L of vapour is about half a millilitre of liquid for every
+#   shipped agent, and 1 mL is the finest power of ten that resolves no finer
+#   than that. So the two units claim the same resolution for one amount.
+#
+# A pair with no entry has no derivation behind it, and is refused rather than
+# shown at a default. The stored total has no liquid entry: a store converted
+# to liquid reads 5.8% high, which is more than 1 mL once the store holds about
+# 17 mL of liquid. A compartment's amount has none until `PL-2881` derives one.
+# Money is not here: a cost's resolution depends on the price the reader sets,
+# and `PL-1P15` derives it.
+_RUN_TOTAL_LITRE_DECIMALS: Final = 1
+_FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
+    MappingProxyType(
+        {
+            **{
+                (total, AgentAmountUnit.LITRES_OF_VAPOUR): _RUN_TOTAL_LITRE_DECIMALS
+                for total in (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
+            },
+            **{
+                (total, AgentAmountUnit.MILLILITRES_OF_LIQUID): 0
+                for total in (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED)
+            },
+        }
+    )
+)
+
+
+def _finest_derived_decimals(amount: AgentAmount, unit: AgentAmountUnit) -> int:
+    """Return the finest count derived for an amount in a unit, or refuse the pair."""
+
+    try:
+        return _FINEST_DERIVED_DECIMALS[(amount, unit)]
+    except KeyError:
+        raise ValueError(
+            f"No displayed precision is derived for a {amount.value} in {unit.value}. "
+            "Derive one in docs/MODEL.md § 'Displayed precision' and add it to "
+            "app/formatting.py before showing this amount in this unit."
+        ) from None
+
+
 @dataclass(frozen=True)
-class DisplayPrecision:
-    """A displayed decimal count, and the finest count its derivation admits.
+class AgentAmountPrecision:
+    """The decimal count an agent amount is shown at, checked against its derivation.
 
     The bound is one-sided (`PL-0S0V`). Showing fewer decimals than the
     derivation admits loses detail but claims nothing false. Showing more
     claims a resolution that the model's parameters or its conversion
     factors do not support. So a finer count is refused when the precision
-    is built, rather than clamped to the bound. A precision that a reader
-    could set would be built through this type too, so it could not be set
-    finer either.
+    is built, rather than clamped to the bound. The bound is read from the
+    derivation for the amount and unit, never passed in by the caller. So a
+    precision that a reader could set, built through this type, could not be
+    set finer than the derivation either.
 
     Attributes:
+        amount: Which agent amount is shown.
+        unit: The unit it is shown in.
         decimals: The number of decimals shown.
-        finest_decimals: The largest count that `docs/MODEL.md`
-            § "Displayed precision" derives for this amount in this unit.
 
     Raises:
-        ValueError: If either count is not a non-negative whole number, or if
-            `decimals` is greater than `finest_decimals`.
+        ValueError: If no precision is derived for the amount in the unit, if
+            `decimals` is not a whole number of 0 or more, or if it is finer
+            than the derived count.
     """
 
+    amount: AgentAmount
+    unit: AgentAmountUnit
     decimals: int
-    finest_decimals: int
 
     def __post_init__(self) -> None:
-        for name, count in (("decimals", self.decimals), ("finest_decimals", self.finest_decimals)):
-            if isinstance(count, bool) or not isinstance(count, int) or count < 0:
-                raise ValueError(
-                    f"A displayed precision's {name} must be a whole number of 0 or more, "
-                    f"not {count!r}."
-                )
+        finest = _finest_derived_decimals(self.amount, self.unit)
 
-        if self.decimals > self.finest_decimals:
+        if (
+            isinstance(self.decimals, bool)
+            or not isinstance(self.decimals, int)
+            or self.decimals < 0
+        ):
             raise ValueError(
-                f"{self.decimals} decimals is finer than the {self.finest_decimals} that "
-                "docs/MODEL.md § 'Displayed precision' derives for this amount. A finer count "
-                "would claim a resolution the model does not support, so it is refused."
+                f"A displayed precision must be a whole number of decimals of 0 or more, "
+                f"not {self.decimals!r}."
             )
+
+        if self.decimals > finest:
+            raise ValueError(
+                f"{self.decimals} decimals is finer than the {finest} that docs/MODEL.md "
+                f"§ 'Displayed precision' derives for a {self.amount.value} in "
+                f"{self.unit.value}. A finer count would claim a resolution the model does "
+                "not support, so it is refused."
+            )
+
+    @property
+    def finest_decimals(self) -> int:
+        """Return the finest count derived for this amount in this unit."""
+
+        return _finest_derived_decimals(self.amount, self.unit)
 
     @property
     def resolution(self) -> float:
@@ -255,38 +324,22 @@ class DisplayPrecision:
         return DECIMAL_BASE**-self.decimals
 
 
-# The displayed precision of each agent amount, in each unit it is offered in.
-# `docs/MODEL.md` § "Displayed precision" derives every entry, and its table
-# lists the same pairs. The figures behind each one are there and are not
-# restated here.
-#
-# - A run total in litres of vapour: one decimal, the finest the parameters
-#   support (`PL-TG60`).
-# - A run total in millilitres of liquid: no decimals. One count of 0.1 L of
-#   vapour is about half a millilitre of liquid for every shipped agent, and
-#   1 mL is the finest power of ten that resolves no finer than that. So the
-#   two units claim the same resolution for one amount.
-#
-# A pair with no entry has no derivation behind it.
-# `agent_amount_display_precision` refuses it rather than formatting at a
-# default. Money is not here: a cost's resolution depends on the price the
-# reader sets, and `PL-1P15` derives it.
+# The precision each agent amount is shown at, in each unit it has a
+# derivation for. Every one is shown at the finest count derived for it.
 AGENT_AMOUNT_DISPLAY_PRECISION: Final[
-    Mapping[tuple[AgentAmount, AgentAmountUnit], DisplayPrecision]
+    Mapping[tuple[AgentAmount, AgentAmountUnit], AgentAmountPrecision]
 ] = MappingProxyType(
     {
-        (AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR): DisplayPrecision(
-            decimals=1, finest_decimals=1
-        ),
-        (AgentAmount.RUN_TOTAL, AgentAmountUnit.MILLILITRES_OF_LIQUID): DisplayPrecision(
-            decimals=0, finest_decimals=0
-        ),
+        (amount, unit): AgentAmountPrecision(amount, unit, finest)
+        for (amount, unit), finest in _FINEST_DERIVED_DECIMALS.items()
     }
 )
 
 
-def agent_amount_display_precision(amount: AgentAmount, unit: AgentAmountUnit) -> DisplayPrecision:
-    """Return the displayed precision derived for an agent amount in a unit.
+def agent_amount_display_precision(
+    amount: AgentAmount, unit: AgentAmountUnit
+) -> AgentAmountPrecision:
+    """Return the displayed precision for an agent amount in a unit.
 
     Args:
         amount: Which agent amount is shown.
@@ -302,19 +355,14 @@ def agent_amount_display_precision(amount: AgentAmount, unit: AgentAmountUnit) -
             than being shown at a default precision.
     """
 
-    try:
-        return AGENT_AMOUNT_DISPLAY_PRECISION[(amount, unit)]
-    except KeyError:
-        raise ValueError(
-            f"No displayed precision is derived for a {amount.value} in {unit.value}. "
-            "Derive one in docs/MODEL.md § 'Displayed precision' and add it to "
-            "AGENT_AMOUNT_DISPLAY_PRECISION before showing this amount in this unit."
-        ) from None
+    _finest_derived_decimals(amount, unit)
+
+    return AGENT_AMOUNT_DISPLAY_PRECISION[(amount, unit)]
 
 
-# The precision of the accounting panel's three amounts.
+# The precision of the accounting panel's three amounts, which share one count.
 _RUN_TOTAL_LITRES: Final = agent_amount_display_precision(
-    AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR
+    AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR
 )
 
 # Decimals shown on a MAC multiple, and the resolution that follows from them.
@@ -1310,7 +1358,7 @@ def format_agent_volume(litres: float) -> str:
     """Render an agent amount of the accounting panel, in litres of agent gas.
 
     The amount is rendered at the precision that
-    `AGENT_AMOUNT_DISPLAY_PRECISION` holds for a run total in litres of
+    `AGENT_AMOUNT_DISPLAY_PRECISION` holds for the run totals in litres of
     vapour. `docs/MODEL.md` § "Displayed precision" derives it (`PL-TG60`).
     This function follows the same three rules as `format_percent`, for the
     same reasons. It rounds rather than truncates.

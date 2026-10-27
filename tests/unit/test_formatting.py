@@ -36,8 +36,8 @@ from anesthesia_sim.app.formatting import (
     MAC_UNIT_SUFFIX,
     MAX_MAC_AXIS_INTERVALS,
     AgentAmount,
+    AgentAmountPrecision,
     AgentAmountUnit,
-    DisplayPrecision,
     agent_amount_display_precision,
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -1453,26 +1453,34 @@ def test_the_clock_refuses_a_time_that_cannot_have_elapsed(bad_elapsed_s: float)
         format_elapsed(bad_elapsed_s)
 
 
+_RUN_TOTALS = (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
+
+
 def test_agent_amounts_precision() -> None:
     """Pin the `PL-TG60` decision: one decimal of a litre, and the below-resolution form.
 
     The Flet panel printed six decimals of an exhaust total whose parameter
     uncertainty is 0.016-0.23 L across the supported span. One count of 0.1 L
     lies inside the band that `docs/MODEL.md` § "Displayed precision" derives
-    for the concentration readouts, and 0.01 L does not. A positive amount
-    that rounds to zero is shown as below the resolution rather than as an
-    empty circuit.
+    for the concentration readouts, and 0.01 L does not. The three totals
+    share the count, so the accounting panel reads them on one scale. A
+    positive amount that rounds to zero is shown as below the resolution
+    rather than as an empty circuit.
     """
 
-    litres = agent_amount_display_precision(AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR)
+    for total in _RUN_TOTALS:
+        litres = agent_amount_display_precision(total, AgentAmountUnit.LITRES_OF_VAPOUR)
+        assert (litres.decimals, litres.finest_decimals) == (1, 1)
 
-    assert litres == DisplayPrecision(decimals=1, finest_decimals=1)
     assert format_agent_volume(3.991974) == "4.0 L"
     assert format_agent_volume(0.012345) == "<0.1 L"
     assert format_agent_volume(0.0) == "0.0 L"
 
 
-def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour() -> None:
+@pytest.mark.parametrize("total", [AgentAmount.DELIVERED, AgentAmount.EXHAUSTED])
+def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour(
+    total: AgentAmount,
+) -> None:
     """Derive the liquid precision from the vapour one, for every shipped agent.
 
     One amount shown in two units must not claim a finer resolution in one
@@ -1486,15 +1494,15 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
     resolution that the litre display claims for the same amount.
 
     The parameter spread gives the same answer. One published SD of a
-    partition coefficient moves the exhaust total by 0.18-0.23 L of vapour at
-    24 h (`PL-TG60`), which is about 1.0-1.3 mL of liquid. One count of 1 mL is
-    then about one SD, and 0.1 mL would be a tenth of one.
+    partition coefficient moves the exhaust total at 24 h by 0.19 L of
+    sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of desflurane
+    (`PL-TG60`). Each agent's own ratio makes that 1.04, 0.92 and 1.10 mL of
+    liquid. One count of 1 mL is then about one SD, and 0.1 mL would be a
+    tenth of one.
     """
 
-    litres = agent_amount_display_precision(AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR)
-    liquid = agent_amount_display_precision(
-        AgentAmount.RUN_TOTAL, AgentAmountUnit.MILLILITRES_OF_LIQUID
-    )
+    litres = agent_amount_display_precision(total, AgentAmountUnit.LITRES_OF_VAPOUR)
+    liquid = agent_amount_display_precision(total, AgentAmountUnit.MILLILITRES_OF_LIQUID)
     one_litre_count_in_ml_of_liquid = {
         agent_id: litres.resolution
         * 1000.0
@@ -1511,7 +1519,7 @@ def test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_v
     assert liquid.resolution / 10.0 < coarsest_supported_ml, (
         "a finer power of ten would still not over-claim; the derivation has drifted"
     )
-    assert liquid == DisplayPrecision(decimals=0, finest_decimals=0)
+    assert (liquid.decimals, liquid.finest_decimals) == (0, 0)
 
 
 def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
@@ -1521,18 +1529,26 @@ def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
     admits claims nothing false. More would claim a resolution the model does
     not support. Clamping a finer request to the bound would let a caller
     believe it got the precision it asked for, so the request fails instead.
+    The bound comes from the derivation for the amount and unit, so no caller
+    can pass a looser one.
     """
 
-    assert DisplayPrecision(decimals=0, finest_decimals=1).resolution == 1.0
+    coarser = AgentAmountPrecision(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR, 0)
+    assert coarser.resolution == 1.0
+    assert coarser.finest_decimals == 1
 
     with pytest.raises(ValueError, match="2 decimals is finer than the 1"):
-        DisplayPrecision(decimals=2, finest_decimals=1)
+        AgentAmountPrecision(AgentAmount.STORED, AgentAmountUnit.LITRES_OF_VAPOUR, 2)
+    with pytest.raises(ValueError, match="1 decimals is finer than the 0"):
+        AgentAmountPrecision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID, 1)
 
     for bad_count in (-1, 1.0, True):
-        with pytest.raises(ValueError, match="whole number of 0 or more"):
-            DisplayPrecision(decimals=bad_count, finest_decimals=2)  # type: ignore[arg-type]
-        with pytest.raises(ValueError, match="whole number of 0 or more"):
-            DisplayPrecision(decimals=0, finest_decimals=bad_count)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="whole number of decimals of 0 or more"):
+            AgentAmountPrecision(
+                AgentAmount.DELIVERED,
+                AgentAmountUnit.LITRES_OF_VAPOUR,
+                bad_count,  # type: ignore[arg-type]
+            )
 
     for precision in AGENT_AMOUNT_DISPLAY_PRECISION.values():
         assert precision.decimals <= precision.finest_decimals
@@ -1544,20 +1560,25 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
     It is never formatted at a default precision (`PL-0S0V`). A compartment's
     amount has no entry in any unit until `PL-2881` derives one. The table must
     not lend it the run totals' litre precision: at 0.1 L, venous blood and the
-    alveoli read below resolution for a whole hour.
+    alveoli read below resolution for a whole hour. The stored total has no
+    liquid entry, because a store converted to liquid reads 5.8% high
+    (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid that is already
+    a whole count of 1 mL.
     """
 
-    for unit in AgentAmountUnit:
-        with pytest.raises(
-            ValueError, match=f"No displayed precision is derived for a compartment in {unit.value}"
-        ):
-            agent_amount_display_precision(AgentAmount.COMPARTMENT, unit)
+    refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
+        (AgentAmount.STORED, AgentAmountUnit.MILLILITRES_OF_LIQUID),
+        (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_VAPOUR),
+    ]
 
-    with pytest.raises(
-        ValueError,
-        match="No displayed precision is derived for a run total in millilitres of vapour",
-    ):
-        agent_amount_display_precision(AgentAmount.RUN_TOTAL, AgentAmountUnit.MILLILITRES_OF_VAPOUR)
+    for amount, unit in refused:
+        message = f"No displayed precision is derived for a {amount.value} in {unit.value}"
+        with pytest.raises(ValueError, match=message):
+            agent_amount_display_precision(amount, unit)
+        with pytest.raises(ValueError, match=message):
+            AgentAmountPrecision(amount, unit, 0)
+
+        assert (amount, unit) not in AGENT_AMOUNT_DISPLAY_PRECISION
 
 
 def test_format_agent_volume_rounds_rather_than_truncates() -> None:
@@ -1581,7 +1602,7 @@ def test_format_agent_volume_states_the_below_resolution_form_from_the_constant(
     """The marker says the resolution the panel actually uses, never a literal."""
 
     litres = AGENT_AMOUNT_DISPLAY_PRECISION[
-        (AgentAmount.RUN_TOTAL, AgentAmountUnit.LITRES_OF_VAPOUR)
+        (AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR)
     ]
     expected = f"<{litres.resolution:.{litres.decimals}f} L"
 

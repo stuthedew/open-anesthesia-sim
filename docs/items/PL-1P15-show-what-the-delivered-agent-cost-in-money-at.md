@@ -80,4 +80,4 @@ decides the details.
    price per bottle is `PL-VJZK`'s decision, because `PL-VJZK` stores the
    price.
 
-**Checked 2026-10-27 (`PL-0S0V`): a cost has no displayed precision yet.** `docs/MODEL.md` § "Displayed precision" now derives one precision per agent amount and unit, and leaves money to this item, because a cost's resolution depends on the reader's price. A cost readout needs its own derivation here, and `app/formatting.py`'s `DisplayPrecision` is the type that refuses a count finer than the derivation admits.
+**Checked 2026-10-27 (`PL-0S0V`): a cost has no displayed precision yet.** `docs/MODEL.md` § "Displayed precision" now derives one precision per agent amount and unit, and leaves money to this item, because a cost's resolution depends on the reader's price. A cost readout needs its own derivation here, and `app/formatting.py`'s `AgentAmountPrecision` is the type for an agent amount that refuses a count finer than the derivation admits.
