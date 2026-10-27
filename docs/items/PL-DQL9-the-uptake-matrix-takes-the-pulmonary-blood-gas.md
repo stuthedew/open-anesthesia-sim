@@ -6,15 +6,15 @@ effort: M
 status: ready
 classes: defect, science, safety
 feature: replay-findings
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, tests/unit/test_governing_equations.py
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, tests/unit/test_governing_equations.py
 added: 2026-10-25
-payoff: an inconsistent parameter file is refused by name when it loads, instead of halting every run with an error that blames the numerics
+payoff: the model can no longer hold two blood:gas coefficients, so a mismatched pool or tissue group can neither halt a run with an error that blames the numerics nor run silently on uptake curves that are wrong
 verify: grep -q 'def test_settings_with_disagreeing_blood_gas_coefficients_are_refused' tests/unit/test_governing_equations.py
 ---
 
 **Problem.** `AgentUptakeSystem.equation_settings` (`src/anesthesia_sim/core/uptake_system.py`) passes only `venous_blood.blood_gas_partition_coefficient` for the blood:gas term. Each tissue row uses `tissue.tissue_blood_partition_coefficient`, which divides by that tissue's own blood:gas coefficient. Neither `PatientCompartments` nor `UptakeEquationSettings` checks that the coefficients agree. Reproduced on main: raising the fat group's blood:gas coefficient by 1% (0.65 to 0.6565) halts sevoflurane on step 4 with `AgentSimulationValidationError`, relative error 3.8e-9.
 
-**Why it matters.** The shipped files all hold 0.65, so no run fails today. A future agent or patient file with differing values would halt every run with an error that points at numerical accounting. The settings record already refuses tissue flows that do not sum to cardiac output, and this relation belongs beside that check. The alternative is to carry one blood:gas coefficient.
+**Why it matters.** The shipped files all hold 0.65, so no run fails today. A future agent or patient file with differing values would halt every run with an error that points at numerical accounting. A replaced venous pool with a different value fails worse: the run continues and its uptake curves are wrong, as the fold-in below records. The settings record already refuses tissue flows that do not sum to cardiac output, and this relation belongs beside that check. The alternative is to carry one blood:gas coefficient.
 
 **Sized on 2026-10-26 (#1864): the one-coefficient route is M, not S.** A
 tissue group uses its blood:gas copy in four places: its tissue:blood
@@ -37,7 +37,26 @@ copies from the patient's side, while building `PL-N7MM`. It adds two facts.
 First, a `PatientCompartments` built directly with the fat group at blood:gas
 2.0 and the rest at 0.65 is accepted, and so is a later write of 3.0 to one
 group's `blood_gas_partition_coefficient`. So a check at construction alone
-would still let a write make the copies disagree. Second, `CLAUDE.md`'s
-one-source-of-truth principle says to fix a second copy by replacing it with a
-read of its home. **Recommended:** take the Done-when's second route, so the
-patient carries one blood:gas coefficient and each tissue group reads it.
+would still let a write make the copies disagree. Second, a mismatch does not
+always halt the run. On a sevoflurane system, replacing the venous pool with
+one at blood:gas 0.1, while the three groups keep 0.65, is accepted (measured
+at review of `#1827`, 2026-10-25). The solver then reads 0.1 for the lung and
+0.65 for each tissue:blood ratio. Agent is still conserved, so the accounting
+check never fires, and the run gives uptake curves that look plausible and are
+wrong. That silent case is the more dangerous one, and a check that only turns
+the halt into a clearer error does not reach it.
+
+`CLAUDE.md`'s one-source-of-truth principle says to fix a second copy by
+replacing it with a read of its home. `PL-YXGX` recorded that home on
+2026-10-25, answering the project owner's question: the agent record.
+`data/agents/<agent>.json` stores the coefficient, and `parse_agent_parameters()`
+reads it into `AgentParameters.blood_gas_partition_coefficient`.
+`PatientCompartments.from_parameters()` then copies it into the four
+compartments. `PL-YXGX` considered storing it once on the patient and replaced
+that choice. **Recommended:** take the Done-when's second route. The tissue
+groups and the venous pool stop storing the coefficient. Each tissue method
+takes it as an argument, as the sizing paragraph above describes, and the
+caller reads it from the `AgentParameters` the system was built for. The
+tissue:blood ratio is then derived by one formula, not by both `AgentParameters`
+and `TissueGroup`. The test for this route shows that a replaced venous pool or
+tissue group cannot carry a different blood:gas coefficient.

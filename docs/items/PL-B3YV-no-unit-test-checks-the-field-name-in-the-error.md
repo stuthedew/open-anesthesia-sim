@@ -29,4 +29,10 @@ sends whoever debugs it to the wrong input.
 **Done when.** `tests/unit/test_agent_simulation_validation.py` has
 `test_a_refused_transfer_names_its_own_field`. It refuses a negative delivered
 transfer and then a negative exhausted one, and it matches each error message
-from its start on the field that was refused.
+from its start on the field that was refused. Each refusal comes from a
+validator whose running total is already larger than the size of the negative
+transfer, for example 2.0 L recorded and then -1.0 L. The running-total checks
+use the same two field names, so on a fresh validator they raise the same
+message, and the test would still pass with a per-transfer check deleted. With
+that check deleted, a negative transfer smaller than the total is accepted and
+silently lowers the total in the mass balance.

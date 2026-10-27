@@ -42,8 +42,8 @@ the uptake values have no physical meaning, and nothing reports it.
 `CLAUDE.md` makes one source of truth for a shared fact a core design
 principle.
 
-**Done when.** The patient holds the agent's blood:gas coefficient in one
-place, and each tissue group reads it from there. A second copy that could
+**Done when.** The agent record holds the blood:gas coefficient in one
+place, and each tissue group and the venous pool read it from there. A second copy that could
 disagree no longer exists. `tests/unit/test_patient.py` has
 `test_a_patient_holds_one_blood_gas_coefficient`, which shows the
 coefficient cannot be set differently for one group.
