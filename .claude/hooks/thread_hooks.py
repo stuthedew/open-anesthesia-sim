@@ -28,6 +28,13 @@ already chosen which session-start hooks to run by then. After that the
 copied entries run on their own, and this hook only checks that the copy is
 current.
 
+Each copied command first sets `CLAUDE_PROJECT_DIR` to the checkout this
+file sits in. Claude Code sets that variable from the session's working
+directory, and the harness can move a thread's working directory mid-session.
+On 2026-10-26 one moved from the checkout to its parent, and every copied hook
+then looked for its script in a directory that did not exist. The guard on
+`post_message` failed, so the thread could not reply at all (`PL-TNY6`).
+
 Outside a Projects thread it does nothing: an ordinary cloud session loads
 `.claude/settings.json` itself, and a second copy would run every hook twice.
 It exits 0 on every path, since a session start that fails helps no one.
@@ -41,11 +48,12 @@ import copy
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-from hook_input import project_root, write_atomically
+from hook_input import write_atomically
 
 #: The value of `CLAUDE_CODE_ENTRYPOINT` in a Claude Projects thread, read from
 #: a thread's environment on 2026-10-26. An ordinary cloud session has
@@ -125,14 +133,38 @@ def _is_bootstrap(group: object) -> bool:
     )
 
 
-def merged(user: dict[str, object], project_hooks: dict[str, object]) -> dict[str, object]:
+def pinned(command: str, root: Path) -> str:
+    """`command`, run with `CLAUDE_PROJECT_DIR` set to the checkout `root`.
+
+    The repository's commands find their scripts through that variable, and
+    `hook_input.project_root` reads it. So setting it before the command
+    makes both find the checkout wherever the session's working directory is.
+    """
+    return f"export CLAUDE_PROJECT_DIR={shlex.quote(str(root))}; {command}"
+
+
+def _pinned_hooks(project_hooks: dict[str, object], root: Path) -> dict[str, object]:
+    """A copy of `project_hooks` in which every command hook is `pinned` to `root`."""
+    hooks = copy.deepcopy(project_hooks)
+    for groups in hooks.values():
+        for group in groups if isinstance(groups, list) else []:
+            entries = group.get("hooks") if isinstance(group, dict) else None
+            for hook in entries if isinstance(entries, list) else []:
+                if isinstance(hook, dict) and hook.get("type") == "command":
+                    hook["command"] = pinned(str(hook.get("command", "")), root)
+    return hooks
+
+
+def merged(
+    user: dict[str, object], project_hooks: dict[str, object], root: Path
+) -> dict[str, object]:
     """The user settings `user`, with the repository's hooks and this hook's entry.
 
     Every key other than `hooks` is kept as the user file has it. The
-    `hooks` block becomes the repository's, plus the entry that runs this
-    file. That entry is taken from the user file where it is there, so the
-    setup script's wording is the one that stays, and is otherwise built from
-    `BOOTSTRAP_COMMAND`.
+    `hooks` block becomes the repository's, each command `pinned` to the
+    checkout `root`, plus the entry that runs this file. That entry is taken
+    from the user file where it is there, so the setup script's wording is
+    the one that stays, and is otherwise built from `BOOTSTRAP_COMMAND`.
     """
     old_hooks = user.get("hooks")
     old_start = old_hooks.get("SessionStart") if isinstance(old_hooks, dict) else None
@@ -141,7 +173,7 @@ def merged(user: dict[str, object], project_hooks: dict[str, object]) -> dict[st
         if isinstance(old_start, list)
         else []
     )
-    hooks = copy.deepcopy(project_hooks)
+    hooks = _pinned_hooks(project_hooks, root)
     start = hooks.get("SessionStart")
     groups = (
         [group for group in start if not _is_bootstrap(group)] if isinstance(start, list) else []
@@ -237,7 +269,7 @@ def main(payload: str, *, entrypoint: str | None, root: Path, user_path: Path) -
     if not isinstance(project_hooks, dict):
         return ""
     user = _read_json(user_path) or {}
-    wanted = merged(user, project_hooks)
+    wanted = merged(user, project_hooks, root)
     if wanted == user:
         return ""
     try:
@@ -262,7 +294,9 @@ if __name__ == "__main__":
             main(
                 stdin,
                 entrypoint=os.environ.get("CLAUDE_CODE_ENTRYPOINT"),
-                root=project_root(),
+                # The checkout this file sits in, not `CLAUDE_PROJECT_DIR`,
+                # which follows the working directory (`PL-TNY6`).
+                root=Path(__file__).resolve().parents[2],
                 user_path=user_settings_path(),
             )
         )

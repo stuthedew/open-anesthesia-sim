@@ -1,31 +1,38 @@
 """Check what a checked type is built from, store minus zero as zero, and show values in errors.
 
-Several types in this package are a `float` or an `int` subclass that checks its
-value against its own range when it is built. They are `Fraction` and
-`Percent` (`core/concentration.py`), the run's step, `SimulationStep`
-(`core/simulation_step.py`), the three flows, `FreshGasFlow`,
-`AlveolarVentilation` and `CardiacOutput`, the case instant, `CaseInstant`,
-and the completed-step count, `StepCount` (`core/supported_ranges.py`). So
-having a value of one of these types proves that its check ran
+Several types in this package are a subclass of `float` or `int` that checks its
+value against its own range when it is built. This module calls them checked
+types. They are:
+
+- `Fraction` and `Percent`, in `core/concentration.py`.
+- The run's step, `SimulationStep`, in `core/simulation_step.py`.
+- The three flows `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, the
+  case instant `CaseInstant`, and the completed-step count `StepCount`, all in
+  `core/supported_ranges.py`.
+- The compartment volume `CompartmentVolume` and the partition coefficient
+  `PartitionCoefficient`, in `core/numerical_envelope.py`.
+
+So a value of one of these types proves that its check ran
 (`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
-type, checked once"). Before the range can be checked, two other questions
-need an answer. The value must be a number at all, and it must not already be
-checked as another quantity. This module answers both questions once, for all
-of these types. It also does the one thing that a stored zero needs.
+type, checked once"). Before the range is checked, two other things must be
+true. The value must be a number, and it must not already have been built as
+another checked quantity. This module checks both, once, for all of these
+types. It also makes sure that a stored zero carries no minus sign.
 
 **A number is an `int` or a `float`, and nothing else** (`PL-LLMN`). Before
 that item, each constructor passed its value straight to `math.isfinite` and a
-comparison. Those accept more than numbers, and they reject everything else in
-Python's own words. This was measured on 2026-10-04 on `main` at `8f24fe78`:
+comparison. Those two accept more types than `int` and `float`, and they
+reject every other type with Python's own error messages. This was measured on
+2026-10-04 on `main` at `8f24fe78`:
 
-- `True` was accepted, as the `int` that Python makes of it.
+- `True` was accepted as the `int` 1, which is how Python treats it.
   `FreshGasFlow(True)` was a fresh gas flow of 1.0 L/min, and `Fraction(True)`
   was a fraction of 1.0. A programming slip became a plausible setting. That
   is the silent coercion that `CLAUDE.md`'s safety-critical standard forbids.
   `numpy.True_` is not a `bool`, and it was accepted the same way. That is why
-  this module accepts two types rather than rejecting one.
+  this module accepts only two types, rather than rejecting `bool` alone.
 - A `Decimal` was accepted and compared exactly: `Decimal('2.5')` built a flow
-  of 2.5 L/min. `Decimal('sNaN')` escaped as a `ValueError` from
+  of 2.5 L/min. `Decimal('sNaN')` raised a `ValueError` from inside
   `math.isfinite`. A `Decimal` is now rejected rather than converted, as a
   `str` is. A caller holding a `Decimal` has stopped working in binary
   floating point, and converting it here would hide where that happened.
@@ -37,52 +44,55 @@ a `float` with a `TypeError` that names the setting, the value and its type.
 For a NumPy integer the message says `has type int64, not int or float`,
 because a NumPy integer is not the `int` its name suggests. The error is a
 `TypeError` because it is a programming error in the caller, not a rejected
-setting. `require_fraction` and `require_fresh_gas_flow` give the same reason
-for their `TypeError` on a value that was never built as their type. Nothing the interface does can
-trigger this error. A slider's value is an `int` position over a power of ten,
-and the data-file loaders accept only an `int` or a `float`. Subclasses of
-`int` and `float` are accepted too: a `numpy.float64` is a `float`, and an
-`IntEnum` member is an `int`. Every other NumPy scalar, such as
-`numpy.float32` or `numpy.int64`, is rejected, and its caller must convert
-it. That way a value rounded in a narrower format is never mistaken for the
-number it was before rounding.
+setting. `require_fraction` and `require_fresh_gas_flow` raise a `TypeError`
+for the same reason when a value was never built as their type. Nothing the
+interface does can trigger the `TypeError` from `require_a_number`. A slider's
+value is an `int` position divided by a power of ten, and the data-file
+loaders accept only an `int` or a `float`. Subclasses of `int` and `float` are
+accepted too: a `numpy.float64` is a `float`, and an `IntEnum` member is an
+`int`. Every other NumPy scalar, such as `numpy.float32` or `numpy.int64`, is
+rejected, and its caller must convert it. That way a value rounded in a
+narrower format is never mistaken for the number it was before rounding.
 
 **One checked quantity is never built from another** (`PL-979Z`). A checked
 type is a subclass of `float` or `int`, so `require_a_number` accepts a value
-already built as one. Before that item, each constructor then checked that
-number against its own, second range. Wherever the two ranges overlap, it
-stored the wrong quantity under the right type. This was measured on
-2026-10-05 on `main` at `b67dace8`. `CaseInstant(StepCount(600))` was an
-instant of 600 s, and `CaseInstant(FreshGasFlow(5.0))` was one of 5 s.
+that was already built as another checked type. Before `PL-979Z`, each
+constructor then checked only that the number lay inside its own range.
+Wherever the two ranges overlapped, the constructor stored the wrong quantity
+under the right type. This was measured on 2026-10-05 on `main` at
+`b67dace8`. `CaseInstant(StepCount(600))` was an instant of 600 s, and
+`CaseInstant(FreshGasFlow(5.0))` was one of 5 s.
 `FreshGasFlow(CaseInstant(5.0))` was a flow of 5 L/min,
 `SimulationStep(Fraction(0.05))` was a step of 0.05 s, and
 `Percent(FreshGasFlow(2.0))` was a dial at 2%. `mypy --strict` passed each
 call, because a checked `float` is a `float`. Only `Fraction` and `Percent`
-rejected each other. The checks on a stored value were uneven.
-`require_case_instant` and `require_step_count` named a value built as any of
-six types, read from a tuple kept in `core/supported_ranges.py`. The flows'
-`_require_built` named only the other two flows, and the step's check named
-none. `core/simulation_step.py` could not import that tuple without an import
-cycle, and the two concentrations were not in it.
+rejected each other. The stored-value checks, which check a value as it is
+written to a field, were also uneven. `require_case_instant` and
+`require_step_count` rejected, by name, a value built as any of six types.
+They read those six types from a tuple kept in `core/supported_ranges.py`. The
+flows' `_require_built` named only the other two flows, and the step's check
+named no other type. `core/simulation_step.py` could not import that tuple
+without an import cycle, and the two concentrations were not in it.
 
 So every checked type is now a `CheckedQuantity`.
 `require_not_another_quantity` is the first check that each constructor makes
 on its argument. Each stored-value check also makes it first, on a value that
-is not already its own type. A value that is a `CheckedQuantity` but not the
-type being built was built as another quantity. It is rejected by name before
-any comparison uses its number. The record of which types are checked is the
-class hierarchy itself, read with one `isinstance`. A type is a checked
-quantity because its own definition says so. There is no list to keep in step,
-and no import between the three modules. So a checked type added later rejects
-values built as other checked types, and they reject values built as it, from
-the day it is written. A value
-of the same type is accepted, so an instant can be rebuilt from an instant as
-before. `Fraction` and `Percent` keep their own rejection of each other. Their
-message says to convert rather than to rebuild, because mixing up that pair is
-a missed conversion and not a swapped argument. The stored-value checks are
+is not already of the expected type. A value that is a `CheckedQuantity` but
+not the type being built was built as another quantity. It is rejected by name
+before any comparison uses its number. The class hierarchy itself records
+which types are checked, and one `isinstance` call reads it. A type is a
+checked quantity because its own definition says so. There is no list to keep
+in step, and no import between the three modules. So a checked type added later
+rejects values built as the other checked types from the day it is written,
+and they reject values built as the new type. A value of the same type is
+accepted, so an instant can be rebuilt from an instant as before. `Fraction`
+and `Percent` keep their own rejection of each other. Their message says to
+convert rather than to rebuild, because mixing up that pair is a missed
+conversion and not a swapped argument. The stored-value checks are
 `require_case_instant`, `require_step_count`, `require_simulation_step`, the
-flows' `require_*`, and `require_fraction` and `require_percent`. They read
-the same record and reject in the same words (`PL-848D`, `PL-CX2C`).
+flows' `require_*`, `require_fraction` and `require_percent`, and
+`require_compartment_volume` and `require_coefficient`. They all read the class
+hierarchy in the same way and reject in the same words (`PL-848D`, `PL-CX2C`).
 
 **Minus zero is stored as zero** (`PL-LLMN`). `-0.0` equals zero and lies
 inside every closed interval here. Rejecting it would therefore reject the
@@ -90,23 +100,24 @@ supported zero: the fresh gas turned off, apnoea, or circulatory arrest.
 Arithmetic produces minus zero whenever a zero is multiplied by a negative
 number. Stored as given, minus zero prints with its sign: `format_flow` gave
 `-0.0 L/min` and `format_percent` gave `-0.00%`, a minus sign that no flow
-and no concentration has. Each constructor hands `float.__new__` the result of
-`negative_zero_as_zero`. So no checked type can store a signed zero, and the
-formatters need no rule of their own.
+and no concentration has. Each constructor passes its value through
+`negative_zero_as_zero` and hands the result to `float.__new__`. So no checked
+type can store a minus zero, and the formatters need no rule of their own.
 
-`PL-7N8P` brought `CaseInstant` here, after `PL-LLMN` had found the same gaps
-in it. `StepCount` is built from an `int` alone, and since `PL-LLMN` it
-rejects anything that is not an `int`, with an error of the same form. The sign and
-finiteness guards in `core/validation.py`, `require_positive_finite` and
-`require_nonnegative_finite`, had the same gaps, and `SimulationStep` is built
-on the first of them. `PL-3800` brought both guards here. They have no
-supported range against which to reject an `int` too large for a `float`. So
-they reject it by name, as outside the range a `float` can represent. Before,
-`math.isfinite` raised `OverflowError` while converting it
-(`core/validation.py`). Neither guard builds a type, so neither asks whether
-its value was built as another quantity. A checked flow passed in as a circuit
-volume is a swapped argument that no range can tell from a plain number.
-Catching it is outside what this module decides.
+`PL-7N8P` moved `CaseInstant` onto these checks, after `PL-LLMN` had found the
+same gaps in it. `StepCount` is built from an `int` alone, and since `PL-LLMN`
+it rejects anything that is not an `int`, with an error of the same form. The
+sign and finiteness guards in `core/validation.py` had the same gaps. They are
+`require_positive_finite` and `require_nonnegative_finite`, and
+`SimulationStep` is built on the first of them. `PL-3800` moved both guards
+onto these checks. They have no supported range against which to reject an
+`int` too large for a `float`. So they reject it by name, as outside the range
+a `float` can represent. Before, `math.isfinite` raised `OverflowError` while
+converting it (`core/validation.py`). Neither guard builds a type, so neither
+asks whether its value was built as another quantity. Until `PL-QX2G`, a
+checked flow passed in as a circuit volume was a swapped argument that nothing
+caught. Every volume is now a `CompartmentVolume`, so the stored-value check
+names such a value as the flow it was built as.
 """
 
 from __future__ import annotations

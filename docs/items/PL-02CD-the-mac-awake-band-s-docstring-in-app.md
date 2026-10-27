@@ -3,11 +3,13 @@ id: PL-02CD
 title: The MAC-awake band's docstring in app/formatting.py and the Chortkoff 1995 source note in desflurane.json both say that importing Chortkoff's absolute 2.60% would teach a later wake-up, but a band drawn too high is crossed sooner during washout and teaches an earlier one, as docs/MODEL.md says
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: mac-awake-reference-text
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/data/agents/desflurane.json
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1863
 payoff: the provenance record of the MAC-awake band names the unsafe direction correctly, so a later change that teaches a faster emergence is not judged safe
 verify: ! grep -qF 'later wake-up' src/anesthesia_sim/app/formatting.py && ! grep -qF 'later wake-up' src/anesthesia_sim/data/agents/desflurane.json && grep -qF 'earlier wake-up' src/anesthesia_sim/data/agents/desflurane.json
 ---

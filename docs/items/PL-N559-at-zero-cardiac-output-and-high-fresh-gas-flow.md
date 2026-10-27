@@ -2,12 +2,14 @@
 id: PL-N559
 title: At zero cardiac output and high fresh gas flow, the exact propagator settles with the alveolar fraction a few units in the last place above the inspired fraction and the dial, so read_wash_in classes the steady state as elimination and the wash-in plot tells the learner the patient is returning agent while nothing changed
 priority: P1
-effort: M
-status: ready
+effort: S
+status: done
 classes: defect, science, ux, safety
 feature: replay-findings
-touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/app/wash_in.py, tests/unit/test_wash_in.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/wash_in.py, tests/unit/test_wash_in.py, docs/MODEL.md
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: the wash-in plot no longer tells a learner the patient is returning agent when nothing has changed
 verify: grep -q 'def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination' tests/unit/test_wash_in.py
 ---
@@ -19,3 +21,9 @@ verify: grep -q 'def test_a_zero_cardiac_output_steady_state_is_not_read_as_elim
 **Done when.** At zero cardiac output and high fresh gas flow, the steady state is read as wash-in at equilibrium, not elimination, through an exact fixed point in the propagator or a tolerance derived from rounding, and `docs/MODEL.md` records which. `tests/unit/test_wash_in.py` has `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`, checked against the closed form.
 
 **Found by.** `PL-TBQS` reviewer replay on #376, finding r01 F1. Checked against main on 2026-10-25 with `scripts/c_core376.py P`.
+
+**Decided: route A** (project owner, 2026-10-26, ratified, over route B, an exact fixed point in the propagator, which would have moved every run's last digits). `is_wash_in` allows `WASH_IN_ROUNDING_ALLOWANCE` above 1, first 1e-9 and then 1e-6, as the last paragraph says. Measured before building it: at zero cardiac output the stepped run settles onto a floating-point fixed point within about 4 to 5 hours, and every later step returns the identical state. Nine agent and fresh gas combinations stepped at 0.1 s for 24 h, and isoflurane at 10 L/min for 96 h, never moved after reaching the fixed point. The largest distance from equilibrium was 1.5e-13 relative, and the largest overshoot above it was 2.2e-14, against 9.6e-14 on the canonical path. The owner asked whether a longer run limit could break this. It cannot while the fixed point holds, so the test checks the fixed point rather than a run length.
+
+**Closed on 2026-10-26 in #1864.** The allowance is `WASH_IN_ROUNDING_ALLOWANCE` in `app/wash_in.py`, and `docs/MODEL.md` § "F_A/F_I as a displayed ratio" records how its value was chosen.
+
+**Allowance set from a clinical requirement, 2026-10-26** (project owner, ratified, over keeping 1e-9 sized from the rounding and over deriving the value in code). The owner asked how long the hidden drift would take to matter, then for the best-practice approach, then whether to peg the value to the run-length limit. The allowance is now 1e-6: a whole run of the longest supported length held at that edge loses under 1% of the fast pool, about 0.3% at worst today (desflurane, 12 L/min, 24 h). `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run` checks it from the limits and data files, and its failure message says which input grew and the largest allowance that would pass. The owner asked for that message to make a future limit change obvious rather than a debugging session.

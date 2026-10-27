@@ -60,6 +60,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
@@ -272,7 +273,7 @@ class SimulationSnapshot(RunRecord):
     § "MAC-awake as a chart reference" states what the band asserts, which
     trace it is read against, and why it is not a time to wake-up.
     """
-    circuit_volume_l: float
+    circuit_volume_l: CompartmentVolume
     # The six compartment values below all belong to the agent `agent_id`
     # names. They are flat named floats rather than a mapping keyed by
     # substance, which is the shape the recorded run took at `PL-W3DD`. The
@@ -519,7 +520,7 @@ class SimulationController:
     def __init__(
         self,
         agent_id: str = "sevoflurane",
-        circuit_volume_l: float | None = None,
+        circuit_volume_l: CompartmentVolume | None = None,
         fresh_gas_flow_l_min: FreshGasFlow | None = None,
         delivered_concentration_percent: Percent | None = None,
         alveolar_ventilation_l_min: AlveolarVentilation | None = None,
@@ -589,7 +590,7 @@ class SimulationController:
     def _build_state(
         self,
         agent_id: str,
-        circuit_volume_l: float | None,
+        circuit_volume_l: CompartmentVolume | None,
         fresh_gas_flow_l_min: FreshGasFlow | None,
         delivered_concentration_percent: Percent | None,
         alveolar_ventilation_l_min: AlveolarVentilation | None,
@@ -1276,19 +1277,21 @@ class SimulationController:
         **The branch's clock continues the case's clock**, because a branch is
         one patient's case under a second management, not a second patient.
         Three things follow, and each is a correctness property rather than a
-        convenience. First, the 24 h supported run length is enforced on the
-        step count. A branch that restarted the count would get a fresh
+        convenience. First, the guard on the 24 h supported run length checks the
+        step count. A branch that restarted the count would get a fresh 24 h
         envelope. A fork at 23 h could then be advanced to 47 h of case time
-        with every guard passing. That is exactly the regime in which, as
-        `core/supported_ranges.py` argues, the omitted metabolism dominates.
+        with every guard passing. The model is not claimed to represent a
+        patient for a case that long. As `core/supported_ranges.py` argues, the
+        model omits metabolism and its fat flow is uncertain, so how far the
+        slow part of the trace can stray from a patient grows as a run goes on.
         Second, the clock, every control-change stamp and the chart's axis all
-        read `snapshot().elapsed_s`, and `format_elapsed` says that they "state
-        one quantity one way". A branch counting from zero would place the
+        read `snapshot().elapsed_s`. `format_elapsed` says that these three
+        "state one quantity one way". A branch counting from zero would place the
         patient at the wrong point on the uptake curve in all three places at
-        once. Third, elapsed time stays one multiplication, `(k + n)` steps
-        times the step length, rather than the fork instant plus the branch's
-        own elapsed time. `docs/MODEL.md` § "Simulated time is a count of
-        steps, not a running total" is the rule against that sum.
+        once. Third, elapsed time stays one multiplication: `(k + n)` steps
+        times the step length. It is not the fork instant plus the branch's own
+        elapsed time. `docs/MODEL.md` § "Simulated time is a count of steps, not
+        a running total" states the rule against that sum.
 
         **The run definition opens at the fork rather than at a zero of its
         own**, so the branch's clock and its run definition's instants are one

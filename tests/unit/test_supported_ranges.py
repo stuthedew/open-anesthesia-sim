@@ -48,6 +48,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
@@ -811,7 +812,12 @@ def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
 
     assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
     assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
-    assert "metabolism" in message
+    assert "leaves out metabolism" in message
+    assert "fat flow is uncertain" in message
+    assert "grows as a run goes on" in message
+    assert "not claimed to represent a patient past this length" in message
+    assert "dominate" not in message
+    assert "validated" not in message
     assert "Supported run length" in message
 
 
@@ -1380,7 +1386,7 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
         minimum_l_min=0.5, maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0
     )
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         deliverable_fresh_gas_flow_range=machine_range,
     )

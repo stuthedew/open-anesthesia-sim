@@ -237,10 +237,75 @@ def test_a_step_outside_the_supported_range_is_refused(simulation_step_s: float)
 def test_a_step_count_too_large_to_count_is_refused() -> None:
     """An enormous tick gives an infinite count, which is refused rather than rounded."""
 
-    with pytest.raises(SimulationConfigurationError, match="than can be counted"):
+    with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
         PlaybackRate(300).steps_per_tick(
             tick_interval_s=1e307, simulation_step_s=SimulationStep(0.1)
         )
+
+
+@pytest.mark.parametrize(
+    ("multiplier", "tick_interval_s", "simulation_step_s"),
+    [(1_001, 0.1, 0.1), (300, 1e300, MINIMUM_SIMULATION_STEP_S)],
+    ids=["one past the bound", "a count of 3e305"],
+)
+def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused(
+    multiplier: int, tick_interval_s: float, simulation_step_s: float
+) -> None:
+    """A tick runs all its steps before the interface can respond, so its count has a bound.
+
+    A finite count used to be returned however large it was. The 300x rate with
+    a 1e300 s tick and a 1 ms step returned about 3e305 steps, and the run loop
+    would have stepped for ever (`PL-T6P0`).
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
+        PlaybackRate(multiplier).steps_per_tick(
+            tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
+        )
+
+
+@pytest.mark.parametrize(
+    ("tick_interval_s", "simulation_step_s"),
+    [(0.1, 0.01), (0.07, 0.007)],
+    ids=["exactly 1 000", "a rounding error above 1 000"],
+)
+def test_a_tick_at_the_most_steps_one_tick_may_take_is_played(
+    tick_interval_s: float, simulation_step_s: float
+) -> None:
+    """A count of exactly 1 000, at the bound itself, is played rather than refused.
+
+    The second ratio is 1000.0000000000001 in floating point. The intended count
+    is exactly 1 000, and binary division misses it by one rounding error. So
+    the tick is played rather than refused.
+    """
+
+    steps = PlaybackRate(100).steps_per_tick(
+        tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
+    )
+
+    assert steps == 1_000
+
+
+@pytest.mark.parametrize(
+    "simulation_step_s", [MINIMUM_SIMULATION_STEP_S, SIMULATION_STEP_S], ids=["1 ms", "0.1 s"]
+)
+def test_the_most_steps_one_tick_may_take_covers_every_rate_at_a_one_step_tick(
+    simulation_step_s: float,
+) -> None:
+    """Every offered rate plays when the tick is one step long, as the interface sets it.
+
+    The interface defines its tick as one step, so a tick takes as many steps as
+    the rate's multiplier, whatever the step. The fastest rate, 300x, takes 300.
+    If a faster rate would need more steps than the bound, this test fails. The
+    bound can then be reconsidered before a learner ever meets the refusal.
+    """
+
+    for rate in SUPPORTED_PLAYBACK_RATES:
+        steps = rate.steps_per_tick(
+            tick_interval_s=simulation_step_s, simulation_step_s=SimulationStep(simulation_step_s)
+        )
+
+        assert steps == rate.multiplier
 
 
 def test_a_rate_is_looked_up_by_multiplier() -> None:
