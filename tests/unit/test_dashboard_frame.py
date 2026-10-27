@@ -3578,13 +3578,14 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
 def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     """A control event and a mark at the same instant get two entries, control event first.
 
-    A mark set on a recorded control event gets an entry of its own, and
-    `fork_offer` does not merge the two. Both entries open the same branch,
-    because every way of branching at one instant names the same provenance
-    and runs under what the dial says (`PL-ZR49`). The entries keep the order
-    in which the two lists are given, so one case is always listed the same
-    way. The case's opening, at 0 s, is the boundary case, because no step
-    reaches a mark there. A branch at that mark opens at the opening
+    A mark set at the instant of a recorded control event gets an entry of
+    its own, and `fork_offer` does not merge the two. Both entries open the
+    same branch, because every way of branching at one instant names the
+    same provenance and runs under what the dial says (`PL-ZR49`). The
+    entries keep the order in which `fork_offer` receives its two lists,
+    the control events and then the marks. So one case is always listed the
+    same way. The case's opening, at 0 s, is the boundary case, because no
+    step reaches a mark there. A branch at that mark opens at the opening
     keyframe, and the mark is listed after that keyframe.
     """
 

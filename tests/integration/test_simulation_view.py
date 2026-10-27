@@ -9018,14 +9018,14 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
 ) -> None:
     """Reset on Run 1 does not discard Run 2's work until the learner agrees (`PL-W5WX`).
 
-    The `work` parameter covers both conditions that `has_recorded_run`
-    checks, `elapsed` and `change`. A question that checked only one of them
-    would miss the other. The expected warning is a literal string. Four
-    steps of 0.1 s from the fork at 60 s reach 1m0.4s on the case clock. In
-    both cases the branch's "Control changes" panel lists the trunk's change
-    at 1m, which the branch opened with. For `change`, it also lists the
-    learner's change, recorded after the opened entry. The question counts
-    what the panel lists (`PL-ZR49`).
+    The `work` parameter takes the values `elapsed` and `change`, one for each
+    condition that `has_recorded_run` checks. A question that checked only one
+    of them would miss the other. The expected warning is a literal string.
+    Four steps of 0.1 s from the fork at 60 s reach 1m0.4s on the case clock.
+    In both cases the branch's "Control changes" panel lists the trunk's
+    change at 1m, which the branch opened with. For `change`, it also lists
+    the learner's change, recorded after the opened entry. The question
+    counts what the panel lists (`PL-ZR49`).
     """
 
     case = _branched_case()

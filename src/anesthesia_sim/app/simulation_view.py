@@ -971,12 +971,12 @@ class SimulationView(QWidget):
         self._rename_runs()
 
     def _trunk_reset_question(self) -> NewCaseQuestion | None:
-        """What the trunk's Reset must ask, or None where it discards no branch's work.
+        """Return what the trunk's Reset must ask, or None if it discards no branch's work.
 
         The trunk's Reset drops every branch drawn beside it
         (`_handle_case_restarted`), and a branch is not the run the reader
-        pressed Reset on. So the press asks first wherever a drawn branch has
-        run past its fork, or holds a control change made since it opened
+        pressed Reset on. So Reset asks first whenever a drawn branch has run
+        past its fork or holds a control change made since it opened
         (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). A dashboard with no
         case drops nothing on a Reset, so it asks nothing.
         """

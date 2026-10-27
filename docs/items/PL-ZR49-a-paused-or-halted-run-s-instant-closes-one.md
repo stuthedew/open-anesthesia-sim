@@ -148,7 +148,7 @@ Element-wise reproduction survives. `_open_at` already opens the branch's defini
   1. Fix both defects, with regression tests that fail on `4bd1e30c`.
   2. Fix the eight sentences.
   3. Run `make check`.
-  4. Record the `Blind-review:` trailer for these two passes. The findings were 2 in pass 1 and 2 in pass 2, 2 distinct and both fixed.
+  4. Record the `Blind-review:` trailer for these two passes. The findings were 1 in pass 1 and 2 in pass 2: 3 findings, 2 distinct, both fixed.
   5. Record the `Prose-review:` and `Owner-read: needed` trailers.
   6. Run `bin/docket arm`, then push.
   7. Rewrite the body of `#1844` for the owner's rule. Its "What a learner sees differently", the ", before your change" placeholder and the `PL-HSP8` bullet all describe the old rule.
@@ -173,3 +173,5 @@ The command was `PYTHONPATH=<worktree>/src python -m pytest <test ids>`, run in 
 The test that asserted the defect, `test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose`, is replaced by the first test above. The trunk Reset question's `change` case now expects "2 recorded control changes", the opened entry and the learner's. `test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement` now expects the opened entry followed by the learner's 8 L/min.
 
 The eight flagged sentences are fixed. [2] and [7] are true now that a branch at 0 s copies the trunk's changes. [3] and [5] name the opening exception. [9] went with the rewrite of `_open_at`'s docstring. [15], [24] and [28] are rewritten, and `SimulationView._trunk_reset_question` carried the same claim as [28], so it is fixed too.
+
+**Prose review finished, 2026-10-27.** A sixth pass read the 27 docstrings and comments of 30 words or more that the fix changed, and rewrote 20 of them. All 20 are applied. A script compared each rewrite with its original, and none changed a number, a backticked name, an item id or a quoted string.
