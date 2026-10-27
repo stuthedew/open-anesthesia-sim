@@ -416,18 +416,18 @@ def test_a_transfer_whose_second_total_is_refused_writes_neither_total() -> None
 
 
 def test_a_refused_transfer_names_its_own_field() -> None:
-    """A negative transfer is refused under the name of the transfer that was negative.
+    """A negative transfer is refused with an error that names the transfer that was negative.
 
     `record_external_agent_transfer` checks each transfer and then each running
-    total, and both checks use the same two field names. On a fresh validator,
-    a negative transfer makes a negative total, so the total's check would
-    raise the same message if the transfer's check were missing. Here each
+    total. Both checks report errors under the same two field names. On a fresh
+    validator, a negative transfer makes a negative total, so the total's check
+    would raise the same message if the transfer's check were missing. Here each
     total already holds 2.0 L, so a transfer of -1.0 L would leave a total of
     1.0 L that passes its own check. Only the transfer's check can refuse it.
     Without that check, the transfer is accepted and silently lowers the total
-    in the mass balance. Until `PL-B3YV`, no test pinned the names in the two
-    transfer checks, so a refused delivered transfer could have been reported
-    as the exhausted one.
+    in the mass balance. Until `PL-B3YV`, no test checked which field name each
+    transfer check reports. A refused delivered transfer could therefore have
+    been reported under the exhausted transfer's name.
     """
 
     validator = AgentSimulationValidator()
