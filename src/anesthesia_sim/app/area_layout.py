@@ -1218,19 +1218,20 @@ class AreaLayout(QWidget):
 
         The decision is made by `settle` in `layout/sizing.py`, at this widget's current
         size, so the sizes drawn are the ones `settle` worked out (`PL-K285`). Each Area's
-        frame is held at the bound that `settle` gave it. An Area that draws its View is
-        held at its need, the smallest size at which its View can be drawn. An Area that is
-        too small for its View is held at its floor (`_floor`). In place of the View, that
-        Area shows a statement of the size its View needs.
+        frame is held at the bound that `settle` gave it, so it is never drawn smaller. An
+        Area that draws its View is held at the larger of its need and its floor. Its need
+        is the smallest size at which its View can be drawn. An Area that is too small for
+        its View is held at its floor (`_floor`). In place of the View, that Area shows a
+        statement of the size its View needs.
 
         Before this widget is shown, its size is not yet the size it will be drawn at. So
         until it is shown, every Area keeps its View and is held at its need.
 
         When the Areas' bounds add up to a new minimum size for this widget, this method
         tells the host through `minimumSizeHint`. Each Area is counted at the larger of
-        its View's need and its floor (`drawn_bounds`), as `settle` holds a drawn Area.
-        A host that can grow, such as the dashboard's scrolling page, then gives this
-        widget room for every View.
+        its View's need and its floor (`drawn_bounds`), which is the size at which
+        `settle` holds a drawn Area. A host that can grow, such as the dashboard's
+        scrolling page, then gives this widget room for every View.
         """
 
         if self._settling:
@@ -1458,8 +1459,8 @@ class AreaLayout(QWidget):
         # The drawn border can differ from the model's position while an Area is
         # held wider than its share so that its View fits. A step from the model's
         # position would then move nothing on screen until it caught up with the
-        # drawn border (`PL-4L8B`). The step's pixels are turned into a fraction of
-        # the window by `_drawn_position`, as a drag's pointer is (`PL-97WX`).
+        # drawn border (`PL-4L8B`). `_drawn_position` turns the step's pixels into a
+        # fraction of the window, as it does for a drag's pointer (`PL-97WX`).
         drawn = sum(handle.owner.sizes()[: address.index + 1])
         reached = self._drawn_position(
             handle.owner, self._model, address, drawn + steps * AREA_KEYBOARD_STEP
@@ -1528,13 +1529,13 @@ class AreaLayout(QWidget):
     def _position_at(self, handle: _AreaHandle, drag: _BorderDrag, at: QPoint) -> float | None:
         """Return where in the window the dragged border lies with the pointer at screen point `at`.
 
-        The splitter places a handle's leading edge after the children before
-        it and the handles between them. So the border is to be drawn at that
-        edge's offset minus the width of those handles, and `_drawn_position`
-        turns that offset into a place in the window. Where the border is
-        already drawn at the pointer, or as near it as it can be drawn, the
-        result is where the drag started. The result is None when the split
-        has no pixels to share.
+        The splitter places a handle's leading edge after the children before it
+        and after the handles between those children. So the border is to be drawn
+        at that edge's offset minus the width of those handles. `_drawn_position`
+        turns that offset into a place in the window. Where the border is already
+        drawn at the pointer, or as near to it as it can be drawn, the result is
+        where the drag started. The result is None when the split has no pixels to
+        share.
         """
 
         splitter = handle.owner
@@ -1553,18 +1554,18 @@ class AreaLayout(QWidget):
         """Return where in the window `address` lies once it is drawn `offset_px` along its split.
 
         `offset_px` counts the pixels of the children before the border.
-        `border_share` turns it into a share of the split through the sizes the
-        splitter draws, which hold a child at its bound where its fraction would
-        make it smaller (`PL-97WX`). The model's span of the split turns the
-        share into a fraction of the window. A drag and a keyboard step both
+        `border_share` turns it into a share of the split, using the sizes that the
+        splitter draws. Those sizes hold a child at its bound where its fraction
+        would make it smaller (`PL-97WX`). The split's span in the model then turns
+        the share into a fraction of the window. A drag and a keyboard step both
         move a border through this one mapping.
 
-        The result is the position and whether the border moves from where
-        `start` draws it. It does not move where it is already drawn at
-        `offset_px`, or as near it as it can be drawn. The position is then
-        `start`'s own, so a press, or a nudge toward an Area held at its need,
-        changes no fraction while the layout fits the window. The result is
-        None when the split has no pixels to share.
+        The result is a pair: the position, and whether the border moves from where
+        `start` draws it. The border does not move when it is already drawn at
+        `offset_px`, or as near to it as it can be drawn. The position is then the
+        one in `start`. So a press, or a nudge toward an Area held at its need,
+        changes no fraction while the layout fits the window. The result is None
+        when the split has no pixels to share.
         """
 
         fit = self._fit

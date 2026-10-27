@@ -1,55 +1,56 @@
-"""How a layout is drawn in whole pixels, and which Areas cannot get the size their View needs.
+"""Size a layout in whole pixels, and find the Areas that cannot get the size their View needs.
 
 A layout stores fractions, so a file gives the same layout on any screen
-(`PL-HJPY` Q5). How small an Area may be is a property of the screen, so it is
+(`PL-HJPY` Q5). How small an Area may be is a property of the screen. So it is
 decided here, against an extent in pixels, and never stored in the layout.
 `PL-K285` decided the rules (project owner, 2026-09-27, ratified), and
 `PL-30L5` Q2 changed one of them (project owner, 2026-10-11, ratified). This
-module implements them as pure functions of a window's tree, with no toolkit,
-so a test drives them with no `QApplication`. The adapter,
+module implements them as pure functions of a window's tree, without the GUI
+toolkit, so a test drives them with no `QApplication`. The adapter,
 `app/area_layout.py`, draws exactly the sizes this module gives.
 
 **A View's minimum size is a constraint, not a request** (`PL-K285` Q1). Each
 Area has a *need*: the least size at which its View can be drawn. Where the
 layout can give every Area its need, it does. An Area whose share of its split
-would be smaller than its need is held at its need, and the other children of
+would be smaller than its need is *held* at its need. The other children of
 that split give up the room in proportion to their fractions. So a View is
-never drawn smaller than it needs and never clipped. The stored fractions are
-not changed: they are the reader's proportions, and they apply again once the
+never drawn smaller than its need, and never clipped. The stored fractions are
+not changed. They are the reader's proportions, and they apply again once the
 extent is large enough.
 
 **An Area that cannot be given its need says so** (`PL-K285` Q2 and Q3,
 `PL-30L5` Q2). This happens when something the reader does asks for more room
-than the extent has: a split whose halves are smaller than their View needs, a
-View chosen for an Area too small for it, or a layout opened at a smaller size
-than it was arranged at. Such an Area is *too small*, and it is given only its
-*floor*. The floor is the least size at which the Area can show its header, the
-notice's title, and a short statement of the size the View needs and the size
-the Area has (`PL-Y65Q`). The adapter draws `PL-DB5G`'s notice in the Area, and
-adds the notice's advice sentence only where the Area has room for it. The
-adapter gives its host, as the adapter's least size, the `minimum_extent` of
-every Area held at its `drawn_bound`: the larger of its need and its floor. A
-host that can grow, such as the dashboard's scrolling page, grows to that size
-instead, so no Area in it is too small. Nothing is
-clipped, and nothing is collapsed to zero extent. Collapsing to zero is what
-Blender does with `RGN_FLAG_TOO_SMALL` (`docs/interface-provenance.md`).
+than the extent has. Examples are a split whose halves are smaller than their
+Views need, a View chosen for an Area too small for it, or a layout opened at a
+smaller size than it was arranged at. Such an Area is *too small*, and it is
+given only its *floor*. In place of its View, the adapter draws a notice in it
+(`PL-DB5G`). The floor is the least size at which the Area can show its header,
+the notice's title, and a short statement of the size the View needs and the
+size the Area has (`PL-Y65Q`). The adapter adds the notice's advice sentence
+only where the Area has room for it. The adapter tells its host how small the
+adapter may be. That least size is the `minimum_extent` of every Area held at
+its `drawn_bounds` entry, which is the larger of its need and its floor. A
+host that can grow, such as the dashboard's scrolling page, grows to that size,
+so no Area in it is too small. Nothing is clipped, and nothing is collapsed to zero
+extent. Collapsing to zero is what Blender does with `RGN_FLAG_TOO_SMALL`
+(`docs/interface-provenance.md`).
 
 **Which Areas are too small is decided once per change, by `settle`.** Every
 Area is first tried at its need. When the extent cannot hold every need, the
-fewest Areas that must give way drop to their floors, so a small shortfall
-blanks only those (`PL-QZ7Z`). The Areas that the latest change did not leave in
-place drop first. The Areas that the change left in place drop only where the
-others are not enough. So a split's new halves report themselves too small,
-rather than taking the room from an Area the reader did not touch. Then
-every Area that still has its need is drawn, and the rest are too small. A
-too-small Area is drawn again as soon as a later change, such as a border drag
-or a larger window, can give it its need.
+fewest Areas that must give way drop to their floors. So a small shortfall
+blanks only those Areas (`PL-QZ7Z`). The Areas that the latest change did not
+leave in place drop first. The Areas that the change left in place drop only
+where the others are not enough. So a split's new halves report themselves
+too small, rather than taking the room from an Area the reader did not touch.
+Then every Area that still has its need is drawn, and the rest are too small.
+A too-small Area is drawn again as soon as a later change, such as a border
+drag or a larger window, can give it its need.
 
-**Pixels are apportioned as the adapter's splitters lay them out.** A split of
-`n` children spends `n - 1` handles, each `handle_px` wide, along its axis,
-and shares the rest among its children. Each share is rounded by
-`pixel_sizes`, which is the one rounding that the adapter uses, so the sizes
-here are the sizes on screen.
+**Pixels are shared out as the adapter's splitters lay them out.** A split of
+`n` children has `n - 1` handles along its axis, each `handle_px` wide, and
+shares the rest of its length among its children. `pixel_sizes` rounds each
+share to whole pixels. It is the only rounding that the adapter uses, so the
+sizes here are the sizes on screen.
 """
 
 from __future__ import annotations
@@ -156,14 +157,14 @@ class Apportionment:
 
 @dataclass(frozen=True, slots=True)
 class Fit:
-    """What `settle` decided: which Areas are drawn, which are too small, and every size.
+    """Hold what `settle` decided: which Areas are drawn, which are too small, and every size.
 
     Attributes:
         apportionment: Every Area's and every split's size in pixels.
-        bounds: The least size each Area is held at: its `drawn_bounds`
-            entry where it is drawn, and its floor where it is too small. The
-            adapter sets each Area's frame's minimum size to this, so Qt never
-            draws an Area below it.
+        bounds: The least size at which each Area is held. That is its
+            `drawn_bounds` entry where the Area is drawn, and its floor where it
+            is too small. The adapter sets the minimum size of each Area's frame
+            to this bound, so Qt never draws an Area smaller than it.
         drawn: The Areas given their need, which draw their View.
         too_small: The Areas that are not given their need, in reading
             order, each with the size it needs and the size it has.
@@ -200,11 +201,12 @@ def split_sizes(
 ) -> tuple[int, ...]:
     """Return the sizes along a split's axis that `apportion` gives its children.
 
-    `bounds` holds each child's bound along the axis, and `available` the
-    pixels the children share once the handles are taken out. Each child is
-    held at its bound where its share would be less, and the others share the
-    rest by their fractions (`_held_sizes`). Where the bounds need more than
-    `available`, the sizes are `pixel_sizes` of the fractions alone.
+    `bounds` holds each child's bound along the axis. `available` is the number
+    of pixels the children share once the handles are taken out. A child whose
+    share would be less than its bound is held at its bound, and the others
+    share the rest by their fractions (`_held_sizes`). Where the bounds need
+    more than `available`, the sizes are the ones that `pixel_sizes` gives for
+    the fractions alone.
     """
 
     held = _held_sizes(fractions, bounds, available)
@@ -221,8 +223,9 @@ def drawn_bounds(
 
     An Area whose floor is wider or taller than its View's need is held at the
     floor on that axis, so its header still fits. `settle` holds a drawn Area
-    at this bound, and the adapter's least size is the `minimum_extent` of
-    these bounds (`PL-C9XP`). The sum of the needs alone would understate it.
+    at this bound. The adapter's least size is the `minimum_extent` of these
+    bounds (`PL-C9XP`). A sum of the needs alone would understate that least
+    size.
 
     Raises:
         KeyError: `floors` has no size for an Area in `needs`.
@@ -240,27 +243,28 @@ def border_share(
 ) -> float | None:
     """Return the share of a split that lies before border `index` once it is drawn at `offset_px`.
 
-    The split's children have sizes `fractions` and bounds `bounds` along its
-    axis, and share `available` pixels, as `split_sizes` lays them out. Border
-    `index` lies between child `index` and the child after it, and moving it
-    changes only those two children's fractions. A held child can still move
-    another border on screen, since it takes its pixels from every child that
-    is not held. `offset_px` is where the border is to be drawn: the pixels of
-    the children before it.
+    The fractions of the split's children along its axis are `fractions`, and
+    their bounds are `bounds`. The children share `available` pixels, as
+    `split_sizes` lays them out. Border `index` lies between child `index` and
+    the child after it. Moving the border changes only those two children's
+    fractions. A held child can still move another border on screen, since it
+    takes its pixels from every child that is not held. `offset_px` is where the
+    border is to be drawn, given as the pixels of the children before it.
 
-    Where a child is held at its bound, every share in a range draws the
-    border in one place. So the pointer is mapped through the drawn sizes, not
-    through the fractions alone (`PL-97WX`). Of the shares that draw the
+    While a child is held at its bound, a whole range of shares draws the
+    border in the same place. So the pointer is mapped through the drawn sizes,
+    not through the fractions alone (`PL-97WX`). Of the shares that draw the
     border at `offset_px`, the result is the one nearest `offset_px /
-    available`, the share that the fractions alone would give. Where no child
-    is held, it is usually that share. The rounding in `pixel_sizes` can
-    still leave the border drawn one pixel from the pointer, because a larger
-    share does not always round to a larger prefix of pixels. The border
-    cannot be drawn past the place where a child beside it reaches its bound,
-    so an `offset_px` past that place is taken as that place.
+    available`, which is the share that the fractions alone would give. Where
+    no child is held, the result is usually that share. The rounding in
+    `pixel_sizes` can still leave the border drawn one pixel from the pointer.
+    That is because a larger share does not always round to more pixels before
+    the border. The border cannot be drawn past the place where a child beside
+    it reaches its bound, so an `offset_px` past that place is taken as that
+    place.
 
     The result is None when the border is already drawn at `offset_px`, or as
-    near it as it can be drawn. A press, or a nudge toward an Area held at its
+    near to it as it can be drawn. A press, or a nudge toward an Area held at its
     bound, then leaves the stored fractions exactly as they were.
 
     Raises:
@@ -297,10 +301,10 @@ def border_share(
 
 
 def _first_share(first: float, last: float, reached: Callable[[float], bool]) -> float | None:
-    """Return the least share from `first` to `last` at which `reached` holds, or None.
+    """Return the least share from `first` to `last` at which `reached` is true, or None.
 
-    `reached` fails up to some share and holds from there to `last`. The
-    share is found by halving the interval until no float lies between its
+    `reached` is false below some share and true from that share up to `last`.
+    The share is found by halving the interval until no float lies between its
     ends.
     """
 
@@ -417,27 +421,28 @@ def settle(
 ) -> Fit:
     """Decide which Areas of `tree` can be given their need in `extent`, and lay every one out.
 
-    `kept` names the Areas that were drawn before the change being settled
-    and that the change left with the same View in the same place. Every
-    Area is first held at its `drawn_bounds` entry, the larger of its need and
-    its floor. Where the extent cannot hold those bounds, some Areas drop to
-    their floors. The Areas that drop are the fewest that must give way, so a
-    small shortfall blanks only those (`PL-QZ7Z`). In order, the drop:
+    `kept` names the Areas that were drawn before the change being settled, and
+    that the change left with the same View in the same place. Every Area is
+    first held at its `drawn_bounds` entry, the larger of its need and its
+    floor. Where the extent cannot hold those bounds, some Areas drop to their
+    floors. The Areas that drop are the fewest that must give way, so a small
+    shortfall blanks only those (`PL-QZ7Z`). The rules below choose the Areas
+    to drop. Each rule decides only among the choices that the rules before it
+    leave tied.
 
-    1. leaves the least shortfall that dropping Areas can reach. That is no
-       shortfall wherever the floors fit;
-    2. drops the fewest Areas in `kept`, so a change's new Areas give way
-       before the Areas it did not touch;
-    3. drops the fewest Areas in all;
-    4. drops the smallest share of the window, so the Views the reader gave
-       the least room give way first;
-    5. drops the later Areas in reading order.
+    1. Leave the least shortfall that dropping Areas can reach. Where the floors
+       fit, that is no shortfall.
+    2. Drop the fewest Areas in `kept`, so a change's new Areas give way before
+       the Areas it did not touch.
+    3. Drop the fewest Areas in all.
+    4. Drop the smallest share of the window, so the Views that the reader gave
+       the least room give way first.
+    5. Drop the later Areas in reading order.
 
-    Every subset is weighed where the tree has at most
-    `_EXACT_SEARCH_AREAS` Areas. A larger tree drops one Area at a time,
-    choosing each by the same rules, until the shortfall is the least it can
-    be. Every Area that is then given its need is drawn, and every other Area
-    is too small.
+    Where the tree has at most `_EXACT_SEARCH_AREAS` Areas, every subset of them
+    is weighed. In a larger tree, Areas are dropped one at a time, each chosen
+    by the same rules, until the shortfall is the least it can be. Every Area
+    that is then given its need is drawn, and every other Area is too small.
 
     Raises:
         TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
@@ -467,11 +472,11 @@ def settle(
     return Fit(laid_out, MappingProxyType(final), drawn, too_small)
 
 
-# `settle` weighs every subset of a tree's Areas up to this many Areas: at
-# most 1024 subsets, each costing one walk of the tree. That took about 12 ms
-# for ten Areas in a window too small for any, where twelve took 48 ms. A
-# larger tree drops one Area at a time instead, which can drop more than it
-# needs to.
+# `settle` weighs every subset of a tree's Areas when the tree has at most this
+# many Areas. That is at most 1024 subsets, and each costs one walk of the tree.
+# For ten Areas in a window too small for any of them, this took about 12 ms.
+# For twelve Areas, it took 48 ms. For a larger tree, `settle` drops one Area at
+# a time instead, which can drop more Areas than it needs to.
 _EXACT_SEARCH_AREAS: Final = 10
 
 

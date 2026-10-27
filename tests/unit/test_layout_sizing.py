@@ -134,12 +134,13 @@ def test_a_split_whose_halves_the_extent_cannot_hold_leaves_a_half_too_small() -
     floors = _each(tree, PixelSize(40, 30))
     fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
 
-    # A half is let go to its floor before Area 1, which the split did not
-    # touch. One is enough, since 400 + 400 + 40 = 840 fits in 992. The halves
-    # have equal shares, so the later one, Area 4, is let go. Area 2's share
-    # of 248 is less than 400, so Area 2 is held at 400. Area 1's share of
-    # what is left, 0.5 / 0.75 of 592, is 394.67, also less than 400, so it
-    # is held too. Area 4 takes the other 992 - 800 = 192.
+    # One of the split's new halves drops to its floor before Area 1 does,
+    # because the split did not touch Area 1. Dropping one half is enough,
+    # since 400 + 400 + 40 = 840 fits in 992. The halves have equal shares, so
+    # the later one, Area 4, drops. Area 2's share of 248 is less than 400, so
+    # Area 2 is held at 400. Area 1's share of what is left, 0.5 / 0.75 of 592,
+    # is 394.67. That is also less than 400, so Area 1 is held too. Area 4
+    # takes the other 992 - 800 = 192.
     assert fit.apportionment.splits[()] == (400, 400, 192)
     assert fit.drawn == {AreaId(1), AreaId(2)}
     assert fit.too_small == (TooSmall(AreaId(4), PixelSize(400, 100), PixelSize(192, 300)),)
@@ -208,18 +209,18 @@ def test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_non
     floors = _each(tree, PixelSize(60, 40))
     fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, floors, kept=frozenset())
 
-    # 300 + 8 + 300 = 608 px of width and 608 px of height are needed, and
-    # the window has only 508 by 408: 100 px short across and 200 px short
-    # down, 300 px in all. Letting go Area 1 or Area 2 shortens the column to
-    # 300 + 8 + 40 = 348, which leaves only the 100 px across. Area 2 has the
-    # smaller share, 0.75 * 0.4 = 0.3 against 0.45, so it goes first. Then
-    # letting go Area 1 or Area 3 clears the width, and Area 3 has the smaller
-    # share, 0.25. Trying Area 2 at its need again brings back the 200 px
-    # down, so it stays at its floor.
+    # The Areas need 300 + 8 + 300 = 608 px of width and 608 px of height. The
+    # window has only 508 by 408 px, so it is 100 px short across and 200 px
+    # short down, 300 px in all. No single drop clears both. Dropping Area 1 or
+    # Area 2 shortens the column to 300 + 8 + 40 = 348 but leaves the width, and
+    # dropping Area 3 leaves the height. Each pair of Areas clears both. Areas 2
+    # and 3 have the smallest share of the pairs, 0.75 * 0.4 + 0.25 = 0.55,
+    # against 0.7 for Areas 1 and 3 and 0.75 for Areas 1 and 2. So Areas 2 and
+    # 3 drop.
     #
-    # The row's 500 px give 375 and 125, which hold the column's 300 and Area
-    # 3's 60. The column's 400 px would give 240 and 160, so Area 1 is held at
-    # its 300 and Area 2 takes the other 100.
+    # The row's 500 px give 375 and 125, which are at least the column's 300
+    # and Area 3's 60. The column's 400 px would give 240 and 160, so Area 1 is
+    # held at its 300, and Area 2 takes the other 100.
     assert fit.apportionment.areas == {
         AreaId(1): PixelSize(375, 300),
         AreaId(2): PixelSize(375, 100),
@@ -237,10 +238,10 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
 
     floors_60 = PixelSize(40, 60)
 
-    # A column of three Areas, each needing 300 px of height, in 700 px. The
-    # needs take 3 * 300 + 2 * 8 = 916 px. Letting one Area go leaves
-    # 300 + 300 + 60 + 16 = 676, which fits. Each Area's drop clears the
-    # whole shortfall, so the one with the smallest share, Area 1 at 0.2, goes.
+    # Three Areas in a column each need 300 px of height, and the column has
+    # 700 px. The needs take 3 * 300 + 2 * 8 = 916 px. Dropping one Area leaves
+    # 300 + 300 + 60 + 16 = 676, which fits. Dropping any one Area clears the
+    # whole shortfall, so Area 1, which has the smallest share at 0.2, drops.
     column = _column((0.2, 0.4, 0.4), _area(1), _area(2), _area(3))
     every = frozenset(area.id for area in areas_in(column))
     fit = settle(
@@ -258,10 +259,11 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
     assert fit.drawn == {AreaId(2), AreaId(3)}
     assert [entry.area_id for entry in fit.too_small] == [AreaId(1)]
 
-    # Two halves, each needing 300 px, in 500 px. The needs take 608, and
-    # one half at a 177 px floor leaves 300 + 8 + 177 = 485, which fits. The
-    # halves' shares are equal, so the later one, Area 2, goes. Area 1 is held
-    # at 300 of the 492 px, and Area 2 takes 192.
+    # Two halves of a row each need 300 px, and the row has 500 px. The needs
+    # take 608. With one half at its 177 px floor, the row needs
+    # 300 + 8 + 177 = 485, which fits. The halves' shares are equal, so the
+    # later one, Area 2, drops. Area 1 is held at 300 of the 492 px, and Area 2
+    # takes 192.
     row = _row((0.5, 0.5), _area(1), _area(2))
     fit = settle(
         row,
@@ -276,12 +278,12 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
     assert fit.drawn == {AreaId(1)}
     assert [entry.area_id for entry in fit.too_small] == [AreaId(2)]
 
-    # An Area above a row of two, each needing 300 px of height, in 590 px.
-    # The needs take 300 + 8 + 300 = 608. Letting go Area 2 or Area 3 alone
-    # leaves the row 300 px tall and gains nothing. Letting go Area 1 leaves
-    # 60 + 8 + 300 = 368, which fits. So Area 1 goes, whether or not the
-    # Areas were kept. The column's 582 px would give 291 each, so the row is
-    # held at 300, and Area 1 takes 282.
+    # An Area sits above a row of two Areas, and each needs 300 px of height.
+    # The column has 590 px, and the needs take 300 + 8 + 300 = 608. Dropping
+    # Area 2 or Area 3 alone leaves the row 300 px tall and gains nothing.
+    # Dropping Area 1 leaves 60 + 8 + 300 = 368, which fits. So Area 1 drops,
+    # whether or not the Areas are in `kept`. The column's 582 px would give
+    # 291 each, so the row is held at 300, and Area 1 takes 282.
     stacked = _column((0.5, 0.5), _area(1), _row((0.5, 0.5), _area(2), _area(3)))
     needs = _each(stacked, PixelSize(200, 300))
     floors = _each(stacked, floors_60)
@@ -295,13 +297,13 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
 
 
 def test_a_new_area_whose_drop_gains_nothing_keeps_its_view() -> None:
-    # A row of Areas 1 and 2 above Area 3, each needing 300 px of height, in a
-    # column of 590 px against 300 + 8 + 300 = 608. Area 1 is new, and Areas 2
-    # and 3 are kept. Dropping Area 1 gains nothing, since Area 2 still holds
-    # the row at 300. Dropping Area 2 gains nothing either. Dropping Area 3
-    # alone leaves 300 + 8 + 60 = 368, so Area 3 is the one Area that gives
-    # way. The column's 582 px would give 291 each, so the row is held at 300
-    # and Area 3 takes 282.
+    # A row of Areas 1 and 2 sits above Area 3, and each Area needs 300 px of
+    # height. The column has 590 px, and the needs take 300 + 8 + 300 = 608.
+    # Area 1 is new, and Areas 2 and 3 are kept. Dropping Area 1 gains nothing,
+    # since Area 2 still holds the row at 300. Dropping Area 2 gains nothing
+    # either. Dropping Area 3 alone leaves 300 + 8 + 60 = 368, so Area 3 is the
+    # one Area that gives way. The column's 582 px would give 291 each, so the
+    # row is held at 300 and Area 3 takes 282.
     stacked = _column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3))
     fit = settle(
         stacked,
@@ -319,11 +321,12 @@ def test_a_new_area_whose_drop_gains_nothing_keeps_its_view() -> None:
 
 def test_where_even_the_floors_do_not_fit_only_the_areas_that_cause_it_give_way() -> None:
     # Area 1 sits beside a column of Areas 2 and 3 in a window 100 px tall.
-    # The column's floors alone need 60 + 8 + 60 = 128 px, so the window is 28
-    # px short whatever drops. Dropping Areas 2 and 3 reaches that shortfall,
-    # and dropping only one leaves the column 60 + 8 + 80 = 148 tall. Area 1
-    # need not drop. The row's 992 px would give Area 1 only 99.2, so it is
-    # held at its 200 px need and the column takes the other 792.
+    # The column's floors alone need 60 + 8 + 60 = 128 px, so the window is
+    # 28 px short whatever drops. Dropping both Areas 2 and 3 brings the
+    # shortfall down to that 28 px. Dropping only one leaves the column
+    # 60 + 8 + 80 = 148 px tall. Area 1 does not need to drop. The row's 992 px
+    # would give Area 1 only 99.2, so it is held at its 200 px need, and the
+    # column takes the other 792.
     tree = _row((0.1, 0.9), _area(1), _column((0.5, 0.5), _area(2), _area(3)))
     fit = settle(
         tree,
@@ -340,10 +343,11 @@ def test_where_even_the_floors_do_not_fit_only_the_areas_that_cause_it_give_way(
 
 
 def test_a_tree_too_large_to_weigh_every_subset_drops_one_area_at_a_time() -> None:
-    # Eleven Areas, one more than `settle` weighs every subset of, in a row
-    # 6 px short of 11 * 100 + 10 * 8 = 1180 px. Dropping any one is enough,
-    # and the shares are equal, so the last Area goes. The other ten are held
-    # at 100 px each of the 1094 px, and Area 11 takes the other 94.
+    # A row holds eleven Areas. That is one more than the most for which
+    # `settle` weighs every subset. The row is 6 px short of the
+    # 11 * 100 + 10 * 8 = 1180 px that the needs take. Dropping any one Area is
+    # enough, and the shares are equal, so the last Area drops. The other ten
+    # are each held at 100 px of the 1094 px, and Area 11 takes the other 94.
     tree = _row((1 / 11,) * 11, *(_area(number) for number in range(1, 12)))
     fit = settle(
         tree,
@@ -371,9 +375,9 @@ def test_drawn_bounds_take_the_larger_of_the_need_and_the_floor_on_each_axis() -
 def test_a_border_held_by_its_neighbours_need_maps_the_pointer_through_the_drawn_sizes() -> None:
     """`PL-97WX`: the share comes from the drawn sizes, not the fractions."""
 
-    # A 0.7 / 0.3 row of 800 px whose right child needs 300. Its share, 240,
-    # is less than that, so it is held at 300 and the border is drawn at 500,
-    # not at the 560 that 0.7 would give.
+    # A row of 800 px is split 0.7 / 0.3, and its right child needs 300. The
+    # right child's share, 240, is less than that. So the child is held at 300,
+    # and the border is drawn at 500, not at the 560 that 0.7 would give.
     fractions, bounds = (0.7, 0.3), (10, 300)
 
     assert border_share(fractions, 0, bounds, 800, 500) is None
@@ -381,9 +385,9 @@ def test_a_border_held_by_its_neighbours_need_maps_the_pointer_through_the_drawn
     assert border_share(fractions, 0, bounds, 800, 501) is None
     assert border_share(fractions, 0, bounds, 800, 700) is None
 
-    # One pixel left, the border is drawn at 499. The right child's share,
-    # 301, is then more than its bound, so nothing is held, and the share is
-    # the one the fractions give: 499 / 800.
+    # With the border one pixel left, at 499, the right child's share is 301.
+    # That is more than its bound, so no child is held, and the share is the
+    # one that the fractions give, 499 / 800.
     left = border_share(fractions, 0, bounds, 800, 499)
     assert left == 499 / 800
     assert split_sizes((left, 1 - left), bounds, 800) == (499, 301)

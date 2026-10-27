@@ -1923,9 +1923,9 @@ def test_the_notice_restates_the_size_as_the_area_grows_and_clears_once_it_is_en
 ) -> None:
     """The notice restates the width as the Area grows, and clears at the 300 px the View needs.
 
-    At 500 px, Area 1 is held at its View's 300 px and Area 2 has the other
-    192. With the window 560 px wide, Area 2 has 252 px. At 608 px, each half
-    is 300 px and draws the View.
+    With the window 500 px wide, Area 1 is held at its View's 300 px, and Area 2
+    has the other 192. At 560 px, Area 2 has 252 px. At 608 px, each half is
+    300 px and draws the View.
     """
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
@@ -2147,13 +2147,13 @@ _NARROW_AND_WIDE = registry(
 def test_the_minimum_size_hint_counts_each_area_at_its_floor(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
-    """`PL-C9XP`: a host that can grow grows enough to draw a View narrower than its header.
+    """`PL-C9XP`: a host that can grow grows enough to draw a View narrower than its Area's header.
 
     The narrow View needs 60 px, but its Area's header needs more, and an
     Area is never drawn narrower than its header. So the row needs that
     header's width, the 8 px handle and the wide View's 400 px. The sum of
-    the Views' needs, 60 + 8 + 400 = 468 px, would leave the page too narrow
-    and one of the Views too small.
+    the Views' needs and the handle, 60 + 8 + 400 = 468 px, would leave the
+    page too narrow and one of the Views too small.
     """
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _NARROW), Area(AreaId(2), _WIDE)), 3)
@@ -2191,11 +2191,13 @@ def test_a_one_pixel_nudge_of_a_held_border_keeps_the_stored_fraction(
 ) -> None:
     """`PL-97WX`: a drag maps the pointer through the sizes the splitter draws.
 
-    The row is 0.7 / 0.3 of 800 px. The Big view on the right needs 300 px,
-    more than its 240 px share, so it is held at 300 and the border is drawn
-    at 500, not at 560. A press and a nudge of 1 px toward the held View move
-    nothing on screen, so they leave the stored 0.7 and say nothing. A drag of
-    20 px the other way draws the border at 480, a share of 480 / 800 = 0.6.
+    The row splits 800 px as 0.7 / 0.3. The Big view on the right needs 300 px,
+    which is more than its 240 px share. So it is held at 300, and the border
+    is drawn at 500, not at 560. A press and a nudge of 1 px toward the held
+    View move nothing on screen. So they leave the stored 0.7 and emit no
+    `layout_changed`.
+    A drag of 20 px the other way draws the border at 480, a share of
+    480 / 800 = 0.6.
     """
 
     model = _layout(_row((0.7, 0.3), _area(1), Area(AreaId(2), _BIG)), 3)
@@ -2271,11 +2273,11 @@ def test_a_keyboard_step_toward_a_held_view_keeps_the_stored_fraction(
 ) -> None:
     """`PL-97WX`: a step is mapped through the drawn sizes, as a drag is.
 
-    The row is 0.7 / 0.3 of 800 px, and the Big view on the right is held at
+    The row splits 800 px as 0.7 / 0.3. The Big view on the right is held at
     300 px, so the border is drawn at 500. A step right would make that View
-    narrower than it needs, so the border stops there. Its line turns WARNING,
-    and the stored 0.7 stays. A step left draws the border at 500 - 20 = 480,
-    a share of 480 / 800 = 0.6.
+    narrower than it needs, so the border stops there. The border's line turns
+    WARNING, and the stored 0.7 stays. A step left draws the border at
+    500 - 20 = 480, a share of 480 / 800 = 0.6.
     """
 
     model = _layout(_row((0.7, 0.3), _area(1), Area(AreaId(2), _BIG)), 3)
