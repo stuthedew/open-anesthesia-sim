@@ -915,9 +915,9 @@ code, not a use for the table.
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$, so that $`Q_i = f_iQ`$ | dimensionless | `TissueGroup.perfusion_fraction` |
 | $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, at age 40. It is used only as a display divisor and appears in no governing equation | percent | `AgentParameters.mac_percent` |
-| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless | `AgentParameters.blood_gas_partition_coefficient` |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, which is the coefficient the agent data files store | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
-| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ | dimensionless | `TissueGroup.tissue_blood_partition_coefficient` |
+| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
 | $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas | `BreathingCircuit.agent_amount_l` |
 | $`M_A`$ | Agent stored in alveolar gas | L equivalent gas | `AlveolarCompartment.agent_amount_l` |
 | $`M_v`$ | Agent stored in venous blood | L equivalent gas | `VenousBloodCompartment.agent_amount_l` |
@@ -978,6 +978,19 @@ $$
 
 The blood:gas partition coefficient relates the concentration of agent
 dissolved in blood to the gas-phase concentration at equilibrium.
+
+**The patient holds one blood:gas coefficient** (`PL-DQL9`). The agent's
+parameter file stores it, and `PatientCompartments.from_parameters` writes it
+once, into the venous pool. The lung's uptake term and every tissue group's
+tissue:blood coefficient read that one value, through
+`PatientCompartments.blood_gas_partition_coefficient`. The tissue groups store
+none. The pool refuses a second write of its coefficient, and the patient
+refuses a replacement pool whose coefficient differs. Until `PL-DQL9` each
+tissue group stored a copy of its own, and nothing checked that the four
+agreed. A pool replaced at 0.1 beside groups at sevoflurane's 0.65 conserved
+agent, so no check fired, and the run gave uptake curves that looked
+plausible and were wrong.
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
 Arterial blood is flow-limited (see § "Model boundary"). It has no capacity
 or amount balance of its own. Instead, $`F_a \equiv F_A`$ at every instant.
@@ -1050,7 +1063,8 @@ Each group has:
 - an agent tissue:gas partition coefficient $`\lambda_{i:g}`$, which is the
   coefficient stored for each agent;
 - an agent tissue:blood partition coefficient $`\lambda_{i:b}`$, which is
-  derived from the tissue:gas coefficient;
+  derived from the tissue:gas coefficient and the patient's one blood:gas
+  coefficient, which the group does not store;
 - a stored agent amount $`M_i`$; and
 - a derived partial-pressure-equivalent fraction $`F_i`$.
 
@@ -2365,8 +2379,13 @@ tissue:gas coefficient divided by the blood:gas coefficient. Two coefficients
 inside the envelope can form a quotient far outside it, such as 0.001 over
 10 000. `tissue_blood_partition_coefficient` in `core/numerical_envelope.py` is
 the one place that forms the quotient, and it builds the result as a
-`PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
-factors, so each checks the quotient whenever a factor is written.
+`PartitionCoefficient`. `AgentParameters` holds both factors, so it checks the
+quotient whenever a factor is written. A `TissueGroup` holds only the tissue:gas
+coefficient, so `PatientCompartments` checks each group's quotient when the
+patient is built and when a group is replaced (`PL-DQL9`). A group's tissue:gas
+coefficient is written once, when the group is built, and a later write is
+refused. A new coefficient therefore enters the patient only on a replaced
+group, where its quotient is checked.
 
 **Every input to `core/` has an interval, and one sweep tests them**
 (`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
@@ -6988,7 +7007,9 @@ times the patient's cardiac output, $`Q_i = f_iQ`$.
 `TissueGroup.blood_flow_l_min_at` is the one place where that product is
 formed. The venous pool's flow is the cardiac output itself. Each
 compartment's `time_constant_s` and `advance()` take the flow as an argument,
-as $`\tau_i = V_i\lambda_{i:b}/Q_i`$ does. Until `PL-HQF5` each compartment
+as $`\tau_i = V_i\lambda_{i:b}/Q_i`$ does. A tissue group's methods take the
+blood:gas coefficient as an argument too, for the same reason (`PL-DQL9`, in
+§ "Blood compartments"). Until `PL-HQF5` each compartment
 stored a flow of its own. Three kinds of write could put that stored flow out
 of step with the output. The first was a compartment's own `set_blood_flow`.
 The second was a change to a tissue's perfusion fraction. The third was a

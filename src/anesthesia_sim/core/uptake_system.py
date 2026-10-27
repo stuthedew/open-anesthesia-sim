@@ -578,7 +578,7 @@ class AgentUptakeSystem:
             fresh_gas_flow_l_min=self.circuit.fresh_gas_flow_l_min,
             alveolar_ventilation_l_min=self.alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
-            blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
+            blood_gas_partition_coefficient=patient.blood_gas_partition_coefficient,
             delivered_concentration_percent=self.circuit.delivered_concentration_percent,
             max_delivered_concentration_percent=self.circuit.max_delivered_concentration_percent,
             tissues=tuple(
@@ -586,7 +586,11 @@ class AgentUptakeSystem:
                     name=tissue.name,
                     volume_l=tissue.volume_l,
                     blood_flow_l_min=tissue.blood_flow_l_min_at(patient.cardiac_output_l_min),
-                    tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
+                    tissue_blood_partition_coefficient=(
+                        tissue.tissue_blood_partition_coefficient_for(
+                            patient.blood_gas_partition_coefficient
+                        )
+                    ),
                 )
                 for tissue in patient.tissues
             ),
@@ -691,7 +695,7 @@ class AgentUptakeSystem:
             self.circuit.fresh_gas_flow_l_min,
             self.alveoli.alveolar_ventilation_l_min,
             patient.cardiac_output_l_min,
-            venous_blood.blood_gas_partition_coefficient,
+            patient.blood_gas_partition_coefficient,
             self.circuit.delivered_concentration_percent,
             self.circuit.max_delivered_concentration_percent,
             *(
@@ -700,7 +704,9 @@ class AgentUptakeSystem:
                 for value in (
                     tissue.volume_l,
                     tissue.blood_flow_l_min_at(patient.cardiac_output_l_min),
-                    tissue.tissue_blood_partition_coefficient,
+                    tissue.tissue_blood_partition_coefficient_for(
+                        patient.blood_gas_partition_coefficient
+                    ),
                 )
             ),
         )

@@ -3,9 +3,10 @@ from dataclasses import replace
 
 import pytest
 
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.numerical_envelope import CompartmentVolume
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     FLOW_FRACTION_TOLERANCE,
     load_agent_parameters,
@@ -102,12 +103,13 @@ def test_each_tissue_group_takes_its_own_agents_coefficients(
 
     assert [group.name for group in groups] == ["vessel_rich", "muscle", "fat"]
     assert [group.tissue_gas_partition_coefficient for group in groups] == list(tissue_gas)
-    assert [group.blood_gas_partition_coefficient for group in groups] == [blood_gas] * 3
-    assert [group.tissue_blood_partition_coefficient for group in groups] == [
-        coefficient / blood_gas for coefficient in tissue_gas
-    ]
+    assert [
+        group.tissue_blood_partition_coefficient_for(patient.blood_gas_partition_coefficient)
+        for group in groups
+    ] == [coefficient / blood_gas for coefficient in tissue_gas]
     assert [group.perfusion_fraction for group in groups] == [0.76, 0.18, 0.06]
     assert patient.venous_blood.blood_gas_partition_coefficient == blood_gas
+    assert patient.blood_gas_partition_coefficient == blood_gas
 
 
 def test_allocates_cardiac_output_to_tissues() -> None:
@@ -255,6 +257,91 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
 
     assert patient.vessel_rich.volume_l == 7.0
     assert patient.total_perfusion_fraction == pytest.approx(1.0, abs=FLOW_FRACTION_TOLERANCE)
+
+
+def test_a_patient_holds_one_blood_gas_coefficient() -> None:
+    """The patient's blood carries the agent at one solubility (a regression test, `PL-DQL9`).
+
+    Each tissue group and the venous pool used to store a blood:gas coefficient
+    of its own, and nothing checked that the four copies agreed. The lung read
+    the pool's copy, and each tissue:blood coefficient read its group's copy.
+    When the pool was replaced by one at 0.1 beside groups at sevoflurane's
+    0.65, the run kept going and conserved agent, but its uptake curves looked
+    plausible and were wrong. Now the groups store none, the pool's copy is
+    written once, and a replacement pool must carry the coefficient the
+    patient holds. The refused replacement leaves the patient as it was. A
+    pool at the same coefficient is accepted.
+    """
+
+    patient = _build_patient()
+    venous_blood = patient.venous_blood
+
+    for group in patient.tissues:
+        assert not hasattr(group, "blood_gas_partition_coefficient")
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^a venous pool with a blood:gas partition coefficient of 0.1 was refused. "
+        "The patient holds 0.65",
+    ):
+        patient.venous_blood = VenousBloodCompartment(
+            volume_l=venous_blood.volume_l,
+            blood_gas_partition_coefficient=PartitionCoefficient(0.1),
+        )
+
+    with pytest.raises(SimulationConfigurationError, match="cannot be written again, as 0.1"):
+        venous_blood.blood_gas_partition_coefficient = PartitionCoefficient(0.1)
+
+    with pytest.raises(
+        TypeError, match="^venous_blood of 1.0 has type float, not VenousBloodCompartment$"
+    ):
+        patient.venous_blood = 1.0  # type: ignore[assignment]
+
+    assert patient.venous_blood is venous_blood
+    assert patient.blood_gas_partition_coefficient == 0.65
+
+    patient.venous_blood = replace(venous_blood, volume_l=CompartmentVolume(2.0))
+
+    assert patient.venous_blood.volume_l == 2.0
+    assert patient.blood_gas_partition_coefficient == 0.65
+
+
+def test_a_tissue_blood_quotient_outside_the_envelope_is_refused_where_the_patient_forms_it() -> (
+    None
+):
+    """The patient checks each tissue:blood quotient, because no tissue group stores the divisor.
+
+    A tissue:gas coefficient of 1e4 against sevoflurane's blood:gas of 0.65
+    gives a tissue:blood coefficient of about 1.5e4, above the envelope's 1e4
+    (`core/numerical_envelope.py`). The patient refuses such a group when it is
+    built and when the group replaces one (`PL-DQL9`). The patient cannot see a
+    tissue:gas coefficient written straight onto a group, so the group refuses
+    that write and keeps the coefficient it was built with. Before, the write
+    was accepted, and the next step halted with an error that blamed the
+    numerics (found at review).
+    """
+
+    agent = load_sevoflurane_parameters()
+    reference = load_reference_adult_parameters()
+    patient = PatientCompartments.from_parameters(agent=agent, patient=reference)
+    too_soluble = replace(patient.fat, tissue_gas_partition_coefficient=PartitionCoefficient(1e4))
+
+    with pytest.raises(SimulationConfigurationError, match="^fat tissue_blood_partition_coeff"):
+        PatientCompartments(
+            cardiac_output_l_min=patient.cardiac_output_l_min,
+            vessel_rich=patient.vessel_rich,
+            muscle=patient.muscle,
+            fat=too_soluble,
+            venous_blood=patient.venous_blood,
+        )
+
+    with pytest.raises(SimulationConfigurationError, match="^fat tissue_blood_partition_coeff"):
+        patient.fat = too_soluble
+
+    with pytest.raises(SimulationConfigurationError, match="cannot be written again, as 10000.0"):
+        patient.fat.tissue_gas_partition_coefficient = PartitionCoefficient(1e4)
+
+    assert patient.fat.tissue_gas_partition_coefficient == 34.0
 
 
 def test_tissue_return_is_flow_weighted() -> None:
