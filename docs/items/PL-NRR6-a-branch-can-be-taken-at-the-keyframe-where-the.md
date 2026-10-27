@@ -3,11 +3,13 @@ id: PL-NRR6
 title: A branch can be taken at the keyframe where the paused trunk stands, but the trunk can still replace or delete that keyframe with another setting change at the same instant, after which the branch's `opened_from` names a stretch the trunk never ran and `trunk.resumed_at` refuses the instant the branch opened at
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1844
 payoff: a branch's provenance always names a stretch its parent actually ran, as the safety standard requires of every displayed value
 verify: grep -q 'def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk' tests/integration/test_controller.py
 recurrences: 2026-10-25 PL-TNYP withdrawn 2026-10-27 PL-8MRM
@@ -20,3 +22,5 @@ recurrences: 2026-10-25 PL-TNYP withdrawn 2026-10-27 PL-8MRM
 **Done when.** After a branch is taken at the paused trunk's own instant, a trunk change at that instant leaves `branch.opened_from.segment` in the trunk's run segments and `trunk.resumed_at` still accepts the fork instant, or the fork at the trunk's open instant is refused. `tests/integration/test_controller.py` has `test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk`.
 
 **Found by.** `PL-TBQS` reviewer replay on #568, finding r01 F2. Checked against main 2026-10-25, reproduced with `scripts/B_branch.py`.
+
+**Closed 2026-10-26 by `PL-ZR49`, with one clause changed.** `tests/integration/test_controller.py::test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk` checks that `branch.opened_from.segment` stays in the trunk's segments after the trunk sets the dial back, because the provenance is now the stretch the step reaching the fork ran under. The second clause, that `trunk.resumed_at` still accepts the fork instant, no longer applies: setting the dial back removes the trunk's keyframe there, because the trunk no longer changed anything at that instant. The instant stays offered by `here_fork_point` while the trunk stands there, and a branch taken there names a provenance equal to the first branch's, which the test checks.

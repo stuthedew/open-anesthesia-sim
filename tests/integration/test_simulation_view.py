@@ -8996,29 +8996,35 @@ def _branch_holding_work(view: SimulationView, application: QApplication, work: 
 
 
 @pytest.mark.parametrize(
-    ("work", "warning"),
+    ("work", "warning", "listed"),
     [
         (
             "elapsed",
-            "Run 2 — branched at 1m and run to 1m0.4s, 0 recorded control changes — will be "
+            "Run 2 — branched at 1m and run to 1m0.4s, 1 recorded control change — will be "
             "discarded along with its chart history. This cannot be undone.",
+            1,
         ),
         (
             "change",
-            "Run 2 — branched at 1m, 1 recorded control change — will be discarded along with "
+            "Run 2 — branched at 1m, 2 recorded control changes — will be discarded along with "
             "its chart history. This cannot be undone.",
+            2,
         ),
     ],
 )
 def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
-    application: QApplication, work: str, warning: str
+    application: QApplication, work: str, warning: str, listed: int
 ) -> None:
-    """`PL-W5WX`: the press is on Run 1, so Run 2's work is not discarded until the reader says so.
+    """Reset on Run 1 does not discard Run 2's work until the learner agrees (`PL-W5WX`).
 
-    The test covers both halves of `has_recorded_run`, because a question
-    that checked only one half would miss the other. The warning is a
-    literal: four steps of 0.1 s from the 60 s fork reach 1m0.4s on the case
-    clock.
+    The `work` parameter takes the values `elapsed` and `change`, one for each
+    condition that `has_recorded_run` checks. A question that checked only one
+    of them would miss the other. The expected warning is a literal string.
+    Four steps of 0.1 s from the fork at 60 s reach 1m0.4s on the case clock.
+    In both cases the branch's "Control changes" panel lists the trunk's
+    change at 1m, which the branch opened with. For `change`, it also lists
+    the learner's change, recorded after the opened entry. The question
+    counts what the panel lists (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -9034,19 +9040,62 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     assert dialog.isVisible() is True
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
     assert dialog.body_labels[1].text() == warning
+    assert len(branch._control_timeline_text.text().splitlines()) == listed
     assert len(view.runs) == 2
     assert view.case is case
     assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == before
     assert view.runs[TRUNK_RUN_INDEX].snapshot().elapsed_s == pytest.approx(60.0)
 
 
-def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
-    """`PL-WM5P`: the Reset question names the branch work as it stands now, not when asked.
+def test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow(
+    application: QApplication,
+) -> None:
+    """A branch that the learner set back to the trunk's earlier flow holds work (`PL-ZR49`).
 
-    Reset stays enabled while the runs step, so a branch goes on running
+    The trunk's fresh gas flow went from 4 to 2 L/min at 1m, and a branch is
+    taken there. The branch opens at 2 L/min, which is what the dial said.
+    The learner sets it back to 4 L/min at the fork. The branch's "Control
+    changes" panel lists the trunk's change and then the learner's, and the
+    trunk's Reset asks before it discards the branch. Both blind review
+    passes of the rework found that the learner's change deleted the opened
+    entry instead. The panel was then empty, and the trunk's Reset discarded
+    the branch without asking.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    branch = view.runs[BRANCH_RUN_INDEX]
+    _set_fresh_gas_flow(branch, 4.0)
+    _settle(application)
+
+    assert branch.snapshot().fresh_gas_flow_l_min == 4.0
+    assert len(branch._control_timeline_text.text().splitlines()) == 2
+
+    view.runs[TRUNK_RUN_INDEX]._reset_button.click()
+    _settle(application)
+
+    dialog = view.runs[TRUNK_RUN_INDEX]._reset_dialog
+    assert dialog is not None
+    assert dialog.isVisible() is True
+    assert dialog.body_labels[1].text() == (
+        "Run 2 — branched at 1m, 2 recorded control changes — will be discarded along with "
+        "its chart history. This cannot be undone."
+    )
+    assert len(view.runs) == 2
+    assert view.case is case
+
+
+def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
+    """The Reset question reports the branch's work as it is now (`PL-WM5P`).
+
+    The question does not report the work as it was when it was asked.
+    Reset stays enabled while the runs advance, so a branch goes on running
     while the trunk's question is open. The test compares the warning with a
-    literal string: four steps of 0.1 s from the 60 s fork reach 1m0.4s, and
-    four more reach 1m0.8s.
+    literal string. Four steps of 0.1 s from the fork at 60 s reach 1m0.4s,
+    and four more reach 1m0.8s. The one recorded change is the trunk's change
+    at 1m. The branch opened with that change, and its "Control changes"
+    panel lists it (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -9064,7 +9113,7 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     view.present(False)
 
     assert dialog.body_labels[1].text() == (
-        "Run 2 — branched at 1m and run to 1m0.8s, 0 recorded control changes — will be "
+        "Run 2 — branched at 1m and run to 1m0.8s, 1 recorded control change — will be "
         "discarded along with its chart history. This cannot be undone."
     )
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
@@ -9671,9 +9720,9 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     back from the selector, rather than measuring it as a bare string.
 
     Returns:
-        The entry's advance, its drawn width, and the width of the
-        selector's text field. Both are in pixels, in the font the selector
-        is drawn in.
+        The entry's advance, which is its drawn width, and the width of the
+        selector's text field. Both are in pixels, in the font that the
+        selector is drawn in.
     """
 
     view = _case_view(application, _branched_case())
