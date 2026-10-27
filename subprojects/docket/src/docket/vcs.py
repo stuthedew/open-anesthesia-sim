@@ -6857,3 +6857,56 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     committed = listed_paths(run(changed_path_args("diff", "--name-only", f"{base}...HEAD"), root))
     found = {*committed, *uncommitted_paths(root, run)}
     return WorkingPaths(paths=tuple(sorted(found)), base=base, declined=run.reason)
+
+
+@dataclass(frozen=True)
+class FiledHere:
+    """The items whose files this checkout added, and why that is unknown where it is.
+
+    An empty `ids` means "this branch filed nothing" or "git did not answer",
+    and `declined` tells the two apart, as it does on `WorkingPaths`.
+    """
+
+    ids: frozenset[str] = frozenset()
+    declined: str = ""
+
+
+def filed_here(root: Path, items_dir: str, *, runner: Runner | None = None) -> FiledHere:
+    """The items whose files this checkout added: committed on the branch, and not yet.
+
+    `bin/docket new` reads this beside `claims.claimed_here`, so that a capture
+    is never matched to an item the filing session wrote itself (`PL-8MRM`). A
+    session files several findings with one `--touches` value, and each one
+    after the first shared that path with the ones before it. A recurrence is
+    a filing by a session that did not know the item existed, and this session
+    wrote it.
+
+    The branch half is `base...HEAD`, for the reason `working_paths` gives. The
+    uncommitted half is the index against `HEAD` and the untracked files, since
+    a capture made a minute ago is usually not committed yet. These reads pair
+    renames (`-M`) rather than going through `changed_path_args`, because a
+    retitled item is not a new filing. An untracked file has no deletion to pair
+    with, so an uncommitted retitle reads as added. The session that retitled
+    it knew it existed, so leaving it out is still correct.
+
+    A file is an item when it sits directly in `items_dir` and its name leads
+    with an id, as `item_additions` reads one. Where git does not answer, the
+    result says so in `declined`. `bin/docket new` then reads no ids, and the
+    capture is searched as it was before this existed.
+    """
+    run = _Silences(runner or _run_git)
+    directory = items_dir.strip("/")
+    added = ["-z", "--name-only", "-M", "--diff-filter=A"]
+    base = default_base(root, runner=run)
+    listings = (
+        run(["diff", *added, f"{base}...HEAD", "--", directory], root),
+        run(["diff", *added, "--cached", "HEAD", "--", directory], root),
+        run([*untracked_path_args(), "--", directory], root),
+    )
+    found: set[str] = set()
+    for path in (path for listing in listings for path in listed_paths(listing)):
+        folder, _, name = path.rpartition("/")
+        match = ITEM_FILE_RE.match(name) if folder == directory else None
+        if match is not None:
+            found.add(match.group(1))
+    return FiledHere(ids=frozenset(found), declined=run.reason)

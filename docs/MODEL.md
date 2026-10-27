@@ -6854,6 +6854,20 @@ checked one. This is the shape that `SimulationStep` gives the step. It is
 also the first slice of `PL-51B7`, which carries the shape to the remaining
 checked quantities.
 
+**A settings record read back from a pickle runs the same checks**
+(`PL-S11T`). Unpickling or copying a frozen settings record restores it
+through `__setstate__`, which by default writes each saved value straight into
+its field, so `__post_init__` never ran. A saved record whose state held a
+cardiac output of 1000.0 as a bare `float` loaded, and a run opened under it
+advanced. `UptakeEquationSettings` and `TissueGroupEquationSettings` now
+restore their state by building a new record from the saved values. So a
+saved value that the constructor would refuse is refused on load, at every
+pickle protocol, with the constructor's own exception. This protects against
+a saved value that is wrong, not against a pickle built to attack, because a
+pickle can call any importable function. Nothing in `src/` loads a pickle yet.
+The other records that a saved run holds, such as `RunDefinition` and
+`Keyframe`, do not yet check their state on load (`PL-8W1Q`).
+
 **An assignment straight onto the field meets the same refusal, at the write**
 (`PL-LBQY`; project owner, 2026-10-04, ratified, over frozen compartments, at
 45 test rewrites and an `object.__setattr__` on every per-step write, and over
@@ -10779,13 +10793,113 @@ dial times the flow times the time. It takes the same resolution so that the
 three amounts read at one scale. The panel states the unit as this document
 states it, litres of equivalent pure agent gas, because a bare "L" beside an
 anaesthetic agent invites a reader to take it as litres of liquid.
-`AGENT_VOLUME_DISPLAY_DECIMALS` stores the count, `format_agent_volume`
+`AGENT_AMOUNT_DISPLAY_PRECISION` stores the count, `format_agent_volume`
 defines the form, and `test_agent_amounts_precision` pins both. Precision in
 this interface is set by what each number is for, and the rule above governs
 the clinical readouts.
 <!-- not-restated: 0.18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 0.01 L -->
+
+**An agent amount's precision is derived for the amount in a unit, not for the
+amount alone** (`PL-0S0V`, 2026-10-27). The derivation above is about the
+litre of vapour, and it does not carry over to another unit. v0.7.0 is
+scoped to show the delivered total in millilitres of liquid on the agent cost
+View (`PL-B396`), and each compartment's amount in millilitres of vapour on
+the compartment schematic (`PL-2881`). Neither is built yet. So
+`app/formatting.py` keys each precision by the amount and the unit, in
+`AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an `AgentAmountPrecision`,
+which holds the amount, the unit and the count shown. It reads the finest
+count from the derivation for that amount and unit, so no caller can pass a
+looser bound. The bound is one-sided. A count coarser than the derivation loses
+detail but claims nothing false. A finer one claims a resolution that the
+parameters or the conversion do not support, so `AgentAmountPrecision` refuses
+it when it is built rather than clamping it. A precision that a reader could
+set would be built the same way. An amount in a unit that has no derivation is
+refused, rather than shown at a default.
+
+| Amount | Unit | Decimals | Resolution | Derived from |
+| --- | --- | --- | --- | --- |
+| A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above (`PL-TG60`) |
+| The delivered total | Millilitres of liquid | 1 | 0.1 mL | One SD of the measured liquid density |
+| The exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
+| The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
+| One compartment's amount | Millilitres of vapour | None yet | - | `PL-2881` derives it |
+
+**The exhausted total in millilitres of liquid is shown in whole
+millilitres.** The exhausted total carries the partition coefficients'
+uncertainty, so in liquid it must not claim a finer resolution than in litres
+of vapour. Otherwise a reader who switches the unit sees the model resolve a
+difference in one unit that it does not resolve in the other. So its liquid
+count is derived from the litre's, the way the MAC count is derived from the
+percent's. It is the finest power of ten that resolves no finer than one count
+of the litre display converted into liquid. At the 20 °C reference of
+§ "Agent amount", 0.1 L of vapour is 0.55 mL of sevoflurane liquid, 0.51 mL of
+isoflurane and 0.48 mL of desflurane. So 1 mL is the finest power of ten at or
+above all three. The parameter spread gives the same answer independently. At
+24 h the exhaust total's shift is 0.19 L of sevoflurane vapour, 0.18 L of
+isoflurane and 0.23 L of desflurane. Each agent's own ratio makes that 1.04,
+0.92 and 1.10 mL of liquid. One count of 1 mL is then about one SD, and 0.1 mL
+would be a tenth of one.
+`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
+repeats the conversion for every shipped agent from the stored molar mass and
+density.
+<!-- not-restated: 1.10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**The delivered total in millilitres of liquid is shown to a tenth** (project
+owner, 2026-10-27, ratified, over whole millilitres). The delivered agent is
+the dial times the flow times the time, so no partition coefficient makes it
+uncertain. Both totals are gas at room temperature, so the conversion to
+liquid at the 20 °C reference is exact for them. That leaves one uncertainty
+in the delivered figure in liquid: the measured density's, whose SD is
+0.0008, 0.0006 and 0.0004 g/mL for sevoflurane, isoflurane and desflurane. One
+SD moves the figure by 0.1 mL only once it holds about 190 mL of sevoflurane,
+250 mL of isoflurane or 366 mL of desflurane. At Gas Man's Exercise 14-1,
+39.4 mL of isoflurane, one SD is 0.016 mL. So 0.1 mL lies inside the band that
+the density spans across the supported settings, as 0.1 L does for the
+partition coefficients above. Above those volumes the last digit is finer than
+one SD of the density. At 2% sevoflurane and 2 L/min, 190 mL takes about
+14.5 h. At the dial's maximum of 8% and 10 L/min, it takes 43 min. The tenth
+also lets a reader multiply the delivered figure by the price per millilitre
+beside it and get the cost, as § "A cost at the reader's price" asks. The
+delivered total's litre count stays at 0.1 L, which is coarser than the
+delivered amount supports. The one-sided bound allows that, and it keeps the
+accounting panel's three totals on one scale.
+`test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth`
+computes the three volumes from the stored densities.
+<!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.standard_deviation_g_ml = 0.0006 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.standard_deviation_g_ml = 0.0004 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- not-restated: 2 % -->
+
+**The stored total has no liquid precision, and is refused in liquid.** A store
+converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
+with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
+a long run it is several. No count of decimals can make a figure with a known
+bias of several counts read correctly. So the stored total keeps litres of
+vapour, as the accounting panel shows it.
+
+**What this section does not yet derive.** A compartment's amount needs its
+own derivation, which `PL-2881` writes. At the totals' 0.1 L, venous blood and
+the alveoli read below resolution for a whole hour at 1 MAC. A cost in money
+depends on a price that the reader sets, so its resolution is not a constant,
+and `PL-1P15` derives it. Concentration, flow, MAC multiples and the F_A/F_I
+ratio are each shown in one unit, so each keeps one count. If a reader is ever
+given a choice of unit for one of them, its count moves into a table of the same
+shape.
+
+**Two of those counts are not display-only.** `CONCENTRATION_DISPLAY_DECIMALS`
+and `FLOW_DISPLAY_DECIMALS` set the slider steps, as the paragraph on precision
+elsewhere in the interface says. So they also decide which settings can reach
+the model. And `app/wash_in.py` derives `WASH_IN_DENOMINATOR_FLOOR_FRACTION`
+from the concentration resolution. That fraction is the smallest inspired
+fraction an F_A/F_I ratio may be formed from (§ "F_A/F_I as a displayed
+ratio"). One more decimal of concentration moves that floor down tenfold. So a
+change to either count is a change to the model's reachable inputs, and is
+derived here first.
 
 The chart plots the same percentages on a shared linear axis that runs from 0
 to 3 ×MAC of the running agent. A second axis on the right shows the identical
