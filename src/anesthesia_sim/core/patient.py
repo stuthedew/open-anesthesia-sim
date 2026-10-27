@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     AgentParameters,
     ReferenceAdultParameters,
@@ -59,7 +60,7 @@ class PatientCompartments:
     venous_blood: VenousBloodCompartment
 
     def __post_init__(self) -> None:
-        """Refuse tissue perfusion fractions that do not sum to 1.
+        """Refuse fractions that do not sum to 1, or a tissue:blood coefficient out of range.
 
         Each tissue group's blood flow is its perfusion fraction of the
         cardiac output, and the venous pool's flow is the whole cardiac output
@@ -72,14 +73,26 @@ class PatientCompartments:
         tissue group of a built patient is replaced. So the relation checked
         here still applies for the patient's whole life.
 
+        The patient holds one blood:gas partition coefficient, in its venous
+        pool (`PL-DQL9`). Each tissue group's tissue:blood coefficient is its
+        tissue:gas coefficient divided by that one. Each quotient must lie
+        inside the numerical envelope (`core/numerical_envelope.py`), and it is
+        checked here, because no tissue group stores the divisor.
+        `__setattr__` checks the quotient again when a tissue group is
+        replaced.
+
         Raises:
             SimulationConfigurationError: the tissue perfusion fractions do not
-                sum to 1.
+                sum to 1, or a tissue group's tissue:blood coefficient lies
+                outside the numerical envelope.
         """
 
         # `__setattr__` below already checked the cardiac output's type when
         # the constructor wrote the field.
         require_perfusion_fractions_sum_to_one(self.total_perfusion_fraction)
+
+        for tissue in self.tissues:
+            tissue.tissue_blood_partition_coefficient_for(self.blood_gas_partition_coefficient)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. When a class defines `__setattr__`,
@@ -117,18 +130,32 @@ class PatientCompartments:
             group is refused unless the three fractions still sum to 1, as
             `__post_init__` requires (`PL-Z0HN`). The constructor, a copy and
             a pickle write each tissue group first onto a patient that has
-            none, and those writes are left to `__post_init__`.
+            none, and those writes are left to `__post_init__`. The new group's
+            tissue:blood coefficient, formed from the venous pool's blood:gas
+            coefficient, must also lie inside the numerical envelope.
+
+            A venous pool written to a built patient is refused unless its
+            blood:gas coefficient equals the one the patient holds (`PL-DQL9`).
+            Every tissue group's tissue:blood coefficient is formed from that
+            one coefficient. A pool replaced at 0.1 beside tissue groups built
+            for sevoflurane at 0.65 once ran on with uptake curves that looked
+            plausible and were wrong.
 
             Raises:
                 TypeError: `name` is `cardiac_output_l_min` and `value` was not
                     built as a `CardiacOutput` (`require_cardiac_output`), or
                     `name` names a tissue group and `value` is not a
-                    `TissueGroup`.
+                    `TissueGroup`, or `name` is `venous_blood` and `value` is
+                    not a `VenousBloodCompartment`.
                 SimulationConfigurationError: `name` is `cardiac_output_l_min`
                     on a built patient and `value` differs from the output it
                     holds; or `name` names a tissue group of a built patient,
                     and with `value` in its place the tissue perfusion
-                    fractions would not sum to 1.
+                    fractions would not sum to 1, or its tissue:blood
+                    coefficient would lie outside the numerical envelope; or
+                    `name` is `venous_blood` on a built patient and the new
+                    pool's blood:gas coefficient differs from the one the
+                    patient holds.
             """
 
             if name == "cardiac_output_l_min":
@@ -154,6 +181,22 @@ class PatientCompartments:
                         for field in _TISSUE_GROUP_FIELDS
                     )
                 )
+                value.tissue_blood_partition_coefficient_for(self.blood_gas_partition_coefficient)
+            elif name == "venous_blood" and hasattr(self, name):
+                if not isinstance(value, VenousBloodCompartment):
+                    raise TypeError(
+                        f"venous_blood of {value!r} has type {type(value).__name__}, "
+                        "not VenousBloodCompartment"
+                    )
+
+                if value.blood_gas_partition_coefficient != self.blood_gas_partition_coefficient:
+                    raise SimulationConfigurationError(
+                        "a venous pool with a blood:gas partition coefficient of "
+                        f"{value.blood_gas_partition_coefficient} was refused. The patient "
+                        f"holds {self.blood_gas_partition_coefficient}, and every tissue "
+                        "group's tissue:blood coefficient is formed from it (docs/MODEL.md, "
+                        '"Blood compartments"): build a new system for another agent'
+                    )
 
             super().__setattr__(name, value)
 
@@ -187,12 +230,14 @@ class PatientCompartments:
         checks the value only for sign and finiteness, and keeps no copy of the
         range.
 
+        The agent's blood:gas coefficient is written once, into the venous pool,
+        which is the patient's blood. The tissue groups store none (`PL-DQL9`).
+
         Raises:
             SimulationConfigurationError: the file's default cardiac output is
                 outside the supported range.
         """
 
-        blood_gas = agent.blood_gas_partition_coefficient
         cardiac_output_l_min = CardiacOutput(patient.default_cardiac_output_l_min)
 
         return cls(
@@ -201,7 +246,6 @@ class PatientCompartments:
                 name="vessel_rich",
                 volume_l=patient.vessel_rich_volume_l,
                 perfusion_fraction=patient.vessel_rich_perfusion_fraction,
-                blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=(
                     agent.vessel_rich_tissue_gas_partition_coefficient
                 ),
@@ -210,20 +254,30 @@ class PatientCompartments:
                 name="muscle",
                 volume_l=patient.muscle_volume_l,
                 perfusion_fraction=patient.muscle_perfusion_fraction,
-                blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=agent.muscle_tissue_gas_partition_coefficient,
             ),
             fat=TissueGroup(
                 name="fat",
                 volume_l=patient.fat_volume_l,
                 perfusion_fraction=patient.fat_perfusion_fraction,
-                blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=agent.fat_tissue_gas_partition_coefficient,
             ),
             venous_blood=VenousBloodCompartment(
-                volume_l=patient.venous_pool_volume_l, blood_gas_partition_coefficient=blood_gas
+                volume_l=patient.venous_pool_volume_l,
+                blood_gas_partition_coefficient=agent.blood_gas_partition_coefficient,
             ),
         )
+
+    @property
+    def blood_gas_partition_coefficient(self) -> PartitionCoefficient:
+        """Return the patient's one blood:gas partition coefficient, $`\\lambda_{b:g}`$.
+
+        The venous pool stores it, because it is a property of the blood
+        (`PL-DQL9`). The lung's uptake term and every tissue group's
+        tissue:blood coefficient read it from here.
+        """
+
+        return self.venous_blood.blood_gas_partition_coefficient
 
     @property
     def tissues(self) -> tuple[TissueGroup, ...]:

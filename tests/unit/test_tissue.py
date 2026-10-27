@@ -19,6 +19,13 @@ Since `PL-HQF5` a tissue group stores no flow, so each closed form takes the flo
 """
 
 
+BLOOD_GAS = PartitionCoefficient(0.5)
+"""The blood:gas coefficient that these tests pass to a tissue group's methods.
+
+Since `PL-DQL9` a tissue group stores none. The patient's venous pool holds the one copy.
+"""
+
+
 # The end of a shared guard's refusal message, which names the refused value and the reason
 # (`PL-T137`). The guard's own tests check each reason. The tests here check the field name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
@@ -29,7 +36,6 @@ def _build_tissue() -> TissueGroup:
         name="test",
         volume_l=CompartmentVolume(2.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.5),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
 
@@ -40,7 +46,6 @@ def test_rejects_empty_tissue_name() -> None:
             name=" ",
             volume_l=CompartmentVolume(2.0),
             perfusion_fraction=0.2,
-            blood_gas_partition_coefficient=PartitionCoefficient(0.5),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
@@ -53,7 +58,6 @@ def test_rejects_perfusion_fraction_above_one() -> None:
             name="test",
             volume_l=CompartmentVolume(2.0),
             perfusion_fraction=1.1,
-            blood_gas_partition_coefficient=PartitionCoefficient(0.5),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
@@ -70,7 +74,6 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
             name="test",
             volume_l=CompartmentVolume(2.0),
             perfusion_fraction=0.2,
-            blood_gas_partition_coefficient=PartitionCoefficient(0.5),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
             agent_amount_l=4.1,
         )
@@ -205,19 +208,10 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
         ),
         pytest.param(
             "blood_gas_partition_coefficient",
-            0.0,
-            TypeError,
-            "^test blood_gas_partition_coefficient of 0.0 was not built as PartitionCoefficient, "
-            "it is float",
-            id="zero-blood-gas-coefficient",
-        ),
-        pytest.param(
-            "blood_gas_partition_coefficient",
-            inf,
-            TypeError,
-            "^test blood_gas_partition_coefficient of inf was not built as PartitionCoefficient, "
-            "it is float",
-            id="infinite-blood-gas-coefficient",
+            PartitionCoefficient(0.5),
+            AttributeError,
+            "^'TissueGroup' object has no attribute 'blood_gas_partition_coefficient'",
+            id="blood-gas-coefficient-is-no-field",
         ),
         pytest.param(
             "tissue_gas_partition_coefficient",
@@ -290,8 +284,8 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 
     A volume or a tissue:gas coefficient that gives a capacity equal to the agent held means
     a partial pressure of exactly one atmosphere, and that value is written. The
-    coefficient's capacity is formed with the volume, not with the blood:gas coefficient,
-    which this tissue holds at a quarter of its tissue:gas coefficient.
+    coefficient's capacity is formed with the volume. The group stores no blood:gas
+    coefficient, so none enters the capacity (`PL-DQL9`).
     `dataclasses.replace` builds a new tissue through its constructor's writes. A copy and a
     pickle restore the fields one at a time through `__setattr__`. So a perfusion fraction
     planted by bypassing the guard is refused when a copy or a pickle is made, rather than
@@ -341,7 +335,7 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
         SimulationConfigurationError,
         match="^test blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
     ):
-        tissue.time_constant_s(blood_flow_l_min)
+        tissue.time_constant_s(blood_flow_l_min, BLOOD_GAS)
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -351,6 +345,7 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
             arterial_partial_pressure_fraction=Fraction(1.0),
             simulation_step_s=1.0,
             blood_flow_l_min=blood_flow_l_min,
+            blood_gas_partition_coefficient=BLOOD_GAS,
         )
 
     assert astuple(tissue) == held
@@ -380,7 +375,7 @@ def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:
 def test_derives_tissue_blood_partition_coefficient() -> None:
     tissue = _build_tissue()
 
-    assert tissue.tissue_blood_partition_coefficient == 4.0
+    assert tissue.tissue_blood_partition_coefficient_for(BLOOD_GAS) == 4.0
 
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
@@ -388,8 +383,9 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
     tissue.advance(
         arterial_partial_pressure_fraction=Fraction(1.0),
-        simulation_step_s=tissue.time_constant_s(BLOOD_FLOW_L_MIN),
+        simulation_step_s=tissue.time_constant_s(BLOOD_FLOW_L_MIN, BLOOD_GAS),
         blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        blood_gas_partition_coefficient=BLOOD_GAS,
     )
 
     assert tissue.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
@@ -414,30 +410,30 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
         name="larger",
         volume_l=CompartmentVolume(3.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.5),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
     more_soluble = TissueGroup(
         name="more soluble",
         volume_l=CompartmentVolume(2.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.5),
         tissue_gas_partition_coefficient=PartitionCoefficient(3.0),
     )
 
     assert larger.volume_l > baseline.volume_l
-    assert larger.tissue_blood_partition_coefficient == (
-        baseline.tissue_blood_partition_coefficient
+    assert larger.tissue_blood_partition_coefficient_for(BLOOD_GAS) == (
+        baseline.tissue_blood_partition_coefficient_for(BLOOD_GAS)
     )
 
     assert more_soluble.volume_l == baseline.volume_l
-    assert more_soluble.tissue_blood_partition_coefficient > (
-        baseline.tissue_blood_partition_coefficient
+    assert more_soluble.tissue_blood_partition_coefficient_for(BLOOD_GAS) > (
+        baseline.tissue_blood_partition_coefficient_for(BLOOD_GAS)
     )
 
-    assert larger.time_constant_s(BLOOD_FLOW_L_MIN) > baseline.time_constant_s(BLOOD_FLOW_L_MIN)
-    assert more_soluble.time_constant_s(BLOOD_FLOW_L_MIN) > baseline.time_constant_s(
-        BLOOD_FLOW_L_MIN
+    assert larger.time_constant_s(BLOOD_FLOW_L_MIN, BLOOD_GAS) > baseline.time_constant_s(
+        BLOOD_FLOW_L_MIN, BLOOD_GAS
+    )
+    assert more_soluble.time_constant_s(BLOOD_FLOW_L_MIN, BLOOD_GAS) > baseline.time_constant_s(
+        BLOOD_FLOW_L_MIN, BLOOD_GAS
     )
 
 
@@ -450,9 +446,10 @@ def test_zero_flow_preserves_tissue_state() -> None:
         arterial_partial_pressure_fraction=Fraction(1.0),
         simulation_step_s=60.0,
         blood_flow_l_min=0.0,
+        blood_gas_partition_coefficient=BLOOD_GAS,
     )
 
-    assert tissue.time_constant_s(0.0) == inf
+    assert tissue.time_constant_s(0.0, BLOOD_GAS) == inf
     assert amount_change == 0.0
     assert tissue.agent_amount_l == amount_before
     assert tissue.partial_pressure_fraction == 0.25
@@ -466,6 +463,7 @@ def test_washout_returns_agent_to_blood() -> None:
         arterial_partial_pressure_fraction=Fraction(0.0),
         simulation_step_s=10.0,
         blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        blood_gas_partition_coefficient=BLOOD_GAS,
     )
 
     assert amount_change < 0.0
@@ -480,6 +478,7 @@ def test_exact_update_is_independent_of_step_size() -> None:
         arterial_partial_pressure_fraction=Fraction(0.08),
         simulation_step_s=60.0,
         blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        blood_gas_partition_coefficient=BLOOD_GAS,
     )
 
     for _ in range(600):
@@ -487,6 +486,7 @@ def test_exact_update_is_independent_of_step_size() -> None:
             arterial_partial_pressure_fraction=Fraction(0.08),
             simulation_step_s=0.1,
             blood_flow_l_min=BLOOD_FLOW_L_MIN,
+            blood_gas_partition_coefficient=BLOOD_GAS,
         )
 
     assert many_steps.agent_amount_l == pytest.approx(one_step.agent_amount_l, rel=1e-12)
@@ -513,7 +513,6 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
             name="test",
             volume_l=CompartmentVolume(invalid_value, name="volume_l"),
             perfusion_fraction=0.2,
-            blood_gas_partition_coefficient=PartitionCoefficient(0.5),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
@@ -542,7 +541,6 @@ def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(
         name="test",
         volume_l=CompartmentVolume(2.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.5),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
     fields[factor] = "2"
@@ -586,8 +584,8 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
     tissue = _build_tissue()
 
-    assert tissue.time_constant_s(2.0) == pytest.approx(240.0, rel=1e-15)
-    assert tissue.time_constant_s(5.0) == pytest.approx(96.0, rel=1e-15)
+    assert tissue.time_constant_s(2.0, BLOOD_GAS) == pytest.approx(240.0, rel=1e-15)
+    assert tissue.time_constant_s(5.0, BLOOD_GAS) == pytest.approx(96.0, rel=1e-15)
 
 
 @pytest.mark.parametrize("factor", [1e200, 1e-200])
@@ -645,12 +643,12 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
             r'simulation step"\)$'
         ),
     ):
-        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN, BLOOD_GAS)
 
     assert tissue.agent_amount_l == held_l
 
-    tissue.advance(Fraction(0.02), 0.001, BLOOD_FLOW_L_MIN)
-    tissue.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
+    tissue.advance(Fraction(0.02), 0.001, BLOOD_FLOW_L_MIN, BLOOD_GAS)
+    tissue.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN, BLOOD_GAS)
 
     assert tissue.agent_amount_l > held_l
 
@@ -682,10 +680,10 @@ def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
             r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
         ),
     ):
-        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN, BLOOD_GAS)
 
     assert tissue.agent_amount_l == held_l
 
-    tissue.advance(Fraction(0.02), 86_400.0, BLOOD_FLOW_L_MIN)
+    tissue.advance(Fraction(0.02), 86_400.0, BLOOD_FLOW_L_MIN, BLOOD_GAS)
 
     assert tissue.agent_amount_l == pytest.approx(0.02 * tissue.capacity_l, rel=1e-15, abs=0.0)

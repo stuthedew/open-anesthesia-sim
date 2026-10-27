@@ -115,7 +115,6 @@ def _tissue_group() -> TissueGroup:
         name="vessel_rich",
         volume_l=CompartmentVolume(6.0),
         perfusion_fraction=1.0,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
         tissue_gas_partition_coefficient=PartitionCoefficient(1.14),
         agent_amount_l=0.41,
     )
@@ -162,13 +161,7 @@ COMPARTMENTS = (
         build=_tissue_group,
         run_state_fields=frozenset({"agent_amount_l"}),
         setting_fields=frozenset(
-            {
-                "name",
-                "volume_l",
-                "perfusion_fraction",
-                "blood_gas_partition_coefficient",
-                "tissue_gas_partition_coefficient",
-            }
+            {"name", "volume_l", "perfusion_fraction", "tissue_gas_partition_coefficient"}
         ),
     ),
     _Compartment(
@@ -245,9 +238,10 @@ def _perturb_every_field(compartment: Any) -> dict[str, object]:
 
         assert replacement != original, compartment_field.name
 
-        if compartment_field.name == "perfusion_fraction":
-            # A tissue's perfusion fraction can be written only once, when the
-            # group is built (`PL-Z0HN`). So the changed value is written in a
+        if compartment_field.name in ("perfusion_fraction", "blood_gas_partition_coefficient"):
+            # A tissue's perfusion fraction and the venous pool's blood:gas
+            # coefficient can each be written only once, when the compartment is
+            # built (`PL-Z0HN`, `PL-DQL9`). So the changed value is written in a
             # way that bypasses that guard.
             object.__setattr__(compartment, compartment_field.name, replacement)
         else:
@@ -551,7 +545,9 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
         (lambda s: s.set_alveolar_ventilation(AlveolarVentilation(5.0)), "alveolar ventilation"),
         (lambda s: s.set_cardiac_output(CardiacOutput(6.0)), "cardiac output"),
         (
-            lambda s: setattr(
+            # The pool refuses a second write of its coefficient (`PL-DQL9`), so the
+            # move bypasses that guard to show that the key still reads the field.
+            lambda s: object.__setattr__(
                 s.patient.venous_blood, "blood_gas_partition_coefficient", PartitionCoefficient(0.9)
             ),
             "blood:gas partition coefficient",

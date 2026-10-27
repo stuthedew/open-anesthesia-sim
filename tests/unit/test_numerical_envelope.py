@@ -224,42 +224,33 @@ def test_a_tissue_blood_quotient_refuses_a_factor_never_built_as_a_coefficient()
         tissue_blood_partition_coefficient(PartitionCoefficient(34.0), 0.65, name="fat")  # type: ignore[arg-type]
 
 
-def _fat(blood_gas: float, tissue_gas: float) -> TissueGroup:
+def _fat(tissue_gas: float) -> TissueGroup:
     return TissueGroup(
         name="fat",
         volume_l=CompartmentVolume(14.5),
         perfusion_fraction=0.06,
-        blood_gas_partition_coefficient=PartitionCoefficient(blood_gas),
         tissue_gas_partition_coefficient=PartitionCoefficient(tissue_gas),
     )
 
 
-def test_a_tissue_group_refuses_coefficients_whose_quotient_leaves_the_envelope() -> None:
-    with pytest.raises(SimulationConfigurationError, match=r"^fat tissue_blood_partition_coeff"):
-        _fat(blood_gas=1e4, tissue_gas=1e-3)
+def test_a_tissue_group_refuses_a_blood_gas_coefficient_whose_quotient_leaves_the_envelope() -> (
+    None
+):
+    """The group stores no blood:gas coefficient, so each method that takes one checks the quotient.
 
-
-def test_a_later_write_of_either_coefficient_is_checked_against_the_other() -> None:
-    """The quotient is a relation between two fields, so the second write checks it.
-
-    Writing a blood:gas coefficient of 1e4 against the tissue:gas coefficient of 1.10
-    gives a quotient of 1.1e-4. Writing a tissue:gas coefficient of 1e4 against the
-    blood:gas coefficient of 0.65 gives 1.5e4. Each write is refused, and neither
-    coefficient changes.
+    A tissue:gas coefficient of 1e-3 against a blood:gas coefficient of 1e4 gives
+    a quotient of 1e-7. The tissue:blood coefficient and the time constant both
+    refuse it (`PL-DQL9`). The patient checks the same quotient when it is built
+    and when a compartment is replaced (`tests/unit/test_patient.py`).
     """
 
-    group = _fat(blood_gas=0.65, tissue_gas=1.10)
+    group = _fat(tissue_gas=1e-3)
 
     with pytest.raises(SimulationConfigurationError, match=r"^fat tissue_blood_partition_coeff"):
-        group.blood_gas_partition_coefficient = PartitionCoefficient(1e4)
+        group.tissue_blood_partition_coefficient_for(PartitionCoefficient(1e4))
 
     with pytest.raises(SimulationConfigurationError, match=r"^fat tissue_blood_partition_coeff"):
-        group.tissue_gas_partition_coefficient = PartitionCoefficient(1e4)
-
-    assert (group.blood_gas_partition_coefficient, group.tissue_gas_partition_coefficient) == (
-        0.65,
-        1.10,
-    )
+        group.time_constant_s(1.0, PartitionCoefficient(1e4))
 
 
 def test_an_agent_whose_tissue_blood_coefficient_leaves_the_envelope_is_refused() -> None:
@@ -352,7 +343,6 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
             name="corner",
             volume_l=CompartmentVolume(volume),
             perfusion_fraction=1.0,
-            blood_gas_partition_coefficient=PartitionCoefficient(1.0),
             tissue_gas_partition_coefficient=PartitionCoefficient(coefficient),
         )
         settings = TissueGroupEquationSettings(
@@ -363,7 +353,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
             pool.capacity_l,
             pool.time_constant_s(flow_l_min),
             tissue.capacity_l,
-            tissue.time_constant_s(flow_l_min),
+            tissue.time_constant_s(flow_l_min, PartitionCoefficient(1.0)),
             settings.washin_rate_s,
         ):
             assert isfinite(value)

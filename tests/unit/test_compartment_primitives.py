@@ -68,6 +68,10 @@ LOADED_FRACTION = Fraction(1e-6)
 DRIVING_PERCENT = Percent(100.0)
 DRIVING_FRACTION = fraction_from_percent(DRIVING_PERCENT)
 
+# The blood:gas coefficient that the tissue group's closed form is given. The venous
+# pool is built with the same one, as a patient's are (`PL-DQL9`).
+BLOOD_GAS = PartitionCoefficient(0.65)
+
 # A closed form must give the same result over one coarse step as over many fine ones.
 COARSE_STEP_S = 60.0
 FINE_STEP_S = 0.1
@@ -233,7 +237,6 @@ def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
         name="vessel_rich",
         volume_l=CompartmentVolume(6.0),
         perfusion_fraction=0.76,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
         tissue_gas_partition_coefficient=PartitionCoefficient(1.0),
     )
     tissue.set_partial_pressure_fraction(LOADED_FRACTION)
@@ -243,8 +246,7 @@ def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
 
 def _build_venous_blood(blood_flow_l_min: float) -> _Perfused[VenousBloodCompartment]:
     venous_blood = VenousBloodCompartment(
-        volume_l=CompartmentVolume(1.222),
-        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        volume_l=CompartmentVolume(1.222), blood_gas_partition_coefficient=BLOOD_GAS
     )
     venous_blood.set_partial_pressure_fraction(LOADED_FRACTION)
 
@@ -268,9 +270,12 @@ PRIMITIVES = (
             arterial_partial_pressure_fraction=DRIVING_FRACTION,
             simulation_step_s=step_s,
             blood_flow_l_min=tissue.blood_flow_l_min,
+            blood_gas_partition_coefficient=BLOOD_GAS,
         ),
         stored_agent_l=lambda tissue: tissue.compartment.agent_amount_l,
-        time_constant_s=lambda tissue: tissue.compartment.time_constant_s(tissue.blood_flow_l_min),
+        time_constant_s=lambda tissue: tissue.compartment.time_constant_s(
+            tissue.blood_flow_l_min, BLOOD_GAS
+        ),
         capacity_l=6.0 * 1.0,
         nominal_flow_l_min=3.8,
     ),
@@ -339,6 +344,7 @@ PATIENT_PRIMITIVES = (
             arterial_partial_pressure_fraction=driving_fraction,
             simulation_step_s=step_s,
             blood_flow_l_min=tissue.blood_flow_l_min,
+            blood_gas_partition_coefficient=BLOOD_GAS,
         ),
         stored_agent_l=lambda tissue: tissue.compartment.agent_amount_l,
         capacity_l=lambda tissue: tissue.compartment.capacity_l,

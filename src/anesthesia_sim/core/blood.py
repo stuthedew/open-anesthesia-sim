@@ -10,6 +10,7 @@ from math import inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
@@ -40,7 +41,16 @@ class VenousBloodCompartmentState:
 
 @dataclass(slots=True)
 class VenousBloodCompartment:
-    """One ideal, well-mixed venous blood compartment."""
+    """One ideal, well-mixed venous blood compartment.
+
+    The pool holds the patient's one blood:gas partition coefficient
+    (`PL-DQL9`). The coefficient is a property of the blood, and the pool is the
+    patient's blood. The tissue groups store none, and the patient passes this
+    one to each tissue group's methods. `PatientCompartments.from_parameters`
+    reads it from the agent's parameter file. The coefficient is written once,
+    when the pool is built, so it cannot drift from the value the patient was
+    built with.
+    """
 
     volume_l: CompartmentVolume
     blood_gas_partition_coefficient: PartitionCoefficient
@@ -73,11 +83,20 @@ class VenousBloodCompartment:
             The pool's partial pressure is its agent amount divided by its capacity, and
             the capacity is the volume times the blood:gas partition coefficient. So the
             three values are checked together. An amount above the capacity is refused.
-            So is a volume or a coefficient too small for the amount the pool already
-            holds (`require_room_for_the_agent_held`). The constructor writes the amount
+            So is a volume too small for the amount the pool already holds
+            (`require_room_for_the_agent_held`). The constructor writes the amount
             last, after the volume and the coefficient have passed their own checks. So
-            the volume and the coefficient are checked against the amount only once an
-            amount exists. Both are checked types, built only inside the numerical
+            the volume is checked against the amount only once an amount exists.
+
+            The blood:gas coefficient is written once, when the pool is built, and a
+            later write is refused (`PL-DQL9`). The tissue groups' tissue:blood
+            coefficients are formed from it, and the patient checks them only when it is
+            built or a compartment is replaced. A later write checks the new value first,
+            so a value the constructor would refuse is refused in the constructor's words.
+            A copy and a pickle write the coefficient onto a new pool, which has none
+            yet, so both still work.
+
+            The volume and the coefficient are checked types, built only inside the numerical
             envelope (`core/numerical_envelope.py`). So their product, the capacity, is
             positive and finite by construction. Before, each factor was checked only as
             positive and finite, and that did not guarantee a positive and finite
@@ -91,7 +110,8 @@ class VenousBloodCompartment:
                 SimulationConfigurationError: the agent amount is negative or not
                     finite, or would be more than the pool holds at a partial
                     pressure of one atmosphere. The last check runs whichever of the
-                    amount, the volume and the coefficient is written.
+                    amount and the volume is written. Also raised when
+                    the blood:gas coefficient is written to a pool that already has one.
             """
 
             # Every compartment holds an agent amount, and the tissue groups also hold a
@@ -114,13 +134,19 @@ class VenousBloodCompartment:
                     )
             elif name == "blood_gas_partition_coefficient":
                 require_coefficient(field, value)
-                held_l = getattr(self, "agent_amount_l", None)
 
-                # The constructor, a copy and a pickle write the volume
-                # first, so it is always there to multiply.
-                require_a_capacity_with_room_for_the_agent(
-                    field, value, self.volume_l, value, held_l, "venous blood", "Blood compartments"
-                )
+                if hasattr(self, name):
+                    raise SimulationConfigurationError(
+                        f"the venous pool's blood:gas partition coefficient of "
+                        f"{self.blood_gas_partition_coefficient} cannot be written again, as "
+                        f"{value}, once the pool is built, because every tissue group's "
+                        "tissue:blood coefficient is formed from it (docs/MODEL.md, "
+                        '"Blood compartments"): build a new system for another agent'
+                    )
+
+                # The coefficient is written only onto a new pool, and the constructor, a copy
+                # and a pickle all write the agent amount after it. So the amount's own write
+                # checks it against the capacity that this coefficient gives.
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
                 require_within_the_capacity(
@@ -128,6 +154,24 @@ class VenousBloodCompartment:
                 )
 
             super().__setattr__(name, value)
+
+        def __delattr__(self, name: str) -> None:
+            """Refuse to delete any field.
+
+            The write-once check above asks whether the pool already has a
+            blood:gas coefficient. A coefficient deleted and written again would
+            pass it, as `TissueGroup.__delattr__` explains for the perfusion
+            fraction. No field of a built pool is ever meant to be absent, so
+            every deletion is refused.
+
+            Raises:
+                SimulationConfigurationError: always.
+            """
+
+            raise SimulationConfigurationError(
+                f"the venous pool's {name} cannot be deleted, because a value written after "
+                "it would bypass the checks made when the pool is built: build a new patient"
+            )
 
     @property
     def capacity_l(self) -> float:

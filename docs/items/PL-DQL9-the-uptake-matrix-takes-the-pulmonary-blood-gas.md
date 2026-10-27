@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, science, safety
 feature: replay-findings
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, tests/unit/test_governing_equations.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_record_writes.py, tests/unit/test_state_capture.py, tests/unit/test_numerical_envelope.py, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_compartment_primitives.py, tests/unit/test_concentration.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 payoff: the model can no longer hold two blood:gas coefficients, so a mismatched pool or tissue group can neither halt a run with an error that blames the numerics nor run silently on uptake curves that are wrong
 verify: grep -q 'def test_settings_with_disagreeing_blood_gas_coefficients_are_refused' tests/unit/test_governing_equations.py
@@ -28,7 +28,7 @@ pool's coefficient is refused when the settings record next forms each
 tissue:blood quotient. Yielded from batch 5 so that it lands as its own pull
 request, after `#1845` (which edits this brief) merges.
 
-**Done when.** A settings record whose tissue rows and pulmonary term use different blood:gas coefficients is refused when it is built, with a `SimulationConfigurationError` naming the coefficients, or the model carries one blood:gas coefficient. `tests/unit/test_governing_equations.py` has `test_settings_with_disagreeing_blood_gas_coefficients_are_refused`.
+**Done when.** A settings record whose tissue rows and pulmonary term use different blood:gas coefficients is refused when it is built, with a `SimulationConfigurationError` naming the coefficients, or the model carries one blood:gas coefficient. `tests/unit/test_patient.py` has `test_a_patient_holds_one_blood_gas_coefficient`, which shows that the groups store no copy, the pool's copy is written once, and a replaced pool at another coefficient is refused. The first route's test, `test_settings_with_disagreeing_blood_gas_coefficients_are_refused`, no longer applies: the settings record now receives one blood:gas coefficient and each tissue:blood quotient formed from it, so there is no pair left in it to disagree (rewritten on 2026-10-27, when the second route was built).
 
 **Found by.** `PL-TBQS` reviewer replay on #376, findings r02 F1 and r06 F1. Checked against main on 2026-10-25 with `scripts/c_core376.py Q`.
 
