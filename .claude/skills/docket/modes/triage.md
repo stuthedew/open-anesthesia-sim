@@ -304,7 +304,7 @@ in flight, blocked or untriaged, and counts `impairs-generators:` items the
 rule does not name (`PL-CT07`). A request from the project owner lifts it for
 that request, and the session says so (`PL-6Q9L`).
 
-### Ask every item touching the apparatus where it came from
+### Ask every item touching the apparatus, and every product defect, where it came from
 
 **Each item touching the apparatus is scrutinized for an unresolved generator
 or a cause the code does not recognize** (project owner, 2026-09-22). The
@@ -314,12 +314,27 @@ path under `workflow_paths`, whatever the item's lane** (project owner,
 2026-09-28, ratified, over keying the check on the workflow lane, `PL-4NZ7`):
 a capture reaching both halves is `crossing`, and keyed on the lane it was
 never asked, so a generator reached through one was queued rather than found.
+
+**Product work is asked too, unless it is classed only as new work.** The
+project owner asked on 2026-10-27 for the generator checks to reach product
+code. The key below is a session's choice that the owner has not yet ratified,
+so ordinary evidence reopens it (`PL-K5CX`). That means a product path on an item whose
+`classes` are not all in `new_work_classes`, which are `feature` and
+`planning`. An item with no classes is asked. Product features keep arriving,
+so a feature is not evidence of a cause. A product defect is, and before this
+rule each product generator was found only by a sweep the owner asked for
+(`PL-R4Y2`). `Item.generator_question_paths` holds the rule for both halves.
+The brief of `PL-K5CX` has the measurement behind the key: keyed on
+`debt_classes` instead, 6 of the 75 product members of product heads would
+not have been asked.
+
 `bin/docket triage` marks each item that `Owes a Generator check`, and says
 where it cannot tell yet: capture often leaves `touches` unset, and such an
 item owes the check if any path you declare is under `workflow_paths` in
-`docket.toml`. `bin/docket set` says so at the write that declares those paths
-or ends triage, where the brief carries no answer yet, since that write takes
-the item off the list the mark prints on (`PL-6WPD`). Keep asking *why did
+`docket.toml`, or is a product path on work that is not new work. `bin/docket
+set` says so at the write that declares those paths or ends triage, where the
+brief carries no answer yet, since that write takes the item off the list the
+mark prints on (`PL-6WPD`). Keep asking *why did
 this exist?* until the answer is a design
 fact rather than the symptom: a representation choice, a missing single source
 of truth, an invariant no code enforces, an external behaviour nothing models,
@@ -366,7 +381,8 @@ two, also record it as a field**: `bin/docket set <id> --reenters PL-XXXX`,
 naming the closed head or item whose fix should have covered this one.
 `bin/docket inflow` counts that field per period and names any closed item
 three filings re-enter - the three post-close instances above - and it reads
-nothing from the prose line (`PL-WXKD`).
+nothing from the prose line (`PL-WXKD`). `bin/docket inflow --lane product`
+does the same for product filings (`PL-K5CX`).
 
 **On a grooming pass, compare the heads with each other** (`PL-5MYR`). The
 check above asks one item about the heads. Nothing else asks the heads about

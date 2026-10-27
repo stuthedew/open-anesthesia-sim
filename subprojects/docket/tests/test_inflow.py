@@ -15,7 +15,7 @@ import pytest
 from docket.cli import _missed_expectations, main
 from docket.config import Config
 from docket.inflow import UNBANDED, analyze, missed
-from docket.model import Item, reentry_faults
+from docket.model import LANE_PRODUCT, Item, reentry_faults
 from docket.render import format_inflow
 
 CONFIG = Config(
@@ -393,3 +393,43 @@ def test_a_class_pinned_p1_on_a_rule_file_is_not_an_unexpected_band() -> None:
     assert severe([rule_only]) == {}
     assert severe([rule_only, in_a_tool]) == {"P1": 1}
     assert severe([unpinned]) == {"P1": 1}
+
+
+def test_product_lane_counts_a_product_reentry() -> None:
+    """`PL-K5CX`: a product head whose fix did not hold was never listed.
+
+    The apparatus report counts only filings with an apparatus path, so three
+    product defects re-entering a closed product head read as no inflow at
+    all. The product lane counts the product work triage's generator check
+    asks about, and leaves a filing classed only as new work out.
+    """
+    fixed = _item("PL-FXP0", date(2026, 8, 20), touches=("src/a.py",), closed=date(2026, 8, 25))
+    filings = [
+        _item(f"PL-0PR{n}", date(2026, 9, n), touches=("src/a.py",), reenters=("PL-FXP0",))
+        for n in (1, 2, 3)
+    ]
+    feature = _item("PL-0FT1", date(2026, 9, 2), touches=("src/b.py",), classes=("feature",))
+    items = [fixed, *filings, feature]
+
+    product = analyze(items, CONFIG, today=date(2026, 9, 7), lane=LANE_PRODUCT)
+    apparatus = analyze(items, CONFIG, today=date(2026, 9, 7))
+
+    assert product.reentered == {"PL-FXP0": ("PL-0PR1", "PL-0PR2", "PL-0PR3")}
+    assert sum(p.filed for p in product.periods) == 4  # the feature is left out
+    assert apparatus.periods == ()
+    shown = format_inflow(product)
+    assert "the first product\nfiling: an item whose `touches` name a product path" in shown
+    assert "PL-FXP0  by PL-0PR1, PL-0PR2, PL-0PR3" in shown
+
+
+def test_the_release_report_never_reads_the_product_lane() -> None:
+    """`PL-04KR`'s predictions are about the apparatus, so a product report breaks none."""
+    filings = [
+        _item(f"PL-0PS{n}", date(2026, 9, n), touches=("src/a.py",), priority="P1")
+        for n in range(1, 9)
+    ]
+
+    report = analyze(filings, CONFIG, today=date(2026, 9, 21), lane=LANE_PRODUCT)
+
+    assert report.periods
+    assert missed(report, date(2026, 9, 21)) == ()
