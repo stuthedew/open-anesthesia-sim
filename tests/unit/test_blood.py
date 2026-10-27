@@ -94,12 +94,11 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
         ),
         pytest.param(
             "blood_gas_partition_coefficient",
-            PartitionCoefficient(0.2),
+            PartitionCoefficient(0.65),
             SimulationConfigurationError,
-            TOO_SMALL_FOR_THE_AGENT_HELD.format(
-                field="blood_gas_partition_coefficient", value="0.2", room="0.2"
-            ),
-            id="blood-gas-coefficient-under-the-agent-held",
+            r"^the venous pool's blood:gas partition coefficient of 0.65 cannot be written "
+            r"again, as 0.65, once the pool is built",
+            id="blood-gas-coefficient-rewritten",
         ),
         pytest.param(
             "blood_flow_l_min",
@@ -202,13 +201,15 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
     assert venous.partial_pressure_fraction == 1.0
 
 
-def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> None:
-    """A blood:gas coefficient is checked through the capacity it gives, not by its value alone.
+def test_the_blood_gas_coefficient_is_written_once_and_a_copy_keeps_it() -> None:
+    """The pool holds the patient's one blood:gas coefficient, so a later write is refused.
 
-    The capacity is the volume times the coefficient. A 2 L pool at half its
-    1.3 L capacity holds 0.65 L. A coefficient of 0.4 leaves 0.8 L of room and
-    is written, although 0.4 alone is less than the amount of agent held. A
-    coefficient of 0.3 leaves 0.6 L and is refused (`PL-19Y0`).
+    Every tissue group's tissue:blood coefficient is formed from this one. The
+    patient checks those quotients only when the patient is built or a
+    compartment is replaced (`PL-DQL9`). A write of 0.4 would also have left
+    room for the agent held, so only the write-once rule refuses it. A copy and
+    a pickle write the coefficient onto a new pool, so both keep it. A deletion
+    would let a later write pass the write-once rule, so it is refused too.
     """
 
     venous = VenousBloodCompartment(
@@ -216,12 +217,15 @@ def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> 
     )
     venous.set_partial_pressure_fraction(Fraction(0.5))
 
-    venous.blood_gas_partition_coefficient = PartitionCoefficient(0.4)
+    with pytest.raises(SimulationConfigurationError, match="cannot be written again, as 0.4"):
+        venous.blood_gas_partition_coefficient = PartitionCoefficient(0.4)
 
-    assert venous.capacity_l == pytest.approx(0.8)
+    with pytest.raises(SimulationConfigurationError, match="cannot be deleted"):
+        del venous.blood_gas_partition_coefficient
 
-    with pytest.raises(SimulationConfigurationError, match=r"leave room for 0\.6 L "):
-        venous.blood_gas_partition_coefficient = PartitionCoefficient(0.3)
+    assert venous.blood_gas_partition_coefficient == 0.65
+    assert copy.deepcopy(venous) == venous
+    assert pickle.loads(pickle.dumps(venous)) == venous
 
 
 @pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])

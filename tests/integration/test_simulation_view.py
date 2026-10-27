@@ -893,7 +893,6 @@ def _real_step_failure() -> SimulationNumericalError:
         name=original.name,
         volume_l=original.volume_l,
         perfusion_fraction=original.perfusion_fraction,
-        blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
         tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
     )
 

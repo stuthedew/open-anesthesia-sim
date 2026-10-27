@@ -112,7 +112,6 @@ def _tissue_group() -> TissueGroup:
         name="muscle",
         volume_l=CompartmentVolume(10.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         agent_amount_l=4.0,
     )
@@ -226,9 +225,7 @@ WRITES: dict[str, dict[str, Write]] = {
     },
     "blood.VenousBloodCompartment": {
         "volume_l": Write(CHECKED, _venous_blood, lambda blood: CompartmentVolume(1.0)),
-        "blood_gas_partition_coefficient": Write(
-            CHECKED, _venous_blood, lambda blood: PartitionCoefficient(0.1)
-        ),
+        "blood_gas_partition_coefficient": Write(ONCE, _venous_blood),
         "agent_amount_l": Write(CHECKED, _venous_blood, lambda blood: 2.0),
     },
     "circuit.BreathingCircuit": {
@@ -261,12 +258,11 @@ WRITES: dict[str, dict[str, Write]] = {
         "muscle": Write(CHECKED, _patient, _halved_fraction("muscle")),
         "fat": Write(CHECKED, _patient, _halved_fraction("fat")),
         "venous_blood": Write(
-            GAP,
-            why=(
-                "A replaced pool's agent is held to the accounting identity, which the "
-                "system checks at every step and read. Its blood:gas coefficient should "
-                "equal the tissue groups' own copies, and nothing checks that, at a write "
-                "or when the patient is built (PL-DQL9)."
+            CHECKED,
+            _patient,
+            lambda patient: VenousBloodCompartment(
+                volume_l=patient.venous_blood.volume_l,
+                blood_gas_partition_coefficient=PartitionCoefficient(0.1),
             ),
         ),
     },
@@ -292,16 +288,7 @@ WRITES: dict[str, dict[str, Write]] = {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),
         "volume_l": Write(CHECKED, _tissue_group, lambda group: CompartmentVolume(1.0)),
         "perfusion_fraction": Write(ONCE, _tissue_group),
-        "blood_gas_partition_coefficient": Write(
-            GAP,
-            why=(
-                "No rule of the group ties it to another of the group's fields. Its "
-                "agreement with the venous pool's copy is not checked anywhere (PL-DQL9)."
-            ),
-        ),
-        "tissue_gas_partition_coefficient": Write(
-            CHECKED, _tissue_group, lambda group: PartitionCoefficient(0.1)
-        ),
+        "tissue_gas_partition_coefficient": Write(ONCE, _tissue_group),
         "agent_amount_l": Write(CHECKED, _tissue_group, lambda group: 40.0),
     },
     "uptake_system.AgentUptakeSystem": {
