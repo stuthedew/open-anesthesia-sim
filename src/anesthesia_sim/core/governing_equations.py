@@ -84,7 +84,7 @@ way.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from math import isfinite
 
 from anesthesia_sim.core.concentration import (
@@ -329,6 +329,47 @@ def _hold_as_exact_floats(record: object, fields: tuple[str, ...]) -> None:
         object.__setattr__(record, field, float(getattr(record, field)))
 
 
+def _restore_through_checks(record: object, state: object) -> None:
+    """Restore an unpickled settings record by building it again through its constructor.
+
+    Unpickling a frozen settings record creates an empty object and passes the
+    saved field values to `__setstate__`. The `__setstate__` that `dataclass`
+    generates writes each value straight into its slot, so `__post_init__`
+    never runs. A saved record whose state held a cardiac output of 1000.0 as
+    a bare `float` and a fresh gas flow of NaN loaded without error, and a
+    `RunDefinition` opened under it advanced (`PL-S11T`, measured 2026-10-25).
+    `CheckedQuantity.__reduce__` (`core/checked_number.py`) protects a flow
+    pickled as its checked type, but not a field whose saved state holds a
+    bare number.
+
+    So each record's `__setstate__` calls this function. It builds a new record
+    from the saved values, which runs every check the constructor runs, and
+    copies the checked fields into the restored object. A state the
+    constructor would refuse is refused on load with the constructor's own
+    exception. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore
+    the record through `__setstate__`, and so does a pickle written before
+    this function existed. A `__reduce__` that called the constructor would
+    change only how a record is written from now on. A saved or forged state
+    in the form `dataclass` writes would still load through `__setstate__`.
+
+    Raises:
+        TypeError: the state is not a sequence of the record's field values,
+            or a value is not of its field's checked type.
+        SimulationConfigurationError: the constructor refuses a value.
+    """
+
+    if not isinstance(state, (list, tuple)):
+        raise TypeError(
+            f"a {type(record).__name__} is restored from a list of its field values, "
+            f"not a {type(state).__name__}"
+        )
+
+    checked = type(record)(*state)
+
+    for field in fields(checked):  # type: ignore[arg-type]
+        object.__setattr__(record, field.name, getattr(checked, field.name))
+
+
 @dataclass(frozen=True, slots=True)
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
@@ -364,6 +405,11 @@ class TissueGroupEquationSettings:
             self.tissue_blood_partition_coefficient,
         )
         _hold_as_exact_floats(self, ("blood_flow_l_min",))
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
+
+        _restore_through_checks(self, state)
 
     @property
     def blood_flow_l_s(self) -> float:
@@ -548,6 +594,11 @@ class UptakeEquationSettings:
                 f"but cardiac output is {self.cardiac_output_l_min} L/min; the venous balance "
                 "returns what the tissues receive, so the two must agree"
             )
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
+
+        _restore_through_checks(self, state)
 
     @property
     def delivered_partial_pressure_fraction(self) -> Fraction:

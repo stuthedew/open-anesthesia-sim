@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: replay-findings
-touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py
+touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py, docs/MODEL.md
 added: 2026-10-25
 payoff: holding a settings record stays proof that its flows are in range, even for one read back from a saved file
 verify: grep -q 'def test_an_unpickled_settings_record_is_rebuilt_through_its_checks' tests/unit/test_governing_equations.py

@@ -6850,6 +6850,17 @@ checked one. This is the shape that `SimulationStep` gives the step. It is
 also the first slice of `PL-51B7`, which carries the shape to the remaining
 checked quantities.
 
+**A settings record read back from a pickle runs the same checks**
+(`PL-S11T`). Unpickling or copying a frozen settings record restores it
+through `__setstate__`, which by default writes each saved value straight into
+its field, so `__post_init__` never ran. A saved record whose state held a
+cardiac output of 1000.0 as a bare `float` loaded, and a run opened under it
+advanced. `UptakeEquationSettings` and `TissueGroupEquationSettings` now
+restore their state by building a new record from the saved values. So a
+saved value that the constructor would refuse is refused on load, at every
+pickle protocol, with the constructor's own exception. Nothing in `src/`
+loads a pickle yet. This applies from the first saved-run loader.
+
 **An assignment straight onto the field meets the same refusal, at the write**
 (`PL-LBQY`; project owner, 2026-10-04, ratified, over frozen compartments, at
 45 test rewrites and an `object.__setattr__` on every per-step write, and over
