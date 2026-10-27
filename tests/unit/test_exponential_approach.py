@@ -1,4 +1,4 @@
-"""Tests of `core/exponential_approach.py`, the first-order approach every patient closed form uses.
+"""Tests of `core/exponential_approach.py`, the first-order approach every closed form uses.
 
 The tests cover four properties. Each one was measured failing in an
 arrangement of the formula that the module rejected, and the module's
@@ -6,7 +6,8 @@ docstring gives the counts. Each property is pinned here on the case that
 showed the failure. A property-based test also checks, over drawn states,
 that the result stays between the start and the equilibrium. The
 compartments that call the function are exercised in
-`tests/unit/test_compartment_primitives.py`.
+`tests/unit/test_compartment_primitives.py`, and the circuit in
+`tests/unit/test_circuit.py`.
 """
 
 from decimal import Decimal, getcontext
@@ -16,7 +17,11 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from anesthesia_sim.core.exponential_approach import HALF_THE_GAP, exponential_approach
+from anesthesia_sim.core.exponential_approach import (
+    HALF_THE_GAP,
+    exponential_approach,
+    exponential_approach_in_time_constants,
+)
 
 # A step that is long enough, against this time constant, for
 # `1 - exp(-dt/tau)` to round to exactly 1.0. Such a step is a full approach.
@@ -322,3 +327,25 @@ def test_the_result_lies_between_the_start_and_the_equilibrium(
 
     if exp(-step_s / time_constant_s) == 0.0:
         assert approached == equilibrium
+
+
+@pytest.mark.parametrize(("initial", "equilibrium"), ACCURACY_STATES)
+@pytest.mark.parametrize("length_in_time_constants", ACCURACY_LENGTHS_IN_TIME_CONSTANTS)
+def test_the_form_in_time_constants_is_the_same_line(
+    initial: float, equilibrium: float, length_in_time_constants: float
+) -> None:
+    """`PL-CQ1M`: given dt/tau, the second entry point returns what the first does, bit for bit.
+
+    The circuit calls `exponential_approach_in_time_constants`, because it
+    never forms its time constant. So the circuit's closed form keeps every
+    property tested above only if the two entry points agree exactly. They
+    are compared at the accuracy cases' states and lengths, against a time
+    constant of 100 s, and at zero, where the result must be `initial`.
+    """
+
+    step_s = length_in_time_constants * TIME_CONSTANT_S
+
+    assert exponential_approach_in_time_constants(
+        initial, equilibrium, step_s / TIME_CONSTANT_S
+    ) == exponential_approach(initial, equilibrium, step_s, TIME_CONSTANT_S)
+    assert exponential_approach_in_time_constants(initial, equilibrium, 0.0) == initial
