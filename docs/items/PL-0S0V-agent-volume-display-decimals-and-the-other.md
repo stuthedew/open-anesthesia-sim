@@ -3,7 +3,7 @@ id: PL-0S0V
 title: AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 priority: P1
 effort: M
-status: done
+status: needs-decision
 classes: safety, anticipated
 feature: preferences-store
 touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit, ROADMAP.md, docs/items/PL-2881-specify-the-compartment-schematic-in-docs-model.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-GL5X-load-factory-preferences-needs-shipped-defaults.md
@@ -13,7 +13,7 @@ added: 2026-09-16
 closed: 2026-10-27
 pr: 1878
 payoff: every agent amount on screen is shown at a precision derived for its quantity and its unit, so a liquid-equivalent millilitre figure claims no more precision than the model supports
-verify: grep -q 'def test_a_precision_finer_than_its_derived_band_is_refused' tests/unit/test_formatting.py && grep -q 'def test_a_unit_with_no_derived_precision_is_refused' tests/unit/test_formatting.py
+verify: grep -q 'def test_a_precision_finer_than_its_derived_band_is_refused' tests/unit/test_formatting.py && grep -q 'def test_a_unit_with_no_derived_precision_is_refused' tests/unit/test_formatting.py && grep -q '^\*\*Decision answered' docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md
 ---
 
 **Problem.** AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
@@ -119,3 +119,10 @@ for isoflurane and 209.7 for desflurane. `core/liquid_agent.py`'s
 
 
 **Held for the owner's read, 2026-10-27.** The derivation is a new statement in `docs/MODEL.md` of how precisely a displayed clinical amount may be shown, so pull request #1878 waits on the owner. The thing to check is the table and the two paragraphs under it in § "Displayed precision": whole millilitres for the delivered and exhausted totals in liquid, and the stored total refused in liquid.
+
+**Decision needed.** How precisely should the agent cost View show the *delivered* agent in millilitres of liquid: whole millilitres ("39 mL") or tenths ("39.4 mL")? Found 2026-10-27 when `main` was merged in: `PL-VJZK`'s § "A cost at the reader's price" shows one decimal in its worked examples, and this branch derives whole millilitres. The two cannot both stand in `docs/MODEL.md`.
+
+- **Whole millilitres (this branch as built).** The liquid figure claims no finer a step than the litre figure for the same amount (0.1 L of vapour is about 0.5 mL of liquid). A learner who switches the View's unit sees the same resolution in both. Cost: the "multiply by eye" check in the cost section gets looser. 17 mL x USD 0.4797 is USD 8.15 against a cost of USD 8.23, where 17.2 mL gives USD 8.25. The cost section's two examples would be reworded to whole millilitres.
+- **Tenths of a millilitre for the delivered total only (recommended).** The delivered amount carries no parameter uncertainty: it is the dial times the flow times the time, and the conversion to liquid is exact for it. So a tenth claims nothing the model does not know, and the one-sided rule allows the litre figure to stay coarser. The cost section's examples stand unchanged. The exhausted total keeps whole millilitres, because one partition-coefficient SD at 24 h is 0.92-1.10 mL. The stored total stays refused in liquid. One caution: the stored density's own precision limits a 24 h delivered total of about 300 mL to about the tenth.
+
+Recommendation: tenths for the delivered total, because the derivation that set whole millilitres rests on parameter uncertainty, and the delivered total has none. It is the owner's call because it decides how precisely a clinical amount is shown, which the safety-critical standard reaches.

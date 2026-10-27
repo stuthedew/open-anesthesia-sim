@@ -89,8 +89,8 @@ and shows the currency as its ISO 4217 code. So part 2's example reads
 "39.4 mL x US$0.2047/mL". Two parts of that section are this item's work:
 
 - Derive two displayed precisions in § "Displayed precision": the cost's and
-  the price per millilitre's. Both depend on the price, so `PL-0S0V` cannot
-  derive them in advance. The section says what they must achieve when a
+  the price per millilitre's. Both depend on the price, so neither can be
+  derived before a price exists. The section says what they must achieve when a
   reader multiplies the figures shown.
 - Replace `no test yet (`PL-1P15`)` in the hazard table's two cost rows with
   the tests that enforce them. `tools/doc_check.py` fails once this item

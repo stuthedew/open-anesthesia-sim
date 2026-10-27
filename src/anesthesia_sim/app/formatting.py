@@ -261,7 +261,7 @@ def _finest_derived_decimals(amount: AgentAmount, unit: AgentAmountUnit) -> int:
     except KeyError:
         raise ValueError(
             f"No displayed precision is derived for a {amount.value} in {unit.value}. "
-            "Derive one in docs/MODEL.md § 'Displayed precision' and add it to "
+            "Derive one in the section 'Displayed precision' of docs/MODEL.md and add it to "
             "app/formatting.py before showing this amount in this unit."
         ) from None
 
@@ -310,7 +310,7 @@ class AgentAmountPrecision:
         if self.decimals > finest:
             raise ValueError(
                 f"{self.decimals} decimals is finer than the {finest} that docs/MODEL.md "
-                f"§ 'Displayed precision' derives for a {self.amount.value} in "
+                f"section 'Displayed precision' derives for a {self.amount.value} in "
                 f"{self.unit.value}. A finer count would claim a resolution the model does "
                 "not support, so it is refused."
             )
