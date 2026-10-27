@@ -1088,6 +1088,42 @@ def test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances() -
     assert run.is_running
 
 
+def test_a_halt_target_removed_and_added_back_is_named_by_neither_record() -> None:
+    """The halt record and the target's row agree after the target is removed and added back.
+
+    The run halts on a height that a stepped reading lands on exactly. The
+    canonical reading falls about 1e-14 short of it (`PL-QVBR`), so only the
+    stepped keys show the crossing. Removing the target drops its key from
+    both records, and the target added back is a new mark to both. Before
+    the fix the halt record kept its key, so the trunk reported stopping on
+    a target that its own row listed as not reached, and a branch taken there
+    opened on no crossing.
+    """
+
+    measuring = SimulationController()
+    measuring.start()
+
+    for _ in range(600):
+        measuring.advance(STEP_S)
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, _alveolar_mac_multiple(measuring))
+    run = SimulationController()
+    run.add_mac_target(target)
+    run.start()
+
+    assert _step_until_halt(run) is not None
+    assert run.snapshot().bookmark_halt is not None
+
+    run.remove_mac_target(target)
+    run.add_mac_target(target)
+
+    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.STILL_RUNNING
+    assert run.snapshot().bookmark_halt is None
+    assert run.here_fork_point is not None
+    assert not run.here_fork_point.stopped_on_mark
+    assert run.resumed_here().snapshot().bookmark_halt is None
+
+
 def test_a_time_bookmark_halts_the_run_on_the_step_that_reaches_it() -> None:
     run = SimulationController()
     run.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))

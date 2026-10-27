@@ -2751,8 +2751,9 @@ def format_triage(
     as a complete one.
 
     Which items owe a Generator check is mechanical as well - a `touches` path
-    under `workflow_paths`, whatever the lane - so it is marked here, where the
-    `docket` skill asks the question; `_generator_check` has the rule.
+    under `workflow_paths` whatever the lane, or a product path on work that is
+    not new work - so it is marked here, where the `docket` skill asks the
+    question; `Item.generator_question_paths` has the rule.
     """
     if not report.untriaged:
         return "Nothing is untriaged."
@@ -2797,7 +2798,7 @@ def format_triage(
         declared = _declared(item)
         if declared:
             lines.append(f"  declared: {declared}")
-        lines.extend(_generator_check(item, config.workflow_paths))
+        lines.extend(_generator_check(item, config))
         lines.append("")
         lines.extend(
             f"    {line}" if line.strip() else "" for line in split_lines(item.body.strip())
@@ -2870,14 +2871,17 @@ def _declared(item: Item) -> str:
     return "; ".join(parts)
 
 
-def _generator_check(item: Item, workflow_paths: tuple[str, ...]) -> list[str]:
+def _generator_check(item: Item, config: Config) -> list[str]:
     """Whether a capture owes the question of where it came from, read off its paths.
 
-    Keyed on a `touches` path under `workflow_paths`, never on the lane. The
-    lane says which session can make the change whole, so a capture reaching
-    both halves is `crossing` there and apparatus inflow all the same: keyed on
-    the workflow lane, such a capture was never asked, and a generator reached
-    through one was queued rather than found (`PL-4NZ7`).
+    `Item.generator_question_paths` has the rule. It is keyed on the paths and
+    the classes, never on the lane. The lane says which session can make the
+    change whole, so a capture reaching both halves is `crossing` there and
+    apparatus inflow all the same: keyed on the workflow lane, such a capture
+    was never asked, and a generator reached through one was queued rather
+    than found (`PL-4NZ7`). Keyed on apparatus paths alone, no product defect
+    was asked either, and each product generator was found only by a sweep the
+    owner asked for (`PL-K5CX`).
 
     Capture leaves `touches` unset more often than not - twelve of the
     twenty-two untriaged on 2026-09-28 - so that case says it cannot tell yet
@@ -2887,24 +2891,24 @@ def _generator_check(item: Item, workflow_paths: tuple[str, ...]) -> list[str]:
     With no `workflow_paths` declared there is no apparatus to key on, and
     nothing is said, as `Item.lane` places nothing there either.
     """
-    if not workflow_paths:
+    if not config.workflow_paths:
         return []
     if not item.touches:
         return [
             "  Generator check: undecided until `touches` is set - owed if any path it",
-            "  names is under workflow_paths.",
+            "  names is under workflow_paths, or is a product path on work not classed",
+            f"  only as new work ({', '.join(config.new_work_classes)}).",
         ]
-    shown = _apparatus_named(item, workflow_paths)
-    if not shown:
+    reason = _generator_question_named(item, config)
+    if not reason:
         return []
+    shown, owed = reason
     if answers_generator_check(item.body):
         return [f"  Generator check answered in the brief; it touches {shown}."]
-    return [
-        f"  Owes a Generator check, whatever its lane: it touches {shown}, under workflow_paths."
-    ]
+    return [f"  Owes a Generator check{owed}."]
 
 
-def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str, ...]) -> list[str]:
+def generator_check_on_set(before: Item, after: Item, config: Config) -> list[str]:
     """What a `docket set` write leaves the Generator check owing, said at that write.
 
     A triage pass usually writes an item's `touches` and its `--status` in one
@@ -2912,7 +2916,7 @@ def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str,
     `_generator_check` marks. A capture with no `touches` - twelve of twenty-two
     on 2026-09-28 - was marked undecided and never marked again, and was asked
     where it came from only where the session held the rule (`PL-6WPD`). So the
-    write says it, in the mark's own reading: owed where a path is apparatus and
+    write says it, in the mark's own reading: owed where a path owes it and
     the brief carries no answer, undecided where it ends triage with no paths.
 
     Only a write that decides it: `touches` or `status` moved on an item that
@@ -2925,7 +2929,7 @@ def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str,
     undecided is said only of an item left open, since the remedy it names -
     writing `touches` - is triage's step for an item that will be worked.
     """
-    if not workflow_paths or (before.touches and not before.is_untriaged):
+    if not config.workflow_paths or (before.touches and not before.is_untriaged):
         return []
     if before.touches == after.touches and before.status == after.status:
         return []
@@ -2935,32 +2939,40 @@ def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str,
         return [
             f"{after.identifier}: leaves triage declaring no `touches`, so whether it owes a "
             "Generator check is undecided",
-            "  Owed if any path the work names is under workflow_paths; setting `touches` "
-            "decides it.",
+            "  Owed if any path the work names is under workflow_paths, or is a product path "
+            "on work not classed only as new work; setting `touches` decides it.",
         ]
-    shown = _apparatus_named(after, workflow_paths)
-    if not shown or answers_generator_check(after.body):
+    reason = _generator_question_named(after, config)
+    if not reason or answers_generator_check(after.body):
         return []
+    _, owed = reason
     return [
-        f"{after.identifier}: owes a Generator check, whatever its lane: it touches {shown}, "
-        "under workflow_paths",
+        f"{after.identifier}: owes a Generator check{owed}",
         "  Write the answer into its brief as one **Generator check.** line; nothing asks "
         "again once it is off the triage list.",
     ]
 
 
-def _apparatus_named(item: Item, workflow_paths: tuple[str, ...]) -> str:
-    """The item's paths under `workflow_paths`, as the Generator check names them.
+def _generator_question_named(item: Item, config: Config) -> tuple[str, str] | None:
+    """The paths that owe the Generator check as the mark names them, and the reason.
 
-    The first three and a count of the rest, or empty where none is apparatus:
-    one reading for the triage mark and `set`'s line, so the two cannot differ
-    on which paths owe the check.
+    The apparatus paths where there are any, since they owe it whatever the
+    item's lane and classes; otherwise the product paths, which owe it on work
+    that is not new work. The first three and a count of the rest. One reading
+    for the triage mark and `set`'s line, so the two cannot differ on which
+    paths owe the check. Nothing where no path owes it.
     """
-    apparatus = [path for path in item.touches if is_under(path, workflow_paths)]
-    shown = ", ".join(apparatus[:3])
-    if len(apparatus) > 3:
-        shown += f", and {len(apparatus) - 3} more"
-    return shown
+    owing = item.generator_question_paths(config.workflow_paths, config.new_work_classes)
+    apparatus = [path for path in owing if is_under(path, config.workflow_paths)]
+    named = apparatus or list(owing)
+    if not named:
+        return None
+    shown = ", ".join(named[:3])
+    if len(named) > 3:
+        shown += f", and {len(named) - 3} more"
+    if apparatus:
+        return shown, f", whatever its lane: it touches {shown}, under workflow_paths"
+    return shown, f": it touches {shown}, a product path, on work not classed only as new work"
 
 
 def _triage_rules(report: Report, config: Config) -> list[str]:
@@ -4122,14 +4134,19 @@ _FILED, _PER_DAY, _REENTRY, _HEAD, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 5, 11, 
 
 
 def format_inflow(report: Inflow) -> str:
-    """What the apparatus was handed, period by period, with no verdict.
+    """What the apparatus, or the product, was handed, period by period, with no verdict.
 
     Counts and rates of one thing each, side by side, for the reason
     `format_trend` gives: a composite here would be the tool answering the
     judgment half - whether the lane is converging - which is the reader's.
     """
+    product = report.lane == LANE_PRODUCT
+    side = "product" if product else "apparatus"
     if not report.periods or report.anchor is None:
-        return "No filing names an apparatus path: there is no inflow to report."
+        return (
+            f"No filing names {'a product' if product else 'an apparatus'} path that triage's "
+            "generator check asks about: there is no inflow to report."
+        )
 
     bands = (*PRIORITIES, UNBANDED)
     lines = [
@@ -4149,12 +4166,21 @@ def format_inflow(report: Inflow) -> str:
         )
 
     window = "day" if report.by == BY_DAY else "7-day period"
-    left_out = " and ".join(report.excluded) or "nothing"
+    if product:
+        population = [
+            "filing: an item whose `touches` name a product path, on work not classed only as",
+            "new work, which is the product half of what triage's generator check asks.",
+        ]
+    else:
+        left_out = " and ".join(report.excluded) or "nothing"
+        population = [
+            "filing: an item whose `touches` name a path under workflow_paths, whatever its lane.",
+            f"Left out of that test, since every capture writes there: {left_out}.",
+        ]
     lines += [
         "",
-        f"One row per {window}, anchored at {report.anchor.isoformat()}, the first apparatus",
-        "filing: an item whose `touches` name a path under workflow_paths, whatever its lane.",
-        f"Left out of that test, since every capture writes there: {left_out}.",
+        f"One row per {window}, anchored at {report.anchor.isoformat()}, the first {side}",
+        *population,
         "  filed      filings no head explained when they arrived. /day divides by the",
         "             days the period has, so a short final period compares with the rest.",
         "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
@@ -4164,8 +4190,8 @@ def format_inflow(report: Inflow) -> str:
         "             a deliberate sweep does not read as regression.",
         f"  {' '.join(PRIORITIES)} {UNBANDED}",
         f"             `filed` by priority; {UNBANDED} is not yet triaged.",
-        "  new paths  apparatus paths no earlier filing named. /item divides by every",
-        "             apparatus filing in the period, +head included.",
+        f"  new paths  {side} paths no earlier filing named. /item divides by every",
+        f"             {side} filing in the period, +head included.",
         "Each column counts one thing and none is a score: whether a row is the one",
         "expected is the reader's call.",
     ]

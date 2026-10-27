@@ -974,7 +974,28 @@ def test_rejects_a_mac_awake_band_reaching_zero() -> None:
         "mac_reference_basis": "test basis only",
     }
 
-    with pytest.raises(SimulationConfigurationError, match="must be positive"):
+    with pytest.raises(SimulationConfigurationError, match="lower edge must be strictly positive"):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_mac_awake_band_whose_edges_coincide() -> None:
+    """`PL-WRVX`: a spread too small to separate the edges is refused when the file is read.
+
+    A standard deviation of 1e-17 is positive, so `PositiveFraction` accepts
+    it. But 0.34 minus it and 0.34 plus it are the same double, so there is no
+    band to draw. The chart's `mac_awake_band_percent` refuses that band. The
+    loader applies the same rule, so a file it accepts cannot halt every run
+    when the chart is drawn.
+    """
+
+    payload = _valid_agent_payload()
+    payload["mac_awake"] = {
+        "fraction_of_mac": 0.34,
+        "standard_deviation_fraction_of_mac": 1e-17,
+        "mac_reference_basis": "test basis only",
+    }
+
+    with pytest.raises(SimulationConfigurationError, match="upper edge must lie above"):
         parse_agent_parameters(payload)
 
 

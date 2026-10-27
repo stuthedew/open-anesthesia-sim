@@ -3,12 +3,14 @@ id: PL-CQ1M
 title: BreathingCircuit.advance_fresh_gas, formed from the fraction it holds throughout (PL-YT8N), carries a washout residual only to an ulp of that fraction: at forty time constants it reports exactly 0 where the balance leaves 4e-18; the two-regime arrangement core/exponential_approach.py takes forms the result from the equilibrium beyond half a gap and keeps the residual, and the circuit could take the module (found reviewing PL-XWFP)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: numerical-domain
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/exponential_approach.py, src/anesthesia_sim/core/__init__.py, docs/ARCHITECTURE.md, tests/unit/test_circuit.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-27
+pr: 1884
 payoff: the first-order closed form is written once in core/, so the circuit stops carrying the arrangement the patient compartments' measurements retired
 verify: grep -q 'def test_a_long_circuit_washout_keeps_its_residual' tests/unit/test_circuit.py
 ---
@@ -60,3 +62,21 @@ wash-in tests and
 pass unchanged.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still reproduces.** On `cc31bef7`, a bare 6 L circuit at 4 L/min, washed out from a fraction of 1.0 under a dial of zero, reports 2.0612e-09 at 20 time constants, as `exponential_approach` and a 40-digit reference do. At 37.5 and 40 time constants it reports exactly 0.0, where both give 5.1756e-17 and 4.2484e-18. `advance_fresh_gas` still forms the fraction itself, and `exponential_approach` is still called only from `core/blood.py` and `core/tissue.py`.
+
+**Built (2026-10-27).** `BreathingCircuit.advance_fresh_gas` now forms its
+next fraction with `exponential_approach_in_time_constants`, a second entry
+point to `core/exponential_approach.py` that takes the step already expressed
+in time constants. The circuit never forms its time constant, because that
+overflows at tiny flows (`PL-B26Y`), so it could not call
+`exponential_approach` as written. `exponential_approach` now calls the new
+function, so the patient compartments' results are unchanged bit for bit, and
+`test_the_form_in_time_constants_is_the_same_line` pins that the two agree.
+The exhaust terms and their argument that no term is negative are unchanged.
+`test_a_long_circuit_washout_keeps_its_residual` pins the 37.5- and
+40-time-constant washouts against a 40-digit `exp(-n)`, and
+`test_a_full_circuit_wash_in_lands_on_the_dial_exactly` pins 2,000 seeded
+starting fractions landing on an 8% dial exactly. All three fail on the old
+code. The reference wash-in tests and
+`test_the_circuit_balance_closes_within_the_rounding_of_what_the_step_moves`
+pass unchanged. The module docstring, `docs/ARCHITECTURE.md`'s line for it
+and the `core/__init__.py` paragraph name the circuit as a caller.

@@ -57,13 +57,15 @@ form already returns, bit for bit, at every flow that the suite walks through
   `i + (e - i) * (1 - exp(-dt/tau))`. It is anchored at what the compartment
   holds, and its last factor is computed with `expm1`. At zero flow the form is
   `i + (e - i) * 0.0`, which is exactly `i`, so the change each compartment
-  reports is exactly zero. `BreathingCircuit.advance_fresh_gas()` has used this
-  form on its fraction since `PL-YT8N`, with the factor computed from the gas
-  that the step admits. The two patient compartments use it on their amount for
-  any step that closes up to half the gap, which includes a step at zero flow.
-  For a longer step they use the form anchored at the equilibrium
-  (`core/exponential_approach.py`, `PL-XWFP`). Before `PL-YT8N`, the circuit's
-  form was written `d + (i - d) * exp(-dt/tau)`. At zero flow that form
+  reports is exactly zero. All three compartments take this form through
+  `core/exponential_approach.py` for any step that closes up to half the gap,
+  which includes a step at zero flow. For a longer step they take the form
+  anchored at the equilibrium (`PL-XWFP`). The two patient compartments apply
+  it to the amount they store. `BreathingCircuit.advance_fresh_gas()` applies
+  it to the fraction it stores, with the step in time constants computed from
+  the gas that the step admits (`PL-YT8N`, `PL-CQ1M`). Before `PL-YT8N`, the
+  circuit's form was written `d + (i - d) * exp(-dt/tau)` for every step. At
+  zero flow that form
   returned exactly `i` only while the starting fraction and the driving
   fraction were within a factor of two of each other, so a guard was needed to
   make a zero-flow step an exact no-op. Without the guard, a 6 L circuit loaded

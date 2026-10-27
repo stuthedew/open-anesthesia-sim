@@ -389,6 +389,7 @@ def _snapshot(
         is_running=is_running,
         elapsed_s=CaseInstant(latest.elapsed_s),
         began_at_s=CaseInstant(0.0),
+        opened_with=(),
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
@@ -3826,15 +3827,17 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
 
 
 def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
-    """Two entries rather than one, and always in this order.
+    """A control event and a mark at the same instant get two entries, control event first.
 
-    A mark set on a recorded control event is a different way to branch.
-    `fork_at` opens at the keyframe, and `fork_at_mark` opens at the step that
-    reaches the mark, standing on its crossing. So neither entry absorbs the
-    other. Their order is the order in which the two lists are given, which
-    keeps one case listed the same way every time. The case's own opening is
-    the boundary case. A mark there is reached by no step and opens at the
-    opening keyframe, and it is listed after that keyframe.
+    A mark set at the instant of a recorded control event gets an entry of
+    its own, and `fork_offer` does not merge the two. Both entries open the
+    same branch, because every way of branching at one instant names the
+    same provenance and runs under what the dial says (`PL-ZR49`). The
+    entries keep the order in which `fork_offer` receives its two lists,
+    the control events and then the marks. So one case is always listed the
+    same way. The case's opening, at 0 s, is the boundary case, because no
+    step reaches a mark there. A branch at that mark opens at the opening
+    keyframe, and the mark is listed after that keyframe.
     """
 
     at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))

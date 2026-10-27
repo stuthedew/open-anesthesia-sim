@@ -1,4 +1,4 @@
-"""The first-order approach toward a constant input, used by the patient compartments' closed forms.
+"""The first-order approach toward a constant input, used by every compartment's closed form.
 
 `TissueGroup.advance()` and `VenousBloodCompartment.advance()` each solve one
 balance that `docs/MODEL.md` states, against an input held constant over the
@@ -10,8 +10,18 @@ in each time constant:
 
     M(t + dt) = M(t) + (M_eq - M(t)) (1 - exp(-dt / tau)) .
 
-`exponential_approach` computes that line, written once for both
-compartments. It uses the one arrangement of the line that was found to keep
+`BreathingCircuit.advance_fresh_gas()` solves the same balance for the circuit
+with no patient connected, against the dial's fraction held constant over the
+step (`PL-CQ1M`).
+
+`exponential_approach` computes that line, written once for all three
+compartments. `exponential_approach_in_time_constants` is the same line taken
+with the step already expressed in time constants, `dt/tau`. The circuit calls
+that form, because it never forms its time constant. Its time constant is the
+circuit volume divided by the fresh gas flow, which overflows to `inf` when
+the flow is below about 2e-306 L/min in a 6 L circuit (`PL-B26Y`). The
+circuit forms `dt/tau` directly instead, as the gas the step admits divided by
+the circuit volume. It uses the one arrangement of the line that was found to keep
 four properties that the arithmetic owes the physics. Each property was
 measured failing in an arrangement that this one replaced (`PL-XWFP`).
 `tests/unit/test_exponential_approach.py` tests each property on the case that
@@ -87,7 +97,19 @@ a normal double, up to about 708 time constants (measured 2026-10-12 against a
 40-digit reference). `tests/unit/test_exponential_approach.py` also holds the result to
 within three ulps of that reference between those special points.
 `docs/MODEL.md`'s balances have no step at which a perfused compartment is
-exactly empty, and the closed form reports none.
+exactly empty, and the closed form reports none. The circuit's washout keeps
+its residual the same way. A bare 6 L circuit at 4 L/min, washed out from a
+fraction of 1.0 under a dial of zero, holds 4.2e-18 after forty time
+constants, where its own earlier sum reported exactly 0.0 (measured
+2026-10-17, `PL-CQ1M`).
+
+**The circuit anchors its fraction, and that is anchoring what it stores.** The
+patient compartments store an amount, so the amount is what they anchor, for
+the reason given above. The circuit stores its inspired fraction and derives
+its amount from it as `circuit_volume_l * fraction`. So the fraction is the
+value that the circuit holds, and anchoring it re-forms nothing. The
+circuit's exhaust is a separate sum of terms that cannot be negative, and the
+circuit computes it itself.
 
 **Exact at zero flow, with no branch.** The time constant of an unperfused
 compartment is `inf` (`TissueGroup.time_constant_s`). Then `dt/inf` is `0.0`
@@ -128,9 +150,29 @@ def exponential_approach(
     it is `inf` at zero flow.
     """
 
-    gap_closed = -expm1(-step_s / time_constant_s)
+    return exponential_approach_in_time_constants(initial, equilibrium, step_s / time_constant_s)
+
+
+def exponential_approach_in_time_constants(
+    initial: float, equilibrium: float, time_constants_elapsed: float
+) -> float:
+    """Advance `initial` toward `equilibrium` by a step of `time_constants_elapsed`, or dt/tau.
+
+    This is `exponential_approach` for a caller that has the step in time
+    constants but not the time constant itself. The result is the same line,
+    with the same two anchors and the same four properties. It is `initial`
+    exactly where `time_constants_elapsed` is zero, and `equilibrium` exactly
+    where `exp(-time_constants_elapsed)` underflows.
+    `BreathingCircuit.advance_fresh_gas()` calls it, for the reason that the
+    module docstring gives.
+
+    This function checks nothing itself. Each caller has already made
+    `time_constants_elapsed` zero or positive, and not `nan`.
+    """
+
+    gap_closed = -expm1(-time_constants_elapsed)
 
     if gap_closed <= HALF_THE_GAP:
         return initial + (equilibrium - initial) * gap_closed
 
-    return equilibrium + (initial - equilibrium) * exp(-step_s / time_constant_s)
+    return equilibrium + (initial - equilibrium) * exp(-time_constants_elapsed)

@@ -62,6 +62,8 @@ from .lines import split_lines
 from .model import (
     EFFORTS,
     LANE_CROSSING,
+    LANE_PRODUCT,
+    LANE_WORKFLOW,
     LIST_FIELDS,
     MIN_RECURRENCES,
     PRIORITIES,
@@ -2171,7 +2173,7 @@ def cmd_set(args: argparse.Namespace) -> int:
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after, milestones)
     _say_contradicted(changes, items, after, today)
-    for line in render.generator_check_on_set(item, updated, config.workflow_paths):
+    for line in render.generator_check_on_set(item, updated, config):
         print(line)
     return 0
 
@@ -4991,6 +4993,10 @@ def cmd_inflow(args: argparse.Namespace) -> int:
     the whole store (`PL-WXKD`). It reads only the store, so it asks git
     nothing. Refuses without `workflow_paths`, as `trend` does and for the same
     reason: with no boundary declared, no filing is an apparatus filing.
+
+    `--lane product` counts the product filings triage's generator check asks
+    about instead, so a product head whose fix did not hold is listed as an
+    apparatus one is (`PL-K5CX`).
     """
     _, items, config = _load(args)
     if not config.workflow_paths:
@@ -4999,7 +5005,9 @@ def cmd_inflow(args: argparse.Namespace) -> int:
             "no filing can be told apart as apparatus work."
         )
         return 1
-    report = analyze_inflow(items, config, by=args.by, today=args.today or date.today())
+    report = analyze_inflow(
+        items, config, by=args.by, today=args.today or date.today(), lane=args.lane
+    )
     print(render.format_inflow(report))
     return 0
 
@@ -6400,6 +6408,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=(BY_WEEK, BY_DAY),
         default=BY_WEEK,
         help="period length (default: %(default)s)",
+    )
+    inflow_cmd.add_argument(
+        "--lane",
+        choices=(LANE_WORKFLOW, LANE_PRODUCT),
+        default=LANE_WORKFLOW,
+        help="which half of the generator check's population to count (default: %(default)s)",
     )
     inflow_cmd.set_defaults(func=cmd_inflow)
     return parser

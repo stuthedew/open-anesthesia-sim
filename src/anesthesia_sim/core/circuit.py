@@ -51,6 +51,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exponential_approach import exponential_approach_in_time_constants
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -744,17 +745,23 @@ class BreathingCircuit:
         admitted_gas_l = fresh_gas_flow_l_s * simulation_step_s
         time_constants_elapsed = admitted_gas_l / self.circuit_volume_l
 
-        # This is 1 - exp(-dt/tau), the share of the gas in the circuit at the
-        # start of the step that fresh gas has replaced by the end. `-expm1`
-        # keeps the result's significant digits when dt/tau is small. In that
-        # case `1.0 - exp(...)` subtracted two numbers within an ulp of 1 and
-        # lost those digits (`PL-YT8N`). `-expm1` also keeps the result between
-        # 0 and dt/tau, which the exhaust calculation below needs.
-        fraction_replaced = -expm1(-time_constants_elapsed)
-
+        # `core/exponential_approach.py` holds the formula that advances the
+        # fraction, the same first-order approach that the patient
+        # compartments take toward their input (`PL-CQ1M`).
         next_fraction = Fraction(
-            initial_fraction + (delivered_fraction - initial_fraction) * fraction_replaced
+            exponential_approach_in_time_constants(
+                initial_fraction, delivered_fraction, time_constants_elapsed
+            )
         )
+
+        # This is 1 - exp(-dt/tau), the share of the gas in the circuit at the
+        # start of the step that fresh gas has replaced by the end. The
+        # exhaust calculation below needs it. `-expm1` keeps the result's
+        # significant digits when dt/tau is small. In that case
+        # `1.0 - exp(...)` subtracted two numbers within an ulp of 1 and lost
+        # those digits (`PL-YT8N`). `-expm1` also keeps the result between 0
+        # and dt/tau, which keeps the fresh gas term below from being negative.
+        fraction_replaced = -expm1(-time_constants_elapsed)
 
         delivered_agent_l = delivered_fraction * admitted_gas_l
 
