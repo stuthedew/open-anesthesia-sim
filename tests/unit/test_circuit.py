@@ -1,4 +1,5 @@
 import copy
+import fractions
 import json
 import pickle
 import random
@@ -6,7 +7,7 @@ import re
 from dataclasses import astuple, replace
 from decimal import Decimal, localcontext
 from importlib.resources import files
-from math import exp, inf, nan, nextafter
+from math import exp, inf, nan, nextafter, ulp
 
 import pytest
 
@@ -1258,3 +1259,61 @@ def test_a_full_circuit_wash_in_lands_on_the_dial_exactly() -> None:
         circuit.advance_fresh_gas(60 * 90.0)
 
         assert circuit.inspired_partial_pressure_fraction == 0.08
+
+
+@pytest.mark.parametrize("fresh_gas_flow_l_min", (1.0, 4.0, 10.0))
+@pytest.mark.parametrize("simulation_step_s", (60.0, 120.0, 600.0))
+@pytest.mark.parametrize(
+    ("dial_percent", "starting_fraction"),
+    [
+        pytest.param(8.0, 0.0, id="wash-in-from-empty"),
+        pytest.param(2.0, 0.013, id="wash-in-part-way"),
+        pytest.param(0.0, 0.08, id="washout-to-empty"),
+        pytest.param(1.0, 0.025, id="washout-part-way"),
+    ],
+)
+def test_a_long_circuit_step_closes_the_balance_and_exhausts_no_negative_agent(
+    fresh_gas_flow_l_min: float,
+    simulation_step_s: float,
+    dial_percent: float,
+    starting_fraction: float,
+) -> None:
+    """`PL-CQ1M`: a step past half the gap still balances what entered, left and stayed.
+
+    A step longer than ln 2 time constants forms the next fraction from the
+    dial's fraction, while the exhaust is still built from `-expm1(-dt/tau)`.
+    So the balance rests on two values formed in different ways. At these
+    clinical flows and steps, a 6 L circuit is stepped by 0.17 to 17 time
+    constants, which covers that branch. The balance is measured in exact
+    rationals, against four roundings of the largest amount the step involves,
+    the bound that `tests/unit/test_compartment_primitives.py` uses at the
+    short steps. The reviewer who found this gap measured 2.4 roundings at most
+    over 20,000 random supported states (2026-10-27).
+    """
+
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
+        circuit_volume_l=CompartmentVolume(6.0),
+        fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
+        delivered_concentration_percent=Percent(dial_percent),
+    )
+    circuit.set_inspired_partial_pressure_fraction(Fraction(starting_fraction))
+    held_fraction_before = circuit.inspired_partial_pressure_fraction
+
+    exchange = circuit.advance_fresh_gas(simulation_step_s)
+
+    held_fraction_after = circuit.inspired_partial_pressure_fraction
+    residual_l = abs(
+        fractions.Fraction(exchange.delivered_agent_l)
+        - fractions.Fraction(exchange.exhausted_agent_l)
+        - fractions.Fraction(circuit.circuit_volume_l)
+        * (fractions.Fraction(held_fraction_after) - fractions.Fraction(held_fraction_before))
+    )
+    largest_amount_l = max(
+        exchange.delivered_agent_l,
+        exchange.exhausted_agent_l,
+        circuit.circuit_volume_l * max(held_fraction_before, held_fraction_after),
+    )
+
+    assert exchange.exhausted_agent_l >= 0.0
+    assert residual_l <= 4 * ulp(largest_amount_l)
