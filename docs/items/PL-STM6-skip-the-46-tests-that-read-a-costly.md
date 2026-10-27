@@ -3,10 +3,12 @@ id: PL-STM6
 title: Skip the 46 tests that read a costly computation on pull requests that touch no simulator path, and rebalance quality.yml's two parts when they are skipped
 priority: P3
 effort: M
-status: ready
+status: done
 feature: ci-cost
 touches: .github/workflows/quality.yml, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/unit/test_quality_step_order.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/apparatus.md
 added: 2026-10-17
+closed: 2026-10-27
+pr: 1887
 payoff: a pull request that touches no simulator code waits about a minute less for checks
 not-delegable: the design names the paths that count as simulator code, a judgment, and its end state is a measurement of CI runs
 ---
@@ -75,3 +77,5 @@ median slow-runner time of such pull requests is measured against the split's.
 The shares now depend on the skip, so both parts must ask for it. A part that skipped and a part that did not would deal with different shares, and some ordinary tests would run in neither. So part 1's pytest step sets `SKIP_COSTLY_TESTS` on the same answer as part 2's, and `checks` gained a step, "both parts answered the same scope", that fails when the two parts' `ci-scope` answers differ.
 
 **What is left.** Close this item once 10 or more apparatus runs on the new split show part 1 finishing within 30 s of part 2. Count runs from `#1852`'s merge. If part 2 then finishes last by more than 30 s, move one share back toward part 1.
+
+**Measured 2026-10-27 at 14:14Z, and closed.** 16 successful apparatus runs of `quality.yml` on pull requests had finished between `#1852`'s merge and 2026-10-27 03:40Z. They were counted as before, by the `checks` job's step that prints coverage without the costly tests. Part 1 finished within 30 s of part 2 in all 16. Part 2 finished last by a median of 5 s, and the end gaps ran from part 2 last by 29 s to part 1 last by 21 s. So the item's finish line is met, and neither part needs a share moved. In medians, part 1's job took 262 s and part 2's 269 s, against 279 s and 206 s before the retune. The slower job therefore fell by about 10 s, not to the 240 s the retune estimated. The two pytest steps took 96 s and 233 s, together about 46 s more than the 283 s measured before. The median run took 300.5 s from start to finish, against 295 s before the retune. That figure also includes the `checks` job and time spent waiting for a runner, so the change at the job level does not show in it. The counting script was container-local, at `/tmp/claude-0/stm6b/measure.py`.
