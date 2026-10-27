@@ -59,6 +59,14 @@ whatever its lane, which is the population triage's generator check asks about
 of the path count, for the reason `trend` leaves the store out of its churn:
 they sit inside `workflow_paths`, so every capture made while doing something
 else would otherwise read as apparatus inflow.
+
+**The product lane counts the other half of that population** (`PL-K5CX`):
+an item with a product path that triage's generator check asks about, which is
+product work not classed only as new work. `Item.generator_question_paths`
+decides both halves. Its question is not the apparatus one, since product
+features keep arriving: it is whether a product head's fix held, read from the
+same `reenters:` record. `PL-04KR`'s predictions are about the apparatus, so
+`missed` reads only the apparatus report.
 """
 
 from __future__ import annotations
@@ -69,7 +77,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import MIN_ROOT_CAUSE_ITEMS, Item, is_generator, is_under
+from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_generator, is_under
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 
 #: What a filing with no `priority:` yet is counted as, so an untriaged capture
@@ -177,6 +185,9 @@ class Inflow:
     by: str
     #: What was left out of the apparatus test, for the key.
     excluded: tuple[str, ...]
+    #: Which half of the generator check's population was counted:
+    #: `LANE_WORKFLOW` for apparatus filings, `LANE_PRODUCT` for product ones.
+    lane: str = LANE_WORKFLOW
     #: Each closed item that `MIN_ROOT_CAUSE_ITEMS` or more filings re-enter,
     #: with those filings: triage's "three post-close instances of one head"
     #: rule, a generator whose fix did not hold. Counted over the filings
@@ -200,8 +211,17 @@ def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> fr
     """The paths `item` declares under `workflow_paths`, store paths left out."""
     return frozenset(
         path.strip().strip("/")
-        for path in item.touches
+        for path in item.generator_question_paths(config.workflow_paths, config.new_work_classes)
         if is_under(path, config.workflow_paths) and not is_under(path, excluded)
+    )
+
+
+def product_paths(item: Item, config: Config) -> frozenset[str]:
+    """The product paths for which triage's generator check asks `item` where it came from."""
+    return frozenset(
+        path.strip().strip("/")
+        for path in item.generator_question_paths(config.workflow_paths, config.new_work_classes)
+        if not is_under(path, config.workflow_paths)
     )
 
 
@@ -231,16 +251,25 @@ def _filed_by_head(items: Sequence[Item]) -> set[str]:
 
 
 def analyze(
-    items: Sequence[Item], config: Config, *, by: str = BY_WEEK, today: date | None = None
+    items: Sequence[Item],
+    config: Config,
+    *,
+    by: str = BY_WEEK,
+    today: date | None = None,
+    lane: str = LANE_WORKFLOW,
 ) -> Inflow:
-    excluded = store_paths(config)
-    named = {item.identifier: apparatus_paths(item, config, excluded) for item in items}
+    if lane == LANE_PRODUCT:
+        excluded: tuple[str, ...] = ()
+        named = {item.identifier: product_paths(item, config) for item in items}
+    else:
+        excluded = store_paths(config)
+        named = {item.identifier: apparatus_paths(item, config, excluded) for item in items}
     filings = sorted(
         ((item.added, item) for item in items if item.added is not None and named[item.identifier]),
         key=lambda pair: (pair[0], pair[1].identifier),
     )
     if not filings:
-        return Inflow(periods=(), anchor=None, by=by, excluded=excluded)
+        return Inflow(periods=(), anchor=None, by=by, excluded=excluded, lane=lane)
 
     swept = _filed_by_head(items)
     reentering: dict[str, list[str]] = {}
@@ -325,6 +354,7 @@ def analyze(
         anchor=anchor,
         by=by,
         excluded=excluded,
+        lane=lane,
         reentered=reentered,
         successors=successors,
         answered=answered,
@@ -371,6 +401,8 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     period before it, since the prediction is that it is flat or falling.
     The predictions are stated per week, so `report` is read by week.
     """
+    if report.lane != LANE_WORKFLOW:
+        return ()
     complete = [period for period in report.periods if period.end < today]
     if not complete:
         return ()

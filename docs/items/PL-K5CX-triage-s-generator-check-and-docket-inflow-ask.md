@@ -3,11 +3,13 @@ id: PL-K5CX
 title: Triage's generator check and docket inflow ask only items on apparatus paths, so a product defect is never asked which fact it misread and a product head whose fix did not hold is never listed
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - apparatus work on the machinery that finds generators, taken now at the project owner's request rather than held by the schematic's gate
 added: 2026-10-27
+closed: 2026-10-27
+pr: 1883
 payoff: a simulator defect is asked which fact it misread when it is triaged, and a product head whose fix did not hold is listed, without waiting for the owner to ask for a sweep
 verify: grep -q 'def test_triage_marks_a_product_defect_as_owing_a_generator_check' subprojects/docket/tests/test_cli.py && grep -q 'def test_product_lane_counts_a_product_reentry' subprojects/docket/tests/test_inflow.py
 impairs-generators: render._generator_check and inflow.analyze key on workflow_paths alone, so triage never asks a product defect which fact it misread and inflow never counts a product re-entry
@@ -79,3 +81,11 @@ generators, recorded as `impairs-generators:`. It misreads no fact itself.
 **Why it matters.** Product defects are the ones a learner can see. While
 triage never asks one where it came from, a recurring cause is found only when
 the owner asks for a sweep, and each instance in between is patched alone.
+
+**Done, 2026-10-27.** `Item.generator_question_paths` in `docket.model` holds
+the rule, and the triage mark, `set`'s line and both `inflow` lanes read it.
+`bin/docket inflow --lane product` on this branch counted 1,000 product
+filings since 2026-08-23. Its weekly `filed` column has not fallen below 43
+since the first week, and recorded re-entries run at three or four a week.
+That count is low because `PL-R4Y2`'s passes left 78 matches to closed heads
+unrecorded as `reenters:`. Recording them is that item's work.

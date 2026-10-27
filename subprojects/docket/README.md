@@ -1367,13 +1367,16 @@ context, which repairs each in the same commit: reworded, or opened with
 `[superseded YYYY-MM-DD]` where the passage is history worth keeping.
 
 **A triage write says what it leaves the Generator check owing.** `docket
-triage` marks each untriaged item whose `touches` reach `workflow_paths`, but a
+triage` marks each untriaged item whose `touches` reach `workflow_paths`. It
+also marks each whose `touches` name a product path, unless every class it
+carries is in `new_work_classes`, so a product defect is asked which fact it
+misread too (`PL-K5CX`). `Item.generator_question_paths` holds that rule. But a
 pass usually writes an item's `touches` and its `--status` in one `set`, which
 takes the item off the list before the mark can print - twelve of twenty-two
 captures on 2026-09-28 had no `touches` for it to read (`PL-6WPD`). So a write
 moving `touches` or `status` on an untriaged item, or writing the first
 `touches` of one that declared none, prints what the mark would have: owed,
-naming the apparatus paths, where the brief carries no `**Generator check.**`
+naming the paths that owe it, where the brief carries no `**Generator check.**`
 line; undecided, where it ends triage with the item open and no paths declared.
 A later write is not asked, since the check is triage's question of what
 arrives.
@@ -1725,10 +1728,18 @@ see what the run was for.
 `docket trend` reads what was *closed*; `docket inflow` reads what was *filed*,
 which is the half that says whether the apparatus is still being handed work:
 
-    docket inflow            # 7-day periods
+    docket inflow                  # 7-day periods
     docket inflow --by day
+    docket inflow --lane product   # the product filings the generator check asks
 
-It counts apparatus filings - an item whose `touches` name a path under
+`--lane product` counts the other half of the generator check's population
+instead: items with a product path whose classes are not all new work. Product
+features keep arriving, so its question is narrower than the apparatus one:
+whether a product head's fix held, read from the same `reenters:` record
+(`PL-K5CX`). `PL-04KR`'s release-time predictions read only the apparatus
+report.
+
+By default it counts apparatus filings - an item whose `touches` name a path under
 `workflow_paths`, whatever its lane, with `items_dir` and `notes_file` left out
 of that test for the reason churn leaves the store out - per period and per
 day, so a short final period compares with the full ones. Members a head's
