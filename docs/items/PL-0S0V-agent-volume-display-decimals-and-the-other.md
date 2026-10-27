@@ -117,3 +117,5 @@ for isoflurane and 209.7 for desflurane. `core/liquid_agent.py`'s
 - Tests in `tests/unit/test_formatting.py`: `test_a_precision_finer_than_its_derived_band_is_refused`, `test_a_unit_with_no_derived_precision_is_refused`, and `test_a_run_total_in_millilitres_of_liquid_claims_no_more_than_in_litres_of_vapour`, which re-derives the liquid count from each agent's stored molar mass and density. The new tests need the new interface, so they cannot be collected on the code before this change. Nothing displayed changed, so there is no regression to replay.
 - Briefs of `PL-2881`, `PL-B396` and `PL-1P15` carry a dated note saying where their entry goes, and `ROADMAP.md`'s scope entry 1 and `PL-GL5X` name the new table.
 
+
+**Held for the owner's read, 2026-10-27.** The derivation is a new statement in `docs/MODEL.md` of how precisely a displayed clinical amount may be shown, so pull request #1878 waits on the owner. The thing to check is the table and the two paragraphs under it in § "Displayed precision": whole millilitres for the delivered and exhausted totals in liquid, and the stored total refused in liquid.
