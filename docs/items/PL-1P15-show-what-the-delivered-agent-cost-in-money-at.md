@@ -83,12 +83,15 @@ decides the details.
 2026-10-26). That section is the specification this readout builds to. It
 says what a stored price carries, the six things shown beside a cost, and when
 no cost is shown. It takes the price per bottle, with the bottle's volume, and
-derives the price per millilitre. It shows the currency as its ISO 4217 code,
-so part 2's example reads "USD 0.2047/mL" rather than "US$0.2047/mL". Two
-parts of that section are this item's work:
+derives the price per millilitre. It names both millilitre figures as liquid
+and shows the currency as its ISO 4217 code. So part 2's example reads
+"39.4 mL of liquid delivered x USD 0.2047 per mL of liquid" rather than
+"39.4 mL x US$0.2047/mL". Two parts of that section are this item's work:
 
-- Derive the cost's displayed precision in § "Displayed precision". It depends
-  on the price, so `PL-0S0V` cannot derive it in advance.
+- Derive two displayed precisions in § "Displayed precision": the cost's and
+  the price per millilitre's. Both depend on the price, so `PL-0S0V` cannot
+  derive them in advance. The section says what they must achieve when a
+  reader multiplies the figures shown.
 - Replace `no test yet (`PL-1P15`)` in the hazard table's two cost rows with
   the tests that enforce them. `tools/doc_check.py` fails once this item
   closes with either row still naming it.
