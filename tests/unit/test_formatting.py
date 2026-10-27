@@ -1478,25 +1478,26 @@ def test_agent_amounts_precision() -> None:
 
 
 def test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres() -> None:
-    """Derive the exhausted total's liquid precision from its litre one, for every agent.
+    """Derive the exhausted total's precision in liquid from its precision in litres.
 
-    The exhausted total carries the partition coefficients' uncertainty, so
-    in liquid it must not claim a finer resolution than in litres of vapour
-    (`PL-0S0V`). So the liquid count is the finest power of ten that
-    is no finer than one step of the litre display. That step is 0.1 L of
-    vapour, converted into liquid. This test does that conversion from each
-    agent's stored molar mass and density, not from the formatter. At the
-    20 °C reference, 0.1 L of vapour is about 0.55 mL of sevoflurane, 0.51 mL
-    of isoflurane and 0.48 mL of desflurane liquid. So 1 mL is the finest
-    power of ten at or above all three, and 0.1 mL would claim five times the
-    resolution that the litre display claims for the same amount.
+    The test does this for every agent. The exhausted total carries the
+    partition coefficients' uncertainty, so in liquid it must not claim a finer
+    resolution than in litres of vapour (`PL-0S0V`). So the step of the liquid
+    display is the finest power of ten that is no finer than one step of the
+    litre display. That step is 0.1 L of vapour, converted into liquid. This
+    test does that conversion from each agent's stored molar mass and density,
+    not from the formatter. At the 20 °C reference, 0.1 L of vapour is about
+    0.55 mL of sevoflurane, 0.51 mL of isoflurane and 0.48 mL of desflurane
+    liquid. So 1 mL is the finest power of ten at or above all three. A step of
+    0.1 mL would claim five times the resolution that the litre display claims
+    for the same amount.
 
     The parameter spread gives the same answer. One published SD of a
-    partition coefficient moves the exhaust total at 24 h by 0.19 L of
+    partition coefficient moves the exhausted total at 24 h by 0.19 L of
     sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of desflurane
     (`PL-TG60`). Converted with each agent's own ratio of vapour to liquid,
     those are 1.04, 0.92 and 1.10 mL of liquid. One step of 1 mL is then
-    about one SD, and 0.1 mL would be a tenth of one.
+    about one SD, and a step of 0.1 mL would be a tenth of one SD.
     """
 
     litres = agent_amount_display_precision(AgentAmount.EXHAUSTED, AgentAmountUnit.LITRES_OF_VAPOUR)
@@ -1525,20 +1526,23 @@ def test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_lit
 def test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth() -> None:
     """Pin the owner's ruling for the delivered total, and the density limit behind it.
 
-    The delivered agent is the dial times the flow times the time, so no
-    partition coefficient makes it uncertain. The conversion to liquid is
-    exact at the model's 20 °C reference, so its one uncertainty in liquid is
-    the measured density's. So the delivered total is shown to 0.1 mL (project
-    owner, 2026-10-27, ratified, over whole millilitres, `PL-0S0V`). That also
-    lets a reader multiply the two figures beside a cost by eye.
+    The delivered agent is the vaporizer dial setting times the fresh gas flow
+    times the time, so no partition coefficient makes it uncertain. The
+    conversion to liquid is exact at the model's 20 °C reference. So in liquid,
+    the total's only uncertainty comes from the measured density. For that
+    reason the delivered total is shown to 0.1 mL (project owner, 2026-10-27,
+    ratified, over whole millilitres, `PL-0S0V`). A reader can then multiply
+    the delivered millilitres shown beside a cost by the price per millilitre
+    shown beside it, and get the cost by eye.
 
     The limit is computed here from each agent's stored density and its SD,
     not from the formatter. One SD of the density moves the liquid figure by
-    0.1 mL once it holds about 190 mL of sevoflurane, 250 mL of isoflurane or
-    366 mL of desflurane. Those are 0.1 x 1.5203 / 0.0008, 0.1 x 1.5019 / 0.0006
-    and 0.1 x 1.4651 / 0.0004, from Laster, Fang and Eger's densities as
-    `docs/MODEL.md` § "Agent amount" tabulates them. At Gas Man's Exercise 14-1,
-    39.4 mL of isoflurane, one SD is 0.016 mL, well inside half a step.
+    0.1 mL once the total holds about 190 mL of sevoflurane, 250 mL of
+    isoflurane or 366 mL of desflurane. These figures are 0.1 x 1.5203 / 0.0008,
+    0.1 x 1.5019 / 0.0006 and 0.1 x 1.4651 / 0.0004. In each, the density and
+    its SD are Laster, Fang and Eger's values, as the agent's data file stores
+    them. For the 39.4 mL of isoflurane in Gas Man's Exercise 14-1, one SD is
+    0.016 mL. That is well inside half a step.
     """
 
     liquid = agent_amount_display_precision(

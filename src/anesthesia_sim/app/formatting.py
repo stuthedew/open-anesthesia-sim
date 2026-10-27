@@ -216,31 +216,35 @@ class AgentAmountUnit(Enum):
     MILLILITRES_OF_VAPOUR = "millilitres of vapour"
 
 
-# The finest decimal count that `docs/MODEL.md` § "Displayed precision"
-# derives for each agent amount in each unit. The figures behind each count
-# are there and are not restated here.
+# Each entry below is the finest number of decimals that `docs/MODEL.md`
+# § "Displayed precision" derives for one agent amount in one unit. That section
+# holds the figures behind each count, and this comment does not restate them.
 #
-# - A run total in litres of vapour: one decimal, the finest the parameters
-#   support (`PL-TG60`). The three totals share it, so the accounting panel
-#   shows them on one scale.
-# - The delivered total in millilitres of liquid: one decimal (project owner,
+# - A run total in litres of vapour has one decimal, the finest that the
+#   parameters support (`PL-TG60`). All three totals use it, so the accounting
+#   panel shows them on one scale.
+# - The delivered total in millilitres of liquid has one decimal (project owner,
 #   2026-10-27, ratified, over whole millilitres). The delivered agent is the
-#   dial times the flow times the time, so no partition coefficient makes it
-#   uncertain. Its one uncertainty in liquid is the measured density's, and
-#   one SD of that reaches 0.1 mL only above about 190 mL of liquid. Its litre
-#   count is coarser than that, which the one-sided bound allows.
-# - The exhausted total in millilitres of liquid: no decimals. One step of the
-#   litre display, 0.1 L of vapour, is about half a millilitre of liquid for
-#   every shipped agent. 1 mL is the finest power of ten that is no finer than
-#   that step. So the two units claim the same resolution for one amount.
+#   vaporizer dial setting times the fresh gas flow times the time, so no
+#   partition coefficient makes it uncertain. Once it is converted to liquid,
+#   its only uncertainty comes from the measured density. One SD of the density
+#   moves the liquid figure by 0.1 mL only above about 190 mL of liquid. The
+#   litre display of this total is coarser than 0.1 mL of liquid. That is
+#   allowed, because the bound is one-sided: it limits how fine a display may
+#   be, not how coarse.
+# - The exhausted total in millilitres of liquid has no decimals. One step of
+#   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
+#   for every shipped agent. 1 mL is the finest power of ten that is no finer
+#   than that step. So the litre and millilitre displays claim the same
+#   resolution for the same amount.
 #
 # A pair of amount and unit with no entry has no derivation behind it. It is
-# refused rather than shown at a default. The stored total has no liquid entry,
-# because a store converted to liquid comes out 5.8% too high. That error is
-# more than 1 mL once the store holds about 17 mL of liquid. A compartment's
-# amount has no entry until `PL-2881` derives one. Money has no entry here,
-# because the resolution of a cost depends on the price that the reader sets.
-# `PL-1P15` derives that resolution.
+# refused rather than shown at a default precision. The stored total has no
+# liquid entry, because a store converted to liquid comes out 5.8% too high.
+# That error is more than 1 mL once the store holds about 17 mL of liquid. A
+# compartment's amount has no entry until `PL-2881` derives one. Money has no
+# entry here, because the resolution of a cost depends on the price that the
+# reader sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
 _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
     MappingProxyType(
