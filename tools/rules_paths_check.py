@@ -134,6 +134,8 @@ LANE_ONLY = (
     "docs/stress-2026-09-25",
     "docs/session-ledger.tsv",
     "docs/ci-runs.tsv",
+    "docs/blind-review-findings.tsv",
+    "docs/blind-review-findings.md",
     "docs/model-review.md",
     "model-evidence.toml",
     "docs/worker-runs",
