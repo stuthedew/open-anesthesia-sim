@@ -812,9 +812,9 @@ def test_a_stopped_run_refuses_every_setting_and_records_nothing(
     stop instant. The dial then showed a setting that no step ran under, and
     the record claimed a change that never acted on the patient. Each setter
     now refuses before it applies anything. The expected settings come from a
-    run built and stepped the same way that never stopped. The test runs once
-    for each `ControlInput`, so a control added without a setter here, or
-    without the refusal, fails it.
+    run that was built and stepped the same way but never stopped. The test
+    runs once for each `ControlInput`, so a control added without a setter
+    here, or without the refusal, fails it.
     """
 
     controller = SimulationController()
@@ -4996,19 +4996,19 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
 
 # --- Standing on the supported run length with no step refused (PL-5291) ------
 #
-# The core refuses the step *from* the last supported count. So a run that
-# stops only when a step is refused looks like an ordinary pause on every route
-# that brings it to 24:00:00 without a refused step. Those routes are a trunk
-# halted there on a mark, a branch forked there, and a branch reset onto such
-# a fork. Each of these offered Start, showed no limit notice, and told a
-# learner that an unreached mark was still ahead of a run that could not step.
-# Every assertion below is checked end to end, from the controller's snapshot
-# through the pure dashboard functions that a frame is built from. They use
-# the shipped 0.1 s step, because that is the step whose last supported count
-# lands exactly on 24 hours (`PL-8H2R`).
+# The core refuses a step that starts *from* the last supported step count. So
+# if a run stopped only when a step was refused, it would look like an ordinary
+# pause on every route that brings it to 24:00:00 without a refused step. Those
+# routes are a trunk halted there on a mark, a branch forked there, and a branch
+# reset onto such a fork. Each of these offered Start, showed no limit notice,
+# and told a learner that an unreached mark was still ahead of a run that could
+# not step. Every assertion below is checked end to end, from the controller's
+# snapshot through the pure dashboard functions that a frame is built from. The
+# tests use the shipped 0.1 s step, because that is the step whose last
+# supported count lands exactly on 24 hours (`PL-8H2R`).
 #
 # Stepping a run to 24 hours takes about 30 s. So the two runs that do it are
-# built once per pytest run and shared between xdist workers. Nothing below
+# built once per pytest run and shared between xdist workers. No test below
 # changes what another test reads from them. A fork leaves its parent
 # untouched, and the one dial moved on a stopped run is refused (`PL-3B34`).
 

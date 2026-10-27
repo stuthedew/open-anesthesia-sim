@@ -1178,8 +1178,8 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     """A stopped run describes everything on screen, and a refusal describes one control.
 
     So the banner opens with the stopped run. Since `PL-3B34` the refusal is
-    stated inside that banner, in place of its exit. It is never stated as a
-    refusal on a run that is still going.
+    stated inside that banner, in place of its exit. It is never given the
+    wording of a refusal on a run that is still going.
     """
 
     refused = refused_setting_notice(SimulationConfigurationError("a value the core refused"))

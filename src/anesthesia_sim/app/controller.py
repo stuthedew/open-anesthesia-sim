@@ -135,9 +135,10 @@ class RunStatus:
     is rolled back, so the run's own accounting describes the last completed
     step again, and that step passed. This field keeps the rejected step's
     verdict and totals, which `dashboard_frame.accounting` shows in place of
-    the restored ones. Otherwise the panel read "Valid" under a banner saying
-    that the accounting had failed (`PL-HF4B`). The field has no default, so
-    a constructor that leaves it out fails instead of reporting no failure.
+    the restored ones. Without this field, the panel read "Valid" under a
+    banner saying that the accounting had failed (`PL-HF4B`). The field has no
+    default, so a constructor call that leaves it out fails instead of
+    reporting no failure.
     """
 
 
@@ -688,16 +689,16 @@ class SimulationController:
     def fail(
         self, reason: str, *, rejected_accounting: AgentSimulationValidationResult | None = None
     ) -> None:
-        """Halt the session because something raised, recording why.
+        """Halt the session because something raised an exception, and record why.
 
         This differs from `pause()`, which is a user decision that the run
-        resumes from. A failure means that a step or a setting raised. The
-        core rolls a failed step back, so the state left behind is the last
-        completed step rather than a partial one. Resuming is still not
-        offered. The run reached a state from which the model could not step,
-        so a resumed run would fail again on its first tick. Offering Start
-        would present that as a working control. Only a fresh run clears the
-        failure, through `reset()` or `set_agent()`.
+        resumes from. A failure means that a step or a setting raised an
+        exception. The core rolls a failed step back, so the state left behind
+        is the last completed step rather than a partial one. Resuming is still
+        not offered. The run reached a state from which the model could not
+        step, so a resumed run would fail again on its first tick. Offering
+        Start would present a control that cannot work as one that does. Only
+        a fresh run clears the failure, through `reset()` or `set_agent()`.
 
         Args:
             reason: What raised, as `dashboard_frame.halt_disposition` words it.
@@ -710,10 +711,10 @@ class SimulationController:
 
         self._is_running = False
 
-        # The first failure is the one that explains the rest, so a later
-        # raise (e.g. from the render loop reacting to the same broken
-        # state) must not overwrite it. The rejected check belongs to that
-        # first failure, so it is kept with it.
+        # The first failure explains the ones after it, so a later exception must
+        # not overwrite it. The render loop, for example, can raise again as it
+        # reacts to the same broken state. The rejected check belongs to the
+        # first failure, so it is kept with that failure.
         if self._failure_reason is None:
             self._failure_reason = reason
             self._rejected_accounting = rejected_accounting
@@ -1350,7 +1351,7 @@ class SimulationController:
         return self._branch_from(self._resume_point_at(instant_s))
 
     def resumed_here(self) -> SimulationController:
-        """Open a second live run where this paused run stands, stopped on a mark or not.
+        """Open a second live run where this paused run stands, whether or not a mark stopped it.
 
         This method serves the decision point a learner is looking at
         (`PL-Y2SL`). A learner who has paused to think can try something else
@@ -1372,8 +1373,8 @@ class SimulationController:
         has not reached. A caller could also ask at the instant a learner
         *marked* rather than at the step instant where the run actually
         stopped. Those are not the same number, because a mark that lies inside
-        a step halts the run at the step's end. This is the only way to branch
-        at a MAC target, which has no instant to name.
+        a step halts the run at the step's end. This method is the only way to
+        branch at a MAC target, which has no instant to name.
 
         **It rejects a run that is advancing, a failed run, a run at its own
         opening, and a run at the supported run length**, each for its own
@@ -1387,30 +1388,32 @@ class SimulationController:
         step is left to take, so a branch opened there could never be run. On
         a dashboard that shows one comparison at a time, only the trunk's
         Reset, which discards the case, would take that branch off the chart.
-        The method that still forks at the limit, at a mark on the limit, is
-        kept because of what `PL-5291` decided about such a branch. A keyframe
-        on the limit was once made by a dial moved after the run stopped, and a
-        stopped run now refuses that dial (`PL-3B34`).
+        A branch can still be forked at the limit, at a mark that lies on the
+        limit. That route is kept because of what `PL-5291` decided about such
+        a branch. A dial moved after the run stopped once made a keyframe on
+        the limit. A stopped run now refuses that dial (`PL-3B34`).
 
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the
         parent's own stretch opens, while the branch's clock and its live
         system stand at the fork. See `_open_at`. See also `docs/MODEL.md`
         § "What this requires of a branch" for which of that section's two
-        conditions this relaxes, and why the element-wise guarantee survives.
-        The obvious route is to record the keyframe instead. That keeps the
-        branch exact against its parent, but it changes the parent's own later
-        results: 48 of 54 elements differ from the same case built without the
-        mark. So pausing or marking a run would change it.
+        conditions this relaxes, and why the element-wise guarantee still
+        holds. The obvious alternative is to record the keyframe. That would
+        keep the branch exact against its parent, but it would change the
+        parent's own later results: 48 of 54 elements differ from the same
+        case built without the mark. So pausing or marking a run would change
+        that run's results.
 
         **The crossing that the branch opens on is computed again from the
         step** (`_crossing_of_step`), as `resumed_at_mark` computes it. It is
-        not read from a halt's record. The record names what was marked when
-        the run stopped. So a mark added inside the halting step, while the run
-        stood on it, was missing from the record and was treated as before the
-        branch. The same mark reached through `resumed_at_mark` was treated as
-        passed (`PL-2N43`). When both methods check the marks as they are now,
-        they give one account of one step.
+        not read from a halt's record, which names what was marked when the
+        run stopped. When the branch read that record, a mark added inside the
+        halting step, while the run stood on it, was missing from the record.
+        The branch treated that mark as still ahead of it, while
+        `resumed_at_mark` treated the same mark as passed (`PL-2N43`). Now
+        that both methods check the marks as they are now, they give one
+        account of one step.
 
         Returns:
             A paused `SimulationController` standing where this run stands,
@@ -2441,10 +2444,12 @@ class SimulationController:
         setting were applied here, the dial would show a setting that no step
         will ever run under, beside values it did not produce. The control
         record would also claim a change at the stop instant that never acted
-        on the patient (`PL-3B34`). The refusal gives only that reason. A run
-        can fail on the first step after a setting was accepted, and then no
-        value it holds was computed under that setting either (adversarial
-        review of `PL-J5GC`).
+        on the patient (`PL-3B34`). The refusal states only one reason, that
+        no step will run under the new setting. It does not claim that the
+        values on screen were computed under the setting in force. A run can
+        fail on the first step after a setting was accepted, and then no value
+        it holds was computed under that setting either (adversarial review of
+        `PL-J5GC`).
 
         So the setting is refused, and nothing is applied or recorded.
         `RunView._apply_setting` treats the error as a refused setting. The

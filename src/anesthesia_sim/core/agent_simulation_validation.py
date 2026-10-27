@@ -270,10 +270,10 @@ class AgentSimulationValidator:
         that other period's totals in the halt message (`PL-X204`).
 
         The one caller, `AgentUptakeSystem.advance()`, rolls the step back on
-        this error. So the message names its totals as the rejected step's,
-        and the error carries the failing check as `check`. The run's own
-        accounting no longer holds those totals after the rollback, so the
-        interface reads them from the error (`PL-HF4B`).
+        this error. So the error message presents the failing totals as the
+        rejected step's totals, and the error carries the failing check as
+        `check`. The run's own accounting no longer holds those totals after
+        the rollback, so the interface reads them from the error (`PL-HF4B`).
         """
 
         check = self.check_agent_accounting(currently_stored_agent_l)

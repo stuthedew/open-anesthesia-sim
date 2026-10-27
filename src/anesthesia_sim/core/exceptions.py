@@ -130,9 +130,9 @@ class AgentSimulationValidationError(SimulationNumericalError):
         """Build the error.
 
         `check` is typed `object` because this module imports nothing from the
-        core. Every core module imports this one, so an import of the check's
-        type here would make a cycle. `agent_simulation_validation.rejected_check`
-        reads the check back as its own type.
+        core. Every core module imports this one, so importing the check's type
+        here would make an import cycle. `agent_simulation_validation.rejected_check`
+        gives the check back its type.
 
         Args:
             message: What failed, with the rejected step's totals.

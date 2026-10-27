@@ -781,31 +781,32 @@ class RunView(QWidget):
         over a failed controller, and no banner would name the exception
         (`PL-25KS`). The frame widgets keep what the last frame drew. They show
         compartment values, and the first frame that draws rewrites them.
-        Two exceptions keep each value beside what qualifies it. After a step
-        whose accounting failed its check, the accounting panel shows that
-        step's check, which the record carries. And when the run has started
-        over since the last frame, the readout cards, their clock and the
-        accounting panel are withheld, because they describe the run that was
-        discarded (`_withhold_the_discarded_run_s_values`).
+        Two cases are handled differently, so that each value stays beside what
+        qualifies it. After a step whose accounting failed its check, the
+        accounting panel shows that step's check, which the record carries.
+        And when the run has started over since the last frame, the readout
+        cards, their clock and the accounting panel are withheld, because they
+        describe the run that was discarded
+        (`_withhold_the_discarded_run_s_values`).
 
         It writes every widget that a frame would write, because a halt can
         follow a change that no frame has shown. A dial dragged into a halt
         has changed what the run holds (`PL-85LJ`). An agent changed just
         before a halt has changed what every identity widget names
         (`PL-1YDD`). A drag that returns a dial to where it started has taken
-        a change off the record (`PL-DTJQ`). A halt that wrote only a
-        hand-picked set of widgets left each of these showing the run as it
-        was before the change, with no frame to follow.
+        a change off the record (`PL-DTJQ`). When a halt wrote only a
+        hand-picked set of widgets, each of these widgets went on showing the
+        run as it was before the change, and no frame followed to correct it.
 
         Everything is read once, from `SimulationController.record()` and not
         from a snapshot. A snapshot builds every compartment's fraction, and
         one of the halts shown here is the rejection of one of those
-        fractions. When this method read a fresh snapshot, that halt raised
-        out of the method and was never shown. The screen went on reading
-        "Running", with Pause offered, over a failed controller (`PL-7DJK`).
-        The banner comes from `dashboard_frame.halt_notice`. It says that no
-        frame of the stopped run has been drawn, and the first frame that
-        draws replaces it.
+        fractions. When this method used to read a fresh snapshot, that
+        rejection raised out of the method, and the halt was never shown. The
+        screen went on reading "Running", with Pause offered, over a failed
+        controller (`PL-7DJK`). The banner comes from
+        `dashboard_frame.halt_notice`. It says that no frame of the stopped
+        run has been drawn, and the first frame that draws replaces it.
 
         Raises:
             ValueError: If `setting_readouts` rejects the record. By then
@@ -845,13 +846,14 @@ class RunView(QWidget):
         its instant. After an agent change, each ×MAC number was also divided
         by the old agent's MAC. The accounting panel holds the discarded run's
         verdict and amounts. The heading, the 1 MAC line and the delivered line
-        name the run that replaced it. Showing any of those values would put it
-        on screen under a substance, a divisor or a run that did not produce it.
-        `PL-6RJ0` withheld the multiples, `PL-J5GC`'s guard found the percents,
-        its blind review found the accounting panel, and its adversarial review
-        found the clock and a Reset. The playback line under the clock is a
-        setting of this view, so `_write_statement` writes it. The next frame
-        writes every card and the panel again.
+        name the run that replaced it. Showing any of those values would put
+        that value on screen under a substance, a divisor or a run that did not
+        produce it. `PL-6RJ0` withheld the multiples. `PL-J5GC`'s guard test found
+        the percents, its blind review found the accounting panel, and its
+        adversarial review found the clock and the same problem after a Reset.
+        The playback line under the clock is a setting of this view, so
+        `_write_statement` writes it. The next frame writes every card and the
+        panel again.
         """
 
         for index, panel in enumerate(self._readout_row.panels):
@@ -1099,7 +1101,7 @@ class RunView(QWidget):
         (`PL-85LJ`). The rewrite of the labels can raise too, as `setting_readouts`
         does for a control that can offer no setting. The gate halts the run for that
         as well. So the status word, the transport controls and the banner show the
-        halt before writing the dials raises again and the exception escapes
+        halt first. Writing the dials then raises again, and the exception escapes
         (`PL-M3M2`).
 
         Args:
@@ -1449,7 +1451,8 @@ class RunView(QWidget):
         `_reset_now` and an accepted agent change call this method. Until a
         frame draws, the cards, the clock and the accounting panel describe the
         run that was discarded, so a halt withholds them (`present_halt`).
-        Then `case_restarted` is emitted for the dashboard.
+        After recording the start-over, this method emits `case_restarted` for
+        the dashboard.
         """
 
         self._started_over_since_the_cards = True
@@ -1578,7 +1581,8 @@ class RunView(QWidget):
             # The core rolled the step back, so only the error still holds the
             # rejected step's check (`PL-HF4B`). A check of the wrong type is a
             # defect in the code that raised the error, and it must not cancel
-            # the halt. So the run fails before that defect is raised.
+            # the halt. So the run fails first, and the `TypeError` that reports
+            # the defect is raised afterwards.
             try:
                 rejected = rejected_check(error)
             except TypeError:

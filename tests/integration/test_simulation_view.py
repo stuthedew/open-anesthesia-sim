@@ -2731,7 +2731,7 @@ _SHOWN_GROUPS: Final[Mapping[str, Callable[[RunView], dict[str, object]]]] = {
 
 
 def _readouts_of(step: RunSettings, *, cards_withheld: bool = False) -> dict[str, object]:
-    """The readouts group as one step states it, built by the functions the view calls.
+    """The readouts group as it should appear for one step, built by the functions the view calls.
 
     Args:
         step: The step whose agent the heading and the 1 MAC line name. Unless
@@ -2936,14 +2936,14 @@ def _a_halt_after_an_agent_change(
 def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
-    """An agent change that no frame can draw, on a run whose dials cannot be written.
+    """An agent change after which no frame can be drawn, on a run whose dials cannot be written.
 
     `present_halt` writes the new agent's heading and 1 MAC line, then raises from
     `setting_readouts` when it writes the dials. Until the blind review of
-    `PL-J5GC`, the old agent's values were withheld only after that, so the raise
-    left every card showing the old agent's percent and ×MAC number under the new
-    agent's heading. The settings group is not checked, because no dial can be
-    written from any state here.
+    `PL-J5GC`, the old agent's values were withheld only after that, so the
+    exception left every card showing the old agent's percent and ×MAC number
+    under the new agent's heading. The settings group is not checked, because no
+    dial can be written from any state here.
     """
 
     controller = SimulationController()
@@ -2976,11 +2976,11 @@ def _a_dial_write_refused_after_the_cards(
     """A frame that wrote the cards for a new agent, then could not write the dials.
 
     `refresh` writes the cards before `_write_statement`, and `setting_readouts`
-    raises last, from `_write_settings`. Before `PL-6RJ0`, the 1 MAC line was
-    written there too, so it went on naming the old agent above the new agent's
-    cards. The settings group is not checked here. `setting_readouts` refuses every
-    state in this scenario, so no dial can be written from any state, and the banner
-    names the refusal.
+    raises last, from `_write_settings`. Before `PL-6RJ0`, the 1 MAC line was also
+    written in `_write_settings`, so it went on naming the old agent above the new
+    agent's cards. The settings group is not checked here. `setting_readouts`
+    refuses every state in this scenario, so no dial can be written from any
+    state, and the banner names the refusal.
     """
 
     controller = SimulationController()
@@ -3032,9 +3032,10 @@ def _a_dial_moved_on_a_failed_run(
 def _a_dial_moved_at_the_supported_run_length(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
-    """A run stopped at a shortened supported run length, then its cardiac output dial moved.
+    """A run stopped at a shortened supported run length, then had its cardiac output dial moved.
 
-    The span ends at 300 s, as `maximum_step_count` reads it, for the reason
+    The supported run length here ends at 300 s, as `maximum_step_count` reads it,
+    for the reason that
     `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
     gives. Every group describes the step the run stopped on (`PL-3B34`).
     """
@@ -3097,10 +3098,10 @@ def _an_accounting_halt_that_no_frame_draws(
 ) -> tuple[RunView, _GroupReadings]:
     """A run halted by a failed accounting check, whose next frame cannot be drawn.
 
-    Only a frame wrote the accounting panel. So until the adversarial review of
-    `PL-J5GC`, the panel kept the last frame's "Valid" under a banner that named the
-    failed check. The readouts and the dials describe the last completed step, which
-    is also the step the last frame drew.
+    Until the adversarial review of `PL-J5GC`, only a frame wrote the accounting
+    panel. So the panel kept the last frame's "Valid" under a banner that named
+    the failed check. The readouts and the dials describe the last completed
+    step, which is also the step the last frame drew.
     """
 
     controller = SimulationController()
@@ -3134,9 +3135,10 @@ def _a_halt_after_a_reset_that_no_frame_draws(
     The last frame drew the accounting halt at 300 s, with "Validation failed" and
     the rejected step's totals. Reset starts the run over at 0 s and clears the
     rejected check, and then no frame draws. Until the adversarial review of
-    `PL-J5GC`, only an agent change was detected. So the clock, every card and the
-    accounting panel went on describing the run that Reset discarded. The heading and
-    the dials describe the restarted run, which keeps every setting.
+    `PL-J5GC`, only an agent change was detected as starting the run over. So the
+    clock, every card and the accounting panel went on describing the run that
+    Reset discarded. The heading and the dials describe the restarted run, which
+    keeps every setting.
     """
 
     controller = SimulationController()
@@ -3184,18 +3186,18 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
 ) -> None:
     """Each value on the run screen and what qualifies it describe one step of the run.
 
-    Every widget has one writer since `PL-X7D5` and `PL-WM5P`, and the test above
-    compares each widget on a halted screen with itself on a drawn one. Two widgets
-    that disagree on one screen pass that test. A ×MAC number divided by another
-    agent's 1 MAC (`PL-6RJ0`), a dial showing a setting no step ran under
+    Every widget has had one writer since `PL-X7D5` and `PL-WM5P`, and the test
+    above compares each widget on a halted screen with itself on a drawn one. Two
+    widgets that disagree on one screen pass that test. A ×MAC number divided by
+    another agent's 1 MAC (`PL-6RJ0`), a dial showing a setting no step ran under
     (`PL-3B34`) and a "Valid" verdict beside a banner that reports a failed check
-    (`PL-HF4B`) each did.
+    (`PL-HF4B`) each passed it.
 
     So each scenario names, for each group in `VALUE_GROUPS`, the step that all of
     the group's members must describe. It takes that step from a run built without
     the control or failure under test, and builds each member's text from it with
-    the function the view calls. Those functions are not under test here. The step
-    each group is written from is (`PL-J5GC`).
+    the function the view calls. Those functions are not under test here. What is
+    under test is the step that each group is written from (`PL-J5GC`).
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -3250,14 +3252,14 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     """A dial moved on a stopped run springs back, records nothing, and the banner says why.
 
     No step runs after a stop, so a new setting would sit beside values it never
-    produced. Until `PL-3B34` the moved dial was applied.
-    The cardiac output then read 10.0 L/min beside concentrations computed at
-    5.0 L/min, and the record claimed a change at the stop instant that never
-    acted on the patient. The two stopped states name different ways out
-    (project owner, 2026-10-26). The run length is the expected end of a long
-    run, so a branch at an earlier instant can take the new setting. A failure
-    is a fault, so Reset stays its way out. The scenario builds each run and
-    the dials it should show, from a run that never stopped.
+    produced. Until `PL-3B34` the moved dial was applied. The cardiac output then
+    read 10.0 L/min beside concentrations computed at 5.0 L/min, and the record
+    claimed a change at the stop instant that never acted on the patient. The two
+    stopped states name different ways out (project owner, 2026-10-26). The
+    supported run length is the expected end of a long run, so a branch at an
+    earlier instant can take the new setting. A failure is a fault, so Reset stays
+    its way out. Each scenario builds its run, and takes the dials that the run
+    should show from a run that never stopped.
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -3272,7 +3274,7 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
 def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while_one_can_be_taken(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The way out a refused dial is given changes once a branch can no longer be taken.
+    """The way out given for a refused dial changes once a branch can no longer be taken.
 
     A dial moved on a run at the supported run length is refused, and the banner
     names a branch at an earlier instant as the way to a new setting. Once a
@@ -3281,7 +3283,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     `PL-3B34`, the banner chose its way out from the run's status alone and went
     on naming the branch. A dashboard built with no case has no branch control,
     so its banner never names one. Until the adversarial review of `PL-J5GC`, it
-    did. The span ends at 300 s, for the reason
+    did. The supported run length here ends at 300 s, for the reason that
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
@@ -3333,8 +3335,9 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
 def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts_are_withheld(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
-    """The banner of such a halt says the readouts are withheld, not that they show the last frame.
+    """The banner says the readouts are withheld, not that they show the last frame.
 
+    This test covers a halt when no frame has been drawn since the run started over.
     Until the adversarial review of `PL-J5GC`, the banner said that the chart and
     the readouts showed the last frame drawn before the run stopped. That frame
     belongs to the run before the restart, and the readouts are withheld. The
@@ -3355,7 +3358,7 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(
     application: QApplication,
 ) -> None:
-    """A defect in the error's check is raised, but only after the run has failed.
+    """A check of the wrong type raises `TypeError`, but only after the run has failed.
 
     `rejected_check` raises `TypeError` for a check that is not a validation
     result. Until the blind review of `PL-HF4B`, `RunView.halt` read the check
@@ -3578,7 +3581,7 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
 def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its_exit(
     application: QApplication,
 ) -> None:
-    """A dial moved on the refused run is refused, and only a Reset that takes clears the run.
+    """After a refused Reset, a moved dial is refused, and only a successful Reset clears the run.
 
     A refused Reset leaves the run failed, and a failed run refuses every dial
     (`PL-3B34`). So a moved dial leaves the refused-Reset exit on the banner,
@@ -3586,8 +3589,8 @@ def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its
     reference adult's 5.0 L/min (`data/patients/reference_adult.json`). Until
     `PL-3B34`, an accepted setting took the exit off the banner (`PL-M4M0`), and
     until `PL-HQF5` the cardiac output change repaired the stale flows. No
-    shipped code repairs a fraction written past its guard, so the test puts
-    the fractions back, and then Reset takes.
+    shipped code repairs a fraction that was written by bypassing its guard, so
+    the test puts the fractions back, and then Reset succeeds.
     """
 
     controller = SimulationController()
@@ -3636,16 +3639,16 @@ def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its
 def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     application: QApplication,
 ) -> None:
-    """No dial repairs the record a Reset was refused on, so the banner names none.
+    """No dial can repair the record that caused the Reset to be refused, so the banner names none.
 
     Every tissue flow is formed from the cardiac output (`PL-HQF5`), so a new
-    output scales them all by one factor and the sum still disagrees with it.
-    Until `PL-01GY` the banner said to change the setting the refusal names,
-    which is the cardiac output. This test moves that dial on the refused run.
-    The failed run refuses the dial (`PL-3B34`), so the exit is still on the
-    banner and the refusal follows it, and the next Reset is refused again. The
-    expected sentences are written here as literals rather than read from the
-    constants.
+    output scales them all by one factor, and their sum still disagrees with the
+    output. Until `PL-01GY` the banner said to change the setting the refusal
+    names, which is the cardiac output. This test moves that dial on the run
+    whose Reset was refused. The failed run refuses the dial (`PL-3B34`), so the
+    exit is still on the banner and the refusal follows it, and the next Reset is
+    refused again. The expected sentences are written here as literals rather
+    than read from the constants.
     """
 
     controller = SimulationController()
