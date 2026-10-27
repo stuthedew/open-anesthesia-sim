@@ -61,6 +61,7 @@ from docket.vcs import (
     cuts_in_flight,
     default_base,
     default_branch,
+    filed_here,
     filed_with_work,
     files_in_flight,
     find_cut,
@@ -187,8 +188,9 @@ def repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
     # The branch this checkout is on: it claims an item, files one beside work
     # outside the queue (`filed_with_work`), drops one it had captured (`lost`),
-    # closes one (`closed_by`), edits one the base closed (`records_on_base`)
-    # and cuts a release (`cut_window`, `cuts_in_flight`).
+    # closes one (`closed_by`), edits one the base closed (`records_on_base`),
+    # files one it keeps (`filed_here`) and cuts a release (`cut_window`,
+    # `cuts_in_flight`).
     _git(root, "checkout", "--quiet", "-b", "claude/pl-k7qx-carried")
     _write(root, "src/one.py", "one = 2\n")
     _git(root, "commit", "--quiet", "-am", "PL-K7QX Start the work")
@@ -200,6 +202,7 @@ def repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     _git(root, "commit", "--quiet", "-am", "PL-L0ST Drop it in a resolution")
 
     _item(root, "PL-K7QX", "Carried on a branch", status="done")
+    _item(root, "PL-N3WW", "Filed on this branch and kept")
     _write(
         root,
         "docs/items/PL-0CLS-fixture.md",
@@ -456,6 +459,8 @@ READS: tuple[Read, ...] = (
         _findings("branches", "unreadable"),
     ),
     Read("working_paths", lambda r, g: working_paths(r, runner=g), _findings("paths")),
+    # `PL-N3WW`, which the branch this checkout is on filed (`PL-8MRM`).
+    Read("filed_here", lambda r, g: filed_here(r, "docs/items", runner=g), _findings("ids")),
     # Every branch the remote lists is a finding (`PL-MT3R`): a silence read as
     # a remote with no branches would read every tracking ref as one it deleted.
     Read("remote_heads", lambda r, g: remote_heads(r, runner=g), _findings("tips")),

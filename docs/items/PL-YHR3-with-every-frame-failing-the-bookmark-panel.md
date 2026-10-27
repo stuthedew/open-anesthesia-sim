@@ -14,7 +14,7 @@ closed: 2026-10-19
 pr: 1670
 payoff: a paused run whose frames fail stops showing the last frame's bookmark standings, so a mark the failed run will never reach no longer reads as still to come
 verify: grep -q 'def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings' tests/integration/test_simulation_view.py
-recurrences: 2026-10-17 PL-5JTH
+recurrences: 2026-10-17 PL-5JTH withdrawn 2026-10-27 PL-8MRM
 ---
 
 **Problem.** With every frame failing, the bookmark panel keeps the last frame's standings: a mark the failed run will never reach goes on reading '10m - later' where a drawn frame of the same failed run reads '10m - later · not reached before the simulation error', because _halt_every_run restates the fork panel but not the bookmark panel (found building PL-X7D5)
