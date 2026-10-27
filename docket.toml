@@ -441,6 +441,8 @@ workflow_paths = [
   "docket.toml",
   "docs/WORKING_NOTES.md",
   "docs/apparatus.md",
+  "docs/blind-review-findings.md",
+  "docs/blind-review-findings.tsv",
   "docs/ci-runs.tsv",
   "docs/dead-ends.md",
   "docs/items",
