@@ -3,11 +3,13 @@ id: PL-8Z38
 title: Report to Anthropic that Projects threads on Claude Code 2.1.310 no longer read the repository's .claude/ directory (no project hooks, skills or permission rules), with PL-CR81's Cause paragraph as the evidence
 priority: P1
 effort: S
-status: ready
+status: dropped
 classes: infra
 feature: projects-trial
-touches: docs/items/PL-8Z38-report-to-anthropic-that-projects-threads-on.md
+touches: docs/items/PL-8Z38-report-to-anthropic-that-projects-threads-on.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-10-25
+closed: 2026-10-27
+reason: Not a fault, so no report is owed. Claude Code's Projects documentation, § 'What threads pick up from your repositories' (https://code.claude.com/docs/en/claude-projects.md, re-read with curl on 2026-10-27), says cloud threads load CLAUDE.md and .claude/rules/ but not .claude/skills/, .mcp.json or .claude/settings.json, so hooks are 'Not run' and permission rules 'Not applied'. That is exactly the 2.1.310 behaviour PL-CR81 measured. PL-X6VN's setup script is the stop-gap that gives threads the hooks.
 payoff: the product fault behind PL-CR81 reaches the people who can fix it
 verify: grep -qE '^\*\*Reported' docs/items/PL-8Z38-*.md
 not-delegable: the report goes from the project owner's account, which no session or worker can use
