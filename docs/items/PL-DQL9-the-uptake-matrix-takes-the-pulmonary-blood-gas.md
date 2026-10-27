@@ -3,13 +3,15 @@ id: PL-DQL9
 title: The uptake matrix takes the pulmonary blood:gas coefficient from the venous pool and each tissue's rate from that tissue's own blood:gas coefficient, and nothing requires the four to agree, so a mismatch makes the matrix create agent and halts the run as an AgentSimulationValidationError that blames the numerics for an inconsistent parameter set
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, science, safety
 feature: replay-findings
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_record_writes.py, tests/unit/test_state_capture.py, tests/unit/test_numerical_envelope.py, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_compartment_primitives.py, tests/unit/test_concentration.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1881
 payoff: the model can no longer hold two blood:gas coefficients, so a mismatched pool or tissue group can neither halt a run with an error that blames the numerics nor run silently on uptake curves that are wrong
-verify: grep -q 'def test_settings_with_disagreeing_blood_gas_coefficients_are_refused' tests/unit/test_governing_equations.py
+verify: grep -q 'def test_a_patient_holds_one_blood_gas_coefficient' tests/unit/test_patient.py
 ---
 
 **Problem.** `AgentUptakeSystem.equation_settings` (`src/anesthesia_sim/core/uptake_system.py`) passes only `venous_blood.blood_gas_partition_coefficient` for the blood:gas term. Each tissue row uses `tissue.tissue_blood_partition_coefficient`, which divides by that tissue's own blood:gas coefficient. Neither `PatientCompartments` nor `UptakeEquationSettings` checks that the coefficients agree. Reproduced on main: raising the fat group's blood:gas coefficient by 1% (0.65 to 0.6565) halts sevoflurane on step 4 with `AgentSimulationValidationError`, relative error 3.8e-9.
