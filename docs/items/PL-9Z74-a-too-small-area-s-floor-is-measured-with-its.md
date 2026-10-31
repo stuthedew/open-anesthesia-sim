@@ -1,9 +1,16 @@
 ---
 id: PL-9Z74
 title: A too-small Area's floor is measured with its notice wrapped at the chooser's width, so in a wide column it reserves 30 to 50 px of wrapped lines it never uses and a neighbour gives up its View sooner than it needs to
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect, ux
 feature: area-layout-sizing
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/sizing.py, tests/integration/test_layout_adapter.py
+deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-26
+payoff: a wide column keeps a neighbour's View drawn when the window has room for it, instead of giving it up to notice lines nobody sees
+verify: grep -q 'def test_a_wide_stacked_area_holds_a_lower_floor' tests/integration/test_layout_adapter.py
 ---
 
 **Problem.** `AreaLayout._floor` (`app/area_layout.py`) measures the
@@ -33,3 +40,14 @@ lower than the narrow one.
 
 **Found by.** The blind review of `PL-Y65Q`'s branch, pass 1, finding F2,
 2026-10-26.
+
+**Reproduced 2026-10-31.** `AreaLayout._floor` in `app/area_layout.py` takes
+its width from `_structural_minimum` and measures the notice with
+`probe.heightForWidth(width)` at that width, whatever width the Area is then
+drawn at.
+
+**Generator check.** One-off. The fact is that a too-small Area's floor height
+depends on the width it is drawn at, which `settle` in `layout/sizing.py`
+cannot hold because it takes each floor as one fixed `PixelSize`. `PL-Y65Q` and
+`PL-QZ7Z` are `settle`'s own policy, not this representation, and no head's
+`misread:` states it (`PL-R4Y2`'s triage, 2026-10-31).

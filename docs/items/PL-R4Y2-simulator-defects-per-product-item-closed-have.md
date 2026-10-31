@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: housekeeping
 feature: defect-review-2026-10
-touches: docs/items
+touches: docs/items, ROADMAP.md
 added: 2026-10-19
 payoff: the stale-state defects a learner can see get their root cause fixed once, instead of each one being found and patched separately
 verify: grep -qE '^\*\*Re-measured\.' docs/items/PL-R4Y2-*.md
@@ -134,3 +134,34 @@ while w <= date.today():
           f"{(filed[w] - swept[w]) / c:.2f}" if c else "-")
     w += timedelta(days=7)
 ```
+
+**The eight untriaged product defects triaged, 2026-10-31,** ahead of the
+2026-11-02 reading, as the interim reading asked. On `main` at `35892ff1`:
+
+- `PL-9B1M` (a fraction rounded just past 1 from a full state): P1, `defect,
+  safety`, `needs-decision`, recommending that the inputs be capped at a
+  physically reachable fraction. `PL-58D7`'s own finding.
+- `PL-D88N` (the mass-balance tolerance at the stiffest corners): P1, `defect,
+  science`, `needs-decision`, recommending a tolerance that follows the
+  propagator's bound. `PL-58D7`'s fact, filed while it was open.
+- `PL-QVBR` (stepped and canonical readings disagree on a crossing): P1,
+  `defect, safety`, `ready`. `PL-ZR49`'s own finding.
+- `PL-PTDZ` (MAC-awake washout figures no test pins): P1, `defect, science`,
+  `ready`, `reenters: PL-4FBP`.
+- `PL-000W` (a control's settings field mapped twice): P1, `defect, safety`,
+  `ready`. One-off.
+- `PL-D1LR` (MODEL.md margins against a display resolution since changed): P1,
+  `docs, science`, `ready`, `reenters: PL-4FBP`.
+- `PL-9Z74` (a too-small Area's floor measured at the wrong width): P3,
+  `defect, ux`, `ready`, deferred from v0.7.0. One-off.
+- `PL-93LV` (a section name without its § mark): P3, `docs, defect`, `ready`,
+  deferred from v0.7.0. One-off.
+
+The six classed `safety` or `science` joined v0.7.0's frozen list, which
+admits such a capture after the freeze. With `PL-PTDZ` and `PL-D1LR`,
+`bin/docket inflow --lane product` names `PL-4FBP` as re-entered by three
+filings (`PL-LNFG`, `PL-D1LR`, `PL-PTDZ`), a generator whose fix did not hold.
+Its convention ties a sentence to a value held in a file. It does not reach a
+figure the model computes or a display resolution restated in prose, and the
+2026-10-26 pass above found four more items of the first shape. Recording that
+head is work for a session of its own, not for this triage.
