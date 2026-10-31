@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: projects-trial
+milestone: v0.6.9
 touches: .claude/hooks/thread_hooks.py, tests/unit/test_thread_hooks.py
 deferred-from: v0.7.0 - captured after the cut and not classed safety or science; fixed on its own branch the day it was filed
 added: 2026-10-26

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: model-spec-accuracy
+milestone: v0.6.9
 touches: tests/reference/, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-10-25

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: dead-ends-budget
+milestone: v0.6.9
 touches: docs/dead-ends.md, tools/dead_ends.py, tests/unit/test_dead_ends.py, tests/unit/test_quality_step_order.py, .claude/rules/, .claude/skills/docket/modes/triage.md, Makefile, .github/workflows/quality.yml, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, refactor
 feature: defect-review-2026-10
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/halt_gate.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, tests/unit/test_halt_gate.py, docs/ARCHITECTURE.md, docs/MODEL.md
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25

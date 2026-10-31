@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, science
 feature: replay-findings
+milestone: v0.6.9
 touches: docs/MODEL.md
 added: 2026-10-25
 closed: 2026-10-26

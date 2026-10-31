@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: floating-point-domain
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit
 deferred-from: v0.7.0 - split from the generator head PL-58D7 on 2026-10-25, which this gate defers for the same reason; the generator tier ranks it, not the gate
 added: 2026-10-25

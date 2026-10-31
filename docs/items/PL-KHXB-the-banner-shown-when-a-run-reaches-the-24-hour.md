@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, ux
 feature: supported-run-length-text
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-10-25
 closed: 2026-10-26

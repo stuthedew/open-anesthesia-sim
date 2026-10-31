@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: model-review
+milestone: v0.6.9
 touches: tools/ci_runs.py, docs/ci-runs.tsv, .claude/skills/model-review/SKILL.md, tests/unit/test_ci_runs.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-26

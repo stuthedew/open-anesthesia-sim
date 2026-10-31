@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/uptake_system.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25

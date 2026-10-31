@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: provenance
+milestone: v0.6.9
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13

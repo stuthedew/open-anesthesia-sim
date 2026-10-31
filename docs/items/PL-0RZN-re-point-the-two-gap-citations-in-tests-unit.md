@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: one-source-of-truth
+milestone: v0.6.9
 touches: tests/unit/test_record_writes.py
 added: 2026-10-27
 closed: 2026-10-27

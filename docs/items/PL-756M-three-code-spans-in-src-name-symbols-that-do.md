@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-10-25
 closed: 2026-10-25

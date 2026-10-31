@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: tests-detect-wrong-values
+milestone: v0.6.9
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-10-25
 closed: 2026-10-27

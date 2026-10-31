@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-10-27
