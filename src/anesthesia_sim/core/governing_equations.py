@@ -167,13 +167,13 @@ FRACTION_STATE_NAMES = (
         for offset in range(TISSUE_GROUP_COUNT)
     ),
 )
-"""Each state position that holds a fraction, with the name that its refusal message gives.
+"""Each state position that holds a fraction, and the name an error message gives it.
 
 The names describe the position in the state vector, because that is all that
 `require_canonical_state` knows. The tissue groups are numbered in the order of
-their states. Their names, such as "fat", belong to `patient.py`. The record is
-public because two checks read it: `require_canonical_state`, and the display
-path's check of each state it computes in `core/run_definition.py`
+their states. Their names, such as "fat", are defined in `patient.py`. The record is
+public because two checks read it: `require_canonical_state`, and the check in
+`core/run_definition.py` that the display path applies to each state it computes
 (`PL-9B1M`).
 """
 

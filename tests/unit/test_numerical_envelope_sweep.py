@@ -372,11 +372,12 @@ def _system(
     perfusion_fractions: tuple[float, float, float] = PERFUSION_FRACTIONS,
     part_at_one: str | None = None,
 ) -> AgentUptakeSystem:
-    """Build the coupled system at a corner, each compartment at `fraction`, at `dial_percent`.
+    """Build the coupled system at a corner, with every compartment at `fraction`.
 
-    `part_at_one` names one part to set to a fraction of 1 instead: one of
-    `OPENING_PARTS`. The other parts stay at `fraction`, so the opening check
-    on that one part is the only check that can refuse the system.
+    The dial is set to `dial_percent`. `part_at_one`, when given, names one part
+    of `OPENING_PARTS` to set to a fraction of 1 instead. The other parts stay at
+    `fraction`. So the only check that can reject the system is the opening check
+    on that one part, which runs when the system is built.
     """
 
     fresh_gas_l_min, ventilation_l_min, cardiac_output_l_min = flows
@@ -778,12 +779,12 @@ OPENING_PARTS = (
 def test_each_part_of_the_opening_is_checked_against_the_input_ceiling(
     part: str, named: str
 ) -> None:
-    """A system with one part at 1 and the rest at 0 is refused, and the refusal names that part.
+    """A system with one part at 1 and the rest at 0 is rejected, and the error names that part.
 
-    The other tests open every part at the same fraction. There, whichever
-    part is checked first refuses the system, and a check dropped from any
-    other part goes unnoticed. An adversarial mutation pass deleted each
-    part's check in turn, and the suite still passed (2026-10-31).
+    The other tests start every part at the same fraction. In those tests, the
+    first part checked rejects the system, so no test notices when the check
+    is removed from any other part. On 2026-10-31, an adversarial mutation pass
+    deleted each part's check in turn, and the suite still passed.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
@@ -796,11 +797,12 @@ def test_each_part_of_the_opening_is_checked_against_the_input_ceiling(
 
 
 def test_a_system_built_with_its_dial_above_the_input_ceiling_is_refused() -> None:
-    """A circuit whose dial is at 100% cannot become a system, even before its first step.
+    """Building a system from a circuit whose dial is at 100% fails at once, before any step.
 
-    The circuit here allows a dial up to 100%, so only the system's own check
-    can refuse it. Without that check the system was built, and the refusal
-    came only when the first step built its settings record.
+    The circuit in this test allows a dial setting up to 100%, so only the
+    system's own check can reject the setting. Without that check, the system
+    was built, and the error came only when the first step built its settings
+    record.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)

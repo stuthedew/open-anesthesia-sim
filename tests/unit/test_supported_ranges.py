@@ -1418,10 +1418,11 @@ def test_an_amount_set_at_the_input_ceiling_is_accepted_and_one_more_is_not(
     """The opening check compares amounts, so a fraction set at the ceiling passes (`PL-9B1M`).
 
     A compartment stores an amount and divides it by its capacity to report a
-    fraction, so 0.99 can read back one unit in the last place higher. The
-    check compares the amount with capacity times the ceiling, the product the
-    setter stores. The next float above that amount is refused, and the
-    message quotes the fraction held, 0.99 of one atmosphere being the limit.
+    fraction. So a fraction set to 0.99 can read back one unit in the last place
+    higher. The check compares the amount with the capacity times the ceiling,
+    which is the same product that the setter stores. The next float above that
+    amount is rejected. The error message quotes the fraction that the
+    compartment holds, and gives the limit as 0.99 of one atmosphere.
     """
 
     at_the_ceiling = capacity_l * MAXIMUM_INPUT_FRACTION

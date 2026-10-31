@@ -2115,11 +2115,12 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
 def test_a_refused_drawn_gas_or_blood_fraction_names_its_compartment(
     index: int, named: str
 ) -> None:
-    """The display path refuses a drawn inspired, alveolar or venous fraction above 1.
+    """The display path rejects an inspired, alveolar or venous fraction above 1 that it would draw.
 
-    At the stiffest corner the first drawn value past 1 was the inspired
-    fraction. The sweep's test still passed with these three checks removed,
-    because the tissues went past 1 later in the same window (2026-10-31).
+    At the stiffest corner, the inspired fraction was the first drawn value to
+    pass 1. On 2026-10-31, the sweep's test still passed with these three
+    checks removed, because the tissue fractions passed 1 later in the same
+    window.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -2138,14 +2139,16 @@ def test_a_refused_drawn_gas_or_blood_fraction_names_its_compartment(
 def test_every_column_a_window_returns_has_been_checked_for_drawing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Both display paths pass every column they return through the display path's check.
+    """Both display paths pass every column that they return through the check for drawing.
 
-    Each path appends a column at two places: the first column of a stretch,
-    and each column chained from it. A check dropped from one place went
-    unnoticed while the other still refused the window. So this test counts
-    the checks and compares the count with the columns returned. The run has
-    two changes, and the windows start after the opening, so every path
-    through each method is taken.
+    A stretch is the part of the run between two changes of its settings. Each
+    path appends columns in two places: once for the first column it draws in
+    a stretch, and once for each column it then advances from that one. When
+    the check was removed from one place, no test noticed, because the check
+    in the other place still rejected the window. So this test counts the
+    checks and compares the count with the number of columns returned. The
+    run's settings change twice, and the windows start after the opening
+    state, so the test takes every path through each method.
     """
 
     checked: list[DisplayState] = []
