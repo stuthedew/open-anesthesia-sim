@@ -553,13 +553,18 @@ def test_a_slider_press_declares_an_adjustment(application: QApplication) -> Non
 def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
     application: QApplication,
 ) -> None:
-    """A pointer drag previews where the thumb stands and applies on release (`PL-5B1N`)."""
+    """A pointer drag previews where the thumb stands and applies on release (`PL-5B1N`).
+
+    The value is applied before the preview ends. So the frame drawn when the
+    preview ends shows the run under the released setting, and never the old
+    setting with the preview gone.
+    """
 
     setting = _settings()[0]
     control = ParameterSlider(setting)
     events: list[tuple[str, float | None]] = []
     control.preview_moved.connect(lambda value: events.append(("preview", value)))
-    control.preview_ended.connect(lambda: events.append(("ended", None)))
+    control.preview_ended.connect(lambda: events.append(("ended", control.value())))
     control.value_changed.connect(lambda value: events.append(("applied", value)))
     start = slider_position(setting.value, setting.decimals)
 
@@ -578,8 +583,8 @@ def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
 
     assert events == [
         *held,
-        ("ended", None),
         ("applied", slider_value(start + 10, setting.decimals)),
+        ("ended", slider_value(start + 10, setting.decimals)),
     ]
 
 

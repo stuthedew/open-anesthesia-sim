@@ -335,7 +335,11 @@ through `chart_time_base.preview_window`, and both plots draw the result in
    run has its own sliders, so a drag on one run's slider previews and applies
    to that run alone, from that run's own reach. The other run is drawn
    unchanged. This keeps what the slider already does; it is not a new
-   behaviour.
+   behaviour. The design round's "3 to 2, 2 to 1, which keeps the
+   compare-mode width order" does not survive this either. The blind review
+   found that a preview one step under the first run's widened curve is wider
+   than the second run's real curve, which can lie inside the region. So a
+   preview takes its width from the lone-run width in every case.
 2. **Alveolar ventilation previews too.** The owner named the vaporizer dial,
    fresh gas flow and cardiac output as examples of "any control that moves
    the trajectory". Ventilation moves it as well, and leaving it on
@@ -353,7 +357,12 @@ through `chart_time_base.preview_window`, and both plots draw the result in
    wheel step and a click on the groove apply at once and draw no preview,
    because `QSlider` with tracking off still emits `valueChanged` at once for
    those.
-5. **Placeholders, decided by the session under the 2026-10-18 rule on look
+5. **Two cues the design round did not name, added after the blind
+   review.** A preview clipped at the top of the concentration axis is named
+   in the off-scale notice with its highest predicted value in view, since
+   nothing else shows a preview's values. A predicted F_A/F_I stretch that
+   stops ends in a dot, as the run's does.
+6. **Placeholders, decided by the session under the 2026-10-18 rule on look
    and wording.** The label reads "Preview: Fresh gas flow 8.0 L/min, not
    applied", or "Run 2 preview: ..." while runs are compared. The time-axis
    caption reads "{span} shown, centred on now during the preview". The

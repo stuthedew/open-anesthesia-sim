@@ -2050,15 +2050,27 @@ def test_a_preview_keeps_the_compartment_s_colour_and_dash_and_is_one_step_thinn
             preview = preview_trace_style(style.quantity, run_index, run_count)
 
             assert (preview.color, preview.dash_pattern) == (run.color, run.dash_pattern)
-            assert preview.stroke_width == max(2, run.stroke_width - 1)
+            assert preview.stroke_width == max(2, style.stroke_width - 1)
             assert preview.stroke_width >= MINIMUM_TRACE_STROKE_WIDTH
 
-    # The two runs' previews keep the runs' width order in compare mode.
+
+def test_no_compared_run_s_real_curve_is_thinner_than_a_preview_of_its_compartment() -> None:
+    """In compare mode the other run's real curves can lie inside the preview region.
+
+    The first run is drawn one step wider. A preview taken from its width
+    would be wider than the second run's real curve of the same compartment,
+    so the width cue would point the wrong way (found by the blind review of
+    `PL-5B1N`).
+    """
+
     for style in COMPARTMENT_TRACES:
-        assert (
-            preview_trace_style(style.quantity, 0, 2).stroke_width
-            > preview_trace_style(style.quantity, 1, 2).stroke_width
-        )
+        for previewing in (0, 1):
+            preview = preview_trace_style(style.quantity, previewing, 2)
+
+            for drawn in (0, 1):
+                assert (
+                    preview.stroke_width <= run_trace_style(style.quantity, drawn, 2).stroke_width
+                )
 
 
 def test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels() -> None:

@@ -4055,3 +4055,43 @@ def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> Non
         caption
         == f"{format_time_base(frame.time_base.span_s)} shown, centred on now during the preview"
     )
+
+
+def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() -> None:
+    """Sevoflurane's 8% dial is 4 MAC, above the 3 MAC axis, and a held thumb predicts it.
+
+    The readouts and the hover never give a preview's values. So the notice
+    names each clipped prediction and its highest value in view, or the
+    clipped curve would read as a predicted plateau at the axis top (found by
+    the blind review of `PL-5B1N`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+
+    for _ in range(round(300.0 / SIMULATION_STEP_S)):
+        controller.advance(SIMULATION_STEP_S)
+
+    frame = assemble_chart_frame(
+        (
+            RunInput(
+                run_label(FIRST_RUN),
+                controller,
+                controller.snapshot(),
+                (),
+                preview=PreviewRequest(SettingPreview(ControlInput.DELIVERED, 8.0), "x"),
+            ),
+        ),
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    preview = frame.runs[0].preview
+    assert preview is not None
+    circuit_peak = max(preview.fractions[RecordedQuantity.CIRCUIT])
+    notice = off_scale_notice(frame, 0)
+
+    assert notice is not None
+    assert "The preview goes above the top of the plot" in notice
+    assert f"Circuit {format_mac_multiple(circuit_peak, frame.mac_percent)}" in notice
+    assert "readouts above" not in notice

@@ -371,14 +371,20 @@ def _wash_in_pen(
 
 
 def _wash_in_preview_pen(run_index: RunIndex, run_count: RunCount) -> QPen:
-    """The pen one run's predicted F_A/F_I is drawn with, thinner than the run's own.
+    """The pen one run's predicted F_A/F_I is drawn with, thinner than any run's own.
+
+    The width is taken from the lone run's width, for the reason
+    `chart_frame.preview_trace_style` gives: in compare mode a preview must not
+    be wider than the other run's real trace inside its region.
 
     Raises:
         ValueError: As `_wash_in_pen`.
     """
 
+    _wash_in_width(run_index, run_count)
+
     return dashed_pen(
-        WASH_IN_COLOR, preview_stroke_width(_wash_in_width(run_index, run_count)), None
+        WASH_IN_COLOR, preview_stroke_width(_wash_in_width(_LONE_RUN_INDEX, _LONE_RUN_COUNT)), None
     )
 
 
@@ -1301,6 +1307,12 @@ class _WashInRunItems:
             item.addItem(stretch)
             self.preview_stretches.append(stretch)
 
+        # A predicted stretch that stops gets its dot too, by the same rule as
+        # the run's, so a preview that crosses equilibrium reads as ended.
+        self.preview_termini = pg.ScatterPlotItem(
+            size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
+        )
+        item.addItem(self.preview_termini, ignoreBounds=True)
         self.preview = _PreviewMarks(item)
         self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
@@ -1326,6 +1338,7 @@ class _WashInRunItems:
             stretch.hide()
 
         self.termini.setData([], [])
+        self.preview_termini.setData([], [])
         self.preview.hide()
         self.branch_point.hide()
 
@@ -1419,10 +1432,17 @@ class WashInChart(QWidget):
 
             items.termini.setData(ends_x, ends_y)
             predicted = () if run.preview is None else run.preview.wash_in
+            ends_x, ends_y = [], []
 
             for curve, stretch in zip(items.preview_stretches, predicted, strict=False):
                 curve.setData(list(stretch.times_s), list(stretch.ratios))
                 curve.show()
+
+                if stretch.ends_above_equilibrium and stretch.times_s:
+                    ends_x.append(stretch.times_s[-1])
+                    ends_y.append(stretch.ratios[-1])
+
+            items.preview_termini.setData(ends_x, ends_y)
 
             for curve in items.preview_stretches[len(predicted) :]:
                 curve.hide()
@@ -1517,6 +1537,13 @@ class WashInChart(QWidget):
         """Where one run's terminus dots are drawn, as (time, ratio)."""
 
         times, ratios = self._runs[run].termini.getData()
+
+        return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
+
+    def preview_terminus_points(self, run: int) -> tuple[tuple[float, float], ...]:
+        """Where one run's predicted stretches end in a dot, as (time, ratio)."""
+
+        times, ratios = self._runs[run].preview_termini.getData()
 
         return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
 

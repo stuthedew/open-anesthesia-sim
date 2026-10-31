@@ -1557,7 +1557,11 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 # ------------------------------------------------------ the preview of a dragged setting
 
 
-def _previewing_frame(controller: SimulationController, value_l_min: float) -> ChartFrame:
+def _previewing_frame(
+    controller: SimulationController,
+    value: float,
+    control: ControlInput = ControlInput.FRESH_GAS_FLOW,
+) -> ChartFrame:
     snapshot = controller.snapshot()
 
     return assemble_chart_frame(
@@ -1568,8 +1572,7 @@ def _previewing_frame(controller: SimulationController, value_l_min: float) -> C
                 snapshot,
                 (),
                 preview=PreviewRequest(
-                    SettingPreview(ControlInput.FRESH_GAS_FLOW, value_l_min),
-                    "Preview: Fresh gas flow 6.0 L/min, not applied",
+                    SettingPreview(control, value), "Preview: Fresh gas flow 6.0 L/min, not applied"
                 ),
             )
         ],
@@ -1611,6 +1614,39 @@ def test_both_plots_draw_a_preview_thinner_inside_its_labelled_region(
     assert drawn
     assert all(preview.region_s[0] <= time_s <= preview.region_s[1] for time_s, _ in drawn)
     assert wash_in.preview_pen(0).widthF() == WASH_IN_STROKE_WIDTH - 1
+
+
+def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
+    application: QApplication,
+) -> None:
+    """Previewing the dial at 0% ends the predicted F_A/F_I, and a dot marks the end.
+
+    Without the dot, a predicted stretch that stops reads as one that runs on
+    out of view, which the run's own trace marks the other way (found by the
+    blind review of `PL-5B1N`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    frame = _previewing_frame(controller, 0.0, ControlInput.DELIVERED)
+    preview = frame.runs[0].preview
+    assert preview is not None
+    wash_in = _shown(application, WashInChart(), 240)
+
+    wash_in.draw(frame)
+
+    ended = [
+        (stretch.times_s[-1], stretch.ratios[-1])
+        for stretch in preview.wash_in
+        if stretch.ends_above_equilibrium and stretch.times_s
+    ]
+    assert ended
+    assert wash_in.preview_terminus_points(0) == pytest.approx(ended)
+
+    wash_in.draw(_previewing_frame(controller, 2.0, ControlInput.DELIVERED))
+
+    assert wash_in.preview_terminus_points(0) == ()
 
 
 def test_a_frame_with_no_preview_takes_the_preview_off_both_plots(

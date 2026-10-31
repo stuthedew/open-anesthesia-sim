@@ -1229,25 +1229,34 @@ def test_a_declared_boundary_reaches_the_controller(application: QApplication) -
 
 
 def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplication) -> None:
-    """One drag is one mark and one entry, however many settings the model was stepped under."""
+    """One drag is one mark and one entry, at its release, however long the thumb was held.
+
+    The run goes on stepping while the thumb is moved through three values.
+    None of them is applied until the release (`PL-5B1N`), so the record
+    holds one change, from the setting before the drag to the released value.
+    """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     run = view.runs[0]
     controller.start()
     _advance(controller, 10.0)
+    slider = run._setting_controls[0]._delivered_concentration_slider.slider
 
-    run._setting_controls[0]._delivered_concentration_slider.slider.sliderPressed.emit()
+    slider.setSliderDown(True)
 
     for percent in (3.0, 3.5, 4.0):
-        _set_delivered_percent(run, percent)
+        slider.setSliderPosition(slider_position(percent, CONCENTRATION_DISPLAY_DECIMALS))
         controller.advance(SIMULATION_STEP_S)
 
+    slider.setSliderDown(False)
     view.present(False)
+    released_at_s = 10.0 + 3 * SIMULATION_STEP_S
 
     assert len(run._control_timeline_text.text().splitlines()) == 1
-    assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(10.0),)
-    assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(10.0),)
+    assert controller.record().control_timeline[0].new_value == 4.0
+    assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
+    assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
 
 
 # ---------------------------------------------- refusals, and the halt
@@ -1509,11 +1518,13 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
 
 
 def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QApplication) -> None:
-    """`PL-R2YM`: a drag updates its own readout at once and defers the frame.
+    """`PL-R2YM`: moving a held thumb defers its frames, and the release draws one.
 
-    The view beside the dial must still update at once, because it has to
-    agree with the snapshot the moment the setting is applied (`PL-018`).
-    The presentation waits: the chart assembly, the drawing and the captions.
+    The thumb's moves only redraw the preview, so they wait for the render
+    tick like any dragged slider. The release is one discrete action, and it
+    draws one frame at once, so the preview is gone the moment the thumb is
+    let go (`PL-5B1N`). The view beside the dial agrees with the snapshot the
+    moment the setting is applied (`PL-018`).
     """
 
     controller = SimulationController()
@@ -1521,13 +1532,23 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QAppl
     run = view.runs[0]
     controller.start()
     presented = view.presented_frames
+    slider = run._setting_controls[0]._fresh_gas_flow_slider.slider
 
-    _set_fresh_gas_flow(run, 7.0)
+    slider.setSliderDown(True)
+
+    for flow in (5.0, 6.0, 7.0):
+        slider.setSliderPosition(slider_position(flow, FLOW_DISPLAY_DECIMALS))
+
+    assert view.presented_frames == presented
+    assert view._render_pending is True
+
+    slider.setSliderDown(False)
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
     assert run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
-    assert view.presented_frames == presented
-    assert view._render_pending is True
+    assert view.presented_frames == presented + 1
+    assert view._render_pending is False
+    assert run.preview is None
 
 
 def test_a_refused_slider_change_draws_its_own_frame(application: QApplication) -> None:
@@ -1592,8 +1613,11 @@ def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped(
 
     controller = SimulationController()
     view = _shown_view(application, controller)
+    slider = view.runs[0]._setting_controls[0]._fresh_gas_flow_slider.slider
 
-    _set_fresh_gas_flow(view.runs[0], 7.0)
+    # A key or wheel step applies with no press, and leaves its frame owed.
+    # A released drag draws its own frame at once (`PL-5B1N`).
+    slider.setValue(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
     assert view._render_pending is True
     presented = view.presented_frames
 

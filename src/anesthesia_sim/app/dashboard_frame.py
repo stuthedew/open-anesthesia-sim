@@ -350,6 +350,17 @@ OFF_SCALE_NOTICE_TEMPLATE: Final = (
     "not clipped."
 )
 
+# Added to the off-scale notice when a preview goes above the top of the plot.
+# The readouts give the run's values, not the preview's, and the hover never
+# answers from a preview. So this sentence gives each clipped prediction's
+# highest value in the window itself. Dragging sevoflurane's dial toward 8% is
+# the commonest preview, and without it the clipped curve reads as a predicted
+# plateau at the axis top (`PL-5B1N`).
+PREVIEW_OFF_SCALE_NOTICE_TEMPLATE: Final = (
+    "The preview goes above the top of the plot and is cut off at {top}. "
+    "Highest predicted values in view: {peaks}."
+)
+
 # The control-change panel. It lists the newest change first, because it is a
 # fixed panel beside a chart rather than a scrolling history. It lists a
 # limited number of changes and says how many it left out.
@@ -2884,6 +2895,10 @@ def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) 
 def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     """Return a notice naming which of one run's drawn traces are above the plot, if any.
 
+    A preview's traces are checked too. A clipped preview is named in a second
+    sentence that gives its highest predicted value in the window, because
+    nothing else on screen shows a preview's values (`PL-5B1N`).
+
     The traces are read from the points the frame drew, not from the snapshot.
     The snapshot carries only the newest state, and a trace that rose above
     the axis earlier in the window is still drawn clipped now. Hidden traces
@@ -2903,7 +2918,7 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
         run_index: Which of the frame's runs.
 
     Returns:
-        The notice, or None when every drawn trace is inside the axis.
+        The notice, or None when every drawn trace and preview is inside the axis.
 
     Raises:
         TypeError: If `run_index` is not an `int` (`RunIndex`).
@@ -2917,18 +2932,40 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     off_scale = [
         trace_style(quantity).label
         for quantity in frame.visible
-        if any(
-            percent - frame.axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-            for percent in run.percents(quantity)
-        )
+        if _above_the_axis(frame, run.percents(quantity))
     ]
+    preview_peaks = (
+        []
+        if run.preview is None
+        else [
+            f"{trace_style(quantity).label} "
+            f"{format_mac_multiple(max(run.preview.fractions[quantity]), frame.mac_percent)}"
+            for quantity in frame.visible
+            if _above_the_axis(frame, run.preview.percents(quantity))
+        ]
+    )
+    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    sentences = []
 
-    if not off_scale:
-        return None
+    if off_scale:
+        sentences.append(
+            OFF_SCALE_NOTICE_TEMPLATE.format(compartments=", ".join(off_scale), top=top)
+        )
 
-    return OFF_SCALE_NOTICE_TEMPLATE.format(
-        compartments=", ".join(off_scale),
-        top=format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent),
+    if preview_peaks:
+        sentences.append(
+            PREVIEW_OFF_SCALE_NOTICE_TEMPLATE.format(top=top, peaks=", ".join(preview_peaks))
+        )
+
+    return " ".join(sentences) or None
+
+
+def _above_the_axis(frame: ChartFrame, percents: Sequence[float]) -> bool:
+    """Whether any drawn point exceeds the axis top by more than the readouts resolve."""
+
+    return any(
+        percent - frame.axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+        for percent in percents
     )
 
 

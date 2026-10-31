@@ -533,11 +533,11 @@ def preview_stroke_width(run_stroke_width: float) -> float:
     visual weight of the run that happened. It is never thinner than
     `MINIMUM_TRACE_STROKE_WIDTH`, below which an antialiased line renders under
     the 3:1 minimum against the panel (`docs/MODEL.md` § "The six compartment
-    traces"). In compare mode the step keeps the runs' order: the first run's
-    preview stays wider than the second run's.
+    traces").
 
     Args:
-        run_stroke_width: The width of the run's own curve, in display pixels.
+        run_stroke_width: The width of the narrowest real curve drawn for the
+            same compartment, in display pixels.
 
     Returns:
         The preview's width, in display pixels.
@@ -549,12 +549,18 @@ def preview_stroke_width(run_stroke_width: float) -> float:
 def preview_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) -> TraceStyle:
     """Return the style one run's preview of a compartment is drawn with.
 
-    It is `run_trace_style` with the width that `preview_stroke_width` gives,
-    and nothing else changed. The colour and the dash pattern stay the
-    compartment's own, deliberately. They are what tells the six traces
-    apart (`PL-GVXP`), and inside the preview they have to do the same work
-    (`PL-5B1N`, project owner, 2026-09-27, ratified, over a solid run and a
-    dotted preview, which would collide with the muscle trace's dots).
+    It is the compartment's `trace_style` with the width that
+    `preview_stroke_width` gives, and nothing else changed. The width is taken
+    from the compartment's lone-run width, not from the previewing run's
+    width. In compare mode the first run is drawn one step wider, and the
+    other run's real curves can lie inside the preview's region. A preview
+    taken from the first run's width would then be wider than those real
+    curves, and the width cue would say the reverse of the truth. The colour
+    and the dash pattern stay the compartment's own, deliberately. They are
+    what tells the six traces apart (`PL-GVXP`), and inside the preview they
+    have to do the same work (`PL-5B1N`, project owner, 2026-09-27,
+    ratified, over a solid run and a dotted preview, which would collide with
+    the muscle trace's dots).
 
     Args:
         quantity: Which compartment.
@@ -568,7 +574,8 @@ def preview_trace_style(quantity: RecordedQuantity, run_index: int, run_count: i
         KeyError, TypeError, ValueError: As `run_trace_style`.
     """
 
-    style = run_trace_style(quantity, run_index, run_count)
+    run_trace_style(quantity, run_index, run_count)
+    style = trace_style(quantity)
 
     return replace(style, stroke_width=preview_stroke_width(style.stroke_width))
 

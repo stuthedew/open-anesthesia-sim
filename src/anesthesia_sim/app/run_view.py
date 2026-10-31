@@ -1187,8 +1187,9 @@ class RunView(QWidget):
         """Drop the preview when the held thumb is released, and redraw at once.
 
         A preview that outlived the drag would read as a run that happened, so
-        it is gone on the frame drawn at the release, before the value is
-        applied (`PL-5B1N`).
+        it is gone on the frame drawn at the release. The slider has applied
+        the released value by then (`ParameterSlider`), so that frame shows
+        the run under its new setting (`PL-5B1N`).
         """
 
         self._preview = None

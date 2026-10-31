@@ -889,10 +889,13 @@ class ParameterSlider(QWidget):
     (`PL-5B1N`, project owner, 2026-09-27, ratified). While the thumb is held,
     the run keeps the setting in force, and the slider reports where the
     thumb stands through `preview_moved`, so the chart can draw the
-    trajectory that setting would give. Releasing the thumb ends the preview
-    through `preview_ended` and then applies the value through
-    `value_changed`, once. A key press, a wheel step or a click on the groove
-    is one discrete input, so it applies at once and previews nothing. Qt's
+    trajectory that setting would give. Releasing the thumb applies the value
+    through `value_changed`, once, and then ends the preview through
+    `preview_ended`. That order lets the frame drawn at the release show the
+    run under its new setting and no preview. Qt itself would apply the value
+    only after `sliderReleased`, so `_on_thumb_released` applies it first. A
+    key press, a wheel step or a click on the groove is one discrete input,
+    so it applies at once and previews nothing. Qt's
     tracking is switched off to give exactly that split: `valueChanged`
     fires on release for a drag and at once for every other input.
 
@@ -915,8 +918,8 @@ class ParameterSlider(QWidget):
             it.
         preview_moved: Emitted with the decoded value where the held thumb
             stands, when it is pressed and each time it moves.
-        preview_ended: Emitted when the held thumb is released, before
-            `value_changed` applies the value.
+        preview_ended: Emitted when the held thumb is released, after
+            `value_changed` has applied the value.
     """
 
     adjustment_started = Signal()
@@ -964,7 +967,7 @@ class ParameterSlider(QWidget):
         self.slider.sliderPressed.connect(self.adjustment_started.emit)
         self.slider.sliderPressed.connect(self._on_thumb_pressed)
         self.slider.sliderMoved.connect(self._on_thumb_moved)
-        self.slider.sliderReleased.connect(self.preview_ended.emit)
+        self.slider.sliderReleased.connect(self._on_thumb_released)
         self.slider.valueChanged.connect(self._on_slider_moved)
         self.set_setting(setting)
 
@@ -975,14 +978,10 @@ class ParameterSlider(QWidget):
         that came *from* the snapshot is never applied back to it: that
         would record a control change the reader did not make.
 
-        The position is not written while the thumb stands somewhere the
-        slider has not applied (`_thumb_pending`). The run keeps its setting
-        during a drag, so writing it would pull the thumb back from under the
-        pointer on every frame. It would also cancel the drag at the release:
-        Qt reports the release before it applies the position, and the frame
-        drawn for the release would write the old setting over the new one.
-        The label beside the slider is still written, and it shows the setting
-        in force.
+        The position is not written while the thumb is held. The run keeps its
+        setting during a drag, so writing it would pull the thumb back from
+        under the pointer on every frame. The label beside the slider is still
+        written, and it shows the setting in force.
 
         Args:
             setting: The control as drawn this tick.
@@ -998,7 +997,7 @@ class ParameterSlider(QWidget):
                 slider_position(setting.minimum, setting.decimals),
                 slider_position(setting.maximum, setting.decimals),
             )
-            if not self._thumb_pending():
+            if not self.slider.isSliderDown():
                 self.slider.setValue(slider_position(setting.value, setting.decimals))
 
         self.value_label.setText(setting.value_text)
@@ -1016,16 +1015,26 @@ class ParameterSlider(QWidget):
     def _on_slider_moved(self, position: int) -> None:
         self.value_changed.emit(slider_value(position, self._decimals))
 
-    def _thumb_pending(self) -> bool:
-        """Whether the thumb is held, or released where the slider has not yet applied it."""
-
-        return self.slider.isSliderDown() or self.slider.sliderPosition() != self.slider.value()
-
     def _on_thumb_pressed(self) -> None:
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
         self.preview_moved.emit(slider_value(position, self._decimals))
+
+    def _on_thumb_released(self) -> None:
+        """Apply where the thumb was released, then end the preview.
+
+        `QAbstractSlider.setSliderDown` emits `sliderReleased` before it moves
+        the value to the thumb's position. Setting the value here applies it
+        first, and Qt then finds nothing left to move.
+        """
+
+        position = self.slider.sliderPosition()
+
+        if position != self.slider.value():
+            self.slider.setValue(position)
+
+        self.preview_ended.emit()
 
 
 class NoticeLabel(QLabel):

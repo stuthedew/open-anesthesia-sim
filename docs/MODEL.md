@@ -11676,12 +11676,15 @@ new reach.
    applied". It names the control and the value tried in the slider's own
    words, and it names the run while runs are compared. It is drawn inside
    the region, so a screenshot taken during a drag carries it.
-3. **Width.** Each preview curve is one pixel thinner than the run's curve of
-   the same compartment, and never thinner than 2 px, below which an
+3. **Width.** Each preview curve is one pixel thinner than a lone run's curve
+   of the same compartment, and never thinner than 2 px, below which an
    antialiased line renders under 3:1 against the panel
    (§ "The six compartment traces: what separates them"). The two 3 px traces
    preview at 2 px. The four 2 px traces preview at 2 px, so for them the other
-   three cues carry the distinction.
+   three cues carry the distinction. In compare mode the first run is drawn one
+   step wider, but its preview keeps the lone-run width. Otherwise the preview
+   would be wider than the other run's real curve of the same compartment, and
+   the width cue would point the wrong way.
 4. **Binding to the drag.** The preview exists only while the thumb is held.
    It appears when the thumb is pressed, and the frame drawn at the release no
    longer has it. Nothing decays or lingers.
@@ -11700,7 +11703,8 @@ as the MAC-awake band's: its edge and the label carry the information
 **What a drag does to the run.** A pointer drag applies its value when the thumb
 is released, and the control-input timeline records one change there. Until
 then the run keeps the setting in force, and the value printed beside the
-slider is that setting. A key press, a wheel step or a click on the groove is
+slider is that setting. The value is applied before the preview ends, so the
+frame drawn at the release shows the run under its new setting. A key press, a wheel step or a click on the groove is
 one discrete input, so it applies at once and draws no preview.
 
 **The window keeps its width during a preview.** It slides so that the run's
@@ -11711,7 +11715,12 @@ to make room would rescale every slope, which § "The chart's time base"
 refuses. The window returns to following the run at the release.
 
 **What a preview does not do.** The hover never answers from it, so no value on
-a preview curve is ever printed as a reading. A stopped run, failed or at the
+a preview curve is ever printed as a reading. A preview that goes above the
+top of the concentration axis is cut off there, as a run's trace is. The
+off-scale notice then names each clipped prediction with its highest
+predicted value in view, because the readouts give only the run's values
+(`dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`). A predicted F_A/F_I
+stretch that stops ends in a dot, by the same rule as the run's. A stopped run, failed or at the
 supported run length, refuses every setting and draws no preview. Both plots
 draw it: the F_A/F_I plot shows the predicted ratio, so the two plots never
 show two different futures. Each compared run has its own controls, so only
