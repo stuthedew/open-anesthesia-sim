@@ -3,11 +3,13 @@ id: PL-9B1M
 title: A step from a state at the top of the fraction range, every compartment at a partial pressure fraction of 1, rounds a fraction up to 3.5e-11 past 1 (1986 of 10 368 steps in the envelope sweep), so AgentUptakeSystem.advance rolls the step back with SimulationNumericalError; the display path at the stiffest corners draws fractions up to 1.000033 without refusing
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/circuit.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_chart_frame.py
 added: 2026-10-26
+closed: 2026-10-31
+pr: 1901
 payoff: a run at the top of the supported fraction range neither halts on rounding nor draws a partial pressure above one atmosphere
 verify: ! grep -q 'PL-9B1M' tests/unit/test_numerical_envelope_sweep.py && grep -q 'def test_a_state_at_the_fraction_ceiling_stays_within_one' tests/unit/test_numerical_envelope_sweep.py
 ---
@@ -123,3 +125,17 @@ and `docs/MODEL.md` has to state that measurement beside the ceiling. A ceiling
 tied to the envelope rather than to one agent's vapour pressure keeps a later
 gas, such as nitrous oxide, from breaking the rule.
 
+
+**Built, 2026-10-31 (#1901).** Route 1, which the owner ratified: the inputs
+stop at `MAXIMUM_INPUT_FRACTION`, 0.99 of one atmosphere, and a computed
+fraction is still checked from 0 through 1. From 0.99 the largest computed
+excess over the ceiling was 6.1e-11 on the stepped path, 8.1e-7 in the
+canonical state and 3.3e-5 on the display path, about 300 times inside one
+atmosphere. The display path's check runs in `RunDefinition`, so a refused
+drawn value names its compartment in the learner's halt banner. A
+`RunDefinition` and `resume_at` still accept a state up to 1, because they
+start from states that a run computed, which may round just above the
+ceiling. An adversarial mutation pass found 11 opening and display checks
+that a mutant could delete with every test still passing, and `verify
+--self` found 18 surviving mutants of changed lines. Tests added on the
+branch now kill all of them.

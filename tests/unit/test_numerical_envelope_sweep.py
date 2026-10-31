@@ -27,7 +27,6 @@ a guard stops firing, this test fails and names the input.
 """
 
 import itertools
-import re
 import sys
 from collections.abc import Callable
 from math import inf, isfinite, nextafter
@@ -40,7 +39,7 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     DELIVERED_AGENT_L,
@@ -61,6 +60,7 @@ from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
     PartitionCoefficient,
 )
+from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import (
@@ -73,6 +73,7 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MAXIMUM_INPUT_FRACTION,
     AlveolarVentilation,
     CardiacOutput,
     CaseInstant,
@@ -152,7 +153,30 @@ sum to exactly 1 in floating point. The coupled step runs at this split too.
 TISSUE_NAMES = ("vessel_rich", "muscle", "fat")
 
 FULL_DIAL_PERCENT = 100.0
-"""The dial at its widest, so that the delivered fraction is 1 and every bound below is 1."""
+"""A dial at 100%. It is the vaporizer maximum here, and the dial for a compartment stepped alone.
+
+The coupled model refuses a dial above `CEILING_DIAL_PERCENT`, so the coupled
+runs below use that dial instead.
+"""
+
+CEILING = MAXIMUM_INPUT_FRACTION
+"""The highest fraction the coupled model starts from, 0.99 of one atmosphere.
+
+Each coupled run opens at this fraction, or delivers it, so that every fraction
+it computes is bounded by it. A run that opened at 1 could round a fraction
+past 1, and the fraction check then refused it.
+"""
+
+CEILING_DIAL_PERCENT = percent_from_fraction(Fraction(CEILING))
+"""The same ceiling as a dial setting, 99%."""
+
+OPENINGS_AND_DIALS = ((0.0, CEILING_DIAL_PERCENT), (CEILING, 0.0), (CEILING, CEILING_DIAL_PERCENT))
+"""Each coupled run's opening fraction and dial: a wash-in, a washout, and an equilibrium.
+
+The wash-in opens empty with the dial at the ceiling. The washout opens at the
+ceiling with the dial off. The equilibrium opens at the ceiling with the dial
+there too, so that every fraction should stay at the ceiling.
+"""
 
 
 class Corner(NamedTuple):
@@ -262,20 +286,23 @@ def _stored_agent_l(corner: Corner, state: tuple[float, ...]) -> float:
 def _require_what_the_equations_require(
     corner: Corner, opening: tuple[float, ...], state: tuple[float, ...], tolerance: float
 ) -> None:
-    """Check one state of a run that opened at `opening`, with the dial full or at zero.
+    """Check one state of a run that opened at `opening`, with the dial at the ceiling or off.
 
-    Every value is finite. Every fraction lies between its opening value and its
-    equilibrium, which here always means between 0 and 1. Neither accumulator is
-    negative. The agent held now, plus the agent exhausted, equals the agent held
-    at the opening plus the agent delivered. The fraction check and the balance
-    check allow a relative error of up to `tolerance`, the sum of the bounds of
-    the propagators that were composed to reach the state.
+    Every value is finite. Every fraction lies from 0 through 1, the range that
+    a fraction is checked against, with no allowance. Every
+    fraction also lies between its opening value and its equilibrium, which
+    here always means from 0 to `CEILING`, to within a relative error of
+    `tolerance`. Neither accumulator is negative. The agent held now, plus the
+    agent exhausted, equals the agent held at the opening plus the agent
+    delivered, to within `tolerance` too. `tolerance` is the sum of the bounds
+    of the propagators that were composed to reach the state.
     """
 
     assert all(isfinite(value) for value in state), state
 
     for fraction in state[:DELIVERED_AGENT_L]:
-        assert 0.0 <= fraction <= 1.0 + tolerance, state
+        assert 0.0 <= fraction <= 1.0, state
+        assert fraction <= CEILING * (1.0 + tolerance), state
 
     assert state[DELIVERED_AGENT_L] >= 0.0
     assert state[EXHAUSTED_AGENT_L] >= 0.0
@@ -296,8 +323,9 @@ COLUMN_SPACING_S = MAXIMUM_ELAPSED_SIMULATION_TIME_S / (COLUMNS - 1)
 def _require_the_run(corner: Corner) -> None:
     """Evaluate a run across the supported run length at every flow corner.
 
-    Each run is either a wash-in or a washout. A wash-in opens empty with the
-    dial full. A washout opens full with the dial at zero. Each run is sampled
+    Each run is a wash-in, a washout or an equilibrium, from
+    `OPENINGS_AND_DIALS`, with the input ceiling as the highest fraction. Each
+    run is sampled
     on the display path at `COLUMNS` columns. The display path composes one
     propagator per column, so the `n`th column carries the error of `n`
     propagators. Each run is also sampled on the canonical path at five
@@ -310,7 +338,7 @@ def _require_the_run(corner: Corner) -> None:
     """
 
     for flows in FLOW_CORNERS:
-        for opening_fraction, dial_percent in ((0.0, FULL_DIAL_PERCENT), (1.0, 0.0)):
+        for opening_fraction, dial_percent in OPENINGS_AND_DIALS:
             opening = _opening_state(opening_fraction)
             settings = _settings(corner, flows, dial_percent)
             matrix = build_system_matrix(settings)
@@ -340,16 +368,24 @@ def _system(
     corner: Corner,
     flows: tuple[float, float, float],
     fraction: float,
+    dial_percent: float,
     perfusion_fractions: tuple[float, float, float] = PERFUSION_FRACTIONS,
+    part_at_one: str | None = None,
 ) -> AgentUptakeSystem:
-    """Build the coupled system at a corner, every compartment at `fraction`."""
+    """Build the coupled system at a corner, with every compartment at `fraction`.
+
+    The dial is set to `dial_percent`. `part_at_one`, when given, names one part
+    of `OPENING_PARTS` to set to a fraction of 1 instead. The other parts stay at
+    `fraction`. So the only check that can reject the system is the opening check
+    on that one part, which runs when the system is built.
+    """
 
     fresh_gas_l_min, ventilation_l_min, cardiac_output_l_min = flows
     circuit = BreathingCircuit(
         max_delivered_concentration_percent=Percent(FULL_DIAL_PERCENT),
         circuit_volume_l=CompartmentVolume(corner.circuit_l),
         fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_l_min),
-        delivered_concentration_percent=Percent(FULL_DIAL_PERCENT * (1.0 - fraction)),
+        delivered_concentration_percent=Percent(dial_percent),
     )
     alveoli = AlveolarCompartment(
         gas_volume_l=CompartmentVolume(corner.alveolar_l),
@@ -377,6 +413,16 @@ def _system(
 
     for tissue in tissues:
         tissue.set_partial_pressure_fraction(Fraction(fraction))
+
+    parts = {
+        "inspired": circuit.set_inspired_partial_pressure_fraction,
+        "alveolar": alveoli.set_partial_pressure_fraction,
+        "venous": venous.set_partial_pressure_fraction,
+        **{tissue.name: tissue.set_partial_pressure_fraction for tissue in tissues},
+    }
+
+    if part_at_one is not None:
+        parts[part_at_one](Fraction(1.0))
 
     patient = PatientCompartments(
         cardiac_output_l_min=CardiacOutput(cardiac_output_l_min),
@@ -413,35 +459,30 @@ def _require_the_system(corner: Corner) -> None:
     the check at every corner. Over many steps, the stiffest corners fail it, as
     `PL-D88N` measures.
 
-    A step from a full state may be refused, but only for the one reason that
-    `PL-9B1M` describes. Rounding can take a fraction just past 1. The fraction
-    check then refuses that fraction, and the step is rolled back. The refused
-    fraction may be no more than one step's propagator bound above 1, taken at
-    the most squarings that any corner's step needs. The state must also be
-    unchanged after the refusal.
+    Every step must complete, from each opening and dial in
+    `OPENINGS_AND_DIALS`. Before the input ceiling, a step from a state with every
+    compartment at 1 could round a fraction past 1. The fraction check refused
+    it, the step was rolled back, and this test accepted that refusal by name.
+    The coupled model's inputs now stop at `CEILING`, so the refusal must not
+    happen. Every fraction after the step must lie from 0 through 1. It must
+    also exceed the ceiling by no more than one step's propagator bound, taken
+    at the largest number of squarings that any corner's step needs.
     """
 
-    largest_refused_fraction = 1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON
+    largest_fraction = CEILING * (1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON)
 
-    for flows, fraction, step_s, perfusion_fractions in itertools.product(
+    for flows, (fraction, dial_percent), step_s, perfusion_fractions in itertools.product(
         FLOW_CORNERS,
-        (0.0, 1.0),
+        OPENINGS_AND_DIALS,
         (MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S),
         (PERFUSION_FRACTIONS, LOPSIDED_PERFUSION_FRACTIONS),
     ):
-        system = _system(corner, flows, fraction, perfusion_fractions)
-        held_before_l = _held_amounts_l(system)
+        system = _system(corner, flows, fraction, dial_percent, perfusion_fractions)
+        result = system.advance(SimulationStep(step_s))
 
-        try:
-            result = system.advance(SimulationStep(step_s))
-        except SimulationNumericalError as refusal:
-            refused = re.search(r"fraction of (\S+) is outside 0 to 1", str(refusal))
-
-            assert fraction == 1.0, refusal
-            assert refused is not None, refusal
-            assert 1.0 < float(refused[1]) <= largest_refused_fraction, refusal
-            assert _held_amounts_l(system) == held_before_l
-            continue
+        for computed in system.state_vector()[:DELIVERED_AGENT_L]:
+            assert 0.0 <= computed <= 1.0
+            assert computed <= largest_fraction, computed
 
         assert isfinite(result.circuit_to_alveolar_agent_l)
         assert isfinite(result.patient_agent_change_l)
@@ -546,10 +587,11 @@ def test_every_core_operation_holds_its_equations_at_every_envelope_corner(corne
 
     The corner fixes every volume and coefficient. At each corner, the flows run
     at zero, at the smallest float and at their supported maximums. The run opens
-    either empty or full. Two refusals are accepted, each with the simulator's
-    own error. One is the canonical path's refusal of its single 86 400 s
-    interval at the stiffest corners. The other is a step from a full state that
-    rounds a fraction just past 1, which `PL-9B1M` records.
+    empty or at the input ceiling. One refusal is accepted, with the
+    simulator's own error: the canonical path's refusal of its single 86 400 s
+    interval at the stiffest corners. Before the input ceiling, a second refusal
+    was accepted: a step from a state at 1 that rounded a fraction past 1. A
+    state at the ceiling must never be refused that way.
     """
 
     _require_the_run(corner)
@@ -599,6 +641,21 @@ def _build_window_columns(value: float) -> int:
     return int(value)
 
 
+def _build_dial_in_a_settings_record(value: float) -> UptakeEquationSettings:
+    return _settings(CORNERS[0], (0.0, 0.0, 0.0), value)
+
+
+def _build_dial_of_the_coupled_system(value: float) -> AgentUptakeSystem:
+    system = _system(CORNERS[0], (0.0, 0.0, 0.0), 0.0, 0.0)
+    system.set_delivered_concentration_percent(Percent(value))
+
+    return system
+
+
+def _build_coupled_system_opening_at(value: float) -> AgentUptakeSystem:
+    return _system(CORNERS[0], (0.0, 0.0, 0.0), value, 0.0)
+
+
 EDGES = (
     Edge("CompartmentVolume", CompartmentVolume, 1e-2, 1e4),
     Edge("PartitionCoefficient", PartitionCoefficient, 1e-3, 1e4),
@@ -610,9 +667,17 @@ EDGES = (
     Edge("CaseInstant", CaseInstant, 0.0, 86_400.0),
     Edge("Fraction", Fraction, 0.0, 1.0),
     Edge("Percent", Percent, 0.0, 100.0),
+    Edge(
+        "the delivered concentration a settings record holds",
+        _build_dial_in_a_settings_record,
+        0.0,
+        99.0,
+    ),
+    Edge("the coupled system's dial", _build_dial_of_the_coupled_system, 0.0, 99.0),
+    Edge("a fraction the coupled system opens from", _build_coupled_system_opening_at, 0.0, 0.99),
     Edge("a tissue group's perfusion fraction", _build_perfusion_fraction, SMALLEST_SUBNORMAL, 1.0),
 )
-"""Every input with an interval of its own, and the interval as `PL-58D7` records it.
+"""Every input with an interval of its own, and the interval that `docs/MODEL.md` records for it.
 
 The bounds are written out here rather than read from the modules that define
 them. So a bound that moves fails this test and is noticed. A step count and a
@@ -645,3 +710,260 @@ def test_every_core_operation_refuses_inputs_outside_its_floating_point_domain(e
     for outside in (below, above):
         with pytest.raises(SimulationConfigurationError):
             edge.build(outside)
+
+
+STIFFEST_DRAWN_CORNER = Corner(
+    MINIMUM_VOLUME_L,
+    MINIMUM_VOLUME_L,
+    MINIMUM_VOLUME_L,
+    MINIMUM_VOLUME_L,
+    MAXIMUM_PARTITION_COEFFICIENT,
+    MINIMUM_PARTITION_COEFFICIENT,
+)
+"""Every volume at its floor, blood:gas at its ceiling and tissue:blood at its floor.
+
+From a state at 1 with the dial off, ventilation and cardiac output at their
+maximums and no fresh gas, the display path drew 1.000033 here, the largest
+drawn fraction in the sweep (measured 2026-10-31).
+"""
+
+
+def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None:
+    """A window that would draw a partial pressure above one atmosphere is refused, not returned.
+
+    No supported opening reaches such a window. The stepped system refuses an
+    opening above `CEILING`, and so does a settings record's dial. A
+    `RunDefinition` opens from a state that a run passed through, which may lie
+    a rounding error above the ceiling, so it checks its opening only from 0
+    through 1. A caller can therefore still hand it a state at 1. Before
+    the input ceiling, both display paths then returned fractions above 1 at this
+    corner: 1.000033 across the whole run, and 1.0000000056 in the inspired
+    fraction over the first 1000 s sampled every 100 s (measured 2026-10-31).
+    Each now refuses the window with the simulator's own error, naming the
+    state position that left the range. The window is short because the
+    anchored path forms one propagator to its stop. At this corner, a propagator
+    longer than about 1610 s needs more squarings than the module allows.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    run = RunDefinition(
+        _settings(STIFFEST_DRAWN_CORNER, flows, 0.0),
+        _opening_state(1.0),
+        opened_at_s=CaseInstant(0.0),
+    )
+    run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+    refusal = (
+        r"^the display path computed a value it cannot draw: state\[\d\] \([^)]*\) "
+        r"of 1\.0000\d+ is outside 0 to 1"
+    )
+
+    with pytest.raises(SimulationNumericalError, match=refusal):
+        run.evaluate(0.0, 1000.0, 11)
+
+    with pytest.raises(SimulationNumericalError, match=refusal):
+        run.evaluate_anchored(0.0, 1000.0, 100.0)
+
+
+OPENING_PARTS = (
+    ("inspired", "inspired_partial_pressure_fraction"),
+    ("alveolar", "alveolar partial_pressure_fraction"),
+    ("venous", "venous partial_pressure_fraction"),
+    ("vessel_rich", "vessel_rich partial_pressure_fraction"),
+    ("muscle", "muscle partial_pressure_fraction"),
+    ("fat", "fat partial_pressure_fraction"),
+)
+"""Each part that holds a fraction at the opening, and the name its refusal gives."""
+
+
+@pytest.mark.parametrize(("part", "named"), OPENING_PARTS, ids=[part for part, _ in OPENING_PARTS])
+def test_each_part_of_the_opening_is_checked_against_the_input_ceiling(
+    part: str, named: str
+) -> None:
+    """A system with one part at 1 and the rest at 0 is rejected, and the error names that part.
+
+    The other tests start every part at the same fraction. In those tests, the
+    first part checked rejects the system, so no test notices when the check
+    is removed from any other part. On 2026-10-31, an adversarial mutation pass
+    deleted each part's check in turn, and the suite still passed.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    refusal = rf"^{named} of 1\.0 is above 0\.99 of one atmosphere"
+
+    _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0)
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0, part_at_one=part)
+
+
+def test_a_system_built_with_its_dial_above_the_input_ceiling_is_refused() -> None:
+    """Building a system from a circuit whose dial is at 100% fails at once, before any step.
+
+    The circuit in this test allows a dial setting up to 100%, so only the
+    system's own check can reject the setting. Without that check, the system
+    was built, and the error came only when the first step built its settings
+    record.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    refusal = r"^delivered_concentration_percent of 100(\.0)?% is above 99% of one atmosphere"
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        _system(STIFFEST_DRAWN_CORNER, flows, 0.0, FULL_DIAL_PERCENT)
+
+
+CEILING_REFUSAL_AT_A_FULL_DIAL = (
+    "delivered_concentration_percent of 100.0% is above 99% of one atmosphere, the highest "
+    "partial pressure the coupled model starts from. It is kept below 1 so that every partial "
+    'pressure the model computes stays within one atmosphere (docs/MODEL.md, "The numerical '
+    'envelope")'
+)
+"""The whole message a learner reads when a dial of 100% is refused, written out by hand."""
+
+
+def test_a_full_dial_is_refused_in_full_by_the_setter_and_by_the_settings_record() -> None:
+    """A dial of 100% is refused with the whole message, even though the vaporizer allows 100%.
+
+    The vaporizer maximum here is 100%, so the dial is exactly at that maximum.
+    The setter must still check the input ceiling of 99% when the dial equals
+    the maximum, not only when it is below it. The setter must also leave the
+    dial as it was. A dial passed in as a plain number is refused because of
+    its type, and the error names the dial. On 2026-10-31, a mutation pass
+    found that no test checked the dial's name in these three messages, or the
+    setter's check at the maximum.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    system = _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        system.set_delivered_concentration_percent(Percent(FULL_DIAL_PERCENT))
+
+    assert str(raised.value) == CEILING_REFUSAL_AT_A_FULL_DIAL
+    assert system.circuit.delivered_concentration_percent == 0.0
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        _settings(STIFFEST_DRAWN_CORNER, flows, FULL_DIAL_PERCENT)
+
+    assert str(raised.value) == CEILING_REFUSAL_AT_A_FULL_DIAL
+
+    with pytest.raises(TypeError, match=r"^delivered_concentration_percent of 4\.0 was not built"):
+        system.set_delivered_concentration_percent(4.0)  # type: ignore[arg-type]
+
+
+ROUNDING_CORNERS = (
+    STIFFEST_DRAWN_CORNER,
+    Corner(
+        MINIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MAXIMUM_VOLUME_L,
+        MAXIMUM_VOLUME_L,
+        MAXIMUM_PARTITION_COEFFICIENT,
+        MINIMUM_PARTITION_COEFFICIENT,
+    ),
+)
+"""The corners where a computed fraction went furthest past its inputs, measured 2026-10-31.
+
+The first drew the largest excess on the display path. The second, with the
+circuit and lung at their floors and the venous pool and tissues at their
+ceilings, took the largest excess in one step of the coupled system.
+"""
+
+
+def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
+    """From the input ceiling, a step and a drawn window both stay from 0 through 1.
+
+    A fraction is a partial pressure, and no compartment can hold more than one
+    atmosphere of agent. Before the input ceiling, a state with every
+    compartment at 1 could not be stepped reliably: one step rounded a fraction
+    to 1.0000000000349965, the check refused it, and the run halted. The
+    display path drew 1.000033 from the same state. The coupled model now
+    starts from no more than `CEILING`, and the system refuses to be built
+    above it. This test steps the system and draws a 24-hour window at the two
+    corners where rounding went furthest, from each opening and dial in
+    `OPENINGS_AND_DIALS`. Every fraction must lie from 0 through 1, and none
+    may pass the ceiling by more than 1e-4 of it, about three times the largest
+    excess measured.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+
+    for corner in ROUNDING_CORNERS:
+        with pytest.raises(SimulationConfigurationError, match=r"of 1\.0 is above 0\.99 of one"):
+            _system(corner, flows, 1.0, 0.0)
+
+        for fraction, dial_percent in OPENINGS_AND_DIALS:
+            system = _system(corner, flows, fraction, dial_percent)
+            system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+            run = RunDefinition(
+                _settings(corner, flows, dial_percent),
+                _opening_state(fraction),
+                opened_at_s=CaseInstant(0.0),
+            )
+            run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+            window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
+            drawn = [state.values for state in window.states]
+
+            for state in (system.state_vector(), *drawn):
+                for computed in state[:DELIVERED_AGENT_L]:
+                    assert 0.0 <= computed <= 1.0, state
+                    assert computed <= CEILING * (1.0 + 1e-4), state
+
+
+SUPPORTED_SETTING_CORNERS = tuple(
+    itertools.product(
+        (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN),
+        (0.0, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
+        (MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S),
+    )
+)
+"""Each supported flow at either end of its range, at the step's floor and its ceiling."""
+
+
+@pytest.mark.parametrize("agent_id", tuple(AGENT_DATA_FILENAMES))
+def test_every_shipped_agent_steps_without_squarings_at_any_supported_setting(
+    agent_id: str,
+) -> None:
+    """The mass-balance tolerance stays at 1e-9 only while no reachable step needs a squaring.
+
+    `AgentUptakeSystem.advance` refuses a step whose agent balance is off by
+    more than one part in 10**9 (`AGENT_ACCOUNTING_RELATIVE_TOLERANCE`). Each
+    squaring in a step's propagator can double its rounding error. At the
+    stiffest envelope corners a step needs 19, and the check then halts a
+    correct run within seconds (`docs/MODEL.md` § "The numerical envelope").
+    `PL-D88N` kept the tolerance fixed, because every setting a learner can
+    reach needs none (project owner, 2026-10-31, ratified, over a tolerance
+    summed from the propagator's bound, which would loosen the check up to 58
+    times on a long run at the 1 ms step).
+
+    So this test steps each shipped agent with the patient and the machine
+    that `AgentUptakeSystem.for_agent` builds, which are the ones the
+    application runs. Each flow is at either end of its supported range, at the
+    smallest and the largest supported step. A stiffer profile, such as a
+    small patient, fails here on the day it ships. That is the moment to choose
+    a tolerance that widens only by what the squarings add.
+    """
+
+    system = AgentUptakeSystem.for_agent(agent_id)
+
+    for (
+        fresh_gas_l_min,
+        ventilation_l_min,
+        cardiac_output_l_min,
+        step_s,
+    ) in SUPPORTED_SETTING_CORNERS:
+        system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_l_min))
+        system.set_alveolar_ventilation(AlveolarVentilation(ventilation_l_min))
+        system.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
+        squarings = _squarings(build_system_matrix(system.equation_settings()), step_s)
+
+        assert squarings == 0, (
+            f"{agent_id} at {fresh_gas_l_min} L/min fresh gas, {ventilation_l_min} L/min "
+            f"alveolar ventilation, {cardiac_output_l_min} L/min cardiac output and a "
+            f"{step_s} s step needs {squarings} squarings. The mass-balance check's fixed "
+            "tolerance of 1e-9 assumes none, so it would halt a correct long run. Choose a "
+            "tolerance that widens only by what the squarings add, about "
+            "3 * (2**s - 1) * 2**-52 per step summed over the accounting period, as PL-D88N "
+            "records."
+        )

@@ -110,6 +110,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_alveolar_ventilation,
     require_cardiac_output,
     require_fresh_gas_flow,
+    require_within_input_ceiling,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
@@ -157,7 +158,7 @@ STATE_SIZE = 9
 TISSUE_GROUP_COUNT = 3
 """Vessel-rich, muscle and fat: the three groups `patient.py` builds."""
 
-_FRACTION_STATE_NAMES = (
+FRACTION_STATE_NAMES = (
     (INSPIRED_FRACTION, "inspired fraction F_I"),
     (ALVEOLAR_FRACTION, "alveolar fraction F_A"),
     (VENOUS_FRACTION, "mixed venous fraction F_v"),
@@ -166,11 +167,14 @@ _FRACTION_STATE_NAMES = (
         for offset in range(TISSUE_GROUP_COUNT)
     ),
 )
-"""Each state position that holds a fraction, with the name that its refusal message gives.
+"""Each state position that holds a fraction, and the name an error message gives it.
 
 The names describe the position in the state vector, because that is all that
 `require_canonical_state` knows. The tissue groups are numbered in the order of
-their states. Their names, such as "fat", belong to `patient.py`.
+their states. Their names, such as "fat", are defined in `patient.py`. The record is
+public because two checks read it: `require_canonical_state`, and the check in
+`core/run_definition.py` that the display path applies to each state it computes
+(`PL-9B1M`).
 """
 
 _ACCUMULATOR_STATE_NAMES = (
@@ -288,7 +292,7 @@ def require_canonical_state(state: object) -> None:
         if not isfinite(value):
             raise SimulationConfigurationError(f"state[{index}] is {value}, which is not finite")
 
-    for index, role in _FRACTION_STATE_NAMES:
+    for index, role in FRACTION_STATE_NAMES:
         Fraction(state[index], name=f"state[{index}] ({role})")
 
     for index, role in _ACCUMULATOR_STATE_NAMES:
@@ -466,12 +470,12 @@ class UptakeEquationSettings:
     every flow term per second. So each flow has a per-second property, and
     `build_system_matrix` reads only those properties. That keeps the
     conversion out of every equation. The value as set is what is stored, for
-    two reasons. A run also records this object for each stretch
-    (`core/run_definition.py`), and the conversion does not reverse exactly. A
-    cardiac output of 1.9 L/min, divided by sixty and multiplied back, is
-    1.8999999999999997, and settings rebuilt from that value differ in all
-    three tissue flows (`PL-SM5V`). `docs/MODEL.md` § "Time" states which of
-    the two values is the one recorded.
+    two reasons. First, a run also records this object for each stretch
+    (`core/run_definition.py`). Second, the conversion does not reverse
+    exactly. A cardiac output of 1.9 L/min, divided by sixty and multiplied
+    back, is 1.8999999999999997, and settings rebuilt from that value differ in
+    all three tissue flows (`PL-SM5V`). `docs/MODEL.md` § "Time" states which
+    of the two values is the one recorded.
 
     **The delivered concentration is stored as the percent that was dialled,
     and read as a fraction**, for the same reason (`PL-NJPB`). The equations
@@ -485,41 +489,50 @@ class UptakeEquationSettings:
     supported range** (`PL-HSFV`, `PL-0YYV`). A run is built from this record.
     A record built anywhere other than `AgentUptakeSystem.equation_settings`
     passes through no compartment. The flows used to be bare floats, and only
-    the compartments checked their ranges. So a `RunDefinition` opened under a
-    cardiac output of 1000 L/min and simulated it. The three flow fields take
-    `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, which cannot be
-    built outside their ranges (`core/supported_ranges.py`). So nothing here
-    checks a range again, and a bare `float` is rejected as the programming
-    error it is. A tissue group's flow needs no range of its own. Each tissue
-    flow is nonnegative and together they sum to cardiac output, so none can
-    exceed it.
+    the compartments checked their ranges. So a `RunDefinition` could be opened
+    under a cardiac output of 1000 L/min, and it simulated that flow. The three
+    flow fields take `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`,
+    which cannot be built outside their ranges (`core/supported_ranges.py`). So
+    nothing here checks a range again, and a bare `float` is rejected as the
+    programming error it is. A tissue group's flow needs no range of its own.
+    Each tissue flow is nonnegative and together they sum to cardiac output, so
+    none can exceed it.
 
     **The dial is bounded by the vaporizer maximum stored beside it**
     (`PL-BBMG`). The limit on the delivered concentration is the maximum of
     the agent's vaporizer, not a constant of the model, so no type can enforce
     it. A dial setting is deliverable only relative to a maximum, so the check
-    belongs to a record that stores both. This is the point at which
-    `.claude/rules/core-domain.md` stops the checked-type pattern. Until
-    `PL-BBMG`, this record stored the dial alone and bounded it only at 100,
-    the upper limit of every percent. So `dataclasses.replace` could rebuild a
-    record at 20% sevoflurane, although the vaporizer maximum was 8%. That
-    record opened a run, which returned a precise-looking trace. The record
-    now carries `max_delivered_concentration_percent`, which is required and
-    has no default. It rejects a dial above that maximum through
-    `require_within_vaporizer_maximum`, the guard that `BreathingCircuit`
-    calls, so the two reject it with the same message. The field has no
-    default because `BreathingCircuit` sets its maximum to 100% by default for
-    a circuit built without an agent. A record with the same default would
-    reopen, under a new field, the gap that this field closes. The matrix
-    never reads the maximum. `AgentUptakeSystem` copies it from the circuit
-    into every record it builds. So the maximum also enters the propagator
-    cache key, with the rest of the record. Both values are `Percent`s,
-    checked against 0 to 100 when they were built (`core/concentration.py`).
-    So this record checks their type, and does not check that range again
-    (`PL-4R3W`). What it still checks is the relation between them, and that
-    the maximum is above zero.
+    belongs to a record that stores both. `.claude/rules/core-domain.md` says
+    that the checked-type pattern stops at this point. Until `PL-BBMG`, this
+    record stored the dial alone and bounded it only at 100, the upper limit of
+    every percent. So `dataclasses.replace` could rebuild a record at 20%
+    sevoflurane, although the vaporizer maximum was 8%. That record opened a
+    run, which returned a precise-looking trace. The record now carries
+    `max_delivered_concentration_percent`, which is required and has no
+    default. The record rejects a dial above that maximum through
+    `require_within_vaporizer_maximum`. That is the guard that
+    `BreathingCircuit` calls, so the two reject the dial with the same message.
+    The field has no default, just as `BreathingCircuit`'s maximum has had none
+    since `PL-M85T`. A default of 100% would reopen, under a new field, the gap
+    that this field closes. The matrix never reads the maximum.
+    `AgentUptakeSystem` copies it from the circuit into every record it builds.
+    So the maximum also enters the propagator cache key, with the rest of the
+    record. Both values are `Percent`s, checked against 0 to 100 when they were
+    built (`core/concentration.py`). So this record checks their type, and does
+    not check that range again (`PL-4R3W`). What it still checks is the
+    relation between them, and that the maximum is above zero.
 
-    **Each volume and the blood:gas coefficient is a checked type too**
+    **The dial is also bounded by the coupled model's input ceiling**
+    (`PL-9B1M`). Every record builds a propagator, and a propagator started
+    from a partial pressure at 1 can round a computed one past 1. So the
+    record refuses a dial above `MAXIMUM_INPUT_FRACTION` of one atmosphere,
+    99%, through `require_within_input_ceiling` in `core/supported_ranges.py`.
+    A circuit stepped on its own still accepts a dial up to 100%. Its closed
+    form stays inside 0 through 1 at every envelope corner
+    (`tests/unit/test_numerical_envelope_sweep.py`). The vaporizer maximum is
+    not bounded here, because the matrix does not read it.
+
+    **The volumes and the blood:gas coefficient are checked types too**
     (`PL-QX2G`). `CompartmentVolume` and `PartitionCoefficient` are built only
     inside the numerical envelope (`core/numerical_envelope.py`). Inside it,
     every rate in `build_system_matrix` is finite, and the step's propagator
@@ -530,8 +543,9 @@ class UptakeEquationSettings:
 
     Raises:
         SimulationConfigurationError: the vaporizer maximum is zero, the
-            delivered concentration is above the vaporizer maximum, the
-            number of tissue groups is not the three that `patient.py`
+            delivered concentration is above the vaporizer maximum or above
+            the coupled model's input ceiling of 99%, the number of tissue
+            groups is not the three that `patient.py`
             builds, or the tissue flows do not sum to cardiac output.
         TypeError: a flow was not built as its checked type from
             `core/supported_ranges.py`, a volume as a `CompartmentVolume`, or
@@ -577,6 +591,9 @@ class UptakeEquationSettings:
             "delivered_concentration_percent",
             self.delivered_concentration_percent,
             self.max_delivered_concentration_percent,
+        )
+        require_within_input_ceiling(
+            "delivered_concentration_percent", self.delivered_concentration_percent
         )
         if len(self.tissues) != TISSUE_GROUP_COUNT:
             raise SimulationConfigurationError(

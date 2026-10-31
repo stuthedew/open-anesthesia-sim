@@ -56,6 +56,7 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MAXIMUM_INPUT_FRACTION,
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -70,6 +71,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_cardiac_output,
     require_case_instant,
     require_fresh_gas_flow,
+    require_held_within_input_ceiling,
     require_step_count,
     require_supported_alveolar_ventilation,
     require_supported_cardiac_output,
@@ -77,6 +79,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_supported_fresh_gas_flow,
     require_supported_run_length,
     require_supported_step_count,
+    require_within_input_ceiling,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -1406,3 +1409,43 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
     )
 
     assert circuit.fresh_gas_flow_l_min == 4.0
+
+
+@pytest.mark.parametrize("capacity_l", [0.01, 0.2, 3.7, 6.0, 1e4])
+def test_an_amount_set_at_the_input_ceiling_is_accepted_and_one_more_is_not(
+    capacity_l: float,
+) -> None:
+    """The opening check compares amounts, so a fraction set at the ceiling passes (`PL-9B1M`).
+
+    A compartment stores an amount and divides it by its capacity to report a
+    fraction. So a fraction set to 0.99 can read back one unit in the last place
+    higher. The check compares the amount with the capacity times the ceiling,
+    which is the same product that the setter stores. The next float above that
+    amount is rejected. The error message quotes the fraction that the
+    compartment holds, and gives the limit as 0.99 of one atmosphere.
+    """
+
+    at_the_ceiling = capacity_l * MAXIMUM_INPUT_FRACTION
+    require_held_within_input_ceiling("venous pool", at_the_ceiling, capacity_l)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_held_within_input_ceiling("venous pool", nextafter(at_the_ceiling, inf), capacity_l)
+
+    message = str(raised.value)
+    assert message.startswith("venous pool of 0.99"), message
+    assert "is above 0.99 of one atmosphere" in message, message
+
+
+def test_a_dial_and_a_fraction_above_the_input_ceiling_are_refused_in_their_own_units() -> None:
+    """A dial is quoted in percent and a fraction as a fraction, each against 0.99 atm."""
+
+    require_within_input_ceiling("dial", Percent(99.0))
+    require_within_input_ceiling("fraction", 0.99)
+
+    with pytest.raises(SimulationConfigurationError, match=r"^dial of 99\.5% is above 99% of one"):
+        require_within_input_ceiling("dial", Percent(99.5))
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"^fraction of 0\.995 is above 0\.99 of"
+    ):
+        require_within_input_ceiling("fraction", 0.995)

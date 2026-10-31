@@ -81,8 +81,11 @@ from math import inf, isfinite
 from typing import Final
 
 from anesthesia_sim.core.checked_number import shown
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
+    FIRST_TISSUE_FRACTION,
+    FRACTION_STATE_NAMES,
     UptakeEquationSettings,
     build_system_matrix,
     require_canonical_state,
@@ -205,6 +208,11 @@ class DisplayState:
     `values` is a line where a reader can see a value meant for drawing being
     taken out of the one container that says what it is.
 
+    `RunDefinition.evaluate` and `evaluate_anchored` check each fraction
+    from 0 through 1 before they build one (`PL-9B1M`). That check lives
+    there rather than here because only the run knows each tissue group's
+    name, and a refusal must name the compartment (`_drawable`).
+
     Attributes:
         values: The state, in `governing_equations`' own state order,
             `STATE_SIZE` entries long. It equals the canonical state at the
@@ -213,6 +221,46 @@ class DisplayState:
     """
 
     values: tuple[float, ...]
+
+
+def _drawable(state: tuple[float, ...], settings: UptakeEquationSettings) -> DisplayState:
+    """Return `state` as a `DisplayState`, after checking each fraction from 0 through 1.
+
+    The display path chains one propagator per column, so its rounding can
+    add up across a window. Before `PL-9B1M`, a washout from a state with
+    every compartment at 1 drew fractions up to 1.000033 at the stiffest
+    envelope corners, a partial pressure above one atmosphere. The coupled
+    model's inputs now stop at `MAXIMUM_INPUT_FRACTION`, 0.99, and the largest
+    drawn excess over that ceiling measured 3.3e-5. So a drawn fraction above
+    1 means that the window came from a state that no supported opening
+    produces. It is refused rather than drawn.
+
+    The refusal reaches a learner as the banner that says why the run
+    halted, not as a traceback. So it names the compartment as well as the
+    position in the state (`PL-SPN6`). Each tissue group's name comes from
+    `settings`, which `patient.py` built.
+
+    Args:
+        state: A state that the display path computed.
+        settings: The settings of the segment that produced `state`.
+
+    Raises:
+        SimulationNumericalError: If a fraction in `state` is outside 0 to 1.
+            The message names the compartment and its position in the
+            state, and the original refusal is kept as the cause.
+    """
+
+    for index, role in FRACTION_STATE_NAMES:
+        offset = index - FIRST_TISSUE_FRACTION
+        named = f"{role}, {settings.tissues[offset].name}" if offset >= 0 else role
+        try:
+            Fraction(state[index], name=f"state[{index}] ({named})")
+        except SimulationConfigurationError as error:
+            raise SimulationNumericalError(
+                f"the display path computed a value it cannot draw: {error}"
+            ) from error
+
+    return DisplayState(state)
 
 
 @dataclass(frozen=True, slots=True)
@@ -598,6 +646,10 @@ class RunDefinition:
                 than `MAXIMUM_WINDOW_COLUMNS`, either bound is not finite,
                 either bound precedes `opened_at_s`, `stop_s` precedes
                 `start_s`, or `stop_s` is past the time the run has reached.
+            SimulationNumericalError: a computed fraction is outside 0 to 1,
+                which `_drawable` refuses, naming the compartment. Only an
+                opening that no supported run produces can lead there
+                (`PL-9B1M`).
         """
 
         if isinstance(columns, bool) or not isinstance(columns, int):
@@ -627,7 +679,7 @@ class RunDefinition:
         times_s = tuple(start_s + column * spacing_s for column in range(columns - 1)) + (
             (start_s,) if columns == 1 else (stop_s,)
         )
-        states: list[tuple[float, ...]] = []
+        states: list[DisplayState] = []
         segment_index = self._segment_index_at(start_s)
         column = 0
 
@@ -639,21 +691,21 @@ class RunDefinition:
                 _propagator(segment, times_s[column] - segment.opening.instant_s),
                 segment.opening.state,
             )
-            states.append(state)
+            states.append(_drawable(state, segment.settings))
 
             if last > column:
                 chained = _propagator(segment, spacing_s)
 
                 for _ in range(last - column):
                     state = _advanced(chained, state)
-                    states.append(state)
+                    states.append(_drawable(state, segment.settings))
 
             column = last + 1
 
-        return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
+        return SampledWindow(times_s=times_s, states=tuple(states))
 
     def evaluate_anchored(self, start_s: float, stop_s: float, spacing_s: float) -> SampledWindow:
-        """Columns on an absolute grid across `[start_s, stop_s]`, plus every event in it.
+        """Return columns on an absolute grid over `[start_s, stop_s]`, and at each event in it.
 
         This is the chart's own display path. It differs from `evaluate` in
         two ways that a drawn trace needs and a bare window does not.
@@ -664,11 +716,10 @@ class RunDefinition:
         column time it had in the last frame, and gains at most one new column
         time. `evaluate` spaces its columns across whatever bounds it is given,
         which makes every column a new instant on every frame. The drawn
-        points then all move. `PL-Q197` measured that movement as what
-        saturated the Flutter client, at 2 700 discrete control mutations a
-        frame, before decimation was anchored for exactly this reason.
-        Anchoring the *evaluation* times applies the same fix at the next
-        level.
+        points then all move. `PL-Q197` found that this movement saturated the
+        Flutter client, at 2 700 discrete control mutations a frame. Decimation
+        was anchored to fix exactly that. Anchoring the *evaluation* times
+        applies the same fix at the next level.
 
         **Do not re-anchor this grid to the run's own opening.** For a run
         opening at induction the two are the same number, so the distinction
@@ -754,14 +805,16 @@ class RunDefinition:
                 `opened_at_s`, `stop_s` precedes `start_s`, `stop_s` is past
                 the time the run has reached, or `spacing_s` is so fine that
                 the grid's multiples up to `stop_s` cannot be counted. Before
-                `PL-YZ17`, that last case raised a bare `OverflowError`. It is
-                also raised when the window holds more than
+                `PL-YZ17`, that last case raised a bare `OverflowError`. The
+                error is also raised when the window holds more than
                 `MAXIMUM_WINDOW_COLUMNS` grid multiples, counted as that
                 constant's docstring says. Before `PL-06LS`, such a window
                 looped once per multiple and could fail to return. A
                 fine spacing is otherwise accepted. Unlike a run's step, it is
                 chained at most once per column, so its rounding error does
                 not accumulate beyond what the columns asked for.
+            SimulationNumericalError: a computed fraction is outside 0 to 1,
+                as `evaluate` describes.
         """
 
         require_positive_finite("spacing_s", spacing_s)
@@ -798,7 +851,10 @@ class RunDefinition:
 
         times_s, grid_index = self._anchored_columns(start_s, stop_s, spacing_s)
         propagators = _WindowPropagators(self._last_window_propagators)
-        states: list[tuple[float, ...]] = [()] * len(times_s)
+        # Each column is written once, in order, so the list is filled by
+        # appending. `SampledWindow` refuses a window whose states and times
+        # differ in length.
+        states: list[DisplayState] = []
         segment_index = self._segment_index_at(times_s[0])
         column = 0
 
@@ -807,7 +863,7 @@ class RunDefinition:
             segment = self._segments[segment_index]
             opening_after_s = self._opening_after(segment_index)
             state = self._state_from_opening(segment, times_s[column], propagators)
-            states[column] = state
+            states.append(_drawable(state, segment.settings))
             chained: Matrix | None = None
 
             # Consecutive grid columns are consecutive multiples of the
@@ -826,13 +882,13 @@ class RunDefinition:
 
                 state = _advanced(chained, state)
                 column += 1
-                states[column] = state
+                states.append(_drawable(state, segment.settings))
 
             column += 1
 
         self._last_window_propagators = propagators.used
 
-        return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
+        return SampledWindow(times_s=times_s, states=tuple(states))
 
     def _anchored_columns(
         self, start_s: float, stop_s: float, spacing_s: float

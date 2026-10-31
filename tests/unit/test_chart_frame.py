@@ -665,8 +665,8 @@ def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists
 
     This is the fourth limit in `core/concentration.py`. A computed fraction
     that rounds past 1 is rejected, rather than clamped to 100.00% or drawn
-    above the axis (`PL-4R3W`). Only a 100% dial can produce such a fraction,
-    and no supported setting reaches one. `assemble_chart_frame` rejects it
+    above the axis (`PL-4R3W`). No supported opening or dial can produce such a
+    fraction (`PL-9B1M`). `assemble_chart_frame` rejects it
     before a `ChartFrame` exists. The toolkit is therefore never given a
     frame whose first traces convert and whose last trace fails. Such a frame
     once left four traces redrawn and two still showing the previous frame
