@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: invariant-test-gaps
+milestone: v0.6.9
 touches: tests/unit/test_alveolar.py, tests/unit/test_blood.py
 added: 2026-09-19
 closed: 2026-10-25

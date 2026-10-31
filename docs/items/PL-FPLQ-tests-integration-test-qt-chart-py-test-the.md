@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.9
 touches: tests/integration/test_qt_chart.py
 added: 2026-10-24
 closed: 2026-10-27

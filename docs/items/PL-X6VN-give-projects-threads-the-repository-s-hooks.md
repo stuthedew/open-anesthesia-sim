@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: projects-trial
+milestone: v0.6.9
 touches: .claude/hooks/thread_hooks.py, .claude/hooks/hook_input.py, .claude/hooks/stop_hook_patch.py, tests/unit/test_thread_hooks.py, tests/unit/test_stop_hook_patch.py, tests/unit/test_line_splits.py, docket.toml, docs/maintainer.md, docs/items/PL-X6VN-give-projects-threads-the-repository-s-hooks.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-10-26
 closed: 2026-10-26

@@ -83,6 +83,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import fnmatch
 import json
 import os
@@ -96,12 +97,14 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import TypeGuard
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import TESTS, imports_product, is_test_file  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.python import assignment_targets, without_docstrings  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
     default_base,
@@ -837,62 +840,277 @@ class Compared:
     notes: list[str] = field(default_factory=list)
 
 
-def is_test_unit(unit: Unit) -> bool:
-    """Whether pytest collects `unit` as a test, by its default `test*` and `Test*` names."""
-    return unit.name.startswith("test") and (unit.cls is None or unit.cls.startswith("Test"))
+#: The module-level names that pytest reads by convention, where no test names
+#: them, so a change to one can change every test in the file.
+PYTEST_NAMES = frozenset(
+    {
+        "pytestmark",
+        "pytest_plugins",
+        "setup_module",
+        "teardown_module",
+        "setup_function",
+        "teardown_function",
+        "setUpModule",
+        "tearDownModule",
+    }
+)
+#: The built-in calls that read a module's names without naming them, or run
+#: code that can. A test file that makes one is compared whole.
+DYNAMIC_CALLS = frozenset({"globals", "eval", "exec"})
+#: The built-in calls that read the current scope when they are given no
+#: argument, which at module level is the module's names.
+SCOPE_CALLS = frozenset({"vars", "locals"})
 
 
-def test_id(unit: Unit) -> str:
-    """The pytest id of a test that `units` found."""
-    return "::".join(part for part in (unit.path, unit.cls, unit.name) if part)
+class _Whole(Exception):
+    """A test file whose tests `_definitions` cannot tell apart, so it is compared whole."""
 
 
-def edited_rows(
-    patch: str, before: Sequence[str], after: Sequence[str]
-) -> tuple[set[int], set[int]]:
-    """The base lines that a `-U0` patch removes, and the working-tree lines that it adds.
+@dataclass(frozen=True)
+class _Statement:
+    """One module-level statement, as `_signature` compares it."""
 
-    A blank line or a comment is left out of both, because neither can change
-    what a test does.
+    #: Where it stands in the module, which orders the statements of a signature.
+    position: int
+    #: Its syntax tree, without docstrings, line numbers or comments.
+    dump: str
+    #: Every name it reads, including the parameters of each function in it,
+    #: since pytest passes a fixture to the parameter of the same name.
+    reads: frozenset[str]
+
+
+@dataclass
+class _Definitions:
+    """One version of a test file, as the parts whose change can change one of its tests."""
+
+    #: Each test by pytest id. A method's statement holds its class too.
+    tests: dict[str, _Statement] = field(default_factory=dict)
+    #: The statement that binds each module-level name, other than an import.
+    bound: dict[str, _Statement] = field(default_factory=dict)
+    #: What each imported name is bound to.
+    imports: dict[str, set[str]] = field(default_factory=dict)
+    #: The statements that can change any test without a test naming them,
+    #: such as a fixture, a pytest hook or a module-level call.
+    shared: list[str] = field(default_factory=list)
+
+
+def _statement(position: int, node: ast.AST) -> _Statement:
+    reads = frozenset(
+        inner.id if isinstance(inner, ast.Name) else inner.arg
+        for inner in ast.walk(node)
+        if isinstance(inner, (ast.Name, ast.arg))
+    )
+    return _Statement(position, ast.dump(node), reads)
+
+
+def _is_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Whether a decorator of `node` is `pytest.fixture`, called or not."""
+    return any(
+        ast.unparse(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        in ("pytest.fixture", "fixture")
+        for decorator in node.decorator_list
+    )
+
+
+def _is_test_method(node: ast.stmt) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Whether pytest collects `node`, in a test class, as a test, by its default `test*` name."""
+    return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
+        "test"
+    )
+
+
+def _is_test_class(node: ast.ClassDef) -> bool:
+    """Whether pytest collects tests from the class, by its default `Test*` name."""
+    return node.name.startswith("Test")
+
+
+def _definitions(path: str, source: str) -> _Definitions:
+    """The tests and module-level statements of one version of a test file.
+
+    Raises `_Whole` where a test can depend on a part of the file that it does
+    not name: a call that reads the module's names, such as `globals()`; a
+    star import; a name bound twice; or a test class that inherits, takes
+    keywords or holds a class, since its tests' ids name only its own methods.
     """
-    removed: set[int] = set()
-    added: set[int] = set()
-    for hunk in doc_check.HUNK_RE.finditer(patch):
-        for rows, start, count, lines in (
-            (removed, hunk.group(1), hunk.group(2), before),
-            (added, hunk.group(3), hunk.group(4), after),
-        ):
-            first = int(start)
-            rows.update(
-                row
-                for row in range(first, first + (1 if count is None else int(count)))
-                if lines[row - 1].strip()[:1] not in ("", "#")
-            )
-    return removed, added
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and (node.func.id in DYNAMIC_CALLS or (node.func.id in SCOPE_CALLS and not node.args))
+        ) or (isinstance(node, ast.Name) and node.id == "__name__"):
+            raise _Whole
+        if isinstance(node, ast.Attribute) and node.attr == "__globals__":
+            raise _Whole
+    # A test that reads a docstring can change when the docstring does, so
+    # only a file that reads none is compared without them.
+    if not any(
+        isinstance(node, ast.Attribute) and node.attr == "__doc__" for node in ast.walk(tree)
+    ):
+        without_docstrings(tree)
+    found = _Definitions()
+
+    def bind(name: str, statement: _Statement) -> None:
+        if name in found.bound or name in found.imports:
+            raise _Whole
+        found.bound[name] = statement
+
+    for position, node in enumerate(tree.body):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+                found.shared.append(ast.dump(node))
+                continue
+            for alias in node.names:
+                if alias.name == "*":
+                    raise _Whole
+                if isinstance(node, ast.Import):
+                    name = alias.asname or alias.name.partition(".")[0]
+                    target = f"import {alias.name} as {alias.asname}"
+                else:
+                    name = alias.asname or alias.name
+                    target = f"from {'.' * node.level}{node.module or ''} import {alias.name}"
+                held = found.imports.setdefault(name, set())
+                # `import a.b` and `import a.c` both bind `a` to the package `a`.
+                plain = isinstance(node, ast.Import) and alias.asname is None
+                if name in found.bound or target in held or (held and not plain):
+                    raise _Whole
+                held.add(target)
+            continue
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            statement = _statement(position, node)
+            if node.name.startswith("test"):
+                found.tests["::".join((path, node.name))] = statement
+            elif _is_fixture(node) or node.name in PYTEST_NAMES or node.name.startswith("pytest_"):
+                found.shared.append(statement.dump)
+            bind(node.name, statement)
+            continue
+        if isinstance(node, ast.ClassDef):
+            if _is_test_class(node):
+                if node.bases or node.keywords:
+                    raise _Whole
+                if any(isinstance(child, ast.ClassDef) for child in node.body):
+                    raise _Whole
+                methods = [child for child in node.body if _is_test_method(child)]
+                # A method's test is the method and the rest of its class: the
+                # class's decorators, attributes, fixtures and helpers.
+                rest = copy.deepcopy(node)
+                rest.body = [child for child in rest.body if not _is_test_method(child)]
+                for method in methods:
+                    whole = ast.Module(body=[rest, method], type_ignores=[])
+                    found.tests["::".join((path, node.name, method.name))] = _statement(
+                        position, whole
+                    )
+            bind(node.name, _statement(position, node))
+            continue
+        targets = assignment_targets(node)
+        names = [
+            inner.id
+            for target in targets
+            for inner in ast.walk(target)
+            if isinstance(inner, ast.Name)
+        ]
+        simple = targets and all(
+            isinstance(inner, (ast.Name, ast.Tuple, ast.List, ast.Starred, ast.Store))
+            for target in targets
+            for inner in ast.walk(target)
+        )
+        if not simple or any(name in PYTEST_NAMES for name in names):
+            # An `if`, `try`, call or other statement that is not a definition,
+            # or an assignment to an attribute or an item.
+            found.shared.append(ast.dump(node))
+            continue
+        statement = _statement(position, node)
+        for name in names:
+            bind(name, statement)
+    return found
 
 
-def base_selection(path: str, base: str, branch: str | None, patch: str) -> tuple[str, ...]:
+def _signature(found: _Definitions, test: str) -> tuple[object, ...]:
+    """What one test does, as the parts of its file version that it can reach.
+
+    That is the test, every module-level statement that binds a name it reads,
+    and those statements' names in turn, in module order, what each imported
+    name it reads is bound to, and the statements every test shares. Two
+    versions of a test with the same signature run the same code.
+    """
+    reached: set[str] = set()
+    waiting = list(found.tests[test].reads)
+    while waiting:
+        name = waiting.pop()
+        if name in reached:
+            continue
+        reached.add(name)
+        if name in found.bound:
+            waiting.extend(found.bound[name].reads)
+    statements = sorted(
+        {found.bound[name] for name in reached if name in found.bound},
+        key=lambda statement: statement.position,
+    )
+    imports = {name: frozenset(found.imports[name]) for name in reached if name in found.imports}
+    return (
+        found.tests[test].dump,
+        tuple(statement.dump for statement in statements),
+        imports,
+        tuple(found.shared),
+    )
+
+
+def changed_tests(path: str, base: str, branch: str) -> tuple[list[str], list[str]] | None:
+    """The tests of each version of a test file that can behave differently in the other.
+
+    Two lists of pytest ids, the base version's first, each in file order. A
+    test is in its list where the other version has no test of that id, or
+    where the two `_signature`s differ. So a changed helper selects only the
+    tests that reach it, and a docstring, a comment, a new import or a new
+    helper selects none. `None` where `_definitions` cannot tell the tests
+    apart, and then the whole file is compared.
+
+    Importing a module that the other version does not import is taken to
+    change no test, since it only binds a name. A module whose import changed
+    what an unrelated test does would be missed, and
+    `docs/mutation-testing.md` lists that among what the check leaves
+    unmeasured.
+    """
+    try:
+        before, after = _definitions(path, base), _definitions(path, branch)
+    except _Whole:
+        return None
+
+    def differs(here: _Definitions, there: _Definitions, test: str) -> bool:
+        return test not in there.tests or _signature(here, test) != _signature(there, test)
+
+    return (
+        [test for test in before.tests if differs(before, after, test)],
+        [test for test in after.tests if differs(after, before, test)],
+    )
+
+
+def base_selection(path: str, base: str, branch: str | None) -> tuple[str, ...]:
     """The tests of a changed test file's base version that the branch changed, by pytest id.
 
-    A test changed when a line it holds was removed, or when the branch's test
-    of the same name gained a line. The whole file is the answer where any
-    other line changed, such as a fixture, a helper or an import, because that
-    line can change every test in the file. It is also the answer where the
+    The branch changed a test where `changed_tests` says the two versions can
+    differ. The whole file is the answer where it cannot tell, and where the
     branch deleted the file. A file that only gained tests has nothing in its
     base version to compare, so the answer is empty.
     """
     if branch is None:
         return (path,)
-    removed, added = edited_rows(patch, split_lines(base), split_lines(branch))
-    before = units(path, base)
-    names: set[tuple[str | None, str]] = set()
-    for rows, found in ((removed, before), (added, units(path, branch))):
-        for row in rows:
-            unit = next((u for u in found if u.first <= row <= u.last), None)
-            if unit is None or not is_test_unit(unit):
-                return (path,)
-            names.add((unit.cls, unit.name))
-    return tuple(test_id(unit) for unit in before if (unit.cls, unit.name) in names)
+    changed = changed_tests(path, base, branch)
+    return (path,) if changed is None else tuple(changed[0])
+
+
+def branch_selection(path: str, base: str | None, branch: str) -> tuple[str, ...]:
+    """The tests of a changed test file's branch version that the branch changed or added.
+
+    The branch run tries these first, because a test that the branch rewrote
+    or moved is where a mutant its base version caught is likeliest to be
+    caught again. The whole file where the base version had no such file, or
+    where `changed_tests` cannot tell.
+    """
+    if base is None:
+        return (path,)
+    changed = changed_tests(path, base, branch)
+    return (path,) if changed is None else tuple(changed[1])
 
 
 def copy_tree(root: Path, tree: Path, table: Mapping[str, object]) -> None:
@@ -989,9 +1207,15 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
     left alone. In the base copy, every file the branch changed under `tests/`
     has its base version. mutmut runs there on the base tests that the branch
     changed, by `base_selection`. The branch copy then runs only the mutants
-    that the base run caught, against the branch's version of every changed
-    unit test file, whole. A mutant the base caught and the branch missed goes
-    into `uncaught`. One whose status decides nothing goes into `undecided`.
+    that the base run caught. It runs them first against the tests that the
+    branch changed or added, by `branch_selection`, and then the ones those
+    miss against the branch's version of every changed unit test file, whole.
+    A test that fails in the smaller run fails in the whole file too, so the
+    first run changes the cost and not the answer. It exists because a mutant
+    re-imports its test files and runs every test of them that reaches it, and
+    a large file made the whole-file run take hours (`PL-D59R`). A mutant the
+    base caught and the branch missed goes into `uncaught`. One whose status
+    decides nothing goes into `undecided`.
 
     A file whose base tests fail on the branch's source with no mutant applied
     is named in a note and not compared, because the branch changed what the
@@ -1018,19 +1242,22 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
     base = {
         path: read_git(["show", f"{change.fork}:{path}"], root) for path in listed_paths(listing)
     }
+    # A test the table deselects never runs under mutmut, and a selection of
+    # nothing but such tests would collect none.
+    skipped = deselected(table)
     selections: list[tuple[str, tuple[str, ...]]] = []
     imported: dict[str, set[str]] = {}
+    first: list[str] = []
     for path in unit_tests:
-        if path not in base:
-            continue
         here = root / path
         branch = here.read_text(encoding="utf-8") if here.is_file() else None
+        if branch is not None:
+            first += [t for t in branch_selection(path, base.get(path), branch) if t not in skipped]
+        if path not in base:
+            continue
         imported[path] = core_imports(base[path]) | core_imports(branch or "")
-        patch = "" if branch is None else read_git(["diff", "-U0", change.fork, "--", path], root)
-        # A test the table deselects never runs under mutmut, and a selection
-        # of nothing but such tests would collect none.
-        selection = base_selection(path, base[path], branch, patch)
-        selections.append((path, tuple(t for t in selection if t not in deselected(table))))
+        selection = base_selection(path, base[path], branch)
+        selections.append((path, tuple(t for t in selection if t not in skipped)))
     on_branch = [path for path in unit_tests if (root / path).is_file()]
     mutated = [
         name
@@ -1089,11 +1316,20 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
                 f"{scope}, so the branch's version has nothing to keep catching."
             )
             return compared
+        narrowed = bool(on_branch and first and first != on_branch)
+        after: dict[str, str] = {}
+        retried: list[str] = []
         if on_branch:
             copy_tree(root, branch_tree, table)
-            after = _compared_statuses(branch_tree, caught, on_branch, table, compared_files)
-        else:
-            after = {}
+            if narrowed:
+                after = _compared_statuses(branch_tree, caught, first, table, compared_files)
+            retried = [name for name in caught if after.get(name) not in CAUGHT]
+            if retried:
+                again = _compared_statuses(branch_tree, retried, on_branch, table, compared_files)
+                # `again` lists every mutant of the compared modules, and ran
+                # only the retried ones, so only theirs replace the first run's.
+                after = {name: status for name, status in after.items() if name not in retried}
+                after |= {name: again[name] for name in retried if name in again}
         shown_in = branch_tree if on_branch else base_tree
         for name in caught:
             status = after.get(name, "no tests")
@@ -1111,9 +1347,15 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
     compared.notes.append(
         f"Compared: {len(caught)} mutants of {scope} that the base version of "
         f"{_listed(files)} catches, run against this branch's version of "
-        f"{_listed(on_branch) or 'no file, since it deleted them'}. Whether a changed test "
-        f"still catches a fault elsewhere, such as in a module of {CORE_PACKAGE} that it "
-        "does not import by name, is not measured."
+        f"{_listed(on_branch) or 'no file, since it deleted them'}"
+        + (
+            f", first against the {len(first)} tests and test files it changed or added, "
+            f"and then the {len(retried)} mutants that those missed against the whole files"
+            if narrowed
+            else ""
+        )
+        + f". Whether a changed test still catches a fault elsewhere, such as in a module "
+        f"of {CORE_PACKAGE} that it does not import by name, is not measured."
     )
     return compared
 

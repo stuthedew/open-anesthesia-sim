@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: preferences-store
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit, ROADMAP.md, docs/items/PL-2881-specify-the-compartment-schematic-in-docs-model.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-GL5X-load-factory-preferences-needs-shipped-defaults.md
 blocked-by: PL-KZ99
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - agent amounts show in one fixed unit with no selector, so displayed precision is one quantity's

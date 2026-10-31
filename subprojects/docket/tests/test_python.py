@@ -16,6 +16,7 @@ import pytest
 from docket.arming import imports_product
 from docket.python import (
     UNTOKENIZABLE,
+    assignment_targets,
     docstrings,
     imports,
     places,
@@ -146,6 +147,24 @@ def test_a_literal_importlib_name_is_an_import_to_arming_and_the_boundary_check(
     assert not imports_product(computed)
     assert imports_product(ast.parse("from anesthesia_sim.core import patient\n"))
     assert not imports_product(ast.parse('"""import anesthesia_sim"""\nimport os\n'))
+
+
+@pytest.mark.parametrize(
+    ("source", "targets"),
+    [
+        ("a = b = 1", ["a", "b"]),
+        ("a, b = 1, 2", ["(a, b)"]),
+        ("self.rate: float = 1.0", ["self.rate"]),
+        ("count += 1", ["count"]),
+        ("print(1)", []),
+        ("import a", []),
+    ],
+)
+def test_assignment_targets_are_what_each_kind_of_assignment_writes(
+    source: str, targets: list[str]
+) -> None:
+    node = ast.parse(source).body[0]
+    assert [ast.unparse(target) for target in assignment_targets(node)] == targets
 
 
 def test_without_docstrings_removes_every_docstring_and_keeps_every_value() -> None:

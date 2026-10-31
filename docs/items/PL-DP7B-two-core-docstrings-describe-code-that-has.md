@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py
 added: 2026-10-25
 closed: 2026-10-25

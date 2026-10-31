@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: fewer-red-runs
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, tools/open_pull_requests.py, tools/pr_record_check.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/start.md, .claude/skills/pull-request/SKILL.md
 deferred-from: v0.7.0 - filed after Gate 3 froze; a CI cost in the workflow lane, not a hazard
 added: 2026-10-25

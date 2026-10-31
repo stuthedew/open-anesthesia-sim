@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, science, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_record_writes.py, tests/unit/test_state_capture.py, tests/unit/test_numerical_envelope.py, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_compartment_primitives.py, tests/unit/test_concentration.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-10-27

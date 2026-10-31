@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: session-cost
+milestone: v0.6.9
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py, docs/mutation-testing.md, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-26

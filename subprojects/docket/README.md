@@ -4364,8 +4364,9 @@ tests against each mutant:
 
 What the check does not measure, it says in its notes: a changed line outside
 any function, a changed function mutmut gives no mutants, and each changed test
-file that imports the simulator, since a mutant changes the code and not a
-test. Code mutmut does not mutate - the apparatus, and the parts of `app/` that
+file outside `tests/unit/` that imports the simulator. A changed unit test file
+is compared with its base version instead, as `compare_tests` in
+`tools/diff_mutation.py` describes. Code mutmut does not mutate - the apparatus, and the parts of `app/` that
 are Qt widget code - has no mutants, so on a branch that changes only those the
 check passes with nothing to run. On 2026-10-24 a branch that changed no mutated
 function took seconds. One that did took about five minutes before its first

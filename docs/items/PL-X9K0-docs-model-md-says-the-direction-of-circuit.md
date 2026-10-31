@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science
 feature: model-spec-accuracy
+milestone: v0.6.9
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-10-25
 closed: 2026-10-25

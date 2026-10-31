@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: floating-point-domain
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/playback.py, tests/unit
 deferred-from: v0.7.0 - filed 2026-10-25 while fixing PL-06LS, after this gate froze; the gate defers its sibling PL-06LS for the same reason, so the generator tier ranks it, not the gate
 added: 2026-10-25

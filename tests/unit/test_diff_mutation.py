@@ -30,12 +30,12 @@ from diff_mutation import (
     Unit,
     base_selection,
     branch_change,
+    branch_selection,
     changed_rows,
     compare_tests,
     core_imports,
     counts,
     deselected,
-    edited_rows,
     is_mutated,
     main,
     module_name,
@@ -894,56 +894,158 @@ UNIT_MUTANT = "anesthesia_sim.app.formatting.x_unit__mutmut_1"
 LABEL_MUTANT = "anesthesia_sim.app.formatting.x_label__mutmut_1"
 
 
-def _patch(base: str, branch: str, tmp_path: Path) -> str:
-    """The `-U0` patch that git writes from `base` to `branch`."""
-    (tmp_path / "a.py").write_text(base, encoding="utf-8")
-    (tmp_path / "b.py").write_text(branch, encoding="utf-8")
-    return subprocess.run(
-        ["git", "diff", "--no-index", "-U0", "a.py", "b.py"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout
+#: A test file holding each kind of part that `changed_tests` tells apart. Each
+#: selection test below changes one part of it.
+SELECTION_TEST = '''\
+"""Tests of the readout."""
+
+import pytest
+from anesthesia_sim.app import formatting
+
+UNIT = "%"
+"""The unit the label carries."""
+
+LIMIT = 2
+
+
+def helper():
+    return formatting.value()
+
+
+def outer():
+    return helper() + 1
+
+
+def unused():
+    return 0
+
+
+@pytest.fixture
+def reading():
+    return 1
+
+
+def test_label():
+    """The label names MAC."""
+    assert formatting.label() == "MAC"
+    assert formatting.unit() == UNIT
+
+
+def test_value():
+    assert outer() == 2
+
+
+@pytest.mark.parametrize("n", range(LIMIT))
+def test_limit(n):
+    assert n < LIMIT
+
+
+class TestReadout:
+    scale = 1
+
+    def test_value(self):
+        assert formatting.value() * self.scale == 1.0
+
+    def test_unit(self):
+        assert formatting.unit()
+'''
+SELECTION_PATH = "tests/unit/test_s.py"
+LABEL = f"{SELECTION_PATH}::test_label"
+VALUE = f"{SELECTION_PATH}::test_value"
+LIMITED = f"{SELECTION_PATH}::test_limit"
+READOUT = (
+    f"{SELECTION_PATH}::TestReadout::test_value",
+    f"{SELECTION_PATH}::TestReadout::test_unit",
+)
+EVERY_TEST = (LABEL, VALUE, LIMITED, *READOUT)
+#: Adds a test to `SELECTION_TEST`.
+MORE = "\n\ndef test_more():\n    assert formatting.more()\n"
 
 
 @pytest.mark.parametrize(
     ("old", "new", "selected"),
     [
         # A loosened assertion selects the test that held it.
-        (UNIT_ASSERTION, "", ("tests/unit/test_d.py::test_label",)),
-        # A line added to a test selects the base test of the same name.
+        ("    assert formatting.unit() == UNIT\n", "", (LABEL,)),
+        # A line added to a method selects the base test of the same id.
         (
-            "        assert formatting.value() == 1.0\n",
-            "        assert formatting.value() == 1.0\n        return\n",
-            ("tests/unit/test_d.py::TestReadout::test_value",),
+            "        assert formatting.unit()\n",
+            "        assert formatting.unit()\n        return\n",
+            READOUT[1:],
         ),
-        # A changed helper can change every test, so the whole file is selected.
-        ("    return 1\n", "    return 2\n", ("tests/unit/test_d.py",)),
-        # A new test leaves the base version's tests as they were.
-        ("", "\n\ndef test_more():\n    assert formatting.more()\n", ()),
-        # A comment cannot change what a test does.
-        ("def test_label():\n", "# Pins the label.\ndef test_label():\n", ()),
+        # A docstring, a comment or a blank line cannot change what a test does.
+        ('    """The label names MAC."""\n', '    """The label names the MAC."""\n', ()),
+        ('"""Tests of the readout."""\n', '"""Tests of the readout, in percent."""\n', ()),
+        ("def test_value():\n", "# Pins the sum.\n\ndef test_value():\n", ()),
+        # A changed helper selects each test that reaches it, here through
+        # another helper, and a helper that no test reaches selects none.
+        ("    return formatting.value()\n", "    return formatting.value() + 0\n", (VALUE,)),
+        ("    return 0\n", "    return 1\n", ()),
+        # A constant selects the tests that read it, in a decorator too.
+        ('UNIT = "%"\n', 'UNIT = "MAC"\n', (LABEL,)),
+        ("LIMIT = 2\n", "LIMIT = 3\n", (LIMITED,)),
+        # The rest of a test class reaches each of its tests.
+        ("    scale = 1\n", "    scale = 2\n", READOUT),
+        # A fixture or a module-level call can reach any test without the
+        # test naming it, so it selects every test.
+        ("    return 1\n", "    return 2\n", EVERY_TEST),
+        ("LIMIT = 2\n", "LIMIT = 2\nformatting.reset()\n", EVERY_TEST),
+        # A name imported from somewhere else selects the tests that read it.
+        (
+            "from anesthesia_sim.app import formatting\n",
+            "from anesthesia_sim.core import formatting\n",
+            (LABEL, VALUE, *READOUT),
+        ),
+        # A new import, helper or test leaves the base version's tests as they were.
+        ("import pytest\n", "import math\nimport pytest\n", ()),
+        ("", "\n\ndef added():\n    return 2\n", ()),
+        ("", MORE, ()),
+        # A deleted or renamed test selects the base test.
+        ("def test_value():\n    assert outer() == 2\n", "", (VALUE,)),
+        ("def test_label():\n", "def test_the_label():\n", (LABEL,)),
+        # Code that reads the module's names without naming them, a star
+        # import, or a name bound twice leaves the reach of each test unknown,
+        # so each of them selects the whole file.
+        ("    assert outer() == 2\n", '    assert globals()["outer"]() == 2\n', (SELECTION_PATH,)),
+        ("import pytest\n", "import pytest\nfrom math import *\n", (SELECTION_PATH,)),
+        ("LIMIT = 2\n", "LIMIT = 2\nLIMIT = 3\n", (SELECTION_PATH,)),
+        # A test class that inherits has tests that are not its own methods.
+        ("class TestReadout:\n", "class TestReadout(Base):\n", (SELECTION_PATH,)),
     ],
 )
 def test_base_selection_is_the_base_tests_the_branch_changed(
-    old: str, new: str, selected: tuple[str, ...], tmp_path: Path
+    old: str, new: str, selected: tuple[str, ...]
 ) -> None:
-    branch = DISPLAY_TEST.replace(old, new) if old else DISPLAY_TEST + new
-    patch = _patch(DISPLAY_TEST, branch, tmp_path)
-    assert base_selection("tests/unit/test_d.py", DISPLAY_TEST, branch, patch) == selected
+    branch = SELECTION_TEST.replace(old, new) if old else SELECTION_TEST + new
+    assert branch != SELECTION_TEST
+    assert base_selection(SELECTION_PATH, SELECTION_TEST, branch) == selected
 
 
 def test_a_deleted_test_file_is_compared_whole() -> None:
-    assert base_selection("tests/unit/test_d.py", DISPLAY_TEST, None, "") == (
-        "tests/unit/test_d.py",
-    )
+    assert base_selection(SELECTION_PATH, SELECTION_TEST, None) == (SELECTION_PATH,)
 
 
-def test_edited_rows_leave_out_blank_lines_and_comments(tmp_path: Path) -> None:
-    branch = DISPLAY_TEST.replace("    return 1\n", "    # One.\n\n    return 1\n")
-    patch = _patch(DISPLAY_TEST, branch, tmp_path)
-    assert edited_rows(patch, DISPLAY_TEST.splitlines(), branch.splitlines()) == (set(), set())
+@pytest.mark.parametrize(
+    ("old", "new", "selected"),
+    [
+        # A new test, and the branch's version of a changed or renamed one.
+        ("", MORE, (f"{SELECTION_PATH}::test_more",)),
+        ("    assert formatting.unit() == UNIT\n", "", (LABEL,)),
+        ("def test_label():\n", "def test_the_label():\n", (f"{SELECTION_PATH}::test_the_label",)),
+        # A deleted test leaves nothing of its own in the branch's version.
+        ("def test_value():\n    assert outer() == 2\n", "", ()),
+        ("    assert outer() == 2\n", '    assert globals()["outer"]() == 2\n', (SELECTION_PATH,)),
+    ],
+)
+def test_branch_selection_is_the_branch_tests_the_branch_changed_or_added(
+    old: str, new: str, selected: tuple[str, ...]
+) -> None:
+    branch = SELECTION_TEST.replace(old, new) if old else SELECTION_TEST + new
+    assert branch_selection(SELECTION_PATH, SELECTION_TEST, branch) == selected
+
+
+def test_a_new_test_file_is_tried_whole() -> None:
+    assert branch_selection(SELECTION_PATH, None, SELECTION_TEST) == (SELECTION_PATH,)
 
 
 @dataclass
@@ -952,6 +1054,9 @@ class Runs:
 
     base: dict[str, str] = field(default_factory=dict)
     branch: dict[str, str] = field(default_factory=dict)
+    #: What the branch run against whole files reports, where it differs from
+    #: the run against the tests the branch changed.
+    whole: dict[str, str] | None = None
     clean: int = 0
     #: Each run's tree name, patterns, tests, and the changed test file's text there.
     asked: list[tuple[str, list[str], list[str], str]] = field(default_factory=list)
@@ -972,7 +1077,10 @@ def runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Runs:
     ) -> dict[str, str]:
         text = (tree / "tests/unit/test_d.py").read_text(encoding="utf-8")
         stubbed.asked.append((tree.name, list(patterns), list(tests), text))
-        return stubbed.base if tree.name == "base" else stubbed.branch
+        if tree.name == "base":
+            return stubbed.base
+        whole = stubbed.whole is not None and not any("::" in test for test in tests)
+        return stubbed.whole if whole and stubbed.whole is not None else stubbed.branch
 
     shown = "@@ -1,1 +1,1 @@\n-    return unit\n+    return None\n"
     monkeypatch.setattr(diff_mutation, "_compared_statuses", display_statuses)
@@ -1000,15 +1108,13 @@ def test_a_branch_that_weakens_a_display_test_is_refused(repo: Path, runs: Runs)
 
     # The base run holds the base version, and runs every display mutant
     # against the test the branch changed. The branch run takes only the
-    # mutants that the base run caught, against the whole changed file.
+    # mutants that the base run caught, against the branch's version of that
+    # test, and then the one it missed against the whole changed file.
+    weakened = DISPLAY_TEST.replace(UNIT_ASSERTION, "")
     assert runs.asked == [
         ("base", ["anesthesia_sim.app.*"], ["tests/unit/test_d.py::test_label"], DISPLAY_TEST),
-        (
-            "branch",
-            [LABEL_MUTANT, UNIT_MUTANT],
-            ["tests/unit/test_d.py"],
-            DISPLAY_TEST.replace(UNIT_ASSERTION, ""),
-        ),
+        ("branch", [LABEL_MUTANT, UNIT_MUTANT], ["tests/unit/test_d.py::test_label"], weakened),
+        ("branch", [UNIT_MUTANT], ["tests/unit/test_d.py"], weakened),
     ]
     assert found["uncaught"] == [
         f"tests/unit/test_d.py: {UNIT_MUTANT} - caught by the base version, survived on this "
@@ -1137,6 +1243,51 @@ def test_a_branch_whose_changed_test_still_catches_every_mutant_passes(
 
     assert compared.uncaught == compared.undecided == []
     assert compared.notes[-1].startswith("Compared: 1 mutants of anesthesia_sim.app")
+
+
+def test_a_mutant_the_changed_tests_catch_is_not_run_against_the_whole_file(
+    repo: Path, runs: Runs
+) -> None:
+    runs.base = runs.branch = {UNIT_MUTANT: "killed", LABEL_MUTANT: "killed"}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert [tests for _, _, tests, _ in runs.asked] == [
+        ["tests/unit/test_d.py::test_label"],
+        ["tests/unit/test_d.py::test_label"],
+    ]
+    assert compared.uncaught == compared.undecided == []
+    assert (
+        ", first against the 1 tests and test files it changed or added, and then the 0 mutants "
+        "that those missed against the whole files." in compared.notes[-1]
+    )
+
+
+def test_a_mutant_another_test_of_the_file_still_catches_passes(repo: Path, runs: Runs) -> None:
+    runs.base = {UNIT_MUTANT: "killed"}
+    runs.branch = {UNIT_MUTANT: "survived"}
+    runs.whole = {UNIT_MUTANT: "killed"}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert compared.uncaught == compared.undecided == []
+    assert (
+        "and then the 1 mutants that those missed against the whole files." in (compared.notes[-1])
+    )
+
+
+def test_only_a_retried_mutant_takes_the_whole_file_runs_status(repo: Path, runs: Runs) -> None:
+    runs.base = {UNIT_MUTANT: "killed", LABEL_MUTANT: "killed"}
+    runs.branch = {UNIT_MUTANT: "survived", LABEL_MUTANT: "killed"}
+    # mutmut lists every mutant after a run, and one it did not run is not
+    # checked, so the whole-file run's listing cannot undo the first run's catch.
+    runs.whole = {UNIT_MUTANT: "survived", LABEL_MUTANT: "not checked"}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert len(compared.uncaught) == 1
+    assert UNIT_MUTANT in compared.uncaught[0]
+    assert compared.undecided == []
 
 
 @pytest.mark.parametrize(
