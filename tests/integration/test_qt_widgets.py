@@ -550,6 +550,89 @@ def test_a_slider_press_declares_an_adjustment(application: QApplication) -> Non
     assert started == [None]
 
 
+def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
+    application: QApplication,
+) -> None:
+    """A pointer drag previews where the thumb stands and applies on release (`PL-5B1N`)."""
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.preview_moved.connect(lambda value: events.append(("preview", value)))
+    control.preview_ended.connect(lambda: events.append(("ended", None)))
+    control.value_changed.connect(lambda value: events.append(("applied", value)))
+    start = slider_position(setting.value, setting.decimals)
+
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    control.slider.setSliderPosition(start + 10)
+
+    held = [
+        ("preview", setting.value),
+        ("preview", slider_value(start + 5, setting.decimals)),
+        ("preview", slider_value(start + 10, setting.decimals)),
+    ]
+    assert events == held
+
+    control.slider.setSliderDown(False)
+
+    assert events == [
+        *held,
+        ("ended", None),
+        ("applied", slider_value(start + 10, setting.decimals)),
+    ]
+
+
+def test_a_released_thumb_back_where_it_started_applies_nothing(application: QApplication) -> None:
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    applied: list[float] = []
+    ended: list[None] = []
+    control.value_changed.connect(applied.append)
+    control.preview_ended.connect(lambda: ended.append(None))
+    start = slider_position(setting.value, setting.decimals)
+
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    control.slider.setSliderPosition(start)
+    control.slider.setSliderDown(False)
+
+    assert ended == [None]
+    assert applied == []
+
+
+def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplication) -> None:
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    previewed: list[float] = []
+    applied: list[float] = []
+    control.preview_moved.connect(previewed.append)
+    control.value_changed.connect(applied.append)
+    start = slider_position(setting.value, setting.decimals)
+
+    QTest.keyClick(control.slider, Qt.Key.Key_Right)
+
+    assert applied == [slider_value(start + 1, setting.decimals)]
+    assert previewed == []
+
+
+def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(
+    application: QApplication,
+) -> None:
+    """The run keeps its setting during a drag, so writing it must not pull the thumb back."""
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    start = slider_position(setting.value, setting.decimals)
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 10)
+
+    control.set_setting(setting)
+
+    assert control.slider.sliderPosition() == start + 10
+    assert control.value_label.text() == setting.value_text
+
+
 def test_the_delivered_dial_shows_its_mac_line_and_the_flow_controls_do_not(
     application: QApplication,
 ) -> None:

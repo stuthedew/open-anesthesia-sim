@@ -24,6 +24,7 @@ from anesthesia_sim.app.chart_frame import (
     WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT,
     WASH_IN_TERMINUS_CEILING,
     ChartFrame,
+    PreviewRequest,
     RunCount,
     RunFrame,
     RunIndex,
@@ -39,6 +40,8 @@ from anesthesia_sim.app.chart_frame import (
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
+    preview_stroke_width,
+    preview_trace_style,
     resample_owed,
     run_trace_style,
     trace_style,
@@ -53,7 +56,7 @@ from anesthesia_sim.app.chart_time_base import (
 )
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
@@ -71,7 +74,11 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
     RecordedSeries,
 )
-from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
+from anesthesia_sim.app.theme import (
+    COMPARED_RUN_WIDTH_STEP,
+    MINIMUM_TRACE_STROKE_WIDTH,
+    ONE_MAC_LINE_DASH_PATTERN,
+)
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
@@ -1852,3 +1859,236 @@ def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
 
     assert frame.start_s > 60.0
     assert frame.runs[1].branch_point_s is None
+
+
+# ---------------------------------------------------- previewing a dragged setting
+
+_PREVIEW_LABEL = "Preview: Fresh gas flow 6.0 L/min, not applied"
+
+
+def _previewing(
+    controller: SimulationController, control: ControlInput, value: float, run_index: int = 0
+) -> RunInput:
+    return replace(
+        _input(controller, run_index=run_index),
+        preview=PreviewRequest(SettingPreview(control, value), _PREVIEW_LABEL),
+    )
+
+
+def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
+    """The preview is the trajectory the run takes if the dragged value is applied now.
+
+    The expected values come from a twin run with the same history that
+    really applies the value and is advanced past it (`.claude/rules/test-oracles.md`
+    rule 2). The preview is drawn from a second definition, so the two agree
+    to floating-point composition error, not bit for bit (`PL-5B1N`).
+    """
+
+    previewed, applied = _run(300.0), _run(300.0)
+    base = time_base_for_span(1800.0)
+    frame = assemble_chart_frame(
+        [_previewing(previewed, ControlInput.FRESH_GAS_FLOW, 6.0)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    applied.set_fresh_gas_flow(FreshGasFlow(6.0))
+    _advance(applied, 600.0)
+    preview = frame.runs[0].preview
+    assert preview is not None
+    truth = applied.drawn_window(frame.start_s, frame.stop_s, frame.columns)
+    predicted = dict(
+        zip(preview.times_s, preview.fractions[RecordedQuantity.ALVEOLAR], strict=True)
+    )
+    common = [
+        (time_s, fraction)
+        for time_s, fraction in zip(
+            truth.times_s,
+            truth.compartment_fractions(RecordedSeries("sevoflurane", RecordedQuantity.ALVEOLAR)),
+            strict=True,
+        )
+        if time_s in predicted and time_s > 300.0
+    ]
+
+    assert len(common) > 100
+    assert all(
+        predicted[time_s] == pytest.approx(fraction, rel=1e-9) for time_s, fraction in common
+    )
+    # The run itself kept the setting in force: the preview applied nothing.
+    assert previewed.settings().fresh_gas_flow_l_min != 6.0
+    assert previewed.record().control_timeline == ()
+
+
+def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_draws() -> None:
+    controller = _run(300.0)
+    held = controller.settings().delivered_concentration_percent
+    base = time_base_for_span(1800.0)
+    frame = assemble_chart_frame(
+        [_previewing(controller, ControlInput.DELIVERED, held)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    preview = frame.runs[0].preview
+    assert preview is not None
+    _advance(controller, 600.0)
+    later = controller.drawn_window(frame.start_s, frame.stop_s, frame.columns)
+    drawn = dict(
+        zip(
+            later.times_s,
+            later.compartment_fractions(RecordedSeries("sevoflurane", RecordedQuantity.FAT)),
+            strict=True,
+        )
+    )
+    shared = [t for t in preview.times_s if t in drawn]
+
+    assert len(shared) > 100
+    assert all(
+        fraction == pytest.approx(drawn[t], rel=1e-9)
+        for t, fraction in zip(
+            preview.times_s, preview.fractions[RecordedQuantity.FAT], strict=True
+        )
+        if t in drawn
+    )
+
+
+def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> None:
+    controller = _run(1200.0)
+    base = time_base_for_span(900.0)
+    following = assemble_chart_frame(
+        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    previewing = assemble_chart_frame(
+        [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert following.stop_s - following.start_s == pytest.approx(900.0)
+    assert following.stop_s == pytest.approx(1200.0 + base.live_headroom_s)
+    assert (previewing.start_s, previewing.stop_s) == pytest.approx((750.0, 1650.0))
+    assert previewing.time_base == base
+
+
+def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> None:
+    controller = _run(300.0)
+    frame = assemble_chart_frame(
+        [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    run = frame.runs[0]
+    preview = run.preview
+    assert preview is not None
+    start_s, stop_s = preview.region_s
+
+    assert start_s == pytest.approx(300.0)
+    assert stop_s == pytest.approx(frame.stop_s)
+    assert preview.times_s[0] == pytest.approx(start_s)
+    assert all(start_s <= t <= stop_s for t in preview.times_s)
+    assert all(t <= start_s for t in run.times_s)
+    assert all(t >= start_s for stretch in preview.wash_in for t in stretch.times_s)
+    assert preview.label == _PREVIEW_LABEL
+    # The prediction meets the run where the run stands.
+    assert preview.fractions[RecordedQuantity.ALVEOLAR][0] == pytest.approx(
+        run.fractions[RecordedQuantity.ALVEOLAR][-1], rel=1e-12
+    )
+
+
+def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
+    controller = _run(300.0)
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+
+    assert frame.runs[0].preview is None
+
+
+def test_a_stopped_run_draws_no_preview_and_keeps_its_window() -> None:
+    controller = _run(60.0)
+    controller.fail("a failure the test injects")
+    base = time_base_for_span(900.0)
+    plain = assemble_chart_frame(
+        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    frame = assemble_chart_frame(
+        [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert frame.runs[0].preview is None
+    assert (frame.start_s, frame.stop_s) == (plain.start_s, plain.stop_s)
+
+
+def test_the_hover_never_answers_from_a_preview() -> None:
+    controller = _run(300.0)
+    frame = assemble_chart_frame(
+        [_previewing(controller, ControlInput.DELIVERED, 8.0)],
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    preview = frame.runs[0].preview
+    assert preview is not None
+    index = len(preview.times_s) // 2
+    time_s = preview.times_s[index]
+    percent = preview.percents(RecordedQuantity.ALVEOLAR)[index]
+
+    # A pointer resting on a predicted point, well past the run's reach, gets no readout.
+    assert time_s > 600.0
+    assert nearest_trace_point(frame, time_s, percent, 1.0, 0.001, 12.0) is None
+
+
+def test_a_preview_keeps_the_compartment_s_colour_and_dash_and_is_one_step_thinner() -> None:
+    for style in COMPARTMENT_TRACES:
+        for run_index, run_count in ((0, 1), (0, 2), (1, 2)):
+            run = run_trace_style(style.quantity, run_index, run_count)
+            preview = preview_trace_style(style.quantity, run_index, run_count)
+
+            assert (preview.color, preview.dash_pattern) == (run.color, run.dash_pattern)
+            assert preview.stroke_width == max(2, run.stroke_width - 1)
+            assert preview.stroke_width >= MINIMUM_TRACE_STROKE_WIDTH
+
+    # The two runs' previews keep the runs' width order in compare mode.
+    for style in COMPARTMENT_TRACES:
+        assert (
+            preview_trace_style(style.quantity, 0, 2).stroke_width
+            > preview_trace_style(style.quantity, 1, 2).stroke_width
+        )
+
+
+def test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels() -> None:
+    """A 1 px antialiased line renders under 3:1 against the panel (docs/MODEL.md)."""
+
+    assert MINIMUM_TRACE_STROKE_WIDTH == 2
+    assert all(style.stroke_width >= 2 for style in COMPARTMENT_TRACES)
+    assert preview_stroke_width(3) == 2
+    assert preview_stroke_width(2) == 2
+    assert preview_stroke_width(5) == 4
+
+
+def test_a_compared_run_previews_from_its_own_reach_and_the_window_centres_on_it() -> None:
+    trunk = _run(300.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
+    _advance(trunk, 300.0)
+    branch = BranchedCase(trunk).fork_at(CaseInstant(300.0))
+    branch.start()
+    _advance(branch, 60.0)
+    base = time_base_for_span(1800.0)
+    frame = assemble_chart_frame(
+        (_input(trunk), _previewing(branch, ControlInput.CARDIAC_OUTPUT, 8.0, run_index=1)),
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    preview = frame.runs[1].preview
+
+    assert frame.runs[0].preview is None
+    assert preview is not None
+    assert preview.region_s[0] == pytest.approx(360.0)
+    assert preview.times_s[0] == pytest.approx(360.0)
+    assert (frame.start_s, frame.stop_s) == pytest.approx((0.0, 1800.0))

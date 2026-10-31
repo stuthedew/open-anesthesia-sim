@@ -41,6 +41,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     ChartFrame,
+    PreviewRequest,
     RunInput,
     assemble_chart_frame,
     trace_style,
@@ -54,6 +55,7 @@ from anesthesia_sim.app.controller import (
     MarkForkPoint,
     ResumePoint,
     RunStatus,
+    SettingPreview,
     SimulationController,
     SimulationSnapshot,
 )
@@ -130,6 +132,7 @@ from anesthesia_sim.app.dashboard_frame import (
     off_scale_lines,
     off_scale_notice,
     offered_range,
+    preview_label,
     readout_columns,
     readout_row_width,
     readouts,
@@ -3990,3 +3993,65 @@ def test_a_run_is_not_named_from_a_drawing_position(position: object) -> None:
 
     with pytest.raises(TypeError, match="a run is named from its RunId"):
         run_label(position)  # type: ignore[arg-type]
+
+
+# --- the preview of a dragged setting ------------------------------------------
+
+
+def test_a_preview_label_names_the_control_the_value_and_that_it_is_not_applied() -> None:
+    """The words are the slider's own, so the plot and the control cannot disagree (`PL-5B1N`)."""
+
+    assert (
+        preview_label(ControlInput.FRESH_GAS_FLOW, 6.0, "Sevoflurane", None)
+        == "Preview: Fresh gas flow 6.0 L/min, not applied"
+    )
+    assert (
+        preview_label(ControlInput.DELIVERED, 3.5, "Sevoflurane", "Run 2")
+        == "Run 2 preview: Delivered sevoflurane 3.50%, not applied"
+    )
+    assert (
+        preview_label(ControlInput.CARDIAC_OUTPUT, 8.0, "Isoflurane", None)
+        == "Preview: Cardiac output 8.0 L/min, not applied"
+    )
+
+
+def test_the_preview_label_uses_the_words_the_slider_prints() -> None:
+    controller = SimulationController()
+    readouts = setting_readouts(controller.snapshot())
+
+    for readout in readouts:
+        assert preview_label(readout.control, readout.value, "Sevoflurane", None) == (
+            f"Preview: {readout.name} {readout.value_text}, not applied"
+        )
+
+
+def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> None:
+    """A previewing window shows neither the whole run nor its newest stretch."""
+
+    controller = SimulationController()
+    controller.start()
+
+    for _ in range(round(600.0 / SIMULATION_STEP_S)):
+        controller.advance(SIMULATION_STEP_S)
+
+    frame = assemble_chart_frame(
+        (
+            RunInput(
+                run_label(FIRST_RUN),
+                controller,
+                controller.snapshot(),
+                (),
+                preview=PreviewRequest(SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0), "x"),
+            ),
+        ),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    caption = time_axis_caption(frame)
+
+    assert "whole run so far" not in caption
+    assert (
+        caption
+        == f"{format_time_base(frame.time_base.span_s)} shown, centred on now during the preview"
+    )

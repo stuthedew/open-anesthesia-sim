@@ -88,7 +88,7 @@ from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
@@ -835,6 +835,11 @@ FIT_RUN_LABEL: Final = "Fit run"
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
 FITTED_TIME_AXIS_CAPTION_TEMPLATE: Final = "whole run so far, {span} shown"
 CHOSEN_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown"
+# While a setting is previewed, the window keeps its width and slides so that
+# the run's reach sits at mid-plot (`chart_time_base.preview_window`). It then
+# shows neither the whole run nor the newest stretch, so the caption says what
+# it does show (`PL-5B1N`).
+PREVIEW_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, centred on now during the preview"
 
 # The wash-in section. "Modelled, not measured" is its own line rather than
 # the end of a paragraph. The safety standard requires those three words, and
@@ -927,6 +932,10 @@ COMPARED_PANEL_HEADING_TEMPLATE: Final = "{heading} — {run}"
 #: them apart, and the words state both, so the mark can be identified without
 #: looking at the plot.
 BRANCH_POINT_LEGEND_LABEL: Final = "Branch point (vertical, solid)"
+#: The word that opens a preview's label in the plot (`preview_label`). It
+#: names the kind of value first, so a reader who sees only the start of the
+#: label still knows the curves beside it did not happen (`PL-5B1N`).
+PREVIEW_LABEL_SUBJECT: Final = "Preview"
 #: Shown while the two-compartment cap is keeping traces off the chart. It
 #: names the limit, what the limit removed, and where those values can still
 #: be read. The last part matters because
@@ -1273,6 +1282,72 @@ PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
 )
 
 
+def _setting_words(
+    control: ParameterControl, value: float, agent_display_name: str
+) -> tuple[str, str]:
+    """Return a control's name and a value's text, as the slider prints them.
+
+    `setting_readouts` writes the slider from these words, and
+    `preview_label` names a previewed value with them. So the label in the
+    plot and the readout beside the slider cannot word one setting two ways.
+
+    Args:
+        control: The control.
+        value: The setting, in the control's own unit: litres per minute for
+            a flow, and percent of one atmosphere for the dial.
+        agent_display_name: The running agent, which names the dial.
+
+    Returns:
+        The control's name and the value's text.
+
+    Raises:
+        SimulationConfigurationError: If the dial's value is not a percent
+            from 0 to 100 (`fraction_from_percent`).
+    """
+
+    name = control.name if control.name is not None else format_delivered_label(agent_display_name)
+
+    if control.control is ControlInput.DELIVERED:
+        return name, format_percent(
+            fraction_from_percent(Percent(value, name="delivered_concentration_percent"))
+        )
+
+    return name, format_flow(value)
+
+
+def preview_label(
+    control: ControlInput, value: float, agent_display_name: str, run_name: str | None
+) -> str:
+    """Return the label a preview's region carries in the plot.
+
+    A preview is a trajectory the run would take under a setting the learner
+    is dragging and has not applied (`PL-5B1N`). A screenshot taken during the
+    drag must not read as a run that happened, so the plot says so in words as
+    well as by the region and the thinner curves. The label names the control
+    and the value tried, in the slider's own words (`_setting_words`), and
+    says that it is not applied. Where more than one run is drawn, it names
+    the run too, because each run has its own controls.
+
+    Args:
+        control: The control being dragged.
+        value: The value tried, in the control's own unit.
+        agent_display_name: The running agent, which names the dial.
+        run_name: The run's name while runs are compared, or `None` for a lone
+            run (`RunView.set_run_name`).
+
+    Returns:
+        The label, on one line.
+    """
+
+    entry = next(entry for entry in PARAMETER_CONTROLS if entry.control is control)
+    name, value_text = _setting_words(entry, value, agent_display_name)
+    subject = (
+        PREVIEW_LABEL_SUBJECT if run_name is None else f"{run_name} {PREVIEW_LABEL_SUBJECT.lower()}"
+    )
+
+    return f"{subject}: {name} {value_text}, not applied"
+
+
 @dataclass(frozen=True, slots=True)
 class SettingReadout:
     """One setting control as drawn this tick: its range, its value and its text.
@@ -1394,20 +1469,14 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
     readouts: list[SettingReadout] = []
 
     for control in PARAMETER_CONTROLS:
-        name = (
-            control.name
-            if control.name is not None
-            else format_delivered_label(settings.agent_display_name)
-        )
-
         if control.control is ControlInput.DELIVERED:
             value: float = settings.delivered_concentration_percent
-            value_text = format_percent(delivered)
             secondary = format_mac_multiple(delivered, settings.agent_mac_percent)
         else:
             value = flows[control.control]
-            value_text = format_flow(value)
             secondary = ""
+
+        name, value_text = _setting_words(control, value, settings.agent_display_name)
 
         accepted_minimum, accepted_maximum = accepted_ranges[control.control]
         offered = offered_range(accepted_minimum, accepted_maximum, control.decimals)
@@ -2726,6 +2795,9 @@ def time_axis_caption(frame: ChartFrame) -> str:
     """
 
     span = format_time_base(frame.time_base.span_s)
+
+    if any(run.preview is not None for run in frame.runs):
+        return PREVIEW_TIME_AXIS_CAPTION_TEMPLATE.format(span=span)
 
     if frame.fitted:
         return FITTED_TIME_AXIS_CAPTION_TEMPLATE.format(span=span)

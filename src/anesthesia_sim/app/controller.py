@@ -67,6 +67,7 @@ from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegme
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
     CardiacOutput,
     CaseInstant,
@@ -602,6 +603,29 @@ class HereForkPoint:
     stopped_on_mark: bool
 
 
+@dataclass(frozen=True, slots=True)
+class SettingPreview:
+    """A setting a reader is trying on one control, while the run keeps the setting in force.
+
+    A pointer drag on a slider makes one, and its release ends it
+    (`PL-5B1N`). It is a question, not a change. Nothing records it, and
+    nothing applies it. `SimulationController.preview_window` reads it to
+    draw the trajectory that the run would take if the setting were applied
+    where the run stands now. The run itself keeps the setting in force until
+    the drag is released.
+
+    Attributes:
+        control: The control being dragged.
+        value: Where the slider stands, in the control's own unit: litres per
+            minute for a flow, and percent of one atmosphere for the dial.
+            `SimulationController.preview_settings` builds the checked type
+            from it, so a value the core refuses is refused there.
+    """
+
+    control: ControlInput
+    value: float
+
+
 class SimulationController:
     """Own the run controls and the read-only history for one app session."""
 
@@ -629,6 +653,12 @@ class SimulationController:
         self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
+        # The last preview's settings, kept so that a drag held while the run
+        # plays builds them once rather than on every frame. The key names
+        # everything they are a function of (`preview_settings`).
+        self._preview_memo: (
+            tuple[tuple[str, UptakeEquationSettings, SettingPreview], UptakeEquationSettings] | None
+        ) = None
         # These fields record what this run has done with the marks, as opposed
         # to what is marked. They are what the run produced, not what the
         # learner asked about. So they are cleared wherever a new run begins:
@@ -2341,26 +2371,7 @@ class SimulationController:
                 bound is not finite, or `stop_s` precedes `start_s`.
         """
 
-        if columns < 2:
-            raise SimulationConfigurationError(
-                f"an axis is divided into at least two columns, not {columns}"
-            )
-
-        if not isfinite(start_s) or not isfinite(stop_s):
-            raise SimulationConfigurationError(
-                f"an axis runs between finite instants, not ({start_s}, {stop_s})"
-            )
-
-        if stop_s < start_s:
-            raise SimulationConfigurationError(
-                f"an axis from {start_s} s to {stop_s} s ends before it begins"
-            )
-
-        # The spacing is rounded down onto a grid of whole hundredths of a
-        # second, so the chart's hover can print each column's instant exactly
-        # (`chart_time_base.grid_spacing_s`, `PL-T5NJ`).
-        span_s = stop_s - start_s
-        spacing_s = grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
+        spacing_s = _axis_spacing_s(start_s, stop_s, columns)
         # The axis and the run definition use one clock, so nothing is
         # converted here. The range is only clipped to the span the run
         # actually holds. The lower clip is where this run *began*, not zero.
@@ -2628,12 +2639,161 @@ class SimulationController:
                 the supported run length.
         """
 
-        if self._failure_reason is None and not self.has_reached_supported_limit:
+        if not self.refuses_settings:
             return
 
         raise SimulationConfigurationError(
             f"the {CONTROL_INPUT_LABELS[control].lower()} setting cannot be changed on a "
             "stopped run, because no step will run under a new one"
+        )
+
+    @property
+    def reached_s(self) -> CaseInstant:
+        """The instant this run has reached, read from its definition.
+
+        A preview starts here (`preview_window`), and the chart's preview
+        region starts here too, so the two are read from one place.
+        """
+
+        return self._run_definition.reached_s
+
+    @property
+    def refuses_settings(self) -> bool:
+        """Whether this run refuses every setting, because it has stopped.
+
+        A run stops on a failure or at the supported run length, and no step
+        runs after either (`_refuse_a_setting_on_a_stopped_run`). The chart
+        reads this too. A preview of a setting that the run would refuse
+        describes a future the run cannot have, so a stopped run draws none
+        (`PL-5B1N`).
+        """
+
+        return self._failure_reason is not None or self.has_reached_supported_limit
+
+    def preview_settings(self, preview: SettingPreview) -> UptakeEquationSettings:
+        """Return the settings this run would continue under if `preview` were applied now.
+
+        The settings are built the way a branch builds its own (`_branch_from`).
+        A trial run is built from the settings in force, and is checked to
+        hold every value this run holds (`_disagreements_with`). Then the
+        previewed value goes through the trial's own setter. So the value is
+        checked by the same core setter that would apply it, and a cardiac
+        output moves every tissue flow exactly as applying it would. This run
+        is not touched. The trial is a separate object, and it is discarded.
+
+        The result for the last preview is kept, because a drag asks for the
+        same settings on every frame while the run plays. It is keyed on the
+        agent, the settings in force and the preview, so it cannot be returned
+        for anything else.
+
+        Args:
+            preview: The control and the value the reader is trying.
+
+        Returns:
+            The settings record the run would continue under.
+
+        Raises:
+            SimulationConfigurationError: If this run has stopped, if the
+                core refuses the value, or if the trial run was rebuilt with a
+                value this run does not hold.
+        """
+
+        self._refuse_a_setting_on_a_stopped_run(preview.control)
+        in_force = self._run_definition.segments[-1].settings
+        key = (self._agent_id, in_force, preview)
+
+        if self._preview_memo is not None and self._preview_memo[0] == key:
+            return self._preview_memo[1]
+
+        trial = SimulationController(
+            agent_id=self._agent_id,
+            circuit_volume_l=in_force.circuit_volume_l,
+            fresh_gas_flow_l_min=in_force.fresh_gas_flow_l_min,
+            delivered_concentration_percent=in_force.delivered_concentration_percent,
+            alveolar_ventilation_l_min=in_force.alveolar_ventilation_l_min,
+            cardiac_output_l_min=in_force.cardiac_output_l_min,
+        )
+        disagreements = self._disagreements_with(trial, in_force)
+
+        if disagreements:
+            raise SimulationConfigurationError(
+                "a preview would be drawn from values this run does not hold, so it would "
+                f"predict a different case: {'; '.join(disagreements)}"
+            )
+
+        match preview.control:
+            case ControlInput.FRESH_GAS_FLOW:
+                trial.set_fresh_gas_flow(FreshGasFlow(preview.value))
+            case ControlInput.DELIVERED:
+                trial.set_delivered_concentration_percent(
+                    Percent(preview.value, name="delivered_concentration_percent")
+                )
+            case ControlInput.ALVEOLAR_VENTILATION:
+                trial.set_alveolar_ventilation(AlveolarVentilation(preview.value))
+            case ControlInput.CARDIAC_OUTPUT:
+                trial.set_cardiac_output(CardiacOutput(preview.value))
+
+        settings = trial._run_definition.segments[-1].settings
+        self._preview_memo = (key, settings)
+
+        return settings
+
+    def preview_window(
+        self, preview: SettingPreview, start_s: float, stop_s: float, columns: int
+    ) -> DrawnWindow:
+        """Return the states this run would pass through under `preview`, from its reach onward.
+
+        **This is a prediction, and it is computed as one.** `RunDefinition`
+        refuses to evaluate past the time the run has reached, because a value
+        there would be a prediction drawn as if it were the run. So the
+        prediction is a second definition, opened at the run's reach from the
+        run's canonical state there, under `preview_settings(preview)`. It uses
+        the same governing equations, the same model version and the same
+        state, and it is deterministic. Nothing of this run is written: its
+        definition is only read through `state_at`, the canonical path that a
+        branch opens from (`docs/MODEL.md` § "The canonical evaluation rule").
+
+        The window is evaluated on the same grid as `drawn_window`, from the
+        same axis, so the prediction is drawn at the run's own resolution. It
+        ends at the axis's right edge, or at the end of the supported run
+        length if that comes first, because the model is not claimed to
+        represent a patient past it.
+
+        Args:
+            preview: The control and the value the reader is trying.
+            start_s: Left edge of the axis, in simulated seconds.
+            stop_s: Right edge of the axis, in simulated seconds.
+            columns: The number of grid columns the axis is divided into, as
+                for `drawn_window`.
+
+        Returns:
+            The predicted states, starting at the run's reach. The first state
+            is the run's own state there, so the prediction meets the run. It
+            is empty where the axis ends at or before the reach.
+
+        Raises:
+            SimulationConfigurationError: As `drawn_window` for the axis, and
+                as `preview_settings` for the preview.
+        """
+
+        spacing_s = _axis_spacing_s(start_s, stop_s, columns)
+        settings = self.preview_settings(preview)
+        reached_s = self._run_definition.reached_s
+        horizon_s = min(stop_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+
+        if horizon_s <= reached_s:
+            return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
+
+        prediction = RunDefinition(
+            settings, self._run_definition.state_at(reached_s), opened_at_s=reached_s
+        )
+        prediction.advance_to(CaseInstant(horizon_s))
+        window = prediction.evaluate_anchored(
+            reached_s, horizon_s, spacing_s if spacing_s > 0.0 else 1.0
+        )
+
+        return DrawnWindow(
+            substance_id=self._agent_id, times_s=window.times_s, states=window.states
         )
 
     def begin_control_adjustment(self) -> None:
@@ -3250,6 +3410,40 @@ def _opened_value(
             return change.new_value
 
     return _control_value(stretch, control)
+
+
+def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
+    """Return the spacing of an axis's grid columns, in simulated seconds, after checking the axis.
+
+    `drawn_window` and `preview_window` both evaluate on this grid, so a
+    prediction is drawn at the run's own resolution. The spacing is rounded
+    down onto a grid of whole hundredths of a second, so the chart's hover can
+    print each column's instant exactly (`chart_time_base.grid_spacing_s`,
+    `PL-T5NJ`). It is zero for an axis of zero width.
+
+    Raises:
+        SimulationConfigurationError: If `columns` is fewer than two, either
+            bound is not finite, or `stop_s` precedes `start_s`.
+    """
+
+    if columns < 2:
+        raise SimulationConfigurationError(
+            f"an axis is divided into at least two columns, not {columns}"
+        )
+
+    if not isfinite(start_s) or not isfinite(stop_s):
+        raise SimulationConfigurationError(
+            f"an axis runs between finite instants, not ({start_s}, {stop_s})"
+        )
+
+    if stop_s < start_s:
+        raise SimulationConfigurationError(
+            f"an axis from {start_s} s to {stop_s} s ends before it begins"
+        )
+
+    span_s = stop_s - start_s
+
+    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
 
 
 def _control_value(settings: UptakeEquationSettings, control: ControlInput) -> float:

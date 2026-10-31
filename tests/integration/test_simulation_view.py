@@ -522,10 +522,14 @@ def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
     The move goes through the control that the run actually holds and the
     signal it actually wired. So the tests check the wiring as well as the
     effect. A handler bound to the wrong run is exactly the mistake that a
-    comparison of two runs has to guard against.
+    comparison of two runs has to guard against. The thumb is pressed, moved
+    and released, so the value is applied at the release as a reader's drag
+    applies it (`PL-5B1N`).
     """
 
-    control.slider.setValue(slider_position(value, decimals))
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(slider_position(value, decimals))
+    control.slider.setSliderDown(False)
 
 
 def _set_fresh_gas_flow(run: RunView, flow_l_min: float) -> None:
@@ -11090,3 +11094,142 @@ def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
 
     assert chosen == 1, "the chosen View was not offered a frame at once"
     assert len(halts) == chosen, f"{len(halts) - chosen} idle ticks retried the failed frame"
+
+
+# ------------------------------------------------------ the preview of a dragged setting
+
+
+def _hold_thumb(control: ParameterSlider, value: float, decimals: int) -> None:
+    """Press a slider's thumb and drag it to `value`, without releasing it."""
+
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(slider_position(value, decimals))
+
+
+def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApplication) -> None:
+    """While the thumb is held the run keeps its setting and both plots draw the preview.
+
+    The preview appears at the press, is labelled in the plot, and is gone on
+    the frame drawn at the release, which is when the value is applied and
+    recorded once (`PL-5B1N`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    controller.pause()
+    held_flow = controller.settings().fresh_gas_flow_l_min
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    control = run._setting_controls[0]._fresh_gas_flow_slider
+    concentration, wash_in = _concentration(view).chart, _wash_in(view).chart
+
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert held_flow != 6.0
+    assert controller.settings().fresh_gas_flow_l_min == held_flow
+    assert controller.record().control_timeline == ()
+    assert control.value_label.text() == format_flow(held_flow)
+    for plot in (concentration, wash_in):
+        assert plot.preview_label(0) == "Preview: Fresh gas flow 6.0 L/min, not applied"
+        region = plot.preview_region(0)
+        assert region is not None
+        assert region[0] == pytest.approx(300.0)
+    assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR)[0]
+
+    control.slider.setSliderDown(False)
+
+    assert controller.settings().fresh_gas_flow_l_min == 6.0
+    assert len(controller.record().control_timeline) == 1
+    for plot in (concentration, wash_in):
+        assert plot.preview_region(0) is None
+        assert plot.preview_label(0) is None
+    assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR) == ((), ())
+
+
+def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
+    application: QApplication,
+) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    controller.pause()
+    view = _shown_view(application, controller)
+    control = view.runs[0]._setting_controls[0]._cardiac_output_slider
+    chart = _concentration(view).chart
+
+    _hold_thumb(control, 8.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+    region = chart.preview_region(0)
+    assert region is not None
+    start_s, stop_s = region
+    frame = chart.frame
+    assert frame is not None
+
+    # The window keeps its width and puts the reach at mid-plot.
+    assert (frame.start_s + frame.stop_s) / 2.0 == pytest.approx(300.0) or frame.start_s == 0.0
+    assert chart.preview_label(0) == "Preview: Cardiac output 8.0 L/min, not applied"
+
+    for quantity in frame.visible:
+        predicted, _ = chart.preview_points(0, quantity)
+        drawn, _ = chart.drawn_points(0, quantity)
+
+        assert predicted
+        assert all(start_s <= time_s <= stop_s for time_s in predicted)
+        assert all(time_s <= start_s for time_s in drawn)
+        assert chart.preview_pen(0, quantity).widthF() >= 2
+
+
+def test_the_hover_never_answers_from_a_preview(application: QApplication) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    controller.pause()
+    view = _shown_view(application, controller)
+    control = view.runs[0]._setting_controls[0]._delivered_concentration_slider
+    chart = _concentration(view).chart
+
+    _hold_thumb(control, 8.0, CONCENTRATION_DISPLAY_DECIMALS)
+    view.render_tick()
+    times, percents = chart.preview_points(0, RecordedQuantity.CIRCUIT)
+    index = len(times) * 3 // 4
+
+    # The point is well past the run's reach, on a curve the run never drew.
+    assert times[index] > 300.0 + 60.0
+    assert chart.readout_at(times[index], percents[index]) is None
+
+
+def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QApplication) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60.0)
+    controller.fail("a failure the test injects")
+    view = _shown_view(application, controller)
+    control = view.runs[0]._setting_controls[0]._fresh_gas_flow_slider
+
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert _concentration(view).chart.preview_region(0) is None
+    assert _wash_in(view).chart.preview_region(0) is None
+
+
+def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_it(
+    application: QApplication,
+) -> None:
+    case = _branched_case()
+    view = _case_view(application, case)
+    view.add_run(case.fork_at(CaseInstant(60.0)))
+    view.present(False)
+    branch = view.runs[BRANCH_RUN_INDEX]
+    control = branch._setting_controls[0]._fresh_gas_flow_slider
+    chart = _concentration(view).chart
+
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert chart.preview_region(0) is None
+    assert chart.preview_label(BRANCH_RUN_INDEX) == (
+        f"{run_label(branch.run_id)} preview: Fresh gas flow 6.0 L/min, not applied"
+    )

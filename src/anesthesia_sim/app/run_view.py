@@ -86,6 +86,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.chart_frame import PreviewRequest
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
@@ -96,6 +97,7 @@ from anesthesia_sim.app.controller import (
     RunRecord,
     RunSettings,
     RunStatus,
+    SettingPreview,
     SimulationController,
     SimulationSnapshot,
 )
@@ -132,6 +134,7 @@ from anesthesia_sim.app.dashboard_frame import (
     halt_notice,
     new_case_question,
     notice,
+    preview_label,
     readouts,
     refused_reset_exit,
     refused_setting_notice,
@@ -346,6 +349,11 @@ class RunView(QWidget):
         # the simulation, so there is no core state for it to belong to
         # (`PL-M4M0`).
         self._refused_reset_notice: str | None = None
+        # The setting a reader is dragging on this run and has not applied,
+        # or None while no thumb is held (`PL-5B1N`). It is held here rather
+        # than in the controller for the same reason: nothing about the
+        # simulation changes until the drag is released.
+        self._preview: PreviewRequest | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._adjustment_grouping = AdjustmentGrouping()
         # The agent that a reader has asked for and not yet confirmed, and the
@@ -598,6 +606,12 @@ class RunView(QWidget):
         """
 
         return self.controller.record() != self._written_record
+
+    @property
+    def preview(self) -> PreviewRequest | None:
+        """The setting a reader is dragging on this run, for the chart to preview, or `None`."""
+
+        return self._preview
 
     def adjustments(self, record: RunRecord) -> tuple[ControlAdjustment, ...]:
         """The run's control changes grouped into acts, regrouped only when the record changed.
@@ -1137,6 +1151,48 @@ class RunView(QWidget):
         """
 
         self.controller.begin_control_adjustment()
+
+    @halt_gate
+    def _handle_preview_request(self, control: ControlInput, value: float) -> None:
+        """Preview the value a held thumb stands at, or drop the preview if the run would refuse it.
+
+        The run keeps the setting in force (`ParameterSlider`). The value is
+        checked by building the settings it would give
+        (`SimulationController.preview_settings`). A value the run would refuse,
+        on a stopped run or outside the core's range, draws no preview, so the
+        chart never predicts a future the run cannot have. The release then
+        reports the refusal through `_apply_setting`, as any refused setting is.
+        The chart is redrawn on the next render tick, as a dragged slider's
+        frames always were (`PL-R2YM`).
+        """
+
+        setting = SettingPreview(control, value)
+
+        try:
+            self.controller.preview_settings(setting)
+        except SimulationConfigurationError:
+            self._preview = None
+        else:
+            self._preview = PreviewRequest(
+                setting,
+                preview_label(
+                    control, value, self.controller.settings().agent_display_name, self._run_name
+                ),
+            )
+
+        self.presentation_requested.emit(True)
+
+    @halt_gate
+    def _handle_preview_end(self) -> None:
+        """Drop the preview when the held thumb is released, and redraw at once.
+
+        A preview that outlived the drag would read as a run that happened, so
+        it is gone on the frame drawn at the release, before the value is
+        applied (`PL-5B1N`).
+        """
+
+        self._preview = None
+        self.presentation_requested.emit(False)
 
     @halt_gate
     def _handle_setting_request(self, control: ControlInput, value: float) -> None:
@@ -1836,6 +1892,8 @@ class RunView(QWidget):
         controls = ParameterControls(self._settings_shown, parent=self)
         controls.adjustment_started.connect(self._handle_adjustment_start)
         controls.setting_requested.connect(self._handle_setting_request)
+        controls.preview_requested.connect(self._handle_preview_request)
+        controls.preview_ended.connect(self._handle_preview_end)
 
         return keep_until_destroyed(self._setting_controls, controls)
 

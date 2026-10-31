@@ -58,6 +58,7 @@ __all__ = [
     "fit_to_run",
     "fitted_window",
     "following_window",
+    "preview_window",
     "grid_spacing_s",
     "saved_time_base",
     "saved_time_base_value",
@@ -342,6 +343,36 @@ def following_window(
     """
 
     start_s = max(0.0, newest_instant_s + time_base.live_headroom_s - time_base.span_s)
+
+    return start_s, start_s + time_base.span_s
+
+
+def preview_window(time_base: ChartTimeBase, reach_s: CaseInstant) -> tuple[float, float]:
+    """Return the axis bounds during a preview: the same width, with the reach at mid-plot.
+
+    A following window keeps only `live_headroom_s` to the right of the run,
+    which is 2% of the width and no room for a prediction. Widening the axis
+    to make room would rescale every slope on the plot, which is the encoding
+    `PL-012` rejected. So the window keeps its width and slides so that the
+    run's reach sits at the middle: half the width shows the run that
+    happened, and half shows the prediction (`PL-5B1N`, project owner,
+    2026-09-27, ratified). Early in a run the window stops at zero, as
+    `following_window` does, and the reach then sits left of the middle.
+
+    The slide is bound to the preview. The dashboard asks for this window
+    while a drag is held and for the following or fitted window again once it
+    is released, so the axis moves at the press and moves back at the release.
+
+    Args:
+        time_base: The width the chart is drawn at, chosen or fitted.
+        reach_s: The instant the previewing run has reached.
+
+    Returns:
+        `(min_x, max_x)` in simulated seconds, exactly `span_s` apart.
+    """
+
+    require_case_instant("reach_s", reach_s)
+    start_s = max(0.0, reach_s - time_base.span_s / 2.0)
 
     return start_s, start_s + time_base.span_s
 

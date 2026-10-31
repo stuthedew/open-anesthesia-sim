@@ -59,10 +59,11 @@ from anesthesia_sim.app.chart_time_base import (
     fit_to_run,
     fitted_window,
     following_window,
+    preview_window,
     tick_times,
 )
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import SettingPreview, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -85,8 +86,10 @@ from anesthesia_sim.app.theme import (
     CIRCUIT_COLOR,
     COMPARED_RUN_WIDTH_STEP,
     FAT_COLOR,
+    MINIMUM_TRACE_STROKE_WIDTH,
     MIXED_VENOUS_COLOR,
     MUSCLE_COLOR,
+    PREVIEW_WIDTH_STEP,
     VESSEL_RICH_COLOR,
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
@@ -108,8 +111,10 @@ __all__ = [
     "ChartFrame",
     "HoverReading",
     "HoverTarget",
+    "PreviewRequest",
     "RunFrame",
     "RunInput",
+    "RunPreview",
     "TraceStyle",
     "WashInStretch",
     "assemble_chart_frame",
@@ -122,6 +127,8 @@ __all__ = [
     "nearest_trace_point",
     "nearest_wash_in_point",
     "percent_axis_ticks",
+    "preview_stroke_width",
+    "preview_trace_style",
     "resample_owed",
     "run_trace_style",
     "trace_style",
@@ -519,6 +526,53 @@ def run_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) 
     return replace(style, stroke_width=style.stroke_width + COMPARED_RUN_WIDTH_STEP)
 
 
+def preview_stroke_width(run_stroke_width: float) -> float:
+    """Return how wide a preview is drawn, given the width of the run's own curve.
+
+    It is one `PREVIEW_WIDTH_STEP` thinner, so a prediction never carries the
+    visual weight of the run that happened. It is never thinner than
+    `MINIMUM_TRACE_STROKE_WIDTH`, below which an antialiased line renders under
+    the 3:1 minimum against the panel (`docs/MODEL.md` § "The six compartment
+    traces"). In compare mode the step keeps the runs' order: the first run's
+    preview stays wider than the second run's.
+
+    Args:
+        run_stroke_width: The width of the run's own curve, in display pixels.
+
+    Returns:
+        The preview's width, in display pixels.
+    """
+
+    return max(MINIMUM_TRACE_STROKE_WIDTH, run_stroke_width - PREVIEW_WIDTH_STEP)
+
+
+def preview_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) -> TraceStyle:
+    """Return the style one run's preview of a compartment is drawn with.
+
+    It is `run_trace_style` with the width that `preview_stroke_width` gives,
+    and nothing else changed. The colour and the dash pattern stay the
+    compartment's own, deliberately. They are what tells the six traces
+    apart (`PL-GVXP`), and inside the preview they have to do the same work
+    (`PL-5B1N`, project owner, 2026-09-27, ratified, over a solid run and a
+    dotted preview, which would collide with the muscle trace's dots).
+
+    Args:
+        quantity: Which compartment.
+        run_index: Which run, as a position in the frame's runs.
+        run_count: How many runs are on the chart.
+
+    Returns:
+        The compartment's style at the preview's width.
+
+    Raises:
+        KeyError, TypeError, ValueError: As `run_trace_style`.
+    """
+
+    style = run_trace_style(quantity, run_index, run_count)
+
+    return replace(style, stroke_width=preview_stroke_width(style.stroke_width))
+
+
 def compared_compartments(
     shown: Collection[RecordedQuantity], run_count: int
 ) -> tuple[tuple[RecordedQuantity, ...], int]:
@@ -621,6 +675,49 @@ class WashInStretch:
 
 
 @dataclass(frozen=True, slots=True)
+class RunPreview:
+    """The trajectory one run would take under a setting the reader is trying, as drawn.
+
+    **This is a prediction, a third kind of value beside a modelled state and
+    a measurement** (`docs/MODEL.md` § "A preview of an unapplied setting").
+    It is conditional on a setting the learner has not applied and may never
+    apply. So everything that draws it marks it as one: it lies inside its own
+    region, which the run that happened never enters, it is labelled in the
+    plot, and it is drawn thinner than the run (`PL-5B1N`). The hover never
+    answers from it, because the hover reads only `RunFrame.times_s` and
+    `RunFrame.wash_in`.
+
+    Attributes:
+        label: What the plot says about the preview: the run where more than
+            one is drawn, the control, the value tried, and that it is not
+            applied. It is drawn in the region, so a screenshot taken during
+            a drag carries it.
+        region_s: Where the region lies, in simulated seconds. It starts at
+            the run's reach, where the run stands now, and ends at the axis's
+            right edge, or at the end of the supported run length if that
+            comes first.
+        times_s: The predicted instants, ascending, in simulated seconds. The
+            first is the run's reach, where the prediction meets the run.
+        fractions: Each compartment's predicted value at every instant, as a
+            fraction of one atmosphere, built under its compartment's name as
+            `RunFrame.fractions` is.
+        wash_in: The predicted F_A/F_I stretches, oldest first, the most
+            recent that fit the pool.
+    """
+
+    label: str
+    region_s: tuple[float, float]
+    times_s: tuple[float, ...]
+    fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
+    wash_in: tuple[WashInStretch, ...]
+
+    def percents(self, quantity: RecordedQuantity) -> tuple[float, ...]:
+        """Return one predicted trace in percent, by the conversion `RunFrame.percents` makes."""
+
+        return tuple(percent_from_fraction(fraction) for fraction in self.fractions[quantity])
+
+
+@dataclass(frozen=True, slots=True)
 class RunFrame:
     """One run's part of a frame: its drawn states, stretches and marks.
 
@@ -673,6 +770,8 @@ class RunFrame:
         undrawn_control_marks: How many adjustments inside the window the
             pool could not mark. The display shows this count rather than
             hiding it.
+        preview: The trajectory this run would take under a setting the
+            reader is dragging, or `None` while no drag is held on this run.
     """
 
     label: str
@@ -687,6 +786,7 @@ class RunFrame:
     undrawn_wash_in_stretches: int
     control_marks_s: tuple[float, ...]
     undrawn_control_marks: int
+    preview: RunPreview | None = None
 
     def percents(self, quantity: RecordedQuantity) -> tuple[float, ...]:
         """Return one trace's drawn values in the unit the percent axis is labelled in.
@@ -789,6 +889,21 @@ class ChartFrame:
 
 
 @dataclass(frozen=True, slots=True)
+class PreviewRequest:
+    """A setting a reader is dragging on one run, and the words the plot labels it with.
+
+    Attributes:
+        setting: The control and the value tried.
+        label: The label the plot draws in the preview's region.
+            `dashboard_frame.preview_label` words it, from the same name and
+            value text that the slider beside it prints.
+    """
+
+    setting: SettingPreview
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
 class RunInput:
     """One run to draw, with the snapshot the same frame formats it from.
 
@@ -805,12 +920,14 @@ class RunInput:
         adjustments: The run's control timeline, grouped into the acts a
             reader sees. The caller's `control_timeline.AdjustmentGrouping`
             supplies it, so a frame that recorded nothing regroups nothing.
+        preview: The setting a reader is dragging on this run, or `None`.
     """
 
     label: str
     controller: SimulationController
     snapshot: SimulationSnapshot
     adjustments: tuple[ControlAdjustment, ...]
+    preview: PreviewRequest | None = None
 
 
 def resample_owed(frame: ChartFrame | None, plot_width_px: float) -> bool:
@@ -920,12 +1037,22 @@ def assemble_chart_frame(
     # newest instant, so that the whole case is drawn, starting at zero. A
     # chosen width is kept exactly and follows that instant, so that a trace's
     # slope on the plot means the same thing at every moment.
+    #
+    # A preview overrides both while a drag is held. The window keeps the
+    # width and slides so that the previewing run's reach sits at mid-plot
+    # (`preview_window`). A run that has stopped refuses every setting, so it
+    # previews nothing, and the window does not move for it.
+    previewing = [run for run in runs if _held_preview(run) is not None]
+
     if time_base is None:
         base = fit_to_run(newest_instant_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
         start_s, stop_s = following_window(base, newest_instant_s)
+
+    if previewing:
+        start_s, stop_s = preview_window(base, max(run.controller.reached_s for run in previewing))
 
     columns = chart_columns(plot_width_px)
     # The cap is applied here rather than where a reader clicks. So what the
@@ -982,6 +1109,7 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
     # describe, `DrawnWindow.compartment_fractions` raises rather than drawing
     # whatever the run does hold.
     window = run.controller.drawn_window(start_s, stop_s, columns)
+    held = _held_preview(run)
     fractions = {
         quantity: tuple(
             Fraction(fraction, name=COMPARTMENT_FRACTION_NAMES[quantity])
@@ -1022,6 +1150,61 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
         undrawn_wash_in_stretches=max(0, len(stretches) - MAX_CHART_WASH_IN_SEGMENTS),
         control_marks_s=marks,
         undrawn_control_marks=len(inside) - len(marks),
+        preview=None if held is None else _run_preview(run, held, start_s, stop_s, columns),
+    )
+
+
+def _held_preview(run: RunInput) -> PreviewRequest | None:
+    """Return the preview a run draws, or `None`.
+
+    A run draws one while a drag is held on it and it still accepts settings.
+    A stopped run refuses every setting, so a preview there would show a
+    future the run cannot have (`SimulationController.refuses_settings`).
+    """
+
+    if run.preview is None or run.controller.refuses_settings:
+        return None
+
+    return run.preview
+
+
+def _run_preview(
+    run: RunInput, request: PreviewRequest, start_s: float, stop_s: float, columns: int
+) -> RunPreview:
+    """Evaluate the trajectory a run would take under the setting being dragged on it.
+
+    The prediction comes from `SimulationController.preview_window`, a pure
+    read of the run at its own model and version. Its values are built as
+    `Fraction`s under each compartment's name, as the run's own are
+    (`_run_frame`). Its wash-in stretches come from `_drawn_wash_in`, the
+    function the run's own stretches come from, so the two plots cannot
+    disagree about the prediction any more than about the run.
+
+    Raises:
+        SimulationConfigurationError: As `preview_window`, or if a predicted
+            value is outside 0 to 1.
+    """
+
+    snapshot = run.snapshot
+    window = run.controller.preview_window(request.setting, start_s, stop_s, columns)
+    reached_s = run.controller.reached_s
+    fractions = {
+        quantity: tuple(
+            Fraction(fraction, name=COMPARTMENT_FRACTION_NAMES[quantity])
+            for fraction in window.compartment_fractions(
+                RecordedSeries(snapshot.agent_id, quantity)
+            )
+        )
+        for quantity in COMPARTMENT_QUANTITIES
+    }
+    stretches = _drawn_wash_in(window, snapshot.agent_id)
+
+    return RunPreview(
+        label=request.label,
+        region_s=(reached_s, window.times_s[-1] if window.times_s else reached_s),
+        times_s=window.times_s,
+        fractions=MappingProxyType(fractions),
+        wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
     )
 
 
