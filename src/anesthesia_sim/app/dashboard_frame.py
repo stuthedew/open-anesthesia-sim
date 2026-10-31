@@ -1027,8 +1027,10 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
             `RunStatus`, which is read without building any compartment
             value. So a halt is worded from facts that cannot fail
             (`PL-7DJK`).
-        stopped_on_mark: Whether the run stands where a mark stopped it,
-            which is whether the snapshot's `bookmark_halt` is set. It is a
+        stopped_on_mark: Whether a step of the run halted it on a mark
+            (`SimulationSnapshot.stopped_on_mark`). A branch at its fork
+            carries the parent step's halt record and is not stopped on a
+            mark. It is a
             separate argument because a `RunStatus` does not carry the halt
             record, which is worked out from the canonical states
             (`SimulationController._halt_crossing`).

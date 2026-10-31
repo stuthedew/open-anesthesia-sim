@@ -1984,6 +1984,43 @@ def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
     assert trunk._status_text.text() == "Paused"
 
 
+def test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it(
+    application: QApplication,
+) -> None:
+    """A branch at its fork carries its parent's crossing, but no step of its own stopped it.
+
+    A branch opens standing on the step that reached its fork, so that
+    step's crossing is the branch's halt record (`PL-3K9B`). The step was the
+    trunk's, though. A status word that read the halt record alone told the
+    learner that a mark had stopped a run that never ran, which is the
+    misreading `PL-QBQX` set out to remove. The expected words are written
+    here rather than read from the module, so a change to them fails this
+    test.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_TIMED_STOP_S), "the decision point"))
+    view = _case_view(application, case)
+    (trunk,) = view.runs
+
+    trunk._start_button.click()
+
+    while case.trunk.is_running:
+        _steps(trunk, 1)
+
+    view.present(False)
+    _take_fork(view, _TIMED_STOP_S)
+    assert len(view.runs) == 2
+    branch = view.runs[1]
+    view.present(False)
+
+    assert branch.controller.snapshot().bookmark_halt is not None, (
+        "the branch does not carry the crossing it opened on, so this test checks nothing"
+    )
+    assert trunk._status_text.text() == "Paused — stopped on your mark"
+    assert branch._status_text.text() == "Paused"
+
+
 def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     application: QApplication,
 ) -> None:

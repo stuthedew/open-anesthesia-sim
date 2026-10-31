@@ -404,8 +404,7 @@ class RunView(QWidget):
         self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
         emphasised(
-            self._status_text,
-            status_word(snapshot, stopped_on_mark=snapshot.bookmark_halt is not None),
+            self._status_text, status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark)
         )
         self._notice_text = NoticeLabel(self)
 
@@ -664,7 +663,7 @@ class RunView(QWidget):
                 refused_reset=self._refused_reset_notice,
                 branch_offered=self._branch_offered,
             ),
-            stopped_on_mark=snapshot.bookmark_halt is not None,
+            stopped_on_mark=snapshot.stopped_on_mark,
         )
 
     def _write_statement(
@@ -705,7 +704,7 @@ class RunView(QWidget):
                 halt that no frame has been drawn for.
             stopped_on_mark: Whether a mark stopped the run, as
                 `dashboard_frame.status_word` takes it. `refresh` reads it
-                from the snapshot's `bookmark_halt`.
+                from `SimulationSnapshot.stopped_on_mark`.
 
         Raises:
             ValueError: If `setting_readouts` rejects the record, as

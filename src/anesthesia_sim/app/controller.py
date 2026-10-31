@@ -407,6 +407,23 @@ class SimulationSnapshot(RunRecord):
     """
 
     @property
+    def stopped_on_mark(self) -> bool:
+        """Return whether a step of this run halted it on a mark, so that it stands on the crossing.
+
+        `bookmark_halt` alone does not decide this. A branch opens standing on
+        the step that reached its fork, and that step's crossing is the
+        branch's halt record (`PL-3K9B`). But the step was the parent's, so a
+        branch at its fork has not been stopped by anything. Its status word
+        must still say that it is paused (`PL-QBQX`). A branch at its fork
+        stands at `began_at_s`, and every step of its own moves it past that
+        instant. The comparison is exact for the reason `has_recorded_run`
+        gives. A trunk's halt record is set only by a halting step, because
+        no step ends at 0 s.
+        """
+
+        return self.bookmark_halt is not None and self.elapsed_s != self.began_at_s
+
+    @property
     def has_recorded_run(self) -> bool:
         """Return whether this run holds anything that starting over would destroy.
 
