@@ -529,11 +529,11 @@ def run_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) 
 def preview_stroke_width(run_stroke_width: float) -> float:
     """Return how wide a preview is drawn, given the width of the run's own curve.
 
-    It is one `PREVIEW_WIDTH_STEP` thinner, so a prediction never carries the
-    visual weight of the run that happened. It is never thinner than
-    `MINIMUM_TRACE_STROKE_WIDTH`, below which an antialiased line renders under
-    the 3:1 minimum against the panel (`docs/MODEL.md` § "The six compartment
-    traces").
+    The preview is one `PREVIEW_WIDTH_STEP` thinner than the run's curve, so a
+    prediction never carries the visual weight of the run that happened. It is
+    never thinner than `MINIMUM_TRACE_STROKE_WIDTH`. An antialiased line thinner
+    than that has a contrast ratio less than the 3:1 minimum against the panel
+    (`docs/MODEL.md` § "The six compartment traces").
 
     Args:
         run_stroke_width: The width of the narrowest real curve drawn for the
@@ -547,20 +547,23 @@ def preview_stroke_width(run_stroke_width: float) -> float:
 
 
 def preview_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) -> TraceStyle:
-    """Return the style one run's preview of a compartment is drawn with.
+    """Return the style in which one run's preview of a compartment is drawn.
 
-    It is the compartment's `trace_style` with the width that
-    `preview_stroke_width` gives, and nothing else changed. The width is taken
-    from the compartment's lone-run width, not from the previewing run's
-    width. In compare mode the first run is drawn one step wider, and the
-    other run's real curves can lie inside the preview's region. A preview
-    taken from the first run's width would then be wider than those real
-    curves, and the width cue would say the reverse of the truth. The colour
-    and the dash pattern stay the compartment's own, deliberately. They are
-    what tells the six traces apart (`PL-GVXP`), and inside the preview they
-    have to do the same work (`PL-5B1N`, project owner, 2026-09-27,
-    ratified, over a solid run and a dotted preview, which would collide with
-    the muscle trace's dots).
+    It is the compartment's `trace_style`, with the width that
+    `preview_stroke_width` gives and nothing else changed. The width is based
+    on the width the compartment's curve has when only one run is drawn, not
+    on the previewing run's own width. In compare mode the first run is drawn
+    one step wider, and the other run's real curves can lie inside the
+    preview's region. A preview based on the first run's width would then be
+    wider than those real curves. The width cue would then make the prediction
+    look heavier than a run that happened.
+
+    The colour and the dash pattern stay the compartment's own, deliberately.
+    They are what tells the six traces apart (`PL-GVXP`), and inside the
+    preview they have to do the same work (`PL-5B1N`, project owner,
+    2026-09-27, ratified). That decision was chosen over drawing the run solid
+    and the preview dotted. A dotted preview would be confused with the muscle
+    trace, which is drawn with dots.
 
     Args:
         quantity: Which compartment.
@@ -687,29 +690,29 @@ class RunPreview:
 
     **This is a prediction, a third kind of value beside a modelled state and
     a measurement** (`docs/MODEL.md` § "A preview of an unapplied setting").
-    It is conditional on a setting the learner has not applied and may never
-    apply. So everything that draws it marks it as one: it lies inside its own
-    region, which the run that happened never enters, it is labelled in the
-    plot, and it is drawn thinner than the run (`PL-5B1N`). The hover never
-    answers from it, because the hover reads only `RunFrame.times_s` and
-    `RunFrame.wash_in`.
+    It depends on a setting that the learner has not applied and may never
+    apply. So everything that draws it marks it as a prediction. It lies in a
+    region of its own, which the run that happened never enters. It is
+    labelled in the plot, and it is drawn thinner than the run (`PL-5B1N`).
+    The hover never shows its values, because the hover reads only
+    `RunFrame.times_s` and `RunFrame.wash_in`.
 
     Attributes:
-        label: What the plot says about the preview: the run where more than
-            one is drawn, the control, the value tried, and that it is not
-            applied. It is drawn in the region, so a screenshot taken during
-            a drag carries it.
+        label: The text the plot draws for the preview. It names the run when
+            more than one run is drawn, the control and the value tried, and
+            it says that the value is not applied. It is drawn inside the
+            region, so a screenshot taken during a drag includes it.
         region_s: Where the region lies, in simulated seconds. It starts at
-            the run's reach, where the run stands now, and ends at the axis's
-            right edge, or at the end of the supported run length if that
-            comes first.
+            the run's reach, which is the instant the run has reached so far.
+            It ends at the axis's right edge, or at the end of the supported
+            run length if that comes first.
         times_s: The predicted instants, ascending, in simulated seconds. The
             first is the run's reach, where the prediction meets the run.
         fractions: Each compartment's predicted value at every instant, as a
-            fraction of one atmosphere, built under its compartment's name as
-            `RunFrame.fractions` is.
-        wash_in: The predicted F_A/F_I stretches, oldest first, the most
-            recent that fit the pool.
+            fraction of one atmosphere. Each value is built as a `Fraction`
+            labelled with its compartment's name, as in `RunFrame.fractions`.
+        wash_in: The predicted F_A/F_I stretches, oldest first. They are the
+            most recent stretches that fit the pool.
     """
 
     label: str
@@ -897,12 +900,12 @@ class ChartFrame:
 
 @dataclass(frozen=True, slots=True)
 class PreviewRequest:
-    """A setting a reader is dragging on one run, and the words the plot labels it with.
+    """A setting a reader is dragging on one run, and the label the plot gives it.
 
     Attributes:
         setting: The control and the value tried.
         label: The label the plot draws in the preview's region.
-            `dashboard_frame.preview_label` words it, from the same name and
+            `dashboard_frame.preview_label` writes it from the same name and
             value text that the slider beside it prints.
     """
 
@@ -1180,12 +1183,13 @@ def _run_preview(
 ) -> RunPreview:
     """Evaluate the trajectory a run would take under the setting being dragged on it.
 
-    The prediction comes from `SimulationController.preview_window`, a pure
-    read of the run at its own model and version. Its values are built as
-    `Fraction`s under each compartment's name, as the run's own are
-    (`_run_frame`). Its wash-in stretches come from `_drawn_wash_in`, the
-    function the run's own stretches come from, so the two plots cannot
-    disagree about the prediction any more than about the run.
+    The prediction comes from `SimulationController.preview_window`. That
+    method reads the run without changing it, at the run's own model and
+    version. The prediction's values are built as `Fraction`s labelled with
+    each compartment's name, as the run's own values are (`_run_frame`). Its
+    wash-in stretches come from `_drawn_wash_in`, the same function that
+    produces the run's own stretches. So the two plots cannot disagree about
+    the prediction, just as they cannot disagree about the run.
 
     Raises:
         SimulationConfigurationError: As `preview_window`, or if a predicted

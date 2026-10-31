@@ -4058,12 +4058,12 @@ def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> Non
 
 
 def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() -> None:
-    """Sevoflurane's 8% dial is 4 MAC, above the 3 MAC axis, and a held thumb predicts it.
+    """Sevoflurane at 8% on the dial is 4 MAC, above the 3 MAC axis, and a held thumb previews it.
 
-    The readouts and the hover never give a preview's values. So the notice
-    names each clipped prediction and its highest value in view, or the
-    clipped curve would read as a predicted plateau at the axis top (found by
-    the blind review of `PL-5B1N`).
+    The readouts and the hover never show a preview's values. So the notice
+    names each clipped prediction and its highest value in view. Otherwise,
+    the clipped curve could be mistaken for a predicted plateau at the top of
+    the axis (found by the blind review of `PL-5B1N`).
     """
 
     controller = SimulationController()

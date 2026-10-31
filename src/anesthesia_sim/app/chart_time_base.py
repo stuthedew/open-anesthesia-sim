@@ -350,18 +350,20 @@ def following_window(
 def preview_window(time_base: ChartTimeBase, reach_s: CaseInstant) -> tuple[float, float]:
     """Return the axis bounds during a preview: the same width, with the reach at mid-plot.
 
-    A following window keeps only `live_headroom_s` to the right of the run,
-    which is 2% of the width and no room for a prediction. Widening the axis
-    to make room would rescale every slope on the plot, which is the encoding
-    `PL-012` rejected. So the window keeps its width and slides so that the
-    run's reach sits at the middle: half the width shows the run that
-    happened, and half shows the prediction (`PL-5B1N`, project owner,
-    2026-09-27, ratified). Early in a run the window stops at zero, as
-    `following_window` does, and the reach then sits left of the middle.
+    A window that follows the run keeps only `live_headroom_s` to the right of
+    the run. That is 2% of the width, which leaves no room for a prediction.
+    Widening the axis to make room would rescale every slope on the plot, a
+    change of encoding that `PL-012` rejected. So the window keeps its width
+    and slides so that the run's reach sits at the middle. Half the width
+    shows the run that happened, and half shows the prediction (`PL-5B1N`,
+    project owner, 2026-09-27, ratified). Early in a run the window stops at
+    zero, as `following_window` does, and the reach then sits left of the
+    middle.
 
-    The slide is bound to the preview. The dashboard asks for this window
-    while a drag is held and for the following or fitted window again once it
-    is released, so the axis moves at the press and moves back at the release.
+    The slide lasts only as long as the preview. The dashboard asks for this
+    window while a drag is held. Once the drag is released, it asks for the
+    following or fitted window again. So the axis moves at the press and
+    moves back at the release.
 
     Args:
         time_base: The width the chart is drawn at, chosen or fitted.

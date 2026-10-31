@@ -1621,9 +1621,9 @@ def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
 ) -> None:
     """Previewing the dial at 0% ends the predicted F_A/F_I, and a dot marks the end.
 
-    Without the dot, a predicted stretch that stops reads as one that runs on
-    out of view, which the run's own trace marks the other way (found by the
-    blind review of `PL-5B1N`).
+    Without the dot, a predicted stretch that stops would look like one that
+    runs on out of view. The run's own trace marks a stop with a dot, so the
+    prediction does too (found by the blind review of `PL-5B1N`).
     """
 
     controller = SimulationController()

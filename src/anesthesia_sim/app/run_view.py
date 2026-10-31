@@ -1156,14 +1156,15 @@ class RunView(QWidget):
     def _handle_preview_request(self, control: ControlInput, value: float) -> None:
         """Preview the value a held thumb stands at, or drop the preview if the run would refuse it.
 
-        The run keeps the setting in force (`ParameterSlider`). The value is
-        checked by building the settings it would give
-        (`SimulationController.preview_settings`). A value the run would refuse,
-        on a stopped run or outside the core's range, draws no preview, so the
-        chart never predicts a future the run cannot have. The release then
-        reports the refusal through `_apply_setting`, as any refused setting is.
-        The chart is redrawn on the next render tick, as a dragged slider's
-        frames always were (`PL-R2YM`).
+        During the drag, the run keeps its current setting (`ParameterSlider`).
+        The value is checked by building the settings it would give
+        (`SimulationController.preview_settings`). The run refuses a value when
+        the run has stopped or the value is outside the core's range. A value
+        the run would refuse draws no preview, so the chart never predicts a
+        future the run cannot have. The release then reports the refusal
+        through `_apply_setting`, as it reports any refused setting. The chart
+        is redrawn on the next render tick, as a dragged slider's frames always
+        were (`PL-R2YM`).
         """
 
         setting = SettingPreview(control, value)
@@ -1186,10 +1187,10 @@ class RunView(QWidget):
     def _handle_preview_end(self) -> None:
         """Drop the preview when the held thumb is released, and redraw at once.
 
-        A preview that outlived the drag would read as a run that happened, so
-        it is gone on the frame drawn at the release. The slider has applied
-        the released value by then (`ParameterSlider`), so that frame shows
-        the run under its new setting (`PL-5B1N`).
+        A preview that outlived the drag could be mistaken for a run that
+        happened, so it is gone from the frame drawn at the release. The slider
+        has applied the released value by then (`ParameterSlider`), so that
+        frame shows the run under its new setting (`PL-5B1N`).
         """
 
         self._preview = None

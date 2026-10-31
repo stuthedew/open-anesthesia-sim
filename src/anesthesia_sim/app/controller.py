@@ -605,19 +605,19 @@ class HereForkPoint:
 
 @dataclass(frozen=True, slots=True)
 class SettingPreview:
-    """A setting a reader is trying on one control, while the run keeps the setting in force.
+    """A setting a reader is trying on one control, while the run keeps its current setting.
 
-    A pointer drag on a slider makes one, and its release ends it
-    (`PL-5B1N`). It is a question, not a change. Nothing records it, and
-    nothing applies it. `SimulationController.preview_window` reads it to
+    A pointer drag on a slider creates one, and releasing the drag ends it
+    (`PL-5B1N`). It asks a question and changes nothing. Nothing records it,
+    and nothing applies it. `SimulationController.preview_window` reads it to
     draw the trajectory that the run would take if the setting were applied
-    where the run stands now. The run itself keeps the setting in force until
+    where the run stands now. The run itself keeps its current setting until
     the drag is released.
 
     Attributes:
         control: The control being dragged.
-        value: Where the slider stands, in the control's own unit: litres per
-            minute for a flow, and percent of one atmosphere for the dial.
+        value: The slider's current value, in the control's own unit: litres
+            per minute for a flow, and percent of one atmosphere for the dial.
             `SimulationController.preview_settings` builds the checked type
             from it, so a value the core refuses is refused there.
     """
@@ -653,9 +653,9 @@ class SimulationController:
         self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
-        # The last preview's settings, kept so that a drag held while the run
-        # plays builds them once rather than on every frame. The key names
-        # everything they are a function of (`preview_settings`).
+        # The last preview's settings, cached so that a drag held while the run
+        # plays builds them once rather than on every frame. The cache key
+        # contains every input the settings depend on (`preview_settings`).
         self._preview_memo: (
             tuple[tuple[str, UptakeEquationSettings, SettingPreview], UptakeEquationSettings] | None
         ) = None
@@ -2674,17 +2674,18 @@ class SimulationController:
         """Return the settings this run would continue under if `preview` were applied now.
 
         The settings are built the way a branch builds its own (`_branch_from`).
-        A trial run is built from the settings in force, and is checked to
-        hold every value this run holds (`_disagreements_with`). Then the
+        A trial run is built from the settings in force. It is then checked to
+        have every value this run has (`_disagreements_with`). Then the
         previewed value goes through the trial's own setter. So the value is
-        checked by the same core setter that would apply it, and a cardiac
-        output moves every tissue flow exactly as applying it would. This run
-        is not touched. The trial is a separate object, and it is discarded.
+        checked by the same core setter that would apply it. A change of cardiac
+        output also changes every tissue blood flow, exactly as applying it
+        would. This run is not touched. The trial is a separate object, and it
+        is discarded.
 
-        The result for the last preview is kept, because a drag asks for the
-        same settings on every frame while the run plays. It is keyed on the
-        agent, the settings in force and the preview, so it cannot be returned
-        for anything else.
+        The result for the last preview is cached, because a drag asks for the
+        same settings on every frame while the run plays. The cache is keyed on
+        the agent, the settings in force and the preview, so it cannot be
+        returned for anything else.
 
         Args:
             preview: The control and the value the reader is trying.
@@ -2695,7 +2696,7 @@ class SimulationController:
         Raises:
             SimulationConfigurationError: If this run has stopped, if the
                 core refuses the value, or if the trial run was rebuilt with a
-                value this run does not hold.
+                value this run does not have.
         """
 
         self._refuse_a_setting_on_a_stopped_run(preview.control)
@@ -2746,12 +2747,13 @@ class SimulationController:
         **This is a prediction, and it is computed as one.** `RunDefinition`
         refuses to evaluate past the time the run has reached, because a value
         there would be a prediction drawn as if it were the run. So the
-        prediction is a second definition, opened at the run's reach from the
-        run's canonical state there, under `preview_settings(preview)`. It uses
-        the same governing equations, the same model version and the same
-        state, and it is deterministic. Nothing of this run is written: its
-        definition is only read through `state_at`, the canonical path that a
-        branch opens from (`docs/MODEL.md` § "The canonical evaluation rule").
+        prediction comes from a second definition. That definition starts at
+        the run's reach, from the run's canonical state at that instant, and
+        runs under `preview_settings(preview)`. It uses the same governing
+        equations, the same model version and the same state, and it is
+        deterministic. Nothing in this run is written. Its definition is only
+        read, through `state_at`, which is also the canonical path that a
+        branch starts from (`docs/MODEL.md` § "The canonical evaluation rule").
 
         The window is evaluated on the same grid as `drawn_window`, from the
         same axis, so the prediction is drawn at the run's own resolution. It
@@ -2772,8 +2774,8 @@ class SimulationController:
             is empty where the axis ends at or before the reach.
 
         Raises:
-            SimulationConfigurationError: As `drawn_window` for the axis, and
-                as `preview_settings` for the preview.
+            SimulationConfigurationError: As `drawn_window` raises it for the
+                axis, and as `preview_settings` raises it for the preview.
         """
 
         spacing_s = _axis_spacing_s(start_s, stop_s, columns)

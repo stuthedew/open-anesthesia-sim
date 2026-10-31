@@ -303,7 +303,7 @@ def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: Ru
 
 
 def preview_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: RunCount) -> QPen:
-    """The pen one run's preview of a compartment is drawn with (`chart_frame.preview_trace_style`).
+    """Return the pen for one run's preview of a compartment (`chart_frame.preview_trace_style`).
 
     Args:
         quantity: Which compartment.
@@ -371,11 +371,12 @@ def _wash_in_pen(
 
 
 def _wash_in_preview_pen(run_index: RunIndex, run_count: RunCount) -> QPen:
-    """The pen one run's predicted F_A/F_I is drawn with, thinner than any run's own.
+    """Return the pen for one run's predicted F_A/F_I, thinner than any run's own.
 
-    The width is taken from the lone run's width, for the reason
-    `chart_frame.preview_trace_style` gives: in compare mode a preview must not
-    be wider than the other run's real trace inside its region.
+    The width is based on the width used when only one run is drawn, for the
+    reason that `chart_frame.preview_trace_style` gives. In compare mode, a
+    preview must not be wider than the other run's real trace inside its
+    region.
 
     Raises:
         ValueError: As `_wash_in_pen`.
@@ -752,11 +753,12 @@ def _place_branch_point(mark: Any, time_s: float | None) -> None:
 class _PreviewMarks:
     """One run's preview region and its label on one plot, hidden until a drag is held.
 
-    The region runs from the run's reach to the axis's right edge, under
-    every trace, as the MAC-awake band is drawn. Its left edge is a stroke at
-    the reach, where the run stands now. The label sits inside it, at the top,
-    in the hover's box, so a screenshot taken during a drag says in words that
-    the curves there did not happen (`PL-5B1N`).
+    The region runs from the run's reach to the axis's right edge. It is drawn
+    beneath every trace, as the MAC-awake band is. Its left edge is a stroke at
+    the reach, where the run stands now. The label sits inside the region, at
+    the top, in the same kind of box as the hover's text. So a screenshot
+    taken during a drag says in words that the curves there did not happen
+    (`PL-5B1N`).
     """
 
     def __init__(self, item: Any) -> None:

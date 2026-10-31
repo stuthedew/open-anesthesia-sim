@@ -352,10 +352,10 @@ OFF_SCALE_NOTICE_TEMPLATE: Final = (
 
 # Added to the off-scale notice when a preview goes above the top of the plot.
 # The readouts give the run's values, not the preview's, and the hover never
-# answers from a preview. So this sentence gives each clipped prediction's
-# highest value in the window itself. Dragging sevoflurane's dial toward 8% is
-# the commonest preview, and without it the clipped curve reads as a predicted
-# plateau at the axis top (`PL-5B1N`).
+# shows a preview's values. So this sentence states each clipped prediction's
+# highest value in the window. Dragging sevoflurane's dial toward 8% is the
+# commonest preview. Without this sentence, the clipped curve could be
+# mistaken for a predicted plateau at the top of the axis (`PL-5B1N`).
 PREVIEW_OFF_SCALE_NOTICE_TEMPLATE: Final = (
     "The preview goes above the top of the plot and is cut off at {top}. "
     "Highest predicted values in view: {peaks}."
@@ -1333,11 +1333,12 @@ def preview_label(
 
     A preview is a trajectory the run would take under a setting the learner
     is dragging and has not applied (`PL-5B1N`). A screenshot taken during the
-    drag must not read as a run that happened, so the plot says so in words as
-    well as by the region and the thinner curves. The label names the control
-    and the value tried, in the slider's own words (`_setting_words`), and
-    says that it is not applied. Where more than one run is drawn, it names
-    the run too, because each run has its own controls.
+    drag must not be mistaken for a run that happened. So the plot says in
+    words that it is a preview, as well as through the region and the thinner
+    curves. The label names the control and the value tried, in the slider's
+    own words (`_setting_words`), and says that the value is not applied.
+    Where more than one run is drawn, it names the run too, because each run
+    has its own controls.
 
     Args:
         control: The control being dragged.

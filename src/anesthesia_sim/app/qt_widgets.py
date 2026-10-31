@@ -887,17 +887,17 @@ class ParameterSlider(QWidget):
 
     **A pointer drag applies on release, and previews until then**
     (`PL-5B1N`, project owner, 2026-09-27, ratified). While the thumb is held,
-    the run keeps the setting in force, and the slider reports where the
-    thumb stands through `preview_moved`, so the chart can draw the
-    trajectory that setting would give. Releasing the thumb applies the value
-    through `value_changed`, once, and then ends the preview through
-    `preview_ended`. That order lets the frame drawn at the release show the
-    run under its new setting and no preview. Qt itself would apply the value
-    only after `sliderReleased`, so `_on_thumb_released` applies it first. A
-    key press, a wheel step or a click on the groove is one discrete input,
-    so it applies at once and previews nothing. Qt's
-    tracking is switched off to give exactly that split: `valueChanged`
-    fires on release for a drag and at once for every other input.
+    the run keeps its current setting. The slider reports where the thumb
+    stands through `preview_moved`, so the chart can draw the trajectory that
+    setting would give. Releasing the thumb applies the value once, through
+    `value_changed`, and then ends the preview through `preview_ended`. In
+    that order, the frame drawn at the release shows the run under its new
+    setting and no preview. Qt itself would apply the value only after
+    `sliderReleased`, so `_on_thumb_released` applies it first. A key press,
+    a wheel step or a click on the groove is one discrete input, so it
+    applies at once and previews nothing. Qt's slider tracking is switched
+    off to give exactly that split. With tracking off, `valueChanged` fires
+    on release for a drag and at once for every other input.
 
     Attributes:
         slider: The integer slider.
@@ -916,8 +916,8 @@ class ParameterSlider(QWidget):
             applies one: on releasing a dragged thumb, or at once for a key,
             a wheel step or a click on the groove. `set_setting` never emits
             it.
-        preview_moved: Emitted with the decoded value where the held thumb
-            stands, when it is pressed and each time it moves.
+        preview_moved: Emitted with the decoded value at the held thumb's
+            position, when the thumb is pressed and each time it moves.
         preview_ended: Emitted when the held thumb is released, after
             `value_changed` has applied the value.
     """
@@ -974,9 +974,9 @@ class ParameterSlider(QWidget):
     def set_setting(self, setting: SettingReadout) -> None:
         """Write the range, position and text from this tick's setting.
 
-        The slider's signals are blocked while it is written, so a value
-        that came *from* the snapshot is never applied back to it: that
-        would record a control change the reader did not make.
+        The slider's signals are blocked while it is written. So a value that
+        came *from* the snapshot is never sent back to the run as a new
+        setting, which would record a control change the reader did not make.
 
         The position is not written while the thumb is held. The run keeps its
         setting during a drag, so writing it would pull the thumb back from

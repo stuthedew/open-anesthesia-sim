@@ -1878,10 +1878,11 @@ def _previewing(
 def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     """The preview is the trajectory the run takes if the dragged value is applied now.
 
-    The expected values come from a twin run with the same history that
-    really applies the value and is advanced past it (`.claude/rules/test-oracles.md`
-    rule 2). The preview is drawn from a second definition, so the two agree
-    to floating-point composition error, not bit for bit (`PL-5B1N`).
+    The expected values come from a twin run with the same history. The twin
+    really applies the value and is advanced past it
+    (`.claude/rules/test-oracles.md` rule 2). The preview is drawn from a
+    second definition, so the two agree to within floating-point composition
+    error, not bit for bit (`PL-5B1N`).
     """
 
     previewed, applied = _run(300.0), _run(300.0)

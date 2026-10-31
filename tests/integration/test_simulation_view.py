@@ -1518,7 +1518,7 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
 
 
 def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QApplication) -> None:
-    """`PL-R2YM`: moving a held thumb defers its frames, and the release draws one.
+    """Moving a held thumb defers its frames, and the release draws one at once (`PL-R2YM`).
 
     The thumb's moves only redraw the preview, so they wait for the render
     tick like any dragged slider. The release is one discrete action, and it
