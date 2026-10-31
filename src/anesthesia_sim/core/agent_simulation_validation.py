@@ -268,6 +268,12 @@ class AgentSimulationValidator:
         always this validator's own. The earlier signature accepted another
         validator's result and silently let it pass. It would also have named
         that other period's totals in the halt message (`PL-X204`).
+
+        The one caller, `AgentUptakeSystem.advance()`, rolls the step back on
+        this error. So the error message presents the failing totals as the
+        rejected step's totals, and the error carries the failing check as
+        `check`. The run's own accounting no longer holds those totals after
+        the rollback, so the interface reads them from the error (`PL-HF4B`).
         """
 
         check = self.check_agent_accounting(currently_stored_agent_l)
@@ -276,7 +282,8 @@ class AgentSimulationValidator:
             return check
 
         raise AgentSimulationValidationError(
-            "Agent accounting validation failed: "
+            "Agent accounting validation failed, so the step was rejected and rolled back. "
+            "The rejected step's totals: "
             f"unaccounted={check.unaccounted_agent_l:.6e} L, "
             f"absolute_error={check.absolute_error_l:.6e} L, "
             f"relative_error={check.relative_error:.6e}, "
@@ -284,7 +291,8 @@ class AgentSimulationValidator:
             f"delivered={check.delivered_agent_l:.6e} L, "
             f"exhausted={check.exhausted_agent_l:.6e} L, "
             "currently_stored="
-            f"{check.currently_stored_agent_l:.6e} L"
+            f"{check.currently_stored_agent_l:.6e} L",
+            check=check,
         )
 
     def capture_state(self) -> AgentSimulationValidatorState:
@@ -330,3 +338,32 @@ class AgentSimulationValidator:
         self.exhausted_agent_l = 0.0
         self.delivered_compensation_l = 0.0
         self.exhausted_compensation_l = 0.0
+
+
+def rejected_check(error: AgentSimulationValidationError) -> AgentSimulationValidationResult | None:
+    """Return the failing check that an accounting error carries, or None where it carries none.
+
+    `AgentSimulationValidationError` holds its check as `object`, because
+    `core/exceptions.py` imports nothing from the core. This function gives the
+    check back its type, for the interface that shows it (`PL-HF4B`).
+
+    Args:
+        error: The error that `require_valid_agent_accounting` raised.
+
+    Returns:
+        The rejected step's check, or None.
+
+    Raises:
+        TypeError: If the error carries something other than a check, which
+            no code in this package does.
+    """
+
+    check = error.check
+
+    if check is None or isinstance(check, AgentSimulationValidationResult):
+        return check
+
+    raise TypeError(
+        f"an AgentSimulationValidationError carries {type(check).__name__}, but its check "
+        "must be an AgentSimulationValidationResult or None"
+    )

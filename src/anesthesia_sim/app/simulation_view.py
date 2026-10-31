@@ -804,7 +804,12 @@ class SimulationView(QWidget):
             The view built for it.
         """
 
-        run = RunView(controller, self, run_id=self._run_identities.mint())
+        run = RunView(
+            controller,
+            self,
+            run_id=self._run_identities.mint(),
+            branch_control=self._case is not None,
+        )
 
         if not self._runs:
             # Only a restart of the first run starts a new case. A branch's

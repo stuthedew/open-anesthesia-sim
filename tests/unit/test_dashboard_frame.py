@@ -25,7 +25,7 @@ import json
 import math
 import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib.resources import files
 from typing import Any
 
@@ -102,6 +102,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_COMPARTMENT_VALUE,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
+    WITHHELD_ACCOUNTING,
     BookmarkPanel,
     BranchAtStake,
     ComparedRuns,
@@ -134,6 +135,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readouts,
     refused_reset_exit,
     refused_setting_notice,
+    rejected_step_accounting,
     run_label,
     run_statement,
     setting_readouts,
@@ -180,8 +182,13 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
 )
 from anesthesia_sim.core import uptake_system
+from anesthesia_sim.core.agent_simulation_validation import (
+    AgentSimulationValidationResult,
+    AgentSimulationValidator,
+)
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
@@ -353,6 +360,7 @@ def _snapshot(
     delivered_agent_l: float = 0.012345,
     exhausted_agent_l: float = 0.002345,
     stored_agent_l: float = 0.01,
+    rejected_accounting: AgentSimulationValidationResult | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot, defaulting MAC and MAC-awake from the named agent's data file.
 
@@ -413,6 +421,7 @@ def _snapshot(
         bookmark_standings=_unreached(BookmarkSet() if bookmarks is None else bookmarks),
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
+        rejected_accounting=rejected_accounting,
     )
 
 
@@ -702,7 +711,12 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
         "outside 0 to 1, the range a fraction of one atmosphere takes "
         '(docs/MODEL.md, "Concentrations")'
     )
-    status = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=reason)
+    status = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=reason,
+        rejected_accounting=None,
+    )
 
     banner = halt_notice(status)
 
@@ -722,6 +736,42 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
     assert "The values shown are the last completed step" in drawn
 
 
+def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withheld() -> None:
+    """After a Reset or an agent change, the last frame drawn belongs to the discarded run.
+
+    `RunView.present_halt` then withholds the readouts. So the banner must not
+    say that they show the last frame drawn, as it did until the adversarial
+    review of `PL-J5GC`. The supported run length keeps its wording, because a
+    run that has just started over has not reached it.
+    """
+
+    failed = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="RuntimeError: boom",
+        rejected_accounting=None,
+    )
+
+    banner = halt_notice(failed, started_over=True)
+
+    assert banner == (
+        "Simulation stopped — RuntimeError: boom. No frame has been drawn since the run "
+        "started over: the readouts are withheld, the chart still shows the run before it "
+        "started over, and the run itself stands at its last completed step. Reset to start "
+        "a new run."
+    )
+    assert halt_notice(failed) != banner
+
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason="supported run length",
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+
+    assert halt_notice(at_limit, started_over=True) == halt_notice(at_limit)
+
+
 def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     """A `RunStatus`, which carries no compartment value, decides the three halt widgets.
 
@@ -734,11 +784,23 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
 
     limit = "this run has reached 86400 s of simulated time"
     failed = RunStatus(
-        is_running=False, supported_limit_reason=None, failure_reason="TypeError: boom"
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="TypeError: boom",
+        rejected_accounting=None,
     )
-    at_limit = RunStatus(is_running=False, supported_limit_reason=limit, failure_reason=None)
-    paused = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=None)
-    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason=limit,
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+    paused = RunStatus(
+        is_running=False, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
 
     assert isinstance(_snapshot(), RunStatus)
     assert status_word(failed).text == "Stopped — simulation error"
@@ -841,13 +903,21 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
         "the venous balance returns what the tissues receive, so the two must agree"
     )
     this_refusal = f"SimulationConfigurationError: {error}"
-    refusal = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=this_refusal)
+    refusal = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=this_refusal,
+        rejected_accounting=None,
+    )
     earlier = RunStatus(
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationNumericalError: boom",
+        rejected_accounting=None,
     )
-    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
 
     first = refused_reset_exit(error, recorded_failure_reason=None)
     pressed_again = refused_reset_exit(error, recorded_failure_reason=this_refusal)
@@ -884,6 +954,82 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     # And a run that is not stopped has no banner for an exit to end.
     assert notice(running, None, refused_reset=first) is None
     assert halt_notice(running, refused_reset=first) is None
+
+
+def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() -> None:
+    """A stopped run states a refused dial in place of its exit, followed by its own way out.
+
+    A stopped run refuses every dial (`PL-3B34`), and a stopped run outranks a
+    refused setting, so the refusal is stated inside the stopped run's banner.
+    The supported run length sends the reader to a branch at an earlier
+    instant or to Reset, but names the branch only while one can be taken. A
+    failure keeps Reset as its way out, even where a branch could be taken.
+    After a refused Reset, closing the application is the only way out, so the
+    refusal follows that exit. A running run's refusal is unchanged. The
+    expected sentences are literals rather than the module's constants.
+    """
+
+    refused = "Setting refused — the cardiac output setting cannot be changed on a stopped run"
+    failed = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="SimulationNumericalError: boom",
+        rejected_accounting=None,
+    )
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason="reached 86400 s of simulated time",
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
+    refused_reset = (
+        "Reset was refused for this reason. No setting can repair this, because only a fault "
+        "in the simulator causes it. Close and reopen the application to start a new run."
+    )
+    reset_keeps = "Reset to start a new run, which keeps every setting."
+    branch_or_reset = (
+        "To try a different setting, branch at an earlier instant, where each dial starts at "
+        "what it was set to then, or Reset to start a new run, which keeps every setting."
+    )
+
+    assert notice(failed, refused) == (
+        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
+        f"completed step. {refused}. {reset_keeps}"
+    )
+    assert notice(failed, refused, branch_offered=True) == notice(failed, refused)
+    assert halt_notice(failed, refused) == (
+        "Simulation stopped — SimulationNumericalError: boom. No frame of the stopped run "
+        "could be drawn: the chart and the readouts show the last frame drawn before it "
+        f"stopped, and the run itself stands at its last completed step. {refused}. "
+        f"{reset_keeps}"
+    )
+    assert notice(failed, refused, refused_reset=refused_reset) == (
+        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
+        f"completed step. {refused_reset} {refused}."
+    )
+    limit_banner = notice(at_limit, refused, branch_offered=True)
+    assert limit_banner is not None
+    assert limit_banner.endswith(f"inside the supported span. {refused}. {branch_or_reset}")
+    assert halt_notice(at_limit, refused, branch_offered=True) == limit_banner
+    # While no branch can be taken, the run at the supported run length names Reset alone.
+    no_branch = notice(at_limit, refused)
+    assert no_branch is not None
+    assert no_branch.endswith(f"inside the supported span. {refused}. {reset_keeps}")
+    assert halt_notice(at_limit, refused, branch_offered=False) == no_branch
+    assert halt_notice(at_limit, refused) == no_branch
+    reset_refused_at_limit = notice(at_limit, refused, refused_reset=refused_reset)
+    assert reset_refused_at_limit is not None
+    assert reset_refused_at_limit.endswith(f"inside the supported span. {refused_reset} {refused}.")
+    assert halt_notice(at_limit, refused, refused_reset=refused_reset) == reset_refused_at_limit
+    assert (notice(at_limit, None) or "").endswith(
+        "inside the supported span. Reset to start a new run."
+    )
+    assert notice(running, refused) == (
+        f"{refused}. The simulation is unchanged and still running its previous setting."
+    )
 
 
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
@@ -1037,7 +1183,12 @@ def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
 
 
 def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
-    """A stopped run describes everything on screen; a refusal describes one control."""
+    """A stopped run describes everything on screen, and a refusal describes one control.
+
+    So the banner opens with the stopped run. Since `PL-3B34` the refusal is
+    stated inside that banner, in place of its exit. It is never given the
+    wording of a refusal on a run that is still going.
+    """
 
     refused = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
     failed = _snapshot(failure_reason="SimulationNumericalError: boom")
@@ -1046,10 +1197,15 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     failure_banner = notice(failed, refused)
     limit_banner = notice(at_limit, refused)
 
-    assert failure_banner is not None and "boom" in failure_banner
-    assert limit_banner is not None and "supported run length" in limit_banner
-    assert "Setting refused" not in failure_banner
-    assert "Setting refused" not in limit_banner
+    assert failure_banner is not None
+    assert failure_banner.startswith("Simulation stopped — SimulationNumericalError: boom. ")
+    assert limit_banner is not None
+    assert limit_banner.startswith(
+        "Simulation stopped — this run reached the supported run length of "
+    )
+    for banner in (failure_banner, limit_banner):
+        assert "Setting refused — a value the core refused. " in banner
+        assert "still running its previous setting" not in banner
 
 
 def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:
@@ -2089,6 +2245,123 @@ def test_refresh_view_reports_failed_agent_accounting() -> None:
     assert panel.status.text == "Validation failed"
     assert panel.status.emphasis is Emphasis.WARNING
     assert "unaccounted agent" in panel.detail
+
+
+def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> None:
+    """After a step fails its accounting check, the panel shows that step's verdict and totals.
+
+    The core rolls the failed step back. So the snapshot's own accounting is the
+    restored step's, which passed, and the panel used to read "Valid" under a
+    banner saying the accounting had failed. That banner quoted the rejected
+    step's totals beside the panel's different restored ones (`PL-HF4B`). The
+    snapshot now carries the rejected step's check, and the panel shows it. The
+    expected amounts are worked out by hand from the transfers below: 4.24 L
+    delivered, 2.53 L exhausted and 1.1 L stored leave 0.61 L unaccounted.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=4.24, exhausted_agent_l=2.53)
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        validator.require_valid_agent_accounting(currently_stored_agent_l=1.1)
+
+    rejected = raised.value.check
+    assert rejected is not None
+    halted = _snapshot(
+        passes_validation=True,
+        delivered_agent_l=3.991974,
+        exhausted_agent_l=2.06,
+        stored_agent_l=1.9319,
+        failure_reason=f"AgentSimulationValidationError: {raised.value}",
+        rejected_accounting=rejected,
+    )
+
+    panel = accounting(halted)
+
+    assert panel.status.text == "Validation failed"
+    assert panel.status.emphasis is Emphasis.WARNING
+    assert "rolled back" in panel.detail
+    assert panel.amounts.splitlines()[:3] == [
+        "Delivered: 4.2 L",
+        "Exhausted: 2.5 L",
+        "Stored: 1.1 L",
+    ]
+    assert accounting(replace(halted, rejected_accounting=None)).status.text == "Valid", (
+        "the restored step passed its check, so only the rejected check can fail the panel"
+    )
+
+    banner = notice(halted, None)
+
+    assert banner is not None
+    assert "The rejected step's totals: " in banner
+    assert "delivered=4.240000e+00 L" in banner
+    assert "except the agent accounting panel, which shows the rejected step" in banner
+
+
+def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_in_litres() -> None:
+    """The unaccounted and absolute-error lines show the rejected step's residual in litres.
+
+    The check also records a relative error, which is a ratio and has no unit. In the
+    test above, the residual and the relative error lie between the same two powers of
+    ten. So a panel that showed the ratio on either line would still pass that test.
+    Here they lie between different powers of ten. The expected lines are worked out by
+    hand. 40.0 L delivered, 20.0 L exhausted and 14.0 L stored leave 6.0 L unaccounted,
+    which is less than 1e+01 L. The relative error is 6.0 / 40.0 = 0.15, which is less
+    than 1e+00 (test-strength review of `PL-J5GC`).
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=40.0, exhausted_agent_l=20.0)
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        validator.require_valid_agent_accounting(currently_stored_agent_l=14.0)
+
+    rejected = raised.value.check
+    assert rejected is not None
+
+    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
+        "Unaccounted: <1e+01 L",
+        "Absolute error: <1e+01 L",
+    ]
+
+
+def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing amount line raises, rather than leaving the last name off the panel."""
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=40.0, exhausted_agent_l=20.0)
+    check = validator.check_agent_accounting(currently_stored_agent_l=14.0)
+    monkeypatch.setattr(
+        "anesthesia_sim.app.dashboard_frame.ACCOUNTING_AMOUNT_NAMES",
+        ("Delivered", "Exhausted", "Stored", "Unaccounted"),
+    )
+
+    with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is longer than argument 1$"):
+        rejected_step_accounting(check)
+
+
+def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None:
+    """After the run starts over, the panel shows no verdict and no amount until a frame is drawn.
+
+    `RunView.present_halt` shows this panel on a halt when no frame has been drawn
+    since a Reset or an agent change. The integration tests compare the panel with
+    this same constant, so only this test states the text that the panel must show.
+    A verdict or an amount here would describe the discarded run (blind and
+    adversarial reviews of `PL-J5GC`).
+    """
+
+    assert WITHHELD_ACCOUNTING.status.text == "—"
+    assert WITHHELD_ACCOUNTING.status.emphasis is Emphasis.MUTED
+    assert WITHHELD_ACCOUNTING.detail == "No frame has been drawn since the run started over."
+    assert WITHHELD_ACCOUNTING.amounts.splitlines() == [
+        "Delivered: —",
+        "Exhausted: —",
+        "Stored: —",
+        "Unaccounted: —",
+        "Absolute error: —",
+    ]
 
 
 def test_the_accounting_unit_caption_names_litres_of_agent_gas() -> None:

@@ -59,6 +59,7 @@ from anesthesia_sim.app.controller import (
     RunStatus,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -86,6 +87,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -192,12 +194,12 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 # The three notice banners, in precedence order. The stopped-run wording says
 # what the values *are* rather than warning about them. Rolling the failed
 # step back is what made that possible (`PL-026`). Whether a step was rolled
-# back is for the failure itself to say, and `SimulationNumericalError`'s
+# back is for the failure's own message to say, and `SimulationNumericalError`'s
 # message does say it. The banner no longer says it of every failure, because
-# a setting that raised (`PL-YK2V`) and a displayed value that the interface
-# rejected (`PL-7DJK`) failed no step. The run-length wording does not reuse
-# the failure's wording. Nothing failed and nothing was rolled back, and
-# describing a correct model as a broken one is the safety defect that
+# a setting that raised an exception (`PL-YK2V`) and a displayed value that the
+# interface rejected (`PL-7DJK`) failed no step. The run-length wording does not
+# reuse the failure's wording, because nothing failed and nothing was rolled
+# back. Describing a correct model as a broken one is the safety defect that
 # `CLAUDE.md` names (`PL-Y5WR`). The wording says why the limit exists, because
 # a boundary given with no reason looks like an arbitrary restriction.
 #
@@ -205,38 +207,97 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 # that is `RESET_EXIT_TEXT`, because Reset is the only way out of a stopped
 # run. When Reset itself was refused, `refused_reset_exit` names the other way
 # out instead. Sending a reader back to the control that was just refused
-# would be an instruction that the screen already knows cannot be followed
-# (`PL-M4M0`). The run-length wording keeps its own Reset line. A refused Reset
+# would give an instruction that the screen already knows cannot be followed
+# (`PL-M4M0`). The run-length wording ends with `{exit}` too. A refused Reset
 # halts the run as a failure, and a failure outranks the limit, so the
-# run-length banner never needs another exit.
+# run-length banner never names the refused-Reset exit. Its exit changes only
+# when a dial was moved on the stopped run, as the comment above
+# `STOPPED_RUN_SETTING_EXIT_TEMPLATE` says.
 RESET_EXIT_TEXT: Final = "Reset to start a new run."
 FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step. {exit}"
 )
-# The failure banner as `RunView.present_halt` writes it, before any frame of
-# the stopped run has been drawn. At that point the chart and the readouts
-# still show the frame drawn before the stop, which is not the step the run
-# stopped at. So "the values shown are the last completed step" would be the
-# stale-state misreading that the hazard table names. `refresh` replaces this
-# banner with `FAILURE_NOTICE_TEMPLATE` on the first frame that draws. Which of
-# the two banners is shown is therefore decided by whether a frame drew, not
+# The failure banner after a step whose agent accounting failed its check, for a
+# frame that drew. The core rolled the step back, so the readouts and the chart
+# show the last completed step. The accounting panel shows the rejected step's
+# verdict and totals instead, because the restored step passed its check
+# (`PL-HF4B`). So this banner names the panel as the one exception to "the last
+# completed step". The wording is a placeholder.
+REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
+    "except the agent accounting panel, which shows the rejected step. {exit}"
+)
+# The failure banner that `RunView.present_halt` writes before any frame of the
+# stopped run has been drawn. At that point the chart and the readouts still show
+# the frame drawn before the stop, which is not the step the run stopped at. So
+# "the values shown are the last completed step" would be the stale-state
+# misreading that the hazard table in `docs/MODEL.md` names. `refresh` replaces
+# this banner with `FAILURE_NOTICE_TEMPLATE` on the first frame that draws. Which
+# of the two banners is shown is therefore decided by whether a frame drew, not
 # guessed from the reason (`PL-7DJK`).
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
     "the chart and the readouts show the last frame drawn before it stopped, and the "
     "run itself stands at its last completed step. {exit}"
 )
+# The failure banner for a halt when no frame has been drawn since the run started
+# over after a Reset or an agent change. The last frame then belongs to the run
+# before the restart. So `RunView.present_halt` withholds the readouts and their
+# clock, and the banner says so rather than calling them the last frame drawn.
+# Only a frame writes the chart, so the chart is not withheld, and the banner says
+# whose frame it still shows (adversarial review of `PL-J5GC`). The wording is a
+# placeholder.
+STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. No frame has been drawn since the run "
+    "started over: the readouts are withheld, the chart still shows the run before it "
+    "started over, and the run itself stands at its last completed step. {exit}"
+)
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
     "This model leaves out metabolism, and its fat flow is uncertain. How far the "
     "slow part of the trace can stray from a patient grows as a run goes on, so the "
     "model is not claimed to represent a patient past this span. The values shown "
-    "are the last completed step, inside the supported span. Reset to start a new run."
+    "are the last completed step, inside the supported span. {exit}"
 )
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
+
+# The way out that a stopped run's banner names after a dial was moved on that run.
+# The controller refuses every setting on a stopped run, so the dial springs back
+# to the setting the run holds
+# (`SimulationController._refuse_a_setting_on_a_stopped_run`, `PL-3B34`). Without a
+# sentence to explain it, the refusal would look like a dial that moves and returns
+# for no stated reason. A stopped run outranks a refused setting, so the refusal is
+# stated inside the stopped run's banner, in place of its exit. That run's own way
+# out to a new setting follows the refusal.
+#
+# The two stopped states have different ways out (project owner, 2026-10-26). The
+# supported run length is the expected end of a long run, so its way out can be a
+# branch opened at an earlier instant. Such a branch can take a different setting,
+# and each of its dials starts at what it was set to at that instant
+# (`_branch_from`). A failure is a fault, so Reset stays its way out. Reset keeps
+# every setting (`SimulationController.reset`), and the banner says so, because a
+# reader could expect Reset to restore the defaults. When Reset itself was refused,
+# the banner already names closing the application, which is the only way out left.
+# So the refusal follows that exit and adds no other. A refusal made while the run
+# was still going is kept until a setting is accepted, as on a running run, so it
+# can appear here too. The way out that it is given is still correct. The wording
+# is a placeholder.
+#
+# The banner names a branch only while a branch can be taken from this run. No
+# branch can be taken while two runs are compared, because the branch control is
+# locked then (`fork_offer`). Nor can one be taken from a run whose `fork_refusal`
+# gives a reason. Naming the branch there would send the reader to a control that
+# the screen has replaced with its lock caption. So the run at the supported run
+# length then names only Reset, as a failed run does (blind review of `PL-3B34`).
+STOPPED_RUN_SETTING_EXIT_TEMPLATE: Final = "{refused}. {way_out}"
+SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT: Final = (
+    "To try a different setting, branch at an earlier instant, where each dial starts at "
+    "what it was set to then, or Reset to start a new run, which keeps every setting."
+)
+RESET_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every setting."
 
 # The way out when Reset itself was refused, in the two wordings that
 # `refused_reset_exit` chooses between. Reset is refused only for a settings
@@ -736,7 +797,25 @@ ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
 ACCOUNTING_INITIAL_DETAIL_TEXT: Final = "No unaccounted agent detected."
 ACCOUNTING_VALID_DETAIL_TEXT: Final = "The simulation still accounts for all delivered agent."
 ACCOUNTING_FAILED_DETAIL_TEXT: Final = "The simulation has detected unaccounted agent."
+# The detail line after a step whose accounting failed its check. That step was
+# rolled back, and the panel shows its totals, the ones the check judged
+# (`PL-HF4B`). The wording is a placeholder.
+ACCOUNTING_REJECTED_DETAIL_TEXT: Final = (
+    "A step failed this check and was rolled back. The amounts below are that step's."
+)
+# The detail line while the panel withholds what it last showed. The panel does so
+# during a halt when no frame has been drawn since the run started over
+# (`WITHHELD_ACCOUNTING`). The wording is a placeholder.
+ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run started over."
 ACCOUNTING_UNIT_CAPTION: Final = "Litres of equivalent pure agent gas"
+#: The names of the panel's five amount lines, in the order the panel shows them.
+ACCOUNTING_AMOUNT_NAMES: Final = (
+    "Delivered",
+    "Exhausted",
+    "Stored",
+    "Unaccounted",
+    "Absolute error",
+)
 
 # The transport row's labels, and the two selector captions beside it.
 START_LABEL: Final = "Start"
@@ -1105,13 +1184,21 @@ WIDEST_COMPARTMENT_SECONDARY: Final = max(
     ),
     key=len,
 )
-#: The text that a readout card shows instead of its ×MAC number during a halt that
-#: follows an agent change. The card still holds the last frame's value, divided by
-#: the old agent's MAC, while the 1 MAC line already states the new agent's 1 MAC
-#: (`PL-6RJ0`). The text keeps the ×MAC unit, so the card's line still says which
-#: value is missing. It is shorter than `WIDEST_COMPARTMENT_SECONDARY`, so the card
-#: does not resize.
+#: The two lines that a readout card shows instead of its values during a halt when no
+#: frame has been drawn since the run started over. The card was last written for the
+#: run before the Reset or the agent change. After an agent change, its percent is the
+#: old agent's concentration, and its ×MAC multiple was divided by that agent's MAC.
+#: The heading and the 1 MAC line above the cards already name the new agent
+#: (`PL-6RJ0`, `PL-J5GC`). Each text keeps its unit, so the card still says which
+#: value is missing. Each text is shorter than the widest string that its line
+#: reserves, so the card does not resize.
+WITHHELD_CONCENTRATION_TEXT: Final = f"\u2014{DisplayUnit.CONCENTRATION.label}"
 WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
+#: The clock's value line during the same halt. The clock states the instant of
+#: the cards beside it, so it is withheld with them. Until the adversarial review
+#: of `PL-J5GC`, the clock showed the discarded run's instant beside a run standing
+#: at its opening.
+WITHHELD_ELAPSED_TIME_TEXT: Final = "\u2014"
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
@@ -1597,13 +1684,19 @@ def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | N
 
 
 def notice(
-    status: RunStatus, rejected_setting_notice: str | None, *, refused_reset: str | None = None
+    status: RunStatus,
+    rejected_setting_notice: str | None,
+    *,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
 ) -> str | None:
     """Return the banner for a frame that drew: a stopped run, a refused setting, or nothing.
 
     A stopped run outranks a refused setting, because it describes the state
     of everything else on screen, while a refusal describes only one control.
-    A failure in turn outranks the supported run length.
+    A failure in turn outranks the supported run length. A setting refused on
+    a stopped run is stated inside the stopped run's banner, in place of its
+    exit (`_stopped_run_exit`, `PL-3B34`).
 
     `RunView.refresh` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
@@ -1622,18 +1715,38 @@ def notice(
             otherwise names Reset as the way out. It is None while Reset is
             the way out. The run's view keeps it, for the same reason as the
             refused setting.
+        branch_offered: Whether a branch can be taken from this run now, as
+            `RunView` reads it. A setting refused at the supported run length
+            names a branch as its way out only while this is True. It is False
+            by default, so when a caller leaves it out, the banner names only
+            Reset, which is always offered.
 
     Returns:
         The banner text, or None when there is nothing to say.
     """
 
     if status.failure_reason is not None:
-        return FAILURE_NOTICE_TEMPLATE.format(
-            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+        template = (
+            FAILURE_NOTICE_TEMPLATE
+            if status.rejected_accounting is None
+            else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
+        )
+        return template.format(
+            failure_reason=status.failure_reason,
+            exit=_stopped_run_exit(
+                rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
+            ),
         )
 
     if status.supported_limit_reason is not None:
-        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
+        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
+            run_length=format_supported_run_length(),
+            exit=_stopped_run_exit(
+                rejected_setting_notice,
+                refused_reset,
+                setting_way_out=_supported_limit_setting_way_out(branch_offered),
+            ),
+        )
 
     if rejected_setting_notice is not None:
         return REFUSED_SETTING_NOTICE_TEMPLATE.format(refused=rejected_setting_notice)
@@ -1641,7 +1754,14 @@ def notice(
     return None
 
 
-def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str | None:
+def halt_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None = None,
+    *,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+    started_over: bool = False,
+) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
     `RunView.present_halt` writes this banner from the run's status alone,
@@ -1655,29 +1775,106 @@ def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str |
     therefore decided by whether a frame drew, never guessed from the reason
     (`PL-7DJK`). The supported run length keeps its single wording, because
     nothing is wrong with the state it stops on, and the frame that follows
-    draws. A refused setting is not a halt and has no banner here.
+    draws. A refused setting is not a halt, so it has a banner here only
+    inside a stopped run's, as in `notice`.
 
     Args:
         status: The run's status, as `SimulationController.status()` gives
             it. It is read without building any compartment value, which is
             the whole reason this function takes a status rather than a
             snapshot.
+        rejected_setting_notice: As `notice` takes it. A dial moved on a run
+            whose frame is refused springs back and is stated here.
         refused_reset: As `notice` takes it: the way out while Reset itself
             was refused, or None while Reset is the way out.
+        branch_offered: As `notice` takes it: whether a branch can be taken
+            from this run now.
+        started_over: Whether the run has started over, by a Reset or an
+            agent change, since its last frame was drawn. A failure then uses
+            `STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE`, because the
+            readouts are withheld rather than showing the last frame. A run
+            that has started over has not reached the supported run length,
+            so that wording does not change.
 
     Returns:
         The banner text, or None when the run is not halted.
     """
 
     if status.failure_reason is not None:
-        return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(
-            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+        template = (
+            STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+            if started_over
+            else UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        )
+        return template.format(
+            failure_reason=status.failure_reason,
+            exit=_stopped_run_exit(
+                rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
+            ),
         )
 
     if status.supported_limit_reason is not None:
-        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
+        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
+            run_length=format_supported_run_length(),
+            exit=_stopped_run_exit(
+                rejected_setting_notice,
+                refused_reset,
+                setting_way_out=_supported_limit_setting_way_out(branch_offered),
+            ),
+        )
 
     return None
+
+
+def _supported_limit_setting_way_out(branch_offered: bool) -> str:
+    """Return the sentence that names the way out to a new setting from a stopped run.
+
+    The run stopped because it reached the supported run length. The sentence
+    names a branch at an earlier instant only while one can be taken, and Reset
+    otherwise. A failed run's way out is always Reset.
+    """
+
+    return SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT if branch_offered else RESET_SETTING_WAY_OUT_TEXT
+
+
+def _stopped_run_exit(
+    rejected_setting_notice: str | None, refused_reset: str | None, *, setting_way_out: str
+) -> str:
+    """Return the closing sentences of a stopped run's banner, for `notice` and `halt_notice`.
+
+    The exit is the sentence that names the way out. It is `RESET_EXIT_TEXT`
+    unless something on the stopped run was refused. When Reset was refused,
+    `refused_reset` replaces it. When a setting was refused on the stopped run,
+    the closing sentences state the refused setting in place of the exit. They
+    follow it with `setting_way_out`, the run's own way out to a new setting.
+    When Reset was refused as well, the refused setting comes after the
+    `refused_reset` exit instead, because closing the application is then the
+    only way out. The comment above `STOPPED_RUN_SETTING_EXIT_TEMPLATE` gives
+    the reasons for these choices.
+
+    Args:
+        rejected_setting_notice: The text from `refused_setting_notice`, or
+            None while no setting is refused.
+        refused_reset: The sentence from `refused_reset_exit`, or None while
+            Reset is the way out.
+        setting_way_out: The sentence that names the way out to a new
+            setting. The caller chooses it, because the caller knows which of
+            the two kinds of stop ended the run: reaching the supported run
+            length, or a failure.
+
+    Returns:
+        The banner's closing sentences.
+    """
+
+    if rejected_setting_notice is None:
+        return refused_reset or RESET_EXIT_TEXT
+
+    if refused_reset is not None:
+        return f"{refused_reset} {rejected_setting_notice}."
+
+    return STOPPED_RUN_SETTING_EXIT_TEMPLATE.format(
+        refused=rejected_setting_notice, way_out=setting_way_out
+    )
 
 
 class HaltDisposition(StrEnum):
@@ -1738,12 +1935,23 @@ class Accounting:
 def accounting(snapshot: SimulationSnapshot) -> Accounting:
     """The agent-accounting panel for one snapshot.
 
+    The verdict and the amounts always come from one step. After a step whose
+    accounting failed its check, the core rolls that step back, and the
+    snapshot's own accounting describes the restored step, which passed. The
+    panel then shows the rejected step's check, which the snapshot carries as
+    `rejected_accounting`. Showing "Validation failed" beside the restored
+    totals would pair a verdict with totals it never judged (`PL-HF4B`,
+    `PL-J5GC`).
+
     Args:
         snapshot: The run's state this tick.
 
     Returns:
         The panel's three parts.
     """
+
+    if snapshot.rejected_accounting is not None:
+        return rejected_step_accounting(snapshot.rejected_accounting)
 
     if snapshot.agent_accounting_passes_validation:
         status = StatusWord(ACCOUNTING_VALID_TEXT, Emphasis.ACCENT)
@@ -1752,17 +1960,82 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         status = StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING)
         detail = ACCOUNTING_FAILED_DETAIL_TEXT
 
-    amounts = "\n".join(
-        (
-            f"Delivered: {format_agent_volume(snapshot.delivered_agent_l)}",
-            f"Exhausted: {format_agent_volume(snapshot.exhausted_agent_l)}",
-            f"Stored: {format_agent_volume(snapshot.stored_agent_l)}",
-            f"Unaccounted: {format_agent_residual(snapshot.unaccounted_agent_l)}",
-            f"Absolute error: {format_agent_residual(snapshot.agent_accounting_absolute_error_l)}",
-        )
+    amounts = _accounting_amounts(
+        delivered_l=snapshot.delivered_agent_l,
+        exhausted_l=snapshot.exhausted_agent_l,
+        stored_l=snapshot.stored_agent_l,
+        unaccounted_l=snapshot.unaccounted_agent_l,
+        absolute_error_l=snapshot.agent_accounting_absolute_error_l,
     )
 
     return Accounting(status, detail, amounts)
+
+
+def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accounting:
+    """The agent-accounting panel for a step whose accounting check failed and was rolled back.
+
+    `accounting` returns it for a frame that drew after the failure.
+    `RunView.present_halt` writes it when no frame can be drawn, from the
+    `rejected_accounting` that the run's record carries. Until the adversarial
+    review of `PL-J5GC`, the panel kept the last frame's "Valid" in that case,
+    under a banner reporting the failed check.
+
+    Args:
+        rejected: The rejected step's check, with the totals it judged.
+
+    Returns:
+        The panel's three parts: "Validation failed" and the rejected step's totals.
+    """
+
+    return Accounting(
+        StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING),
+        ACCOUNTING_REJECTED_DETAIL_TEXT,
+        _accounting_amounts(
+            delivered_l=rejected.delivered_agent_l,
+            exhausted_l=rejected.exhausted_agent_l,
+            stored_l=rejected.currently_stored_agent_l,
+            unaccounted_l=rejected.unaccounted_agent_l,
+            absolute_error_l=rejected.absolute_error_l,
+        ),
+    )
+
+
+def _accounting_amounts(
+    *,
+    delivered_l: float,
+    exhausted_l: float,
+    stored_l: float,
+    unaccounted_l: float,
+    absolute_error_l: float,
+) -> str:
+    """The accounting panel's five amount lines, from one step's totals, in litres."""
+
+    amounts = (
+        format_agent_volume(delivered_l),
+        format_agent_volume(exhausted_l),
+        format_agent_volume(stored_l),
+        format_agent_residual(unaccounted_l),
+        format_agent_residual(absolute_error_l),
+    )
+
+    return "\n".join(
+        f"{name}: {amount}" for name, amount in zip(ACCOUNTING_AMOUNT_NAMES, amounts, strict=True)
+    )
+
+
+#: The accounting panel shown during a halt when no frame has been drawn since the run
+#: started over. It replaces what the last frame wrote, for the same reason that the
+#: readout cards withhold their values (`WITHHELD_CONCENTRATION_TEXT`). The panel was
+#: last written for the run before the Reset or the agent change. So its verdict and
+#: amounts describe a run that was discarded, while the heading above it names the
+#: run that replaced it. Each amount line keeps its name, so the panel still says
+#: which values are missing. The next frame writes the panel again (blind and
+#: adversarial reviews of `PL-J5GC`).
+WITHHELD_ACCOUNTING: Final = Accounting(
+    StatusWord("\u2014", Emphasis.MUTED),
+    ACCOUNTING_WITHHELD_DETAIL_TEXT,
+    "\n".join(f"{name}: \u2014" for name in ACCOUNTING_AMOUNT_NAMES),
+)
 
 
 @dataclass(frozen=True, slots=True)

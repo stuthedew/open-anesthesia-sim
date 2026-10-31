@@ -117,4 +117,28 @@ class SimulationNumericalError(SimulationExecutionError):
 
 
 class AgentSimulationValidationError(SimulationNumericalError):
-    """Raised when delivered agent cannot be fully accounted for."""
+    """Raised when delivered agent cannot be fully accounted for.
+
+    `AgentUptakeSystem.advance()` rolls the step back before this error reaches a
+    caller. The run's own accounting then holds the last completed step's totals,
+    which passed their check. So the failing check travels with the error, as
+    `check`, and the interface shows the rejected step's verdict and totals from
+    it (`PL-HF4B`).
+    """
+
+    def __init__(self, message: str, *, check: object = None) -> None:
+        """Build the error.
+
+        `check` is typed `object` because this module imports nothing from the
+        core. Every core module imports this one, so importing the check's type
+        here would make an import cycle. `agent_simulation_validation.rejected_check`
+        gives the check back its type.
+
+        Args:
+            message: What failed, with the rejected step's totals.
+            check: The failing `AgentSimulationValidationResult` of the rejected
+                step, or `None` where the error was raised without one.
+        """
+
+        super().__init__(message)
+        self.check = check

@@ -14,7 +14,7 @@ does not also depend on the controller.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from math import isfinite
 
 from anesthesia_sim.app.bookmarks import (
@@ -27,6 +27,7 @@ from anesthesia_sim.app.bookmarks import (
 )
 from anesthesia_sim.app.chart_time_base import grid_spacing_s
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_timeline import CONTROL_INPUT_LABELS
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
 # and the import matters. `mac_multiple` contains the whole arithmetic of the second
@@ -43,6 +44,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
@@ -125,6 +127,18 @@ class RunStatus:
     time advances only after that call returns. So a halted session reports
     the last step that finished, at the simulation time it finished at,
     rather than a step abandoned partway through.
+    """
+    rejected_accounting: AgentSimulationValidationResult | None = field(kw_only=True)
+    """The failing accounting check of the step that halted the run, or `None`.
+
+    It is set only when a step's agent accounting failed its check. That step
+    is rolled back, so the run's own accounting describes the last completed
+    step again, and that step passed. This field keeps the rejected step's
+    verdict and totals, which `dashboard_frame.accounting` shows in place of
+    the restored ones. Without this field, the panel read "Valid" under a
+    banner saying that the accounting had failed (`PL-HF4B`). The field has no
+    default, so a constructor call that leaves it out fails instead of
+    reporting no failure.
     """
 
 
@@ -612,6 +626,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
+        self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
         # These fields record what this run has done with the marks, as opposed
@@ -742,6 +757,7 @@ class SimulationController:
         # session that has nothing wrong with it. A stale limit reason would
         # do the same to a run that has taken no steps at all.
         self._failure_reason = None
+        self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
 
@@ -776,26 +792,38 @@ class SimulationController:
 
         return self._agent_id
 
-    def fail(self, reason: str) -> None:
-        """Halt the session because something raised, recording why.
+    def fail(
+        self, reason: str, *, rejected_accounting: AgentSimulationValidationResult | None = None
+    ) -> None:
+        """Halt the session because something raised an exception, and record why.
 
         This differs from `pause()`, which is a user decision that the run
-        resumes from. A failure means that a step or a setting raised. The
-        core rolls a failed step back, so the state left behind is the last
-        completed step rather than a partial one. Resuming is still not
-        offered. The run reached a state from which the model could not step,
-        so a resumed run would fail again on its first tick. Offering Start
-        would present that as a working control. Only a fresh run clears the
-        failure, through `reset()` or `set_agent()`.
+        resumes from. A failure means that a step or a setting raised an
+        exception. The core rolls a failed step back, so the state left behind
+        is the last completed step rather than a partial one. Resuming is still
+        not offered. The run reached a state from which the model could not
+        step, so a resumed run would fail again on its first tick. Offering
+        Start would present a control that cannot work as one that does. Only
+        a fresh run clears the failure, through `reset()` or `set_agent()`.
+
+        Args:
+            reason: What raised, as `dashboard_frame.halt_disposition` words it.
+            rejected_accounting: The failing check that an
+                `AgentSimulationValidationError` carried, or `None` for any
+                other failure. The rollback leaves the run's accounting
+                passing again, so the rejected step's check is kept here
+                (`RunStatus.rejected_accounting`, `PL-HF4B`).
         """
 
         self._is_running = False
 
-        # The first failure is the one that explains the rest, so a later
-        # raise (e.g. from the render loop reacting to the same broken
-        # state) must not overwrite it.
+        # The first failure explains the ones after it, so a later exception must
+        # not overwrite it. The render loop, for example, can raise again as it
+        # reacts to the same broken state. The rejected check belongs to the
+        # first failure, so it is kept with that failure.
         if self._failure_reason is None:
             self._failure_reason = reason
+            self._rejected_accounting = rejected_accounting
 
     def record_failed_frame(self, reason: str) -> None:
         """Stop the run because the dashboard that draws it raised an exception, and record why.
@@ -1032,6 +1060,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
         )
 
     def settings(self) -> RunSettings:
@@ -1052,6 +1081,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
@@ -1152,6 +1182,7 @@ class SimulationController:
             bookmark_standings=self.bookmark_standings(),
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
         )
 
     # ------------------------------------------------------------- bookmarks
@@ -1441,7 +1472,7 @@ class SimulationController:
         return self._branch_from(self._resume_point_at(instant_s))
 
     def resumed_here(self) -> SimulationController:
-        """Open a second live run where this paused run stands, stopped on a mark or not.
+        """Open a second live run where this paused run stands, whether or not a mark stopped it.
 
         This method serves the decision point a learner is looking at
         (`PL-Y2SL`). A learner who has paused to think can try something else
@@ -1481,6 +1512,8 @@ class SimulationController:
         Reset, which discards the case, would take that branch off the chart.
         The methods that still fork at a keyframe or a mark on the limit are
         kept because of what `PL-5291` decided about such a branch.
+        A dial moved after the run had stopped used to make a keyframe on the limit.
+        A stopped run now refuses that change (`PL-3B34`).
 
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the
@@ -2456,6 +2489,7 @@ class SimulationController:
 
         self.pause()
         self._failure_reason = None
+        self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
         self._forget_reached_marks()
@@ -2489,47 +2523,117 @@ class SimulationController:
     # `docs/MODEL.md` § "What is not bounded this way" gives the argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
-        system = self._state.uptake_system
-        previous_value = system.circuit.fresh_gas_flow_l_min
-        system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.FRESH_GAS_FLOW,
-            previous_value,
-            system.circuit.fresh_gas_flow_l_min,
-            restore=lambda: system.set_fresh_gas_flow(previous_value),
+            fresh_gas_flow_l_min,
+            held=lambda system: system.circuit.fresh_gas_flow_l_min,
+            apply=AgentUptakeSystem.set_fresh_gas_flow,
         )
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        system = self._state.uptake_system
-        previous_value = system.circuit.delivered_concentration_percent
-        system.set_delivered_concentration_percent(delivered_concentration_percent)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.DELIVERED,
-            previous_value,
-            system.circuit.delivered_concentration_percent,
-            restore=lambda: system.set_delivered_concentration_percent(previous_value),
+            delivered_concentration_percent,
+            held=lambda system: system.circuit.delivered_concentration_percent,
+            apply=AgentUptakeSystem.set_delivered_concentration_percent,
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
-        system = self._state.uptake_system
-        previous_value = system.alveoli.alveolar_ventilation_l_min
-        system.set_alveolar_ventilation(alveolar_ventilation_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.ALVEOLAR_VENTILATION,
-            previous_value,
-            system.alveoli.alveolar_ventilation_l_min,
-            restore=lambda: system.set_alveolar_ventilation(previous_value),
+            alveolar_ventilation_l_min,
+            held=lambda system: system.alveoli.alveolar_ventilation_l_min,
+            apply=AgentUptakeSystem.set_alveolar_ventilation,
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
-        system = self._state.uptake_system
-        previous_value = system.patient.cardiac_output_l_min
-        system.set_cardiac_output(cardiac_output_l_min)
-        self._record_control_change(
+        self._change_setting(
             ControlInput.CARDIAC_OUTPUT,
-            previous_value,
-            system.patient.cardiac_output_l_min,
-            restore=lambda: system.set_cardiac_output(previous_value),
+            cardiac_output_l_min,
+            held=lambda system: system.patient.cardiac_output_l_min,
+            apply=AgentUptakeSystem.set_cardiac_output,
+        )
+
+    def _change_setting[Setting: float](
+        self,
+        control: ControlInput,
+        value: Setting,
+        *,
+        held: Callable[[AgentUptakeSystem], Setting],
+        apply: Callable[[AgentUptakeSystem, Setting], None],
+    ) -> None:
+        """Apply one setting through the core and record the change, for each of the four setters.
+
+        Every setter takes the same four steps, in this order. A stopped run
+        refuses the setting before anything is applied
+        (`_refuse_a_setting_on_a_stopped_run`). The value in force is read. The
+        new value goes through the core's own setter, which refuses a value
+        outside its supported range. `_record_control_change` then records the
+        change, with a way to write the old value back if the settings record
+        refuses it. Each public setter keeps the checked type that only its
+        range check builds. Only the steps are shared, so a fifth control gets
+        the refusal, the record and the write-back by calling this method
+        (`PL-M7K2`).
+
+        Args:
+            control: The control the setting belongs to.
+            value: The new setting, already of its checked type.
+            held: Reads the setting in force from the uptake system.
+            apply: The uptake system's setter for this control.
+
+        Raises:
+            SimulationConfigurationError: If the run has stopped, if the core
+                refuses the value, or if the settings record refuses it. In
+                each case the run is left as it was.
+        """
+
+        self._refuse_a_setting_on_a_stopped_run(control)
+        system = self._state.uptake_system
+        previous_value = held(system)
+        apply(system, value)
+        self._record_control_change(
+            control, previous_value, held(system), restore=lambda: apply(system, previous_value)
+        )
+
+    def _refuse_a_setting_on_a_stopped_run(self, control: ControlInput) -> None:
+        """Refuse a setting on a run that has stopped, before anything is applied.
+
+        `_change_setting` calls this first. A run stops on a failure or
+        at the supported run length, and no step runs after either. If a
+        setting were applied here, the dial would show a setting that no step
+        will ever run under, beside values it did not produce. The control
+        record would also claim a change at the stop instant that never acted
+        on the patient (`PL-3B34`). The refusal states only one reason, that
+        no step will run under the new setting. It does not claim that the
+        values on screen were computed under the setting in force. A run can
+        fail on the first step after a setting was accepted, and then no value
+        it holds was computed under that setting either (adversarial review of
+        `PL-J5GC`).
+
+        So the setting is refused, and nothing is applied or recorded.
+        `RunView._apply_setting` treats the error as a refused setting. The
+        dial is written again from the run and springs back, and the banner
+        names the stopped run's way out (`dashboard_frame.notice`). Reset
+        keeps every setting, so the learner sets the dial on the new run. At
+        the supported run length a branch opened at an earlier instant also
+        takes a new setting, and each of its dials starts at what it was set
+        to at that instant (`_branch_from`). `set_agent` is not refused,
+        because it starts a new case and is a way out of a stopped run.
+
+        Args:
+            control: The setting that was asked for, named in the refusal.
+
+        Raises:
+            SimulationConfigurationError: If the run has failed or stands at
+                the supported run length.
+        """
+
+        if self._failure_reason is None and not self.has_reached_supported_limit:
+            return
+
+        raise SimulationConfigurationError(
+            f"the {CONTROL_INPUT_LABELS[control].lower()} setting cannot be changed on a "
+            "stopped run, because no step will run under a new one"
         )
 
     def begin_control_adjustment(self) -> None:
