@@ -685,8 +685,7 @@ def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None
     assert status_word(paused, stopped_on_mark=False).text == "Paused"
     assert status_word(failed, stopped_on_mark=True).text == "Stopped — simulation error"
     assert (
-        status_word(at_limit, stopped_on_mark=True).text
-        == "Stopped — supported run length reached"
+        status_word(at_limit, stopped_on_mark=True).text == "Stopped — supported run length reached"
     )
 
 
@@ -832,7 +831,10 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
 
     assert isinstance(_snapshot(), RunStatus)
     assert status_word(failed, stopped_on_mark=False).text == "Stopped — simulation error"
-    assert status_word(at_limit, stopped_on_mark=False).text == "Stopped — supported run length reached"
+    assert (
+        status_word(at_limit, stopped_on_mark=False).text
+        == "Stopped — supported run length reached"
+    )
     assert status_word(paused, stopped_on_mark=False).text == "Paused"
     assert status_word(running, stopped_on_mark=False).text == "Running"
     assert (transport(failed).start_enabled, transport(failed).pause_enabled) == (False, False)
@@ -1094,7 +1096,10 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
         is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
     )
 
-    assert status_word(snapshot, stopped_on_mark=False).text == "Stopped — supported run length reached"
+    assert (
+        status_word(snapshot, stopped_on_mark=False).text
+        == "Stopped — supported run length reached"
+    )
     assert status_word(snapshot, stopped_on_mark=False).emphasis is not Emphasis.WARNING
 
     banner = notice(snapshot, None)

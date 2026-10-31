@@ -5253,25 +5253,34 @@ def test_a_trunk_halted_on_a_mark_at_the_supported_run_length_reads_as_stopped_t
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
 
-def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there(
+def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there(
     trunk_halted_on_a_mark_at_the_limit: SimulationController,
 ) -> None:
-    """The route the item is named for: a branch built at 24:00:00.
+    """No branch opens on 24:00:00, so none is left where Reset only returns it to the limit.
 
-    `_open_at` builds the state at the parent's step count and never asks
-    whether there is room for another step. Nothing refuses a step until Start
-    is pressed. A branch is a new controller, so a flag on the parent would
-    not have reached it either. The limit has to be read from the branch's own
-    state. The branch is taken through `resumed_at_mark`, because the trunk's
-    position at the limit is not offered as a place to branch (`PL-Y2SL`).
+    A branch taken at a mark on the limit could never step. Its banner named
+    Reset as the way out, and a branch's Reset returns it to its fork, so the
+    way out led back to the same stop (`PL-VHQX`). Now the fork is rejected,
+    and the branch control does not offer the mark. The trunk still reads as
+    stopped at the limit. The expected message is typed by hand.
     """
 
-    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
-        TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-    )
+    trunk = trunk_halted_on_a_mark_at_the_limit
+    on_the_limit = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S), "the end")
 
-    assert branch.opened_from is not None
-    _assert_reads_as_stopped_at_the_supported_run_length(branch)
+    assert on_the_limit in trunk.snapshot().bookmarks.time_bookmarks
+    assert trunk.mark_fork_points == ()
+    assert BranchedCase(trunk).mark_fork_points == ()
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at_mark(on_the_limit)
+
+    assert str(refusal.value) == (
+        "a branch at 86400.0 s would open on the supported run length, where no step is left "
+        "to take, so it could never be run; a setting change or a mark before it is still "
+        "branched at with resumed_at or resumed_at_mark"
+    )
+    _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
 
 def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
@@ -5283,9 +5292,9 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     24:00:00. That made a keyframe there, and `resumed_at` opened a branch on
     it that could never step. The stopped run now refuses the dial, so the
     trunk keeps its one stretch from 0 s, and `resumed_at` rejects the limit as
-    an instant with no keyframe. A mark on the limit is the one fork left
-    there, and `test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there`
-    covers it.
+    an instant with no keyframe. A mark on the limit is rejected too, as
+    `test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there`
+    checks.
     """
 
     trunk = trunk_stepped_onto_the_limit
@@ -5302,26 +5311,6 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
         trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
 
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
-
-
-def test_a_branch_reset_onto_a_fork_on_the_supported_run_length_reads_as_stopped_there(
-    trunk_halted_on_a_mark_at_the_limit: SimulationController,
-) -> None:
-    """Reset returns a branch to its fork, and a fork on the limit has no span left.
-
-    This is the last row of `PL-5291`'s table. Reset clears the recorded
-    reason, as it must for a trunk going back to zero. A branch going back to
-    a fork at 24:00:00 then showed as paused again, with Start offered again.
-    Now the limit is read from the state, so the branch is at the limit, and a
-    reset leaves it there.
-    """
-
-    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
-        TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-    )
-    branch.reset()
-
-    _assert_reads_as_stopped_at_the_supported_run_length(branch)
 
 
 def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_stands(
