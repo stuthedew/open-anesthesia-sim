@@ -7041,6 +7041,12 @@ entries are closed, because a count written into a document goes stale the next
 time an item closes. `bin/docket wave` compares the list with `docs/items/` and
 reports the count.
 
+**`PL-4LS8` joined the list on 2026-10-31, after the freeze.** It held the
+one question that `PL-5B1N`'s build left open: whether a preview curve may
+draw at 1 px. `PL-5B1N` closed with its build, and the open part of a frozen
+entry stays on the list rather than leaving it. `PL-4LS8` closed the same day
+with the 2 px floor kept.
+
 **Two groups, and only the second must clear before this milestone's
 implementation begins.** The first group is debt that this milestone's own
 Required scope names. The milestone clears that debt itself, as § "Debt inside
@@ -7117,10 +7123,11 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 79 entries**
+**Cleared before v0.7.0 begins unless deferred - 80 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
+- PL-4LS8 (S) Record the owner's answer on whether a dragged-dial preview curve may draw at 1 px or stops at 2 px
 - PL-B4P7 (M) A run opening at the teaching-default fresh gas flow records nothing saying so, so once a second machine profile can reach a run nothing can label that flow as the project's teaching choice rather than the machine's
 - PL-F9TC (M) src/anesthesia_sim/app/ re-checks quantities that core already owns: formatting.py checks mac_percent > 0 five times, playback.py checks tick_interval_s by hand instead of require_positive_finite, chart_time_base.py restates half the case-instant range twice, and simulation_view.py restates the 1-to-MAX_DISPLAYED_RUNS run count that RunCount holds
 - PL-G84G (M) No check and no one-source-of-truth item covers a text fact restated under src/ (a unit label, a display name): tools/literal_home_check.py reads numbers only and PL-K88Z's inventory surveyed no strings; on 2026-10-24, 112 distinct short string literals sit in two or more modules under src/anesthesia_sim/, 12 of them unit-like

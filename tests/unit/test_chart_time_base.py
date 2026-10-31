@@ -25,6 +25,7 @@ from anesthesia_sim.app.chart_time_base import (
     fit_to_run,
     fitted_window,
     following_window,
+    preview_window,
     tick_times,
     time_base_for_span,
 )
@@ -277,3 +278,17 @@ def test_a_time_base_carries_its_own_interval() -> None:
 
     assert time_base.span_s == 900.0
     assert time_base.tick_interval_s == 180.0
+
+
+def test_a_preview_window_keeps_the_width_and_centres_the_reach() -> None:
+    base = time_base_for_span(1800.0)
+
+    assert preview_window(base, CaseInstant(3600.0)) == pytest.approx((2700.0, 4500.0))
+    # Early in a run the window stops at zero, and the reach sits left of the middle.
+    assert preview_window(base, CaseInstant(300.0)) == pytest.approx((0.0, 1800.0))
+    assert preview_window(base, CaseInstant(900.0)) == pytest.approx((0.0, 1800.0))
+
+
+def test_a_preview_window_refuses_a_reach_not_built_as_an_instant() -> None:
+    with pytest.raises(TypeError):
+        preview_window(time_base_for_span(1800.0), 300.0)  # type: ignore[arg-type]

@@ -494,6 +494,36 @@ COMPARED_RUN_WIDTH_STEP = 2
 # hue at all.
 BRANCH_POINT_STROKE_WIDTH = 1.5
 
+# The thinnest any trace is drawn, in display pixels. A 1 px antialiased line
+# renders lighter than its declared colour, and its contrast against the panel
+# falls below the 3:1 minimum (`docs/MODEL.md` § "The six compartment traces").
+# So no trace, and no preview of a trace, is drawn thinner than this.
+MINIMUM_TRACE_STROKE_WIDTH = 2
+
+# How many display pixels thinner a preview curve is drawn than the run's own
+# curve of the same compartment. A preview is never drawn thinner than
+# `MINIMUM_TRACE_STROKE_WIDTH`. A preview is the trajectory a dragged control
+# *would* give, which the learner has not applied (`PL-5B1N`). Drawing it as
+# heavy as the run would give a prediction the visual weight of something
+# that happened. Width is only the backup cue. The region, its edge at the
+# run's reach and the label in the plot are what say "preview". So a preview
+# of a 2 px trace, which cannot be drawn thinner, is still marked. Colour and
+# dash pattern stay the compartment's own, because they are what tells the
+# six traces apart (`PL-GVXP`). A preview that a reader cannot attribute to
+# its compartment would be worse than none.
+PREVIEW_WIDTH_STEP = 1
+
+# The region in which a preview is drawn, from the run's reach to the axis's
+# right edge. Its left edge marks where the run stands now. The edges are
+# stroked in MUTED, as the references and the marks are, so they add no new
+# colour pair for `tools/contrast_check.py` to measure. The fill is
+# decoration, for the same reason that the MAC-awake band's fill is
+# (`PL-HKTB`). The edge and the label carry the information, and the fill is
+# light enough that every trace stays legible across it.
+PREVIEW_REGION_COLOR = MUTED
+PREVIEW_REGION_FILL_OPACITY = 0.10
+PREVIEW_REGION_EDGE_STROKE_WIDTH = 1.5
+
 # The bookmark editor. Wider than the new-case dialog because it carries two
 # forms and two lists rather than three sentences, and each target row states
 # a compartment, a height, a direction and a name.

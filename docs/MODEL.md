@@ -198,6 +198,7 @@ remains a question for a reviewer.
 | comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run is reported at the run's drawn instant nearest the pointer in time. So the instant that labels a value depends only on the pointer's position along the time axis. The pointer's height decides only what is in reach. Before this, each trace's own nearest point had been taken in both dimensions. That labelled 70.1% of the single-run chart's multi-reading boxes with two instants, up to fifteen minutes apart on the 12-hour axis (§ "Where more than one trace answers", `PL-1K9G`) | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
 | reading the hover's value as a live readout after the pointer has left the plot | the box responds only while the pointer is over the plot (§ "When it answers"). Leaving the plot takes the box down at once, along with any pointer move still waiting for a response, so no later frame responds for a pointer that has gone. If the box were left up, it would update again on every frame. While a run plays, it would climb with the run, for an instant the reader is not looking at (`PL-LTKL`) | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown. First, it is named on each run's own readout panel (§ "Minimum displayed outputs"). Second, while more than one run is drawn, it is named in the chart's hover readout: on its first line where one run answers (§ "The hover and the run it belongs to"), and on each value line where several do. Every run inside the hover radius is reported, so no hand movement can swap which run is read (§ "Where more than one trace answers"). This is needed because the hover floats free of the legend, and line width has no textual equivalent. Third, it is named on the three advisories that sit in a chart rather than on either run's panel: the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`). These stack one line per run, so they are named for the same reason as the hover. Stacking order is declared nowhere on screen, and the run names sit in the unconditional region above the charts. Without names, the branch's F_A/F_I would be readable as the trunk's, and its off-scale notice could be attributed to a run whose traces are all inside the axis (`PL-25DD`). Fourth, it is named in the headings of the two record panels: the agent-accounting validation in the sidebar, and the control-change record in the right column of the unconditional region. Each of these stacks whole panels rather than lines, one per run. So the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column. This matters because "What was changed during this run" over a list of settings, read as the other run's, says the trunk received an intervention it never got (`PL-C3GS`). Fifth, it is named on the notice banner. The runs share one place for this banner, between their transport rows and their readouts. The banner qualifies the values rather than showing one. "The values shown are the last completed step", read as applying to the whole dashboard, says both runs' readouts are frozen at a failed step when one is still going. "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these banners at all, because a banner with nothing to say is hidden and takes no room. With one run halted, its banner appears in the same place whichever run it belongs to, and the words are identical (`PL-TSZM`, `PL-T91K`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height` |
+| reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot that names the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never answers from them. The run keeps its setting until the release (§ "A preview of an unapplied setting", `PL-5B1N`) | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 
@@ -11637,6 +11638,98 @@ printing the instant to four decimals would claim a resolution that no other
 display on the screen has. `tests/unit/test_chart_frame.py` holds both worked
 examples above verbatim, and `tests/integration/test_qt_chart.py` tests the
 rendered readout against a real run.
+
+### A preview of an unapplied setting
+
+While a learner holds a slider's thumb, the chart draws the trajectory that the
+run would take if the value under the thumb were applied where the run stands
+now (`PL-5B1N`). This section says what that drawing is, how it is computed and
+what it may imply.
+
+**A preview is a third kind of value.** It is not a modelled state of the run,
+because the run has not passed through it. It is not a measurement either. It
+is a prediction, conditional on a setting that the learner has not applied and
+may never apply. A preview drawn with the run's weight and no label would read
+as a run that happened. So everything below exists to keep it from reading
+that way.
+
+**How it is computed.** `SimulationController.preview_window` opens a second
+run definition at the run's reach. It starts from the run's canonical state
+there (§ "The canonical evaluation rule"), under the settings that applying the
+value would give. Those settings are built the way a branch builds its own: a
+trial run is rebuilt from the settings in force, checked to hold every value
+the run holds, and given the value through its own setter
+(`SimulationController.preview_settings`). So the value is checked by the core
+setter that would apply it, and a cardiac output moves every tissue flow
+exactly as applying it would. It is the same model and version as the run, it
+is deterministic, and nothing of the run is written. At the run's own setting
+the preview coincides with what the run then draws, to within floating-point
+composition error. The preview is evaluated on the run's own grid. It ends at
+the axis's right edge, or at the end of the supported run length if that comes
+first. While the run plays, it is evaluated again on every frame from the run's
+new reach.
+
+**Four cues mark it, and none of them is colour.**
+
+1. **Position.** The preview lies wholly to the right of the run's reach,
+   inside a tinted region. The region's left edge is a stroke at the reach,
+   where the run stands now. The run that the preview belongs to never enters
+   the region.
+2. **A label in the plot**, such as "Preview: Fresh gas flow 6.0 L/min, not
+   applied". It names the control and the value tried in the slider's own
+   words, and it names the run while runs are compared. It is drawn inside
+   the region, so a screenshot taken during a drag carries it.
+3. **Width.** Each preview curve is one pixel thinner than a lone run's curve
+   of the same compartment, and never thinner than 2 px, below which an
+   antialiased line renders under 3:1 against the panel
+   (§ "The six compartment traces: what separates them"). The two 3 px traces
+   preview at 2 px. The four 2 px traces preview at 2 px, so for them the other
+   three cues carry the distinction. In compare mode the first run is drawn one
+   step wider, but its preview keeps the lone-run width. Otherwise the preview
+   would be wider than the other run's real curve of the same compartment, and
+   the width cue would point the wrong way.
+4. **Binding to the drag.** The preview exists only while the thumb is held.
+   It appears when the thumb is pressed, and the frame drawn at the release no
+   longer has it. Nothing decays or lingers.
+
+**The curves keep each compartment's colour and dash pattern, deliberately.**
+Those two channels are what tell the six compartments apart, and inside the
+preview they have to do the same work. Dash pattern cannot carry "predicted"
+instead: the muscle trace is already dotted, and a solid run with a dotted
+preview would flatten the five dashed traces into one style. Reduced opacity
+cannot carry it either. Blended over the panel at 0.85 opacity, the alveolar
+and muscle traces fall to 2.93 and 2.83 against it, under SC 1.4.11's 3:1, and
+at 0.75 four of the six do. The region's fill is decoration, on the same ground
+as the MAC-awake band's: its edge and the label carry the information
+(`theme.PREVIEW_REGION_FILL_OPACITY`).
+
+**What a drag does to the run.** A pointer drag applies its value when the thumb
+is released, and the control-input timeline records one change there. Until
+then the run keeps the setting in force, and the value printed beside the
+slider is that setting. The value is applied before the preview ends, so the
+frame drawn at the release shows the run under its new setting. A key press, a wheel step or a click on the groove is
+one discrete input, so it applies at once and draws no preview.
+
+**The window keeps its width during a preview.** It slides so that the run's
+reach sits at mid-plot: half the window shows the run that happened, and half
+shows the prediction (`chart_time_base.preview_window`). Early in a run the
+window stops at zero, and the reach sits left of the middle. Widening the axis
+to make room would rescale every slope, which § "The chart's time base"
+refuses. The window returns to following the run at the release.
+
+**What a preview does not do.** The hover never answers from it, so no value on
+a preview curve is ever printed as a reading. A preview that goes above the
+top of the concentration axis is cut off there, as a run's trace is. The
+off-scale notice then names each clipped prediction with its highest
+predicted value in view, because the readouts give only the run's values
+(`dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`). A predicted F_A/F_I
+stretch that stops ends in a dot, by the same rule as the run's. A stopped run, failed or at the
+supported run length, refuses every setting and draws no preview. Both plots
+draw it: the F_A/F_I plot shows the predicted ratio, so the two plots never
+show two different futures. Each compared run has its own controls, so only
+the run whose thumb is held previews, and the window centres on that run's
+reach. A compared run further along may then be drawn inside the region; the
+label names the run the preview belongs to.
 
 ### A cost at the reader's price
 

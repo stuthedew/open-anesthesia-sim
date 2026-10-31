@@ -1527,7 +1527,13 @@ class SimulationView(QWidget):
         selection = self._compartment_selection
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
-            RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
+            RunInput(
+                run_label(run.run_id),
+                run.controller,
+                snapshot,
+                run.adjustments(snapshot),
+                preview=run.preview,
+            )
             for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
         # With no chart shown, one frame is still assembled, at "Fit run" and
