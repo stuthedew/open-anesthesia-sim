@@ -7880,7 +7880,7 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
 def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A branch the region check refuses takes its holders, and its readings in the trunk's panels, with it.
+    """A branch that the region check refuses leaves nothing of itself on the dashboard.
 
     `_place_run` puts a run's widgets in the shared layouts before it checks
     the region, because the check reads where they are. A refusal that left
