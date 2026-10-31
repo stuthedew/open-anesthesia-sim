@@ -3,11 +3,13 @@ id: PL-P55M
 title: EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE hold a no-break space for a Flet layout fact Qt does not share: under PySide6 6.11.2 an empty label is as tall as one holding U+00A0 (found closing PL-TMSN)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 touches: src/anesthesia_sim/app/dashboard_frame.py, tools/glyph_check.py, tests/unit/test_dashboard_frame.py, tests/integration/test_qt_widgets.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
+closed: 2026-10-31
+pr: 1897
 payoff: The readout row's shared baseline is held by a test of its height instead of by an invisible character kept for a framework the app no longer uses
 verify: grep -q 'def test_an_empty_gloss_line_is_as_tall_as_a_filled_one' tests/integration/test_qt_widgets.py
 ---
@@ -39,3 +41,5 @@ is decided here rather than put to the owner.
 No fact here is misread by other items, so it is a one-off.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Both constants in `app/dashboard_frame.py` still hold U+00A0, `tools/glyph_check.py` still cites them, and the lock file still pins PySide6-Essentials 6.11.2, the version measured. The label heights were not measured again.
+
+**Built (2026-10-31).** Both constants hold `""`. `test_an_empty_gloss_line_is_as_tall_as_a_filled_one` in `tests/integration/test_qt_widgets.py` measures that the clock panel, with both lines empty, is as tall line by line as a panel with both filled. `tools/glyph_check.py` keeps U+00A0 confirmed, because `app/control_timeline.py` still uses it to keep a timeline line from wrapping apart. Its evidence now cites that use rather than these constants. The two tests that asserted each line held a non-empty string now check the height instead.

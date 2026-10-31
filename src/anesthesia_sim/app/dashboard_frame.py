@@ -157,16 +157,17 @@ TRUNK_RUN_INDEX: Final = 0
 BRANCH_RUN_INDEX: Final = 1
 
 # A readout with no gloss still draws the gloss line, so every reading in the
-# row sits on one baseline (`PL-8M05`). The line holds a non-breaking space
-# rather than an empty string. The Flet build needed it because a blank line
-# collapsed to zero height there. It is kept because `tools/glyph_check.py`
-# names these two constants as the evidence for U+00A0, and a test asserts
-# that the line holds a value.
-EMPTY_METRIC_QUALIFIER: Final = " "
+# row sits on one baseline (`PL-8M05`). The line holds an empty string. A Qt
+# label holding an empty string is as tall as one holding a character, so the
+# line keeps its height. `test_an_empty_gloss_line_is_as_tall_as_a_filled_one`
+# measures that, so the baseline does not depend on an invisible character
+# (`PL-P55M`). The Flet build needed a no-break space here, because a blank
+# line collapsed to zero height there.
+EMPTY_METRIC_QUALIFIER: Final = ""
 # The same spacer for the second-unit line. The "Simulated time" panel has no
 # MAC multiple, and the spacer makes it the same height as the six panels that
 # do.
-EMPTY_METRIC_SECONDARY_VALUE: Final = " "
+EMPTY_METRIC_SECONDARY_VALUE: Final = ""
 
 # The lowest setting of the delivered-concentration dial, in percent. Its
 # maximum depends on the agent, because it is the real vaporizer's capability.

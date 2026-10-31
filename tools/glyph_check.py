@@ -120,12 +120,11 @@ DATA_TREE = Path(DATA_DIR)
 #: from the space beside it. A number is legible, greppable and stable.
 CONFIRMED: dict[int, str] = {
     0x00A0: (
-        "NO-BREAK SPACE - EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE in "
-        "app/dashboard_frame.py. Seen in the Qt build (PySide6 6.11.2, offscreen, the "
-        "container's Inter, 2026-10-18) as a blank qualifier line with no replacement box. "
-        "The Flet reason for it does not hold in Qt: there a blank string collapsed to zero "
-        "height, but a Qt label holding an empty string is as tall as one holding this "
-        "character (15 px at the qualifier's size, 16 px at the second unit's) (PL-TMSN)."
+        "NO-BREAK SPACE - joins the parts of a control-timeline line that must not wrap "
+        "apart, in app/control_timeline.py (`_NO_BREAK_SPACE`). Seen in the Qt build "
+        "(PySide6 6.11.2, offscreen, the container's Inter, 2026-10-18) as a blank with no "
+        "replacement box (PL-TMSN). The readout row's empty gloss lines no longer use it "
+        "(PL-P55M)."
     ),
     0x00B1: (
         "PLUS-MINUS SIGN - first seen in the Flutter client's wash-in tolerance readout "

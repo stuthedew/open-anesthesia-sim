@@ -1573,12 +1573,12 @@ def test_every_readout_holds_its_gloss_and_second_unit_lines_open() -> None:
     assert len(panels) == len(READOUT_PANELS) == 7
     for panel in panels:
         assert panel.name, "a readout with no name"
-        assert panel.qualifier, "a readout that does not hold its gloss line open"
+        assert isinstance(panel.qualifier, str), "a readout with no gloss line"
         assert panel.value
-        assert panel.secondary, "a readout that does not hold its second-unit line open"
+        assert isinstance(panel.secondary, str), "a readout with no second-unit line"
 
     assert panels[3].qualifier == EMPTY_METRIC_QUALIFIER
-    assert EMPTY_METRIC_QUALIFIER == EMPTY_METRIC_SECONDARY_VALUE == " "
+    assert EMPTY_METRIC_QUALIFIER == EMPTY_METRIC_SECONDARY_VALUE == ""
     assert max(READOUT_ROW_LADDER) == len(panels)
 
 

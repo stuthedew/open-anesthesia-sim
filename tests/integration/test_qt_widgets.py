@@ -35,6 +35,7 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_FIELD_LABEL,
     EMPTY_METRIC_QUALIFIER,
+    EMPTY_METRIC_SECONDARY_VALUE,
     HEIGHT_FIELD_LABEL,
     INSTANT_FIELD_LABEL,
     MAC_TARGET_HEADING,
@@ -206,11 +207,7 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
 
     for panel in row.panels:
         assert panel.name_label.text(), "a readout with no name"
-        assert panel.qualifier_label.text(), "a readout that does not hold its gloss line open"
         assert panel.value_label.text(), "a readout with no value"
-        assert panel.secondary_label.text(), (
-            "a readout that does not hold its second-unit line open"
-        )
         assert panel.qualifier_label.font().pixelSize() < panel.name_label.font().pixelSize()
         assert panel.secondary_label.font().pixelSize() < panel.value_label.font().pixelSize()
 
@@ -224,6 +221,34 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
     assert row.panel_minimum_widths_px[0] == max(row.panel_minimum_widths_px), (
         "the clock's column carries the widest reservation"
     )
+
+
+def test_an_empty_gloss_line_is_as_tall_as_a_filled_one(application: QApplication) -> None:
+    """A panel with no gloss or no second unit keeps both lines open, so the row keeps one baseline.
+
+    The two spacer lines hold an empty string (`PL-P55M`). The Flet build
+    needed a no-break space there, because a blank line collapsed to zero
+    height. This test measures the Qt labels instead of trusting a
+    character. The clock panel, whose gloss and second unit are both empty,
+    must be as tall line by line as a panel with both filled (`PL-8M05`).
+    """
+
+    row = _row(application, 2000)
+    filled = next(
+        panel
+        for panel in row.panels
+        if panel.qualifier_label.text() and panel.secondary_label.text()
+    )
+    empty = _panel(
+        Readout("Simulated time", EMPTY_METRIC_QUALIFIER, "0s", EMPTY_METRIC_SECONDARY_VALUE)
+    )
+
+    assert empty.qualifier_label.text() == "" and empty.secondary_label.text() == ""
+    assert empty.qualifier_label.sizeHint().height() == filled.qualifier_label.sizeHint().height()
+    assert empty.secondary_label.sizeHint().height() == filled.secondary_label.sizeHint().height()
+    assert empty.qualifier_label.sizeHint().height() > 0
+    assert empty.secondary_label.sizeHint().height() > 0
+    assert empty.sizeHint().height() == filled.sizeHint().height()
 
 
 def test_the_clock_reserves_its_width_so_the_panel_cannot_move(application: QApplication) -> None:
