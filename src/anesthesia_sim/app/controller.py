@@ -100,8 +100,9 @@ class RunStatus:
     `None` if it is not.
 
     A non-`None` value means the run is at the supported run length, where
-    the core would reject the next step. The run may have stepped there,
-    been forked there, or been reset to a fork there (`PL-5291`).
+    the core would reject the next step. The run has stepped there. A fork
+    there is rejected, so no branch opens on the limit (`PL-5291`,
+    `PL-VHQX`).
     `is_running` is `False`, but this state is neither a pause nor a
     failure. Nothing was miscalculated and no step was rolled back. Every
     value in the snapshot comes from a completed step, at a simulated time
@@ -404,6 +405,23 @@ class SimulationSnapshot(RunRecord):
     for each result. It also explains why a marked instant and a marked height
     are described in different words.
     """
+
+    @property
+    def stopped_on_mark(self) -> bool:
+        """Return whether a step of this run halted it on a mark, so that it stands on the crossing.
+
+        `bookmark_halt` alone does not decide this. A branch opens standing on
+        the step that reached its fork, and that step's crossing is the
+        branch's halt record (`PL-3K9B`). But the step was the parent's, so a
+        branch at its fork has not been stopped by anything. Its status word
+        must still say that it is paused (`PL-QBQX`). A branch at its fork
+        stands at `began_at_s`, and every step of its own moves it past that
+        instant. The comparison is exact for the reason `has_recorded_run`
+        gives. A trunk's halt record is set only by a halting step, because
+        no step ends at 0 s.
+        """
+
+        return self.bookmark_halt is not None and self.elapsed_s != self.began_at_s
 
     @property
     def has_recorded_run(self) -> bool:
@@ -894,12 +912,14 @@ class SimulationController:
         (`PL-5291`). A run stands at the limit when the core would reject its
         next step. This property asks the state exactly that, so the reason
         here is the one the rejected step would give, word for word. Three
-        routes put a run there: stepping onto the last supported step, a fork
-        taken on that step, and a branch reset to such a fork. Only the first
-        route ever rejected a step. So a flag set only by the rejection left
-        the other two routes looking like an ordinary pause. Start was
+        routes used to put a run there: stepping onto the last supported step,
+        a fork taken on that step, and a branch reset to such a fork. Only the
+        first route ever rejected a step. So a flag set only by the rejection
+        left the other two routes looking like an ordinary pause. Start was
         offered, no limit notice appeared, and the marks panel said that an
-        unreached mark was still ahead of a run that could not step.
+        unreached mark was still ahead of a run that could not step. Since
+        `PL-VHQX`, a fork on the limit is rejected, so stepping there is the
+        one route left.
 
         A reason that `halt_at_supported_limit` recorded takes precedence over
         the derived one, for two reasons. It came first, and the domain limit
@@ -915,14 +935,24 @@ class SimulationController:
     def _reason_the_next_step_would_be_refused(self) -> str | None:
         """Return the reason `SimulationState.advance` would give for rejecting the next step.
 
-        The result is `None` when the next step would not be rejected.
+        The result is `None` when the next step would not be rejected. A run
+        that has not stepped has no step length to measure the span in, so it
+        is at no limit.
+        """
 
-        This method calls the core's own guard rather than restating its rule.
-        So the controller and the stepper cannot disagree about which count is
-        the last supported one. `maximum_step_count` decides that once, on the
-        product of the count and the step length (`PL-8H2R`). The message is
-        the guard's own. A run that has not stepped has no step length to
-        measure the span in, so it is at no limit.
+        return self._reason_a_step_would_be_refused_after(self._state.step_count)
+
+    def _reason_a_step_would_be_refused_after(self, step_count: StepCount) -> str | None:
+        """Return the reason the core would give for rejecting a step taken after `step_count`.
+
+        The result is `None` when that step would not be rejected, or when
+        this run has not stepped and so has no step length to measure the span
+        in. The run's own limit and every fork use this one method
+        (`_resume_point`, `mark_fork_points`, `PL-VHQX`). It calls the core's
+        own guard rather than restating its rule. So the controller and the
+        stepper cannot disagree about which count is the last supported one.
+        `maximum_step_count` decides that once, on the product of the count
+        and the step length (`PL-8H2R`). The message is the guard's own.
         """
 
         simulation_step_s = self._state.simulation_step_s
@@ -931,7 +961,7 @@ class SimulationController:
             return None
 
         try:
-            require_supported_run_length(self._state.step_count, simulation_step_s)
+            require_supported_run_length(step_count, simulation_step_s)
         except SimulationDomainLimitError as refusal:
             return str(refusal)
 
@@ -1510,10 +1540,10 @@ class SimulationController:
         step is left to take, so a branch opened there could never be run. On
         a dashboard that shows one comparison at a time, only the trunk's
         Reset, which discards the case, would take that branch off the chart.
-        The methods that still fork at a keyframe or a mark on the limit are
-        kept because of what `PL-5291` decided about such a branch.
-        A dial moved after the run had stopped used to make a keyframe on the limit.
-        A stopped run now refuses that change (`PL-3B34`).
+        Every other fork on the limit is rejected for the same reason
+        (`_resume_point`, `PL-VHQX`). A dial moved after the run had stopped
+        used to make a keyframe on the limit. A stopped run now refuses that
+        change (`PL-3B34`).
 
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the
@@ -1530,8 +1560,9 @@ class SimulationController:
         **The branch opens with the dials as they stand** (`PL-HSP8`,
         `PL-ZR49`). A setting changed while the run stands here is on the
         branch, and the branch records it at the fork in its own timeline. The
-        branch's provenance is still the stretch that the step reaching this
-        instant ran under, and a change made here cannot alter that stretch.
+        branch's provenance is still the stretch under which the run took the
+        step that reached this instant. A change made here cannot alter that
+        stretch.
         So a branch taken here after such a change is the same branch that
         `resumed_at_mark` and `resumed_at` give at this instant. A branch
         taken here before the learner makes the change runs under the earlier
@@ -1663,16 +1694,22 @@ class SimulationController:
         `BranchedCase.fork_points_s` keeps.
 
         Like `run_segments`, this property works on a branch as on a trunk.
-        On a branch, `resumed_at_mark` rejects the fork, for the reason every
-        branching method rejects a branch. `BranchedCase.mark_fork_points`
+        On a branch, `resumed_at_mark` rejects the fork, as every branching
+        method does when this run is itself a branch. `BranchedCase.mark_fork_points`
         reads the trunk's value.
+
+        A mark on the supported run length is left out, because `_resume_point`
+        rejects a fork that leaves no step to take (`PL-VHQX`). Offering it
+        would put an entry in the branch control that fails when chosen.
         """
 
         return tuple(
-            MarkForkPoint(bookmark, self._instant_after(self._steps_to_reach(bookmark)))
+            MarkForkPoint(bookmark, self._instant_after(steps))
             for bookmark in sorted(
                 self._passed_time_bookmarks(), key=lambda bookmark: bookmark.instant_s
             )
+            if self._reason_a_step_would_be_refused_after(steps := self._steps_to_reach(bookmark))
+            is None
         )
 
     def _branch_from(self, resume_point: ResumePoint) -> SimulationController:
@@ -2254,9 +2291,17 @@ class SimulationController:
         where the trunk was halted then treated the halt's marks as lying
         before the branch.
 
+        **A fork that leaves no step to take is rejected here, for every
+        branching method** (`PL-VHQX`). A branch opened on the supported run
+        length could never be run. Its banner sent the learner to Reset. A
+        branch's Reset returns it to its fork, so the only way out on screen
+        led back to the same stop. `resumed_here` already refused to branch
+        where a run stands at the limit. A mark on the limit was the one route
+        left, and `mark_fork_points` no longer offers it.
+
         Args:
-            segment: The stretch of this run that the step reaching `fork` ran
-                under (`RunDefinition.reaching_segment_at`). Its opening is the
+            segment: The stretch of this run under which the step that reaches
+                `fork` ran (`RunDefinition.reaching_segment_at`). Its opening is the
                 keyframe where the branch's own run definition opens.
             fork: The instant at which the branch is taken, and this run's
                 canonical state there.
@@ -2264,7 +2309,8 @@ class SimulationController:
         Raises:
             SimulationConfigurationError: The fork instant is not a whole
                 number of this run's steps, so a branch could not continue the
-                case's step count exactly.
+                case's step count exactly. Or the fork lies on the supported
+                run length, so the branch would have no step to take.
         """
 
         simulation_step_s = self._state.simulation_step_s
@@ -2279,6 +2325,13 @@ class SimulationController:
                     f"{fork.instant_s} s is not a whole number of this run's "
                     f"{simulation_step_s} s steps, so a branch could not continue the case's "
                     "step count exactly"
+                )
+
+            if self._reason_a_step_would_be_refused_after(step_count) is not None:
+                raise SimulationConfigurationError(
+                    f"a branch at {fork.instant_s} s would open on the supported run length, "
+                    "where no step is left to take, so it could never be run; a setting change "
+                    "or a mark before it is still branched at with resumed_at or resumed_at_mark"
                 )
 
         return ResumePoint(
@@ -2447,9 +2500,9 @@ class SimulationController:
         `CLAUDE.md`'s safety-critical standard prefers an obvious failure to
         that outcome. The branch's clock goes back to the fork instant too. So
         the case's supported run length is counted from where the branch
-        actually starts. A branch forked at the limit itself has no run length
-        left to spend. So a reset leaves it stopped at the limit, rather than
-        offering a Start that the core would refuse (`PL-5291`).
+        actually starts. No branch opens on the limit itself, because
+        `_resume_point` rejects a fork with no step left (`PL-VHQX`). So a
+        branch's Reset never returns it to a stop it cannot leave.
 
         **A reset branch keeps its settings and the entries it opened with**
         (`PL-K5BS`, `PL-ZR49`). A trunk reopens under its current settings,
@@ -3404,7 +3457,7 @@ class BranchedCase:
 
     @property
     def mark_fork_points(self) -> tuple[MarkForkPoint, ...]:
-        """The marked instants at which a fork may be taken: every time bookmark the trunk passed.
+        """The marked instants at which a fork may be taken: each time bookmark the trunk passed.
 
         This is the list for `fork_at_mark`, as `fork_points_s` is the list for
         `fork_at`. It is ordered earliest first, and each entry carries the
@@ -3413,7 +3466,9 @@ class BranchedCase:
         mark, or when the mark is set behind the clock. A mark leaves it only
         when the learner removes the mark or the trunk starts over. That is
         the same lifetime as the keyframes beside it. It is not the lifetime
-        of `here_fork_point`, which ends when the trunk starts again.
+        of `here_fork_point`, which ends when the trunk starts again. A mark
+        on the supported run length is never listed, because a fork there has
+        no step to take (`SimulationController.mark_fork_points`, `PL-VHQX`).
 
         Like `fork_points_s`, it is empty while the trunk refuses every fork.
         """

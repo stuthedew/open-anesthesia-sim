@@ -181,12 +181,25 @@ EMPTY_METRIC_SECONDARY_VALUE: Final = " "
 # profile can narrow it (`PL-7CRY`).
 MIN_DELIVERED_CONCENTRATION_PERCENT: Final = 0.0
 
-# The four status words. There are four states, not two. A stopped run must
-# never be shown as paused, and the two stopped states must not be confused
-# with each other. A failure says the model reached a state it could not step
-# from. The supported run length says the model reached the end of what it is
-# claimed to represent, having done everything right.
+# The five status words. A stopped run must never be shown as paused, and the
+# two stopped states must not be confused with each other. A failure says the
+# model reached a state it could not step from. The supported run length says
+# the model reached the end of what it is claimed to represent, having done
+# everything right.
 STATUS_PAUSED_TEXT: Final = "Paused"
+# The status word of a run that a mark paused, as opposed to the learner's own
+# Pause (`PL-QBQX`). The fork control's "stopped on your mark" was the only cue,
+# and the fork control is withdrawn while two runs are compared. A MAC target's
+# row reads "reached" from its first crossing, so it does not change on a later
+# one either. Without this word, a run that a mark stopped during a comparison
+# looked like a pause that nobody made. The word starts with "Paused", because
+# the run is paused and Start resumes it (`docs/MODEL.md` § "Halting on a marked
+# crossing"). It reuses the fork label's ratified "stopped on your mark", which
+# names no mark and no instant. A mark inside a step halts the run at the step's
+# end, so a named instant could be wrong, and one step can cross several marks
+# (`HALT_FORK_LABEL_TEMPLATE`). The wording is a placeholder while the interface
+# is built (project owner, 2026-10-18).
+STATUS_MARK_HALT_TEXT: Final = "Paused — stopped on your mark"
 STATUS_RUNNING_TEXT: Final = "Running"
 STATUS_FAILED_TEXT: Final = "Stopped — simulation error"
 STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
@@ -999,12 +1012,14 @@ class StatusWord:
     emphasis: Emphasis
 
 
-def status_word(status: RunStatus) -> StatusWord:
+def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
     """Return the run's status word: failure, then supported limit, then running, then paused.
 
     A failure outranks the supported run length for the reason `notice`
     gives. The two cannot both arise from one run, and if a failure is
-    somehow recorded, it is the more serious statement.
+    somehow recorded, it is the more serious statement. A paused run that a
+    mark stopped says so, so that it is not mistaken for the learner's own
+    Pause (`STATUS_MARK_HALT_TEXT`, `PL-QBQX`).
 
     Args:
         status: The run's status this tick, either a `RunStatus` or the
@@ -1012,6 +1027,13 @@ def status_word(status: RunStatus) -> StatusWord:
             `RunStatus`, which is read without building any compartment
             value. So a halt is worded from facts that cannot fail
             (`PL-7DJK`).
+        stopped_on_mark: Whether a step of the run halted it on a mark
+            (`SimulationSnapshot.stopped_on_mark`). A branch at its fork
+            carries the parent step's halt record and is not stopped on a
+            mark. It is a
+            separate argument because a `RunStatus` does not carry the halt
+            record, which is worked out from the canonical states
+            (`SimulationController._halt_crossing`).
 
     Returns:
         The word and its emphasis.
@@ -1025,6 +1047,9 @@ def status_word(status: RunStatus) -> StatusWord:
 
     if status.is_running:
         return StatusWord(STATUS_RUNNING_TEXT, Emphasis.ACCENT)
+
+    if stopped_on_mark:
+        return StatusWord(STATUS_MARK_HALT_TEXT, Emphasis.MUTED)
 
     return StatusWord(STATUS_PAUSED_TEXT, Emphasis.MUTED)
 
@@ -2681,6 +2706,7 @@ def run_statement(
     is_branch: bool,
     comparing: bool,
     banner: str | None,
+    stopped_on_mark: bool,
 ) -> RunStatement:
     """Return what a run's screen shows from its record alone, for `RunView._write_statement`.
 
@@ -2698,6 +2724,7 @@ def run_statement(
         banner: The text from `notice` when a frame drew, or from
             `halt_notice` when none has. The caller chooses, because only the
             caller knows whether a frame drew.
+        stopped_on_mark: As `status_word` takes it.
 
     Returns:
         The statement.
@@ -2708,7 +2735,7 @@ def run_statement(
         agent_name=record.agent_display_name,
         subtitle=format_subtitle(record.agent_display_name),
         substance_heading=substance_heading(record),
-        status=status_word(record),
+        status=status_word(record, stopped_on_mark=stopped_on_mark),
         transport=transport(record, is_branch=is_branch, comparing=comparing),
         timeline=timeline_panel(adjustments),
         banner=banner,
