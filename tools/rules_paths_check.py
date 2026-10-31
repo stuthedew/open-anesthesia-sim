@@ -147,6 +147,7 @@ LANE_ONLY = (
     "Makefile",
     "conftest.py",
     "docket.toml",
+    ".claude-plugin",
     # Written for contributors to both halves.
     "AGENTS.md",
     "CONTRIBUTING.md",

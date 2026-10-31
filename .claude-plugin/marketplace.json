@@ -1,0 +1,12 @@
+{
+  "name": "open-anesthesia-sim",
+  "owner": {"name": "stuthedew"},
+  "description": "Plugins for working on this repository in Claude Code Projects threads, which do not load .claude/settings.json or .claude/skills/ (PL-SQV9).",
+  "plugins": [
+    {
+      "name": "thread-probe",
+      "source": "./.claude/thread-probe-plugin",
+      "description": "A test plugin: one hook that refuses a sentinel command and one skill, to show whether a plugin's hooks and skills reach a Projects thread."
+    }
+  ]
+}
