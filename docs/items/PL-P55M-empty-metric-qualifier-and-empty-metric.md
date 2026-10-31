@@ -3,11 +3,13 @@ id: PL-P55M
 title: EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE hold a no-break space for a Flet layout fact Qt does not share: under PySide6 6.11.2 an empty label is as tall as one holding U+00A0 (found closing PL-TMSN)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 touches: src/anesthesia_sim/app/dashboard_frame.py, tools/glyph_check.py, tests/unit/test_dashboard_frame.py, tests/integration/test_qt_widgets.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
+closed: 2026-10-31
+pr: 1897
 payoff: The readout row's shared baseline is held by a test of its height instead of by an invisible character kept for a framework the app no longer uses
 verify: grep -q 'def test_an_empty_gloss_line_is_as_tall_as_a_filled_one' tests/integration/test_qt_widgets.py
 ---
@@ -39,3 +41,5 @@ is decided here rather than put to the owner.
 No fact here is misread by other items, so it is a one-off.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Both constants in `app/dashboard_frame.py` still hold U+00A0, `tools/glyph_check.py` still cites them, and the lock file still pins PySide6-Essentials 6.11.2, the version measured. The label heights were not measured again.
+
+**Decided, 2026-10-31 (session decision): the constants keep U+00A0, because the brief's measurement held only for Inter.** The first build set both constants to `""`. CI then measured an empty second-unit line at 15 px against 16 px for a filled one, so `test_an_empty_gloss_line_is_as_tall_as_a_filled_one` failed there. Measured in the container across its installed fonts at 11, 12 and 13 px, an empty Qt label is one pixel shorter than a label holding text in Bitstream Charter, Carlito, Courier 10 Pitch and DejaVu, and one pixel taller in FreeSans and FreeSerif. A no-break space gives the same height as text in every one of them. Inter is the exception that the 2026-10-18 measurement happened to use. So the character is needed, and the first clause of **Done when** is replaced: the constants keep U+00A0, and the comment above them now gives this reason. The rest landed as written. The new test measures the line heights, so the baseline is pinned by a measurement rather than by the character alone. `tools/glyph_check.py` cites the measurement and both uses of U+00A0. The blind review found that the second-unit constant's comment was stale, because the clock panel always shows the playback rate (`PL-SN2C`), so the comment now says no readout draws it.
