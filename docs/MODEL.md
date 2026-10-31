@@ -9548,6 +9548,10 @@ was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
 trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
 it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
 with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
+A crossing time is interpolated between the two steps on either side of it.
+`tests/reference/test_mac_awake_washout_figures.py` runs this protocol and
+holds every figure from it in this section to the places printed, so a
+parameter change that moves one fails the test (`PL-PTDZ`).
 <!-- not-restated: 10 L/min -->
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
@@ -9630,7 +9634,7 @@ gap is larger than its limits. So the sevoflurane band probably sits too high,
 by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
 wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
 drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
-Mapleson's 1.80%, at 7.31 min. The isoflurane and desflurane gaps are inside
+Mapleson's 1.80%, at 7.30 min. The isoflurane and desflurane gaps are inside
 the limits, so Mapleson does not show either band to be off. For desflurane a
 direct measurement points the same way. The drawn centre of 2.16% agrees with
 Song et al.'s measured 2.17%, as the paragraph below says. All three figures
