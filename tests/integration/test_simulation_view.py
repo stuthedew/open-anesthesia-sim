@@ -2807,10 +2807,11 @@ def _withheld_accounting() -> dict[str, object]:
     }
 
 
-#: The amounts that the failing check from `_a_failing_check` judged, written by hand.
-#: 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored, leaves 6.0 L
-#: unaccounted. The panel states that amount and the absolute error as the power of
-#: ten each is less than.
+#: The amounts that the panel should show for the failing check from `_a_failing_check`.
+#: They are written by hand. 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored,
+#: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount or the
+#: absolute error exactly. It shows the next power of ten above each one, so both lines
+#: show "<1e+01 L".
 _REJECTED_CHECK_AMOUNTS: Final = (
     "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\n"
     "Unaccounted: <1e+01 L\nAbsolute error: <1e+01 L"
@@ -2818,12 +2819,14 @@ _REJECTED_CHECK_AMOUNTS: Final = (
 
 
 def _a_failing_check() -> AgentSimulationValidationResult:
-    """A failing accounting check whose totals no run in these tests reaches.
+    """Return a failing accounting check with totals that no run in these tests reaches.
 
     A run at the default settings has delivered about 0.4 L of agent at 5 minutes.
-    So a panel that pairs this check's verdict with the restored step's amounts reads
-    differently from one that shows this check's own amounts. The validator builds
-    the check from the totals, as it does for a step.
+    So a panel that pairs this check's verdict with the restored step's amounts shows
+    different numbers from a panel that shows this check's own amounts. The restored
+    step is the one that the run returns to when the core rolls a rejected step back.
+    The validator builds the check from these totals, the same way that it builds the
+    check for a step.
     """
 
     validator = AgentSimulationValidator()
@@ -2863,14 +2866,14 @@ def _fresh_run(
 def _reject_the_next_accounting_check(monkeypatch: pytest.MonkeyPatch) -> None:
     """Make the next step's accounting check fail, once, with the check from `_a_failing_check`.
 
-    For one call, `require_valid_agent_accounting` judges that check in place of the
-    step's own. So the step raises the real `AgentSimulationValidationError`, built
-    by the real code, and the core rolls the step back. No supported setting makes
-    the accounting fail, which is why the failure is injected. The check's totals
-    differ from the restored step's at the panel's resolution. Until the
-    test-strength pass of `PL-J5GC`, the step's own totals were used, and one 0.1 s
-    step changed no amount the panel shows. So a panel that showed the restored
-    step's amounts under the rejected verdict passed.
+    For one call, `require_valid_agent_accounting` evaluates that check instead of the
+    step's own check. So the step raises the real `AgentSimulationValidationError`,
+    built by the real code, and the core rolls the step back. The failure is injected
+    because no supported setting makes the accounting fail. The injected check's totals
+    differ from the restored step's totals by enough to change what the panel shows.
+    Until the test-strength pass of `PL-J5GC`, the injected check used the step's own
+    totals, and one 0.1 s step changed no amount that the panel shows. So a panel that
+    showed the restored step's amounts with the rejected verdict still passed the test.
     """
 
     real_require = AgentSimulationValidator.require_valid_agent_accounting
@@ -3184,14 +3187,14 @@ def _a_halt_after_a_reset_that_no_frame_draws(
 def _a_frame_after_a_reset_that_followed_an_accounting_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
-    """A drawn accounting halt, then a Reset that a frame draws.
+    """Return a view that drew an accounting halt, then a frame after a Reset.
 
-    Reset starts a new run at 0 s, which keeps every setting, and the frame draws
-    it. So every group describes a run that has taken no step, and the accounting
-    panel reads as a fresh run's does. If Reset kept the rejected check, every frame
-    of the new run would show "Validation failed" and the discarded step's totals,
-    under a banner that names no failure. Until the test-strength pass of `PL-J5GC`,
-    no test checked that Reset clears it.
+    Reset starts a new run at 0 s and keeps every setting, and the frame draws that
+    run. So every group of readings describes a run that has taken no step, and the
+    accounting panel shows what a fresh run's panel shows. If Reset kept the rejected
+    check, every frame of the new run would show "Validation failed" and the discarded
+    step's totals, under a banner that names no failure. Until the test-strength pass
+    of `PL-J5GC`, no test checked that Reset clears the rejected check.
     """
 
     controller = SimulationController()
@@ -3217,12 +3220,13 @@ def _a_frame_after_a_reset_that_followed_an_accounting_halt(
 def _a_frame_after_an_agent_change_that_followed_an_accounting_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
-    """A drawn accounting halt, then a change to desflurane that a frame draws.
+    """Return a view that drew an accounting halt, then a frame after a change to desflurane.
 
-    The agent change starts a new case, and the frame draws it. So every group
-    describes a desflurane run that has taken no step. Until the test-strength pass
-    of `PL-J5GC`, no test checked that a new case clears the rejected check, for the
-    reason that `_a_frame_after_a_reset_that_followed_an_accounting_halt` gives.
+    The change of agent starts a new case, and the frame draws that case. So every
+    group of readings describes a desflurane run that has taken no step. Until the
+    test-strength pass of `PL-J5GC`, no test checked that a new case clears the
+    rejected check. `_a_frame_after_a_reset_that_followed_an_accounting_halt` says
+    why that matters.
     """
 
     controller = SimulationController()
@@ -3251,14 +3255,15 @@ def _a_frame_after_an_agent_change_that_followed_an_accounting_halt(
 def _a_halt_after_a_frame_drawn_for_a_new_agent(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
-    """An agent change that a frame drew, then a frame that cannot be drawn.
+    """Return a view that drew a frame after an agent change, then failed to draw the next one.
 
-    The frame drawn after the change wrote every card and the clock for the new
-    case, so the run has not started over since that frame. The halt keeps what the
-    frame wrote, and every group describes the new case at its opening. If the
-    drawn frame did not end the start-over (`RunView.refresh`), the halt would
-    withhold values that describe the run on screen. Until the test-strength pass
-    of `PL-J5GC`, no test checked this.
+    The frame drawn after the change wrote every card and the clock for the new case,
+    so the run has not started over since that frame. The halt keeps what that frame
+    wrote, and every group of readings describes the new case at its opening. After a
+    Reset or an agent change, a halt withholds values until a frame is drawn. Drawing a
+    frame ends that withholding (`RunView.refresh`). If it did not, the halt would
+    withhold values that do describe the run on screen. Until the test-strength pass of
+    `PL-J5GC`, no test checked this.
     """
 
     controller = SimulationController()
@@ -3359,13 +3364,12 @@ def test_an_accounting_panel_opened_after_each_scenario_shows_the_same_step(
 ) -> None:
     """A copy of the accounting panel built after a halt shows the step that the first copy shows.
 
-    The accounting panel may sit in a View that a reader closes and opens again,
-    so a copy can be built at any time (`build_accounting_panel`). Each new copy
-    starts from what the run last wrote to the panel. A halt that wrote only the
-    copies already built would leave a copy built after it showing the last
-    frame's "Valid", beside a banner that reports the failed check or the start
-    over. Until the test-strength pass of `PL-J5GC`, no test built a copy after a
-    halt.
+    The accounting panel may sit in a View that a reader closes and opens again, so a
+    copy can be built at any time (`build_accounting_panel`). Each new copy starts from
+    what the run last wrote to the panel. Suppose a halt wrote only to the copies that
+    already existed. A copy built after the halt would then show the last frame's
+    "Valid", beside a banner that reports the failed check or that the run started over.
+    Until the test-strength pass of `PL-J5GC`, no test built a copy after a halt.
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -3401,19 +3405,21 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
 ) -> None:
     """A dial moved on a stopped run springs back, records nothing, and the banner says why.
 
-    No step runs after a stop, so a new setting would sit beside values it never
-    produced. Until `PL-3B34` the moved dial was applied. The cardiac output then
-    read 10.0 L/min beside concentrations computed at 5.0 L/min, and the record
-    claimed a change at the stop instant that never acted on the patient. The two
-    stopped states name different ways out (project owner, 2026-10-26). The
-    supported run length is the expected end of a long run, so a branch at an
-    earlier instant can take the new setting. A failure is a fault, so Reset stays
-    its way out. Each scenario builds its run, and takes the dials that the run
+    No step runs after a stop, so a new setting would sit beside values that it never
+    produced. Until `PL-3B34`, the moved dial was applied. The cardiac output then showed
+    10.0 L/min beside concentrations computed at 5.0 L/min. The record also claimed a
+    change at the instant of the stop, and that change never acted on the patient.
+
+    A run stops either at the supported run length or on a failure, and the banner
+    names a different way out for each (project owner, 2026-10-26). The supported run
+    length is the expected end of a long run, so its way out is a branch at an earlier
+    instant, which can take the new setting. A failure is a fault, so Reset remains its
+    way out. Each scenario builds its run. It takes the dial settings that the run
     should show from a run that never stopped.
 
     The halt that the run shows when no frame can be drawn (`present_halt`) gives
     the same refusal and the same way out. Until the test-strength pass of
-    `PL-J5GC`, no test read that banner after a refused dial.
+    `PL-J5GC`, no test checked that banner after a refused dial.
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -3492,16 +3498,16 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
 def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_length_names_reset(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A trunk whose dashboard has failed offers no branch, so a refused dial names Reset alone.
+    """A trunk with a failed dashboard offers no branch, so a dial's refusal names only Reset.
 
-    Here the frame raises the supported-limit error itself. The run stops at the
-    supported run length rather than failing, and it records that its dashboard
-    failed. Its `fork_refusal` then gives a reason, and the case offers no branch,
-    because a branch would be drawn by the same dashboard (`PL-T2Q2`). So the way
-    out of a refused dial must not name one. Until the test-strength pass of
-    `PL-J5GC`, no test checked that `RunView._branch_offered` reads
-    `fork_refusal`. The supported run length here ends at 300 s, for the reason
-    that `_a_dial_moved_at_the_supported_run_length` gives.
+    Here the frame itself raises the supported-limit error. The run stops at the
+    supported run length rather than failing, and it records that its dashboard failed.
+    Its `fork_refusal` then gives a reason, and the case offers no branch, because the
+    same dashboard would draw the branch (`PL-T2Q2`). So the way out that a dial's
+    refusal names must not be a branch. Until the test-strength pass of `PL-J5GC`, no
+    test checked that `RunView._branch_offered` reads `fork_refusal`. This test sets the
+    supported run length to 300 s, for the reason that
+    `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
     last_step = round(300.0 / SIMULATION_STEP_S)

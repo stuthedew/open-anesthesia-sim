@@ -1512,8 +1512,8 @@ class SimulationController:
         Reset, which discards the case, would take that branch off the chart.
         The methods that still fork at a keyframe or a mark on the limit are
         kept because of what `PL-5291` decided about such a branch.
-        A dial moved after the run stopped once made a keyframe on the limit.
-        A stopped run now refuses that dial (`PL-3B34`).
+        A dial moved after the run had stopped used to make a keyframe on the limit.
+        A stopped run now refuses that change (`PL-3B34`).
 
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the

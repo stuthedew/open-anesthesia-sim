@@ -2296,13 +2296,13 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
 def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_in_litres() -> None:
     """The unaccounted and absolute-error lines show the rejected step's residual in litres.
 
-    The check also holds a relative error, which is a ratio and has no unit. In
-    the test above, the residual and the relative error lie in the same power of
-    ten, so a panel that showed the ratio on either line would still pass it.
-    Here they do not. The expected lines are worked out by hand: 40.0 L
-    delivered, 20.0 L exhausted and 14.0 L stored leave 6.0 L unaccounted, which
-    lies below 1e+01 L. The relative error is 6.0 / 40.0 = 0.15, which lies
-    below 1e+00 (test-strength review of `PL-J5GC`).
+    The check also records a relative error, which is a ratio and has no unit. In the
+    test above, the residual and the relative error lie between the same two powers of
+    ten. So a panel that showed the ratio on either line would still pass that test.
+    Here they lie between different powers of ten. The expected lines are worked out by
+    hand. 40.0 L delivered, 20.0 L exhausted and 14.0 L stored leave 6.0 L unaccounted,
+    which is less than 1e+01 L. The relative error is 6.0 / 40.0 = 0.15, which is less
+    than 1e+00 (test-strength review of `PL-J5GC`).
     """
 
     validator = AgentSimulationValidator()
@@ -2321,11 +2321,11 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
 
 
 def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None:
-    """After the run starts over, the panel claims nothing until a frame is drawn.
+    """After the run starts over, the panel shows no verdict and no amount until a frame is drawn.
 
-    `RunView.present_halt` shows this panel on a halt when no frame has been
-    drawn since a Reset or an agent change. The integration tests compare the
-    panel with this same constant, so only this test says what it must read.
+    `RunView.present_halt` shows this panel on a halt when no frame has been drawn
+    since a Reset or an agent change. The integration tests compare the panel with
+    this same constant, so only this test states the text that the panel must show.
     A verdict or an amount here would describe the discarded run (blind and
     adversarial reviews of `PL-J5GC`).
     """
