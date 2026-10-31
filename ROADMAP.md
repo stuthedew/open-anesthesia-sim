@@ -7041,6 +7041,11 @@ entries are closed, because a count written into a document goes stale the next
 time an item closes. `bin/docket wave` compares the list with `docs/items/` and
 reports the count.
 
+**`PL-4LS8` joined the list on 2026-10-31, after the freeze.** It holds the
+one question that `PL-5B1N`'s build left open: whether a preview curve may
+draw at 1 px. `PL-5B1N` closed with its build, and the open part of a frozen
+entry stays on the list rather than leaving it.
+
 **Two groups, and only the second must clear before this milestone's
 implementation begins.** The first group is debt that this milestone's own
 Required scope names. The milestone clears that debt itself, as § "Debt inside
@@ -7117,7 +7122,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 79 entries**
+**Cleared before v0.7.0 begins unless deferred - 80 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
