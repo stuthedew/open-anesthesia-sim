@@ -429,6 +429,7 @@ retired_features = ["dev-tooling", "parallel-sessions", "queue-hygiene"]
 # carrying them and the items working on them stopped reading `crossing`.
 workflow_paths = [
   ".claude",
+  ".claude-plugin",
   ".gitattributes",
   ".github",
   ".gitignore",
@@ -457,6 +458,7 @@ workflow_paths = [
   "docs/worker-runs",
   "docs/hook-blocks",
   "model-evidence.toml",
+  "plugins",
   "bin",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",
@@ -515,6 +517,7 @@ workflow_paths = [
   "tests/unit/test_rules_paths_check.py",
   "tests/unit/test_stop_hook_patch.py",
   "tests/unit/test_thread_hooks.py",
+  "tests/unit/test_thread_probe.py",
   "tests/unit/test_tools_portability.py",
   "tests/unit/test_generator_check.py",
   "tests/unit/test_context_reading.py",
