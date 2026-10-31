@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 feature: projects-trial
+milestone: v0.6.10
 touches: docs/items/PL-SQV9-test-giving-projects-threads-the-repository-s.md, docs/items/PL-XFDQ-record-from-a-projects-thread-with-the-thread.md, .claude-plugin/marketplace.json, .claude/thread-probe-plugin, tests/unit/test_thread_probe.py, docket.toml, tools/rules_paths_check.py, docs/maintainer.md
 added: 2026-10-31
 closed: 2026-10-31
