@@ -812,6 +812,43 @@ def test_a_system_built_with_its_dial_above_the_input_ceiling_is_refused() -> No
         _system(STIFFEST_DRAWN_CORNER, flows, 0.0, FULL_DIAL_PERCENT)
 
 
+CEILING_REFUSAL_AT_A_FULL_DIAL = (
+    "delivered_concentration_percent of 100.0% is above 99% of one atmosphere, the highest "
+    "partial pressure the coupled model starts from. It is kept below 1 so that every partial "
+    'pressure the model computes stays within one atmosphere (docs/MODEL.md, "The numerical '
+    'envelope")'
+)
+"""The whole message a learner reads when a dial of 100% is refused, written out by hand."""
+
+
+def test_a_full_dial_is_refused_in_full_by_the_setter_and_by_the_settings_record() -> None:
+    """A dial of 100% is refused with the whole message, where the vaporizer allows 100%.
+
+    The vaporizer maximum here is 100%, so the dial sits exactly at it. The
+    setter must still check the ceiling at that maximum, not only below it.
+    It must also leave the dial as it was. A dial passed in as a plain number
+    is refused for its type, under the dial's own name. A mutation pass found
+    these three names and the boundary at the maximum untested (2026-10-31).
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    system = _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        system.set_delivered_concentration_percent(Percent(FULL_DIAL_PERCENT))
+
+    assert str(raised.value) == CEILING_REFUSAL_AT_A_FULL_DIAL
+    assert system.circuit.delivered_concentration_percent == 0.0
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        _settings(STIFFEST_DRAWN_CORNER, flows, FULL_DIAL_PERCENT)
+
+    assert str(raised.value) == CEILING_REFUSAL_AT_A_FULL_DIAL
+
+    with pytest.raises(TypeError, match=r"^delivered_concentration_percent of 4\.0 was not built"):
+        system.set_delivered_concentration_percent(4.0)  # type: ignore[arg-type]
+
+
 ROUNDING_CORNERS = (
     STIFFEST_DRAWN_CORNER,
     Corner(
