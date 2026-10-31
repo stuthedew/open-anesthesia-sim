@@ -104,8 +104,12 @@ class SimulationNumericalError(SimulationExecutionError):
     size. The system matrix is a Metzler matrix: every entry off its diagonal
     is nonnegative. So the matrix exponential is nonnegative in every entry.
     That argument says nothing about the upper bound. Rounding can carry a
-    fraction just above 1 from a state already at 1, and that state needs a
-    100% dial that no supported setting reaches. The error covers that state.
+    fraction just above 1 from a state already at 1. Since `PL-9B1M`, no
+    supported setting or opening reaches such a state, because the coupled
+    model's inputs stop at 0.99. A state handed to `resume_at` or to a
+    `RunDefinition` is checked only from 0 through 1, so it can still be at 1.
+    The error covers that state, whether a step or an evaluation of the display
+    path computes the fraction.
     It also covers a model extension whose matrix is not a pure transfer
     system, meaning a matrix with an off-diagonal entry that is not a transfer
     rate. `docs/MODEL.md` § "Supported simulation step" says so (`PL-PM67`).

@@ -431,8 +431,8 @@ def _above_the_input_ceiling(name: str, written: str, ceiling: str) -> Simulatio
 
     return SimulationConfigurationError(
         f"{name} of {written} is above {ceiling} of one atmosphere, the highest partial "
-        "pressure the coupled model starts from: from any higher, the step's rounding can "
-        "carry a computed partial pressure past one atmosphere "
+        "pressure the coupled model starts from. It is kept below 1 so that every partial "
+        "pressure the model computes stays within one atmosphere "
         '(docs/MODEL.md, "The numerical envelope")'
     )
 

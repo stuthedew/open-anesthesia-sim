@@ -2425,7 +2425,7 @@ lists each input that has one, and the function or type that refuses it.
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
 | The delivered concentration in the coupled model | 0 to 99% | `UptakeEquationSettings` and `AgentUptakeSystem.set_delivered_concentration_percent` |
-| Each fraction the stepped system is built with, and its dial | 0 to 0.99 | `AgentUptakeSystem` |
+| Each fraction the stepped system is built with | 0 to 0.99 | `AgentUptakeSystem` |
 | The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent 0 to 14 400 L | `require_canonical_state` |
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
@@ -2481,7 +2481,10 @@ actually needed, with a margin of 3, so a corner that needs few squarings is
 held to a few roundings. The worst result measured on 2026-10-26 reached 2.5
 times its bound. The second test builds every input in the table at each edge of
 its interval, and then one representable value past each edge, and requires
-the simulator's own refusal.
+the simulator's own refusal. The stepped system's opening is built with every
+compartment at the edge at once, so the circuit's fraction, which is checked
+directly, refuses first. A compartment that stores an amount is checked to
+within one unit in the last place instead.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 One refusal inside the intervals is accepted by name. It is an error from
@@ -2507,7 +2510,8 @@ No compartment can hold more than one atmosphere of agent, so the fix narrows
 the inputs rather than widening the check. `MAXIMUM_INPUT_FRACTION` in
 `core/supported_ranges.py` is 0.99. A settings record refuses a dial above 99%,
 and so does the stepped system's dial setter. The stepped system refuses to be
-built holding a fraction above 0.99 in any compartment. It compares the agent
+built holding a fraction above 0.99 in any compartment, to within one unit in
+the last place. It compares the agent
 each compartment holds with the agent it would hold at 0.99. Reading a fraction
 back from a stored amount can add one unit in the last place, so a venous pool
 set to 0.99 read back as 0.9900000000000001, and the comparison of amounts does

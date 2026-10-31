@@ -172,9 +172,9 @@ FRACTION_STATE_NAMES = (
 The names describe the position in the state vector, because that is all that
 `require_canonical_state` knows. The tissue groups are numbered in the order of
 their states. Their names, such as "fat", belong to `patient.py`. The record is
-public because three checks read it: `require_canonical_state`, the stepped
-system's check of the state it is built with, and the display path's check of
-each state it computes (`PL-9B1M`).
+public because two checks read it: `require_canonical_state`, and the display
+path's check of each state it computes in `core/run_definition.py`
+(`PL-9B1M`).
 """
 
 _ACCUMULATOR_STATE_NAMES = (
