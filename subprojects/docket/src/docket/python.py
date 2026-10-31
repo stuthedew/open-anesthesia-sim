@@ -328,6 +328,26 @@ def without_docstrings(tree: Tree) -> Tree:
     return tree
 
 
+def assignment_targets(node: ast.AST) -> list[ast.expr]:
+    """The targets that an assignment statement writes, or none where `node` is not one.
+
+    That is each target of `=`, the one target of an annotated or augmented
+    assignment, and the name of a `type` statement from Python 3.12.
+    `tools/core_vocabulary_check.py` reads the attributes a method assigns
+    from this, and `tools/diff_mutation.py` the module-level names a test file
+    binds, so the two read one list of assignment statements.
+    """
+    if isinstance(node, ast.Assign):
+        return list(node.targets)
+    if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+        return [node.target]
+    # `ast.TypeAlias` is new in Python 3.12, and docket runs on 3.11.
+    alias = getattr(ast, "TypeAlias", None)
+    if alias is not None and isinstance(node, alias):
+        return [node.name]
+    return []
+
+
 #: The call names whose first argument, where it is a literal string, names a
 #: module: `importlib.import_module` and the builtin `__import__`.
 DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})

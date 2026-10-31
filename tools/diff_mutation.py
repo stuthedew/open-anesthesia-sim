@@ -104,6 +104,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import TESTS, imports_product, is_test_file  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.python import assignment_targets, without_docstrings  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
     default_base,
@@ -893,33 +894,13 @@ class _Definitions:
     shared: list[str] = field(default_factory=list)
 
 
-def _without_docstrings(node: ast.AST) -> ast.AST:
-    """A copy of `node` with the docstring of each function and class in it removed."""
-    copied = copy.deepcopy(node)
-    for inner in ast.walk(copied):
-        if isinstance(inner, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if inner.body and _is_string(inner.body[0]):
-                inner.body = inner.body[1:]
-    return copied
-
-
-def _is_string(node: ast.stmt) -> bool:
-    """Whether `node` is a bare string, which is a docstring and does nothing."""
-    return (
-        isinstance(node, ast.Expr)
-        and isinstance(node.value, ast.Constant)
-        and isinstance(node.value.value, str)
-    )
-
-
-def _statement(position: int, node: ast.AST, keep_docstrings: bool) -> _Statement:
+def _statement(position: int, node: ast.AST) -> _Statement:
     reads = frozenset(
         inner.id if isinstance(inner, ast.Name) else inner.arg
         for inner in ast.walk(node)
         if isinstance(inner, (ast.Name, ast.arg))
     )
-    shown = node if keep_docstrings else _without_docstrings(node)
-    return _Statement(position, ast.dump(shown), reads)
+    return _Statement(position, ast.dump(node), reads)
 
 
 def _is_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
@@ -961,10 +942,12 @@ def _definitions(path: str, source: str) -> _Definitions:
             raise _Whole
         if isinstance(node, ast.Attribute) and node.attr == "__globals__":
             raise _Whole
-    # A test that reads a docstring can change when the docstring does.
-    keep = any(
+    # A test that reads a docstring can change when the docstring does, so
+    # only a file that reads none is compared without them.
+    if not any(
         isinstance(node, ast.Attribute) and node.attr == "__doc__" for node in ast.walk(tree)
-    )
+    ):
+        without_docstrings(tree)
     found = _Definitions()
 
     def bind(name: str, statement: _Statement) -> None:
@@ -973,8 +956,6 @@ def _definitions(path: str, source: str) -> _Definitions:
         found.bound[name] = statement
 
     for position, node in enumerate(tree.body):
-        if _is_string(node):
-            continue
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if isinstance(node, ast.ImportFrom) and node.module == "__future__":
                 found.shared.append(ast.dump(node))
@@ -988,15 +969,15 @@ def _definitions(path: str, source: str) -> _Definitions:
                 else:
                     name = alias.asname or alias.name
                     target = f"from {'.' * node.level}{node.module or ''} import {alias.name}"
-                # Two `import a.b` and `import a.c` both bind `a` to `a`.
-                plain = isinstance(node, ast.Import) and alias.asname is None
                 held = found.imports.setdefault(name, set())
-                if name in found.bound or (held and not plain) or target in held:
+                # `import a.b` and `import a.c` both bind `a` to the package `a`.
+                plain = isinstance(node, ast.Import) and alias.asname is None
+                if name in found.bound or target in held or (held and not plain):
                     raise _Whole
                 held.add(target)
             continue
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            statement = _statement(position, node, keep)
+            statement = _statement(position, node)
             if node.name.startswith("test"):
                 found.tests["::".join((path, node.name))] = statement
             elif _is_fixture(node) or node.name in PYTEST_NAMES or node.name.startswith("pytest_"):
@@ -1012,28 +993,16 @@ def _definitions(path: str, source: str) -> _Definitions:
                 methods = [child for child in node.body if _is_test_method(child)]
                 # A method's test is the method and the rest of its class: the
                 # class's decorators, attributes, fixtures and helpers.
-                rest = ast.ClassDef(
-                    name=node.name,
-                    bases=[],
-                    keywords=[],
-                    body=[child for child in node.body if not _is_test_method(child)],
-                    decorator_list=node.decorator_list,
-                    type_params=node.type_params,
-                )
+                rest = copy.deepcopy(node)
+                rest.body = [child for child in rest.body if not _is_test_method(child)]
                 for method in methods:
                     whole = ast.Module(body=[rest, method], type_ignores=[])
                     found.tests["::".join((path, node.name, method.name))] = _statement(
-                        position, whole, keep
+                        position, whole
                     )
-            bind(node.name, _statement(position, node, keep))
+            bind(node.name, _statement(position, node))
             continue
-        targets: list[ast.expr] = []
-        if isinstance(node, ast.Assign):
-            targets = list(node.targets)
-        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
-            targets = [node.target]
-        elif isinstance(node, ast.TypeAlias):
-            targets = [node.name]
+        targets = assignment_targets(node)
         names = [
             inner.id
             for target in targets
@@ -1050,7 +1019,7 @@ def _definitions(path: str, source: str) -> _Definitions:
             # or an assignment to an attribute or an item.
             found.shared.append(ast.dump(node))
             continue
-        statement = _statement(position, node, keep)
+        statement = _statement(position, node)
         for name in names:
             bind(name, statement)
     return found

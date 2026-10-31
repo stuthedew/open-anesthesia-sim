@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: defect, perf
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md, docs/mutation-testing.md, subprojects/docket/README.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md, docs/mutation-testing.md, subprojects/docket/README.md, subprojects/docket/src/docket/python.py, subprojects/docket/tests/test_python.py, tools/core_vocabulary_check.py
 deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-10-26
 closed: 2026-10-31
