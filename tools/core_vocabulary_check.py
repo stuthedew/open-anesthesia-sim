@@ -93,6 +93,7 @@ from typing import TypeVar
 # tables with (`PL-FBWD`).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "subprojects" / "docket" / "src"))
 
+from docket.python import assignment_targets
 from docket.roadmap import section_table
 
 from check_support import run_report
@@ -230,12 +231,7 @@ def _self_attributes(function: ast.AST) -> Iterator[str]:
     handful of lines it saves.
     """
     for node in ast.walk(function):
-        targets: list[ast.expr] = []
-        if isinstance(node, ast.Assign):
-            targets = list(node.targets)
-        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
-            targets = [node.target]
-        for target in targets:
+        for target in assignment_targets(node):
             if (
                 isinstance(target, ast.Attribute)
                 and isinstance(target.value, ast.Name)
