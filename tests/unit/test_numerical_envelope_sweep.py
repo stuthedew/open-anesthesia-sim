@@ -370,8 +370,14 @@ def _system(
     fraction: float,
     dial_percent: float,
     perfusion_fractions: tuple[float, float, float] = PERFUSION_FRACTIONS,
+    part_at_one: str | None = None,
 ) -> AgentUptakeSystem:
-    """Build the coupled system at a corner, each compartment at `fraction`, at `dial_percent`."""
+    """Build the coupled system at a corner, each compartment at `fraction`, at `dial_percent`.
+
+    `part_at_one` names one part to set to a fraction of 1 instead: one of
+    `OPENING_PARTS`. The other parts stay at `fraction`, so the opening check
+    on that one part is the only check that can refuse the system.
+    """
 
     fresh_gas_l_min, ventilation_l_min, cardiac_output_l_min = flows
     circuit = BreathingCircuit(
@@ -406,6 +412,16 @@ def _system(
 
     for tissue in tissues:
         tissue.set_partial_pressure_fraction(Fraction(fraction))
+
+    parts = {
+        "inspired": circuit.set_inspired_partial_pressure_fraction,
+        "alveolar": alveoli.set_partial_pressure_fraction,
+        "venous": venous.set_partial_pressure_fraction,
+        **{tissue.name: tissue.set_partial_pressure_fraction for tissue in tissues},
+    }
+
+    if part_at_one is not None:
+        parts[part_at_one](Fraction(1.0))
 
     patient = PatientCompartments(
         cardiac_output_l_min=CardiacOutput(cardiac_output_l_min),
@@ -745,6 +761,53 @@ def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None
 
     with pytest.raises(SimulationNumericalError, match=refusal):
         run.evaluate_anchored(0.0, 1000.0, 100.0)
+
+
+OPENING_PARTS = (
+    ("inspired", "inspired_partial_pressure_fraction"),
+    ("alveolar", "alveolar partial_pressure_fraction"),
+    ("venous", "venous partial_pressure_fraction"),
+    ("vessel_rich", "vessel_rich partial_pressure_fraction"),
+    ("muscle", "muscle partial_pressure_fraction"),
+    ("fat", "fat partial_pressure_fraction"),
+)
+"""Each part that holds a fraction at the opening, and the name its refusal gives."""
+
+
+@pytest.mark.parametrize(("part", "named"), OPENING_PARTS, ids=[part for part, _ in OPENING_PARTS])
+def test_each_part_of_the_opening_is_checked_against_the_input_ceiling(
+    part: str, named: str
+) -> None:
+    """A system with one part at 1 and the rest at 0 is refused, and the refusal names that part.
+
+    The other tests open every part at the same fraction. There, whichever
+    part is checked first refuses the system, and a check dropped from any
+    other part goes unnoticed. An adversarial mutation pass deleted each
+    part's check in turn, and the suite still passed (2026-10-31).
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    refusal = rf"^{named} of 1\.0 is above 0\.99 of one atmosphere"
+
+    _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0)
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0, part_at_one=part)
+
+
+def test_a_system_built_with_its_dial_above_the_input_ceiling_is_refused() -> None:
+    """A circuit whose dial is at 100% cannot become a system, even before its first step.
+
+    The circuit here allows a dial up to 100%, so only the system's own check
+    can refuse it. Without that check the system was built, and the refusal
+    came only when the first step built its settings record.
+    """
+
+    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    refusal = r"^delivered_concentration_percent of 100(\.0)?% is above 99% of one atmosphere"
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        _system(STIFFEST_DRAWN_CORNER, flows, 0.0, FULL_DIAL_PERCENT)
 
 
 ROUNDING_CORNERS = (

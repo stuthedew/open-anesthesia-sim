@@ -2104,6 +2104,76 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
     assert worst * 100.0 < 0.005
 
 
+@pytest.mark.parametrize(
+    ("index", "named"),
+    (
+        (INSPIRED_FRACTION, "inspired fraction F_I"),
+        (ALVEOLAR_FRACTION, "alveolar fraction F_A"),
+        (VENOUS_FRACTION, "mixed venous fraction F_v"),
+    ),
+)
+def test_a_refused_drawn_gas_or_blood_fraction_names_its_compartment(
+    index: int, named: str
+) -> None:
+    """The display path refuses a drawn inspired, alveolar or venous fraction above 1.
+
+    At the stiffest corner the first drawn value past 1 was the inspired
+    fraction. The sweep's test still passed with these three checks removed,
+    because the tissues went past 1 later in the same window (2026-10-31).
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    state = list(system.state_vector())
+    state[index] = 1.0000000000001568
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        run_definition._drawable(tuple(state), system.equation_settings())
+
+    assert str(raised.value).startswith(
+        f"the display path computed a value it cannot draw: state[{index}] ({named}) "
+        "of 1.0000000000001568 is outside 0 to 1"
+    ), raised.value
+
+
+def test_every_column_a_window_returns_has_been_checked_for_drawing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both display paths pass every column they return through the display path's check.
+
+    Each path appends a column at two places: the first column of a stretch,
+    and each column chained from it. A check dropped from one place went
+    unnoticed while the other still refused the window. So this test counts
+    the checks and compares the count with the columns returned. The run has
+    two changes, and the windows start after the opening, so every path
+    through each method is taken.
+    """
+
+    checked: list[DisplayState] = []
+    exact = run_definition._drawable
+
+    def counting_drawable(
+        state: tuple[float, ...], settings: UptakeEquationSettings
+    ) -> DisplayState:
+        drawn = exact(state, settings)
+        checked.append(drawn)
+
+        return drawn
+
+    monkeypatch.setattr(run_definition, "_drawable", counting_drawable)
+    definition = _changed_at_12_5_and_30()
+    definition.advance_to(CaseInstant(60.0))
+
+    for window in (
+        lambda: definition.evaluate(5.0, 60.0, 23),
+        lambda: definition.evaluate_anchored(5.0, 60.0, 2.5),
+    ):
+        checked.clear()
+        drawn = window()
+
+        assert len(drawn.states) > 3
+        assert checked == list(drawn.states)
+
+
 @pytest.mark.parametrize("offset", range(TISSUE_GROUP_COUNT))
 def test_a_refused_drawn_tissue_fraction_names_its_tissue_group(offset: int) -> None:
     """The halt banner for a refused window says which tissue group refused (`PL-SPN6`).
