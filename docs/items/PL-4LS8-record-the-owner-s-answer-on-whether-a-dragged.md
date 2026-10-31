@@ -3,11 +3,14 @@ id: PL-4LS8
 title: Record the owner's answer on whether a dragged-dial preview curve may draw at 1 px or stops at 2 px
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: feature
 feature: presentation-safety
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-10-31
+closed: 2026-10-31
+pr: 1896
+verify: uv run pytest -q tests/unit/test_chart_frame.py -k no_trace_and_no_preview_is_drawn_thinner_than_two_pixels
 ---
 
 **Problem.** The dragged-dial preview that `PL-5B1N` built draws each
@@ -47,3 +50,14 @@ agreed against the contrast floor.
 floor, `MINIMUM_TRACE_STROKE_WIDTH` and its test change with it, and
 `docs/MODEL.md` § "A preview of an unapplied setting" says why the floor was
 waived.
+
+**Decided 2026-10-31 by the session, under the 2026-10-18 rule that look,
+wording and placement are placeholders a session decides.** Option 1: a
+preview curve is one pixel thinner than a lone run's curve and never thinner
+than 2 px. The card put to the owner was withdrawn on the coordinator's
+reading of that rule. Width here is a backup cue, and option 2 is the one
+that would take a required value's visibility below the 3:1 floor, so the
+choice has one correct answer. `preview_stroke_width` in
+`src/anesthesia_sim/app/chart_frame.py` already does this, so nothing in the
+code changes. A later owner preference for 1 px reopens it on that ground.
+

@@ -350,8 +350,9 @@ through `chart_time_base.preview_window`, and both plots draw the result in
    previews at 2 px and a 2 px trace previews at 2 px. The width cue then
    holds only for the emphasised traces, and position, region and label carry
    the rest. This was put to the project owner as a decision on 2026-10-31,
-   with this option recommended and built. `PL-4LS8` holds the question and
-   records the answer.
+   with this option recommended and built. `PL-4LS8` held the question. It
+   was then decided by the session as a placeholder look choice on
+   2026-10-31, keeping the 2 px floor, and `PL-4LS8` records why.
 4. **No typed entry exists**, so the design's "a typed entry previews on each
    parse" has nothing to attach to. A drag applies on release. A key press, a
    wheel step and a click on the groove apply at once and draw no preview,

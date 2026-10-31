@@ -7041,10 +7041,11 @@ entries are closed, because a count written into a document goes stale the next
 time an item closes. `bin/docket wave` compares the list with `docs/items/` and
 reports the count.
 
-**`PL-4LS8` joined the list on 2026-10-31, after the freeze.** It holds the
+**`PL-4LS8` joined the list on 2026-10-31, after the freeze.** It held the
 one question that `PL-5B1N`'s build left open: whether a preview curve may
 draw at 1 px. `PL-5B1N` closed with its build, and the open part of a frozen
-entry stays on the list rather than leaving it.
+entry stays on the list rather than leaving it. `PL-4LS8` closed the same day
+with the 2 px floor kept.
 
 **Two groups, and only the second must clear before this milestone's
 implementation begins.** The first group is debt that this milestone's own
