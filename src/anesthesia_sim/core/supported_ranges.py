@@ -8,13 +8,13 @@ takes the type, so no other code makes the check and no entry point has to
 remember it (`PL-0YYV`). The fourth setting, the delivered concentration, is
 checked when a caller changes it.
 
-The fifth interval bounds the *run*: how much elapsed simulated time the model
-is claimed to represent a patient over. It is checked as each step is taken,
-because a run reaches its length rather than having it set. It is also checked
-where a run is *handed* a point on that span instead of reaching it: a state
-built part-way through a run, or a run definition's opening or its reach.
-There, the value handed in is what is wrong. Otherwise the run length is the
-same kind of statement as the four settings, and it lives here for that
+The fifth interval bounds the *run*: the span of elapsed simulated time over
+which the model is claimed to represent a patient. It is checked as each step
+is taken, because a run reaches its length rather than having it set. It is
+also checked where a run is *handed* a point on that span instead of reaching
+it: a state built part-way through a run, or a run definition's opening or its
+reach. There, the value handed in is what is wrong. Otherwise the run length is
+the same kind of statement as the four settings, and it lives here for that
 reason.
 
 `docs/MODEL.md` § "Supported input ranges" is the specification. This module
@@ -31,7 +31,7 @@ look like presentation choices, and they once were. Until this module existed,
 The intervals belong to the model because of **physiological applicability,
 not numerical error** (`PL-X9KD`). This module used to give a different
 reason. The shipped operator split had a first-order coefficient that grew
-with the flows, so far enough outside these intervals a displayed number was
+with the flows. So, far enough outside these intervals, a displayed number was
 wrong by a margin that the interface could not show. That method is retired.
 The exact propagator solves the governing equations at any flows at all, so a
 cardiac output of 1000 L/min now gives an *arithmetically correct* result. It
@@ -60,30 +60,31 @@ state of the coupled system too.
 
 **The coupled model's inputs stop at 0.99 of one atmosphere** (`PL-9B1M`). A
 fraction is checked from 0 through 1 wherever it is built, including every
-fraction that a step or an evaluation computes. The coupled step's rounding
-can carry a computed fraction a little above the largest fraction it started
-from. So a state at the very top of the range, with every compartment at 1,
-could not be stepped: a step rounded one fraction to 1.0000000000349965, the
-check refused it, and the run halted for a rounding error. The display path
-drew 1.000033. No physically possible value is that close to 1, so the fix is
-to stop the inputs short of it rather than to widen the check. The delivered
-concentration and every fraction that the stepped system opens from must be
-at or below `MAXIMUM_INPUT_FRACTION`. Because the model conserves agent, no
-computed fraction then exceeds that ceiling by more than rounding, and the
-largest excess measured at every envelope corner was 3.3e-5. `docs/MODEL.md`
-§ "The numerical envelope" gives the measurement (project owner, 2026-10-31,
-ratified, over a fraction check that accepts a value slightly above 1).
+fraction that a step or an evaluation computes. The coupled step's rounding can
+carry a computed fraction a little above the largest fraction it started from.
+So a state at the very top of the range, with every compartment at 1, could not
+be stepped. A step rounded one fraction to 1.0000000000349965, the check refused
+it, and the run halted for a rounding error. The display path drew 1.000033 from
+the same state. No shipped vaporizer comes near one atmosphere, so no supported
+run needs a state that close to 1. The fix is therefore to stop the inputs short
+of 1 rather than to widen the check. The delivered concentration and every
+fraction that the stepped system opens from must be at or below
+`MAXIMUM_INPUT_FRACTION`. Because the model conserves agent, no computed
+fraction then exceeds that ceiling by more than rounding. The largest excess
+measured at every envelope corner was 3.3e-5, and `docs/MODEL.md` § "The
+numerical envelope" gives the measurement (project owner, 2026-10-31, ratified,
+over a fraction check that accepts a value slightly above 1).
 
 **Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
 `PL-51B7`). `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are
 `float` subclasses whose constructors call the guards below. The reasons are
-the ones `core/simulation_step.py` gives for `SimulationStep`: a `NewType` is
-erased at run time and proves nothing about a range, and a frozen record would
-put a field access into every equation. Each flow is the number itself in the
-arithmetic. Arithmetic on one returns a plain `float`, so a quantity derived
-from a flow does not claim a range check that it never passed. A tissue's
-share of cardiac output and the litres per second that the equations use are
-examples.
+the ones that `core/simulation_step.py` gives for `SimulationStep`. A `NewType`
+is erased at run time and proves nothing about a range, and a frozen record
+would put a field access into every equation. In the arithmetic, each flow is
+the number itself. Arithmetic on a flow returns a plain `float`, so a quantity
+derived from a flow does not claim a range check that it never passed. A
+tissue's share of cardiac output and the litres per second that the equations
+use are examples.
 
 When the three flows were checked by hand at each entry point, every
 compartment checked them and no settings record did. A `RunDefinition` built
@@ -104,18 +105,18 @@ as it is built. The layers that forward a flow, `AgentUptakeSystem` and
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
 `PL-51B7`). `CaseInstant` is a `float` subclass built only through
-`require_supported_case_instant`, for the same reasons as the flows. It is
-built from the same inputs as they are: an `int` or a `float` and nothing
-else, with minus zero stored as zero (`core/checked_number.py`, `PL-7N8P`).
-Whatever opens, moves, keyframes, marks or branches a run takes a
-`CaseInstant`. That covers `RunDefinition`'s opening, reach and keyframes, the
-marks in `app/bookmarks.py`, and the instant at which a branch is taken.
-`SimulationState.elapsed_s` returns one. The control record's instants are
-still annotated `float` (`PL-RCYZ`). The instants at which a run is only
-*read* stay a `float`: `RunDefinition`'s `state_at` and a drawn window's
-bounds. The run's own opening and reach, which are both checked instants,
-bound these instants and refuse what falls outside. That check is a relation
-between the instant and the run, so it belongs to the run.
+`require_supported_case_instant`, for the same reasons as the flows. It accepts
+the same inputs as they do: an `int` or a `float` and nothing else, with minus
+zero stored as zero (`core/checked_number.py`, `PL-7N8P`). Every operation that
+opens, moves, marks or branches a run, or that stores one of its keyframes,
+takes a `CaseInstant`. That covers `RunDefinition`'s opening, reach and
+keyframes, the marks in `app/bookmarks.py`, and the instant at which a branch
+is taken. `SimulationState.elapsed_s` returns one. The control record's
+instants are still annotated `float` (`PL-RCYZ`). The instants at which a run
+is only *read* stay a `float`: `RunDefinition`'s `state_at` and a drawn
+window's bounds. The run's own opening and reach, which are both checked
+instants, bound these instants and refuse what falls outside. That check is a
+relation between the instant and the run, so it belongs to the run.
 
 `StepCount` is an `int` subclass. It checks what a count can be checked for
 on its own: that it is whole and nonnegative. How many steps a run may
@@ -153,11 +154,11 @@ is the only bound today. `docs/MODEL.md` § "Supported input ranges" carries
 both claims and what separates them.
 
 `SimulationState` counts the steps a run takes, and it is what refuses the
-step that would cross the run-length bound. A compartment does not, because a
-compartment advanced alone has no run length to go past the end of.
-`SimulationState` refuses the step that would cross the boundary rather than
-raising after crossing it. So a run that stops here ends on a completed step,
-at a simulated time inside the supported span.
+step that would cross the run-length bound. A compartment neither counts
+steps nor refuses one, because a compartment advanced alone has no run length
+whose end it could pass. `SimulationState` refuses the step that would cross the boundary
+rather than raising after crossing it. So a run that stops here ends on a
+completed step, at a simulated time inside the supported span.
 
 Two more guards refuse a point on the span that is handed in rather than
 reached. `require_supported_step_count` covers a `SimulationState` built
@@ -222,13 +223,14 @@ MAXIMUM_INPUT_FRACTION = 0.99
 
 It bounds two inputs: the delivered concentration, and each fraction of the
 state that the stepped system holds when it is built. The module docstring
-gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That is about 300
-times the largest excess over the ceiling measured from it at every corner of
-the numerical envelope, which was 3.3e-5 on the display path after 60 chained
-propagators (`docs/MODEL.md` § "The numerical envelope", 2026-10-31). It is
-above every shipped vaporizer maximum, the highest of which is desflurane's
-18%, and it is tied to the envelope rather than to one agent. So a later gas
-delivered at a high fraction does not need a new ceiling.
+gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That margin is
+about 300 times the largest excess over the ceiling in runs that started at it.
+The excess was measured at every corner of the numerical envelope, and the
+largest was 3.3e-5, on the display path after 60 chained propagators
+(`docs/MODEL.md` § "The numerical envelope", 2026-10-31). The ceiling is above
+every shipped vaporizer maximum, the highest of which is desflurane's 18%. It
+is tied to the envelope rather than to one agent, so a later gas delivered at a
+high fraction does not need a new ceiling.
 
 A fraction that the model computes is not held to this ceiling, only to 0
 through 1. A computed fraction may lie a rounding error above the ceiling, and
@@ -438,12 +440,12 @@ def _above_the_input_ceiling(name: str, written: str, ceiling: str) -> Simulatio
 def require_within_input_ceiling(name: str, concentration: float) -> None:
     """Refuse a concentration that the coupled model would start from too close to one atmosphere.
 
-    `concentration` is either the delivered concentration, as a `Percent`, or a
-    fraction of one atmosphere that is stored as a fraction, as the circuit's
-    is. A `Percent` is converted to a fraction before the comparison, and the
-    message quotes it in percent, the unit of the dial. Its range and type
-    were checked where it was built, so only the ceiling is checked here. A
-    compartment that stores an amount of agent is checked by
+    `concentration` is either the delivered concentration, as a `Percent`, or
+    the fraction of one atmosphere held by a part that stores a fraction, as the
+    circuit does. A `Percent` is converted to a fraction before the comparison,
+    and the message quotes it in percent, the unit of the dial. The value's
+    range and type were checked where it was built, so only the ceiling is
+    checked here. A compartment that stores an amount of agent is checked by
     `require_held_within_input_ceiling` instead.
 
     Raises:

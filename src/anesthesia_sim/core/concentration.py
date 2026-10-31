@@ -22,15 +22,16 @@ through 1 for a fraction, and 0 through 100 for a percent. `MacMultiple` is a
 `NewType` over `float`. `mypy` rejects any one of the three where another is
 expected, and rejects a bare `float` for any of them. A value built as a
 `Fraction` or a `Percent` is proof that its range was checked, so no code that
-receives one checks its range again. `core/checked_number.py` decides two things once
-for every checked type (`PL-LLMN`). The first is what a value may be built
-from: an `int` or a `float`, and nothing else. The second is how a zero is
-stored: without a sign. This is the pattern that `.claude/rules/core-domain.md`
-§ "A quantity with a check of its own is a type, checked once" describes, and
-`PL-4R3W` applied it here. Before `PL-4R3W`, both were `NewType`s, which the
-interpreter erases, and their ranges were checked by hand at each of the
-twelve places where a value entered. Four limits are worth stating, because
-each is a way in which the types could be taken to promise more than they do:
+receives one checks its range again. `core/checked_number.py` decides two
+things once for every checked type (`PL-LLMN`). The first is what a value may
+be built from: an `int` or a `float`, and nothing else. The second is how a
+zero is stored: without a sign. This is the pattern that
+`.claude/rules/core-domain.md` § "A quantity with a check of its own is a type,
+checked once" describes, and `PL-4R3W` applied it here. Before `PL-4R3W`, both
+were `NewType`s, which the interpreter erases, and their ranges were checked by
+hand at each of the twelve places where a value entered. Four limits are worth
+stating, because each is a way in which the types could be taken to promise
+more than they do:
 
 - **Arithmetic erases them.** `Fraction(0.5) * 2.0` and `f + f` are both plain
   `float`, both at run time and under `mypy`. A computed value carries no
@@ -51,49 +52,53 @@ each is a way in which the types could be taken to promise more than they do:
   makes the same call. Code that only passes a value onward checks nothing.
 - **They cannot catch a wrong magnitude.** `Percent(0.02)` and `Percent(2.0)`
   are 0.02% and 2%, and both are valid percents. What the types catch is a
-  *missing conversion*. A `Fraction` passed where a `Percent` is expected is
-  rejected by `mypy`. Since `PL-4R3W`, `require_percent` also rejects it at
-  run time, with a message that says to convert it rather than rebuild it.
+  *missing conversion*. `mypy` rejects a `Fraction` passed where a `Percent`
+  is expected. Since `PL-4R3W`, `require_percent` also rejects it at run
+  time, with a message that says to convert it rather than rebuild it.
   Rebuilding it is rejected as well. `mypy` accepts `Percent(fraction)`,
-  because a `Fraction` is a `float`, so each constructor rejects a value of
+  because a `Fraction` is a `float`. So each constructor rejects a value of
   the other type with `TypeError` and the same advice. Each constructor also
   rejects a value built as any other checked quantity, such as a step, a
-  flow, an instant or a count. It reports that value as a swapped argument,
-  not as a missed conversion. To do this, every constructor reads the one
-  record of the checked types (`core/checked_number.py`, `PL-979Z`).
-  `require_fraction` and `require_percent` also reject such a value where a
-  concentration is stored (`PL-CX2C`). Nothing catches a percent built from
-  a fraction's *value*, that is, from a bare `float` that held a fraction.
-  Every fraction is also a valid percent, in the band below 1%. That band is
-  below every agent's vaporizer maximum, so
-  `require_within_vaporizer_maximum` accepts the value. That is why the dial
-  has few writers, and why each of them passes a value that is already in
-  percent. `PL-WVSK` measured the band of values that pass as either form
-  when the dial was still stored as a fraction, before `PL-NJPB`. The run-time check applies where a
-  concentration is stored or built. Since `PL-SWD1`, it also applies at the
-  two conversions below, on which the formatters are built. Each conversion
-  rejects a value that is already in the form it returns, before its
-  arithmetic runs. Converted again, that value would be a hundred times off,
-  under the type that is meant to prove it was checked. Each conversion also
-  rejects a value built as any other checked quantity, as the constructors
-  do. Until `PL-1DP1`, the conversions accepted a bare `float` as given,
-  because a number that nobody built carries no form by which to reject it.
-  For the same reason, neither conversion could tell how to convert it.
-  `percent_from_fraction(0.5)` was a `Percent` of 50.0 whether the 0.5 was a
-  fraction or a 0.5% dial, and `format_percent(0.5)` printed `50.00%` for
-  both. So each conversion now checks its argument as every place above
-  does, through `require_percent` or `require_fraction`. A bare `float` is
-  rejected, and the message names the constructor that should build it
-  (project owner, 2026-10-12, ratified, over keeping the number as given,
-  which `PL-4R3W` chose). The number that the arithmetic produces is checked
-  against its range where the result is built.
+  flow, an instant or a count. Its message calls that value a swapped
+  argument, not a missed conversion. To recognize such a value, every
+  constructor reads the one record of the checked types
+  (`core/checked_number.py`, `PL-979Z`). `require_fraction` and
+  `require_percent` also reject such a value where a concentration is
+  stored (`PL-CX2C`).
+
+  Nothing catches a percent built from a fraction's *value*, that is, from a
+  bare `float` that held a fraction. Every fraction is also a valid percent,
+  in the band below 1%. That band is below every agent's vaporizer maximum,
+  so `require_within_vaporizer_maximum` accepts the value. That is why the
+  dial has few writers, and why each of them passes a value that is already
+  in percent. `PL-WVSK` measured the band of values that pass as either
+  form, when the dial was still stored as a fraction, before `PL-NJPB`.
+
+  The run-time check applies where a concentration is stored or built. Since
+  `PL-SWD1`, it also applies at the two conversions below, which the
+  formatters are built on. Each conversion rejects a value that is already in
+  the form it returns, before its arithmetic runs. Converted again, that
+  value would be a hundred times off, yet it would carry the type that is
+  meant to prove it was checked. Each conversion also rejects a value built
+  as any other checked quantity, as the constructors do. Until `PL-1DP1`, the
+  conversions accepted a bare `float` as given. Nobody had built that number
+  as either type, so it carried no form that a conversion could reject. For
+  the same reason, neither conversion could tell which form the number was
+  in. `percent_from_fraction(0.5)` was a `Percent` of 50.0 whether the 0.5
+  was a fraction or a 0.5% dial, and `format_percent(0.5)` printed `50.00%`
+  for both. So each conversion now checks its argument through
+  `require_percent` or `require_fraction`, as every place above does. A bare
+  `float` is rejected, and the message names the constructor that should
+  build it (project owner, 2026-10-12, ratified, over keeping the number as
+  given, which `PL-4R3W` chose). The number that the arithmetic produces is
+  checked against its range where the result is built.
 - **The type's range is the physical range, so the coupled model's inputs
   stop below its top.** A fraction is checked from 0 through 1, and that
   includes every fraction the model computes. The coupled propagator's
   rounding can carry a computed fraction a little above the largest fraction
-  it started from. So a state at 1, or a 100% dial, could round a computed
-  fraction past 1, and the type then refused it. `PL-4R3W` measured
-  1.000000000099652 after 24 h from a 100% dial on 2026-10-04, and
+  it started from. So a step from a state at 1, or under a 100% dial, could
+  round a computed fraction past 1, and the type then refused it. `PL-4R3W`
+  measured 1.000000000099652 after 24 h from a 100% dial on 2026-10-04, and
   `PL-9B1M` measured a stepped fraction of 1.0000000000349965 and a drawn one
   of 1.000033 from a full state on 2026-10-26. The type was not widened to
   absorb that excess. Instead, the delivered concentration and the state that

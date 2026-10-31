@@ -321,11 +321,11 @@ class BreathingCircuit:
 
     The circuit's volume and its vaporizer maximum have no default, so every
     caller must state the values it means (`PL-M85T`). The other defaults do
-    not depend on the agent. Agent-independent values are the only ones that a
-    class holding no agent parameters can honestly claim to know. A circuit is
-    built empty, at 4 L/min, with the vaporizer off. Zero is the one dial
-    position that every vaporizer of every agent has. So it is the only
-    delivered concentration this class can supply without borrowing some
+    not depend on the agent. This class holds no agent parameters, so a value
+    that does not depend on the agent is the only kind it can honestly claim to
+    know. A circuit is built empty, at 4 L/min, with the vaporizer off. Zero is
+    the one dial position that every vaporizer of every agent has. So it is the
+    only delivered concentration this class can supply without borrowing some
     particular agent's number (PL-019).
 
     **`data/machines/reference_circle_system.json` is the authority for the
@@ -344,26 +344,26 @@ class BreathingCircuit:
 
     `fresh_gas_flow_l_min` is the flow at the common gas outlet: the carrier
     gas plus the vapour that the vaporizer added. It is not the flowmeter
-    setting, although a user may read it as one. The two differ by a factor of
-    1/(1 - `delivered_partial_pressure_fraction`), which is 22% at
-    desflurane's 18% dial maximum. `advance_fresh_gas()` uses this one field
-    both as the rate at which agent arrives and as the rate at which mixed
-    circuit gas leaves. Only the post-vaporizer total balances those two
-    rates, so the field must hold that total. See `docs/MODEL.md`, "Breathing
-    circuit".
+    setting, although a user may read it as one. The outlet flow is larger than
+    the flowmeter setting by a factor of 1/(1 - `delivered_partial_pressure_fraction`).
+    At desflurane's 18% dial maximum, the difference is 22%.
+    `advance_fresh_gas()` uses this one field both as the rate at which agent
+    arrives and as the rate at which mixed circuit gas leaves. Only the
+    post-vaporizer total balances those two rates, so the field must hold that
+    total. See `docs/MODEL.md`, "Breathing circuit".
 
     **The dial is stored as the percent it was set to, and the fraction is
     derived from it** (`PL-NJPB`). `delivered_concentration_percent` is the
     stored record. `delivered_partial_pressure_fraction`, which the governing
-    equations use, is computed as `fraction_from_percent` of it on every read.
-    If the fraction were stored instead, the setting could not be recovered as
-    dialled. In binary floating point, a fraction times a hundred does not
-    return the percent it came from for 126 of the 801 settings that a 0 to 8%
-    dial makes in 0.01% steps. For example, 0.9% reads back as
-    0.9000000000000001. The equations lose nothing, because the one division
-    that the interface used to make is now made here. `PL-SM5V` chose the same
-    rule for the flows, which are stored in L/min and used by the equations in
-    L/s.
+    equations use, is computed from it by `fraction_from_percent` each time it
+    is read. If the fraction were stored instead, the setting could not be
+    recovered as dialled. In binary floating point, a fraction times a hundred
+    does not return the percent it came from for 126 of the 801 settings that a
+    0 to 8% dial makes in 0.01% steps. For example, 0.9% reads back as
+    0.9000000000000001. The equations lose nothing by this. They still receive
+    a fraction, and the one division that the interface used to make is now
+    made here. `PL-SM5V` chose the same rule for the flows, which are stored in
+    L/min and used by the equations in L/s.
 
     `max_delivered_concentration_percent` is the vaporizer's calibrated
     dial maximum for the agent in use, in the unit of the dial it bounds. It
@@ -373,11 +373,11 @@ class BreathingCircuit:
     `AgentUptakeSystem.for_agent()`. That method sets both the real limit and
     that agent's own starting dial from the agent data file. A test of circuit
     physics that wants no device limit passes 100% itself. The circuit then
-    accepts a 100% dial, and its own closed form stays inside 0 to 1. The
-    coupled system does not accept it. Its step can round a computed fraction
-    past 1 from a dial at 100%, so `AgentUptakeSystem` and
-    `UptakeEquationSettings` refuse a dial above `MAXIMUM_INPUT_FRACTION`, 99%
-    (`core/supported_ranges.py`, `PL-9B1M`).
+    accepts a 100% dial, and its own closed form keeps every fraction inside 0
+    to 1. The coupled system does not accept a 100% dial, because from that
+    dial its step can round a computed fraction past 1. So `AgentUptakeSystem`
+    and `UptakeEquationSettings` refuse a dial above `MAXIMUM_INPUT_FRACTION`,
+    99% (`core/supported_ranges.py`, `PL-9B1M`).
 
     `__setattr__` checks every field each time it is written, including the
     writes the constructor makes. So an assignment that bypasses the
@@ -387,9 +387,9 @@ class BreathingCircuit:
     was checked against its range when it was built, so a value of that type
     already proves that it is in range (`PL-4R3W`, `PL-0YYV`).
 
-    `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
-    dial maximum, but it may be `None`. `None` means "no machine range
-    declared", and then the model's envelope in
+    `deliverable_fresh_gas_flow_range` is the machine's counterpart of the
+    vaporizer's dial maximum, but it may be `None`. `None` means "no machine
+    range declared", and then the model's envelope in
     `core/supported_ranges.py` is the only bound on the flow. The shipped
     `reference_circle_system` profile declares no range. No operator's manual
     or manufacturer specification giving a deliverable range was reachable for

@@ -153,7 +153,7 @@ sum to exactly 1 in floating point. The coupled step runs at this split too.
 TISSUE_NAMES = ("vessel_rich", "muscle", "fat")
 
 FULL_DIAL_PERCENT = 100.0
-"""A dial at 100%, the vaporizer maximum here, and the dial of a compartment stepped on its own.
+"""A dial at 100%. It is the vaporizer maximum here, and the dial for a compartment stepped alone.
 
 The coupled model refuses a dial above `CEILING_DIAL_PERCENT`, so the coupled
 runs below use that dial instead.
@@ -447,9 +447,9 @@ def _require_the_system(corner: Corner) -> None:
     compartment at 1 could round a fraction past 1. The fraction check refused
     it, the step was rolled back, and this test accepted that refusal by name.
     The coupled model's inputs now stop at `CEILING`, so the refusal must not
-    happen. Every fraction after the step must lie from 0 through 1, and at or
-    below the ceiling to within one step's propagator bound at the most
-    squarings that any corner's step needs.
+    happen. Every fraction after the step must lie from 0 through 1. It must
+    also exceed the ceiling by no more than one step's propagator bound, taken
+    at the largest number of squarings that any corner's step needs.
     """
 
     largest_fraction = CEILING * (1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON)
@@ -572,9 +572,9 @@ def test_every_core_operation_holds_its_equations_at_every_envelope_corner(corne
     at zero, at the smallest float and at their supported maximums. The run opens
     empty or at the input ceiling. One refusal is accepted, with the
     simulator's own error: the canonical path's refusal of its single 86 400 s
-    interval at the stiffest corners. Before the input ceiling a second was accepted,
-    a step from a state at 1 that rounded a fraction past 1. A state at the
-    ceiling must never be refused that way.
+    interval at the stiffest corners. Before the input ceiling, a second refusal
+    was accepted: a step from a state at 1 that rounded a fraction past 1. A
+    state at the ceiling must never be refused that way.
     """
 
     _require_the_run(corner)
@@ -724,7 +724,7 @@ def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None
     fraction over the first 1000 s sampled every 100 s (measured 2026-10-31).
     Each now refuses the window with the simulator's own error, naming the
     state position that left the range. The window is short because the
-    anchored path forms one propagator to its stop, and at this corner one
+    anchored path forms one propagator to its stop. At this corner, a propagator
     longer than about 1610 s needs more squarings than the module allows.
     """
 

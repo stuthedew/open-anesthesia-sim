@@ -157,9 +157,9 @@ class AgentUptakeSystem:
         computed fractions through the same setters, and a computed fraction
         may lie a rounding error above the ceiling. So the ceiling is checked
         here, where a caller's state becomes a run's opening. A compartment
-        that stores an amount is checked by that amount, so that a fraction
-        set exactly at the ceiling is not refused for the rounding of reading
-        it back. A run that later resumes at a state it computed
+        that stores an amount is checked by that amount. That way, a fraction
+        set exactly at the ceiling is not refused because of the rounding when
+        it is read back. A run that later resumes at a state it computed
         (`resume_at`) is checked from 0 through 1, for the same reason.
 
         Raises:

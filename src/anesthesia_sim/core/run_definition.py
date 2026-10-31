@@ -705,7 +705,7 @@ class RunDefinition:
         return SampledWindow(times_s=times_s, states=tuple(states))
 
     def evaluate_anchored(self, start_s: float, stop_s: float, spacing_s: float) -> SampledWindow:
-        """Columns on an absolute grid across `[start_s, stop_s]`, plus every event in it.
+        """Return columns on an absolute grid over `[start_s, stop_s]`, and at each event in it.
 
         This is the chart's own display path. It differs from `evaluate` in
         two ways that a drawn trace needs and a bare window does not.
@@ -716,11 +716,10 @@ class RunDefinition:
         column time it had in the last frame, and gains at most one new column
         time. `evaluate` spaces its columns across whatever bounds it is given,
         which makes every column a new instant on every frame. The drawn
-        points then all move. `PL-Q197` measured that movement as what
-        saturated the Flutter client, at 2 700 discrete control mutations a
-        frame, before decimation was anchored for exactly this reason.
-        Anchoring the *evaluation* times applies the same fix at the next
-        level.
+        points then all move. `PL-Q197` found that this movement saturated the
+        Flutter client, at 2 700 discrete control mutations a frame. Decimation
+        was anchored to fix exactly that. Anchoring the *evaluation* times
+        applies the same fix at the next level.
 
         **Do not re-anchor this grid to the run's own opening.** For a run
         opening at induction the two are the same number, so the distinction
@@ -806,8 +805,8 @@ class RunDefinition:
                 `opened_at_s`, `stop_s` precedes `start_s`, `stop_s` is past
                 the time the run has reached, or `spacing_s` is so fine that
                 the grid's multiples up to `stop_s` cannot be counted. Before
-                `PL-YZ17`, that last case raised a bare `OverflowError`. It is
-                also raised when the window holds more than
+                `PL-YZ17`, that last case raised a bare `OverflowError`. The
+                error is also raised when the window holds more than
                 `MAXIMUM_WINDOW_COLUMNS` grid multiples, counted as that
                 constant's docstring says. Before `PL-06LS`, such a window
                 looped once per multiple and could fail to return. A
