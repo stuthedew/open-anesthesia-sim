@@ -740,6 +740,9 @@ class WorkspaceTabs(QWidget):
         self._workspaces = workspaces
         self._tabs: list[WorkspaceTab] = []
         self._editor: _NameEditor | None = None
+        # The open question, if any. While it is set, the dashboard holds
+        # every run, because the question blocks their Pause buttons
+        # (`SimulationView._a_question_is_open`).
         self.question: WorkspaceQuestionDialog | None = None
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)

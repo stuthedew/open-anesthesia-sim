@@ -824,6 +824,7 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
+        run.hold_while(self._a_question_is_open)
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         notice = run.build_notice()
         self._run_column.insertWidget(self._run_column.indexOf(self._readout_rows), notice)
@@ -859,6 +860,18 @@ class SimulationView(QWidget):
         self._rename_runs()
 
         return run
+
+    def _a_question_is_open(self) -> bool:
+        """Whether a window-modal question is open, so that every run holds.
+
+        The questions are a run's Reset or new-case question and the Workspace
+        strip's question. Each blocks the Pause button of every run while it
+        is open, so a question about one run holds them all
+        (`RunView.hold_while`). The bookmark editor is not modal and holds
+        nothing.
+        """
+
+        return self._tabs.question is not None or any(run.asks_a_question for run in self._runs)
 
     def add_run(self, controller: SimulationController) -> RunView:
         """Draw a second run beside the one already shown, from the next frame on.

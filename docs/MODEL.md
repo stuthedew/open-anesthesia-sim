@@ -7984,6 +7984,22 @@ neither is dropped without a question. Four tests in
 `test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
 `test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch`.
 
+**Every run holds while a question is open, and carries on as it was when
+the question closes** (project owner, 2026-10-31, ratified, over letting the
+runs go on stepping, `PL-TPBH`). The trunk's Reset question, the question
+asked before a new agent starts a new case, and the Workspace strip's
+questions are all window-modal. While one is open, the reader cannot press
+Pause on any run. Before this rule, a reader who spent ten seconds on a
+question at 300× came back to a case 50 simulated minutes further on. Now no
+run takes a step while a question is open. When it closes, a running run runs
+again at the same playback rate, and a paused run stays paused. The hold only
+skips ticks of the step timer and changes nothing in the run. So a run's
+trajectory is the same as if the reader had answered at once, as
+§ "The reproducibility guarantee" requires. The bookmark editor is not modal,
+so it holds nothing. `test_the_run_does_not_advance_while_a_reset_question_is_open`
+enforces this rule for the trunk's Reset question, and two tests beside it
+enforce it for the new-case and Workspace questions.
+
 ## What a branch comparison asserts, and what it does not
 
 **Two curves, one difference, an obvious conclusion. The conclusion is the

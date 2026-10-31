@@ -1183,12 +1183,14 @@ class NewCaseDialog(QDialog):
         )
 
     def show_question(self, question: NewCaseQuestion) -> None:
-        """Rewrite every line of the question, because the runs may have moved on while it is open.
+        """Rewrite every line of the question from the runs as they stand now.
 
-        The question names how much work starting over discards. A running
-        run goes on stepping while the dialog is open, so the run view
-        rewrites the question on each refresh. The reader therefore decides
-        on a figure for the work as it stands now (`PL-WM5P`).
+        The question names how much work starting over discards. The run
+        view rewrites the question on each refresh, so the reader decides on
+        a figure for the work as it stands now (`PL-WM5P`). Every run holds
+        while the dialog is open (`RunView.hold_while`, `PL-TPBH`), so the
+        figure no longer changes. The rewrite is kept as a guard against a
+        later path that moves a run under an open question.
 
         Args:
             question: The text of `dashboard_frame.new_case_question` or
