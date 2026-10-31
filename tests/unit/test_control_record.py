@@ -10,10 +10,10 @@ from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# Four settings, each a different number, so a control read from another
-# control's field returns the wrong value instead of an equal one. Each is a
-# step the interface's sliders offer, inside its supported range, and none is
-# a shipped default.
+# Four settings, each a different number. If a control were read from another control's
+# field, the test would get a wrong value rather than one that happens to be equal. Each
+# value is a step that the interface's slider offers, and it lies inside the control's
+# supported range. None of them is a shipped default.
 _FRESH_GAS_FLOW_L_MIN = 2.5
 _DELIVERED_PERCENT = 3.25
 _ALVEOLAR_VENTILATION_L_MIN = 6.5
@@ -65,10 +65,10 @@ def test_each_control_reads_the_value_it_was_set_to(
 ) -> None:
     """Each control's value is the number it was set to, in the unit it was set in.
 
-    Both records that the controller and the readouts read are checked, so
-    the one map cannot be right for one record and wrong for the other. The
-    delivered concentration is the percent dialled, not a fraction
-    (`PL-NJPB`).
+    The test checks both records: the one the controller reads and the one the
+    readouts read. So the single field map in `control_value` cannot be right
+    for one record and wrong for the other. The delivered concentration is the
+    percent that was dialled, not a fraction (`PL-NJPB`).
     """
 
     assert control_value(build(), control) == _EXPECTED[control]

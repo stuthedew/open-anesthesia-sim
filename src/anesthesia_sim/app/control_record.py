@@ -116,10 +116,10 @@ CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
 class ControlSettings(Protocol):
     """A record that holds the value of each of the four controls, in the unit it was set in.
 
-    Two records hold them. `UptakeEquationSettings` is what a run's stretch is
-    computed under. `RunSettings` is what the setting controls show. Both store
-    each value under the same field name and in the unit in
-    `CONTROL_INPUT_DISPLAY_UNITS`.
+    Two record types match this protocol. `UptakeEquationSettings` holds the settings
+    that the model computes a stretch of the run under. `RunSettings` holds the values
+    that the setting controls show. Both store each value under the same field name
+    and in the unit given in `CONTROL_INPUT_DISPLAY_UNITS`.
     """
 
     @property
@@ -139,19 +139,20 @@ def control_value(settings: ControlSettings, control: ControlInput) -> float:
     """Return the value that `settings` holds for `control`, in the unit the control was set in.
 
     This is the one place that says which settings field holds each control's
-    value. The controller reads it to work out the changes a branch opened
-    with, and `dashboard_frame.setting_readouts` reads it for the value beside
-    each slider. So a control's recorded change and its readout come from the
-    same field (`PL-000W`).
+    value. The controller calls it to work out which changes a branch starts
+    with. `dashboard_frame.setting_readouts` calls it to get the value shown
+    beside each slider. So a control's recorded change and its readout come
+    from the same field (`PL-000W`).
 
-    The value is the one that was set, not a conversion of it, so it compares
-    exactly equal to the value a setter recorded. The delivered concentration
-    is the percent that was dialled (`PL-NJPB`).
+    The function returns the value as it was set, not a converted value. So the
+    result compares exactly equal to the value that a setter recorded. For
+    example, the delivered concentration is returned as the percent that was
+    dialled (`PL-NJPB`).
 
-    The match has no default case. A new `ControlInput` member without a case
-    here leaves the function without a return on that path, and `mypy`
-    refuses that, so a fifth control cannot reach a readout or a recorded
-    change without saying which field holds it.
+    The `match` statement has no default case. If a new `ControlInput` member
+    has no case here, the function has a path that returns nothing, and `mypy`
+    rejects that. So a fifth control cannot appear in a readout or a recorded
+    change until this function says which field holds it.
     """
 
     match control:

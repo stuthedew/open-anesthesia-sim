@@ -1398,12 +1398,13 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
     """
 
     delivered = settings.delivered_partial_pressure_fraction
-    # The range that the run accepts for each control, read this tick. The
-    # model's envelopes come from `core/supported_ranges.py`, so the interface
-    # offers the domain that the verification gates cover and nothing wider
-    # (`PL-0MLQ`). The fresh gas flow's range is that envelope narrowed by the
-    # mounted machine, as the circuit states it (`PL-7CRY`). The dial's
-    # maximum is the running agent's vaporizer maximum.
+    # The range of values that the run accepts for each control, read on this tick.
+    # The model's supported ranges come from `core/supported_ranges.py`. So the
+    # interface offers only the values that the verification gates cover, and
+    # nothing wider (`PL-0MLQ`). The fresh gas flow range is the model's range,
+    # narrowed to the limits of the mounted machine. The circuit states that
+    # narrower range (`PL-7CRY`). The vaporizer dial's maximum is the maximum of
+    # the vaporizer for the agent that is running.
     accepted_ranges: dict[ControlInput, tuple[float, float]] = {
         ControlInput.FRESH_GAS_FLOW: settings.accepted_fresh_gas_flow_range_l_min,
         ControlInput.DELIVERED: (

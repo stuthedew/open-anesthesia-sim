@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: one-source-of-truth
-touches: src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_control_record.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_control_record.py, tests/unit/test_dashboard_frame.py, docs/ARCHITECTURE.md
 added: 2026-10-26
 closed: 2026-10-31
 pr: 1898
