@@ -3,11 +3,13 @@ id: PL-VHQX
 title: A branch forked on, or reset onto, the 24 h supported run length shows the limit banner's "Reset to start a new run.", and `start()` says "reset it to start a new run", but Reset returns that branch to the same 24:00:00 fork, so the only way out the screen names leads straight back
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux, defect
 feature: replay-findings
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, docs/ARCHITECTURE.md, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-31
+pr: 1895
 payoff: the way out the screen names from the supported-run-length stop actually leaves it on a branch
 verify: grep -q 'def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there' tests/integration/test_controller.py
 ---
