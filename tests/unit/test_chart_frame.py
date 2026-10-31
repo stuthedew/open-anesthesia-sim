@@ -74,7 +74,6 @@ from anesthesia_sim.app.run_series import (
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.run_definition import DisplayState
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
@@ -643,12 +642,6 @@ def _input_refusing_a_drawn_column(
     supported setting computes one (`core/concentration.py`). A drawn window
     is an evaluation of the closed form. The value is therefore written into
     the window that the controller returns, rather than into any compartment.
-
-    Since `PL-9B1M`, `DisplayState` refuses a fraction outside 0 to 1 when it
-    is built, so the core's display path refuses such a value first. The
-    column is written here without that check, through `object.__setattr__`,
-    so that these tests reach the frame's own check. That check still applies
-    to a window built in any other way.
     """
 
     real_drawn_window = controller.drawn_window
@@ -658,9 +651,7 @@ def _input_refusing_a_drawn_column(
         states = list(window.states)
         values = list(states[-1].values)
         values[COMPARTMENT_STATE_INDEX[quantity]] = value
-        unchecked = object.__new__(DisplayState)
-        object.__setattr__(unchecked, "values", tuple(values))
-        states[-1] = unchecked
+        states[-1] = replace(states[-1], values=tuple(values))
 
         return DrawnWindow(window.substance_id, window.times_s, tuple(states))
 

@@ -1154,3 +1154,23 @@ def test_a_nonlocal_unwind_leaves_the_run_readable_and_steppable() -> None:
     result = system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert result.agent_accounting.passes_validation
+
+
+def test_a_dial_above_the_vaporizer_maximum_is_refused_for_the_vaporizer() -> None:
+    """A dial above the agent's vaporizer names that limit, not the 99% input ceiling.
+
+    For sevoflurane, whose vaporizer stops at 8%, a dial of 100% is refused
+    because of the vaporizer. A message naming the 99% ceiling would imply that
+    up to 99% is accepted. The settings record already checks the vaporizer
+    first, and the system's own setter now does the same. Nothing is written.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    before = system.circuit.delivered_concentration_percent
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        system.set_delivered_concentration_percent(Percent(100.0))
+
+    assert "vaporizer" in str(raised.value), raised.value
+    assert "99%" not in str(raised.value), raised.value
+    assert system.circuit.delivered_concentration_percent == before

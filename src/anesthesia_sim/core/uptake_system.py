@@ -376,9 +376,11 @@ class AgentUptakeSystem:
         The circuit checks the dial against the vaporizer's maximum. This
         method also checks it against `MAXIMUM_INPUT_FRACTION`, 99%, before
         the circuit is written (`PL-9B1M`). No shipped vaporizer reaches that
-        ceiling. A dial written straight onto the circuit bypasses this check,
-        and the next step then refuses to build its settings record, as
-        `advance()` describes.
+        ceiling. A dial above the vaporizer's maximum goes straight to the
+        circuit, so its refusal names the limit that binds for this agent,
+        as the settings record's refusal does. A dial written straight onto
+        the circuit bypasses the ceiling check, and the next step then
+        refuses to build its settings record, as `advance()` describes.
 
         Raises:
             TypeError: the dial was not built as a `Percent`, which the
@@ -388,9 +390,10 @@ class AgentUptakeSystem:
         """
 
         require_percent("delivered_concentration_percent", delivered_concentration_percent)
-        require_within_input_ceiling(
-            "delivered_concentration_percent", delivered_concentration_percent
-        )
+        if delivered_concentration_percent <= self.circuit.max_delivered_concentration_percent:
+            require_within_input_ceiling(
+                "delivered_concentration_percent", delivered_concentration_percent
+            )
         self.circuit.set_delivered_concentration_percent(delivered_concentration_percent)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:

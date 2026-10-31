@@ -2516,8 +2516,11 @@ through 1, because it may lie a rounding error above the ceiling. For the same
 reason, `require_canonical_state`, which a `RunDefinition` and `resume_at` share,
 checks a state's fractions only from 0 through 1: those sinks open from a state
 that a run passed through. The display path now builds each fraction it
-computes as a `Fraction` (`DisplayState`), so a window that a caller opened
-from a state at 1 is refused with `SimulationNumericalError` rather than drawn.
+computes as a `Fraction` before it wraps the state in a `DisplayState`. So a
+window that a caller opened from a state at 1 is refused with
+`SimulationNumericalError` rather than drawn, and the refusal names the
+compartment, such as the muscle group, because it reaches a learner as the
+banner that says why the run halted.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
 The ceiling has to sit below 1 by more than the largest excess over it that a

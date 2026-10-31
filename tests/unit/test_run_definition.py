@@ -36,7 +36,7 @@ import pytest
 from anesthesia_sim.app.chart_frame import chart_columns
 from anesthesia_sim.core import run_definition
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     DELIVERED_AGENT_L,
@@ -44,6 +44,7 @@ from anesthesia_sim.core.governing_equations import (
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
     STATE_SIZE,
+    TISSUE_GROUP_COUNT,
     UNIT_STATE,
     VENOUS_FRACTION,
     UptakeEquationSettings,
@@ -2101,3 +2102,32 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
                 worst = max(worst, state.values[index] - high, low - state.values[index])
 
     assert worst * 100.0 < 0.005
+
+
+@pytest.mark.parametrize("offset", range(TISSUE_GROUP_COUNT))
+def test_a_refused_drawn_tissue_fraction_names_its_tissue_group(offset: int) -> None:
+    """The halt banner for a refused window says which tissue group refused (`PL-SPN6`).
+
+    The display path's check runs before the chart frame's own check, so its
+    message is the one a learner reads. A position such as "tissue group 2"
+    does not tell a learner which trace failed. So the message also gives the
+    tissue group's name from the settings record, which `patient.py` built.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    settings = system.equation_settings()
+    state = list(system.state_vector())
+    index = FIRST_TISSUE_FRACTION + offset
+    state[index] = 1.0000000000001568
+    name = settings.tissues[offset].name
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        run_definition._drawable(tuple(state), settings)
+
+    message = str(raised.value)
+    assert message.startswith(
+        f"the display path computed a value it cannot draw: state[{index}] "
+        f"(tissue group {offset + 1} fraction F_{offset + 1}, {name}) of 1.0000000000001568 "
+        "is outside 0 to 1"
+    ), message
+    assert name in {"vessel_rich", "muscle", "fat"}
