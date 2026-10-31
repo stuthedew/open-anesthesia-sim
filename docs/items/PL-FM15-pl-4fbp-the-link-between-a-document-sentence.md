@@ -3,11 +3,13 @@ id: PL-FM15
 title: PL-4FBP (the link between a document sentence and the tree fact it restates) is re-entered by PL-LNFG, PL-D1LR and PL-PTDZ: decide whether a successor head is owed, and whether the docs/MODEL.md items about figures the model computes and the restated display resolution share one misread fact
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: housekeeping
 feature: generator-heads
 touches: docs/items
 added: 2026-10-31
+closed: 2026-10-31
+pr: 1891
 payoff: bin/docket inflow lists PL-4FBP's line as answered with the reason recorded, instead of re-asking it every run
 verify: bin/docket inflow --lane product | grep -A2 'no successor owed' | grep -q 'PL-4FBP'
 no-successor: PL-4FBP
