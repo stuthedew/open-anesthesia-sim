@@ -46,6 +46,7 @@ from math import inf, nan, nextafter
 
 import pytest
 
+from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
@@ -289,15 +290,21 @@ def test_a_resume_into_an_impossible_fraction_says_which_state_refused() -> None
 
 
 @pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
-def test_rounding_can_carry_a_saturated_fraction_above_one(agent: str) -> None:
+def test_rounding_can_carry_a_saturated_fraction_above_one(
+    agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The Metzler argument bounds a fraction below, not above (`PL-PM67`).
 
     Every compartment at 1.0 under a 100% dial is the exact equilibrium, yet one step rounds
     a tissue fraction to 1.0000000000000002. The step is refused and rolled back. So the
-    documents claim only the lower bound, and this test keeps that claim honest. No shipped
-    vaporizer maximum reaches the state, so the test widens the maximum by hand.
+    documents claim only the lower bound, and this test keeps that claim honest.
+
+    No supported input reaches this state. No shipped vaporizer maximum reaches 100%, and
+    since `PL-9B1M` the coupled model refuses a dial above 99%. So the test widens both
+    limits by hand, to keep the refusal of a computed fraction covered.
     """
 
+    monkeypatch.setattr(supported_ranges, "MAXIMUM_INPUT_FRACTION", 1.0)
     system = AgentUptakeSystem.for_agent(agent)
     system.circuit.max_delivered_concentration_percent = Percent(100.0)
     system.circuit.set_delivered_concentration_percent(Percent(100.0))
