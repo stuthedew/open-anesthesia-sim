@@ -119,6 +119,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
+    STATUS_MARK_HALT_TEXT,
     STATUS_PAUSED_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
     TRUNK_RUN_INDEX,
@@ -1941,6 +1942,49 @@ def _play_until_it_stops(view: SimulationView, trunk: SimulationController) -> N
         view.stop_timers()
 
 
+def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
+    application: QApplication,
+) -> None:
+    """While two runs are compared, a run that a mark stopped does not read as the learner's Pause.
+
+    The fork control's "stopped on your mark" is withdrawn while two runs are
+    compared, and it was the only cue that a mark had stopped the run. A MAC
+    target's row reads "reached" from its first crossing, so a later crossing
+    changes nothing there either. So a run that a mark stopped read "Paused",
+    like a pause that nobody made (`PL-QBQX`). Its status word now says that a
+    mark stopped it. The learner's own Pause, and the branch that never ran,
+    still read "Paused". The expected words are written here rather than read
+    from the module, so a change to them fails this test.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_TIMED_STOP_S), "the decision point"))
+    view = _case_view(application, case)
+    _take_fork(view, 0.0)
+    assert len(view.runs) == 2
+    trunk, branch = view.runs
+
+    trunk._start_button.click()
+
+    while case.trunk.is_running:
+        _steps(trunk, 1)
+
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is not None, "the trunk stopped, but not on its mark"
+    assert view._fork_panel.here_button.isHidden() is True
+    assert trunk._status_text.text() == "Paused — stopped on your mark"
+    assert branch._status_text.text() == "Paused"
+
+    trunk._start_button.click()
+    _steps(trunk, 1)
+    trunk._pause_button.click()
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is None
+    assert trunk._status_text.text() == "Paused"
+
+
 def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     application: QApplication,
 ) -> None:
@@ -1965,7 +2009,7 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     run = view.runs[0]
     stood_at = format_elapsed(halt.instant_s)
 
-    assert run._status_text.text() == STATUS_PAUSED_TEXT
+    assert run._status_text.text() == STATUS_MARK_HALT_TEXT
     assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == stood_at
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is True
