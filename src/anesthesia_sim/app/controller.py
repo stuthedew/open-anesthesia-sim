@@ -26,7 +26,12 @@ from anesthesia_sim.app.bookmarks import (
     TimeBookmark,
 )
 from anesthesia_sim.app.chart_time_base import grid_spacing_s
-from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_record import (
+    CONTROL_INPUT_UNITS,
+    ControlChange,
+    ControlInput,
+    control_value,
+)
 from anesthesia_sim.app.control_timeline import CONTROL_INPUT_LABELS
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
@@ -1988,7 +1993,7 @@ class SimulationController:
 
         for control in ControlInput:
             opened_value = _opened_value(segment.settings, opened_with, control)
-            new_value = _control_value(settings, control)
+            new_value = control_value(settings, control)
 
             if new_value != opened_value:
                 self._record_in_timeline(control, opened_value, new_value)
@@ -3302,27 +3307,7 @@ def _opened_value(
         if change.control is control:
             return change.new_value
 
-    return _control_value(stretch, control)
-
-
-def _control_value(settings: UptakeEquationSettings, control: ControlInput) -> float:
-    """The value `settings` holds for `control`, in the unit the control was set in.
-
-    The settings record holds each control's value exactly as it was set
-    (`UptakeEquationSettings`), which is the value the control timeline
-    records. So a change worked out from two settings records compares
-    exactly equal to the change that a setter recorded.
-    """
-
-    match control:
-        case ControlInput.FRESH_GAS_FLOW:
-            return settings.fresh_gas_flow_l_min
-        case ControlInput.DELIVERED:
-            return settings.delivered_concentration_percent
-        case ControlInput.ALVEOLAR_VENTILATION:
-            return settings.alveolar_ventilation_l_min
-        case ControlInput.CARDIAC_OUTPUT:
-            return settings.cardiac_output_l_min
+    return control_value(stretch, control)
 
 
 class BranchedCase:
