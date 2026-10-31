@@ -3,11 +3,13 @@ id: PL-D88N
 title: The mass-balance check's fixed relative tolerance of 1e-9 halts a stepped run at the numerical envelope's stiffest corners within seconds (4.3 s at a 0.01 L lung with blood:gas 1e4, measured 2026-10-25), because each step's propagator rounding there is about 1e-10 of the state; decide whether the tolerance should follow the propagator's stated error bound, 2**s times machine epsilon per step, or say why a fixed one is right
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect, science
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/agent_simulation_validation.py, docs/MODEL.md, tests/unit/test_agent_simulation_validation.py
+touches: docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
 added: 2026-10-25
+payoff: the agent-conservation check stays as strict as today on every run a learner can reach, and a stiffer patient profile fails a test the day it ships instead of halting runs for rounding
+verify: grep -q 'def test_every_shipped_agent_steps_without_squarings' tests/unit/test_numerical_envelope_sweep.py && grep -qF 'PL-D88N' docs/MODEL.md
 ---
 
 **Problem.** The mass-balance check's fixed relative tolerance of 1e-9 halts a stepped run at the numerical envelope's stiffest corners within seconds (4.3 s at a 0.01 L lung with blood:gas 1e4, measured 2026-10-25), because each step's propagator rounding there is about 1e-10 of the state; decide whether the tolerance should follow the propagator's stated error bound, 2**s times machine epsilon per step, or say why a fixed one is right
@@ -26,12 +28,15 @@ itself allows, it blames the numerics for a correct run. The halt is the safe
 failure, so no wrong value is shown. But a stiffer real profile, such as a
 small patient, would halt within seconds for no reason a reader could act on.
 
-**Done when.** Either the tolerance follows the propagator's stated error
-bound, and a test shows the 4.3 s configuration above running an hour without
-a halt while an injected accounting error of a few times that bound still
-halts it; or `docs/MODEL.md` § "The numerical envelope" states that the fixed
-tolerance narrows the envelope for a long stepped run, with the measured halt
-times.
+**Done when.** `docs/MODEL.md` § "The numerical envelope" states that the
+agent-accounting tolerance stays a fixed 1e-9, that it halts a long stepped
+run at the stiff corners with the halt times measured above, and why a
+tolerance summed from the propagator's bound was not adopted, citing
+`PL-D88N`. A test in `tests/unit/test_numerical_envelope_sweep.py` steps every
+shipped agent at every corner of the supported settings, at the step's ceiling
+and its floor, and requires each propagator to need zero squarings. Its failure
+message names this item as the place to choose a tolerance that widens only by
+what the squarings add.
 
 **Decision needed.** Whether the tolerance should follow the propagator's
 bound or stay fixed. **Recommended: follow the bound.** The check should fire
@@ -98,3 +103,12 @@ moment the question becomes real. C is the right shape for that moment.
 Building it now adds a computed threshold to a safety check for a profile that
 does not exist. The choice is the owner's because it sets the threshold of a
 safety check in `core/`, and because an earlier reply proposed A.
+
+**Answered 2026-10-31: B, keep 1e-9 fixed** (project owner, 2026-10-31,
+ratified, over A, a tolerance summed from the propagator's bound, and C, a
+tolerance widened only by what squarings add). The measurements above are the
+case: every reachable run needs zero squarings and stays at least 27 times
+below 1e-9, while A would loosen the check by up to 58 times on a long run at
+the 1 ms floor. C stays the recorded shape for the day the new test first
+fails.
+
