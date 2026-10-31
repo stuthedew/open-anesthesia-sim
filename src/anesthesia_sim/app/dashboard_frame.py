@@ -1827,10 +1827,11 @@ def halt_notice(
 
 
 def _supported_limit_setting_way_out(branch_offered: bool) -> str:
-    """Return the way out to a new setting from a run stopped at the supported run length.
+    """Return the sentence that names the way out to a new setting from a stopped run.
 
-    It names a branch at an earlier instant only while one can be taken, and
-    Reset otherwise. A failed run's way out is always Reset.
+    The run stopped because it reached the supported run length. The sentence
+    names a branch at an earlier instant only while one can be taken, and Reset
+    otherwise. A failed run's way out is always Reset.
     """
 
     return SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT if branch_offered else RESET_SETTING_WAY_OUT_TEXT
@@ -1841,13 +1842,15 @@ def _stopped_run_exit(
 ) -> str:
     """Return the closing sentences of a stopped run's banner, for `notice` and `halt_notice`.
 
-    The exit, the sentence that names the way out, is `RESET_EXIT_TEXT` unless
-    something on the stopped run was refused. A refused Reset replaces it with
-    `refused_reset`. A setting refused on the stopped run is stated in its
-    place, followed by that run's own way out to a new setting. After a refused
-    Reset, the refused setting is stated after the `refused_reset` exit instead,
-    because closing the application is then the only way out. The comment above
-    `STOPPED_RUN_SETTING_EXIT_TEMPLATE` gives the reasons.
+    The exit is the sentence that names the way out. It is `RESET_EXIT_TEXT`
+    unless something on the stopped run was refused. When Reset was refused,
+    `refused_reset` replaces it. When a setting was refused on the stopped run,
+    the closing sentences state the refused setting in place of the exit. They
+    follow it with `setting_way_out`, the run's own way out to a new setting.
+    When Reset was refused as well, the refused setting comes after the
+    `refused_reset` exit instead, because closing the application is then the
+    only way out. The comment above `STOPPED_RUN_SETTING_EXIT_TEMPLATE` gives
+    the reasons for these choices.
 
     Args:
         rejected_setting_notice: The text from `refused_setting_notice`, or
@@ -1856,7 +1859,8 @@ def _stopped_run_exit(
             Reset is the way out.
         setting_way_out: The sentence that names the way out to a new
             setting. The caller chooses it, because the caller knows which of
-            the two stops the run is in.
+            the two kinds of stop ended the run: reaching the supported run
+            length, or a failure.
 
     Returns:
         The banner's closing sentences.
