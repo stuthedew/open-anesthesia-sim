@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 feature: projects-trial
-touches: docs/items/PL-SQV9-test-giving-projects-threads-the-repository-s.md, .claude-plugin/marketplace.json, plugins/thread-probe, tests/unit/test_thread_probe.py, docket.toml
+touches: docs/items/PL-SQV9-test-giving-projects-threads-the-repository-s.md, docs/items/PL-XFDQ-record-from-a-projects-thread-with-the-thread.md, .claude-plugin/marketplace.json, .claude/thread-probe-plugin, tests/unit/test_thread_probe.py, docket.toml, tools/rules_paths_check.py
 added: 2026-10-31
 closed: 2026-10-31
 pr: 1902
@@ -29,6 +29,6 @@ verify: uv run pytest -q tests/unit/test_thread_probe.py
 
 **Generator check.** A one-off test of an external behaviour, not a mechanism that causes items. If the plugin route works, the item that builds the real plugin replaces `PL-X6VN`'s stop-gap rather than adding a second one.
 
-**Test plugin built 2026-10-31.** The owner asked to test this route straight away, without first adding `PL-X6VN`'s setup script, so that a refusal in a thread can only come from the plugin. `.claude-plugin/marketplace.json` makes this repository a plugin marketplace with one plugin, `plugins/thread-probe/`. Its only hook, `hooks/probe.py`, refuses any Bash command containing `thread-probe-sentinel`. At session start it prints one line naming `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, the working directory, and whether the repository's `.claude/settings.json` can be read from there. Its one skill, `thread-probe`, replies `thread-probe skill loaded`. The plugin answers the open questions above except the first, which the owner answers by adding it: the documentation does not say which sources **Project settings > Plugins** accepts. `tests/unit/test_thread_probe.py` runs the hook as Claude Code would.
+**Test plugin built 2026-10-31.** The owner asked to test this route straight away, without first adding `PL-X6VN`'s setup script, so that a refusal in a thread can only come from the plugin. `.claude-plugin/marketplace.json` makes this repository a plugin marketplace with one plugin, `.claude/thread-probe-plugin/`. Its only hook, `hooks/probe.py`, refuses any Bash command containing `thread-probe-sentinel`. At session start it prints one line naming `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, the working directory, and whether the repository's `.claude/settings.json` can be read from there. Its one skill, `thread-probe`, replies `thread-probe skill loaded`. The plugin answers the open questions above except the first, which the owner answers by adding it: the documentation does not say which sources **Project settings > Plugins** accepts. `tests/unit/test_thread_probe.py` runs the hook as Claude Code would.
 
 **To record from the thread, in `PL-XFDQ`.** Whether `echo thread-probe-sentinel` was refused, with the reason the hook gave. Whether the session start printed the `thread-probe:` line. Whether the Skill tool lists `thread-probe`. If all three hold, the next step is a real plugin whose hooks read `.claude/settings.json` when they run, so that the plugin holds no second copy of them. If they do not, the setup script in `docs/maintainer.md` remains the route, and the test plugin and the marketplace file are deleted.

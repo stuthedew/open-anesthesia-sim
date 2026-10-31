@@ -458,7 +458,6 @@ workflow_paths = [
   "docs/worker-runs",
   "docs/hook-blocks",
   "model-evidence.toml",
-  "plugins",
   "bin",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",

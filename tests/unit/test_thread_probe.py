@@ -1,4 +1,4 @@
-"""Tests for the thread-probe test plugin under `plugins/thread-probe/` (`PL-SQV9`).
+"""Tests for the thread-probe test plugin under `.claude/thread-probe-plugin/` (`PL-SQV9`).
 
 The plugin is a test the owner runs once, in a Projects thread, after adding
 it in Project settings > Plugins. A defect in it would cost that test without
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-PLUGIN = REPO / "plugins" / "thread-probe"
+PLUGIN = REPO / ".claude" / "thread-probe-plugin"
 PROBE = PLUGIN / "hooks" / "probe.py"
 
 

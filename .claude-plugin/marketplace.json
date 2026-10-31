@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "thread-probe",
-      "source": "./plugins/thread-probe",
+      "source": "./.claude/thread-probe-plugin",
       "description": "A test plugin: one hook that refuses a sentinel command and one skill, to show whether a plugin's hooks and skills reach a Projects thread."
     }
   ]
