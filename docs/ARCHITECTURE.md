@@ -566,6 +566,9 @@ Five things in `app/controller.py` implement a branch:
   as a halt fork does. The method takes the mark rather than an instant, for
   the same reason that `resumed_here` takes nothing. `mark_fork_points` lists
   the marks it accepts, each with the instant at which its branch would open.
+  A mark on the supported run length is not listed, and `_resume_point`
+  rejects a fork there for every method, because the branch would have no step
+  to take and its Reset would return it to the same stop (`PL-VHQX`).
 - `ResumePoint` records where the branch came from. It holds the trunk stretch
   that the step reaching the fork ran under. It holds the fork, which is the
   instant at which the fork was taken and the canonical state there. It holds

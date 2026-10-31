@@ -119,7 +119,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
-    STATUS_PAUSED_TEXT,
+    STATUS_MARK_HALT_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
     TRUNK_RUN_INDEX,
     WITHHELD_ACCOUNTING,
@@ -1969,6 +1969,86 @@ def _play_until_it_stops(view: SimulationView, trunk: SimulationController) -> N
         view.stop_timers()
 
 
+def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
+    application: QApplication,
+) -> None:
+    """While two runs are compared, a run that a mark stopped is not shown as the learner's Pause.
+
+    The fork control's "stopped on your mark" is withdrawn while two runs are
+    compared, and it was the only cue that a mark had stopped the run. A MAC
+    target's row reads "reached" from its first crossing, so a later crossing
+    changes nothing there either. So a run that a mark stopped read "Paused",
+    like a pause that nobody made (`PL-QBQX`). Its status word now says that a
+    mark stopped it. The learner's own Pause, and the branch that never ran,
+    still read "Paused". The expected words are written here rather than read
+    from the module, so a change to them fails this test.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_TIMED_STOP_S), "the decision point"))
+    view = _case_view(application, case)
+    _take_fork(view, 0.0)
+    assert len(view.runs) == 2
+    trunk, branch = view.runs
+
+    trunk._start_button.click()
+
+    while case.trunk.is_running:
+        _steps(trunk, 1)
+
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is not None, "the trunk stopped, but not on its mark"
+    assert view._fork_panel.here_button.isHidden() is True
+    assert trunk._status_text.text() == "Paused — stopped on your mark"
+    assert branch._status_text.text() == "Paused"
+
+    trunk._start_button.click()
+    _steps(trunk, 1)
+    trunk._pause_button.click()
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is None
+    assert trunk._status_text.text() == "Paused"
+
+
+def test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it(
+    application: QApplication,
+) -> None:
+    """A branch at its fork carries its parent's crossing, but no step of its own stopped it.
+
+    A branch opens standing on the step that reached its fork, so that
+    step's crossing is the branch's halt record (`PL-3K9B`). The step was the
+    trunk's, though. A status word that read the halt record alone told the
+    learner that a mark had stopped a run that never ran, which is the
+    misreading `PL-QBQX` set out to remove. The expected words are written
+    here rather than read from the module, so a change to them fails this
+    test.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_TIMED_STOP_S), "the decision point"))
+    view = _case_view(application, case)
+    (trunk,) = view.runs
+
+    trunk._start_button.click()
+
+    while case.trunk.is_running:
+        _steps(trunk, 1)
+
+    view.present(False)
+    _take_fork(view, _TIMED_STOP_S)
+    assert len(view.runs) == 2
+    branch = view.runs[1]
+    view.present(False)
+
+    assert branch.controller.snapshot().bookmark_halt is not None, (
+        "the branch does not carry the crossing it opened on, so this test checks nothing"
+    )
+    assert trunk._status_text.text() == "Paused — stopped on your mark"
+    assert branch._status_text.text() == "Paused"
+
+
 def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     application: QApplication,
 ) -> None:
@@ -1993,7 +2073,7 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     run = view.runs[0]
     stood_at = format_elapsed(halt.instant_s)
 
-    assert run._status_text.text() == STATUS_PAUSED_TEXT
+    assert run._status_text.text() == STATUS_MARK_HALT_TEXT
     assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == stood_at
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is True
@@ -7860,6 +7940,50 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
 
     with pytest.raises(RuntimeError, match="does not hold one_mac"):
         SimulationView((SimulationController(),))
+
+
+def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A branch that the region check refuses leaves nothing of itself on the dashboard.
+
+    `_place_run` puts a run's widgets in the shared layouts before it checks
+    the region, because the check reads where they are. If a refusal left
+    them there, the dashboard would show a second run frozen at its fork,
+    with blank delivered and 1 MAC lines. No slot would refresh or remove
+    that run (`PL-KDZW`). The test refuses only the branch, so the trunk is built
+    normally and its widgets are the ones that must remain.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = case.fork_at(CaseInstant(60.0))
+    before = set(view.findChildren(QWidget))
+    readings_before = [
+        len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels
+    ]
+    original = RunView.unconditional_widgets
+
+    def branch_short_of_one_mac(run: RunView) -> dict[UnconditionalValue, QWidget]:
+        widgets = dict(original(run))
+
+        if run.controller is branch:
+            del widgets[UnconditionalValue.ONE_MAC]
+
+        return widgets
+
+    monkeypatch.setattr(RunView, "unconditional_widgets", branch_short_of_one_mac)
+
+    with pytest.raises(RuntimeError, match="does not hold one_mac"):
+        view.add_run(branch)
+
+    assert set(view.findChildren(QWidget)) == before, (
+        "the refused run left widgets on the dashboard"
+    )
+    assert [
+        len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels
+    ] == readings_before, "the refused run's readings stayed in the trunk's panels"
+    assert len(view.runs) == 1
 
 
 def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:

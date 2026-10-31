@@ -411,7 +411,9 @@ class RunView(QWidget):
         # display detail.
         self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
-        emphasised(self._status_text, status_word(snapshot))
+        emphasised(
+            self._status_text, status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark)
+        )
         self._notice_text = NoticeLabel(self)
 
         self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
@@ -675,9 +677,12 @@ class RunView(QWidget):
                 refused_reset=self._refused_reset_notice,
                 branch_offered=self._branch_offered,
             ),
+            stopped_on_mark=snapshot.stopped_on_mark,
         )
 
-    def _write_statement(self, record: RunRecord, *, banner: str | None) -> None:
+    def _write_statement(
+        self, record: RunRecord, *, banner: str | None, stopped_on_mark: bool
+    ) -> None:
         """Write every run-state widget from one record, as their only writer (`PL-X7D5`).
 
         `refresh` calls it with the snapshot that a frame drew from.
@@ -711,6 +716,9 @@ class RunView(QWidget):
             banner: The banner text for the caller's path. It comes from
                 `notice` for a frame that drew, and from `halt_notice` for a
                 halt that no frame has been drawn for.
+            stopped_on_mark: Whether a mark stopped the run, as
+                `dashboard_frame.status_word` takes it. `refresh` reads it
+                from `SimulationSnapshot.stopped_on_mark`.
 
         Raises:
             ValueError: If `setting_readouts` rejects the record, as
@@ -724,6 +732,7 @@ class RunView(QWidget):
             is_branch=self._is_branch,
             comparing=self._comparing,
             banner=banner,
+            stopped_on_mark=stopped_on_mark,
         )
 
         self._apply_agent_color_scheme(statement.agent_id)
@@ -849,6 +858,11 @@ class RunView(QWidget):
                 branch_offered=self._branch_offered,
                 started_over=started_over,
             ),
+            # Every halt shown here has failed the run or stopped it at the
+            # supported run length (`halt`), and both of those status words
+            # outrank a mark's. The halt record is worked out from the canonical
+            # states, which this path does not build.
+            stopped_on_mark=False,
         )
 
     def _withhold_the_discarded_run_s_values(self) -> None:

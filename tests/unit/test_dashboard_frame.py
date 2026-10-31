@@ -659,17 +659,44 @@ def test_refresh_view_reflects_running_state(
 ) -> None:
     snapshot = _snapshot(is_running=is_running)
 
-    assert status_word(snapshot).text == expected_status
-    assert status_word(snapshot).emphasis is expected_emphasis
+    assert status_word(snapshot, stopped_on_mark=False).text == expected_status
+    assert status_word(snapshot, stopped_on_mark=False).emphasis is expected_emphasis
     assert transport(snapshot).start_enabled is start_enabled
     assert transport(snapshot).pause_enabled is pause_enabled
+
+
+def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None:
+    """A paused run that a mark stopped says so, and a failure or the run length still outranks it.
+
+    The fork control's "stopped on your mark" was the only cue that a mark had
+    paused the run, and it is withdrawn while two runs are compared
+    (`PL-QBQX`). So the status word carries the cue itself. The expected words
+    are written here rather than read from the module, so a change to them
+    fails this test.
+    """
+
+    paused = RunStatus(
+        is_running=False, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
+    failed = replace(paused, failure_reason="TypeError: boom")
+    at_limit = replace(paused, supported_limit_reason="this run has reached 86400 s")
+
+    on_mark = status_word(paused, stopped_on_mark=True)
+
+    assert on_mark.text == "Paused — stopped on your mark"
+    assert on_mark.emphasis is Emphasis.MUTED
+    assert status_word(paused, stopped_on_mark=False).text == "Paused"
+    assert status_word(failed, stopped_on_mark=True).text == "Stopped — simulation error"
+    assert (
+        status_word(at_limit, stopped_on_mark=True).text == "Stopped — supported run length reached"
+    )
 
 
 def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     snapshot = _snapshot(failure_reason="SimulationNumericalError: the step could not be completed")
 
-    assert status_word(snapshot).text == "Stopped — simulation error"
-    assert status_word(snapshot).emphasis is Emphasis.WARNING
+    assert status_word(snapshot, stopped_on_mark=False).text == "Stopped — simulation error"
+    assert status_word(snapshot, stopped_on_mark=False).emphasis is Emphasis.WARNING
 
     banner = notice(snapshot, None)
 
@@ -806,10 +833,13 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     )
 
     assert isinstance(_snapshot(), RunStatus)
-    assert status_word(failed).text == "Stopped — simulation error"
-    assert status_word(at_limit).text == "Stopped — supported run length reached"
-    assert status_word(paused).text == "Paused"
-    assert status_word(running).text == "Running"
+    assert status_word(failed, stopped_on_mark=False).text == "Stopped — simulation error"
+    assert (
+        status_word(at_limit, stopped_on_mark=False).text
+        == "Stopped — supported run length reached"
+    )
+    assert status_word(paused, stopped_on_mark=False).text == "Paused"
+    assert status_word(running, stopped_on_mark=False).text == "Running"
     assert (transport(failed).start_enabled, transport(failed).pause_enabled) == (False, False)
     assert (transport(at_limit).start_enabled, transport(at_limit).pause_enabled) == (False, False)
     assert (transport(running).start_enabled, transport(running).pause_enabled) == (False, True)
@@ -837,7 +867,14 @@ def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends(
     adjustments = group_adjustments(record.control_timeline)
 
     from_snapshot, from_record = (
-        run_statement(stated, adjustments, is_branch=False, comparing=False, banner=None)
+        run_statement(
+            stated,
+            adjustments,
+            is_branch=False,
+            comparing=False,
+            banner=None,
+            stopped_on_mark=False,
+        )
         for stated in (controller.snapshot(), record)
     )
 
@@ -846,7 +883,7 @@ def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends(
     assert from_record.agent_name == "Sevoflurane"
     assert from_record.subtitle == format_subtitle("Sevoflurane")
     assert from_record.substance_heading == "Modelled concentrations: Sevoflurane"
-    assert from_record.status == status_word(record)
+    assert from_record.status == status_word(record, stopped_on_mark=False)
     assert from_record.status.text == "Paused"
     assert from_record.transport == transport(record)
     assert from_record.timeline == timeline_panel(adjustments)
@@ -867,13 +904,19 @@ def test_a_run_statement_carries_the_locks_and_the_banner_it_is_given() -> None:
     adjustments = group_adjustments(record.control_timeline)
 
     statement = run_statement(
-        record, adjustments, is_branch=True, comparing=True, banner="the banner the caller worded"
+        record,
+        adjustments,
+        is_branch=True,
+        comparing=True,
+        banner="the banner the caller worded",
+        stopped_on_mark=True,
     )
 
     assert statement.transport == transport(record, is_branch=True, comparing=True)
     assert statement.transport.selector_lock_reason == BRANCH_AGENT_LOCK_TEXT
     assert statement.timeline == timeline_panel(adjustments)
     assert statement.banner == "the banner the caller worded"
+    assert statement.status.text == "Paused — stopped on your mark"
 
 
 def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
@@ -1040,7 +1083,7 @@ def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
         snapshot = _snapshot(is_running=is_running)
 
         assert notice(snapshot, None) is None
-        assert status_word(snapshot).text in {"Running", "Paused"}
+        assert status_word(snapshot, stopped_on_mark=False).text in {"Running", "Paused"}
 
 
 def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -> None:
@@ -1056,8 +1099,11 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
         is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
     )
 
-    assert status_word(snapshot).text == "Stopped — supported run length reached"
-    assert status_word(snapshot).emphasis is not Emphasis.WARNING
+    assert (
+        status_word(snapshot, stopped_on_mark=False).text
+        == "Stopped — supported run length reached"
+    )
+    assert status_word(snapshot, stopped_on_mark=False).emphasis is not Emphasis.WARNING
 
     banner = notice(snapshot, None)
 
@@ -1161,7 +1207,7 @@ def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
     )
     banner = notice(snapshot, None)
 
-    assert status_word(snapshot).text == "Stopped — simulation error"
+    assert status_word(snapshot, stopped_on_mark=False).text == "Stopped — simulation error"
     assert banner is not None
     assert "boom" in banner
 
