@@ -47,3 +47,54 @@ the threshold of a safety check in `core/`.
 each operation in `core/` gives a correct answer. It was filed on 2026-10-25,
 while `PL-58D7` was still open, by the blind review of `PL-QX2G`, one of that
 head's splits. So it is not a re-entry (`PL-R4Y2`'s triage, 2026-10-31).
+
+**Measured 2026-10-31, on `main` at `89d19f9f`.** Three findings.
+
+1. **Every supported setting needs zero squarings.** Each shipped agent was
+   stepped once at every combination of fresh gas 0, 0.5, 1, 4 and 10 L/min,
+   alveolar ventilation 0, 1, 4 and 12 L/min, and cardiac output 0, 0.5, 2.5, 5
+   and 10 L/min, at steps of 0.1 s, 0.01 s and 0.001 s. All 900 propagators took
+   0 squarings, read from `_squarings_for` in `core/matrix_exponential.py`. Only
+   the numerical envelope's stiff corners, such as a 0.01 L lung with a
+   blood:gas coefficient of 1e4, take more (19 there).
+2. **A correct run's residual stays far below 1e-9.** Over 24 h at the 0.1 s
+   step, the worst relative residual was 3.08e-12 for sevoflurane at 2%,
+   4 L/min fresh gas, 4 L/min ventilation and 5 L/min cardiac output, and
+   5.27e-13 for desflurane at 18% with every flow at its maximum. The worst case
+   in `docs/MODEL.md` § "Mass-balance identity", desflurane at 18% and the 1 ms
+   step floor for 24 h, reached 3.73e-11 (`PL-XST1`, 2026-10-25).
+3. **A tolerance derived from the propagator's bound would be loose.** The
+   bound is about `3 * 2**s * 2**-52` per step, with the margin of 3 that
+   `tests/unit/test_numerical_envelope_sweep.py` uses. The check compares the
+   whole run's residual, so a rigorous tolerance sums that bound over every
+   step. At s = 0 that gives 5.8e-10 for 24 h at 0.1 s, 5.8e-9 at 0.01 s and
+   5.8e-8 at the 1 ms floor. The last is 58 times looser than 1e-9 and about
+   1,500 times the residual measured on that run. So even `max(1e-9, bound)`
+   would loosen the check by up to 58 times on a long fine-step run with a
+   shipped agent. A real accounting error of a few parts in 1e8 would then
+   pass. The 2026-10-31 recommendation above, to follow the bound, assumed the
+   squaring count would decide this. It does not: the number of steps does.
+
+**Decision needed, restated 2026-10-31.** Which tolerance the check uses.
+
+- **A.** Follow the summed bound, or `max(1e-9, bound)`. This ends the false
+  halts at the stiff corners. It also loosens the check by up to 58 times on
+  long fine-step runs that learners can reach.
+- **B.** Keep 1e-9 fixed. State in `docs/MODEL.md` § "The numerical envelope"
+  that it halts a long stepped run at the stiff corners, with the halt times
+  above. Add a test requiring every shipped agent, at every corner of the
+  supported settings and at every supported step, to need zero squarings. A
+  stiffer profile, such as a small patient, then fails that test when it
+  ships, which is the moment to choose a tolerance that widens only by what the
+  squarings add.
+- **C.** Widen the tolerance only by what squarings add: about
+  `3 * (2**s - 1) * 2**-52` per step, summed. This is exactly 1e-9 wherever
+  s = 0, so it leaves every reachable run's check unchanged, and it ends the
+  false halts at the stiff corners now.
+
+**Recommended: B.** It keeps the check as strict as today on every run a
+learner can reach. It costs a paragraph and one test, and the test names the
+moment the question becomes real. C is the right shape for that moment.
+Building it now adds a computed threshold to a safety check for a profile that
+does not exist. The choice is the owner's because it sets the threshold of a
+safety check in `core/`, and because an earlier reply proposed A.
