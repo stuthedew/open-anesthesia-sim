@@ -1012,3 +1012,10 @@ worked, ask a new thread to run `uv run pytest --version | head -1`. The
 repository's `gate-status-guard.sh` refuses that command when the hooks are
 loaded. If the thread prints a pytest version instead, the hooks are still off,
 and the thread should record that in `PL-CR81`.
+
+A plugin may replace this setup script. Plugins added in **Project settings >
+Plugins** load into each new thread, and a plugin can carry hooks and skills.
+This repository is a plugin marketplace with one test plugin, `thread-probe`,
+in `.claude/thread-probe-plugin/`. `PL-XFDQ` records whether its hook and skill
+reach a thread. Until it does, do not add both the plugin and this script to
+one project, because a refusal in a thread could then come from either.
