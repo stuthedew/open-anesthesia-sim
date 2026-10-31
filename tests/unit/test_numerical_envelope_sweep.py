@@ -822,13 +822,15 @@ CEILING_REFUSAL_AT_A_FULL_DIAL = (
 
 
 def test_a_full_dial_is_refused_in_full_by_the_setter_and_by_the_settings_record() -> None:
-    """A dial of 100% is refused with the whole message, where the vaporizer allows 100%.
+    """A dial of 100% is refused with the whole message, even though the vaporizer allows 100%.
 
-    The vaporizer maximum here is 100%, so the dial sits exactly at it. The
-    setter must still check the ceiling at that maximum, not only below it.
-    It must also leave the dial as it was. A dial passed in as a plain number
-    is refused for its type, under the dial's own name. A mutation pass found
-    these three names and the boundary at the maximum untested (2026-10-31).
+    The vaporizer maximum here is 100%, so the dial is exactly at that maximum.
+    The setter must still check the input ceiling of 99% when the dial equals
+    the maximum, not only when it is below it. The setter must also leave the
+    dial as it was. A dial passed in as a plain number is refused because of
+    its type, and the error names the dial. On 2026-10-31, a mutation pass
+    found that no test checked the dial's name in these three messages, or the
+    setter's check at the maximum.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
