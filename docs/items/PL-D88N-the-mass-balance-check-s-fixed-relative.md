@@ -3,11 +3,13 @@ id: PL-D88N
 title: The mass-balance check's fixed relative tolerance of 1e-9 halts a stepped run at the numerical envelope's stiffest corners within seconds (4.3 s at a 0.01 L lung with blood:gas 1e4, measured 2026-10-25), because each step's propagator rounding there is about 1e-10 of the state; decide whether the tolerance should follow the propagator's stated error bound, 2**s times machine epsilon per step, or say why a fixed one is right
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect, science
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/agent_simulation_validation.py, docs/MODEL.md, tests/unit/test_agent_simulation_validation.py
+touches: docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
 added: 2026-10-25
+payoff: the agent-conservation check stays as strict as today on every run a learner can reach, and a stiffer patient profile fails a test the day it ships instead of halting runs for rounding
+verify: grep -q 'def test_every_shipped_agent_steps_without_squarings' tests/unit/test_numerical_envelope_sweep.py && grep -qF 'PL-D88N' docs/MODEL.md
 ---
 
 **Problem.** The mass-balance check's fixed relative tolerance of 1e-9 halts a stepped run at the numerical envelope's stiffest corners within seconds (4.3 s at a 0.01 L lung with blood:gas 1e4, measured 2026-10-25), because each step's propagator rounding there is about 1e-10 of the state; decide whether the tolerance should follow the propagator's stated error bound, 2**s times machine epsilon per step, or say why a fixed one is right
@@ -26,12 +28,15 @@ itself allows, it blames the numerics for a correct run. The halt is the safe
 failure, so no wrong value is shown. But a stiffer real profile, such as a
 small patient, would halt within seconds for no reason a reader could act on.
 
-**Done when.** Either the tolerance follows the propagator's stated error
-bound, and a test shows the 4.3 s configuration above running an hour without
-a halt while an injected accounting error of a few times that bound still
-halts it; or `docs/MODEL.md` § "The numerical envelope" states that the fixed
-tolerance narrows the envelope for a long stepped run, with the measured halt
-times.
+**Done when.** `docs/MODEL.md` § "The numerical envelope" states that the
+agent-accounting tolerance stays a fixed 1e-9, that it halts a long stepped
+run at the stiff corners with the halt times measured above, and why a
+tolerance summed from the propagator's bound was not adopted, citing
+`PL-D88N`. A test in `tests/unit/test_numerical_envelope_sweep.py` steps every
+shipped agent at every corner of the supported settings, at the step's ceiling
+and its floor, and requires each propagator to need zero squarings. Its failure
+message names this item as the place to choose a tolerance that widens only by
+what the squarings add.
 
 **Decision needed.** Whether the tolerance should follow the propagator's
 bound or stay fixed. **Recommended: follow the bound.** The check should fire
@@ -47,3 +52,63 @@ the threshold of a safety check in `core/`.
 each operation in `core/` gives a correct answer. It was filed on 2026-10-25,
 while `PL-58D7` was still open, by the blind review of `PL-QX2G`, one of that
 head's splits. So it is not a re-entry (`PL-R4Y2`'s triage, 2026-10-31).
+
+**Measured 2026-10-31, on `main` at `89d19f9f`.** Three findings.
+
+1. **Every supported setting needs zero squarings.** Each shipped agent was
+   stepped once at every combination of fresh gas 0, 0.5, 1, 4 and 10 L/min,
+   alveolar ventilation 0, 1, 4 and 12 L/min, and cardiac output 0, 0.5, 2.5, 5
+   and 10 L/min, at steps of 0.1 s, 0.01 s and 0.001 s. All 900 propagators took
+   0 squarings, read from `_squarings_for` in `core/matrix_exponential.py`. Only
+   the numerical envelope's stiff corners, such as a 0.01 L lung with a
+   blood:gas coefficient of 1e4, take more (19 there).
+2. **A correct run's residual stays far below 1e-9.** Over 24 h at the 0.1 s
+   step, the worst relative residual was 3.08e-12 for sevoflurane at 2%,
+   4 L/min fresh gas, 4 L/min ventilation and 5 L/min cardiac output, and
+   5.27e-13 for desflurane at 18% with every flow at its maximum. The worst case
+   in `docs/MODEL.md` § "Mass-balance identity", desflurane at 18% and the 1 ms
+   step floor for 24 h, reached 3.73e-11 (`PL-XST1`, 2026-10-25).
+3. **A tolerance derived from the propagator's bound would be loose.** The
+   bound is about `3 * 2**s * 2**-52` per step, with the margin of 3 that
+   `tests/unit/test_numerical_envelope_sweep.py` uses. The check compares the
+   whole run's residual, so a rigorous tolerance sums that bound over every
+   step. At s = 0 that gives 5.8e-10 for 24 h at 0.1 s, 5.8e-9 at 0.01 s and
+   5.8e-8 at the 1 ms floor. The last is 58 times looser than 1e-9 and about
+   1,500 times the residual measured on that run. So even `max(1e-9, bound)`
+   would loosen the check by up to 58 times on a long fine-step run with a
+   shipped agent. A real accounting error of a few parts in 1e8 would then
+   pass. The 2026-10-31 recommendation above, to follow the bound, assumed the
+   squaring count would decide this. It does not: the number of steps does.
+
+**Decision needed, restated 2026-10-31.** Which tolerance the check uses.
+
+- **A.** Follow the summed bound, or `max(1e-9, bound)`. This ends the false
+  halts at the stiff corners. It also loosens the check by up to 58 times on
+  long fine-step runs that learners can reach.
+- **B.** Keep 1e-9 fixed. State in `docs/MODEL.md` § "The numerical envelope"
+  that it halts a long stepped run at the stiff corners, with the halt times
+  above. Add a test requiring every shipped agent, at every corner of the
+  supported settings and at every supported step, to need zero squarings. A
+  stiffer profile, such as a small patient, then fails that test when it
+  ships, which is the moment to choose a tolerance that widens only by what the
+  squarings add.
+- **C.** Widen the tolerance only by what squarings add: about
+  `3 * (2**s - 1) * 2**-52` per step, summed. This is exactly 1e-9 wherever
+  s = 0, so it leaves every reachable run's check unchanged, and it ends the
+  false halts at the stiff corners now.
+
+**Recommended: B.** It keeps the check as strict as today on every run a
+learner can reach. It costs a paragraph and one test, and the test names the
+moment the question becomes real. C is the right shape for that moment.
+Building it now adds a computed threshold to a safety check for a profile that
+does not exist. The choice is the owner's because it sets the threshold of a
+safety check in `core/`, and because an earlier reply proposed A.
+
+**Answered 2026-10-31: B, keep 1e-9 fixed** (project owner, 2026-10-31,
+ratified, over A, a tolerance summed from the propagator's bound, and C, a
+tolerance widened only by what squarings add). The measurements above are the
+case: every reachable run needs zero squarings and stays at least 27 times
+below 1e-9, while A would loosen the check by up to 58 times on a long run at
+the 1 ms floor. C stays the recorded shape for the day the new test first
+fails.
+
