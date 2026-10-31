@@ -4153,12 +4153,7 @@ def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() ->
 
 
 def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() -> None:
-    """The run's sentence comes first and the preview's second, each listing every clipped trace.
-
-    The expected names come from the frame's own drawn points, read against
-    the axis top, and the wording from the two templates. So the test pins
-    how the notice joins the names and the sentences (`PL-5B1N`).
-    """
+    """The run's sentence comes first and the preview's second, each naming every clipped trace."""
 
     controller = SimulationController()
     controller.set_delivered_concentration_percent(
