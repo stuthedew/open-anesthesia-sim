@@ -1,29 +1,30 @@
 """The washout figures that `docs/MODEL.md` prints for the MAC-awake band match the model.
 
-`docs/MODEL.md` § "MAC-awake as a chart reference" gives one measured
-emergence. Sevoflurane runs for 3 hours at the opening dial of 2.0% and the
-default fresh gas flow of 4 L/min. Then the vaporizer is turned off and the
-fresh gas flow is raised to 10 L/min. The section prints six figures from that
-run, and a learner reads them as what the model does. They depend on the
-partition coefficients, the volumes, the ventilation, the cardiac output and
-the protocol. Before `PL-PTDZ` no test held them, so a parameter change would
-have left the specification teaching a wake-up time that the model no longer
-produces.
+`docs/MODEL.md` § "MAC-awake as a chart reference" gives one emergence
+measured on the model. Sevoflurane runs for 3 hours at the opening vaporizer
+dial setting of 2.0% and the default fresh gas flow of 4 L/min. Then the
+vaporizer is turned off and the fresh gas flow is raised to 10 L/min. The
+section prints six figures from that run, and a learner takes them as what the
+model does. They depend on the partition coefficients, the volumes, the
+ventilation, the cardiac output and the protocol. Before `PL-PTDZ`, no test
+checked them. A parameter change would have left the specification teaching a
+wake-up time that the model no longer produces.
 
-This test reads the protocol from the section, checks that the run opens at
-the dial and flow the section names, runs the protocol, and compares each
-result with the figure the document prints, read from the document itself.
-A figure is held to the number of decimal places the document prints it
-with. So a change that moves
-a result fails here, and so does an edit to the document that changes a
-figure without the model. The test pins the specification to the model. It
-does not validate the model against patients; `PL-39KH` and the section
-itself say what the figures do and do not show.
+This test reads the protocol from the section and checks that the run starts
+at the dial setting and flow that the section names. It then runs the protocol
+and compares each result with the figure that the document prints, read from
+the document itself. Each figure is compared at the number of decimal places
+that the document prints it with. So a change that moves a result fails here,
+and so does an edit to the document that changes a figure without changing the
+model. The test pins the specification to the model. It does not validate the
+model against patients. `PL-39KH` and the section itself say what the figures
+do and do not show.
 
-A crossing time is where the trace passes the threshold, found by linear
-interpolation between the two 0.1 s steps on either side of it. Reading the
-first step below the threshold instead would add up to 0.1 s, which can move
-a figure printed to 0.01 min across a rounding boundary.
+A crossing time is the moment at which the trace passes the threshold. The
+test finds it by linear interpolation between the two 0.1 s steps on either
+side of the crossing. Taking the first step below the threshold instead would
+add up to 0.1 s. That error can move a figure printed to 0.01 min across a
+rounding boundary.
 """
 
 import re
