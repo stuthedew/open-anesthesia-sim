@@ -157,16 +157,17 @@ TRUNK_RUN_INDEX: Final = 0
 BRANCH_RUN_INDEX: Final = 1
 
 # A readout with no gloss still draws the gloss line, so every reading in the
-# row sits on one baseline (`PL-8M05`). The line holds a non-breaking space
-# rather than an empty string. The Flet build needed it because a blank line
-# collapsed to zero height there. It is kept because `tools/glyph_check.py`
-# names these two constants as the evidence for U+00A0, and a test asserts
-# that the line holds a value.
-EMPTY_METRIC_QUALIFIER: Final = " "
-# The same spacer for the second-unit line. The "Simulated time" panel has no
-# MAC multiple, and the spacer makes it the same height as the six panels that
-# do.
-EMPTY_METRIC_SECONDARY_VALUE: Final = " "
+# row sits on one baseline (`PL-8M05`). The line holds a no-break space rather
+# than an empty string. A Qt label holding an empty string is one pixel shorter
+# than one holding text in most fonts. The container's Inter is an exception,
+# which `PL-P55M` mistook for the rule. CI's font gave 15 px for an empty
+# second-unit line and 16 px for a filled one. A no-break space gives the
+# same height as text in every font measured (`PL-P55M`).
+# `test_an_empty_gloss_line_is_as_tall_as_a_filled_one` pins the height.
+EMPTY_METRIC_QUALIFIER: Final = "\u00a0"
+# The same spacer for the second-unit line. No readout draws it today, because
+# the clock panel's second line always shows the playback rate (`PL-SN2C`).
+EMPTY_METRIC_SECONDARY_VALUE: Final = "\u00a0"
 
 # The lowest setting of the delivered-concentration dial, in percent. Its
 # maximum depends on the agent, because it is the real vaporizer's capability.
