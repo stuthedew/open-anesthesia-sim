@@ -1,7 +1,10 @@
 ---
 id: PL-9B1M
 title: A step from a state at the top of the fraction range, every compartment at a partial pressure fraction of 1, rounds a fraction up to 3.5e-11 past 1 (1986 of 10 368 steps in the envelope sweep), so AgentUptakeSystem.advance rolls the step back with SimulationNumericalError; the display path at the stiffest corners draws fractions up to 1.000033 without refusing
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: defect, safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_numerical_envelope_sweep.py
 added: 2026-10-26
@@ -54,3 +57,37 @@ The sweep in `tests/unit/test_numerical_envelope_sweep.py` accepts this
 refusal by name and cites this item. It requires the refused fraction to lie
 within one step's propagator bound of 1 and the state to be unchanged. Remove that acceptance when the item is
 fixed.
+
+**Why it matters.** A fraction of one atmosphere is a partial pressure, and no
+compartment can hold more than one atmosphere of agent. On the display path a
+chart can draw a fraction up to 1.000033, which is a physically impossible
+value presented as a model output. On the stepped path the same rounding halts
+a run that did nothing wrong. Neither is reachable with a shipped vaporizer,
+but both are reachable through the core interface, whose dial ceiling is
+100%.
+
+**Done when.** A step from any state the supported ranges admit either
+returns fractions from 0 through 1 or refuses with the reason, on both the
+stepped path and the display path. The sweep in
+`tests/unit/test_numerical_envelope_sweep.py` no longer accepts this refusal by
+name, and `docs/MODEL.md` states the route taken.
+
+**Decision needed.** Which of the two routes above. **Recommended: route 1.**
+Cap the inputs (the dial's ceiling and the opening state) at a fraction an
+agent can physically reach, and keep the check on computed fractions at 1.
+Because the model conserves mass, no computed fraction can exceed the highest
+input fraction by more than rounding, so a computed fraction can then never
+come within rounding of 1. This narrows what the type admits as an input rather
+than widening a checked type by a tolerance, which is the "parse, don't
+validate" principle in `.claude/rules/expert-review.md`. The display path must
+apply the same check, since today it draws 1.000033 without refusing. Route 2
+keeps the full 0 to 1 input range, but it makes "a fraction" mean "a fraction
+or a value slightly above 1" everywhere the type is read. The choice is the
+owner's because it changes the range a checked clinical quantity admits, which
+the safety-critical standard reaches.
+
+**Generator check.** `PL-58D7`'s fact: the floating-point input domain on which
+each operation in `core/` gives a correct answer. `PL-58D7`'s envelope sweep
+filed it on the day that head closed, 2026-10-26, and its `generator:` line
+names it, so it is that head's own finding and not a re-entry (`PL-R4Y2`'s
+triage, 2026-10-31).
