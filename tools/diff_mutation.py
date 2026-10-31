@@ -1097,8 +1097,10 @@ def changed_tests(path: str, base: str, branch: str) -> tuple[list[str], list[st
     apart, and then the whole file is compared.
 
     Importing a module that the other version does not import is taken to
-    change no test, since it binds a name. A module whose import changes what
-    an unrelated test does would break that, and none of the simulator's do.
+    change no test, since it only binds a name. A module whose import changed
+    what an unrelated test does would be missed, and
+    `docs/mutation-testing.md` lists that among what the check leaves
+    unmeasured.
     """
     try:
         before, after = _definitions(path, base), _definitions(path, branch)
@@ -1378,8 +1380,8 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
         f"{_listed(files)} catches, run against this branch's version of "
         f"{_listed(on_branch) or 'no file, since it deleted them'}"
         + (
-            f", first against the {len(first)} tests it changed or added, and then the "
-            f"{len(retried)} that those missed against the whole files"
+            f", first against the {len(first)} tests and test files it changed or added, "
+            f"and then the {len(retried)} mutants that those missed against the whole files"
             if narrowed
             else ""
         )

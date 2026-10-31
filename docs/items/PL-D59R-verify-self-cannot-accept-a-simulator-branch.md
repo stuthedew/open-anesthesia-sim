@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: ready
 classes: defect, perf
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md, docs/mutation-testing.md
 deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-10-26
 payoff: a simulator branch that changes a large test file can finish close-out's mutation audit, instead of spending hours on a check that can only refuse
@@ -31,3 +31,14 @@ The branch half runs each mutant against the branch's version of every changed u
 **Seen again, 2026-10-26.** Pull request #1864 (`PL-0WFJ` and seven other core findings, from a Projects thread) reports the same outcome in its body: its `bin/docket verify --self` "stopped at the 2-hour limit before it printed a verdict". That branch changes core modules and their unit tests rather than a display test, so the cost is not limited to `test_dashboard_frame.py`.
 
 **Generator check.** A one-off. The fact misread is what the mutation audit costs on a branch. Close-out step 5 sized it on a small test file, and the cost grows with the size of each changed test file. No head's `misread:` states it.
+
+**Progress, 2026-10-31.** The cost came from the selection, not from the branch run alone. `base_selection` fell back to the whole file whenever any line outside a test changed, such as an import, a helper or a constant. Over the 247 changed simulator unit-test files in the 200 merges before 2026-10-31, that happened for 187. Each mutant re-imports its test files, because `[tool.mutmut]` runs `forkserver` with no warm-up. It then runs every selected test that reaches it, and a timeout costs 30 times those tests' summed duration (mutmut 3.8.0's `timeout_multiplier` of 15, doubled). So the number of selected tests sets the cost of both runs.
+
+The fix, on `claude/pl-d59r-mutation-check-1vgzei`:
+
+- `changed_tests` in `tools/diff_mutation.py` compares each test's syntax tree, and that of every module-level name it reaches, between the two versions. A changed helper selects only the tests that reach it. A docstring, a comment, a new import or a new helper selects none. Over the same 247 files, 2 fall back to the whole file. The 11 tests the new rule drops all had docstring-only changes. A per-test coverage run of the changed files of `PL-ZR49`'s merge (`40a442ee`) and #1864 (`adc93274`), on both sides, found no test that executes a changed line and is not selected.
+- The branch run tries the base-caught mutants against the branch's changed and added tests first (`branch_selection`), and runs only the ones those miss against the whole files.
+
+On `PL-ZR49`'s merge the selections drop from two whole files to 59 of `test_dashboard_frame.py`'s 161 tests and none of `test_run_definition.py`'s. On #1864, six whole-file fallbacks drop to between 0 and 4 tests each.
+
+Still to do: measure `diff_mutation.py --verdict` on `40a442ee` against `40a442ee^`, and on `adc93274` against its parent, with this branch's `tools/` overlaid in a worktree. Then write the measured cost into close-out step 5 and into `docs/mutation-testing.md`.

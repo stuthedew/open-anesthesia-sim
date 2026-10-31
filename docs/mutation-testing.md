@@ -91,14 +91,29 @@ must come from, and that rule applies whatever the score.
   test on the branch's side would pass it, at the cost of mutmut's coverage
   pass over the whole unit suite, about five more minutes. Make that change in
   `compare_tests` if the refusal is ever wrong in practice.
+- **A test that a new import changes.** The selection treats an import as
+  binding a name. So a module whose import changed what an unrelated test in
+  the file does would leave that test unselected.
 - **A base test that fails on the branch's source** with no mutant applied.
   The branch changed what the test checks, so the check names the file in a
   note and does not compare it.
 
-A changed line inside a test selects that test of the base version. Any other
-changed line in the file, such as an import or a helper, selects the whole
-file. A blank line or a comment selects nothing. A branch that only adds tests
-has nothing to compare. On 2026-10-24 the two runs for one changed function in
+A changed test selects that test of the base version. So does a changed
+helper, constant or import that the test reaches, directly, through another
+helper, through a decorator or through the rest of its class. A fixture or a
+module-level statement such as a call can reach any test, so a change to one
+selects every test. A docstring, a comment, a blank line, a new import or a new
+helper selects nothing. The whole file is selected where the file reads its own
+names without naming them, as `globals()` does, holds a star import, binds one
+name twice, or holds a test class that inherits. A branch that only adds tests
+has nothing to compare. The branch run tries the mutants that the base run
+caught against the tests the branch changed or added first, and runs only the
+ones those miss against the whole files (`PL-D59R`).
+
+Before `PL-D59R`, any changed line outside a test, such as an import or a
+helper, selected the whole file. That happened for 187 of the 247 changed
+simulator unit-test files in the 200 merges before 2026-10-31, and with the new
+rule it happens for 2. On 2026-10-24 the two runs for one changed function in
 `tests/unit/test_dashboard_frame.py` took 197 s together, on four otherwise idle
 cores, with the display modules' mutants alone. On 2026-10-25, with the core
 modules that file imports added, the same kind of change took 911 s, most of it

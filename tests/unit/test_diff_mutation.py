@@ -1258,8 +1258,8 @@ def test_a_mutant_the_changed_tests_catch_is_not_run_against_the_whole_file(
     ]
     assert compared.uncaught == compared.undecided == []
     assert (
-        ", first against the 1 tests it changed or added, and then the 0 that those missed "
-        in (compared.notes[-1])
+        ", first against the 1 tests and test files it changed or added, and then the 0 mutants "
+        "that those missed against the whole files." in compared.notes[-1]
     )
 
 
@@ -1271,7 +1271,9 @@ def test_a_mutant_another_test_of_the_file_still_catches_passes(repo: Path, runs
     compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
 
     assert compared.uncaught == compared.undecided == []
-    assert "and then the 1 that those missed against the whole files." in compared.notes[-1]
+    assert (
+        "and then the 1 mutants that those missed against the whole files." in (compared.notes[-1])
+    )
 
 
 def test_only_a_retried_mutant_takes_the_whole_file_runs_status(repo: Path, runs: Runs) -> None:
