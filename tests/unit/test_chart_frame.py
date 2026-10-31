@@ -1952,6 +1952,25 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
         if t in drawn
     )
 
+    # The predicted F_A/F_I is the run's own later ratio too, on the shared instants.
+    later_frame = assemble_chart_frame(
+        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    later_ratio = {
+        t: ratio
+        for stretch in later_frame.runs[0].wash_in
+        for t, ratio in zip(stretch.times_s, stretch.ratios, strict=True)
+    }
+    predicted = [
+        (t, ratio)
+        for stretch in preview.wash_in
+        for t, ratio in zip(stretch.times_s, stretch.ratios, strict=True)
+        if t in later_ratio
+    ]
+
+    assert len(predicted) > 100
+    assert all(ratio == pytest.approx(later_ratio[t], rel=1e-9) for t, ratio in predicted)
+
 
 def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> None:
     controller = _run(1200.0)

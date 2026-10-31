@@ -83,6 +83,8 @@ from anesthesia_sim.app.dashboard_frame import (
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
+    OFF_SCALE_NOTICE_TEMPLATE,
+    PREVIEW_OFF_SCALE_NOTICE_TEMPLATE,
     READOUT_PANELS,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
@@ -157,6 +159,7 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
+    CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
     format_case_discard_warning,
@@ -189,7 +192,13 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
 )
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    Percent,
+    fraction_from_percent,
+)
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -4141,3 +4150,71 @@ def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() ->
     assert "The preview goes above the top of the plot" in notice
     assert f"Circuit {format_mac_multiple(circuit_peak, frame.mac_percent)}" in notice
     assert "readouts above" not in notice
+
+
+def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() -> None:
+    """The run's sentence comes first and the preview's second, each listing every clipped trace.
+
+    The expected names come from the frame's own drawn points, read against
+    the axis top, and the wording from the two templates. So the test pins
+    how the notice joins the names and the sentences (`PL-5B1N`).
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(
+        Percent(8.0, name="delivered_concentration_percent")
+    )
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    controller.start()
+
+    for _ in range(round(2400.0 / SIMULATION_STEP_S)):
+        controller.advance(SIMULATION_STEP_S)
+
+    frame = assemble_chart_frame(
+        (
+            RunInput(
+                run_label(FIRST_RUN),
+                controller,
+                controller.snapshot(),
+                (),
+                preview=PreviewRequest(SettingPreview(ControlInput.FRESH_GAS_FLOW, 10.0), "x"),
+            ),
+        ),
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    run = frame.runs[0]
+    preview = run.preview
+    assert preview is not None
+    ceiling = frame.axis_top_percent + CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+    clipped = [
+        trace_style(quantity).label
+        for quantity in frame.visible
+        if max(run.percents(quantity)) > ceiling
+    ]
+    peaks = [
+        f"{trace_style(quantity).label} "
+        f"{format_mac_multiple(max(preview.fractions[quantity]), frame.mac_percent)}"
+        for quantity in frame.visible
+        if max(preview.percents(quantity)) > ceiling
+    ]
+    assert len(clipped) >= 2
+    assert len(peaks) >= 2
+    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+
+    assert off_scale_notice(frame, 0) == (
+        OFF_SCALE_NOTICE_TEMPLATE.format(compartments=", ".join(clipped), top=top)
+        + " "
+        + PREVIEW_OFF_SCALE_NOTICE_TEMPLATE.format(top=top, peaks=", ".join(peaks))
+    )
+
+
+def test_only_the_delivered_dial_carries_a_second_line() -> None:
+    """The flows have no second unit, so their secondary line is empty, not a placeholder."""
+
+    readouts = setting_readouts(SimulationController().snapshot())
+
+    for readout in readouts:
+        if readout.control is not ControlInput.DELIVERED:
+            assert readout.secondary == ""
