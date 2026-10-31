@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science
 feature: mac-awake-reference-text
+milestone: v0.6.10
 touches: docs/MODEL.md, tests/reference/test_mac_awake_washout_figures.py
 added: 2026-10-26
 closed: 2026-10-31

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, defect
 feature: replay-findings
+milestone: v0.6.10
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, docs/ARCHITECTURE.md, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
 added: 2026-10-25
 closed: 2026-10-31
