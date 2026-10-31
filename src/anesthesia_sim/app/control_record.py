@@ -2,9 +2,10 @@
 
 It is the record half of a run's controls. It defines which settings exist
 (`ControlInput`) and the unit each one is in (`CONTROL_INPUT_DISPLAY_UNITS`, with
-its recorded spelling in `CONTROL_INPUT_UNITS`). It also defines `ControlChange`,
-one change that the running model actually saw. Nothing here reads simulation
-state, holds a setting, or formats a value.
+its recorded spelling in `CONTROL_INPUT_UNITS`). It says which field of a
+settings record holds each control's value (`control_value`). It also defines
+`ControlChange`, one change that the running model actually saw. Nothing here
+reads simulation state, holds a setting, or formats a value.
 
 `app/control_timeline.py` is the display half. It turns a recorded timeline into
 the acts a reader sees, and it names each control in the interface's own words.
@@ -24,12 +25,19 @@ pointing one way.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Final
+from typing import Final, Protocol
 
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
-__all__ = ["CONTROL_INPUT_DISPLAY_UNITS", "CONTROL_INPUT_UNITS", "ControlChange", "ControlInput"]
+__all__ = [
+    "CONTROL_INPUT_DISPLAY_UNITS",
+    "CONTROL_INPUT_UNITS",
+    "ControlChange",
+    "ControlInput",
+    "ControlSettings",
+    "control_value",
+]
 
 
 class ControlInput(StrEnum):
@@ -103,6 +111,59 @@ CONTROL_INPUT_DISPLAY_UNITS: Final[Mapping[ControlInput, DisplayUnit]] = {
 CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
     control: unit.recorded for control, unit in CONTROL_INPUT_DISPLAY_UNITS.items()
 }
+
+
+class ControlSettings(Protocol):
+    """A record that holds the value of each of the four controls, in the unit it was set in.
+
+    Two record types match this protocol. `UptakeEquationSettings` holds the settings
+    that the model computes a stretch of the run under. `RunSettings` holds the values
+    that the setting controls show. Both store each value under the same field name
+    and in the unit given in `CONTROL_INPUT_DISPLAY_UNITS`.
+    """
+
+    @property
+    def fresh_gas_flow_l_min(self) -> float: ...
+
+    @property
+    def delivered_concentration_percent(self) -> float: ...
+
+    @property
+    def alveolar_ventilation_l_min(self) -> float: ...
+
+    @property
+    def cardiac_output_l_min(self) -> float: ...
+
+
+def control_value(settings: ControlSettings, control: ControlInput) -> float:
+    """Return the value that `settings` holds for `control`, in the unit the control was set in.
+
+    This is the one place that says which settings field holds each control's
+    value. The controller calls it to work out which changes a branch starts
+    with. `dashboard_frame.setting_readouts` calls it to get the value shown
+    beside each slider. So a control's recorded change and its readout come
+    from the same field (`PL-000W`).
+
+    The function returns the value as it was set, not a converted value. So the
+    result compares exactly equal to the value that a setter recorded. For
+    example, the delivered concentration is returned as the percent that was
+    dialled (`PL-NJPB`).
+
+    The `match` statement has no default case. If a new `ControlInput` member
+    has no case here, the function has a path that returns nothing, and `mypy`
+    rejects that. So a fifth control cannot appear in a readout or a recorded
+    change until this function says which field holds it.
+    """
+
+    match control:
+        case ControlInput.FRESH_GAS_FLOW:
+            return settings.fresh_gas_flow_l_min
+        case ControlInput.DELIVERED:
+            return settings.delivered_concentration_percent
+        case ControlInput.ALVEOLAR_VENTILATION:
+            return settings.alveolar_ventilation_l_min
+        case ControlInput.CARDIAC_OUTPUT:
+            return settings.cardiac_output_l_min
 
 
 @dataclass(frozen=True, slots=True)

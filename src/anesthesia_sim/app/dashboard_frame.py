@@ -49,7 +49,11 @@ from anesthesia_sim.app.chart_frame import (
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
-from anesthesia_sim.app.control_record import CONTROL_INPUT_DISPLAY_UNITS, ControlInput
+from anesthesia_sim.app.control_record import (
+    CONTROL_INPUT_DISPLAY_UNITS,
+    ControlInput,
+    control_value,
+)
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
 from anesthesia_sim.app.controller import (
     HereForkPoint,
@@ -1394,17 +1398,13 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
     """
 
     delivered = settings.delivered_partial_pressure_fraction
-    flows = {
-        ControlInput.FRESH_GAS_FLOW: settings.fresh_gas_flow_l_min,
-        ControlInput.ALVEOLAR_VENTILATION: settings.alveolar_ventilation_l_min,
-        ControlInput.CARDIAC_OUTPUT: settings.cardiac_output_l_min,
-    }
-    # The range that the run accepts for each control, read this tick. The
-    # model's envelopes come from `core/supported_ranges.py`, so the interface
-    # offers the domain that the verification gates cover and nothing wider
-    # (`PL-0MLQ`). The fresh gas flow's range is that envelope narrowed by the
-    # mounted machine, as the circuit states it (`PL-7CRY`). The dial's
-    # maximum is the running agent's vaporizer maximum.
+    # The range of values that the run accepts for each control, read on this tick.
+    # The model's supported ranges come from `core/supported_ranges.py`. So the
+    # interface offers only the values that the verification gates cover, and
+    # nothing wider (`PL-0MLQ`). The fresh gas flow range is the model's range,
+    # narrowed to the limits of the mounted machine. The circuit states that
+    # narrower range (`PL-7CRY`). The vaporizer dial's maximum is the maximum of
+    # the vaporizer for the agent that is running.
     accepted_ranges: dict[ControlInput, tuple[float, float]] = {
         ControlInput.FRESH_GAS_FLOW: settings.accepted_fresh_gas_flow_range_l_min,
         ControlInput.DELIVERED: (
@@ -1426,12 +1426,14 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             else format_delivered_label(settings.agent_display_name)
         )
 
+        # Which settings field holds the value is `control_value`'s to say,
+        # so this readout and the control's recorded changes read one field.
+        value = control_value(settings, control.control)
+
         if control.control is ControlInput.DELIVERED:
-            value: float = settings.delivered_concentration_percent
             value_text = format_percent(delivered)
             secondary = format_mac_multiple(delivered, settings.agent_mac_percent)
         else:
-            value = flows[control.control]
             value_text = format_flow(value)
             secondary = ""
 
