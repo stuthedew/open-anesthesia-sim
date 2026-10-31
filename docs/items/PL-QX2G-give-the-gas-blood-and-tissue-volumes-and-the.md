@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: floating-point-domain
+milestone: v0.6.9
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app/controller.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit, tests/reference
 added: 2026-10-25
 closed: 2026-10-25

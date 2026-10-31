@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: floating-point-domain
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, docs/MODEL.md, tests/unit
 blocked-by: PL-QX2G
 added: 2026-10-25

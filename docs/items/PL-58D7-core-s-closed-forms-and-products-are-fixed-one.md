@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect, refactor
 feature: defect-review-2026-10
+milestone: v0.6.9
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, docs/MODEL.md, tests/unit, docs/items/PL-0WFJ-the-guard-every-run-opening-shares-require.md
 blocked-by: PL-0WFJ
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one

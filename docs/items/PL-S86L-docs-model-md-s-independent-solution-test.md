@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.9
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-10-25
 closed: 2026-10-25

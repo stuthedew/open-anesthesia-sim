@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_resume_at.py
 added: 2026-10-25
 closed: 2026-10-26

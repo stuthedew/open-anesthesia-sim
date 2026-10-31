@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: provenance
+milestone: v0.6.9
 touches: .claude/rules/citing-sources.md, docs/references/README.md
 blocked-by: PL-XJ5P
 added: 2026-09-13

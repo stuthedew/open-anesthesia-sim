@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, science
 feature: replay-findings
+milestone: v0.6.9
 touches: docs/MODEL.md, src/anesthesia_sim/core/exceptions.py, tests/unit/test_uptake_system_failure.py
 added: 2026-10-25
 closed: 2026-10-26

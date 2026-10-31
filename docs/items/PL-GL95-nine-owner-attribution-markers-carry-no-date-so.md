@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.6.9
 touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items, .github/workflows/pr-title.yml, docket.toml
 added: 2026-09-20
 closed: 2026-10-26

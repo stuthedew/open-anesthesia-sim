@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: recurrence-signal
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, docs/items/PL-TBX9-measure-whether-bin-docket-new-s-working-tree.md
 added: 2026-10-25
 closed: 2026-10-27

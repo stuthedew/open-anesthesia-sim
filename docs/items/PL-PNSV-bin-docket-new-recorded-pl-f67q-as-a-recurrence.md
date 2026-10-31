@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: recurrence-signal
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 deferred-from: v0.7.0 - captured after the freeze, at the owner's request in the workflow lane, and built at once; the generator tier ranks it, not the gate
 added: 2026-10-25

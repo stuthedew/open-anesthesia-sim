@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: defect
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - apparatus work on the machinery that finds generators, taken now at the project owner's request rather than held by the schematic's gate
 added: 2026-10-27

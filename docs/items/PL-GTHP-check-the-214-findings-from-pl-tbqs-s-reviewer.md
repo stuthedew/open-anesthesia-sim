@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: housekeeping
 feature: replay-findings
+milestone: v0.6.9
 touches: docs/items
 added: 2026-10-24
 closed: 2026-10-25

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.6.9
 touches: .claude/skills/pull-request/SKILL.md
 added: 2026-10-26
 closed: 2026-10-26

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: two-change-run-has-two-changes
+milestone: v0.6.9
 touches: tests/unit/test_run_definition.py
 added: 2026-10-01
 closed: 2026-10-26

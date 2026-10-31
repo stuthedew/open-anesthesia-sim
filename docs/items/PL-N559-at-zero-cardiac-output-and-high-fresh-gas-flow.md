@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science, ux, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/wash_in.py, tests/unit/test_wash_in.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-10-26

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, science
 feature: mac-awake-reference-text
+milestone: v0.6.9
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, docs/MODEL.md, docs/references/README.md, docs/references/katoh-1993-anesth-analg-mac-awake-washout.md
 added: 2026-10-26
 closed: 2026-10-26

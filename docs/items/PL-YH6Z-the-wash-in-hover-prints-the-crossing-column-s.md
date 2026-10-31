@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py, docs/MODEL.md
 added: 2026-10-24
 closed: 2026-10-26

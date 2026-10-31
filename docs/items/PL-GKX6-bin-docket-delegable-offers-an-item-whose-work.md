@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: worker-runs
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_model_choice.py, subprojects/docket/tests/test_vcs.py, tools/workflow_paths_check.py, docs/maintainer.md
 added: 2026-10-20
 closed: 2026-10-27

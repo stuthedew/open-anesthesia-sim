@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-10-25
 closed: 2026-10-26

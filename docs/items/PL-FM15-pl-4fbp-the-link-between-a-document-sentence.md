@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: generator-heads
+milestone: v0.6.9
 touches: docs/items
 added: 2026-10-31
 closed: 2026-10-31

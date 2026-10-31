@@ -2,6 +2,7 @@
 id: PL-N3YB
 title: tools/diff_mutation.py reports a mutant as undecided when it makes a test module raise during collection, because pytest exits 2 for that and RERUN_STATUS maps only 0 and 1, so the close-out audit refuses a branch whose test file builds a CaseInstant at import (found closing PL-756M and the rest of #1817, 2026-10-25)
 status: done
+milestone: v0.6.9
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
