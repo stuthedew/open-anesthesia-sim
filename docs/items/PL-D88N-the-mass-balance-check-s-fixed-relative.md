@@ -3,11 +3,13 @@ id: PL-D88N
 title: The mass-balance check's fixed relative tolerance of 1e-9 halts a stepped run at the numerical envelope's stiffest corners within seconds (4.3 s at a 0.01 L lung with blood:gas 1e4, measured 2026-10-25), because each step's propagator rounding there is about 1e-10 of the state; decide whether the tolerance should follow the propagator's stated error bound, 2**s times machine epsilon per step, or say why a fixed one is right
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, science
 feature: floating-point-domain
 touches: docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
 added: 2026-10-25
+closed: 2026-10-31
+pr: 1901
 payoff: the agent-conservation check stays as strict as today on every run a learner can reach, and a stiffer patient profile fails a test the day it ships instead of halting runs for rounding
 verify: grep -q 'def test_every_shipped_agent_steps_without_squarings' tests/unit/test_numerical_envelope_sweep.py && grep -qF 'PL-D88N' docs/MODEL.md
 ---

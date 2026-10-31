@@ -87,25 +87,26 @@ each is a way in which the types could be taken to promise more than they do:
   (project owner, 2026-10-12, ratified, over keeping the number as given,
   which `PL-4R3W` chose). The number that the arithmetic produces is checked
   against its range where the result is built.
-- **A dial at 100% can produce a computed fraction just above 1, and the type
-  rejects it.** `PL-4R3W` measured this on 2026-10-04. No supported setting
-  computes a fraction outside 0 to 1 on either path. The highest value
-  anywhere was 0.18000000000002825, for desflurane at its 18% maximum. But a
-  circuit built without an agent sets its vaporizer maximum to 100% by
-  default (`BreathingCircuit`). A state at a 100% dial, propagated exactly,
-  reached 1.000000000099652 after 24 h, and 1.0000000002869551 at its worst
-  minute along the way. That excess is the documented cost of the shift
-  (`core/matrix_exponential.py`, "What it costs"). The stepped path already
-  halted there before this type existed, in ten of the twelve corners
-  measured. The display path builds each plotted value as a `Fraction` when
-  the frame is assembled (`app/chart_frame.py`). It now rejects such a value
-  too, naming the compartment, instead of formatting it as 100.00%. The
-  interface then halts the run before any frame is drawn. It reports the
-  halt from the controller's run state, not from a snapshot that could fail
-  in the same way (`PL-7DJK`). A 100% dial is outside `docs/MODEL.md`
-  § "Supported input ranges", and no application path can reach it. So this
-  is the type's documented limit, and not a reason to leave a range
-  unchecked.
+- **The type's range is the physical range, so the coupled model's inputs
+  stop below its top.** A fraction is checked from 0 through 1, and that
+  includes every fraction the model computes. The coupled propagator's
+  rounding can carry a computed fraction a little above the largest fraction
+  it started from. So a state at 1, or a 100% dial, could round a computed
+  fraction past 1, and the type then refused it. `PL-4R3W` measured
+  1.000000000099652 after 24 h from a 100% dial on 2026-10-04, and
+  `PL-9B1M` measured a stepped fraction of 1.0000000000349965 and a drawn one
+  of 1.000033 from a full state on 2026-10-26. The type was not widened to
+  absorb that excess. Instead, the delivered concentration and the state that
+  the stepped system opens from must be at or below `MAXIMUM_INPUT_FRACTION`
+  in `core/supported_ranges.py`, 0.99 of one atmosphere (project owner,
+  2026-10-31, ratified, over a fraction check that accepts a value slightly
+  above 1). The largest computed excess over that ceiling, measured at every
+  envelope corner, was 3.3e-5, so no computed fraction from a supported
+  opening comes near 1. No shipped vaporizer comes near the ceiling either:
+  the highest maximum is desflurane's 18%. The display path refuses a drawn
+  fraction outside 0 to 1 when it builds each `DisplayState`
+  (`core/run_definition.py`), and the interface builds each plotted value as a
+  `Fraction` again when the frame is assembled (`app/chart_frame.py`).
 
 **Why one module rather than a convention.** Before `PL-WVSK`, the factor 100
 was written out twelve times across six modules. Six of the twelve were on the

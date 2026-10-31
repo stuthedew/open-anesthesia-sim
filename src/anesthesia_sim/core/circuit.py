@@ -372,10 +372,12 @@ class BreathingCircuit:
     dial setting. Every agent-aware path builds the circuit through
     `AgentUptakeSystem.for_agent()`. That method sets both the real limit and
     that agent's own starting dial from the agent data file. A test of circuit
-    physics that wants no device limit passes 100% itself. With that maximum,
-    a dial set to 100% can give a computed fraction one rounding error above 1.
-    `Fraction` rejects that value when it is built, and `core/concentration.py`
-    records this as the type's limit (`PL-4R3W`).
+    physics that wants no device limit passes 100% itself. The circuit then
+    accepts a 100% dial, and its own closed form stays inside 0 to 1. The
+    coupled system does not accept it. Its step can round a computed fraction
+    past 1 from a dial at 100%, so `AgentUptakeSystem` and
+    `UptakeEquationSettings` refuse a dial above `MAXIMUM_INPUT_FRACTION`, 99%
+    (`core/supported_ranges.py`, `PL-9B1M`).
 
     `__setattr__` checks every field each time it is written, including the
     writes the constructor makes. So an assignment that bypasses the

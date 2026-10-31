@@ -51,10 +51,28 @@ was put.
 the same way, for the same reason: a silently clamped setting would simulate,
 display and chart a value that the caller did not ask for.
 
-The fourth control, the delivered concentration, is bounded here only by the
-0-to-1 range of a fraction, which every concentration obeys. Its real limit is
-the vaporizer's calibrated maximum. That maximum is agent-specific, so it
-lives on `BreathingCircuit` as instance state rather than as a constant here.
+The fourth control, the delivered concentration, has two upper limits. Its
+real limit is the vaporizer's calibrated maximum. That maximum is
+agent-specific, so it lives on `BreathingCircuit` as instance state rather
+than as a constant here. The second limit is `MAXIMUM_INPUT_FRACTION`, below.
+It is not a physiological claim but a numerical one, and it bounds the opening
+state of the coupled system too.
+
+**The coupled model's inputs stop at 0.99 of one atmosphere** (`PL-9B1M`). A
+fraction is checked from 0 through 1 wherever it is built, including every
+fraction that a step or an evaluation computes. The coupled step's rounding
+can carry a computed fraction a little above the largest fraction it started
+from. So a state at the very top of the range, with every compartment at 1,
+could not be stepped: a step rounded one fraction to 1.0000000000349965, the
+check refused it, and the run halted for a rounding error. The display path
+drew 1.000033. No physically possible value is that close to 1, so the fix is
+to stop the inputs short of it rather than to widen the check. The delivered
+concentration and every fraction that the stepped system opens from must be
+at or below `MAXIMUM_INPUT_FRACTION`. Because the model conserves agent, no
+computed fraction then exceeds that ceiling by more than rounding, and the
+largest excess measured at every envelope corner was 3.3e-5. `docs/MODEL.md`
+§ "The numerical envelope" gives the measurement (project owner, 2026-10-31,
+ratified, over a fraction check that accepts a value slightly above 1).
 
 **Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
 `PL-51B7`). `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are
@@ -176,6 +194,12 @@ from anesthesia_sim.core.checked_number import (
     require_not_another_quantity,
     shown,
 )
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    percent_from_fraction,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation_step import SimulationStep, require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
@@ -192,6 +216,24 @@ MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12.0
 # flow of every tissue and of the venous compartment.
 MINIMUM_CARDIAC_OUTPUT_L_MIN = 0.0
 MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
+
+MAXIMUM_INPUT_FRACTION = 0.99
+"""The highest partial pressure, in atmospheres, that the coupled model starts from.
+
+It bounds two inputs: the delivered concentration, and each fraction of the
+state that the stepped system holds when it is built. The module docstring
+gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That is about 300
+times the largest excess over the ceiling measured from it at every corner of
+the numerical envelope, which was 3.3e-5 on the display path after 60 chained
+propagators (`docs/MODEL.md` § "The numerical envelope", 2026-10-31). It is
+above every shipped vaporizer maximum, the highest of which is desflurane's
+18%, and it is tied to the envelope rather than to one agent. So a later gas
+delivered at a high fraction does not need a new ceiling.
+
+A fraction that the model computes is not held to this ceiling, only to 0
+through 1. A computed fraction may lie a rounding error above the ceiling, and
+refusing it would bring back the halt that this ceiling exists to remove.
+"""
 
 # How long a run may be, as elapsed simulated time. Unlike the three intervals
 # above, this one bounds the *run* rather than a setting. A run reaches it
@@ -380,6 +422,68 @@ def require_supported_alveolar_ventilation(alveolar_ventilation_l_min: float) ->
         MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
         MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     )
+
+
+def _above_the_input_ceiling(name: str, written: str, ceiling: str) -> SimulationConfigurationError:
+    """Build the refusal that both input-ceiling checks raise, in the value's own unit."""
+
+    return SimulationConfigurationError(
+        f"{name} of {written} is above {ceiling} of one atmosphere, the highest partial "
+        "pressure the coupled model starts from: from any higher, the step's rounding can "
+        "carry a computed partial pressure past one atmosphere "
+        '(docs/MODEL.md, "The numerical envelope")'
+    )
+
+
+def require_within_input_ceiling(name: str, concentration: float) -> None:
+    """Refuse a concentration that the coupled model would start from too close to one atmosphere.
+
+    `concentration` is either the delivered concentration, as a `Percent`, or a
+    fraction of one atmosphere that is stored as a fraction, as the circuit's
+    is. A `Percent` is converted to a fraction before the comparison, and the
+    message quotes it in percent, the unit of the dial. Its range and type
+    were checked where it was built, so only the ceiling is checked here. A
+    compartment that stores an amount of agent is checked by
+    `require_held_within_input_ceiling` instead.
+
+    Raises:
+        SimulationConfigurationError: the concentration is above
+            `MAXIMUM_INPUT_FRACTION`, or the same fraction written in percent.
+    """
+
+    if isinstance(concentration, Percent):
+        if fraction_from_percent(concentration) > MAXIMUM_INPUT_FRACTION:
+            raise _above_the_input_ceiling(
+                name,
+                f"{shown(concentration)}%",
+                f"{percent_from_fraction(Fraction(MAXIMUM_INPUT_FRACTION)):g}%",
+            )
+    elif concentration > MAXIMUM_INPUT_FRACTION:
+        raise _above_the_input_ceiling(name, shown(concentration), f"{MAXIMUM_INPUT_FRACTION:g}")
+
+
+def require_held_within_input_ceiling(name: str, held_l: float, capacity_l: float) -> None:
+    """Refuse a compartment that holds more agent than it would at the input ceiling.
+
+    A compartment that stores an amount of agent derives its fraction by
+    dividing that amount by its capacity, the amount it holds at a fraction of
+    1. The fraction it was set to is not stored, and the division does not
+    always return it. A venous pool set to 0.99 read back as
+    0.9900000000000001 in the envelope sweep (`PL-9B1M`). So the amount is
+    compared with the amount at the ceiling, computed as the setter computes
+    an amount, capacity times fraction. A fraction set at or below the
+    ceiling then always passes, because a product of floats does not decrease
+    when one factor grows.
+
+    Raises:
+        SimulationConfigurationError: `held_l` is more than `capacity_l` times
+            `MAXIMUM_INPUT_FRACTION`. The message quotes the fraction held.
+    """
+
+    if held_l > capacity_l * MAXIMUM_INPUT_FRACTION:
+        raise _above_the_input_ceiling(
+            name, shown(held_l / capacity_l), f"{MAXIMUM_INPUT_FRACTION:g}"
+        )
 
 
 def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:

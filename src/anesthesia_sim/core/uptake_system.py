@@ -33,7 +33,7 @@ from anesthesia_sim.core.circuit import (
     BreathingCircuitState,
     FreshGasExchange,
 )
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, Percent, require_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -57,7 +57,13 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
-from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
+    require_held_within_input_ceiling,
+    require_within_input_ceiling,
+)
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
 _PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
@@ -142,7 +148,45 @@ class AgentUptakeSystem:
         system does not refuse agent written straight into a part's own store,
         bypassing the part's methods. The accounting check finds such agent at
         the next step or the next read of the accounting.
+
+        **The state the system is built with is its opening, and it is checked
+        against the coupled model's input ceiling** (`PL-9B1M`). The delivered
+        concentration and every fraction the parts hold must be at or below
+        `MAXIMUM_INPUT_FRACTION` of one atmosphere. A part's own setter
+        accepts any fraction from 0 through 1, because the step writes its
+        computed fractions through the same setters, and a computed fraction
+        may lie a rounding error above the ceiling. So the ceiling is checked
+        here, where a caller's state becomes a run's opening. A compartment
+        that stores an amount is checked by that amount, so that a fraction
+        set exactly at the ceiling is not refused for the rounding of reading
+        it back. A run that later resumes at a state it computed
+        (`resume_at`) is checked from 0 through 1, for the same reason.
+
+        Raises:
+            SimulationConfigurationError: the dial or a fraction is above the
+                input ceiling. The system is not built.
         """
+
+        require_within_input_ceiling(
+            "delivered_concentration_percent", self.circuit.delivered_concentration_percent
+        )
+        require_within_input_ceiling(
+            "inspired_partial_pressure_fraction", self.circuit.inspired_partial_pressure_fraction
+        )
+        require_held_within_input_ceiling(
+            "alveolar partial_pressure_fraction",
+            self.alveoli.agent_amount_l,
+            self.alveoli.gas_volume_l,
+        )
+        venous = self.patient.venous_blood
+        require_held_within_input_ceiling(
+            "venous partial_pressure_fraction", venous.agent_amount_l, venous.capacity_l
+        )
+
+        for tissue in self.patient.tissues:
+            require_held_within_input_ceiling(
+                f"{tissue.name} partial_pressure_fraction", tissue.agent_amount_l, tissue.capacity_l
+            )
 
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
 
@@ -327,6 +371,26 @@ class AgentUptakeSystem:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
+        """Set the dial, refusing a setting above the coupled model's input ceiling.
+
+        The circuit checks the dial against the vaporizer's maximum. This
+        method also checks it against `MAXIMUM_INPUT_FRACTION`, 99%, before
+        the circuit is written (`PL-9B1M`). No shipped vaporizer reaches that
+        ceiling. A dial written straight onto the circuit bypasses this check,
+        and the next step then refuses to build its settings record, as
+        `advance()` describes.
+
+        Raises:
+            TypeError: the dial was not built as a `Percent`, which the
+                circuit refuses. Nothing is written.
+            SimulationConfigurationError: the dial is above the input ceiling
+                or above the vaporizer's maximum. Nothing is written.
+        """
+
+        require_percent("delivered_concentration_percent", delivered_concentration_percent)
+        require_within_input_ceiling(
+            "delivered_concentration_percent", delivered_concentration_percent
+        )
         self.circuit.set_delivered_concentration_percent(delivered_concentration_percent)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
@@ -404,10 +468,14 @@ class AgentUptakeSystem:
                 propagator cannot take a fraction below 0 for any step size,
                 because its matrix is Metzler, so every entry of the propagator
                 is nonnegative. A rounding error can carry a fraction above 1
-                only where a fraction is already at 1. That needs a 100% dial,
-                which no supported setting reaches (`core/concentration.py`).
-                Otherwise this cause is a safeguard for a model extension whose
-                matrix is not a pure transfer system. The second cause is that
+                only from a state within rounding of 1. The input ceiling of
+                `MAXIMUM_INPUT_FRACTION` keeps every opening and every dial at
+                or below 0.99, so a run that this system opened cannot get
+                there (`PL-9B1M`). A state placed by `resume_at` is checked
+                only from 0 through 1, so a caller that resumes at a state no
+                run produced can still reach this refusal. Otherwise this cause
+                is a safeguard for a model extension whose matrix is not a pure
+                transfer system. The second cause is that
                 the settings record, from which the step builds its propagator,
                 could not be built, as described above. The step has been
                 rolled back, so the system holds the last completed step. The

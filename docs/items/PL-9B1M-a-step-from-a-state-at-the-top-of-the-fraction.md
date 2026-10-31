@@ -3,11 +3,13 @@ id: PL-9B1M
 title: A step from a state at the top of the fraction range, every compartment at a partial pressure fraction of 1, rounds a fraction up to 3.5e-11 past 1 (1986 of 10 368 steps in the envelope sweep), so AgentUptakeSystem.advance rolls the step back with SimulationNumericalError; the display path at the stiffest corners draws fractions up to 1.000033 without refusing
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/circuit.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_chart_frame.py
 added: 2026-10-26
+closed: 2026-10-31
+pr: 1901
 payoff: a run at the top of the supported fraction range neither halts on rounding nor draws a partial pressure above one atmosphere
 verify: ! grep -q 'PL-9B1M' tests/unit/test_numerical_envelope_sweep.py && grep -q 'def test_a_state_at_the_fraction_ceiling_stays_within_one' tests/unit/test_numerical_envelope_sweep.py
 ---

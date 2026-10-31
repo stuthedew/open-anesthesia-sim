@@ -81,8 +81,10 @@ from math import inf, isfinite
 from typing import Final
 
 from anesthesia_sim.core.checked_number import shown
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
+    FRACTION_STATE_NAMES,
     UptakeEquationSettings,
     build_system_matrix,
     require_canonical_state,
@@ -205,14 +207,38 @@ class DisplayState:
     `values` is a line where a reader can see a value meant for drawing being
     taken out of the one container that says what it is.
 
+    **Each fraction is checked from 0 through 1 when the state is built**
+    (`PL-9B1M`). The display path chains one propagator per column, so its
+    rounding can add up across a window. Before this check, a washout from a
+    state with every compartment at 1 drew fractions up to 1.000033 at the
+    stiffest envelope corners, a partial pressure above one atmosphere. The
+    coupled model's inputs now stop at `MAXIMUM_INPUT_FRACTION`, 0.99, and the
+    largest drawn excess over that ceiling measured 3.3e-5. So a drawn
+    fraction above 1 means the window came from a state that no supported
+    opening produces, and it is refused rather than drawn.
+
     Attributes:
         values: The state, in `governing_equations`' own state order,
             `STATE_SIZE` entries long. It equals the canonical state at the
             same instant only to within floating-point composition error, not
             exactly. The measured difference is in `docs/MODEL.md`.
+
+    Raises:
+        SimulationNumericalError: a fraction in `values` is outside 0 to 1.
+            The message names its position in the state, and the original
+            refusal is kept as the cause.
     """
 
     values: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        for index, role in FRACTION_STATE_NAMES:
+            try:
+                Fraction(self.values[index], name=f"state[{index}] ({role})")
+            except SimulationConfigurationError as error:
+                raise SimulationNumericalError(
+                    f"the display path computed a value it cannot draw: {error}"
+                ) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -598,6 +624,9 @@ class RunDefinition:
                 than `MAXIMUM_WINDOW_COLUMNS`, either bound is not finite,
                 either bound precedes `opened_at_s`, `stop_s` precedes
                 `start_s`, or `stop_s` is past the time the run has reached.
+            SimulationNumericalError: a computed fraction is outside 0 to 1,
+                which `DisplayState` refuses. Only an opening that no
+                supported run produces can lead there (`PL-9B1M`).
         """
 
         if isinstance(columns, bool) or not isinstance(columns, int):
@@ -762,6 +791,8 @@ class RunDefinition:
                 fine spacing is otherwise accepted. Unlike a run's step, it is
                 chained at most once per column, so its rounding error does
                 not accumulate beyond what the columns asked for.
+            SimulationNumericalError: a computed fraction is outside 0 to 1,
+                as `evaluate` describes.
         """
 
         require_positive_finite("spacing_s", spacing_s)

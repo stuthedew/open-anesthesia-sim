@@ -701,11 +701,15 @@ step computes is built as a fraction before any compartment stores it. It is
 built under the name of the compartment that will store it
 (`AgentUptakeSystem._write_state_vector`). So a computed value outside the
 range halts the run and names that compartment, instead of being stored or
-shown. The one limit comes from the type itself. A circuit built without an
-agent defaults its vaporizer maximum to 100%. At that dial setting, a
-computed fraction can round past 1, and the type rejects it there. No
-supported setting computes a fraction outside the range, and
-`core/concentration.py` records the measurement.
+shown. The range that a computed fraction is checked against is the physical
+one, 0 through 1. The coupled model's rounding can carry a computed fraction a
+little above the largest fraction it started from. So the coupled model's
+inputs stop short of 1: the delivered concentration and each fraction that the
+stepped system is built with must be at or below 0.99 of one atmosphere
+(§ "The numerical envelope", `PL-9B1M`). No supported setting computes a
+fraction outside the range, and `core/concentration.py` records the
+measurements.
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
 ### Agent amount
 
@@ -1937,9 +1941,16 @@ still carry a fraction just above 1 from a state already at 1.
 With every compartment at 1.0 and a 100% dial, the first 0.1 s step raised
 `SimulationNumericalError` in all 12 agent and flow cases tried (`PL-PM67`,
 measured 2026-10-25). No supported setting reaches that state, because every
-shipped vaporizer maximum keeps each fraction far below 1. The capacity guard
-and the rollback therefore cover two cases: a state at the top of the range,
-and a model extension whose matrix is not a pure transfer system.
+shipped vaporizer maximum keeps each fraction far below 1. Since `PL-9B1M`, the
+coupled model also refuses that state as an input. The delivered concentration
+and each fraction that the stepped system is built with stop at 0.99 of one
+atmosphere, and the largest computed excess over that ceiling, measured from
+it, was 3.3e-5 (§ "The numerical envelope"). The capacity guard and the
+rollback therefore cover two cases. One is a state at the top of the range
+that a caller places through `resume_at` or opens a `RunDefinition` from, both
+of which check a state only from 0 through 1. The other is a model extension
+whose matrix is not a pure transfer system.
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 Second, **refining the step no longer changes the answer**. Under the split,
@@ -2413,6 +2424,8 @@ lists each input that has one, and the function or type that refuses it.
 | The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
+| The delivered concentration in the coupled model | 0 to 99% | `UptakeEquationSettings` and `AgentUptakeSystem.set_delivered_concentration_percent` |
+| Each fraction the stepped system is built with, and its dial | 0 to 0.99 | `AgentUptakeSystem` |
 | The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent 0 to 14 400 L | `require_canonical_state` |
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
@@ -2426,6 +2439,7 @@ lists each input that has one, and the function or type that refuses it.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
 **The state a run opens from was the last input to get an interval.**
 `require_canonical_state` in `core/governing_equations.py` is the guard that a
@@ -2457,9 +2471,11 @@ the tissue:blood quotient's bounds cut out. At each corner, each flow is at
 zero, at the smallest positive float and at its maximum. The test steps the
 coupled system once at each bound of its step, steps each compartment on its
 own at each bound of its own step, and evaluates a run across the 24 hours on
-both the display and the canonical path. Each result must be finite. Each
-fraction must lie from 0 through 1, and the agent balance must close, both to
-within the error bound that `core/matrix_exponential.py` states for the
+both the display and the canonical path. Each coupled run is a wash-in to the
+input ceiling of 0.99, a washout from it, or an equilibrium at it. Each result
+must be finite. Each fraction must lie from 0 through 1, with no allowance. It
+must also lie at or below the ceiling, and the agent balance must close, both
+to within the error bound that `core/matrix_exponential.py` states for the
 propagators that produced it. That bound uses the squarings each propagator
 actually needed, with a margin of 3, so a corner that needs few squarings is
 held to a few roundings. The worst result measured on 2026-10-26 reached 2.5
@@ -2468,24 +2484,63 @@ its interval, and then one representable value past each edge, and requires
 the simulator's own refusal.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-Two refusals inside the intervals are accepted by name. Both are errors from
+One refusal inside the intervals is accepted by name. It is an error from
 `core/exceptions.py`, never a wrong value. On the canonical path, one
 propagator across the whole 86 400 s at the stiffest corners needs more than 32
 squarings. It is refused, as § "What a long interval costs at the corners" below
-describes. And a step from a state at the top of the fraction range, with
-every compartment at a fraction of 1, can round one fraction past 1, by up to
-3.5e-11 in the sweep. The fraction check then refuses it and the step is
-rolled back. The sweep checks that the state is unchanged after the refusal.
+describes.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**A drawn fraction can exceed 1 slightly at the stiffest corners.** The
-display path, `RunDefinition.evaluate`, does not check its fractions. Washing
-out from a full state at the stiffest corners, it draws fractions up to
-1.000033 after 60 chained propagators. That is inside the error bound of
-those propagators, so the sweep accepts it, but a plotted partial pressure is
-then above one atmosphere. No shipped agent's dial reaches a fraction near 1,
-so no shipped run draws this. `PL-9B1M` records both effects at the top of the
-fraction range.
+**The coupled model's inputs stop at 0.99 of one atmosphere** (`PL-9B1M`,
+project owner, 2026-10-31, ratified, over a fraction check that accepts a value
+within the propagator's error bound of 1). Until then a second refusal was
+accepted by name. A step from a state with every compartment at a fraction of 1
+could round one fraction past 1, by up to 3.5e-11 in the sweep. The fraction
+check refused it and the step was rolled back, so a run that did nothing wrong
+halted for a rounding error. The display path did not refuse at all: washing
+out from a full state at the stiffest corners, it drew fractions up to 1.000033
+after 60 chained propagators, a partial pressure above one atmosphere. Both
+happened only through the core interface, because no shipped vaporizer comes
+near a fraction of 1.
+
+No compartment can hold more than one atmosphere of agent, so the fix narrows
+the inputs rather than widening the check. `MAXIMUM_INPUT_FRACTION` in
+`core/supported_ranges.py` is 0.99. A settings record refuses a dial above 99%,
+and so does the stepped system's dial setter. The stepped system refuses to be
+built holding a fraction above 0.99 in any compartment. It compares the agent
+each compartment holds with the agent it would hold at 0.99. Reading a fraction
+back from a stored amount can add one unit in the last place, so a venous pool
+set to 0.99 read back as 0.9900000000000001, and the comparison of amounts does
+not refuse it for that. A computed fraction is still checked only from 0
+through 1, because it may lie a rounding error above the ceiling. For the same
+reason, `require_canonical_state`, which a `RunDefinition` and `resume_at` share,
+checks a state's fractions only from 0 through 1: those sinks open from a state
+that a run passed through. The display path now builds each fraction it
+computes as a `Fraction` (`DisplayState`), so a window that a caller opened
+from a state at 1 is refused with `SimulationNumericalError` rather than drawn.
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+
+The ceiling has to sit below 1 by more than the largest excess over it that a
+run from it computes. That excess was measured on 2026-10-31 at all 96 corners,
+each at the 27 flow corners, from a wash-in to the ceiling, a washout from it
+and an equilibrium at it:
+
+| Path | Largest fraction computed from the ceiling | Excess over 0.99 |
+| --- | --- | --- |
+| One step of the coupled system, at 0.001 s and 0.1 s | 0.9900000000610623 | 6.1e-11 |
+| The canonical path, at five instants up to 86 400 s | 0.9900008107237728 | 8.1e-7 |
+| The display path, 60 columns across 86 400 s | 0.9900330968959383 | 3.3e-5 |
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+The margin of 0.01 is about 300 times the largest excess. The ceiling is tied to
+the envelope rather than to one agent's vapour pressure, so a later gas
+delivered at a high fraction does not need a new one. It is far above every
+shipped vaporizer maximum, the highest of which is desflurane's 18%. So no
+shipped run is affected.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
@@ -2596,6 +2651,51 @@ coefficient of 12, as high as any volatile agent's, ran an hour without a halt
 even in a 0.01 L lung.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+
+**The tolerance stays a fixed $`10^{-9}`$, and a test says when to revisit it**
+(`PL-D88N`, project owner, 2026-10-31, ratified, over a tolerance summed from
+the propagator's error bound, and over one widened only by what the squarings
+add). Each squaring can double a propagator's rounding, so a tolerance that
+followed the bound would end the halts above. It would also loosen the check
+where learners run. Every supported setting needs no squarings at all. Each
+shipped agent was stepped on 2026-10-31 with fresh gas at 0, 0.5, 1, 4 and
+10 L/min, alveolar ventilation at 0, 1, 4 and 12 L/min and cardiac output at 0,
+0.5, 2.5, 5 and 10 L/min, at steps of 0.1 s, 0.01 s and 0.001 s. All 900
+propagators needed none. A correct run's residual stays far below
+$`10^{-9}`$. Over 24 h at the 0.1 s step, the worst relative residual was
+3.08e-12, for sevoflurane at 2% with 4 L/min of fresh gas, 4 L/min of
+ventilation and 5 L/min of cardiac output. The worst case in § "Mass-balance
+identity", desflurane at 18% at the 1 ms step for 24 h, reached 3.73e-11.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- not-restated: 4 L/min, 5 L/min -->
+
+A rigorous tolerance summed from the bound would be loose there. The bound is
+about $`3 \cdot 2^{s} \cdot 2^{-52}`$ per step, with the margin of 3 that the
+sweep uses, and the check compares the whole run's residual, so the bound is
+summed over every step. Even at $`s = 0`$, that gives 5.8e-10 for 24 h at the
+0.1 s step, 5.8e-9 at 0.01 s and 5.8e-8 at the 1 ms step. The last is 58 times
+looser than $`10^{-9}`$, and an accounting error of a few parts in $`10^{8}`$
+would then pass on a long run that a learner can reach. A tolerance widened
+only by what the squarings add, about $`3 (2^{s} - 1) 2^{-52}`$ per step summed,
+is exactly $`10^{-9}`$ wherever $`s = 0`$. It is the right shape for a profile
+that needs squarings, but no shipped profile does, so it was not built.
+`test_every_shipped_agent_steps_without_squarings_at_any_supported_setting` in
+`tests/unit/test_numerical_envelope_sweep.py` steps each shipped agent, with
+the patient and machine that the application runs, with each flow at either end
+of its supported range, at the smallest and the largest supported step. It
+requires every propagator to need no squarings. A stiffer profile, such as a
+small patient, fails it on the day it ships, and its message names `PL-D88N`
+as the place to choose that tolerance.
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What would reopen the bounds.** The volume floor was measured at the adult
 supported flows. A patient profile with much smaller volumes would bring much
