@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, anticipated
 feature: liquid-agent-consumption
+milestone: v0.6.9
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/liquid_agent.py, src/anesthesia_sim/core/units.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/references/README.md, ROADMAP.md, tests/reference, tests/unit, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; science, but not live at 19af95d - nothing in src/ stores or displays a liquid volume, a density or a molar mass
 added: 2026-09-16

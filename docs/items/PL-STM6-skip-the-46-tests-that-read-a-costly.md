@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: done
 feature: ci-cost
+milestone: v0.6.9
 touches: .github/workflows/quality.yml, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/unit/test_quality_step_order.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/apparatus.md
 added: 2026-10-17
 closed: 2026-10-27

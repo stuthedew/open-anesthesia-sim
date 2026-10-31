@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: fewer-red-runs
+milestone: v0.6.9
 touches: .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py, docs/resident-instructions.md
 added: 2026-10-25
 closed: 2026-10-26

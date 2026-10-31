@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 added: 2026-10-24
 closed: 2026-10-25

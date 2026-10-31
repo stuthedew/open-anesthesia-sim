@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/chart_frame.py
 added: 2026-10-25
 closed: 2026-10-25

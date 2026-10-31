@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
+milestone: v0.6.9
 touches: tools/type_ignore_check.py, tests/unit/test_type_ignore_check.py, Makefile, .github/workflows/quality.yml, tests/unit/test_quality_step_order.py, docket.toml, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_verify.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_line_splits.py, tests/unit/test_concentration.py, .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py, conftest.py, pyproject.toml, docs/apparatus.md, tools/config_home_check.py, tools/doc_check.py, tools/literal_home_check.py, tools/workflow_paths_check.py
 added: 2026-09-15
 closed: 2026-10-26

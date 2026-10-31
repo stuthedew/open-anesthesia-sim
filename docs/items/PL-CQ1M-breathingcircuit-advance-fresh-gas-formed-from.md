@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: numerical-domain
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/exponential_approach.py, src/anesthesia_sim/core/__init__.py, docs/ARCHITECTURE.md, tests/unit/test_circuit.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12

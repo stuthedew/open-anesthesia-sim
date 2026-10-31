@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.9
 touches: tests/unit/test_bookmarks.py
 added: 2026-10-25
 closed: 2026-10-25

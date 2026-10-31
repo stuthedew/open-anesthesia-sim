@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-10-25
 closed: 2026-10-27

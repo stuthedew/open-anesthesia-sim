@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: recurrence-signal
+milestone: v0.6.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-0TD9-bin-docket-claim-and-yield-write-the-claim-and.md, docs/items/PL-8MHZ-yaml-scalar-and-line-grammar-is-respelt-outside.md, docs/items/PL-9NZ3-six-more-tools-read-the-python-files-on-disk.md, docs/items/PL-KHXB-the-banner-shown-when-a-run-reaches-the-24-hour.md, docs/items/PL-MLPT-docs-model-md-and-core-supported-ranges-py.md, docs/items/PL-NRR6-a-branch-can-be-taken-at-the-keyframe-where-the.md, docs/items/PL-Y65Q-an-area-too-small-for-its-view-is-held-at-a.md, docs/items/PL-YHR3-with-every-frame-failing-the-bookmark-panel.md, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.7.0 - captured after the freeze by PL-TBX9's measurement; the generator tier ranks it, not the gate
 added: 2026-10-27

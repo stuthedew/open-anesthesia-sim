@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science
 feature: replay-findings
+milestone: v0.6.9
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_state_capture.py, tests/unit/test_circuit.py, tests/unit/test_concentration.py
 added: 2026-10-24
 closed: 2026-10-26

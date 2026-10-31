@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: model-review
+milestone: v0.6.9
 touches: docs/items, docs/model-review.md
 added: 2026-10-25
 closed: 2026-10-25
