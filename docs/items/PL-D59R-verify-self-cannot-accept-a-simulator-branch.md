@@ -1,8 +1,16 @@
 ---
 id: PL-D59R
 title: verify --self cannot accept a simulator branch that changes a large display unit test: tools/diff_mutation.py's weakened-test comparison runs each display mutant its base version catches against the branch's whole changed unit-test files, which took 66 minutes for the base half on PL-ZR49 and projected about four hours for the branch half, past the audit's 2-hour bound
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, perf
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md
+deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-10-26
+payoff: a simulator branch that changes a large test file can finish close-out's mutation audit, instead of spending hours on a check that can only refuse
+verify: ! grep -qF 'That costs about two more' .claude/skills/docket/modes/close-out.md
+not-delegable: only a verify --self run reaching a verdict within its 2-hour bound on a branch like PL-ZR49's proves the fix, and only a session can run one
 ---
 
 **Problem.** verify --self cannot accept a simulator branch that changes a large display unit test: tools/diff_mutation.py's weakened-test comparison runs each display mutant its base version catches against the branch's whole changed unit-test files, which took 66 minutes for the base half on PL-ZR49 and projected about four hours for the branch half, past the audit's 2-hour bound
@@ -21,3 +29,5 @@ The branch half runs each mutant against the branch's version of every changed u
 **Done when.** `verify --self` gives an answer on a branch like `PL-ZR49`'s within its bound. That could come from running the branch half on the changed test ids rather than the whole files, from narrowing the mutants to those the changed tests reach, or from a bound per file that reports what it did not measure as a note. Close-out step 5's cost estimate states the measured cost.
 
 **Seen again, 2026-10-26.** Pull request #1864 (`PL-0WFJ` and seven other core findings, from a Projects thread) reports the same outcome in its body: its `bin/docket verify --self` "stopped at the 2-hour limit before it printed a verdict". That branch changes core modules and their unit tests rather than a display test, so the cost is not limited to `test_dashboard_frame.py`.
+
+**Generator check.** A one-off. The fact misread is what the mutation audit costs on a branch. Close-out step 5 sized it on a small test file, and the cost grows with the size of each changed test file. No head's `misread:` states it.
