@@ -5259,9 +5259,9 @@ def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_return
     """No branch opens on 24:00:00, so none is left where Reset only returns it to the limit.
 
     A branch taken at a mark on the limit could never step. Its banner named
-    Reset as the way out, and a branch's Reset returns it to its fork, so the
-    way out led back to the same stop (`PL-VHQX`). Now the fork is rejected,
-    and the branch control does not offer the mark. The trunk still reads as
+    Reset as the way out. A branch's Reset returns it to its fork, so the way
+    out led back to the same stop (`PL-VHQX`). Now the fork is rejected, and
+    the branch control does not offer the mark. The trunk is still shown as
     stopped at the limit. The expected message is typed by hand.
     """
 
@@ -5291,8 +5291,8 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     Until `PL-3B34`, a dial moved after the run stopped was recorded at
     24:00:00. That made a keyframe there, and `resumed_at` opened a branch on
     it that could never step. The stopped run now refuses the dial, so the
-    trunk keeps its one stretch from 0 s, and `resumed_at` rejects the limit as
-    an instant with no keyframe. A mark on the limit is rejected too, as
+    trunk keeps its one stretch from 0 s. `resumed_at` therefore rejects the
+    limit as an instant with no keyframe. A mark on the limit is rejected too, as
     `test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there`
     checks.
     """

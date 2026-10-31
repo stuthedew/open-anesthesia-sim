@@ -195,9 +195,10 @@ STATUS_PAUSED_TEXT: Final = "Paused"
 # looked like a pause that nobody made. The word starts with "Paused", because
 # the run is paused and Start resumes it (`docs/MODEL.md` § "Halting on a marked
 # crossing"). It reuses the fork label's ratified "stopped on your mark", which
-# names no mark and no instant, for the reason `HALT_FORK_LABEL_TEMPLATE` gives.
-# The wording is a placeholder while the interface is built (project owner,
-# 2026-10-18).
+# names no mark and no instant. A mark inside a step halts the run at the step's
+# end, so a named instant could be wrong, and one step can cross several marks
+# (`HALT_FORK_LABEL_TEMPLATE`). The wording is a placeholder while the interface
+# is built (project owner, 2026-10-18).
 STATUS_MARK_HALT_TEXT: Final = "Paused — stopped on your mark"
 STATUS_RUNNING_TEXT: Final = "Running"
 STATUS_FAILED_TEXT: Final = "Stopped — simulation error"

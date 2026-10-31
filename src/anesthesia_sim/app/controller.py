@@ -930,7 +930,7 @@ class SimulationController:
 
         The result is `None` when that step would not be rejected, or when
         this run has not stepped and so has no step length to measure the span
-        in. The run's own limit and every fork read this one method
+        in. The run's own limit and every fork use this one method
         (`_resume_point`, `mark_fork_points`, `PL-VHQX`). It calls the core's
         own guard rather than restating its rule. So the controller and the
         stepper cannot disagree about which count is the last supported one.
@@ -1543,8 +1543,9 @@ class SimulationController:
         **The branch opens with the dials as they stand** (`PL-HSP8`,
         `PL-ZR49`). A setting changed while the run stands here is on the
         branch, and the branch records it at the fork in its own timeline. The
-        branch's provenance is still the stretch that the step reaching this
-        instant ran under, and a change made here cannot alter that stretch.
+        branch's provenance is still the stretch under which the run took the
+        step that reached this instant. A change made here cannot alter that
+        stretch.
         So a branch taken here after such a change is the same branch that
         `resumed_at_mark` and `resumed_at` give at this instant. A branch
         taken here before the learner makes the change runs under the earlier
@@ -1676,8 +1677,8 @@ class SimulationController:
         `BranchedCase.fork_points_s` keeps.
 
         Like `run_segments`, this property works on a branch as on a trunk.
-        On a branch, `resumed_at_mark` rejects the fork, for the reason every
-        branching method rejects a branch. `BranchedCase.mark_fork_points`
+        On a branch, `resumed_at_mark` rejects the fork, as every branching
+        method does when this run is itself a branch. `BranchedCase.mark_fork_points`
         reads the trunk's value.
 
         A mark on the supported run length is left out, because `_resume_point`
@@ -2275,15 +2276,15 @@ class SimulationController:
 
         **A fork that leaves no step to take is rejected here, for every
         branching method** (`PL-VHQX`). A branch opened on the supported run
-        length could never be run. Its banner sent the learner to Reset, and a
+        length could never be run. Its banner sent the learner to Reset. A
         branch's Reset returns it to its fork, so the only way out on screen
         led back to the same stop. `resumed_here` already refused to branch
         where a run stands at the limit. A mark on the limit was the one route
         left, and `mark_fork_points` no longer offers it.
 
         Args:
-            segment: The stretch of this run that the step reaching `fork` ran
-                under (`RunDefinition.reaching_segment_at`). Its opening is the
+            segment: The stretch of this run under which the step that reaches
+                `fork` ran (`RunDefinition.reaching_segment_at`). Its opening is the
                 keyframe where the branch's own run definition opens.
             fork: The instant at which the branch is taken, and this run's
                 canonical state there.

@@ -790,8 +790,8 @@ class SimulationView(QWidget):
         """Build a view for `controller` and put its widgets in each shared layout.
 
         This is the only path by which a run reaches the dashboard. The run may
-        be one of those the dashboard was built over, or a branch taken from it
-        an hour later. Afterwards, everything that depends on how many runs
+        be one of those the dashboard was built over, or a branch taken from
+        one of them an hour later. Afterwards, everything that depends on how many runs
         there are is rewritten from the new set rather than assumed from the
         old one. That includes both legends' run counts, the names the runs are
         called by, and whether an agent selector may be used.
@@ -847,9 +847,10 @@ class SimulationView(QWidget):
             self._require_unconditional_values(run)
         except RuntimeError:
             # The holders are already in the shared layouts, and the trunk's
-            # panels already hold this run's readings. A refused run that left
-            # them there would stay on screen frozen, with no slot to refresh
-            # or remove it, so it is removed as a dropped branch is (`PL-KDZW`).
+            # panels already hold this run's readings. If the holders and the
+            # readings stayed there, the refused run would stay on screen
+            # frozen, with no slot to refresh or remove it. So the run is
+            # removed the same way as a dropped branch (`PL-KDZW`).
             self._remove_run(run, _RunSlots(placed))
             raise
 

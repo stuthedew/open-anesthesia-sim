@@ -1944,7 +1944,7 @@ def _play_until_it_stops(view: SimulationView, trunk: SimulationController) -> N
 def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
     application: QApplication,
 ) -> None:
-    """While two runs are compared, a run that a mark stopped does not read as the learner's Pause.
+    """While two runs are compared, a run that a mark stopped is not shown as the learner's Pause.
 
     The fork control's "stopped on your mark" is withdrawn while two runs are
     compared, and it was the only cue that a mark had stopped the run. A MAC
@@ -7883,10 +7883,10 @@ def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
     """A branch that the region check refuses leaves nothing of itself on the dashboard.
 
     `_place_run` puts a run's widgets in the shared layouts before it checks
-    the region, because the check reads where they are. A refusal that left
-    them there would show a second run frozen at its fork, with blank
-    delivered and 1 MAC lines, that no slot refreshes or removes
-    (`PL-KDZW`). The test refuses only the branch, so the trunk is built
+    the region, because the check reads where they are. If a refusal left
+    them there, the dashboard would show a second run frozen at its fork,
+    with blank delivered and 1 MAC lines. No slot would refresh or remove
+    that run (`PL-KDZW`). The test refuses only the branch, so the trunk is built
     normally and its widgets are the ones that must remain.
     """
 
