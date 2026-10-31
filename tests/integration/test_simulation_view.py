@@ -7877,6 +7877,50 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
         SimulationView((SimulationController(),))
 
 
+def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A branch the region check refuses takes its holders, and its readings in the trunk's panels, with it.
+
+    `_place_run` puts a run's widgets in the shared layouts before it checks
+    the region, because the check reads where they are. A refusal that left
+    them there would show a second run frozen at its fork, with blank
+    delivered and 1 MAC lines, that no slot refreshes or removes
+    (`PL-KDZW`). The test refuses only the branch, so the trunk is built
+    normally and its widgets are the ones that must remain.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = case.fork_at(CaseInstant(60.0))
+    before = set(view.findChildren(QWidget))
+    readings_before = [
+        len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels
+    ]
+    original = RunView.unconditional_widgets
+
+    def branch_short_of_one_mac(run: RunView) -> dict[UnconditionalValue, QWidget]:
+        widgets = dict(original(run))
+
+        if run.controller is branch:
+            del widgets[UnconditionalValue.ONE_MAC]
+
+        return widgets
+
+    monkeypatch.setattr(RunView, "unconditional_widgets", branch_short_of_one_mac)
+
+    with pytest.raises(RuntimeError, match="does not hold one_mac"):
+        view.add_run(branch)
+
+    assert set(view.findChildren(QWidget)) == before, (
+        "the refused run left widgets on the dashboard"
+    )
+    assert [
+        len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels
+    ] == readings_before, "the refused run's readings stayed in the trunk's panels"
+    assert len(view.runs) == 1
+
+
 def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so neither heading gains a name.
 
