@@ -1019,6 +1019,11 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     assert no_branch is not None
     assert no_branch.endswith(f"inside the supported span. {refused}. {reset_keeps}")
     assert halt_notice(at_limit, refused, branch_offered=False) == no_branch
+    assert halt_notice(at_limit, refused) == no_branch
+    reset_refused_at_limit = notice(at_limit, refused, refused_reset=refused_reset)
+    assert reset_refused_at_limit is not None
+    assert reset_refused_at_limit.endswith(f"inside the supported span. {refused_reset} {refused}.")
+    assert halt_notice(at_limit, refused, refused_reset=refused_reset) == reset_refused_at_limit
     assert (notice(at_limit, None) or "").endswith(
         "inside the supported span. Reset to start a new run."
     )
@@ -2318,6 +2323,23 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
         "Unaccounted: <1e+01 L",
         "Absolute error: <1e+01 L",
     ]
+
+
+def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing amount line raises, rather than leaving the last name off the panel."""
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=40.0, exhausted_agent_l=20.0)
+    check = validator.check_agent_accounting(currently_stored_agent_l=14.0)
+    monkeypatch.setattr(
+        "anesthesia_sim.app.dashboard_frame.ACCOUNTING_AMOUNT_NAMES",
+        ("Delivered", "Exhausted", "Stored", "Unaccounted"),
+    )
+
+    with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is longer than argument 1$"):
+        rejected_step_accounting(check)
 
 
 def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None:

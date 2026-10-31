@@ -198,7 +198,9 @@ def test_require_valid_agent_accounting_reads_the_validators_own_state() -> None
         short.require_valid_agent_accounting(currently_stored_agent_l=0.75)
 
     assert "delivered=2.000000e+00 L" in str(raised.value)
-    assert "unaccounted=1.000000e+00 L" in str(raised.value)
+    assert "rolled back. The rejected step's totals: unaccounted=1.000000e+00 L, " in str(
+        raised.value
+    )
 
 
 def test_the_rejected_check_travels_with_the_error_and_nothing_else_does() -> None:
@@ -226,7 +228,13 @@ def test_the_rejected_check_travels_with_the_error_and_nothing_else_does() -> No
     assert check.unaccounted_agent_l == 1.0
     assert rejected_check(AgentSimulationValidationError("no check")) is None
 
-    with pytest.raises(TypeError, match="carries str, but its check must be"):
+    with pytest.raises(
+        TypeError,
+        match=(
+            r"^an AgentSimulationValidationError carries str, but its check must be an "
+            r"AgentSimulationValidationResult or None$"
+        ),
+    ):
         rejected_check(AgentSimulationValidationError("wrong", check="not a check"))
 
 

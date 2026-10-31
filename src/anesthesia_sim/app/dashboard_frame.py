@@ -1734,7 +1734,7 @@ def notice(
         return template.format(
             failure_reason=status.failure_reason,
             exit=_stopped_run_exit(
-                status, rejected_setting_notice, refused_reset, branch_offered=branch_offered
+                rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
         )
 
@@ -1742,7 +1742,9 @@ def notice(
         return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
             run_length=format_supported_run_length(),
             exit=_stopped_run_exit(
-                status, rejected_setting_notice, refused_reset, branch_offered=branch_offered
+                rejected_setting_notice,
+                refused_reset,
+                setting_way_out=_supported_limit_setting_way_out(branch_offered),
             ),
         )
 
@@ -1807,7 +1809,7 @@ def halt_notice(
         return template.format(
             failure_reason=status.failure_reason,
             exit=_stopped_run_exit(
-                status, rejected_setting_notice, refused_reset, branch_offered=branch_offered
+                rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
         )
 
@@ -1815,19 +1817,27 @@ def halt_notice(
         return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
             run_length=format_supported_run_length(),
             exit=_stopped_run_exit(
-                status, rejected_setting_notice, refused_reset, branch_offered=branch_offered
+                rejected_setting_notice,
+                refused_reset,
+                setting_way_out=_supported_limit_setting_way_out(branch_offered),
             ),
         )
 
     return None
 
 
+def _supported_limit_setting_way_out(branch_offered: bool) -> str:
+    """Return the way out to a new setting from a run stopped at the supported run length.
+
+    It names a branch at an earlier instant only while one can be taken, and
+    Reset otherwise. A failed run's way out is always Reset.
+    """
+
+    return SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT if branch_offered else RESET_SETTING_WAY_OUT_TEXT
+
+
 def _stopped_run_exit(
-    status: RunStatus,
-    rejected_setting_notice: str | None,
-    refused_reset: str | None,
-    *,
-    branch_offered: bool,
+    rejected_setting_notice: str | None, refused_reset: str | None, *, setting_way_out: str
 ) -> str:
     """Return the closing sentences of a stopped run's banner, for `notice` and `halt_notice`.
 
@@ -1840,15 +1850,13 @@ def _stopped_run_exit(
     `STOPPED_RUN_SETTING_EXIT_TEMPLATE` gives the reasons.
 
     Args:
-        status: The stopped run's status. Its failure reason, with
-            `branch_offered`, decides which way out a refused setting is given.
         rejected_setting_notice: The text from `refused_setting_notice`, or
             None while no setting is refused.
         refused_reset: The sentence from `refused_reset_exit`, or None while
             Reset is the way out.
-        branch_offered: Whether a branch can be taken from this run now. At
-            the supported run length, a refused setting names a branch as its
-            way out only while one can be taken.
+        setting_way_out: The sentence that names the way out to a new
+            setting. The caller chooses it, because the caller knows which of
+            the two stops the run is in.
 
     Returns:
         The banner's closing sentences.
@@ -1860,13 +1868,8 @@ def _stopped_run_exit(
     if refused_reset is not None:
         return f"{refused_reset} {rejected_setting_notice}."
 
-    way_out = (
-        SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT
-        if status.failure_reason is None and branch_offered
-        else RESET_SETTING_WAY_OUT_TEXT
-    )
     return STOPPED_RUN_SETTING_EXIT_TEMPLATE.format(
-        refused=rejected_setting_notice, way_out=way_out
+        refused=rejected_setting_notice, way_out=setting_way_out
     )
 
 
