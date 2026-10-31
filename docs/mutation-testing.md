@@ -120,6 +120,18 @@ modules that file imports added, the same kind of change took 911 s, most of it
 in the branch run over the whole file (`PL-H57W`). Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
 what `bin/docket verify` saw.
 
+On 2026-10-31, with the new rule and on four otherwise idle cores, the whole
+`--verdict` run took 498 s on `PL-ZR49`'s merge, where nothing was left to
+compare, and 1,699 s on #1864's merge, where the comparison took 12 minutes of
+it. A change to a helper that 59 of the 161 tests in
+`tests/unit/test_dashboard_frame.py` reach took 2,186 s, all of it the
+comparison. Before the new rule, `PL-ZR49`'s branch spent 66 minutes on the
+base run alone, and #1864's run stopped at `bin/docket verify`'s 2-hour limit
+(`PL-D59R` has both). A change that reaches every test of that file would still
+cost about what the whole-file comparison did and could pass the limit, so the
+audit would then have no answer. No change to that file in the 200 merges
+before 2026-10-31 reached half of its tests.
+
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
 `uv sync` leaves it out and no test needs it. The tool's docstring

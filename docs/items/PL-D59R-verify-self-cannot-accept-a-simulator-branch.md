@@ -3,11 +3,13 @@ id: PL-D59R
 title: verify --self cannot accept a simulator branch that changes a large display unit test: tools/diff_mutation.py's weakened-test comparison runs each display mutant its base version catches against the branch's whole changed unit-test files, which took 66 minutes for the base half on PL-ZR49 and projected about four hours for the branch half, past the audit's 2-hour bound
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, perf
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md, docs/mutation-testing.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .claude/skills/docket/modes/close-out.md, docs/mutation-testing.md, subprojects/docket/README.md
 deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-10-26
+closed: 2026-10-31
+pr: 1893
 payoff: a simulator branch that changes a large test file can finish close-out's mutation audit, instead of spending hours on a check that can only refuse
 verify: ! grep -qF 'That costs about two more' .claude/skills/docket/modes/close-out.md
 not-delegable: only a verify --self run reaching a verdict within its 2-hour bound on a branch like PL-ZR49's proves the fix, and only a session can run one
@@ -41,4 +43,14 @@ The fix, on `claude/pl-d59r-mutation-check-1vgzei`:
 
 On `PL-ZR49`'s merge the selections drop from two whole files to 59 of `test_dashboard_frame.py`'s 161 tests and none of `test_run_definition.py`'s. On #1864, six whole-file fallbacks drop to between 0 and 4 tests each.
 
-Still to do: measure `diff_mutation.py --verdict` on `40a442ee` against `40a442ee^`, and on `adc93274` against its parent, with this branch's `tools/` overlaid in a worktree. Then write the measured cost into close-out step 5 and into `docs/mutation-testing.md`.
+**Measured, 2026-10-31.** Each run was `tools/diff_mutation.py --verdict` in a worktree of the named commit, with this branch's `tools/` and `subprojects/docket/` overlaid and the base set to the commit's parent, on four otherwise idle cores. The `[tool.mutmut]` table is the same at both merges as on this branch.
+
+| Change | Whole run | Main run | Base run | Branch run, changed tests | Branch run, whole files | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| `PL-ZR49`'s merge, `40a442ee` | 498 s | about 8 min | none | none | none | accept, 14 caught |
+| #1864's merge, `adc93274` | 1,699 s | 16.0 min | 3.7 min, 1 test | 4.8 min, 27 tests and files | 3.6 min, 1 mutant | accept, 46 caught, 509 compared |
+| One line added to `_snapshot` in `tests/unit/test_dashboard_frame.py`, at `c79a8f7e` | 2,186 s | none | 19.7 min, 59 tests | 16.7 min, 59 tests | none | accept, 1,322 compared |
+
+`PL-ZR49`'s merge compares nothing now. `test_run_definition.py` and `test_bookmarks.py` only gained tests and a new helper, and the 59 selected tests of `test_dashboard_frame.py` fail on the branch's source with no mutant applied, because the branch added a required `opened_with` field. The old rule selected the whole of `test_run_definition.py`, which runs for 13 s with no mutant applied. The commit that `PL-ZR49`'s close-out measured, `ded828cb`, is no longer in the repository, so the third row stands in for a large comparison on the largest display test file.
+
+**What is left.** A change that reaches every test of `test_dashboard_frame.py`, such as a module-level call or a fixture, would cost about what the whole-file comparison did. The audit would then have no answer rather than a wrong one. Over the 247 changed files counted above, 120 selections were empty, 68 held less than a quarter of their file's tests, 26 less than half, 25 half or more but not all, and 6 every test, all in files of fewer than 50 tests. No change to `test_dashboard_frame.py` reached half of its tests. `docs/mutation-testing.md` records the limit.

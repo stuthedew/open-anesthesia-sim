@@ -188,9 +188,14 @@ page and decides which file a session reads.
 
    The same check refuses a branch that weakens a changed simulator unit test,
    where a mutant of the display modules that the test's base version catches
-   survives the branch's version (`PL-7FPD`). That costs about two more
-   minutes for each version of the changed tests. Clear it by restoring what
-   the test checked. `docs/mutation-testing.md` § "What the check of a changed
+   survives the branch's version (`PL-7FPD`). It compares only the tests
+   that the branch changed, or that reach a helper, constant or import it
+   changed, and it tries the branch's changed tests before the whole files
+   (`PL-D59R`). Measured on 2026-10-31, the comparison took 12 minutes for
+   #1864's eight changed core test files, after a 16-minute main run. It took
+   36 minutes for a change to a helper that 59 of the 161 tests in
+   `tests/unit/test_dashboard_frame.py` reach. Clear it by restoring what the
+   test checked. `docs/mutation-testing.md` § "What the check of a changed
    test leaves unmeasured" says what it does not reach.
 
    Clear a refusal of a mutant of a changed line honestly, in one of two ways:
