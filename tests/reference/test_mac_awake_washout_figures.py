@@ -10,9 +10,11 @@ the protocol. Before `PL-PTDZ` no test held them, so a parameter change would
 have left the specification teaching a wake-up time that the model no longer
 produces.
 
-This test runs the protocol and compares each result with the figure the
-document prints, read from the document itself. A figure is held to the
-number of decimal places the document prints it with. So a change that moves
+This test reads the protocol from the section, checks that the run opens at
+the dial and flow the section names, runs the protocol, and compares each
+result with the figure the document prints, read from the document itself.
+A figure is held to the number of decimal places the document prints it
+with. So a change that moves
 a result fails here, and so does an edit to the document that changes a
 figure without the model. The test pins the specification to the model. It
 does not validate the model against patients; `PL-39KH` and the section
@@ -32,6 +34,7 @@ from pathlib import Path
 
 import pytest
 
+from anesthesia_sim.app.formatting import mac_awake_band_percent
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
@@ -43,10 +46,7 @@ SECTION_HEADING = "### MAC-awake as a chart reference"
 
 AGENT_ID = "sevoflurane"
 STEP = SimulationStep(0.1)
-MAINTENANCE_S = 3 * 60 * 60
-#: The fresh gas flow after the vaporizer is turned off, which the section
-#: states in its own words.
-WASHOUT_FRESH_GAS_FLOW_L_MIN = 10.0
+SECONDS_PER_HOUR = 3600
 #: A bound on the washout's length, so that a model that never crosses a
 #: threshold fails here instead of looping. The latest figure is near 7.3 min.
 WASHOUT_LIMIT_S = 60 * 60
@@ -68,8 +68,12 @@ class Washout:
 
 @dataclass(frozen=True)
 class PrintedFigures:
-    """The section's figures as printed, each kept as text so its decimal places are known."""
+    """The section's protocol and figures as printed, each kept as text so its places are known."""
 
+    maintenance_hours: str
+    opening_dial_percent: str
+    opening_fresh_gas_flow_l_min: str
+    washout_fresh_gas_flow_l_min: str
     maintenance_alveolar_percent: str
     maintenance_alveolar_mac: str
     alveolar_crossing_min: str
@@ -110,6 +114,15 @@ def _one(pattern: str, text: str) -> tuple[str, ...]:
 def _printed() -> PrintedFigures:
     text = _section_text()
     number = r"(\d+\.\d+)"
+    whole = r"(\d+)"
+    hours, dial, opening_flow = _one(
+        rf"It ran sevoflurane for {whole} hours at the opening dial of {number}%, which is the "
+        rf"stored 1 MAC, and the default fresh gas flow of {whole} L/min",
+        text,
+    )
+    (washout_flow,) = _one(
+        rf"The vaporizer was then turned off and the fresh gas flow raised to {whole} L/min", text
+    )
     percent, mac = _one(rf"alveolar fraction only to {number}%, or {number} MAC", text)
     (alveolar,) = _one(rf"alveolar trace crosses the band's centre at {number} min", text)
     vessel_rich, ratio = _one(
@@ -125,6 +138,10 @@ def _printed() -> PrintedFigures:
     )
 
     return PrintedFigures(
+        maintenance_hours=hours,
+        opening_dial_percent=dial,
+        opening_fresh_gas_flow_l_min=opening_flow,
+        washout_fresh_gas_flow_l_min=washout_flow,
         maintenance_alveolar_percent=percent,
         maintenance_alveolar_mac=mac,
         alveolar_crossing_min=alveolar,
@@ -176,22 +193,43 @@ def _crossing_min(
 def washout() -> Washout:
     """Run the section's protocol once for every figure."""
 
+    printed = _printed()
     agent = load_agent_parameters(AGENT_ID)
     mac_percent = float(agent.mac_percent)
-    band_fraction_of_mac = float(agent.mac_awake.fraction_of_mac)
-    band_centre = band_fraction_of_mac * mac_percent / 100.0
+    # The centre of the band as the chart draws it, through the function the
+    # chart calls, so a change to how the band is placed reaches this test.
+    band_lower, band_upper = mac_awake_band_percent(
+        fraction_of_mac=agent.mac_awake.fraction_of_mac,
+        standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
+        mac_percent=agent.mac_percent,
+    )
+    band_centre = (band_lower + band_upper) / 2.0 / 100.0
     # The section's Mapleson MAC is a published value restated beside its
     # citation in the same section, so the test reads it from there.
-    mapleson_centre = band_fraction_of_mac * float(_printed().mapleson_mac_percent) / 100.0
+    mapleson_centre = (
+        float(agent.mac_awake.fraction_of_mac) * float(printed.mapleson_mac_percent) / 100.0
+    )
 
     system = AgentUptakeSystem.for_agent(AGENT_ID)
+    # The section says the run opened at the stored 1 MAC and the default
+    # flow, so the run built here must open where the section says it did.
+    opening = (
+        system.circuit.delivered_concentration_percent,
+        mac_percent,
+        system.circuit.fresh_gas_flow_l_min,
+    )
+    assert opening == (
+        float(printed.opening_dial_percent),
+        float(printed.opening_dial_percent),
+        float(printed.opening_fresh_gas_flow_l_min),
+    ), f"the run opens at (dial %, stored MAC %, flow L/min) = {opening}, not as the section says"
 
-    for _ in range(round(MAINTENANCE_S / STEP)):
+    for _ in range(round(int(printed.maintenance_hours) * SECONDS_PER_HOUR / STEP)):
         system.advance(STEP)
 
     alveolar_fraction = system.alveoli.partial_pressure_fraction
     system.set_delivered_concentration_percent(Percent(0.0))
-    system.set_fresh_gas_flow(FreshGasFlow(WASHOUT_FRESH_GAS_FLOW_L_MIN))
+    system.set_fresh_gas_flow(FreshGasFlow(float(printed.washout_fresh_gas_flow_l_min)))
     crossings = _crossing_min(
         system,
         {

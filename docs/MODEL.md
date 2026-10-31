@@ -9548,10 +9548,13 @@ was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
 trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
 it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
 with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
-A crossing time is interpolated between the two steps on either side of it.
-`tests/reference/test_mac_awake_washout_figures.py` runs this protocol and
-holds every figure from it in this section to the places printed, so a
-parameter change that moves one fails the test (`PL-PTDZ`).
+They were measured again on 2026-10-31, with each crossing time interpolated
+between the two steps on either side of it (`PL-PTDZ`). That second run
+corrected one figure below, from 7.31 to 7.30 min.
+`tests/reference/test_mac_awake_washout_figures.py` reads this protocol and
+its figures from this section, runs the protocol, and holds each figure to the
+places printed. So a parameter change that moves a figure fails the test, and
+so does an edit here that changes the protocol or a figure on its own.
 <!-- not-restated: 10 L/min -->
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
