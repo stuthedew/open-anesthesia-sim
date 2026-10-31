@@ -1,8 +1,15 @@
 ---
 id: PL-QVBR
 title: A MAC target that a stepped reading lands on exactly halts the trunk and reads reached there, while a branch opened on that step asks the canonical reading, which can lie about 1e-14 short, so the branch opens on no crossing and reads the target as still running
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
+feature: defect-review-2026-10
+touches: src/anesthesia_sim/app/controller.py, tests/unit/test_bookmarks.py
 added: 2026-10-26
+payoff: a trunk and the branch opened on its halting step agree on whether the learner's MAC target was reached
+verify: grep -q 'def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk' tests/unit/test_bookmarks.py
 ---
 
 **Problem.** A MAC target that a stepped reading lands on exactly halts the trunk and reads reached there, while a branch opened on that step asks the canonical reading, which can lie about 1e-14 short, so the branch opens on no crossing and reads the target as still running
@@ -14,3 +21,18 @@ added: 2026-10-26
 **Done when.** One reading decides a crossing for both the halt and every branch, or `docs/MODEL.md` states the residual where it states the 4.9e-14 agreement. A test takes a height from a stepped reading, halts on it, branches there, and checks the trunk and the branch agree, or checks the stated residual.
 
 **Seen again, 2026-10-26** (the lifecycle review of `PL-ZR49`'s change, from a random sequence of actions). The trunk is paused at 0.3 s, and a MAC target is added at the canonical alveolar reading there. The live reading is one unit in the last place lower. While the trunk stands at 0.3 s, the target reads reached. After Start, the trunk halts on the same target again at 0.4 s, from its stepped readings. A branch taken by "Branch here" at 0.4 s then has no halt record, while the trunk's offer says "stopped on your mark". The cause is the one above: the stepped and canonical readings lie on opposite sides of the height. This case adds a second symptom, a target that reads reached and then halts the run again one step later.
+
+**Triage, 2026-10-31: the Done-when's second route is not taken.** Stating the
+residual in `docs/MODEL.md` would leave a trunk and its branch disagreeing
+about whether a learner's MAC target was reached. That is the disagreement
+`PL-ZR49` exists to remove, so the first route is the clearly correct one:
+one reading decides a crossing for the halt and for every branch.
+`docs/MODEL.md` § "The canonical evaluation rule" already names the canonical
+reading as the authority, so the work is to make the halt follow it, or to show
+why it cannot.
+
+**Generator check.** One-off. The fact is which of the two readings of one
+step, stepped or canonical, decides a crossing. `PL-ZR49`'s change filed it on
+the day that head closed, 2026-10-26, so it is that head's own finding and not
+a re-entry. No head's `misread:` states this fact (`PL-R4Y2`'s triage,
+2026-10-31).
