@@ -21,6 +21,7 @@ import math
 import pytest
 
 from anesthesia_sim.app.bookmarks import (
+    HEIGHT_BAND,
     BookmarkCrossing,
     BookmarkSet,
     MacTarget,
@@ -1193,6 +1194,65 @@ def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk() -> None:
     assert differing > 0
 
 
+def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_does() -> None:
+    """A step that its two readings judge differently halts where the canonical reading says.
+
+    This is the only case in which the trunk's live readings and a branch's
+    canonical readings could still disagree (`PL-QVBR`). The test steps the
+    default run until a step's two alveolar readings differ, then puts the
+    lower edge of a target's band between them. So one reading of that step
+    has entered the band and the other has not. The trunk must ask the
+    canonical readings there, halt on the step they cross, and agree with a
+    branch opened on that step. Halting on the live readings would land the
+    halt one step early or one step late, and the branch would then disagree.
+    """
+
+    run = SimulationController()
+    run.start()
+    previous_live = previous_canonical = MacMultiple(0.0)
+
+    for _ in range(3000):
+        run.advance(STEP_S)
+        run.pause()
+        live = _alveolar_mac_multiple(run)
+        canonical = _alveolar_mac_multiple(run.resumed_here())
+
+        if live != canonical:
+            break
+
+        previous_live, previous_canonical = live, canonical
+        run.start()
+    else:
+        pytest.fail("no step of the first 3 000 has two alveolar readings that differ")
+
+    straddling_s = run.snapshot().elapsed_s
+    edge = (live + canonical) / 2
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(edge / (1 - HEIGHT_BAND)))
+
+    assert min(live, canonical) < edge < max(live, canonical)
+    assert target.crossed_between(previous_live, MacMultiple(live)) != target.crossed_between(
+        previous_canonical, MacMultiple(canonical)
+    )
+
+    trunk = SimulationController()
+    trunk.add_mac_target(target)
+    trunk.start()
+    halt = _step_until_halt(trunk, limit=3050)
+
+    assert halt is not None
+
+    if target.crossed_between(previous_canonical, MacMultiple(canonical)):
+        assert halt.instant_s == straddling_s
+    else:
+        assert halt.instant_s > straddling_s
+
+    branch = trunk.resumed_here()
+
+    assert branch.snapshot().bookmark_halt == halt
+    assert branch.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+    assert trunk.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+
 def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_step() -> None:
     """A target added at the canonical reading where a paused run stands is reached once, there.
 
@@ -1237,7 +1297,7 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
 def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A circuit that settles on its target halts once, and its later steps need no canonical reading.
+    """A circuit that settles on its target halts once, and later steps need no canonical reading.
 
     With no ventilation the patient takes up nothing, so the circuit settles
     on the delivered 2% of sevoflurane, which is 1.00 ×MAC. Tested at the exact

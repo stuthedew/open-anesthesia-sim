@@ -812,7 +812,7 @@ class BookmarkSet:
         before: Mapping[RecordedQuantity, MacMultiple],
         after: Mapping[RecordedQuantity, MacMultiple],
     ) -> bool:
-        """Whether a step's live readings could cross a MAC target differently from its canonical ones.
+        """Return whether a step's live and canonical readings could cross a MAC target differently.
 
         It returns true when a live reading lies near an edge of a target's
         band (`MacTarget.reading_is_near_a_band_edge`). Otherwise the live
