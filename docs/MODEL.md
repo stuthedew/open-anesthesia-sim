@@ -705,7 +705,7 @@ shown. The range that a computed fraction is checked against is the physical
 one, 0 through 1. The coupled model's rounding can carry a computed fraction a
 little above the largest fraction it started from. So the coupled model's
 inputs stop short of 1: the delivered concentration and each fraction that the
-stepped system is built with must be at or below 0.99 of one atmosphere
+stepped system is built with must be at or below 0.99 of the ambient pressure
 (§ "The numerical envelope", `PL-9B1M`). No supported setting computes a
 fraction outside the range, and `core/concentration.py` records the
 measurements.
@@ -1943,8 +1943,8 @@ With every compartment at 1.0 and a 100% dial, the first 0.1 s step raised
 measured 2026-10-25). No supported setting reaches that state, because every
 shipped vaporizer maximum keeps each fraction far below 1. Since `PL-9B1M`, the
 coupled model also refuses that state as an input. The delivered concentration
-and each fraction that the stepped system is built with stop at 0.99 of one
-atmosphere, and the largest computed excess over that ceiling, measured from
+and each fraction that the stepped system is built with stop at 0.99 of the
+ambient pressure, and the largest computed excess over that ceiling, measured from
 it, was 3.3e-5 (§ "The numerical envelope"). The capacity guard and the
 rollback therefore cover two cases. One is a state at the top of the range
 that a caller places through `resume_at` or opens a `RunDefinition` from, both
@@ -2494,7 +2494,7 @@ squarings. It is refused, as § "What a long interval costs at the corners" belo
 describes.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**The coupled model's inputs stop at 0.99 of one atmosphere** (`PL-9B1M`,
+**The coupled model's inputs stop at 0.99 of the ambient pressure** (`PL-9B1M`,
 project owner, 2026-10-31, ratified, over a fraction check that accepts a value
 within the propagator's error bound of 1). Until then a second refusal was
 accepted by name. A step from a state with every compartment at a fraction of 1
@@ -2502,12 +2502,16 @@ could round one fraction past 1, by up to 3.5e-11 in the sweep. The fraction
 check refused it and the step was rolled back, so a run that did nothing wrong
 halted for a rounding error. The display path did not refuse at all: washing
 out from a full state at the stiffest corners, it drew fractions up to 1.000033
-after 60 chained propagators, a partial pressure above one atmosphere. Both
+after 60 chained propagators, a partial pressure above the ambient pressure. Both
 happened only through the core interface, because no shipped vaporizer comes
 near a fraction of 1.
 
-No compartment can hold more than one atmosphere of agent, so the fix narrows
-the inputs rather than widening the check. `MAXIMUM_INPUT_FRACTION` in
+A gas's partial pressure cannot exceed the ambient pressure, which
+§ "Assumptions" fixes at one atmosphere, 760 mmHg. So no compartment can hold
+agent at a fraction above 1, and the fix narrows the inputs rather than
+widening the check. The bound is the ambient pressure, not one atmosphere as
+such. A model of hyperbaric or reduced ambient pressure would keep the bound
+at 1 of that pressure. `MAXIMUM_INPUT_FRACTION` in
 `core/supported_ranges.py` is 0.99. A settings record refuses a dial above 99%,
 and so does the stepped system's dial setter. The stepped system refuses to be
 built holding a fraction above 0.99 in any compartment, to within one unit in

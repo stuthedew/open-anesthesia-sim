@@ -152,7 +152,7 @@ class AgentUptakeSystem:
         **The state the system is built with is its opening, and it is checked
         against the coupled model's input ceiling** (`PL-9B1M`). The delivered
         concentration and every fraction the parts hold must be at or below
-        `MAXIMUM_INPUT_FRACTION` of one atmosphere. A part's own setter
+        `MAXIMUM_INPUT_FRACTION` of the ambient pressure. A part's own setter
         accepts any fraction from 0 through 1, because the step writes its
         computed fractions through the same setters, and a computed fraction
         may lie a rounding error above the ceiling. So the ceiling is checked

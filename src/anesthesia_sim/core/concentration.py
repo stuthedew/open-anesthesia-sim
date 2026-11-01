@@ -103,7 +103,7 @@ more than they do:
   of 1.000033 from a full state on 2026-10-26. The type was not widened to
   absorb that excess. Instead, the delivered concentration and the state that
   the stepped system opens from must be at or below `MAXIMUM_INPUT_FRACTION`
-  in `core/supported_ranges.py`, 0.99 of one atmosphere (project owner,
+  in `core/supported_ranges.py`, 0.99 of the ambient pressure (project owner,
   2026-10-31, ratified, over a fraction check that accepts a value slightly
   above 1). The largest computed excess over that ceiling, measured at every
   envelope corner, was 3.3e-5, so no computed fraction from a supported

@@ -229,7 +229,7 @@ def _drawable(state: tuple[float, ...], settings: UptakeEquationSettings) -> Dis
     The display path chains one propagator per column, so its rounding can
     add up across a window. Before `PL-9B1M`, a washout from a state with
     every compartment at 1 drew fractions up to 1.000033 at the stiffest
-    envelope corners, a partial pressure above one atmosphere. The coupled
+    envelope corners, a partial pressure above the ambient pressure. The coupled
     model's inputs now stop at `MAXIMUM_INPUT_FRACTION`, 0.99, and the largest
     drawn excess over that ceiling measured 3.3e-5. So a drawn fraction above
     1 means that the window came from a state that no supported opening

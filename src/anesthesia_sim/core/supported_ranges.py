@@ -58,14 +58,14 @@ than as a constant here. The second limit is `MAXIMUM_INPUT_FRACTION`, below.
 It is not a physiological claim but a numerical one, and it bounds the opening
 state of the coupled system too.
 
-**The coupled model's inputs stop at 0.99 of one atmosphere** (`PL-9B1M`). A
+**The coupled model's inputs stop at 0.99 of the ambient pressure** (`PL-9B1M`). A
 fraction is checked from 0 through 1 wherever it is built, including every
 fraction that a step or an evaluation computes. The coupled step's rounding can
 carry a computed fraction a little above the largest fraction it started from.
 So a state at the very top of the range, with every compartment at 1, could not
 be stepped. A step rounded one fraction to 1.0000000000349965, the check refused
 it, and the run halted for a rounding error. The display path drew 1.000033 from
-the same state. No shipped vaporizer comes near one atmosphere, so no supported
+the same state. No shipped vaporizer comes near the ambient pressure, so no supported
 run needs a state that close to 1. The fix is therefore to stop the inputs short
 of 1 rather than to widen the check. The delivered concentration and every
 fraction that the stepped system opens from must be at or below
@@ -219,7 +219,7 @@ MINIMUM_CARDIAC_OUTPUT_L_MIN = 0.0
 MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 
 MAXIMUM_INPUT_FRACTION = 0.99
-"""The highest partial pressure, in atmospheres, that the coupled model starts from.
+"""The highest fraction of the ambient pressure that the coupled model starts from.
 
 It bounds two inputs: the delivered concentration, and each fraction of the
 state that the stepped system holds when it is built. The module docstring
@@ -430,18 +430,18 @@ def _above_the_input_ceiling(name: str, written: str, ceiling: str) -> Simulatio
     """Build the refusal that both input-ceiling checks raise, in the value's own unit."""
 
     return SimulationConfigurationError(
-        f"{name} of {written} is above {ceiling} of one atmosphere, the highest partial "
-        "pressure the coupled model starts from. It is kept below 1 so that every partial "
-        "pressure the model computes stays within one atmosphere "
-        '(docs/MODEL.md, "The numerical envelope")'
+        f"{name} of {written} is above {ceiling} of the ambient pressure, the highest partial "
+        "pressure the coupled model starts from. It is kept below 1 so that no partial "
+        "pressure the model computes exceeds the ambient pressure, which the model fixes at "
+        'one atmosphere (docs/MODEL.md, "The numerical envelope")'
     )
 
 
 def require_within_input_ceiling(name: str, concentration: float) -> None:
-    """Refuse a concentration that the coupled model would start from too close to one atmosphere.
+    """Refuse a concentration too close to the ambient pressure for the coupled model to start from.
 
     `concentration` is either the delivered concentration, as a `Percent`, or
-    the fraction of one atmosphere held by a part that stores a fraction, as the
+    the fraction of the ambient pressure held by a part that stores a fraction, as the
     circuit does. A `Percent` is converted to a fraction before the comparison,
     and the message quotes it in percent, the unit of the dial. The value's
     range and type were checked where it was built, so only the ceiling is

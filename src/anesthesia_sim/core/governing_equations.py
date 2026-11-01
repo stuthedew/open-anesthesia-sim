@@ -525,7 +525,7 @@ class UptakeEquationSettings:
     **The dial is also bounded by the coupled model's input ceiling**
     (`PL-9B1M`). Every record builds a propagator, and a propagator started
     from a partial pressure at 1 can round a computed one past 1. So the
-    record refuses a dial above `MAXIMUM_INPUT_FRACTION` of one atmosphere,
+    record refuses a dial above `MAXIMUM_INPUT_FRACTION` of the ambient pressure,
     99%, through `require_within_input_ceiling` in `core/supported_ranges.py`.
     A circuit stepped on its own still accepts a dial up to 100%. Its closed
     form stays inside 0 through 1 at every envelope corner

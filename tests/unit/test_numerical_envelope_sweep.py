@@ -160,7 +160,7 @@ runs below use that dial instead.
 """
 
 CEILING = MAXIMUM_INPUT_FRACTION
-"""The highest fraction the coupled model starts from, 0.99 of one atmosphere.
+"""The highest fraction the coupled model starts from, 0.99 of the ambient pressure.
 
 Each coupled run opens at this fraction, or delivers it, so that every fraction
 it computes is bounded by it. A run that opened at 1 could round a fraction
@@ -729,7 +729,7 @@ drawn fraction in the sweep (measured 2026-10-31).
 
 
 def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None:
-    """A window that would draw a partial pressure above one atmosphere is refused, not returned.
+    """A window that would draw a fraction above 1 of the ambient pressure is refused, not returned.
 
     No supported opening reaches such a window. The stepped system refuses an
     opening above `CEILING`, and so does a settings record's dial. A
@@ -788,7 +788,7 @@ def test_each_part_of_the_opening_is_checked_against_the_input_ceiling(
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
-    refusal = rf"^{named} of 1\.0 is above 0\.99 of one atmosphere"
+    refusal = rf"^{named} of 1\.0 is above 0\.99 of the ambient pressure"
 
     _system(STIFFEST_DRAWN_CORNER, flows, 0.0, 0.0)
 
@@ -806,17 +806,17 @@ def test_a_system_built_with_its_dial_above_the_input_ceiling_is_refused() -> No
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
-    refusal = r"^delivered_concentration_percent of 100(\.0)?% is above 99% of one atmosphere"
+    refusal = r"^delivered_concentration_percent of 100(\.0)?% is above 99% of the ambient pressure"
 
     with pytest.raises(SimulationConfigurationError, match=refusal):
         _system(STIFFEST_DRAWN_CORNER, flows, 0.0, FULL_DIAL_PERCENT)
 
 
 CEILING_REFUSAL_AT_A_FULL_DIAL = (
-    "delivered_concentration_percent of 100.0% is above 99% of one atmosphere, the highest "
-    "partial pressure the coupled model starts from. It is kept below 1 so that every partial "
-    'pressure the model computes stays within one atmosphere (docs/MODEL.md, "The numerical '
-    'envelope")'
+    "delivered_concentration_percent of 100.0% is above 99% of the ambient pressure, the highest "
+    "partial pressure the coupled model starts from. It is kept below 1 so that no partial "
+    "pressure the model computes exceeds the ambient pressure, which the model fixes at one "
+    'atmosphere (docs/MODEL.md, "The numerical envelope")'
 )
 """The whole message a learner reads when a dial of 100% is refused, written out by hand."""
 
@@ -873,8 +873,9 @@ ceilings, took the largest excess in one step of the coupled system.
 def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
     """From the input ceiling, a step and a drawn window both stay from 0 through 1.
 
-    A fraction is a partial pressure, and no compartment can hold more than one
-    atmosphere of agent. Before the input ceiling, a state with every
+    A fraction is a partial pressure as a fraction of the ambient pressure, which
+    the model fixes at one atmosphere. No gas's partial pressure can exceed the
+    ambient pressure, so no fraction can exceed 1. Before the input ceiling, a state with every
     compartment at 1 could not be stepped reliably: one step rounded a fraction
     to 1.0000000000349965, the check refused it, and the run halted. The
     display path drew 1.000033 from the same state. The coupled model now
@@ -889,7 +890,9 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
 
     for corner in ROUNDING_CORNERS:
-        with pytest.raises(SimulationConfigurationError, match=r"of 1\.0 is above 0\.99 of one"):
+        with pytest.raises(
+            SimulationConfigurationError, match=r"of 1\.0 is above 0\.99 of the ambient"
+        ):
             _system(corner, flows, 1.0, 0.0)
 
         for fraction, dial_percent in OPENINGS_AND_DIALS:
