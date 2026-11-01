@@ -133,3 +133,7 @@ print(json.dumps({"agent": agent_id, "field": field, "out": out}))
 were 5.3% for sevoflurane, 6.4% for isoflurane, and 3.9% for desflurane's
 tissue coefficients with 5.7% for its blood:gas coefficient, as § "Displayed
 precision" records.
+
+**Owner read asked on #1918, 2026-11-01.** The precision derivation sets
+how finely a learner will see each compartment's amount and share, so the
+pull request waits on the owner's read of § "Displayed precision".
