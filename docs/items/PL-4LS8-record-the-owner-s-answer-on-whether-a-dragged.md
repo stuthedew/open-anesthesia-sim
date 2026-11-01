@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: presentation-safety
+milestone: v0.6.11
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-10-31
 closed: 2026-10-31

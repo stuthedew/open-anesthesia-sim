@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, docs
 feature: numerical-domain
+milestone: v0.6.11
 touches: tests/integration/test_sevo_controller.py, docs/MODEL.md
 added: 2026-09-14
 closed: 2026-11-01

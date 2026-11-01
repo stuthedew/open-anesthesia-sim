@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: floating-point-domain
+milestone: v0.6.11
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/circuit.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_chart_frame.py
 added: 2026-10-26
 closed: 2026-10-31

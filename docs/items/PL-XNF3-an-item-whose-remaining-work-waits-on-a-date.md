@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.11
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_roadmap.py, .claude/skills/docket/modes/triage.md, docs/items/PL-R4Y2-simulator-defects-per-product-item-closed-have.md
 deferred-from: v0.7.0 - captured after the freeze; a queue-state defect in the workflow lane, not safety or science
 added: 2026-10-27
