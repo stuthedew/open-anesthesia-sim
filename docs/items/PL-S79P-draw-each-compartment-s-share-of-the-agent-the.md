@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app, tests/integration, tests/unit, tools/contrast_c
 blocked-by: PL-RNYV
 added: 2026-10-25
 closed: 2026-11-01
+pr: 1921
 payoff: a learner sees fat's growing share of the agent while its tension stays near zero
 verify: grep -rq 'def test_the_share_bar_shares_add_up_to_the_whole' tests
 ---
