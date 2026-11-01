@@ -202,7 +202,7 @@ remains a question for a reviewer.
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale (§ "The compartment schematic: what its heights, amounts and share bar assert") | no test yet (`PL-RNYV`) |
-| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid-equivalent amount "mL liquid equiv.", and `DisplayUnit` holds both spellings, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert") | no test yet (`PL-RNYV`) |
+| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid-equivalent amount "mL liquid equiv.", and `DisplayUnit` holds both spellings, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert") | no test yet (`PL-RNYV`) |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 8 % -->
@@ -11449,31 +11449,35 @@ uncertainty is a share of the amount rather than a fixed volume** (`PL-2881`,
 2026-11-01). The derivation above was repeated on each compartment's amount
 in millilitres of vapour. Each of the four stored coefficients was perturbed
 by one published SD, one at a time, at 1 MAC with the reference adult's
-flows, and the amounts were read at 10 min, 60 min, 180 min and 24 h. The
-shift runs from 0.011 mL, in isoflurane's fat at 10 min, to 216 mL, in
-desflurane's fat at 24 h. That is more than four orders of magnitude, because
-the amounts themselves span as many. So no single count of decimals lies
-inside the band that the readouts' derivation admits. One count of 1 mL is a
-two-hundredth of one SD in desflurane's fat at 24 h, the kind of false
-precision that stopped the run totals at 0.1 L. One count of 10 mL is still a
-twenty-second of an SD there. It would also print sevoflurane's and
-isoflurane's venous blood as "<10 mL" for almost the whole first hour, though
-it holds 0.18 mL at 10 min and 9.7 to 10.0 mL at 60 min. That is the flat
-reading that the readouts' lower limit refuses.
+flows. The amounts were read every second for the first 20 minutes, and at
+60 min, 180 min and 24 h. The shift runs from almost nothing, in the circuit
+in the first seconds, to 216 mL, in desflurane's fat at 24 h, because the
+amounts themselves span as many orders of magnitude. So no single count of
+decimals lies inside the band that the readouts' derivation admits. One count
+of 1 mL is a two-hundredth of one SD in desflurane's fat at 24 h, the kind of
+false precision that stopped the run totals at 0.1 L. One count of 10 mL is
+still a twenty-second of an SD there. It would also print sevoflurane's and
+isoflurane's venous blood as "<10 mL" for almost the whole first hour. That
+blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and 9.7
+to 10.0 mL at 60 min. That is the flat reading that the readouts' lower limit
+refuses.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 0.18 -->
 
 Relative to the amount, the shift is narrow. In venous blood and the three
-tissue groups it is 2.2% to 10% of the amount. In the circuit and the alveoli
-it is 0.04% to 2.8%, because the dial sets them and a coefficient barely moves
+tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
+it is below 3%, because the dial sets them and a coefficient barely moves
 them. Two significant figures put the last digit at 1% to 10% of the amount.
-Measured, one count lies between a sixth of one SD, in isoflurane's
-vessel-rich group at 60 min, and 124 SDs, in sevoflurane's circuit at 24 h.
-The coarse end loses detail and claims nothing false, which the one-sided
-bound above allows. Three significant figures would put one count at a
-sixtieth of an SD, and one figure would print fat's amount in steps of
-1000 mL by 24 h. So two is the finest count the parameters support, and it is
-the count chosen.
+Measured, one count lies between a tenth of one SD, in desflurane's venous
+blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. The coarse
+end loses detail and claims nothing false, which the one-sided bound above
+allows. The fine end is finer than the readouts' seventh of an SD, but only
+in the first two minutes, while venous blood fills. Three significant figures
+would put one count at a hundredth of an SD. That is the order the readouts'
+third decimal and the totals' second decimal were refused at, a seventieth
+and a fiftieth. One figure would print fat's amount in steps of 1000 mL by
+24 h. So two is the finest count the parameters support, and it is the count
+chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The uniform resolution of the readouts does not carry over, for two reasons.
@@ -11493,7 +11497,10 @@ moves a compartment's share by at most 1.2 percentage points, in isoflurane's
 muscle at 24 h. So one count of 1 percentage point lies between 0.8 SD and
 more than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
 A positive share below 0.5% reads `<1%`, so a compartment that holds agent
-never reads as holding none.
+never reads as holding none. A share of 99.5% or more that is not the whole
+reads `>99%`, so no compartment reads as holding all of the agent while
+another holds some. In a desflurane run, the circuit holds more than 99.5% of
+the agent for about its first second.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### The chart's hover readout: what the tooltip may show
@@ -12378,8 +12385,9 @@ own. Its precision is derived in § "Displayed precision".
 
 **How the interface names the unit of an agent amount, once for every View.**
 Two units count agent in millilitres, and they differ by a factor of about
-180. At the reference condition, 1 mL of liquid sevoflurane gives about
-183 mL of vapour (§ "Agent amount"). So no View prints a bare "mL" beside an
+180 to 210, by agent. At the reference condition, 1 mL of liquid gives about
+183 mL of sevoflurane vapour and about 210 mL of desflurane vapour
+(§ "Agent amount"). So no View prints a bare "mL" beside an
 agent amount. A vapour amount is written "mL vapour", as in "38 mL vapour". A
 liquid-equivalent amount is written "mL liquid equiv.", as in "4.2 mL liquid
 equiv.". The second spelling says "equivalent" because the agent it counts was

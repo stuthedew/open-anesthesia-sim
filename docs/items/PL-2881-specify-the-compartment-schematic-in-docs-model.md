@@ -71,23 +71,63 @@ and placement are placeholders while the interface is built (project owner,
   would let one tension stand at two heights in two Views.
 - **A compartment's amount is shown to two significant figures.** The
   derivation of `PL-X9KD` and `PL-TG60` was repeated on the amounts: one
-  published SD of each coefficient, three agents, read at 10 min, 60 min,
-  180 min and 24 h. The shift spans more than four orders of magnitude, from
-  0.011 mL to 216 mL, so no count of decimals lies in the band that rule
-  admits. 1 mL falls to a two-hundredth of an SD, and 10 mL hides venous
-  blood for most of an hour. Relative to the amount the shift is 2.2% to 10%,
-  and two significant figures put one count between a sixth of an SD and 124
-  SDs. That is the finest count the rule allows, so it is the derived answer
-  rather than a choice. The floor of 0.01 mL is a placeholder for legibility.
+  published SD of each coefficient, three agents, read every second for the
+  first 20 minutes and at 60 min, 180 min and 24 h. The shift spans many
+  orders of magnitude, up to 216 mL, so no count of decimals lies in the band
+  that rule admits. 1 mL falls to a two-hundredth of an SD, and 10 mL hides
+  venous blood for most of an hour. Relative to the amount, the shift in blood
+  and tissue is 1.4% to 12%, and two significant figures put one count
+  between a tenth of an SD and many SDs. Three would put it at a hundredth,
+  the order the readouts and the totals refused. So two is the derived
+  answer rather than a choice. The floor of 0.01 mL is a placeholder for
+  legibility.
 - **A share is shown in whole percent**, by the same derivation. One count
-  lies between 0.8 SD and more than a hundred.
+  lies between 0.8 SD and more than a hundred. A share below 0.5% reads `<1%`, and one
+  of 99.5% or more that is not the whole reads `>99%`.
 - **The unit spellings, "mL vapour" and "mL liquid equiv.", are placeholder
   wording.** The rule that every spelling names vapour or liquid is the
   requirement.
 
-The measurement script and its output are in the session's scratchpad, not
-the tree. It perturbed one coefficient at a time in a copy of the agent's
-parameters and ran `AgentUptakeSystem` at the shipped 0.1 s step. The SDs
+The measurement perturbed one coefficient at a time in a copy of the agent's
+parameters and ran `AgentUptakeSystem` at the shipped 0.1 s step. The script
+is below, so the derivation can be run again. Its first sparse mark is 600
+steps, which is 1 min. The first blind review pass caught it labelled
+10 min. The dense scan is the same script with a mark every 10 steps up to
+12 000. Run it as `python3 amounts.py <agent> <field|base>` from a checkout.
+
+```python
+"""PL-2881: one-SD displacement of each compartment's amount, mL vapour, at 1 MAC."""
+import sys, json
+from dataclasses import replace
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.parameters import PartitionCoefficient
+FIELDS = ("blood_gas_partition_coefficient","vessel_rich_tissue_gas_partition_coefficient","muscle_tissue_gas_partition_coefficient","fat_tissue_gas_partition_coefficient")
+SD = {"sevoflurane": {f: 0.053 for f in FIELDS}, "isoflurane": {f: 0.064 for f in FIELDS},
+      "desflurane": {**{f: 0.039 for f in FIELDS}, "blood_gas_partition_coefficient": 0.057}}
+agent_id, field = sys.argv[1], sys.argv[2]
+agent = load_agent_parameters(agent_id); patient = load_reference_adult_parameters()
+system = AgentUptakeSystem.for_agent(agent_id)
+if field != "base":
+    ch = replace(agent, **{field: PartitionCoefficient(getattr(agent, field) * (1 + SD[agent_id][field]), name=field)})
+    system = AgentUptakeSystem(circuit=system.circuit, alveoli=system.alveoli, patient=PatientCompartments.from_parameters(agent=ch, patient=patient))
+system.set_delivered_concentration_percent(Percent(agent.mac_percent))
+step = SimulationStep(0.1)
+def amounts():
+    p = system.patient
+    return {"circuit": system.circuit.agent_amount_l*1000, "alveoli": system.alveoli.agent_amount_l*1000,
+            "venous": p.venous_blood.agent_amount_l*1000,
+            **{t.name if hasattr(t,'name') else str(i): t.agent_amount_l*1000 for i, t in enumerate(p.tissues)}}
+out = {}
+marks = {600: "1min", 36000: "60min", 108000: "180min", 864000: "24h"}
+for k in range(1, 864001):
+    system.advance(step)
+    if k in marks: out[marks[k]] = amounts()
+print(json.dumps({"agent": agent_id, "field": field, "out": out}))
+``` The SDs
 were 5.3% for sevoflurane, 6.4% for isoflurane, and 3.9% for desflurane's
 tissue coefficients with 5.7% for its blood:gas coefficient, as § "Displayed
 precision" records.
