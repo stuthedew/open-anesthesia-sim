@@ -6948,16 +6948,19 @@ branch now follows one rule:
   about five hundred times finer than a two-decimal readout near 1 MAC of
   sevoflurane.
   A canonical reading costs a matrix exponential, about 2 ms, where a whole
-  step costs about 60 µs. So the live readings decide wherever neither lies
-  near an edge of a band, because there the canonical readings lie on the
-  same sides of it. Within one part in a million of the height of an edge
-  (`bookmarks.LIVE_READING_GAP`), the step is tested again from the canonical
-  readings. The widest gap measured between the two readings was 1.2e-9 of the
-  reading, over 2 h at the 0.001 s step (2026-11-01). Extrapolated in
-  proportion to 24 h, it is 1.4e-8, about a seventieth of the allowance. A
-  marked instant
-  needs no canonical reading, because whether a step crosses it depends only
-  on the step's two instants.
+  step costs about 60 µs. So the live readings screen each step. Where
+  neither lies near an edge of a band, the canonical readings lie on the same
+  sides of it, and a step the live readings find crossing nothing is passed.
+  A step they find crossing a mark, or one with a live reading within one part
+  in a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is
+  tested again from the canonical readings, so the run halts only on a
+  crossing its halt record names. The widest gap measured between the two
+  readings was 1.2e-9 of the reading, over 2 h at the 0.001 s step
+  (2026-11-01). Extrapolated in proportion to 24 h, it is 1.4e-8, about a
+  seventieth of the allowance. A marked instant needs no canonical reading,
+  because whether a step crosses it depends only on the step's two instants.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the

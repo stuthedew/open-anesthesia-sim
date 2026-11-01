@@ -3333,14 +3333,16 @@ class SimulationController:
         could then stop the trunk on a target that a branch opened on the same
         step reads as still running. A target's height is therefore a narrow
         band (`bookmarks.HEIGHT_BAND`). Where neither live reading lies near an
-        edge of a band, the live readings give the canonical answer, and they
-        are used. Where one does, the step is tested again from the canonical
-        readings, which cost a matrix exponential each.
+        edge of a band, the live readings give the canonical answer, so a step
+        they find crossing nothing is passed. A step they find crossing a mark,
+        or one with a live reading near an edge, is tested again from the
+        canonical readings, which cost a matrix exponential each. So a halt is
+        always one that the halt record names.
 
         The readings are taken only when something is marked, so an unmarked
         run costs nothing extra. A marked run costs two `state_vector()` reads
-        and six divisions per step, and two canonical readings on a step with a
-        live reading near the edge of a band.
+        and six divisions per step, and two canonical readings on a step that
+        crosses a mark or has a live reading near the edge of a band.
 
         **The run halts on the step that brings it to the supported run
         length, not on the rejected step after it** (`PL-5291`). The core
@@ -3383,12 +3385,20 @@ class SimulationController:
 
             after = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
 
-            if self._bookmarks.needs_canonical_readings(before=before, after=after):
+            crossing = self._bookmarks.crossings_between(
+                before_s=before_s, after_s=self._state.elapsed_s, before=before, after=after
+            )
+
+            # The live readings only screen the step. A step they find crossing
+            # a mark, or that lies near a band edge, is decided again from the
+            # canonical readings, which `_halt_crossing`, the standings and
+            # every branch read. So the run never halts on a crossing that its
+            # own halt record cannot name. A crossing happens at most once per
+            # halt, so the second reading costs almost nothing.
+            if crossing is not None or self._bookmarks.needs_canonical_readings(
+                before=before, after=after
+            ):
                 crossing = self._crossing_of_step(*self._step_ending_here())
-            else:
-                crossing = self._bookmarks.crossings_between(
-                    before_s=before_s, after_s=self._state.elapsed_s, before=before, after=after
-                )
 
             if crossing is not None:
                 self._halt_on(crossing)
