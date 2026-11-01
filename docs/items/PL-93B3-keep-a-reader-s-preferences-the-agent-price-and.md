@@ -42,3 +42,21 @@ price and a bottle volume in millilitres of liquid. The store never holds a
 price per millilitre, so the two cannot disagree. Build the record to that
 section rather than to this brief. Whether the currency's three letters are
 also checked against the codes ISO 4217 assigns is this item's decision.
+
+**Built** (2026-11-01). `src/anesthesia_sim/app/preferences.py` is the store,
+and `src/anesthesia_sim/user_files.py` holds the atomic-write steps that it
+shares with `layout/store.py`. Two choices were left to this item, and both are
+recorded in `docs/MODEL.md` § "A cost at the reader's price" and in the
+module's docstring:
+
+- The currency is checked only for the form of three capital letters, not
+  against the ISO 4217 list. The list changes several times a year, and a stale
+  copy would refuse a real currency. The code is printed beside every cost, so
+  a mistyped code is seen.
+- The bottle volume is checked only for a positive finite number. No source
+  gives a range of bottle sizes to check against, and the readout prints the
+  price per millilitre beside every cost, where a volume typed in litres shows
+  as a price 1000 times too high.
+
+The change also edits `docs/MODEL.md` and `ROADMAP.md`, which this item's
+`touches` did not list when it was written.

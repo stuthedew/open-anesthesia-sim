@@ -295,7 +295,12 @@ class Preferences:
         return self.agent_prices.get(agent_id)
 
     def with_price(self, price: AgentPrice) -> Preferences:
-        """Return these preferences with `price` set for its agent, replacing any earlier one."""
+        """Return these preferences with `price` set for its agent, replacing any earlier one.
+
+        Raises:
+            TypeError: If `price` is not an `AgentPrice`. Its fields were
+                checked when it was built, so nothing else is checked here.
+        """
 
         if not isinstance(price, AgentPrice):
             raise TypeError(f"a price is set from an AgentPrice, not {type(price).__name__}")

@@ -56,7 +56,9 @@ def _document(prices: list[object], unit: object = "millilitres of liquid") -> d
 # ----------------------------------------------------------------- persistence
 
 
-def test_a_price_and_a_unit_survive_a_restart(tmp_path: Path) -> None:
+def test_a_preference_survives_a_restart(tmp_path: Path) -> None:
+    """The agent price and the agent cost View's unit both come back after a restart."""
+
     store = PreferencesStore(tmp_path)
     store.load()
     store.save(

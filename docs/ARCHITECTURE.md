@@ -987,14 +987,16 @@ was true until this store landed.
 ## User state: the reader's preferences
 
 A preference belongs to the reader, not to a layout, so the preferences are
-kept in a file of their own, `preferences.json`, beside `workspaces.json` in
-the same directory (`PL-MQHN`, `PL-93B3`). `app/preferences.py` is the one
+kept in a file of their own, `preferences.json`. It sits beside the
+Workspaces' `workspaces.json` in the reader's data directory, outside this
+repository (`PL-MQHN`, `PL-93B3`). `app/preferences.py` is the one
 module that reads and writes it, and it imports no Qt. The file holds two
 things: at most one `AgentPrice` for each shipped agent, and the unit in which
 the agent cost View shows the delivered agent, millilitres of liquid by
 default or litres of vapour. `docs/MODEL.md` § "A cost at the reader's price"
 specifies what a price carries and what is refused. The project ships no
 price.
+<!-- absent: preferences.json workspaces.json -->
 
 - **When.** `PreferencesStore.save` writes the whole document when its caller
   asks. The agent cost View will save as soon as the reader sets a price or a
