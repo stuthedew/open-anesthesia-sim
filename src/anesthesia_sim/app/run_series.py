@@ -27,6 +27,7 @@ docstring records the renames that this naming has already protected against.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from math import isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -184,11 +185,11 @@ class DrawnWindow:
     """The states one frame draws, evaluated from the run's definition.
 
     `SimulationController.drawn_window` returns this window, and the chart is
-    drawn from nothing else. It replaces `HistoryWindow`, and the difference
-    between the two is what `PL-2FM6` changed. The old window covered
-    *recorded samples*. A caller asked it which samples to draw, and it cost
-    as much as the span it covered. This window is the result itself: the states at the
-    instants the chart plots, with nothing else behind them.
+    drawn from nothing else. It replaces `HistoryWindow`, and `PL-2FM6` made
+    that change. The old window covered *recorded samples*. A caller asked it
+    which samples to draw, and its cost grew with the span it covered. This
+    window holds only the result, which is the states at the instants the
+    chart plots, and nothing else.
 
     **A drawn value is not a recorded one, and the type says so.** Every
     state here is a `DisplayState`. `core/run_definition.py` makes that type
@@ -201,15 +202,20 @@ class DrawnWindow:
     Attributes:
         substance_id: Which substance every state here describes. It is
             carried so that a trace cannot be drawn from another substance's
-            values. The frame that asks for the window names the agent its
-            readouts were formatted from, and `compartment_fractions` rejects
-            any other.
+            values. The frame that asks for the window names the agent from
+            which its readouts were formatted. `compartment_fractions`
+            rejects any other agent.
         times_s: The instants drawn, ascending, in simulated seconds.
         states: One state per instant.
 
     Raises:
         SimulationConfigurationError: If the two sequences differ in length.
             A trace would then be drawn against another trace's time axis.
+            Also raised if an instant is NaN or infinite. Every instant here
+            is a time the run reached, so a non-finite one is a defect. The
+            chart hands its points to pyqtgraph without pyqtgraph's own
+            finiteness check, so this check is what keeps such an instant off
+            the plot (`app/chart_frame.py`, `PL-TCNT`).
     """
 
     substance_id: str
@@ -222,6 +228,13 @@ class DrawnWindow:
                 f"a drawn window has {len(self.times_s)} instants and {len(self.states)} "
                 "states; each state belongs to one instant"
             )
+
+        for time_s in self.times_s:
+            if not isfinite(time_s):
+                raise SimulationConfigurationError(
+                    f"a drawn window holds the instant {time_s} s, which is not finite; "
+                    "every drawn instant is a time the run reached"
+                )
 
     def compartment_fractions(self, series: RecordedSeries) -> list[float]:
         """This trace's value at every drawn instant, as a fraction of 1 atm.

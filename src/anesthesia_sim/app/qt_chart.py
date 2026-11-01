@@ -1,20 +1,21 @@
 """The concentration chart and the wash-in plot, drawn with pyqtgraph.
 
-This module is the toolkit half of the chart. `app/chart_frame.py` settles,
-without a toolkit, everything a frame *claims*: which compartment a curve
+This module is the toolkit half of the chart. `app/chart_frame.py` decides,
+without any toolkit, everything a frame claims: which compartment a curve
 shows, where the references are drawn, which instants are drawn, and what a
 hover says. This module only moves pyqtgraph items to match a `ChartFrame`.
 Nothing here reads simulation state, formats a value, or decides a
-coordinate. A widget that computed a number a reader interprets would put a
-clinical value outside the coverage of `tests/unit/test_chart_frame.py`,
-which is where those claims are tested.
+coordinate. If a widget computed a number that a reader interprets, that
+clinical value would fall outside the coverage of
+`tests/unit/test_chart_frame.py`, which is where those claims are tested.
 
 **Items are moved, never rebuilt.** Every curve, mark and reference is built
 once and then updated on each frame. The Flet chart reused its point
-controls for the same reason (`PL-010`): a frame then costs what it draws
-rather than what it constructs. The pools have the sizes that `chart_frame`
-states, which are a fixed number of control marks and of wash-in stretches.
-An unused member of a pool is hidden, which costs nothing per frame.
+controls for the same reason (`PL-010`). A frame then costs what it draws
+rather than what it constructs. The items are kept in pools of fixed size,
+and `chart_frame` states the sizes: a fixed number of control marks and a
+fixed number of wash-in stretches. An unused member of a pool is hidden,
+which costs nothing per frame.
 
 **Both axes have gridlines exactly where they have labels, by construction.**
 Each axis is given its ticks explicitly, from the frame, and the gridlines
@@ -27,12 +28,19 @@ readout: what the tooltip may show"). The readout is for the plot's *drawn
 points*, which are the states at which the run was evaluated. It is never for
 a position between two of them. Its text is the text that `chart_frame`
 produces through `app/formatting.py`, and never the text of the chart
-library's coordinate formatter. The hover costs work per pointer event rather
-than per point, so there is no mode in which to withdraw it and no caption to
-write about such a mode. It is not a library default, though.
-`pyqtgraph.ScatterPlotItem` ships with `hoverable` off, and a plotted line has
-no hover at all, so this module builds the hover rather than inheriting it
-(`PL-YVHK`).
+library's coordinate formatter. The hover's cost grows with pointer events,
+not with the number of points. So the chart needs no mode that turns the
+hover off, and no caption to explain such a mode. The hover is not a
+pyqtgraph default, though. `pyqtgraph.ScatterPlotItem` ships with `hoverable`
+off, and a plotted line has no hover at all, so this module builds the hover
+rather than inheriting it (`PL-YVHK`).
+
+**Points reach pyqtgraph by its documented fast path.** Every curve and dot is
+handed `numpy.ndarray`s of `float64`, as pyqtgraph's performance guidance asks,
+and every curve is drawn with `skipFiniteCheck`. That flag is safe only because
+`ChartFrame` guarantees that every coordinate is finite (`app/chart_frame.py`,
+`PL-TCNT`). `_plot_coordinates` is the one place that builds those arrays, and
+`_draw_curve` is the one place that sets that flag.
 
 **Every colour comes from `app/theme.py`.** This module declares no colour of
 its own, so the palette that `tools/contrast_check.py` measures stays the
@@ -46,7 +54,9 @@ from dataclasses import dataclass
 from math import ceil
 from typing import Any, Final, cast
 
+import numpy as np
 import pyqtgraph as pg
+from numpy.typing import NDArray
 from PySide6.QtCore import (
     QEvent,
     QObject,
@@ -191,6 +201,45 @@ HOVER_RADIUS_PIXELS: Final = 12.0
 # gridline, a control mark or a fork mark. Every horizontal line uses 0.
 _VERTICAL_LINE_ANGLE_DEG: Final = 90
 _HORIZONTAL_LINE_ANGLE_DEG: Final = 0
+
+
+def _plot_coordinates(values: Sequence[float]) -> NDArray[np.float64]:
+    """Return one axis of a frame's points as the array pyqtgraph draws from.
+
+    pyqtgraph's `PlotDataItem` documentation, under "Performance", says to
+    "use `numpy.ndarray` instead of python's built-in lists"
+    (https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/plotdataitem.html).
+    A list given to `setData` is copied into an array on every call anyway.
+    The conversion changes no coordinate. A Python `float` and a numpy
+    `float64` are both IEEE 754 doubles, so every coordinate is carried over
+    bit for bit.
+    """
+
+    return np.fromiter(values, dtype=np.float64, count=len(values))
+
+
+def _draw_curve(curve: Any, times_s: Sequence[float], values: Sequence[float]) -> None:
+    """Hand one curve a frame's points, without pyqtgraph's per-frame finiteness check.
+
+    By default `PlotCurveItem` scans every point for NaN and infinity each
+    time it builds its path, so that it can leave gaps. Its documentation
+    says that `skipFiniteCheck` "can speed up plotting by not checking and
+    compensating for NaN values", and that non-finite data then gives
+    unpredictable results
+    (https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/plotcurveitem.html).
+    Every point here comes from a `ChartFrame`, which cannot hold a
+    non-finite coordinate. The frame checks each value where it is built
+    and raises an error that names the value. The view then halts the run
+    (`app/chart_frame.py`, `PL-TCNT`). So the scan could never find
+    anything, and it is skipped.
+
+    Args:
+        curve: The `pyqtgraph.PlotCurveItem` to move.
+        times_s: The drawn instants, in simulated seconds.
+        values: One value per instant, in the unit of the curve's axis.
+    """
+
+    curve.setData(_plot_coordinates(times_s), _plot_coordinates(values), skipFiniteCheck=True)
 
 
 # The dot on the last point of a wash-in stretch that stopped because it
@@ -618,8 +667,8 @@ class _HoverReadout:
         """
 
         self._dot.setData(
-            [reading.time_s for reading in target.readings],
-            [reading.value for reading in target.readings],
+            _plot_coordinates([reading.time_s for reading in target.readings]),
+            _plot_coordinates([reading.value for reading in target.readings]),
         )
         self._text.setText(target.readout)
         # The box sits to the right of the anchor and above it, unless that
@@ -1027,7 +1076,7 @@ class ConcentrationChart(QWidget):
                     # keeps the points of the frame it was last drawn in.
                     # That is why it is hidden rather than emptied, and why
                     # it is redrawn here before it is shown again.
-                    curve.setData(list(run.times_s), list(run.percents(quantity)))
+                    _draw_curve(curve, run.times_s, run.percents(quantity))
                     curve.show()
                 else:
                     curve.hide()
@@ -1036,7 +1085,7 @@ class ConcentrationChart(QWidget):
             # only while a drag is held on this run (`PL-5B1N`).
             for quantity, curve in items.preview_curves.items():
                 if run.preview is not None and quantity in frame.visible:
-                    curve.setData(list(run.preview.times_s), list(run.preview.percents(quantity)))
+                    _draw_curve(curve, run.preview.times_s, run.preview.percents(quantity))
                     curve.show()
                 else:
                     curve.hide()
@@ -1339,8 +1388,8 @@ class _WashInRunItems:
         for stretch in (*self.stretches, *self.preview_stretches):
             stretch.hide()
 
-        self.termini.setData([], [])
-        self.preview_termini.setData([], [])
+        self.termini.setData(_plot_coordinates(()), _plot_coordinates(()))
+        self.preview_termini.setData(_plot_coordinates(()), _plot_coordinates(()))
         self.preview.hide()
         self.branch_point.hide()
 
@@ -1422,7 +1471,7 @@ class WashInChart(QWidget):
             ends_y: list[float] = []
 
             for curve, stretch in zip(items.stretches, run.wash_in, strict=False):
-                curve.setData(list(stretch.times_s), list(stretch.ratios))
+                _draw_curve(curve, stretch.times_s, stretch.ratios)
                 curve.show()
 
                 if stretch.ends_above_equilibrium and stretch.times_s:
@@ -1432,19 +1481,19 @@ class WashInChart(QWidget):
             for curve in items.stretches[len(run.wash_in) :]:
                 curve.hide()
 
-            items.termini.setData(ends_x, ends_y)
+            items.termini.setData(_plot_coordinates(ends_x), _plot_coordinates(ends_y))
             predicted = () if run.preview is None else run.preview.wash_in
             ends_x, ends_y = [], []
 
             for curve, stretch in zip(items.preview_stretches, predicted, strict=False):
-                curve.setData(list(stretch.times_s), list(stretch.ratios))
+                _draw_curve(curve, stretch.times_s, stretch.ratios)
                 curve.show()
 
                 if stretch.ends_above_equilibrium and stretch.times_s:
                     ends_x.append(stretch.times_s[-1])
                     ends_y.append(stretch.ratios[-1])
 
-            items.preview_termini.setData(ends_x, ends_y)
+            items.preview_termini.setData(_plot_coordinates(ends_x), _plot_coordinates(ends_y))
 
             for curve in items.preview_stretches[len(predicted) :]:
                 curve.hide()

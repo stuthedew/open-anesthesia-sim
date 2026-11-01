@@ -18,6 +18,7 @@ import weakref
 from collections import Counter
 from collections.abc import Iterator
 
+import numpy as np
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPalette, QPen
@@ -1614,6 +1615,69 @@ def test_both_plots_draw_a_preview_thinner_inside_its_labelled_region(
     assert drawn
     assert all(preview.region_s[0] <= time_s <= preview.region_s[1] for time_s, _ in drawn)
     assert wash_in.preview_pen(0).widthF() == WASH_IN_STROKE_WIDTH - 1
+
+
+def test_every_curve_is_handed_the_frame_s_own_values_as_float64_arrays(
+    application: QApplication,
+) -> None:
+    """Each curve gets numpy arrays equal, bit for bit, to what the frame holds (`PL-TCNT`).
+
+    pyqtgraph's performance guidance asks for `numpy.ndarray`s rather than
+    lists, and allows `skipFiniteCheck` for data known to be finite. The
+    chart follows both. The comparison is exact, not approximate. The chart
+    used to hand pyqtgraph `list(...)` of these same values, and pyqtgraph
+    copied them into `float64` arrays. So exact equality with the frame
+    shows that no drawn point changed. The test checks every curve, for the
+    run and for the preview, on both plots, so that no curve is left on the
+    old path.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    frame = _previewing_frame(controller, 6.0)
+    run = frame.runs[0]
+    preview = run.preview
+    assert preview is not None
+    assert run.wash_in
+    assert preview.wash_in
+    chart = _shown(application, ConcentrationChart(), 480)
+    wash_in = _shown(application, WashInChart(), 240)
+    chart.draw(frame)
+    wash_in.draw(frame)
+    chart_items = chart._runs[0]
+    wash_in_items = wash_in._runs[0]
+    handed = [
+        *(
+            (chart_items.curves[quantity], run.times_s, run.percents(quantity))
+            for quantity in COMPARTMENT_QUANTITIES
+        ),
+        *(
+            (chart_items.preview_curves[quantity], preview.times_s, preview.percents(quantity))
+            for quantity in COMPARTMENT_QUANTITIES
+        ),
+        *(
+            (curve, stretch.times_s, stretch.ratios)
+            for curve, stretch in zip(wash_in_items.stretches, run.wash_in, strict=False)
+        ),
+        *(
+            (curve, stretch.times_s, stretch.ratios)
+            for curve, stretch in zip(
+                wash_in_items.preview_stretches, preview.wash_in, strict=False
+            )
+        ),
+    ]
+
+    for curve, times_s, values in handed:
+        x, y = curve.getData()
+
+        assert type(x) is np.ndarray
+        assert type(y) is np.ndarray
+        assert x.dtype == np.float64
+        assert y.dtype == np.float64
+        assert x.tolist() == list(times_s)
+        assert y.tolist() == list(values)
+        assert curve.opts["skipFiniteCheck"] is True
 
 
 def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
