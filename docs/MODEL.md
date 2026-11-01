@@ -6931,12 +6931,36 @@ branch now follows one rule:
   halted a trunk, or the step that reached a branch's fork. The record is
   computed again whenever it is read, against the current marks, as the
   standings are (`PL-1ZQ4`). So a mark removed and added back under another
-  label is named as it now is (`PL-XV0D`). On a trunk, the heights that the
-  stepped readings crossed when the step halted the run are kept as well. A
-  stepped reading can land exactly on a height that the canonical reading
-  misses by about 1e-14, and a trunk halted there must still say why it
-  stopped. A marked instant needs no such record, because whether a step
-  crosses it depends only on the step's two instants.
+  label is named as it now is (`PL-XV0D`).
+- **A crossing has the answer the canonical readings give, on the trunk as on
+  every branch** (`PL-QVBR`). A running trunk also holds its live, stepped
+  readings, and the two can lie about 1e-14 apart on opposite sides of a
+  height. When the trunk halted on its live readings at the exact height, a
+  branch opened on the halting step could read the same target as still
+  running. Testing the canonical readings at the exact height fails a
+  different way. A steady compartment's canonical reading moves by one unit in
+  the last place from step to step, so a run that settled on a target crossed
+  it again and again. A run with no ventilation and a target on the circuit at
+  1.00 ×MAC of a 1 MAC dial halted 965 times in ten minutes (2026-11-01). So a
+  target's height is a band, one part in a hundred thousand of the height on
+  either side (`bookmarks.HEIGHT_BAND`). A reading inside the band is at the
+  height, and the crossing rule above is applied to the band. The band is
+  about five hundred times finer than a two-decimal readout near 1 MAC of
+  sevoflurane.
+  A canonical reading costs a matrix exponential, about 2 ms, where a whole
+  step costs about 60 µs. So the live readings screen each step. Where
+  neither lies near an edge of a band, the canonical readings lie on the same
+  sides of it, and a step the live readings find crossing nothing is passed.
+  A step they find crossing a mark, or one with a live reading within one part
+  in a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is
+  tested again from the canonical readings, so the run halts only on a
+  crossing its halt record names. The widest gap measured between the two
+  readings was 1.2e-9 of the reading, over 2 h at the 0.001 s step
+  (2026-11-01). Extrapolated in proportion to 24 h, it is 1.4e-8, about a
+  seventieth of the allowance. A marked instant needs no canonical reading,
+  because whether a step crosses it depends only on the step's two instants.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the

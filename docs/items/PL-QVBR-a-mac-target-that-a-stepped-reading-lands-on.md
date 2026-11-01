@@ -3,13 +3,15 @@ id: PL-QVBR
 title: A MAC target that a stepped reading lands on exactly halts the trunk and reads reached there, while a branch opened on that step asks the canonical reading, which can lie about 1e-14 short, so the branch opens on no crossing and reads the target as still running
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: defect-review-2026-10
-touches: src/anesthesia_sim/app/controller.py, tests/unit/test_bookmarks.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
 added: 2026-10-26
+closed: 2026-11-01
+pr: 1917
 payoff: a trunk and the branch opened on its halting step agree on whether the learner's MAC target was reached
-verify: grep -q 'def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk' tests/unit/test_bookmarks.py
+verify: grep -q 'def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk' tests/unit/test_bookmarks.py && grep -q 'def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_does' tests/unit/test_bookmarks.py
 ---
 
 **Problem.** A MAC target that a stepped reading lands on exactly halts the trunk and reads reached there, while a branch opened on that step asks the canonical reading, which can lie about 1e-14 short, so the branch opens on no crossing and reads the target as still running
@@ -36,3 +38,49 @@ step, stepped or canonical, decides a crossing. `PL-ZR49`'s change filed it on
 the day that head closed, 2026-10-26, so it is that head's own finding and not
 a re-entry. No head's `misread:` states this fact (`PL-R4Y2`'s triage,
 2026-10-31).
+
+**Built, 2026-11-01: the canonical readings decide, and a target's height is a
+narrow band.** The halt now asks the canonical readings, as every branch
+already did. Three routes were measured and refused on the way.
+
+- Asking the canonical readings on every step costs about 2.3 ms a step,
+  against about 61 µs for the step itself (measured 2026-11-01), so a run
+  would slow about forty times.
+- Asking them alone, with the height as a single number, halted 965 times in
+  ten minutes on a run that settles at its target. With alveolar ventilation
+  at 0 and a 1 MAC dial, the circuit settles at 1.00 ×MAC, and the canonical
+  reading moves by one unit in the last place around it. The old code never
+  halted there. A learner would see the run stop again on every step.
+- Keeping the trunk's stepped crossings and copying them into a branch would
+  leave the second symptom above, a target that reads reached at a paused
+  instant and then halts the run again.
+
+The decision taken is one clearly correct option rather than a choice to put
+to the owner. A target's height is a band, one part in a hundred thousand of
+the height on either side (`bookmarks.HEIGHT_BAND`). A reading inside the
+band is at the height. A crossing leaves one side of the band for the band or
+the other side. The live reading decides a step unless it lies within one
+part in a million of the height of a band edge (`bookmarks.LIVE_READING_GAP`).
+Only then is the step asked again from the canonical readings. The widest gap
+measured between the live and canonical readings was 1.2e-9 of the reading,
+over 2 h at the 0.001 s step. In proportion to 24 h it would be 1.4e-8, about
+a seventieth of the allowance. The band is about five hundred times finer
+than a two-decimal readout near 1 MAC of sevoflurane, so no learner can type
+a height that the band blurs. The settling run halts once, and its next 3000
+steps ask no canonical reading.
+
+`docs/MODEL.md` § "The canonical evaluation rule" states the band and the gap. The tests are
+in
+`tests/unit/test_bookmarks.py`. Three of them failed on the old code: the
+branch on a halting step, the target marked at a paused reading, and the
+target removed and added back.
+
+**Two blind review passes, 2026-11-01, and both findings fixed.** The first
+found that no controller test reached the canonical fallback: with it
+disabled, every controller test still passed. A new test puts a band edge
+between one step's live and canonical readings, and it fails with the
+fallback disabled. The second found that a step the live readings judged
+crossing was halted on without the canonical readings agreeing. Such a step
+is now tested again from the canonical readings too, so the run halts only on
+a crossing its halt record names. That costs two canonical readings once per
+halt.

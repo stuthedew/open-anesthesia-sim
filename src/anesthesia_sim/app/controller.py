@@ -682,28 +682,26 @@ class SimulationController:
         self._preview_memo: (
             tuple[tuple[str, UptakeEquationSettings, SettingPreview], UptakeEquationSettings] | None
         ) = None
-        # These fields record what this run has done with the marks, as opposed
-        # to what is marked. They are what the run produced, not what the
-        # learner asked about. So they are cleared wherever a new run begins:
-        # in `_build_state`, which `set_agent` also calls, and in `reset()`.
-        # `_bookmarks` below is kept through all of these. `_open_at` is the
-        # one exception to that clearing, but it carries nothing over from an
-        # earlier run. A branch opens *standing on* the step that reached its
-        # fork. That step is where the branch is, not something an earlier run
-        # did.
+        # The fields below record what this run has done with the marks, as
+        # opposed to what is marked. They are what the run produced, not what
+        # the learner asked about. So they are cleared wherever a new run
+        # begins: in `_build_state`, which `set_agent` also calls, and in
+        # `reset()`. `_bookmarks` below is kept through all of these.
+        # `_open_at` sets `_stands_where_it_stopped` rather than clearing it,
+        # but it carries nothing over from an earlier run. A branch opens *standing on* the
+        # step that reached its fork. That step is where the branch is, not
+        # something an earlier run did.
         #
         # `_stands_where_it_stopped` records only *that* the run stands where it
-        # stopped, on a halt or on a branch's fork. `_halted_on_crossings`
-        # records the MAC target heights that the stepped readings crossed on
-        # the step that halted a trunk. `_halt_crossing` names the current marks
-        # at those heights. It also tests the step again against the current
-        # marks and adds what the step crosses, as the mark standings do
-        # (`PL-XV0D`). That test alone finds every marked instant, so instants
-        # need no record of their own. The crossing used to store the mark
-        # objects themselves. So a mark that was removed and added back left
-        # the crossing naming the old object.
+        # stopped, on a halt or on a branch's fork. `_halt_crossing` tests that
+        # step again against the current marks, from the canonical readings at
+        # both ends, as the mark standings do (`PL-XV0D`). A halt is decided
+        # from those same readings (`PL-QVBR`). So the test finds every mark the
+        # halt crossed, and the halt needs no record of its own. An earlier
+        # version stored the mark objects themselves in the crossing. A mark
+        # that was removed and added back then left the stored crossing naming
+        # the old object.
         self._stands_where_it_stopped = False
-        self._halted_on_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         self._reached_instants_s: frozenset[CaseInstant] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         # `_bookmarks` is set here and not in `_build_state`, deliberately.
@@ -745,7 +743,6 @@ class SimulationController:
         """Clear the halt record's facts, because the run no longer stands where it stopped."""
 
         self._stands_where_it_stopped = False
-        self._halted_on_crossings = frozenset()
 
     def _build_state(
         self,
@@ -1317,17 +1314,17 @@ class SimulationController:
     def _forget_unmarked(self) -> None:
         """Drop what the run did with marks that the learner has since removed.
 
-        A removed mark has no row in the bookmark panel, so there is nowhere to
-        show its standing, which is what the run did with it. Leaving its
-        standing behind would name a mark that is no longer listed. That is the
-        kind of stale state that `.claude/rules/expert-review.md` asks to be
+        A mark's standing is what the run did with it. A removed mark has no row
+        in the bookmark panel, so there is nowhere to show its standing. Leaving
+        its standing behind would name a mark that is no longer listed. That is
+        the kind of stale state that `.claude/rules/expert-review.md` asks to be
         designed out rather than warned about.
 
-        The halt record (`_halt_crossing`) keeps the heights that a trunk's
-        stepped readings crossed. This method prunes those heights in the same
-        way. A mark that is added back is then a new mark to both records. Both
-        records test the step again for that mark. So the halt record and the
-        mark's row cannot disagree about whether the run stopped on it.
+        A mark that is added back is then a new mark to the standings. The
+        standings and the halt record (`_halt_crossing`) both test the new mark
+        against the step the run stands on, using the same canonical readings. So
+        the halt record and the mark's row cannot disagree about whether the run
+        stopped on it.
         """
 
         instants = frozenset(bookmark.instant_s for bookmark in self._bookmarks.time_bookmarks)
@@ -1335,7 +1332,6 @@ class SimulationController:
 
         self._reached_instants_s &= instants
         self._reached_crossings &= crossings
-        self._halted_on_crossings &= crossings
 
     @property
     def run_segments(self) -> tuple[RunSegment, ...]:
@@ -3257,45 +3253,21 @@ class SimulationController:
         when the step it stands on crossed one.
 
         **The halt record names the current marks, which it reads at every
-        call** (`PL-XV0D`). So it names a mark added inside that step. It does
-        not name a removed mark. It names a mark that was removed and added
-        back as the mark is now. Two facts decide which marks it names. The
-        first is what the step crosses when it is tested again against the
-        current marks, using the canonical states at both ends. Every branch
-        uses that test (`_crossings_stood_on`). The second applies only on a
-        trunk. It is the heights that the stepped readings crossed when the
-        step halted the run. The second is needed because a stepped reading
-        can land exactly on a height that the canonical reading misses by
-        about 1e-14. A trunk that halted on that height and then reported no
-        mark would be paused for no stated reason. A marked instant needs no
-        such record. Whether a step crosses an instant depends only on the
-        step's two instants, which are the same on every call. The mark
-        standings combine the same two sources (`bookmark_standings`).
-        Removing a mark drops its key from both (`_forget_unmarked`). So the
-        halt record and the bookmark panel cannot name different marks. When
-        all of a halt's marks have been removed, this returns None, as it did
-        when the record was pruned.
+        call** (`PL-XV0D`). So it names a mark added after the halt that the step crosses. It does
+        not name a removed mark. A mark that was removed and added back is named
+        as it is now. The record is what the step crosses when it is tested
+        again against the current marks, from the canonical states at both ends.
+        Every branch uses that test (`_crossings_stood_on`), and `advance`
+        decides a halt from the same canonical states (`PL-QVBR`). So the record
+        for the step that halted a trunk includes every mark the trunk halted on,
+        and a branch opened on that step names the same marks. When all of a
+        halt's marks have been removed, this returns None.
         """
 
         if not self._stands_where_it_stopped:
             return None
 
-        asked = self._crossing_of_step(*self._step_ending_here())
-        instants = frozenset[CaseInstant]() if asked is None else _reached_instants(asked)
-        heights = self._halted_on_crossings
-
-        if asked is not None:
-            heights |= _reached_heights(asked)
-
-        times = tuple(mark for mark in self._bookmarks.time_bookmarks if mark.instant_s in instants)
-        targets = tuple(
-            target for target in self._bookmarks.mac_targets if target.crossing_key in heights
-        )
-
-        if not times and not targets:
-            return None
-
-        return BookmarkCrossing(self._state.elapsed_s, times, targets)
+        return self._crossing_of_step(*self._step_ending_here())
 
     def _keep_crossings_stood_on(self) -> None:
         """Record what the step this run stands on crossed, as the run leaves it.
@@ -3314,38 +3286,38 @@ class SimulationController:
             self._reached_crossings |= _reached_heights(crossing)
 
     def advance(self, simulation_step_s: SimulationStep) -> None:
-        """Do nothing while paused; otherwise advance state, record history, and halt on a crossing.
+        """Advance the state, record history and halt on a crossing, unless the run is paused.
 
-        The run definition's reach is moved after the step rather than before
-        it. So a step the core refuses, for a domain limit or a numerical
-        failure, leaves the run definition describing a run that stopped where
-        the state did. The run definition's `advance_to` records no state. The
-        settings already imply the states, which are recovered from them on
-        demand.
+        The run definition's reach, the time up to which it describes the run,
+        is moved after the step rather than before it. So a step that the core
+        refuses, for a domain limit or a numerical failure, leaves the run
+        definition describing a run that stopped where the state did. The run
+        definition's `advance_to` records no state. The settings already imply
+        the states, which are recovered from them on demand.
 
-        **The crossing test is here because this is where one step happens**
-        (`PL-CTD7`). The interface advances a whole tick's worth of steps
+        **The crossing test is here because this is where each single step is
+        taken** (`PL-CTD7`). The interface advances a whole tick's worth of steps
         between frames: `multiplier x tick_interval_s / simulation_step_s`
         steps, which is 300 at 300x. A test applied once per frame would place
         the halt up to `multiplier x simulation_step_s` past the value the
         learner marked. That is 30 simulated seconds at 300x and 0.1 s at 1x,
-        against a `docs/MODEL.md` tolerance stated in hundredths of a
-        percentage point. The same bookmark would then silently stop the run
-        at a different concentration depending on the playback speed. That is
-        the presentation-correctness failure `CLAUDE.md` treats as
+        while `docs/MODEL.md` states its tolerance in hundredths of a percentage
+        point. The same bookmark would then silently stop the run at a different
+        concentration depending on the playback speed. That is the
+        presentation-correctness failure that `CLAUDE.md` treats as
         safety-critical. It would also put two branches that were nominally
         taken "at 0.8 xMAC" at two different states. Because the test runs on
         every step, the halt lands on the crossing step itself. That is finer
-        than any instant a live control change can reach (`app/playback.py`,
-        `PL-NBWP`).
+        than any instant at which a live control change can take effect
+        (`app/playback.py`, `PL-NBWP`).
 
         **A crossing pauses the run**, and that makes the halt genuinely useful
         rather than a courtesy. No step is taken while paused, and the setters
         apply unconditionally. So "halt at 0.8 xMAC, then turn the vaporizer
         off" takes effect at the instant the learner was looking at. Without
         the pause, it would take effect at the next tick boundary, up to 30
-        simulated seconds later. The pause is an ordinary one. `start()`
-        resumes the run, and resuming does not count the crossing it halted on again,
+        simulated seconds later. The pause is an ordinary one, and `start()`
+        resumes the run. Resuming does not count the halt's crossing again,
         because the next step's `before` reading is the halting step's own
         reading (`MacTarget.crossed_between`). Nothing is armed or disarmed, so
         there is no per-target state for a learner to get wrong.
@@ -3354,21 +3326,39 @@ class SimulationController:
         guard at the top of this method. So the burst of steps stops on the
         crossing step rather than running on to the frame boundary.
 
+        **Whether a step crosses a mark is decided from the canonical readings**
+        (`PL-QVBR`). The live readings come from the stepped system. The
+        canonical readings come from `RunDefinition.state_at`. Every branch
+        opens from them, and every later test of the step uses them
+        (`_crossing_of_step`). The two can lie about 1e-14 apart. A halt decided
+        from the live readings at the exact height could then stop the trunk on
+        a target that a branch opened on the same step shows as still running.
+        So a target's height is treated as a narrow band
+        (`bookmarks.HEIGHT_BAND`). Where neither live reading lies near an edge
+        of a band, the live readings give the same result as the canonical
+        ones. A step that they find crosses nothing then needs no canonical
+        reading. A step that they find crosses a mark, or that has a live
+        reading near an edge, is tested again from the canonical readings. Each
+        canonical reading costs a matrix exponential. So every halt is one that
+        the halt record names.
+
         The readings are taken only when something is marked, so an unmarked
         run costs nothing extra. A marked run costs two `state_vector()` reads
-        and six divisions per step.
+        and six divisions per step. It also costs two canonical readings on a
+        step that crosses a mark or has a live reading near the edge of a band.
 
         **The run halts on the step that brings it to the supported run
         length, not on the rejected step after it** (`PL-5291`). The core
-        refuses the step *from* the last supported count. A run stopped only
-        by that refusal would stand on that count, between the arriving step
-        and the refused one, shown as running. If Pause landed there, it would
-        be shown as paused with Start offered. Yet no step is left to take.
-        Halting on arrival, as `_halt_on` does on a crossing, keeps
-        `is_running` false whenever `supported_limit_reason` is set. That is
-        the contract `SimulationSnapshot.supported_limit_reason` states. The
-        values the run stops on come from the same completed step either way.
-        What changes is when the stop is reported.
+        refuses the step *from* the last supported step count. Suppose only
+        that refusal stopped the run. The run would then stand on that count,
+        between the arriving step and the refused one, and be shown as running.
+        If Pause landed there, the run would be shown as paused with Start
+        offered, yet no step is left to take. Halting on arrival, as `_halt_on`
+        does on a crossing, keeps `is_running` false whenever
+        `supported_limit_reason` is set. That is the contract that
+        `SimulationSnapshot.supported_limit_reason` states. The values the run
+        stops on come from the same completed step either way. What changes is
+        when the stop is reported.
         """
 
         if not self._is_running:
@@ -3397,12 +3387,23 @@ class SimulationController:
             # not from a difference that may not round-trip.
             self._run_definition.advance_to(self._state.elapsed_s)
 
+            after = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
+
             crossing = self._bookmarks.crossings_between(
-                before_s=before_s,
-                after_s=self._state.elapsed_s,
-                before=before,
-                after=self._compartment_mac_multiples(self._state.uptake_system.state_vector()),
+                before_s=before_s, after_s=self._state.elapsed_s, before=before, after=after
             )
+
+            # The live readings only screen the step. A step that they find
+            # crosses a mark, or that has a live reading near a band edge, is
+            # decided again from the canonical readings. `_halt_crossing`, the
+            # standings and every branch use those same readings. So the run
+            # never halts on a crossing that its own halt record cannot name. A
+            # crossing happens at most once per halt, so the canonical readings
+            # it needs cost almost nothing.
+            if crossing is not None or self._bookmarks.needs_canonical_readings(
+                before=before, after=after
+            ):
+                crossing = self._crossing_of_step(*self._step_ending_here())
 
             if crossing is not None:
                 self._halt_on(crossing)
@@ -3426,11 +3427,11 @@ class SimulationController:
     def _halt_on(self, crossing: BookmarkCrossing) -> None:
         """Pause the run on the step that crossed these marks, and record that it stopped there.
 
-        This method keeps the heights that the step crossed, not the mark
-        objects. `_halt_crossing` names the current marks at those heights at
-        every call, and tests the step again for marked instants (`PL-XV0D`).
-        The record of the marks that the run has reached keeps both the
-        instants and the heights, as the mark standings require.
+        This method keeps no record of which marks halted the run.
+        `_halt_crossing` tests the step again against the current marks at
+        every call (`PL-XV0D`). The record of the marks that the run has
+        reached keeps both the instants and the heights, as the mark
+        standings require.
 
         Args:
             crossing: What the step just taken passed through.
@@ -3438,7 +3439,6 @@ class SimulationController:
 
         self._is_running = False
         self._stands_where_it_stopped = True
-        self._halted_on_crossings = _reached_heights(crossing)
         self._reached_instants_s |= _reached_instants(crossing)
         self._reached_crossings |= _reached_heights(crossing)
 

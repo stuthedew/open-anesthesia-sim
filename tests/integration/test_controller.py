@@ -6143,11 +6143,13 @@ def test_a_reset_branch_stands_on_no_halt_it_made_after_its_fork() -> None:
     The trunk is paused at 20 s, and a branch is taken at that instant. The
     branch gets a MAC target at 0.4 MAC alveolar and runs until the target
     halts it. Its reset returns it to its fork at 20 s. The step that reached
-    the fork crossed no mark, so the branch's halt record must be empty. A
-    trunk's halt keeps the heights that its stepped readings crossed
-    (`_halted_on_crossings`). The test-strength review of `PL-ZR49`'s change
-    found that no test noticed if a reset left those heights behind. Heights
-    left behind would make the halt record name the target at the fork.
+    the fork crossed no mark, so the branch's halt record must be empty. The
+    test-strength review of `PL-ZR49`'s change found a gap in the tests. At
+    the time, a trunk's halt still kept the heights that its stepped readings
+    crossed, and no test noticed if a reset left a halt's crossings behind.
+    Since `PL-QVBR`, every halt is derived from the step that ends at the run's
+    instant, so no halt keeps anything. This test still guards against a halt
+    record that names the target at the fork.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "later")

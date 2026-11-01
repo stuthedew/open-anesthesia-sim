@@ -21,6 +21,7 @@ import math
 import pytest
 
 from anesthesia_sim.app.bookmarks import (
+    HEIGHT_BAND,
     BookmarkCrossing,
     BookmarkSet,
     MacTarget,
@@ -32,8 +33,13 @@ from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import SimulationStep
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    AlveolarVentilation,
+    CaseInstant,
+)
 
 #: The step at which every run in this file is taken, matching the interface's own step.
 STEP_S = SimulationStep(0.1)
@@ -510,6 +516,44 @@ def test_a_target_is_not_crossed_by_leaving_its_height_in_either_direction() -> 
     assert not target.crossed_between(MacMultiple(0.80), MacMultiple(0.79))
 
 
+def test_a_reading_within_one_part_in_a_hundred_thousand_of_the_height_is_at_it() -> None:
+    """A reading that settles on the height and moves by a unit in the last place crosses it once.
+
+    `PL-QVBR` made the height a band one part in a hundred thousand wide on
+    either side. Without the band, a canonical reading that moved between the
+    height and the float below it crossed the height each time it returned.
+    """
+
+    target = _target(multiple=1.0)
+    inside_below = MacMultiple(1.0 - 0.9e-5)
+    inside_above = MacMultiple(1.0 + 0.9e-5)
+
+    assert target.crossed_between(MacMultiple(0.99), inside_below)
+    assert target.crossed_between(MacMultiple(1.0 - 1.1e-5), inside_below)
+    assert target.crossed_between(MacMultiple(1.01), inside_above)
+    assert not target.crossed_between(inside_below, inside_above)
+    assert not target.crossed_between(MacMultiple(math.nextafter(1.0, 0.0)), MacMultiple(1.0))
+    assert not target.crossed_between(inside_above, MacMultiple(1.01))
+    assert not target.crossed_between(MacMultiple(0.99), MacMultiple(1.0 - 1.1e-5))
+
+
+def test_only_a_reading_near_an_edge_of_the_band_needs_a_canonical_reading() -> None:
+    """The live reading decides unless it lies within one part in a million of a band edge.
+
+    Away from an edge, a canonical reading within that gap of the live one
+    lies on the same side of the edge, so the two give one answer.
+    """
+
+    target = _target(multiple=1.0)
+
+    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 + 1e-5))
+    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 - 1e-5 + 0.5e-6))
+    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 - 1e-5 - 0.5e-6))
+    assert not target.reading_is_near_a_band_edge(MacMultiple(1.0))
+    assert not target.reading_is_near_a_band_edge(MacMultiple(1.0 + 1e-5 + 2e-6))
+    assert not target.reading_is_near_a_band_edge(MacMultiple(0.99))
+
+
 def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:
     marks = (
         BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0))).with_mac_target(_target())
@@ -968,6 +1012,26 @@ def _tick_until_halt(
     return None
 
 
+def _canonical_alveolar_mac_multiple(*, steps: int) -> MacMultiple:
+    """Return the canonical alveolar reading after `steps` steps of an unmarked default run.
+
+    A branch opens from the canonical state (`RunDefinition.state_at`), so a
+    branch taken where the run stands sees this reading. A crossing is decided
+    from this reading (`PL-QVBR`). By contrast, `_alveolar_mac_multiple` on a
+    running trunk returns the live reading.
+    """
+
+    run = SimulationController()
+    run.start()
+
+    for _ in range(steps):
+        run.advance(STEP_S)
+
+    run.pause()
+
+    return _alveolar_mac_multiple(run.resumed_here())
+
+
 def _alveolar_mac_multiple(run: SimulationController) -> MacMultiple:
     """Return what the alveolar readout beside the target would show, in the target's unit."""
 
@@ -1060,19 +1124,17 @@ def test_a_halt_leaves_the_run_paused_on_the_crossing_step() -> None:
 
 
 def test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances() -> None:
-    """The boundary case, with the height taken from the run itself so the run lands on it exactly.
+    """In this boundary case the height comes from the run itself, so the run lands on it exactly.
 
-    A rule closed on both sides would report a crossing on every step from
-    here on, and the run could never be advanced past the target at all.
+    A rule that also counted a step starting inside the band would report a
+    crossing on every step after the run lands, and the run could never be
+    advanced past the target at all. The height is the canonical reading at
+    60 s, because a crossing is decided from the canonical readings
+    (`PL-QVBR`). A branch opens from the canonical state, so a branch taken at
+    60 s sees that reading.
     """
 
-    measuring = SimulationController()
-    measuring.start()
-
-    for _ in range(600):
-        measuring.advance(STEP_S)
-
-    height = _alveolar_mac_multiple(measuring)
+    height = _canonical_alveolar_mac_multiple(steps=600)
 
     run = SimulationController()
     run.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, height))
@@ -1081,23 +1143,219 @@ def test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances() -
 
     assert halt is not None
     assert halt.instant_s == pytest.approx(60.0)
-    assert _alveolar_mac_multiple(run) == height
+    assert _alveolar_mac_multiple(run.resumed_here()) == height
 
     run.start()
     assert _step_until_halt(run, limit=600) is None
     assert run.is_running
 
 
-def test_a_halt_target_removed_and_added_back_is_named_by_neither_record() -> None:
+def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk() -> None:
+    """A trunk and a branch opened on its halting step agree on whether the target was reached.
+
+    Each height is the live reading after a whole number of steps, so the
+    trunk's live reading lands on it exactly. The canonical reading there can
+    lie about 1e-14 to either side of it (`PL-QVBR`). Before the fix, the
+    trunk halted on its live readings and reported the target as reached. A
+    branch opened on that step tested it from the canonical readings, found no
+    crossing, and showed the target as still running. Now both readings fall
+    inside the height's band. So at every instant the test tries, the trunk
+    and the branch report the same halt and the same standing. At least one of
+    those instants must be one where the two readings differ, or the test
+    would not exercise the case.
+    """
+
+    differing = 0
+
+    for steps in range(100, 1201, 100):
+        live = SimulationController()
+        live.start()
+
+        for _ in range(steps):
+            live.advance(STEP_S)
+
+        height = _alveolar_mac_multiple(live)
+        differing += height != _canonical_alveolar_mac_multiple(steps=steps)
+
+        target = MacTarget(RecordedQuantity.ALVEOLAR, height)
+        trunk = SimulationController()
+        trunk.add_mac_target(target)
+        trunk.start()
+        halt = _step_until_halt(trunk, limit=steps + 50)
+
+        assert halt is not None
+        assert halt.mac_targets == (target,)
+
+        branch = trunk.resumed_here()
+
+        assert branch.snapshot().bookmark_halt == halt
+        assert branch.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+        assert trunk.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+    assert differing > 0
+
+
+def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_does() -> None:
+    """A step whose live and canonical readings disagree halts where the canonical readings say.
+
+    This is the only case in which the trunk's live readings and a branch's
+    canonical readings could still disagree (`PL-QVBR`). The test steps the
+    default run until a step's live and canonical alveolar readings differ. It
+    then puts the lower edge of a target's band between them. So one reading
+    of that step has entered the band and the other has not. The trunk must
+    test the canonical readings there, halt on the step at which they cross,
+    and agree with a branch opened on that step. Halting on the live readings
+    would land the halt one step early or one step late, and the branch would
+    then disagree.
+    """
+
+    run = SimulationController()
+    run.start()
+    previous_live = previous_canonical = MacMultiple(0.0)
+
+    for _ in range(3000):
+        run.advance(STEP_S)
+        run.pause()
+        live = _alveolar_mac_multiple(run)
+        canonical = _alveolar_mac_multiple(run.resumed_here())
+
+        if live != canonical:
+            break
+
+        previous_live, previous_canonical = live, canonical
+        run.start()
+    else:
+        pytest.fail("no step of the first 3 000 has two alveolar readings that differ")
+
+    straddling_s = run.snapshot().elapsed_s
+    edge = (live + canonical) / 2
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(edge / (1 - HEIGHT_BAND)))
+
+    assert min(live, canonical) < edge < max(live, canonical)
+    assert target.crossed_between(previous_live, MacMultiple(live)) != target.crossed_between(
+        previous_canonical, MacMultiple(canonical)
+    )
+
+    trunk = SimulationController()
+    trunk.add_mac_target(target)
+    trunk.start()
+    halt = _step_until_halt(trunk, limit=3050)
+
+    assert halt is not None
+
+    if target.crossed_between(previous_canonical, MacMultiple(canonical)):
+        assert halt.instant_s == straddling_s
+    else:
+        assert halt.instant_s > straddling_s
+
+    branch = trunk.resumed_here()
+
+    assert branch.snapshot().bookmark_halt == halt
+    assert branch.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+    assert trunk.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_step() -> None:
+    """A target added at the canonical reading where a paused run stands is reached once, there.
+
+    The lifecycle review of `PL-ZR49`'s change found this case (`PL-QVBR`).
+    The live reading where the run stood lay one unit in the last place below
+    the canonical one. The target showed as reached while the run stood there.
+    After Start, the live readings crossed it on the next step, so the run
+    halted on the same target again. The test steps the default run until its
+    live reading lies below the canonical one on the rising curve. At such a
+    step, the live readings would cross the height again on the next step.
+    Such steps are rare. A measurement on 2026-11-01 found 18 of them in the
+    first 3 000 steps, the first at 75.1 s. Pausing and starting a run does
+    not change its trajectory, so the run that found the step is the one
+    tested.
+    """
+
+    run = SimulationController()
+    run.start()
+
+    for _ in range(3000):
+        run.advance(STEP_S)
+        run.pause()
+        canonical = _alveolar_mac_multiple(run.resumed_here())
+
+        if _alveolar_mac_multiple(run) < canonical:
+            break
+
+        run.start()
+    else:
+        pytest.fail("no step of the first 3 000 has its live reading below the canonical one")
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, canonical)
+    run.add_mac_target(target)
+
+    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+    run.start()
+
+    assert _step_until_halt(run, limit=20) is None
+    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A circuit that settles on its target halts once, and later steps need no canonical reading.
+
+    With no ventilation the patient takes up nothing, so the circuit settles
+    on the delivered 2% of sevoflurane, which is 1.00 ×MAC. When the halt test
+    compared the canonical readings with the exact height, this run halted at
+    the target 965 times in its tenth minute (`PL-QVBR`, 2026-11-01). The
+    canonical reading moved by one unit in the last place from step to step.
+    For about a hundred steps after the halt, the reading still lies near the
+    band's edge, and each of those steps is tested from the canonical
+    readings. Once the reading has settled inside the band, the run's steps
+    are decided from the live readings and cost no matrix exponential.
+    """
+
+    target = MacTarget(RecordedQuantity.CIRCUIT, MacMultiple(1.0))
+    run = SimulationController(
+        alveolar_ventilation_l_min=AlveolarVentilation(0.0),
+        delivered_concentration_percent=Percent(2.0),
+    )
+    run.add_mac_target(target)
+    run.start()
+
+    halt = _step_until_halt(run, limit=30_000)
+
+    assert halt is not None
+    assert halt.mac_targets == (target,)
+
+    asked: list[float] = []
+    state_at = RunDefinition.state_at
+
+    def counting_state_at(definition: RunDefinition, instant_s: float) -> tuple[float, ...]:
+        asked.append(instant_s)
+        return state_at(definition, instant_s)
+
+    run.start()
+
+    assert _step_until_halt(run, limit=3_000) is None
+
+    monkeypatch.setattr(RunDefinition, "state_at", counting_state_at)
+
+    assert _step_until_halt(run, limit=3_000) is None
+    assert asked == []
+    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_halt_target_removed_and_added_back_is_named_again_by_both_records() -> None:
     """The halt record and the target's row agree after the target is removed and added back.
 
-    The run halts on a height that a stepped reading lands on exactly. The
-    canonical reading falls about 1e-14 short of it (`PL-QVBR`), so only the
-    stepped keys show the crossing. Removing the target drops its key from
-    both records, and the target added back is a new mark to both. Before
-    the fix the halt record kept its key, so the trunk reported stopping on
-    a target that its own row listed as not reached, and a branch taken there
-    opened on no crossing.
+    The run halts on a height that a stepped reading lands on exactly.
+    Removing the target drops its key from the standings, and the target
+    added back is a new mark. Both records test the new mark against the step
+    the run stands on, using the canonical readings that decided the halt
+    (`PL-QVBR`). So both records name it again, and so does a branch taken
+    there. Before `PL-XV0D`'s fix, the halt record kept the old key, so the
+    trunk could report stopping on a target that its own row listed as not
+    reached.
     """
 
     measuring = SimulationController()
@@ -1111,17 +1369,22 @@ def test_a_halt_target_removed_and_added_back_is_named_by_neither_record() -> No
     run.add_mac_target(target)
     run.start()
 
-    assert _step_until_halt(run) is not None
-    assert run.snapshot().bookmark_halt is not None
+    halt = _step_until_halt(run)
+
+    assert halt is not None
+    assert halt.mac_targets == (target,)
 
     run.remove_mac_target(target)
+
+    assert run.snapshot().bookmark_halt is None
+
     run.add_mac_target(target)
 
-    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.STILL_RUNNING
-    assert run.snapshot().bookmark_halt is None
+    assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
+    assert run.snapshot().bookmark_halt == halt
     assert run.here_fork_point is not None
-    assert not run.here_fork_point.stopped_on_mark
-    assert run.resumed_here().snapshot().bookmark_halt is None
+    assert run.here_fork_point.stopped_on_mark
+    assert run.resumed_here().snapshot().bookmark_halt == halt
 
 
 def test_a_time_bookmark_halts_the_run_on_the_step_that_reaches_it() -> None:
