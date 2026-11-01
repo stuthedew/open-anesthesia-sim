@@ -6780,9 +6780,12 @@ those readouts were all that a run showed, the margins would make the
 separation between the two paths academic. But the panel's two residual lines
 print the power of ten that a residual lies below, and a residual is formed from
 the two accumulators. § "Displayed precision" records passing residuals below
-2.1e-11 L. The display path's accumulator difference is 3.1e-12 L at 1800 s,
-which is the size of such a residual, and 3.1e-9 L at 24 h, which is larger.
-So a display value that reached the mass-balance readout would change the
+2.1e-11 L, measured on branches played for 30 minutes (`PL-KXW1`). The display
+path's accumulator difference at 1800 s, 3.1e-12 L, is the size of such a
+residual. A passing residual grows over a longer run: over 24 h the worst
+relative residual measured was 3.08e-12, which on amounts of tens of litres is
+of the order of 1e-10 L (`PL-D88N`). The difference at 24 h, 3.1e-9 L, is
+larger than that too. So a display value that reached the mass-balance readout would change the
 decade it prints. That is a place a reader can see, and the wrong decade would
 look exactly like an ordinary passing residual.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -10090,8 +10093,10 @@ it.
 back from the compartment that holds it, after the core has accepted it. It is
 stored in the unit that the core uses. So the delivered dial is stored as the
 percent of one atmosphere it was set to, which is the percent the core is set
-with (`PL-NJPB`). It is displayed through the same formatter as every other
-concentration on the page, and it is converted once, at the display. A record
+with (`PL-NJPB`). It is displayed through `format_percent`, the formatter
+that every other concentration on the page goes through. That formatter takes
+the model's fraction, so the recorded percent is converted to a fraction on its
+way in and back to a percent for display. A record
 of what was *asked for*, rather than of what took effect, would diverge from
 the run the first time the two differed. The core rejects an out-of-range
 setting rather than clamping it precisely so that the two cannot differ
