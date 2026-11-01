@@ -3,11 +3,13 @@ id: PL-GDS2
 title: tests/integration/test_sevo_controller.py's two replay tests are still named for the recorded history PL-2FM6 deleted, while comparing run_segments and the snapshot
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test, docs
 feature: numerical-domain
-touches: tests/integration/test_sevo_controller.py
+touches: tests/integration/test_sevo_controller.py, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-11-01
+pr: 1909
 verify: ! grep -qE 'def test_.*recorded_histor|def test_.*replay' tests/integration/test_sevo_controller.py && uv run pytest tests/integration/test_sevo_controller.py
 ---
 

@@ -1349,6 +1349,80 @@ plausible number for a rate that the simulation does not exhibit.
 <!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
 <!-- derived: 20.7 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
+**The coupled system's own time constants** (`PL-JDX0`). What does describe the
+trajectory is the spectrum of the system. Set the delivered fraction to zero
+in the six concentration equations of § "Governing equations". They become
+$`d\mathbf{F}/dt = A_6\mathbf{F}`$, where $`A_6`$ is the 6×6 block of the
+matrix that `build_system_matrix` in `core/governing_equations.py` assembles,
+in the state order of that module. Every solution of the full equations is
+the level set by the delivered fraction plus a sum of six modes
+$`e^{\lambda_k t}`$, one for each eigenvalue $`\lambda_k`$ of $`A_6`$. Each
+mode's time constant is $`\tau_k = -1/\operatorname{Re}\lambda_k`$. The
+delivered fraction does not enter $`A_6`$. So the time constants depend on the
+three flows, the volumes and the partition coefficients, and on nothing else.
+The table gives them at the reference adult's default flows and at the corner
+of the supported settings, where fresh gas flow, alveolar ventilation and
+cardiac output are all at their maximums of 10, 12 and 10 L/min. The circuit
+volume is the reference circle system's 6 L in both.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12, MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
+
+| Flows (L/min): fresh gas, $`\dot V_A`$, $`Q`$ | Agent | $`\tau_1`$ (s) | $`\tau_2`$ (s) | $`\tau_3`$ (s) | $`\tau_4`$ (s) | $`\tau_5`$ (s) | $`\tau_6`$ (s) | Period of the fastest pair (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4, 4, 5 (defaults) | sevoflurane | 15.8 | 15.8 | 63.1 | 365 | 10 300 | 167 000 | 753 |
+| | isoflurane | 13.7 | 13.7 | 54.5 | 426 | 11 500 | 187 000 | 466 |
+| | desflurane | 16.6 | 16.6 | 66.1 | 264 | 6 020 | 95 500 | 1 540 |
+| 10, 12, 10 (corner) | sevoflurane | 6.89 | 6.89 | 27.2 | 161 | 4 890 | 81 300 | 398 |
+| | isoflurane | 6.02 | 6.21 | 22.4 | 190 | 5 280 | 89 500 | none |
+| | desflurane | 7.17 | 7.17 | 29.1 | 114 | 2 890 | 47 000 | 384 |
+<!-- derived: 15.8 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, venous_pool_volume_l = 1.222, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5, tissue_groups.vessel_rich.volume_l = 6, tissue_groups.vessel_rich.perfusion_fraction = 0.76, tissue_groups.muscle.volume_l = 33, tissue_groups.muscle.perfusion_fraction = 0.18, tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06 -->
+<!-- derived: 15.8 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
+<!-- derived: 15.8 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65, tissue_gas_partition_coefficients.vessel_rich = 1.1, tissue_gas_partition_coefficients.muscle = 2.4, tissue_gas_partition_coefficients.fat = 34 -->
+<!-- derived: 13.7 s from data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3, tissue_gas_partition_coefficients.vessel_rich = 2.1, tissue_gas_partition_coefficients.muscle = 4.5, tissue_gas_partition_coefficients.fat = 70 -->
+<!-- derived: 16.6 s from data/agents/desflurane.json blood_gas_partition_coefficient = 0.42, tissue_gas_partition_coefficients.vessel_rich = 0.54, tissue_gas_partition_coefficients.muscle = 0.97, tissue_gas_partition_coefficients.fat = 13 -->
+
+Three things follow from the table.
+
+- **The fastest mode is 13.7 to 16.6 s at the default flows, and 6.02 to
+  7.17 s at the corner.** The corner is not where the model is fastest,
+  though. A sweep of all three flows, on a grid of 11 fresh gas flows, 13
+  ventilations and 21 cardiac outputs for each agent, refined along cardiac
+  output, found the fastest mode anywhere in the supported settings to be
+  5.83 s. That is isoflurane at 10 L/min of fresh gas, 12 L/min of
+  ventilation and 9.32 L/min of cardiac output, where its complex pair splits
+  into the two real modes of the corner row. For sevoflurane and desflurane
+  the fastest mode is at the corner. No change in the model is faster than
+  5.83 s. § "Supported simulation step" compares the step with it.
+- **The slowest mode is the fat mode, at 47 000 s (13 hours) to 187 000 s
+  (52 hours).** The ratio of the slowest to the fastest time constant is
+  between about 5 700 and 14 900, so the system is stiff. An explicit method
+  must keep its step short against the fastest mode to stay stable, while a
+  run lasts long enough for the slowest mode to matter. The exact propagator
+  of § "Selected method (as implemented)" has no stability limit.
+- **In five of the six rows, the two fastest modes are one complex
+  conjugate pair, so they share a time constant.** A matrix whose
+  off-diagonal entries are all nonnegative can still have complex
+  eigenvalues when its compartments exchange agent around a loop. Here gas
+  moves both ways between the circuit and the alveoli, and blood carries
+  agent from the alveoli through the tissues and back. The oscillation this
+  allows cannot be seen. Its period is 384 to 1 540 s, and over half a period
+  the pair decays by a factor of at least $`e^{17}`$, about $`2.5\times10^{7}`$.
+  At the corner, isoflurane's two fastest modes are real and distinct.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+
+`test_modal_time_constants_are_the_pinned_ones` in
+`tests/reference/test_coupled_dynamics.py` recomputes every figure in the
+table from that module's independent transcription of the equations. It fails
+when a change to a parameter file or to the equations moves any of them, and
+its message says to re-derive this table. On 2026-11-01 the eigenvalues of
+the matrix that `build_system_matrix` assembles agreed with those figures to
+within 3e-15 relative. The table was first measured on 2026-09-05, from a
+transcription of the equations. Since then, the venous pool's volume has moved
+from 1.0 L to 1.222 L (`PL-8ZJQ`). That change merged the two fastest modes,
+then 12.7 and 15.9 s for sevoflurane at the default flows, into the complex
+pair above.
+<!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
+
 The pulmonary uptake rate is:
 
 $$
@@ -2000,6 +2074,18 @@ tenth of a second. At 10 s, a change made and reversed inside one step never
 happened at all.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
+**The physical timescale beside the step** (`PL-JDX0`). The fastest mode of the
+coupled system anywhere in the supported settings has a time constant of
+5.83 s, for isoflurane at the widest fresh gas flow and ventilation and a
+cardiac output of 9.32 L/min. At the default flows it is 13.7 to 16.6 s
+(§ "Alveolar gas"). The 0.1 s step is about a sixtieth of the fastest. That
+ratio is not an accuracy condition, because the exact step has none. It is why
+a control change that lands one step late moves the states so little. In one
+step, the fastest mode closes about 1.7% of its remaining gap, because
+$`1 - e^{-0.1/5.83} = 0.0170`$. It also means that a chart sampled once per
+step sees every mode the model has.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
 **Re-derived 2026-09-06 (`PL-X9KD`), and the honest result is that this is a
 declared tolerance rather than a derived limit.** The search for a limit was
 run first, and it found none. The step was swept from $`10^{-3}`$ s to
@@ -2171,6 +2257,30 @@ Three things follow, and the third is why the behaviour was left alone.
 
 The largest supported step and the shipped step are the same number, and the
 interface runs at it.
+
+**A caller that wants a duration rather than a step asks the run's
+definition** (`PL-10MX`). A step longer than the ceiling cannot be built:
+`SimulationStep(30.0)` raises a `SimulationConfigurationError`, so no call to
+`advance()` can ask for 30 s. That refusal no longer protects accuracy,
+because the exact step is exact over any interval.
+It protects the control timeline: a run taken in steps is one the interface
+could have produced, with each setting held for whole steps. A caller that
+wants the state after 30 s, or after an hour, of settings it does not change
+needs no steps at all. It builds a `RunDefinition` from the system's
+`equation_settings()` and `state_vector()`, with `opened_at_s` set to the
+instant the system has reached, which is `SimulationState.elapsed_s` for a
+run already under way. It then moves the definition with `advance_to` and
+reads `state_at`. The opening instant is required, with no default, so that a
+run partway through a case cannot be opened at zero by mistake. `state_at`
+forms one matrix exponential over the whole interval (§ "The canonical
+evaluation rule"), in place of 300 or 36 000 steps.
+`test_state_at_matches_a_stepped_run` in `tests/unit/test_run_definition.py`
+holds the two routes to the same answer. The application builds its
+predictions this way. No method on `SimulationState` takes steps in a loop on
+a caller's behalf, because no caller in `src/` needs one. The run loop takes a
+whole number of steps per tick, and the loops over `advance` that remain are
+helpers in the tests that drive the controller step by step, as the
+interface does.
 
 **The floor.** `MINIMUM_SIMULATION_STEP_S` is 1 ms. It is the one bound on the
 step that is numerical (`PL-YZ17`, 2026-10-03). Before that change, any
@@ -2572,6 +2682,38 @@ fraction back to 1 instead would hide an error of this size rather than
 bound it.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+
+**Neither shorter propagators nor a method with fewer squarings would shrink
+it, so the display path keeps its method** (`PL-81Q2`, 2026-11-01). Two
+remedies were measured at that corner over the window's 1464.4 s column
+spacing, against the same 50-digit reference, with no fresh gas:
+
+- **Capping the interval does not help.** One propagator over 1464.4 s needs
+  32 squarings, and its worst entry was off by 6.0e-7. Building the same
+  interval from propagators over 100 s, 10 s or 1 s needs 28, 25 or 22
+  squarings each, and the product was off by 5.9e-7, 5.8e-7 and 5.8e-7. Each
+  shorter propagator carries a smaller error, but more of them are multiplied
+  together. That is what "What it costs" in `core/matrix_exponential.py`
+  predicts: the bound grows with the interval times the fastest rate, however
+  the interval is divided.
+- **A method that chooses fewer squarings cannot choose many fewer here.**
+  Al-Mohy and Higham's algorithm saves squarings when a matrix's norm is much
+  larger than its spectral radius. Here they are close: the 1-norm of the
+  system matrix is 1.83e5 /s, and its spectral radius is 1.67e5 /s. Scaling
+  the spectral radius times 1464.4 s down to the degree-13 Padé
+  approximant's threshold of 5.37 still takes 26 squarings. It would
+  also give up the shift that makes the propagator nonnegative in floating
+  point, which every compartment's guard relies on (Al-Mohy AH, Higham NJ. A
+  new scaling and squaring algorithm for the matrix exponential. SIAM J Matrix
+  Anal Appl 2009;31(3):970-989. doi:10.1137/09074721X; read from its abstract).
+<!-- not-restated: 1 s -->
+
+No run in the application reaches that window anyway. A stepped run at the
+stiffest corners halts on the mass-balance check within a few dozen steps, as
+the paragraph on stepped runs below shows, so its chart never spans 24 hours.
+The excess, 3.3e-5 of an atmosphere, is also less than half of one displayed
+count, which is 1e-4 at two decimals of a percent.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
@@ -4660,6 +4802,32 @@ The gate therefore drives five kinds of run:
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 <!-- not-restated: 5 % -->
 
+**Trajectories that nobody wrote by hand (`PL-ZLNN`).** The five runs above
+change their settings once or never, at moments chosen by their author. A
+learner moves four sliders again and again, in combinations that nobody
+listed. So the gate also drives three randomised trajectories for each agent,
+each fixed by a seed so that a failure reproduces exactly. Each lasts 600 s
+and starts empty at a random point in the settings envelope. Every 0.1 to
+20 s, at a step boundary, each control moves with probability one half to a
+random supported value, and at least one always moves. One move in five lands
+exactly on a limit of its range, so zero ventilation, zero perfusion and zero
+fresh gas flow are all reached. These runs are held to the same oracle and the
+same 4e-13 bound as the five above. Their worst figure, measured on 2026-11-01
+at the shipped step, is 1.10e-14, for desflurane in the vessel-rich fraction.
+That is below the worst of the five hand-written runs, as an exact step
+predicts: a run that turns 48 to 64 times takes as many steps as one that
+never turns, so it accumulates as much rounding and no more.
+`test_randomised_control_trajectories_keep_every_invariant` drives the same
+runs through `SimulationState`. It checks that no step raises, that the agent
+accounting passes after every step, and that the state counts every step
+taken. It also checks that each of the six fractions stays finite, at or
+above zero, and at or below the highest fraction delivered so far. Every
+compartment is fed only from the others and from the vaporizer, so no
+compartment can hold agent at a higher fraction than was ever delivered. A
+looser bound of 1 would pass a model change that drove a compartment to
+several times the dial setting.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
 In every case the maximum is taken over the whole trajectory rather than at
 an endpoint, because the worst disagreement does not sit at one predictable
 instant. Under the operator split it always lay inside a transient: at about
@@ -6137,9 +6305,9 @@ tested as one. The test uses the rates that the interface actually offers, not
 invented burst sizes. So a rate added to that ladder is covered on the day it
 is added.
 
-Held by `test_identical_runs_produce_identical_snapshots_and_history`,
-`test_a_run_records_the_same_history_however_the_ticks_fell` and
-`test_the_recorded_history_is_identical_at_every_playback_rate` in
+Held by `test_identical_runs_produce_identical_snapshots`,
+`test_a_run_reaches_the_same_definition_however_the_ticks_fell` and
+`test_a_run_reaches_the_same_definition_at_every_playback_rate` in
 `tests/integration/test_sevo_controller.py`.
 
 ### Canonical evaluation test

@@ -3,12 +3,14 @@ id: PL-ZLNN
 title: No test drives a trajectory where several controls change at moments nobody scripted
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: numerical-domain
-touches: tests/reference/test_coupled_dynamics.py
+touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-09-03
-verify: grep -q 'def test_a_randomised_trajectory_stays_conservative_and_in_range' tests/reference/test_coupled_dynamics.py && uv run pytest 'tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one'
+closed: 2026-11-01
+pr: 1909
+verify: grep -q 'def test_randomised_control_trajectories_keep_every_invariant' tests/reference/test_coupled_dynamics.py && grep -q 'def test_exact_step_matches_the_independent_solution_on_randomised_trajectories' tests/reference/test_coupled_dynamics.py
 ---
 
 **Problem.** Every gate in `tests/reference/` drives a fixed script. The
@@ -94,3 +96,17 @@ What it should be re-pointed at is the guard's *new* role, which
 `docs/MODEL.md` § "Supported simulation step" now states: cover for a model
 extension whose matrix is not a pure transfer system, rather than for a caller
 stepping too coarsely.
+
+**Done 2026-11-01.** Three seeded randomised trajectories per agent, 600 s
+each, with a control moved every 0.1 to 20 s and one move in five landing on
+a range limit. Two tests drive them. One checks the invariants this brief
+asked for through `SimulationState`: no raise, accounting passes after every
+step, and the state counts every step taken. It holds each fraction to a
+tighter range than [0, 1]: from zero to the highest fraction delivered so
+far, which no compartment can exceed (a blind review's finding; [0, 1] would
+pass a compartment driven to several times the dial). The other holds them to the independent oracle at the same 4e-13
+bound as the five gate trajectories, because conservation cannot see a wrong
+rate. Worst disagreement 1.0977e-14, below the gate trajectories' 1.5786e-14.
+The trade between Hypothesis and a seeded `random.Random` is recorded beside
+`RANDOMISED_TRAJECTORY_SEEDS`. The two tests take about 0.9 s per pair of
+agent and seed.

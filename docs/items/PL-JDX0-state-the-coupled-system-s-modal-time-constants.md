@@ -3,12 +3,14 @@ id: PL-JDX0
 title: State the coupled system's modal time constants in docs/MODEL.md, so the timescales the model resolves are readable
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: numerical-domain
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-09-05
-verify: grep -qF 'Modal time constants' docs/MODEL.md && python3 tools/doc_check.py check
+closed: 2026-11-01
+pr: 1909
+verify: grep -qF 'test_modal_time_constants_are_the_pinned_ones' docs/MODEL.md && grep -q 'def test_modal_time_constants_are_the_pinned_ones' tests/reference/test_coupled_dynamics.py
 ---
 
 **Problem.** `docs/MODEL.md` states two single-mechanism time constants under
@@ -68,3 +70,31 @@ physical timescale the step resolves.
 exact matrix exponential) but cheaper after it: that item assembles this very
 matrix in `core/`, so the table can then be generated from shipped code rather
 than from a transcription. Worth doing either way — the numbers do not move.
+
+**Done 2026-11-01, and the table moved since the brief measured it.** The
+figures were recomputed from the oracle's transcription of the equations in
+`tests/reference/test_coupled_dynamics.py`, by taking the eigenvalues of the
+6×6 block with numpy. The eigenvalues of the 6×6 block that
+`build_system_matrix` assembles agree with them to within 3e-15 relative. The
+venous pool moved from 1.0 L to 1.222 L on 2026-09-07 (`PL-8ZJQ`), two days
+after the brief's measurement. That merged sevoflurane's two fastest modes at
+the default flows, 12.73 and 15.86 s, into one complex pair at 15.82 s. In
+five of the six rows the fastest two modes are now a complex pair. Its period
+is 384 to 1 540 s, so the oscillation is invisible. `docs/MODEL.md` says so
+beside the table. The brief's isoflurane figures at the defaults, 12.12 and
+12.66 s, were already a complex pair at 12.39 s with the old pool. A QR
+iteration without complex shifts reports a pair like that as two nearby real
+values, which may explain them.
+
+`test_modal_time_constants_are_the_pinned_ones` pins the table to five
+figures, so a parameter change that moves a printed figure fails there as
+well as in `tools/doc_check.py`'s `derived:` markers.
+
+**The fastest mode is not at the corner (found by blind review, 2026-11-01).**
+Both review passes found that isoflurane's fastest time constant falls to
+5.83 s at 10 L/min of fresh gas, 12 L/min of ventilation and 9.32 L/min of
+cardiac output, below the corner's 6.02 s, where its complex pair splits. A
+grid sweep of all three flows (11 × 13 × 21 per agent, refined along cardiac
+output) confirmed it, and found the corner fastest for the other two agents.
+`docs/MODEL.md` now states 5.83 s as the fastest anywhere in the supported
+settings, and § "Supported simulation step" uses it.
