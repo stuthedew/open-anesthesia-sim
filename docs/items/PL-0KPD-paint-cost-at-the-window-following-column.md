@@ -3,12 +3,14 @@ id: PL-0KPD
 title: Paint cost at the window-following column budget is unmeasured: extrapolating the owner's 6.7 us per drawn point from one 3 204-point reading puts two compared runs on a 3 840 px plot at about 207 ms, past the 200 ms render interval, and only the owner's hardware can measure it (found closing PL-PGZF)
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: perf
 feature: chart-readout
 touches: docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the cut, classed perf rather than safety or science, and no entry on the list waits on it
 added: 2026-10-18
+closed: 2026-11-01
+reason: Not worth measuring (project owner, 2026-11-01, ratified, over running the timing table on the owner's Mac and over keeping it open off the gate). The 207 ms figure is an extrapolation from one 2026-09-10 reading, 7 ms past the 200 ms render interval, in the most extreme layout only. Its worst case is a slight stutter the owner would see without instruments, no value is wrong because simulation time is explicit state, and paint time on one Mac says nothing about a learner's machine.
 payoff: the owner knows whether comparing two runs on a wide display keeps each frame inside the 200 ms render interval, rather than relying on one extrapolated reading
 verify: grep -qF 'paint measured at the window-following budget' docs/WORKING_NOTES.md
 ---
@@ -48,3 +50,11 @@ A recorded "it fits" closes this as legitimately as a fix would.
 following the window, not a misread fact.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `docs/WORKING_NOTES.md` holds the read's figures under "The read measured at the window-following budget" and no paint figure, and `RENDER_INTERVAL_S` is still 0.2 s. Only the owner's machine can take the measurement.
+
+**Dropped 2026-11-01 (project owner, ratified, on a thread decision card).** The owner asked what the timing table would realistically give. The session's answer, which the owner accepted over running the table or keeping the item open off the gate:
+
+- The 207 ms figure is an extrapolation from a single reading, and it is only 7 ms past the 200 ms render interval, in the most extreme layout: two compared runs on a 3 840 px plot.
+- The worst case is a chart and readouts that update a little less than five times a second in that layout. Simulation time is explicit state, so no value would be wrong and no run would drift. The owner would see the stutter without a measurement.
+- Paint time depends on the graphics hardware, the pixel ratio and the display, so a figure from the owner's Mac would not describe a learner's machine.
+
+A measurement that holds on any machine would be a frame timer inside the application that notes a late frame. That is a different item, and nobody has asked for it. The script written for this item stays in `/mnt/project-files/v0.7.0/pl-0kpd/run-on-mac.md` and is not committed.
