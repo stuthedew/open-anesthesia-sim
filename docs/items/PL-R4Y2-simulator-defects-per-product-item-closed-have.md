@@ -3,10 +3,11 @@ id: PL-R4Y2
 title: Simulator defects per product item closed have stayed at about 0.7 to 0.8 a week while apparatus defects fell, and a recorded head explains only 16% of product defects: run the generator question over the open product defects, starting with stale state after a halt
 priority: P2
 effort: L
-status: ready
+status: blocked
 classes: housekeeping
 feature: defect-review-2026-10
 touches: docs/items, ROADMAP.md
+blocked-by: 2026-11-02
 added: 2026-10-19
 payoff: the stale-state defects a learner can see get their root cause fixed once, instead of each one being found and patched separately
 verify: grep -qE '^\*\*Re-measured\.' docs/items/PL-R4Y2-*.md

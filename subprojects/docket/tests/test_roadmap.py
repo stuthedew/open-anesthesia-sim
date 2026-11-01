@@ -2133,6 +2133,19 @@ def test_a_prerequisite_standing_behind_another_prerequisite_is_counted() -> Non
     assert "1 waiting on 3 open items outside it" in format_wave(plan)
 
 
+def test_a_date_a_gate_entry_waits_on_is_not_counted_as_an_open_item() -> None:
+    """`PL-XNF3`: a date in `blocked-by` is not work anybody can pick up, so it
+    is named apart, as a milestone is, rather than counted as one more item."""
+    blockers = {"PL-KLMN": ("PL-8888", "2026-11-02")}
+    plan = _wave("0.3.0", blockers=blockers, known=KNOWN | {"PL-8888"})
+    gate = plan.gate
+
+    assert gate is not None
+    assert gate.outside_items == ("PL-8888",)
+    assert gate.outside_dates == ("2026-11-02",)
+    assert "1 waiting on the date 2026-11-02 and 1 open item outside it" in format_wave(plan)
+
+
 def test_a_cycle_among_prerequisites_is_counted_once_rather_than_forever() -> None:
     """Two items waiting on each other. The walk has to stop, and stopping is
     not a nicety: `_plan` declines on `OSError`, `ValueError` and `KeyError`,

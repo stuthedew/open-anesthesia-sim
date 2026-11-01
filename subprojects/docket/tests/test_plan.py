@@ -1825,6 +1825,16 @@ def test_an_item_whose_every_blocker_has_closed_is_reported_promotable() -> None
     assert [i.identifier for i in promotable([closed, waiting])] == ["PL-2222"]
 
 
+def test_an_item_naming_a_date_is_never_promotable() -> None:
+    """`PL-XNF3`: a date arrives with no closure, and `promotable` is given no
+    day, so the date is `checks._groom`'s advisory and never this error."""
+    closed = _item("PL-1111", status="done")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111", "2026-11-02"))
+    date_only = _item("PL-3333", status="blocked", blocked_by=("2026-11-02",))
+
+    assert promotable([closed, waiting, date_only]) == []
+
+
 def test_a_dropped_blocker_counts_as_closed_like_a_done_one() -> None:
     """`dropped` sits beside `done` in `CLOSED_STATUSES`, and an item dropped
     with a reason is as finished as one that was built."""
