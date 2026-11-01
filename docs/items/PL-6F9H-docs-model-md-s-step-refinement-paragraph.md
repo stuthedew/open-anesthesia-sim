@@ -3,11 +3,13 @@ id: PL-6F9H
 title: docs/MODEL.md's step-refinement paragraph reports the measured gap across four values, and test_step_refinement_converges reads three
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, test
 feature: invariant-test-gaps
 touches: docs/MODEL.md, tests/reference/test_sevo_patient.py
 added: 2026-09-19
+closed: 2026-11-01
+pr: 1913
 verify: grep -q 'successive-halving gap across the three' docs/MODEL.md
 ---
 
@@ -48,3 +50,17 @@ an earlier four-step list would have given three gaps, so "four" may be a stale
 *step* count rather than a stale value count. Whoever takes this reads the
 git history of the paragraph before rewriting it, and repoints `verify:` if the
 answer turns out to be the other route.
+
+**Resolution, 2026-11-01.** The narrowing route. Git history settles it: the
+"four reported values" sentence entered with `#376` (`d8deea50b`, 2026-09-05),
+and `_states_after_one_minute` already returned the same three fractions in
+that commit, so the fourth value was never in the test and no record names it.
+`docs/MODEL.md` now names the three compared values and gives a fresh
+measurement on them: 3.4e-16 worst gap, in the alveolar fraction (gaps
+1.4e-16 and 3.4e-16 alveolar, 3.1e-17 and 7.6e-17 vessel rich, 8.9e-18 and
+3.2e-17 mixed venous). It keeps the 2026-09-06 figure of 8.1e-16 as the basis
+on which the 1e-14 bound was sized, and says the fourth value is unnamed. The
+test's comment says the same. The comment's old claim that the two gaps for a
+value sit within a factor of two no longer held (mixed venous is 3.5 times),
+so it now says the finer run's gap is the larger, because rounding accumulates
+once per step.

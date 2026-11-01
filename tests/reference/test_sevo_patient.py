@@ -58,13 +58,17 @@ STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 # How far apart two supported steps may leave a fraction after 60 s.
 #
 # With the exact step, this gap is set by floating-point rounding rather than
-# by a method error. Measured 2026-09-06, the worst gap between successive
-# halvings across all four reported values is 8.1e-16, in the alveolar
-# fraction. The two gaps for a given value sit within a factor of two of each
-# other rather than halving. This bound allows about twelve times the worst
-# measured gap. That leaves room for another machine's rounding, and it is
-# still four orders of magnitude below the 1.4e-11 that a genuinely
-# first-order method would show at these steps.
+# by a method error. The bound was sized on 2026-09-06 at about twelve times
+# the worst gap measured then, 8.1e-16 in the alveolar fraction. That
+# measurement reported four values, and no record names the fourth: this test
+# has compared the same three fractions since the exact step landed (#376).
+# Measured again 2026-11-01 on the three compared fractions, the worst gap is
+# 3.4e-16, in the alveolar fraction, so the bound now allows about thirty
+# times it. The second gap for each fraction is larger than the first rather
+# than half of it, because the finer run takes more steps and rounding
+# accumulates once per step. The bound leaves room for another machine's
+# rounding, and it is still four orders of magnitude below the 1.4e-11 that a
+# genuinely first-order method would show at these steps.
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
 # How far the smallest supported step (the floor) may leave a fraction from
@@ -74,8 +78,8 @@ STEP_REFINEMENT_SETTLED_GAP = 1e-14
 # in 60 000 steps rather than at most 2 400, and the residual is rounding
 # accumulated once per step. Measured 2026-10-03, the gap is 2.4e-15 in the
 # alveolar fraction, 3.6e-16 in vessel rich and 2.5e-16 in mixed venous. This
-# bound allows about twelve times the worst, the same margin that the gap above
-# allows. It is still more than nine orders of magnitude below one count of the
+# bound allows about twelve times the worst, the margin at which the gap
+# above was sized. It is still more than nine orders of magnitude below one count of the
 # last displayed digit, 1e-4. The gap depends on how the propagator rounds at
 # that one step, and it does not vary smoothly with the step: steps near 1 ms
 # reach 1.2e-14. So on a machine that rounds differently, the margin is nearer
@@ -270,20 +274,51 @@ def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fracti
     assert lower_output.agent_simulation_validation.passes_validation is True
 
 
-def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
+def _alveolar_to_inspired_ratio(system: AgentUptakeSystem) -> float:
+    """Return F_A / F_I, the ratio the wash-in curve plots."""
+
+    return (
+        system.alveoli.partial_pressure_fraction / system.circuit.inspired_partial_pressure_fraction
+    )
+
+
+def test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster() -> None:
+    """Higher alveolar ventilation must bring F_A toward F_I faster.
+
+    Required test from docs/MODEL.md § "Directional ventilation test". Two
+    default sevoflurane wash-ins run side by side at 2 and 8 L/min of
+    alveolar ventilation. At every whole second of the first minute, F_A / F_I
+    must be the higher at 8 L/min.
+
+    The test compares the ratio rather than F_A alone because the circle
+    system rebreathes. More ventilation carries more agent into the patient,
+    so the circuit's inspired fraction F_I rises more slowly at 8 L/min than
+    at 2 L/min (measured 2026-11-01: 0.0047 against 0.0053 at 30 s). A higher
+    F_A alone therefore does not show that F_A is closer to F_I. The ratio
+    does. The final assertion keeps the older and weaker claim, that F_A
+    itself is higher at 30 s, because a learner reading the F_A trace sees
+    that too.
+    """
+
     lower_ventilation = AgentUptakeSystem.default()
     higher_ventilation = AgentUptakeSystem.default()
 
     lower_ventilation.set_alveolar_ventilation(AlveolarVentilation(2.0))
     higher_ventilation.set_alveolar_ventilation(AlveolarVentilation(8.0))
 
-    _run_for(lower_ventilation, duration_s=30.0, simulation_step_s=0.1)
-    _run_for(higher_ventilation, duration_s=30.0, simulation_step_s=0.1)
+    for elapsed_s in range(1, 61):
+        _run_for(lower_ventilation, duration_s=1.0, simulation_step_s=0.1)
+        _run_for(higher_ventilation, duration_s=1.0, simulation_step_s=0.1)
 
-    assert (
-        higher_ventilation.alveoli.partial_pressure_fraction
-        > lower_ventilation.alveoli.partial_pressure_fraction
-    )
+        assert _alveolar_to_inspired_ratio(higher_ventilation) > _alveolar_to_inspired_ratio(
+            lower_ventilation
+        ), f"F_A/F_I at 8 L/min is not ahead of 2 L/min at {elapsed_s} s"
+
+        if elapsed_s == 30:
+            assert (
+                higher_ventilation.alveoli.partial_pressure_fraction
+                > lower_ventilation.alveoli.partial_pressure_fraction
+            )
 
 
 def _states_after_one_minute(simulation_step_s: float) -> dict[str, float]:
