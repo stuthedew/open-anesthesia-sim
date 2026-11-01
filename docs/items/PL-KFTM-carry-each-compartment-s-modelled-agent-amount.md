@@ -39,3 +39,5 @@ the snapshot's stale-state guarantees.
 test passes, and `docs/ARCHITECTURE.md` describes the record.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `SimulationSnapshot` carries the six tensions and `stored_agent_l`, and no single compartment's amount. One thing to weigh before building: `core/` already sums the same six amounts in `AgentUptakeSystem.total_stored_agent_l`, which the accounting check reads. Summing the records again in `app/`, as Required scope entry 2 asks, writes a second sum of one fact, so the test should at least hold the two equal.
+
+**What `PL-2881` settled for this build, 2026-11-01.** `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and share bar assert" reads each amount from the snapshot's per-compartment record, and the share bar divides by `stored_agent_l`. So the record and the total must agree exactly, which the unit test above already requires.

@@ -184,7 +184,9 @@ class AgentAmount(Enum):
         STORED: The agent a run holds in the circuit and the body. The
             accounting panel shows it.
         COMPARTMENT: One compartment's amount, which the compartment schematic
-            labels. `PL-2881` derives its precision. Until then, this amount has
+            labels. `docs/MODEL.md` § "Displayed precision" derives two
+            significant figures for it (`PL-2881`), which a count of decimals
+            cannot express. Until `PL-RNYV` builds that form, this amount has
             no entry in any unit, so formatting it is refused.
     """
 
@@ -198,8 +200,9 @@ class AgentAmountUnit(Enum):
     """The unit that an agent amount is shown in, used as a key of the precision table.
 
     A member identifies a unit but does not say how the unit is written.
-    `PL-2881` will decide how each unit is written beside a value, and those
-    spellings will be `DisplayUnit` members. Every member names whether it
+    `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert" sets the spellings, "mL vapour" and "mL liquid
+    equiv.", and the Views that first print them add them to `DisplayUnit`. Every member names whether it
     measures vapour or liquid. About 183 mL of sevoflurane vapour come from
     1 mL of liquid, so a bare "mL" cannot say which is meant.
 
@@ -243,7 +246,8 @@ class AgentAmountUnit(Enum):
 # refused rather than shown at a default precision. The stored total has no
 # liquid entry, because a store converted to liquid comes out 5.8% too high.
 # That error is more than 1 mL once the store holds about 17 mL of liquid. A
-# compartment's amount has no entry until `PL-2881` derives one. Money has no
+# compartment's amount has no entry, because `PL-2881` derived two significant
+# figures for it, not a count of decimals. `PL-RNYV` builds that form. Money has no
 # entry here, because the resolution of a cost depends on the price that the
 # reader sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1

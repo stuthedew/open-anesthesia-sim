@@ -1693,8 +1693,10 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
     """An amount in a unit with no derivation fails loudly.
 
     It is never formatted at a default precision (`PL-0S0V`). A compartment's
-    amount has no entry in any unit until `PL-2881` derives one. The table must
-    not lend it the litre precision of the run totals. At 0.1 L, venous blood
+    amount has no entry in any unit. `PL-2881` derived two significant figures
+    for it, which a count of decimals cannot hold, and `PL-RNYV` builds that
+    form. Until then the table must not lend it the litre precision of the run
+    totals. At 0.1 L, venous blood
     and the alveoli would show below resolution for a whole hour. The stored
     total has no liquid entry, because a store converted to liquid comes out
     5.8% too high (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid,
