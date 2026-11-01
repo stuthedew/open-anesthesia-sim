@@ -36,6 +36,8 @@ from docket.vcs import (
     BranchCut,
     BranchState,
     CarriedCommit,
+    FailingPullRequest,
+    FailingPullRequests,
     Fetch,
     FilingCommit,
     FlightFiles,
@@ -84,6 +86,7 @@ from docket.vcs import (
     cuts_in_flight,
     default_base,
     default_branch,
+    failing_pull_requests,
     fetch_remote,
     filed_with_work,
     files_in_flight,
@@ -3750,6 +3753,113 @@ def test_unread_remotes_decline_rather_than_reading_every_branch_as_none_open() 
 
     assert not found.asked
     assert found.declined
+
+
+def _failing(*entries: FailingPullRequest) -> FailingPullRequests:
+    return FailingPullRequests(failing=entries, asked=True)
+
+
+STUCK = FailingPullRequest("claude/stuck", 1845, "'checks'", ("origin/claude/stuck",))
+
+
+def test_flight_names_an_armed_pull_request_whose_required_check_failed() -> None:
+    """`PL-0T8L`: `#1845` sat red for about 24 hours while its row read "open"."""
+    from docket.render import FAILING_MEANS, format_flight
+
+    report = _carrying(Branch("origin/claude/stuck", "PL-0T8L", READ_AT - timedelta(hours=24)))
+    reviews = OpenPullRequests(numbers={"origin/claude/stuck": 1845}, asked=True)
+
+    printed = format_flight(report, READ_AT, None, reviews, failures=_failing(STUCK))
+
+    assert printed.splitlines()[2].endswith(
+        "last commit 1 day ago  pull request #1845 armed, required check failed: 'checks'"
+    )
+    assert "#1845 open" not in printed
+    assert FAILING_MEANS in printed
+    # Checks that did not fail leave the row as it was, and add nothing.
+    passing = format_flight(
+        report, READ_AT, None, reviews, failures=FailingPullRequests(asked=True)
+    )
+    assert passing.splitlines()[2].endswith("pull request #1845 open")
+    assert FAILING_MEANS not in passing
+
+
+def test_an_armed_pull_request_failing_on_a_branch_no_row_names_is_listed_apart() -> None:
+    """A stuck pull request whose branch carries no item is still named, not dropped."""
+    from docket.render import format_flight
+
+    report = _carrying(Branch("origin/claude/working", "PL-VV16", READ_AT))
+    failing = _failing(FailingPullRequest("claude/housekeeping", 1900, "'pr-title'"))
+
+    printed = format_flight(report, READ_AT, failures=failing)
+
+    assert "1 armed pull request on a branch that no row above names:" in printed
+    assert (
+        "  claude/housekeeping  pull request #1900 armed, required check failed: 'pr-title'"
+        in printed
+    )
+
+
+def test_an_armed_pull_request_whose_checks_could_not_be_read_is_not_called_passing() -> None:
+    """Once a row can say "failed", a row saying "open" claims the checks passed."""
+    from docket.render import FAILING_UNREAD, format_flight
+
+    report = _carrying(Branch("origin/claude/working", "PL-VV16", READ_AT))
+
+    assert FAILING_UNREAD in format_flight(report, READ_AT, failures=FailingPullRequests())
+    # No command configured asks nothing, and claims nothing about checks.
+    assert FAILING_UNREAD not in format_flight(report, READ_AT)
+
+
+def test_an_armed_pull_request_is_matched_to_the_tracking_ref_of_its_branch() -> None:
+    report = _carrying(
+        Branch("origin/claude/stuck", "PL-0T8L"), Branch("origin/claude/fine", "PL-VV16")
+    )
+    answer = {"claude/stuck": (1845, "'checks'"), "claude/elsewhere": (1900, "")}
+
+    found = failing_pull_requests(
+        ROOT, report, failing=lambda: answer, runner=_remotes_only("origin")
+    )
+
+    assert found.asked
+    assert dict(found.by_ref()) == {"origin/claude/stuck": STUCK}
+    assert [entry.branch for entry in found.failing if not entry.refs] == ["claude/elsewhere"]
+
+
+def test_an_armed_pull_request_lookup_that_could_not_look_is_not_read_as_none_failing() -> None:
+    report = _carrying(Branch("origin/claude/stuck", "PL-0T8L"))
+
+    def silent(args: list[str], root: Path) -> str:
+        return SILENT
+
+    refused = failing_pull_requests(
+        ROOT, report, failing=lambda: None, runner=_remotes_only("origin")
+    )
+    unmatched = failing_pull_requests(
+        ROOT, report, failing=lambda: {"claude/stuck": (1845, "")}, runner=silent
+    )
+
+    assert not refused.asked
+    assert not unmatched.asked
+
+
+def test_the_digest_names_an_armed_pull_request_whose_required_check_failed() -> None:
+    """The digest asks the forge this one question, and speaks only when it must."""
+    from docket.render import DIGEST_FAILING_UNREAD, format_digest
+
+    stuck = Branch("origin/claude/stuck", "PL-K7QX", READ_AT - timedelta(hours=24))
+    flight = FlightReport(branches=(stuck,), base=BASE)
+
+    lines = format_digest(_store(), flight, now=READ_AT, failures=_failing(STUCK)).splitlines()
+    quiet = format_digest(_store(), flight, now=READ_AT, failures=FailingPullRequests(asked=True))
+    unread = format_digest(_store(), flight, now=READ_AT, failures=FailingPullRequests())
+
+    assert (
+        "  Pull request #1845 on claude/stuck, which carries PL-K7QX, is armed, but a required "
+        "check failed: 'checks'. It will not merge until the check passes."
+    ) in lines
+    assert "required check" not in quiet
+    assert DIGEST_FAILING_UNREAD in unread
 
 
 # `change_landed`, the one test of whether the base already holds a change

@@ -29,6 +29,7 @@ import urllib.request
 
 import open_pull_requests
 import pytest
+import required_checks_check
 
 TOKEN = "gh-token-for-the-test"
 
@@ -498,3 +499,111 @@ def test_the_open_draft_command_prints_the_number_or_exits_one_with_the_reason(
     said = capsys.readouterr()
     assert said.out == ""
     assert "no GH_TOKEN or GITHUB_TOKEN" in said.err
+
+
+def _armed(number: int, head: str, sha: str, *, armed: bool = True) -> dict:
+    return {
+        "number": number,
+        "title": "PL-K7QX: a thing",
+        "head": {"ref": head, "sha": sha},
+        "base": {"ref": "main"},
+        "auto_merge": {"merge_method": "squash"} if armed else None,
+    }
+
+
+def _runs(*runs: tuple[str, str | None], total: int | None = None) -> dict:
+    listed = [{"name": name, "status": "completed", "conclusion": end} for name, end in runs]
+    return {"total_count": len(listed) if total is None else total, "check_runs": listed}
+
+
+@pytest.fixture
+def _routed(monkeypatch: pytest.MonkeyPatch):
+    """Serve each URL holding a key its body, and read `required` as the base's checks."""
+
+    def serve(routes: dict[str, object], required: set[str] | None = None) -> list[str]:
+        urls: list[str] = []
+
+        def _open(request: urllib.request.Request, timeout: float = 0) -> io.BytesIO:
+            urls.append(request.full_url)
+            for part, body in routes.items():
+                if part in request.full_url:
+                    return io.BytesIO(json.dumps(body).encode())
+            raise AssertionError(f"asked for {request.full_url}")
+
+        checks = {"checks", "pr-title"} if required is None else required
+        monkeypatch.setenv("GH_TOKEN", TOKEN)
+        monkeypatch.setattr(open_pull_requests.urllib.request, "urlopen", _open)
+        monkeypatch.setattr(open_pull_requests, "repo_slug", lambda root=None: "owner/repo")
+        monkeypatch.setattr(
+            required_checks_check, "required_contexts", lambda *_: (set(checks), ["test"])
+        )
+        return urls
+
+    return serve
+
+
+def test_armed_failing_names_an_armed_pull_request_whose_required_check_failed(_routed) -> None:
+    """`PL-0T8L`. An unrequired failure holds nothing back, and an unarmed one is not read."""
+    urls = _routed(
+        {
+            "/pulls?": [
+                _armed(1845, "claude/stuck", "aaa"),
+                _armed(1846, "claude/typing", "bbb", armed=False),
+                _armed(1847, "claude/fine", "ccc"),
+            ],
+            "/commits/aaa/check-runs": _runs(("checks", "failure"), ("lint", "failure")),
+            "/commits/ccc/check-runs": _runs(("checks", "success"), ("lint", "failure")),
+        }
+    )
+
+    found = open_pull_requests.armed_failing("owner/repo")
+
+    assert found == (open_pull_requests.ArmedFailure(1845, "claude/stuck", ("checks",)),)
+    assert not any("bbb" in url for url in urls)
+
+
+def test_the_command_prints_branch_number_and_quoted_checks(
+    _routed, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _routed(
+        {
+            "/pulls?": [_armed(1845, "claude/stuck", "aaa")],
+            "/commits/aaa/check-runs": _runs(("pr-title", "failure"), ("checks", "timed_out")),
+        }
+    )
+
+    assert open_pull_requests.main(["--armed-failing"]) == 0
+    assert capsys.readouterr().out == "claude/stuck 1845 'checks', 'pr-title'\n"
+
+
+def test_an_entry_without_auto_merge_is_refused_rather_than_read_as_unarmed(_routed) -> None:
+    entry = _armed(1845, "claude/stuck", "aaa")
+    del entry["auto_merge"]
+    _routed({"/pulls?": [entry]})
+
+    with pytest.raises(open_pull_requests.ListingFailed, match="auto_merge"):
+        open_pull_requests.armed_failing("owner/repo")
+
+
+def test_no_required_check_read_is_refused_rather_than_read_as_passing(_routed) -> None:
+    """An empty set, as a token that cannot read protection gets, would pass every one."""
+    _routed({"/pulls?": [_armed(1845, "claude/stuck", "aaa")]}, required=set())
+
+    with pytest.raises(open_pull_requests.ListingFailed, match="no required check"):
+        open_pull_requests.armed_failing("owner/repo")
+
+
+def test_a_page_holding_fewer_check_runs_than_the_commit_has_is_refused() -> None:
+    with pytest.raises(open_pull_requests.ListingFailed, match="more check runs"):
+        open_pull_requests.failed_required(_runs(("checks", "success"), total=101), {"checks"})
+
+
+def test_the_command_exits_1_and_prints_nothing_where_it_could_not_ask(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda root=None: "owner/repo")
+
+    assert open_pull_requests.main(["--armed-failing"]) == 1
+    assert capsys.readouterr().out == ""

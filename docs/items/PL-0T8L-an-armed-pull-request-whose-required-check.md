@@ -3,11 +3,13 @@ id: PL-0T8L
 title: An armed pull request whose required check failed is skipped by update-armed and flagged by nothing: #1845 sat red from 19:13 CDT on 2026-10-25 for about 24 hours after its session reported nothing needed from the owner, while bin/docket flight listed it only as 'open'
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/open_pull_requests.py, tools/update_armed.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, docket.toml, docs/apparatus.md, tests/unit/test_open_pull_requests.py, tests/unit/test_update_armed.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the workflow lane, not safety or science
 added: 2026-10-27
+closed: 2026-11-01
+pr: 1907
 payoff: an approved pull request whose required check failed is named as failed where sessions look, instead of waiting a day while every report calls it open
 verify: grep -q 'def test_flight_names_an_armed_pull_request_whose_required_check_failed' subprojects/docket/tests/test_vcs.py && grep -q 'def armed_failing' tools/open_pull_requests.py
 reenters: PL-WNCT

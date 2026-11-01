@@ -10485,6 +10485,27 @@ class TestAskingTheForgeWhichBranchesAreOpen:
         assert ask is not None
         assert ask() == {"claude/one": 841, "claude/two": None}
 
+    def test_an_armed_failing_line_is_read_as_branch_number_and_checks(
+        self, tmp_path: Path
+    ) -> None:
+        """`PL-0T8L`: the rest of the line names the checks, spaces and all."""
+        config = with_fields(
+            Config(),
+            armed_failing_command="printf 'claude/one 1845 checks, pr-title\nclaude/two\n'",
+        )
+        ask = cli._armed_failing(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() == {"claude/one": (1845, "checks, pr-title"), "claude/two": (None, "")}
+
+    def test_an_armed_failing_command_that_could_not_look_answers_none(
+        self, tmp_path: Path
+    ) -> None:
+        config = with_fields(Config(), armed_failing_command="false")
+        ask = cli._armed_failing(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+        assert cli._armed_failing(self._args(no_remote=True), tmp_path, config) is None
+
     def test_a_command_that_could_not_look_answers_none(self, tmp_path: Path) -> None:
         """Exit non-zero is the contract `tools/open_pull_requests.py` holds to."""
         config = with_fields(Config(), open_pull_requests_command="false")

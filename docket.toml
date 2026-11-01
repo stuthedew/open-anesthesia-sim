@@ -657,6 +657,12 @@ newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
 # answers `unknown` on.
 auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
 
+# How `bin/docket flight` and the session-start digest ask which armed pull
+# requests have a required check that failed on their head (`PL-0T8L`).
+# Auto-merge waits on that check, so such a pull request will not merge until
+# somebody fixes it, and `flight` used to call it open.
+armed_failing_command = "python3 tools/open_pull_requests.py --armed-failing"
+
 # How `bin/docket claim` opens a draft pull request once it has pushed a claim
 # onto a branch with no pull request open (`PL-86DN`). Opened at the claim, the
 # pull request has a number before the item closes, so `bin/docket set
