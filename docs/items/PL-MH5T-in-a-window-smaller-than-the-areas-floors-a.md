@@ -3,12 +3,14 @@ id: PL-MH5T
 title: In a window smaller than the Areas' floors, a press on a border and a zero-pixel move still rewrite the stored fractions and emit layout_changed, because _drawn_position maps the pointer through settle's apportionment while Qt draws the frames at their larger minimum sizes; reproduced as root fractions (0.4026, 0.4647, 0.1328) becoming (0.4026, 0.3492, 0.2482) with the screen unchanged (found reviewing #1880)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: area-layout-sizing
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - filed after the gate froze; it needs a window smaller than every Area's floor, and it changes a layout, not a displayed value
 added: 2026-10-27
+closed: 2026-11-01
+pr: 1912
 payoff: a press on a border in a too-small window no longer rewrites the learner's saved arrangement with nothing visible changing
 verify: grep -q 'def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions' tests/integration/test_layout_adapter.py
 reenters: PL-97WX

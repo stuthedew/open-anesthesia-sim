@@ -3,12 +3,14 @@ id: PL-XX18
 title: A border drag pushed into a neighbour held at its View's need leaves the border where it is drawn but does not turn its line WARNING, though border_moved's docstring says the line turns WARNING where an Area beside it reaches the least size it can be drawn at (found reviewing #1880)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: area-layout-sizing
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - filed after the gate froze; a missing WARNING cue on a drag, with no clinical value or stored state at stake
 added: 2026-10-27
+closed: 2026-11-01
+pr: 1912
 payoff: a drag that hits a held neighbour shows the WARNING line, as a keyboard step does, so a border that will not move says why
 verify: grep -q 'def test_a_drag_into_a_held_neighbour_lights_the_border_warning' tests/integration/test_layout_adapter.py
 reenters: PL-97WX

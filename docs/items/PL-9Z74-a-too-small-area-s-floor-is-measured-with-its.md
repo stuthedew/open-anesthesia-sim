@@ -3,12 +3,14 @@ id: PL-9Z74
 title: A too-small Area's floor is measured with its notice wrapped at the chooser's width, so in a wide column it reserves 30 to 50 px of wrapped lines it never uses and a neighbour gives up its View sooner than it needs to
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: area-layout-sizing
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/sizing.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-26
+closed: 2026-11-01
+pr: 1912
 payoff: a wide column keeps a neighbour's View drawn when the window has room for it, instead of giving it up to notice lines nobody sees
 verify: grep -q 'def test_a_wide_stacked_area_holds_a_lower_floor' tests/integration/test_layout_adapter.py
 ---

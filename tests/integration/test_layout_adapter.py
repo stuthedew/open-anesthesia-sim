@@ -1977,6 +1977,112 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
         assert label.height() >= label.heightForWidth(label.width()) > 0
 
 
+def test_a_wide_stacked_area_holds_a_lower_floor(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: a too-small Area's floor wraps its notice at the width it is drawn at.
+
+    A Big view's Area takes the bottom tenth of a window 200 px tall, far less than the
+    227 px its View needs, so it is held at its floor. At 170 px wide the notice wraps
+    onto more lines than at 800 px, so the wide Area's floor is lower. The wide notice
+    still shows its title and its statement of the two sizes in full.
+
+    The room that this saves goes to a neighbour. Two Big views stacked in a window 800 by
+    350 px cannot both have their 227 px. The one that gives way is held at its floor.
+    With its notice wrapped at 800 px, that floor is low enough for the other to keep its
+    227 px. When the notice was wrapped at the floor's own width, the floor was too tall,
+    and both Areas showed the notice.
+    """
+
+    model = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
+    _, narrow = _host_sized(application, hosts, model, (170, 200))
+    _, wide = _host_sized(application, hosts, model, (800, 200))
+    notice = wide.frame(AreaId(2)).too_small_notice
+
+    assert [entry.area_id for entry in narrow.too_small()] == [AreaId(2)]
+    assert [entry.area_id for entry in wide.too_small()] == [AreaId(2)]
+    assert wide.frame(AreaId(2)).minimumHeight() < narrow.frame(AreaId(2)).minimumHeight()
+    assert notice is not None
+
+    for label in (notice.title_label, notice.body_label):
+        assert label.height() >= label.heightForWidth(label.width()) > 0
+
+    stacked = _layout(_column((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
+    _, page = _host_sized(application, hosts, stacked, (800, 350))
+
+    assert [entry.area_id for entry in page.too_small()] == [AreaId(2)]
+    assert page.frame(AreaId(1)).content.isVisible()
+    assert page.frame(AreaId(1)).height() >= 200 + _CHROME_PX
+
+
+def test_a_floor_is_not_lowered_for_a_width_qt_does_not_draw(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: the lower floor is used only where Qt draws the width it was measured at.
+
+    A row gives 0.9 of a 340 px window to a Big view's Area and 0.05 to each of two more.
+    The three floors and two handles need more than 340 px, so Qt draws the first Area at
+    its floor's width, not at 0.9 of the window. Its notice must then be wrapped at that
+    narrow width. So its floor is as tall as the floor of a Big view's Area in a window
+    only as wide as that floor. Found by the branch's adversarial review.
+    """
+
+    model = _layout(
+        _row(
+            (0.9, 0.05, 0.05), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG), Area(AreaId(3), _BIG)
+        ),
+        4,
+    )
+    _, container = _host_sized(application, hosts, model, (340, 250))
+    frame = container.frame(AreaId(1))
+    assert AreaId(1) in {entry.area_id for entry in container.too_small()}
+    assert frame.width() == frame.minimumWidth()
+
+    alone = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
+    _, narrow = _host_sized(application, hosts, alone, (frame.minimumWidth(), 200))
+
+    assert [entry.area_id for entry in narrow.too_small()] == [AreaId(2)]
+    assert frame.minimumHeight() == narrow.frame(AreaId(2)).minimumHeight()
+
+
+def test_no_too_small_notice_is_cut_off_where_the_second_pass_narrows_an_area(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: a floor lowered for one width is not kept where the Area ends up narrower.
+
+    Four Big views nest in a window 640 by 180 px. A column holds a row above the fourth
+    view. The row's first part is a column of two views, and the row gives 0.4 of its
+    width to Area 3. A second pass that kept its lowered floors would draw Area 3 only
+    253 px wide. That is narrower than the width at which its notice was measured, so the
+    notice's statement of the two sizes would be cut off. That pass is discarded instead,
+    so every notice that is shown has its title and that statement in full. Found by the
+    branch's adversarial review.
+    """
+
+    model = _layout(
+        _column(
+            (0.7, 0.3),
+            _row(
+                (0.6, 0.4),
+                _column((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)),
+                Area(AreaId(3), _BIG),
+            ),
+            Area(AreaId(4), _BIG),
+        ),
+        5,
+    )
+    _, container = _host_sized(application, hosts, model, (640, 180))
+
+    assert container.too_small()
+
+    for entry in container.too_small():
+        notice = container.frame(entry.area_id).too_small_notice
+        assert notice is not None
+
+        for label in (notice.title_label, notice.body_label):
+            assert label.height() >= label.heightForWidth(label.width()) > 0
+
+
 def test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
@@ -2227,6 +2333,155 @@ def test_a_one_pixel_nudge_of_a_held_border_keeps_the_stored_fraction(
         handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(-20, 0)
     )
     application.processEvents()
+
+
+def test_a_drag_into_a_held_neighbour_lights_the_border_warning(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-XX18`: a drag stopped by a held neighbour shows WARNING, as a keyboard step does.
+
+    The row splits 800 px as 0.7 / 0.3. The Big view on the right needs 300 px, so it is
+    held at 300 and the border is drawn at 500. A drag of 30 px to the right would make
+    that View narrower than it needs. So the border stays at 500, the stored 0.7 stays,
+    and the border's line turns WARNING. With the pointer back on the border, the line is
+    no longer WARNING.
+    """
+
+    model = _layout(_row((0.7, 0.3), _area(1), Area(AreaId(2), _BIG)), 3)
+    container = _show_sized(application, shown, model, (_SIDE_PX, _SIDE_PX))
+    splitter = _splitters(container)[()]
+    handle = splitter.handle(1)
+    assert isinstance(handle, _AreaHandle)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+    assert splitter.sizes() == [500, 300]
+
+    start = _press(handle)
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert handle.lit and not handle.warning
+
+    QTest.mouseMove(handle, start + QPoint(30, 0))
+    application.processEvents()
+
+    assert container.model == model
+    assert changed == []
+    assert splitter.sizes() == [500, 300]
+    assert handle.lit and handle.warning
+
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert handle.lit and not handle.warning
+
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    application.processEvents()
+
+    assert container.model == model
+    assert not handle.warning
+
+
+def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-MH5T`: in a window too small for the Areas' floors, a border press changes nothing.
+
+    Three Big views sit side by side in a window fixed at 300 px wide. Each Area's floor
+    is as wide as its header, so the three floors and the two 8 px handles need more
+    than 300 px. Qt then draws every Area at its floor, whatever the stored fractions
+    say, so no border can move on screen. The fractions come from the reproduction in
+    `PL-MH5T`, (0.4026, 0.4647, 0.1328), with the middle one cut to 0.4646 so that
+    they sum to one. A press and a move of zero pixels on either border used to rewrite
+    the fractions. Now the fractions are kept, and no `layout_changed` is emitted. A drag
+    of 30 px is stopped in the same way, and the border's line turns WARNING to say so.
+    """
+
+    fractions = (0.4026, 0.4646, 0.1328)
+    model = _layout(
+        _row(fractions, Area(AreaId(1), _BIG), Area(AreaId(2), _BIG), Area(AreaId(3), _BIG)), 4
+    )
+    _, container = _host_sized(application, hosts, model, (300, 300))
+    splitter = _splitters(container)[()]
+    floors = [container.frame(AreaId(number)).minimumWidth() for number in (1, 2, 3)]
+    assert container.width() == 300
+    assert sum(floors) + 2 * AREA_HANDLE_WIDTH > 300
+    drawn = splitter.sizes()
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+
+    for index in (1, 2):
+        handle = splitter.handle(index)
+        assert isinstance(handle, _AreaHandle)
+
+        start = _press(handle)
+        QTest.mouseMove(handle, start)
+        application.processEvents()
+
+        assert _tree(container).sizes == fractions
+        assert changed == []
+        assert not handle.warning
+
+        QTest.mouseMove(handle, start + QPoint(-30, 0))
+        application.processEvents()
+
+        assert _tree(container).sizes == fractions
+        assert changed == []
+        assert splitter.sizes() == drawn
+        assert handle.warning
+
+        QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+        application.processEvents()
+
+        assert not handle.warning
+
+    assert container.model == model
+
+
+def test_a_press_on_a_border_inside_a_split_below_its_floors_keeps_the_stored_fractions(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-MH5T`: a border whose enclosing split is too small for its floors does not move.
+
+    The outer row gives 0.8 of a 370 px window to a column and 0.2 to a fourth Area. The
+    column's top half is a row of two Areas. The floors of those two Areas, the fourth
+    Area's floor and the two handles together need more than 370 px. So Qt draws the
+    column, and the row inside it, narrower than the 0.8 of the window that the
+    apportionment gives them. Qt also holds each Area's frame at its floor. A press and a
+    move of zero pixels on the inner row's border used to rewrite the row's 0.5 / 0.5. Now
+    the 0.5 / 0.5 is kept, no `layout_changed` is emitted, and the border's line does not
+    turn WARNING. Found by the branch's blind review.
+    """
+
+    model = _layout(
+        _row(
+            (0.8, 0.2),
+            _column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3)),
+            _area(4),
+        ),
+        5,
+    )
+    _, container = _host_sized(application, hosts, model, (370, 400))
+    inner = _splitters(container)[(0, 0)]
+    floors = [container.frame(AreaId(number)).minimumWidth() for number in (1, 2, 4)]
+    assert sum(floors) + 2 * AREA_HANDLE_WIDTH > 370
+    handle = inner.handle(1)
+    assert isinstance(handle, _AreaHandle)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+
+    start = _press(handle)
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert container.model == model
+    assert changed == []
+    assert not handle.warning
+
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    application.processEvents()
+
+    assert container.model == model
 
 
 def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
