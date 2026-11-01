@@ -534,6 +534,11 @@ class Exemption:
 #: Larger text, such as the 22px readout values, is held to the normal-text
 #: minimum as well, so the exception is not claimed anywhere in this
 #: interface.
+#: What each compartment colour marks: its chart trace, and the fill of its
+#: container on the compartment schematic (`SchematicCanvas`, PL-RNYV). A
+#: fill's edge against the empty part of its container is the PANEL pair.
+_COMPARTMENT_MARK = "a plotted compartment trace, and the fill of its schematic container"
+
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(
         "INK",
@@ -573,6 +578,11 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "six compartment checkboxes that show and hide the chart's traces "
         "(`TraceLegend`), whose label is INK text while that trace is drawn and "
         "MUTED while it is hidden - `_on_toggled` is the one writer of that. "
+        "Also the compartment schematic's heading, the run name over each "
+        "schematic, each container's outline and its painted name, tension and "
+        "amount (`CompartmentSchematicView`, `SchematicCanvas`, PL-RNYV). The "
+        "outline is the edge that locates an empty container, a graphical "
+        "object needing SC 1.4.11's 3:1, met by the text minimum here. "
         "The box is a user-interface component, so SC 1.4.11's 3:1 would "
         "suffice for it - the text minimum is met anyway, and is what the label "
         "needs. Deliberately not one of the six trace colours nor ACCENT: the "
@@ -698,7 +708,11 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "near-white hint on PANEL, so the pair has to be declared with the fill "
         "(PL-RKRY). `declare_application_colours` writes the same role on the "
         "application, so a placeholder in a control added later starts from this "
-        "pair rather than from the host appearance's (PL-KRZW).",
+        "pair rather than from the host appearance's (PL-KRZW). Also the "
+        "compartment schematic's interpretation statement and scale caption, "
+        "and the lines joining its containers, which are graphical objects "
+        "needing SC 1.4.11's 3:1 (`CompartmentSchematicView`, "
+        "`SchematicCanvas`, PL-RNYV).",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -775,7 +789,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the agent-accounting status word when validation fails "
         "(`_agent_accounting_status_text`, in each `AccountingPanel`), the "
         "notice naming a compartment trace that is above the top of the chart "
-        "(the off-scale lines each `ConcentrationView` writes), the line of the new-case "
+        "(the off-scale lines each `ConcentrationView` writes), the lines naming "
+        "a schematic container above the scale and the bar marking that "
+        "container's top (`CompartmentSchematicView`, `SchematicCanvas`, "
+        "PL-RNYV), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
         "PL-R3KB), and the title of the notice an Area shows in place of a "
         "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ). Also the line a "
@@ -912,14 +929,12 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "fill, for the same reason as isoflurane above: the white border "
         "disappears into the page and the ISO 5360 blue is what remains",
     ),
-    Requirement("CIRCUIT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
-    Requirement("ALVEOLAR_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
-    Requirement(
-        "MIXED_VENOUS_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"
-    ),
-    Requirement("VESSEL_RICH_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
-    Requirement("MUSCLE_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
-    Requirement("FAT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", "a plotted compartment trace"),
+    Requirement("CIRCUIT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    Requirement("ALVEOLAR_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    Requirement("MIXED_VENOUS_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    Requirement("VESSEL_RICH_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    Requirement("MUSCLE_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    Requirement("FAT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
     Requirement(
         "MAC_AWAKE_BAND_COLOR",
         "PANEL",

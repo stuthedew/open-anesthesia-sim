@@ -65,6 +65,7 @@ from typing import Final
 from anesthesia_sim.app.view_contract import ViewFactory
 from anesthesia_sim.app.views import (
     AccountingView,
+    CompartmentSchematicView,
     ConcentrationView,
     ParameterControlsView,
     WashInView,
@@ -75,6 +76,7 @@ from anesthesia_sim.layout.tree import ViewKind
 __all__ = [
     "AGENT_ACCOUNTING",
     "CHOOSE_A_VIEW",
+    "COMPARTMENT_SCHEMATIC",
     "NO_DECLARED_MINIMUM",
     "CONCENTRATION_CHART",
     "MISSING_VIEW_TITLE",
@@ -105,6 +107,7 @@ CONCENTRATION_CHART: Final = ViewKind("concentration_chart")
 WASH_IN: Final = ViewKind("wash_in")
 PARAMETER_CONTROLS: Final = ViewKind("parameter_controls")
 AGENT_ACCOUNTING: Final = ViewKind("agent_accounting")
+COMPARTMENT_SCHEMATIC: Final = ViewKind("compartment_schematic")
 
 #: The first line of the notice an Area shows in place of a View this build
 #: does not have (`PL-DB5G` Q2, project owner, 2026-10-11, ratified).
@@ -357,6 +360,12 @@ REGISTERED: Final = registry(
         AccountingView,
         required_reachable=True,
         minimum=PixelSize(220, 160),
+    ),
+    RegisteredView(
+        COMPARTMENT_SCHEMATIC,
+        "Compartment schematic",
+        CompartmentSchematicView,
+        minimum=PixelSize(480, 260),
     ),
 )
 

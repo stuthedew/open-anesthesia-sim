@@ -14,6 +14,9 @@ hands it on every frame (`PL-TH35`).
   § "Minimum displayed outputs" requires it to stay reachable in every layout,
   which the registry enforces.
 - `ParameterControlsView` is every displayed run's setting controls.
+- `CompartmentSchematicView` is every displayed run's compartment schematic:
+  six containers filled to their tensions, each labelled with its name,
+  tension and amount (`PL-RNYV`).
 
 A View that shows a run's own surfaces asks the run for a copy of each, and
 the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
@@ -27,7 +30,9 @@ from its own frame. It writes one line per run, rather than showing a copy
 from the run.
 
 These classes compute nothing that a reader interprets. Every caption comes
-from `app/dashboard_frame.py`, and every drawn value comes from the frame.
+from `app/dashboard_frame.py`, or for the schematic from
+`app/compartment_schematic.py`. Every drawn value comes from the frame, or
+for the schematic from the snapshot through `container_readings`.
 """
 
 from __future__ import annotations
@@ -42,8 +47,16 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
+from anesthesia_sim.app.compartment_schematic import (
+    SCHEMATIC_HEADING,
+    container_readings,
+    off_scale_line,
+    scale_caption,
+)
+from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
+    INTERPRETATION_DISCLAIMER_TEXT,
     NO_TRACES_SHOWN_TEXT,
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
@@ -65,6 +78,7 @@ from anesthesia_sim.app.qt_chart import (
     WashInChart,
     WashInLegend,
 )
+from anesthesia_sim.app.qt_schematic import SchematicCanvas
 from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.stylesheets import panel_stylesheet
 from anesthesia_sim.app.theme import (
@@ -88,11 +102,17 @@ from anesthesia_sim.app.view_contract import (
     unreadable_state_text,
 )
 
-__all__ = ["AccountingView", "ConcentrationView", "ParameterControlsView", "WashInView"]
+__all__ = [
+    "AccountingView",
+    "CompartmentSchematicView",
+    "ConcentrationView",
+    "ParameterControlsView",
+    "WashInView",
+]
 
 #: The saved-state version for the Views here that have no setting of their
-#: own, which are the accounting View and the setting controls View. Each of
-#: them saves only this version and nothing else.
+#: own, which are the accounting View, the setting controls View and the
+#: compartment schematic. Each of them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
 
 #: The version of a chart View's saved state. Version 2 added the chart's
@@ -107,6 +127,7 @@ _TIME_BASE_KEY: Final = "time_base_s"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
+_SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 
 
 class _RunCopies[W: QWidget]:
@@ -635,3 +656,117 @@ class ParameterControlsView(_RunSurfaceView):
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__(context, lambda run: run.build_parameter_controls())
+
+
+class _RunSchematic(QWidget):
+    """One run's schematic: its name while runs are compared, its containers and its lines.
+
+    The run's name is read from the run, as its own panels show it
+    (`RunSurfaces.run_name`). A lone run is not named. While runs are
+    compared, each schematic is named, because stacking order cannot say
+    which run a tension belongs to (`docs/MODEL.md`, the hazard table's row
+    on reading one run's value as the other's).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.name_text = styled_label("", color=INK, bold=True)
+        self.name_text.setHidden(True)
+        self.canvas = SchematicCanvas()
+        self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
+        self.off_scale_text = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
+        self.off_scale_text.setHidden(True)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+        column.addWidget(self.name_text)
+        column.addWidget(self.canvas)
+        column.addWidget(self.off_scale_text)
+        column.addWidget(self.scale_text)
+
+    def draw(self, run_name: str | None, snapshot: SimulationSnapshot) -> None:
+        """Draw this run's schematic from `snapshot`, named `run_name` unless that is None."""
+
+        readings = container_readings(snapshot)
+        self.canvas.show_readings(readings)
+        self.scale_text.setText(scale_caption(snapshot))
+        line = off_scale_line(readings)
+        self.off_scale_text.setText(line or "")
+        self.off_scale_text.setHidden(line is None)
+        self.name_text.setText(run_name or "")
+        self.name_text.setHidden(run_name is None)
+
+
+class CompartmentSchematicView(QWidget):
+    """Every displayed run's compartment schematic, one above the next (`PL-RNYV`).
+
+    Each schematic draws the circuit, the alveoli, venous blood and the three
+    tissue groups as containers. Each container is filled to its tension on
+    the concentration chart's scale and labelled with its name, its tension
+    and its amount of agent vapour. The View is drawn from the tick's snapshot
+    of each run, so it shows each run's current instant and is redrawn on
+    every frame. It asks for no chart frame. The interpretation statement is
+    in its heading, once, because every value it shows is a model output.
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__()
+        self._drawn = False
+        self.state_notice = _state_notice_for(context)
+        self._copies = _RunCopies(lambda _run: _RunSchematic(), PAGE_SPACING)
+        column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
+        heading = QHBoxLayout()
+        heading.setSpacing(VIEW_HEADING_SPACING)
+        heading.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True), 1)
+        heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
+        column.addWidget(self.state_notice)
+        column.addLayout(heading)
+        column.addWidget(self._copies.holder)
+        column.addStretch(1)
+
+    @property
+    def schematics(self) -> tuple[_RunSchematic, ...]:
+        """The schematic drawn for each displayed run, in drawing order."""
+
+        return self._copies.copies
+
+    def refresh(self, tick: ViewTick) -> None:
+        """Draw one schematic for each run in the tick, from that run's snapshot.
+
+        Raises:
+            ValueError: If the tick does not carry one snapshot for each run.
+                A schematic drawn from another run's snapshot would show that
+                run's tensions under this run's name.
+        """
+
+        if len(tick.snapshots) != len(tick.runs):
+            raise ValueError(
+                f"a tick carried {len(tick.snapshots)} snapshot(s) for {len(tick.runs)} run(s)"
+            )
+
+        self._copies.follow(tick.runs)
+
+        for schematic, run, snapshot in zip(
+            self._copies.copies, tick.runs, tick.snapshots, strict=True
+        ):
+            schematic.draw(run.run_name, snapshot)
+
+        self._drawn = True
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return not self._drawn
+
+    def frame_request(self) -> FrameRequest | None:
+        return None
+
+    def save_state(self) -> SavedState:
+        return _saved_state()
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return tuple(
+            text for schematic in self._copies.copies for text in schematic.canvas.painted_strings()
+        )

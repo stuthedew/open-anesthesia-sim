@@ -1826,6 +1826,17 @@ class RunView(QWidget):
 
         return row
 
+    @property
+    def run_name(self) -> str | None:
+        """What `set_run_name` last called this run, or None while it is drawn alone.
+
+        A View that draws no chart frame names each run from here, such as
+        the compartment schematic. So it calls a run by the same name as the
+        run's own panels, from the one writer of that name.
+        """
+
+        return self._run_name
+
     def set_run_name(self, name: str | None) -> None:
         """Name this view in its own header, its readouts and both its record panels, or not at all.
 

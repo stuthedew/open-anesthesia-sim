@@ -131,11 +131,18 @@ UNREADABLE_STATE_TEXT: Final = (
 class RunSurfaces(Protocol):
     """The parts of one displayed run that a View may show, each built as a new copy.
 
-    `RunView` satisfies this protocol. Each method builds a new copy that
-    shows what the run shows now. From then on, the run updates every live
-    copy (`app/run_surfaces.py`, `PL-9LNF`). A View holds the copies and
+    `RunView` satisfies this protocol. `run_name` is the run's name as its own
+    panels show it, for a View that draws no frame to read a name from. Each
+    `build_` method builds a new copy that shows what the run shows now. From
+    then on, the run updates every live copy (`app/run_surfaces.py`,
+    `PL-9LNF`). A View holds the copies and
     never the run's controller.
     """
+
+    @property
+    def run_name(self) -> str | None:
+        """What the run is called while runs are compared, or None while it is drawn alone."""
+        ...
 
     def build_parameter_controls(self) -> ParameterControls: ...
 
