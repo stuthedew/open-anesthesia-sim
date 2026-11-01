@@ -2166,13 +2166,16 @@ def test_a_split_is_refused_where_its_halves_would_lose_the_width_the_view_held(
 ) -> None:
     """`PL-16BG`: a half's floor is measured at the width at which `settle` would draw it.
 
-    A Big view's Area takes 0.3 of a row 500 px wide and 250 px tall, and is held at its
-    View's 300 px need. Stacked halves would each be (250 - 8) / 2 = 121 px tall, too
-    small for the Big view. Once both halves show the too-small notice, they no longer
-    need 300 px of width, so the row gives them their share, less than 150 px. Wrapped at
-    that width, the notice needs a floor 146 px tall, so the split is refused. Measured at
-    the Area's 300 px frame, the notice would need only 95 px. Found by the branch's blind
-    review.
+    A Big view's Area takes 0.3 of the width of a row that is 500 px wide and 250 px tall.
+    The Area is held 300 px wide, which is the width that its View needs. Stacked halves
+    would share the height less the 8 px handle between them, so each would be
+    (250 - 8) / 2 = 121 px tall. That is too small for the Big view. Once both halves show
+    the too-small notice, they no longer need 300 px of width. The row then gives them only
+    the Area's share of the row's width, which is less than 150 px. Wrapped at that width,
+    the notice needs a floor 146 px tall, so the split is refused. Wrapped at the 300 px
+    width of the Area's frame, the notice would need a floor only 95 px tall. A check that
+    used the frame's width would therefore allow the split. The branch's blind review found
+    this case.
     """
 
     model = _layout(_row((0.3, 0.7), Area(AreaId(1), _BIG), _area(2)), 3)
@@ -2185,14 +2188,15 @@ def test_a_split_is_refused_where_its_halves_would_lose_the_width_the_view_held(
 def test_a_drag_stops_before_a_too_small_area_is_too_narrow_for_its_notice(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
-    """`PL-16BG`: a drag holds a too-small Area to its floor at the width the drag gives it.
+    """`PL-16BG`: a drag cannot shrink a too-small Area below its floor at its new width.
 
     Two Big views sit side by side in a window 808 px wide and 104 px tall. Each Area is
-    400 px wide and too small for its View, and its notice wrapped at 400 px needs 95 px.
-    Dragging the border 270 px left would leave the first Area about 130 px wide, where
-    the notice needs 146 px, more than the row's height. So the drag stops while the first
-    Area's notice still fits, and every notice is shown in full. Found by the branch's
-    blind review.
+    400 px wide and too small for its View, so it shows the too-small notice. Wrapped at
+    400 px, the notice needs a floor 95 px tall. Dragging the border between the Areas
+    270 px to the left would leave the first Area about 130 px wide. At that width the
+    notice needs a floor 146 px tall, which is more than the row's height. So the drag
+    stops while the first Area's notice still fits, and every notice is shown in full. The
+    branch's blind review found this case.
     """
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)

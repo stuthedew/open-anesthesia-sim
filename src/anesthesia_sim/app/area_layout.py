@@ -1001,17 +1001,18 @@ class AreaLayout(QWidget):
         """Return whether each part of a cut of the Area `area_id` could hold the Area's floor.
 
         `split` is this layout with the Area cut in two, and `new_id` names the new part.
-        `parts_px` holds each part's length on the axis that the cut divides, as the cut
+        `parts_px` holds each part's length along the axis that the cut divides, as the cut
         leaves it. Every part would show the View that the Area shows now, so each part has
-        the Area's need and its floor. A part's floor is measured at the width at which the
-        part would be drawn (`Floor.fits_in`).
+        the same need and floor as the Area. A part's floor is measured at the width at which
+        the part would be drawn (`Floor.fits_in`).
 
-        A part's extent on the other axis is taken from `settle`'s layout of `split` at this
+        A part's length on the other axis comes from laying out `split` with `settle` at this
         widget's size, not from the Area's frame. An Area can be drawn wider than its share
-        because its View needs that width. Once its parts are too small for the View, they
-        lose that width, and a narrower part's notice may need more lines (`PL-16BG`). A
-        stacked part of a wide Area keeps the Area's width, so its notice wraps at that width
-        rather than at the floor's own width (`PL-7DXG`).
+        of its split because its View needs that width. Once its parts are too small for the
+        View, they show the too-small notice instead and are no longer given that width. So
+        a part can be narrower than the Area, and its notice may then need more lines
+        (`PL-16BG`). A stacked part of a wide Area keeps the Area's width, so its notice wraps
+        at that width rather than at the floor's own width (`PL-7DXG`).
         """
 
         tree = split.windows[MAIN_WINDOW].tree
@@ -1728,16 +1729,17 @@ class AreaLayout(QWidget):
         return best, True
 
     def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
-        """Return whether every Area of `moved` is drawn at no less than its least size.
+        """Return whether every Area of `moved` would be drawn no smaller than its least size.
 
-        The Area's drawn size is estimated as its share of this widget, less one handle's
-        width. The estimate ignores the handles of nested splits. It also overstates the
-        drawn size of an Area whose neighbour in its split is held wider than its share
-        (`PL-501T`). An Area that draws its View has as its least size the bound it was
-        given when the Areas were last settled (`Fit.bounds`). An Area that is too small
-        for its View has its floor as its least size, measured at the width the drag would
-        give it (`Floor.at`). A narrower Area needs a taller floor, so a drag that leaves
-        its notice no room stops (`PL-16BG`).
+        Each Area's drawn size is estimated as its share of this widget, less one handle's
+        width. The estimate ignores the handles of nested splits. It also overstates an
+        Area's drawn size when a neighbour in the same split is held wider than that
+        neighbour's share (`PL-501T`). For an Area that draws its View, the least size is
+        the bound that the Area was given when the Areas were last settled (`Fit.bounds`).
+        For an Area that is too small for its View, the least size is its floor, measured at
+        the width that the drag would give the Area (`Floor.at`). Such an Area shows a notice
+        in place of its View, and a narrower Area needs a taller floor to fit that notice.
+        So a drag stops before it would leave an Area's notice too little room (`PL-16BG`).
 
         Some Areas are already smaller than their least size when the drag starts, because
         the window is small. Such an Area may stay as it was, but it may not shrink further.
