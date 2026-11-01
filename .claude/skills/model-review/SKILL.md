@@ -1,6 +1,6 @@
 ---
 name: model-review
-description: Run the model review, which scores closed items by how their work held up and recommends model and effort settings. Use it when the owner starts one, monthly, or after a generator or cluster appears.
+description: Run the model review, which scores closed items by how their work held up and recommends model and effort settings. Use it when the owner starts one, monthly, after a generator or cluster appears, or when asked outside a review to analyse what the blind review passes caught, which tools/blind_review_report.py counts.
 ---
 
 # model-review
