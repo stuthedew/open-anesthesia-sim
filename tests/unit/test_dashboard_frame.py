@@ -4240,5 +4240,8 @@ def test_a_value_the_readouts_print_as_the_top_is_not_above_it() -> None:
     assert top != 3.6
     assert above_the_axis_top(3.6, top) is False
     assert above_the_axis_top(3.605, top) is False
+    # Exactly one display step above the top is still not above it: 0.01 - 0.0
+    # is exactly 0.01 in binary, so this pins the comparison as strict.
+    assert above_the_axis_top(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, 0.0) is False
     assert above_the_axis_top(3.62, top) is True
     assert above_the_axis_top(0.0, top) is False

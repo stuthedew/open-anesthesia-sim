@@ -63,7 +63,8 @@ reading "Running" over numbers that have stopped advancing.
 
 The window is divided into Areas that the reader can split, join, resize, swap
 and close, and each Area holds one View: the concentration chart, the wash-in
-plot, the parameter controls or the agent accounting. Arrangements are kept as
+plot, the parameter controls, the agent accounting or the compartment
+schematic. Arrangements are kept as
 Workspaces, switched by tab, and three ship: Default, Induction and
 Maintenance. The values a reader needs to read any other number are drawn in a
 region outside the Areas, so no arrangement can remove them.
@@ -78,6 +79,11 @@ While a case runs, the interface shows:
 - agent delivered, exhausted and stored, with the mass-balance residual,
   in the agent accounting View, which no shipped Workspace shows but every
   Area's View chooser offers;
+- where the agent is, in the compartment schematic View, which every Area's
+  View chooser offers: each compartment as a container filled to its tension
+  on the chart's scale and labelled with its tension and its amount in mL of
+  vapour, and one bar of each compartment's share of all the agent the run
+  holds, so fat's growing share shows while its tension stays near zero;
 - every setting changed during the run, marked on the chart at the simulated
   time it took effect;
 - the wash-in curve the literature is taught from, $`F_A/F_I`$, on a
