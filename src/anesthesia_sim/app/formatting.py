@@ -202,9 +202,10 @@ class AgentAmountUnit(Enum):
     A member identifies a unit but does not say how the unit is written.
     `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
     and share bar assert" sets the spellings, "mL vapour" and "mL liquid
-    equiv.", and the Views that first print them add them to `DisplayUnit`. Every member names whether it
-    measures vapour or liquid. About 183 mL of sevoflurane vapour come from
-    1 mL of liquid, so a bare "mL" cannot say which is meant.
+    equiv.". The Views that first print them add them to `DisplayUnit`.
+    Every member names whether it measures vapour or liquid. About 183 mL of
+    sevoflurane vapour come from 1 mL of liquid, so a bare "mL" cannot say
+    which is meant.
 
     Attributes:
         LITRES_OF_VAPOUR: Litres of pure agent vapour at the model's reference
@@ -247,8 +248,8 @@ class AgentAmountUnit(Enum):
 # liquid entry, because a store converted to liquid comes out 5.8% too high.
 # That error is more than 1 mL once the store holds about 17 mL of liquid. A
 # compartment's amount has no entry, because `PL-2881` derived two significant
-# figures for it, not a count of decimals. `PL-RNYV` builds that form. Money has no
-# entry here, because the resolution of a cost depends on the price that the
+# figures for it, not a count of decimals. `PL-RNYV` builds that form. Money has
+# no entry here, because the resolution of a cost depends on the price that the
 # reader sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
 _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
