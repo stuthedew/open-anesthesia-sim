@@ -73,6 +73,7 @@ payloads in `core/parameters.py` reject a formula where a number is expected.
 
 ```text
 src/anesthesia_sim/
+├── user_files.py        # the steps that write a reader's file atomically - write and fsync a temporary file, os.replace, fsync the directory - shared by the Workspaces and the preferences stores (PL-93B3)
 ├── app_metadata.py      # app name, bundle id, and the version the header shows: the installed distribution's version, plus the commit where the running code is not a clean checkout of the released tag, because between two releases every build otherwise displays the same string and a fix confirmed by eye cannot be told from the code it replaced
 ├── core/                # scientific simulation — no toolkit dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError; a value that is not a number at all is a TypeError, as for every checked type)
@@ -115,6 +116,7 @@ src/anesthesia_sim/
 │   ├── run_surfaces.py             # the two parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
+│   ├── preferences.py              # the reader's preferences.json: an AgentPrice per agent and the agent cost View's unit, each refused alone when invalid and kept for the next save; a newer or unreadable file turns saving off (PL-93B3); toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
@@ -908,7 +910,9 @@ directory rather than a field to `reference_adult.json`.
 
 ## User state: the saved Workspaces
 
-The application writes only one thing outside its own tree: the reader's saved
+The application writes two things outside its own tree: the reader's saved
+Workspaces, and the reader's preferences, which § "User state: the reader's
+preferences" below describes. This section is about the saved
 Workspaces. They are saved as a single JSON document that holds the whole
 `WorkspaceSet` under one `schema_version`. The set includes every Workspace
 with its layout, each View's saved state and the run that the View is pinned
@@ -979,6 +983,41 @@ was true until this store landed.
   goes through. It requires them to be at the current `schema_version`,
   because a shipped file is never migrated. "Reset this Workspace" reads one
   file again, by its id.
+
+## User state: the reader's preferences
+
+A preference belongs to the reader, not to a layout, so the preferences are
+kept in a file of their own, `preferences.json`, beside `workspaces.json` in
+the same directory (`PL-MQHN`, `PL-93B3`). `app/preferences.py` is the one
+module that reads and writes it, and it imports no Qt. The file holds two
+things: at most one `AgentPrice` for each shipped agent, and the unit in which
+the agent cost View shows the delivered agent, millilitres of liquid by
+default or litres of vapour. `docs/MODEL.md` § "A cost at the reader's price"
+specifies what a price carries and what is refused. The project ships no
+price.
+
+- **When.** `PreferencesStore.save` writes the whole document when its caller
+  asks. The agent cost View will save as soon as the reader sets a price or a
+  unit (`PL-1P15`, `PL-B396`), as Blender saves its preferences on change.
+  Nothing is written before the first save. A save writes a temporary file,
+  `fsync`s it and `os.replace`s the target, through `user_files.py`, which the
+  Workspaces store uses too. It keeps no previous generation, because the file
+  is small and the reader can set a price again.
+- **What a launch does with the file.** `PreferencesStore.load` returns a
+  `LoadedPreferences` with the preferences to use, whether saving is on, and
+  any notice. With no file there is no price, the unit is millilitres of
+  liquid, and nothing is said. A file this build reads is checked entry by
+  entry. A refused price is not used and is never replaced by a default, and a
+  refused unit falls back to millilitres of liquid. Either way the notice says
+  what was refused and why, and each refused entry is written back unchanged
+  at the next save until the reader sets a value in its place. A file that a
+  newer build wrote, that cannot be read, or whose document cannot be checked
+  entry by entry turns saving off for the session, so the file is left as it
+  is, and the notice says why.
+- **Who reads it.** Nothing reads the preferences yet. The agent cost View,
+  which shows the cost at the reader's price, is their first reader
+  (`PL-1P15`). It will load the store from the directory that
+  `app/main.py` already resolves for the Workspaces.
 
 ## Dependencies
 
