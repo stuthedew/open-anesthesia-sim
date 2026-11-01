@@ -2991,13 +2991,23 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     return " ".join(sentences) or None
 
 
+def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
+    """Whether a value exceeds the concentration axis's top by more than the readouts resolve.
+
+    This is the one test of "off the scale" that the chart's off-scale
+    notice and the compartment schematic's off-scale mark both read, so the
+    two Views cannot disagree about one tension (`PL-RNYV`). The margin is
+    there because a top such as isoflurane's 3 x 1.2 is 3.5999999999999996 in
+    binary, and a value the readouts print as the top is not above it.
+    """
+
+    return percent - axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+
+
 def _above_the_axis(frame: ChartFrame, percents: Sequence[float]) -> bool:
     """Whether any drawn point exceeds the axis top by more than the readouts resolve."""
 
-    return any(
-        percent - frame.axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-        for percent in percents
-    )
+    return any(above_the_axis_top(percent, frame.axis_top_percent) for percent in percents)
 
 
 def off_scale_lines(frame: ChartFrame) -> tuple[str | None, ...]:

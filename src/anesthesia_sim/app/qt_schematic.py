@@ -31,18 +31,21 @@ from typing import Final
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, QPaintEvent, QPen
-from PySide6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
     CONTAINER_ORDER,
     WIDEST_LABELS,
     ContainerReading,
+    SchematicShown,
+    instant_line,
 )
+from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.theme import INK, MUTED, WARNING
+from anesthesia_sim.app.theme import INK, METRIC_QUALIFIER_SIZE, MUTED, VIEW_ROW_SPACING, WARNING
 
-__all__ = ["SchematicCanvas"]
+__all__ = ["RunSchematic", "SchematicCanvas"]
 
 _TISSUES: Final = frozenset(
     {RecordedQuantity.VESSEL_RICH, RecordedQuantity.MUSCLE, RecordedQuantity.FAT}
@@ -242,3 +245,62 @@ class SchematicCanvas(QWidget):
                 int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
                 text,
             )
+
+
+class RunSchematic(QWidget):
+    """One run's schematic, as a copy of a run surface: its name, its containers and its lines.
+
+    `RunView.build_compartment_schematic` builds each copy, and the run writes
+    every live copy where it writes its readouts and from the same snapshot.
+    It withholds them where it withholds the readouts, and names them where
+    it names its own panels (`app/run_surfaces.py`, `PL-9LNF`). So a
+    schematic can never show a state its run has left while the readouts
+    show another. A lone run is not named. While runs are compared, each
+    schematic is named, because stacking order cannot say which run a
+    tension belongs to (`docs/MODEL.md`, the hazard table's row on reading
+    one run's value as the other's).
+
+    Args:
+        shown: What the copies already built show.
+        name: The run's name while runs are compared, or None.
+        parent: The run's view, so the copy is deleted with its run.
+    """
+
+    def __init__(
+        self, shown: SchematicShown, name: str | None, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.name_text = styled_label("", color=INK, bold=True)
+        self.canvas = SchematicCanvas()
+        self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
+        self.off_scale_text = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+        column.addWidget(self.name_text)
+        column.addWidget(self.canvas)
+        column.addWidget(self.off_scale_text)
+        column.addWidget(self.scale_text)
+        self._name = name
+        self._shown = shown
+        self.show_schematic(shown)
+
+    def show_name(self, name: str | None) -> None:
+        """Name the schematic while runs are compared, or leave it unnamed when `name` is None."""
+
+        self._name = name
+        self.name_text.setText(instant_line(self._shown.instant, name))
+
+    def show_schematic(self, shown: SchematicShown) -> None:
+        """Draw `shown`: the instant it is read at, its containers, and each of its other lines."""
+
+        self._shown = shown
+        self.name_text.setText(instant_line(shown.instant, self._name))
+        self.canvas.show_readings(shown.readings)
+
+        for label, text in (
+            (self.scale_text, shown.scale_caption),
+            (self.off_scale_text, shown.off_scale_line),
+        ):
+            label.setText(text or "")
+            label.setHidden(text is None)

@@ -25,6 +25,9 @@ from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     WIDEST_COMPARTMENT_VALUE,
+    WITHHELD_CONCENTRATION_TEXT,
+    WITHHELD_ELAPSED_TIME_TEXT,
+    above_the_axis_top,
     compartment_fraction,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
@@ -34,19 +37,27 @@ from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
     format_compartment_amount,
+    format_elapsed,
     format_percent,
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import percent_from_fraction
 
 __all__ = [
+    "COMPARED_INSTANT_LINE_TEMPLATE",
     "CONTAINER_ORDER",
+    "INSTANT_LINE_TEMPLATE",
     "OFF_SCALE_LINE_TEMPLATE",
     "SCALE_CAPTION_TEMPLATE",
     "SCHEMATIC_HEADING",
     "WIDEST_LABELS",
+    "WITHHELD_AMOUNT_TEXT",
+    "WITHHELD_SCHEMATIC",
     "ContainerReading",
+    "SchematicShown",
     "container_readings",
+    "instant_line",
+    "schematic_shown",
     "off_scale_line",
     "scale_caption",
 ]
@@ -57,6 +68,11 @@ __all__ = [
 CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
     panel.quantity for panel in READOUT_PANELS if panel.quantity is not None
 )
+
+#: The line over each run's schematic: the run's name while runs are compared,
+#: and the instant it shows. The wording is a placeholder.
+INSTANT_LINE_TEMPLATE: Final = "At {instant} of simulated time"
+COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 
 #: The schematic's heading. The wording is a placeholder.
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
@@ -107,8 +123,10 @@ class ContainerReading:
         fill: The share of the container's height that is filled, from 0 to
             1. It is the tension over the chart's axis top, and it is 1 for a
             tension above the top.
-        off_scale: Whether the tension is above the chart's axis top. The
-            View then marks the container as off the scale.
+        off_scale: Whether the tension is above the chart's axis top by more
+            than the readouts resolve, as the chart's off-scale notice decides
+            it (`above_the_axis_top`). The View then marks the container as
+            off the scale.
         tension: The tension, written as the compartment's readout writes it.
         amount: The compartment's agent, in millilitres of vapour.
     """
@@ -122,7 +140,7 @@ class ContainerReading:
 
 
 def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, ...]:
-    """Return one reading per container, in the order in which agent reaches the compartments.
+    """Return one reading per container, in the readout row's order.
 
     The order and the names are the readout panels' own, so the schematic and
     the readout row list the six compartments alike. Every container of the
@@ -151,13 +169,13 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
             continue
 
         fraction = compartment_fraction(snapshot, panel.quantity)
-        height = percent_from_fraction(fraction) / top_percent
+        percent = percent_from_fraction(fraction)
         readings.append(
             ContainerReading(
                 quantity=panel.quantity,
                 name=panel.name,
-                fill=min(height, 1.0),
-                off_scale=height > 1.0,
+                fill=min(percent / top_percent, 1.0),
+                off_scale=above_the_axis_top(percent, top_percent),
                 tension=format_percent(fraction),
                 amount=format_compartment_amount(
                     snapshot.compartment_agent_amounts.of(panel.quantity)
@@ -201,3 +219,83 @@ def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:
         return None
 
     return OFF_SCALE_LINE_TEMPLATE.format(compartments=", ".join(above))
+
+
+@dataclass(frozen=True, slots=True)
+class SchematicShown:
+    """Everything one run's schematic shows at one instant, as plain values.
+
+    Attributes:
+        instant: The simulated time the values are read at, as the readouts'
+            clock prints it. Two compared runs can stand at different times,
+            so each schematic says which instant it shows.
+        readings: One reading per container, in `CONTAINER_ORDER`.
+        scale_caption: The caption naming the scale the containers fill
+            against, or None while the values are withheld.
+        off_scale_line: The lines naming each container above the scale, or
+            None when none is above it or the values are withheld.
+    """
+
+    instant: str
+    readings: tuple[ContainerReading, ...]
+    scale_caption: str | None
+    off_scale_line: str | None
+
+
+def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
+    """Return what one run's schematic shows for `snapshot`.
+
+    Raises:
+        TypeError: As `container_readings` and `scale_caption` raise it.
+        ValueError: As `container_readings` raises it.
+    """
+
+    readings = container_readings(snapshot)
+
+    return SchematicShown(
+        format_elapsed(snapshot.elapsed_s),
+        readings,
+        scale_caption(snapshot),
+        off_scale_line(readings),
+    )
+
+
+#: What an amount label shows while the run's values are withheld.
+WITHHELD_AMOUNT_TEXT: Final = f"\u2014 {DisplayUnit.AGENT_VAPOUR_MILLILITRES.label}"
+
+#: What a run's schematic shows while its values are withheld: after a Reset
+#: or an agent change that no frame has been drawn since. The readouts are
+#: withheld at the same moments, with the same mark (`RunView`). Every
+#: container is drawn empty, and no caption is shown, because the scale it
+#: names may be the discarded agent's.
+WITHHELD_SCHEMATIC: Final = SchematicShown(
+    WITHHELD_ELAPSED_TIME_TEXT,
+    tuple(
+        ContainerReading(
+            quantity=panel.quantity,
+            name=panel.name,
+            fill=0.0,
+            off_scale=False,
+            tension=WITHHELD_CONCENTRATION_TEXT,
+            amount=WITHHELD_AMOUNT_TEXT,
+        )
+        for panel in READOUT_PANELS
+        if panel.quantity is not None
+    ),
+    None,
+    None,
+)
+
+
+def instant_line(instant: str, run_name: str | None) -> str:
+    """Return the line over one run's schematic: the instant it shows, and its run while compared.
+
+    A lone run is not named, as its own panels are not. While runs are
+    compared, the line names the run, because stacking order cannot say
+    which run a tension belongs to.
+    """
+
+    if run_name is None:
+        return INSTANT_LINE_TEMPLATE.format(instant=instant)
+
+    return COMPARED_INSTANT_LINE_TEMPLATE.format(run=run_name, instant=instant)

@@ -89,6 +89,11 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.chart_frame import PreviewRequest
+from anesthesia_sim.app.compartment_schematic import (
+    WITHHELD_SCHEMATIC,
+    SchematicShown,
+    schematic_shown,
+)
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
@@ -160,6 +165,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
+from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_surfaces import (
     AccountingPanel,
@@ -545,6 +551,10 @@ class RunView(QWidget):
             accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT
         )
         self._accounting_panels: list[AccountingPanel] = []
+        # The compartment schematic is written where the readouts are, so it
+        # starts withheld, as nothing has been drawn yet (`PL-RNYV`).
+        self._schematic_shown = WITHHELD_SCHEMATIC
+        self._schematics: list[RunSchematic] = []
 
         # The control-change panel's heading. It is an instance label rather
         # than a widget built inside `_lay_out_control_record`, because it has
@@ -698,6 +708,7 @@ class RunView(QWidget):
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
+        self._show_schematic(schematic_shown(snapshot))
         self._started_over_since_the_cards = False
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()
@@ -925,6 +936,20 @@ class RunView(QWidget):
                 panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
 
         self._show_accounting(WITHHELD_ACCOUNTING)
+        self._show_schematic(WITHHELD_SCHEMATIC)
+
+    def _show_schematic(self, shown: SchematicShown) -> None:
+        """Write the compartment schematic on every copy of it, and keep it for a copy built later.
+
+        It is written beside the readouts, from the same snapshot, and
+        withheld beside them. So a schematic and the readouts never show two
+        different states of the run (`PL-RNYV`).
+        """
+
+        self._schematic_shown = shown
+
+        for schematic in self._schematics:
+            schematic.show_schematic(shown)
 
     def _show_accounting(self, shown: Accounting) -> None:
         """Write the accounting panel on every copy of it, and keep it for a copy built later."""
@@ -1826,17 +1851,6 @@ class RunView(QWidget):
 
         return row
 
-    @property
-    def run_name(self) -> str | None:
-        """What `set_run_name` last called this run, or None while it is drawn alone.
-
-        A View that draws no chart frame names each run from here, such as
-        the compartment schematic. So it calls a run by the same name as the
-        run's own panels, from the one writer of that name.
-        """
-
-        return self._run_name
-
     def set_run_name(self, name: str | None) -> None:
         """Name this view in its own header, its readouts and both its record panels, or not at all.
 
@@ -1876,6 +1890,9 @@ class RunView(QWidget):
 
         for accounting_panel in self._accounting_panels:
             accounting_panel.show_heading(compared_panel_heading(ACCOUNTING_HEADING, name))
+
+        for schematic in self._schematics:
+            schematic.show_name(name)
 
         self._control_timeline_heading_text.setText(
             compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
@@ -1978,6 +1995,17 @@ class RunView(QWidget):
                 compared_panel_heading(ACCOUNTING_HEADING, self._run_name),
                 parent=self,
             ),
+        )
+
+    def build_compartment_schematic(self) -> RunSchematic:
+        """A new copy of this run's compartment schematic, for any Area that shows the View.
+
+        Every call builds another copy showing what the copies already built
+        show, named as this run's own panels are named (`PL-9LNF`, `PL-RNYV`).
+        """
+
+        return keep_until_destroyed(
+            self._schematics, RunSchematic(self._schematic_shown, self._run_name, parent=self)
         )
 
     def build_control_record(self) -> QWidget:

@@ -116,6 +116,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ForkPoint,
     HaltDisposition,
     RunMarks,
+    above_the_axis_top,
     accounting,
     bookmark_panel,
     branch_at_stake,
@@ -4223,3 +4224,21 @@ def test_only_the_delivered_dial_carries_a_second_line() -> None:
     for readout in readouts:
         if readout.control is not ControlInput.DELIVERED:
             assert readout.secondary == ""
+
+
+def test_a_value_the_readouts_print_as_the_top_is_not_above_it() -> None:
+    """Isoflurane's top, 3 x 1.2, is 3.5999999999999996 in binary (`PL-RNYV`).
+
+    A tension of 3.6% prints as the top. It is not above the scale, so
+    neither the chart's notice nor the schematic's mark may name it. A
+    tension less than one display step above the top is not above it
+    either, and one more than a step above it is.
+    """
+
+    top = 3 * 1.2
+
+    assert top != 3.6
+    assert above_the_axis_top(3.6, top) is False
+    assert above_the_axis_top(3.605, top) is False
+    assert above_the_axis_top(3.62, top) is True
+    assert above_the_axis_top(0.0, top) is False

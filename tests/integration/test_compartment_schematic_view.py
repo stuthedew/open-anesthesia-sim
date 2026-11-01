@@ -14,23 +14,35 @@ run's own panel is named. They render under the `offscreen` platform that
 
 from collections.abc import Iterator
 from math import exp, floor, log10
+from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QEvent
+from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
+from anesthesia_sim.app.chart_frame import trace_style
+from anesthesia_sim.app.compartment_schematic import WITHHELD_AMOUNT_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S, TRUNK_RUN_INDEX
+from anesthesia_sim.app.dashboard_frame import (
+    SIMULATION_STEP_S,
+    TRUNK_RUN_INDEX,
+    WITHHELD_CONCENTRATION_TEXT,
+)
 from anesthesia_sim.app.formatting import format_elapsed
+from anesthesia_sim.app.qt_schematic import SchematicCanvas
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.theme import MUTED, WARNING
 from anesthesia_sim.app.view_registry import COMPARTMENT_SCHEMATIC, REGISTERED
 from anesthesia_sim.app.views import CompartmentSchematicView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.shipped import shipped_workspaces
 from anesthesia_sim.layout.tree import Area, AreaId, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
@@ -86,10 +98,11 @@ def _dashboard(
     shown: list[SimulationView],
     controller: SimulationController,
     case: BranchedCase | None = None,
+    workspaces: WorkspaceSet = _SCHEMATIC_ONLY,
 ) -> SimulationView:
     """A dashboard showing only the schematic, presented once, as `main()` opens one."""
 
-    view = SimulationView((controller,), case=case, workspaces=_SCHEMATIC_ONLY)
+    view = SimulationView((controller,), case=case, workspaces=workspaces)
     shown.append(view)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
@@ -129,9 +142,12 @@ def _assert_every_label_matches_its_run(view: SimulationView) -> None:
 
     for schematic, run in zip(schematics, view.runs, strict=True):
         panel_name = None if run._run_name_text.isHidden() else run._run_name_text.text()
+        clock = run._readout_row.panels[0].value_label.text()
+        instant = f"{clock} of simulated time"
 
-        assert schematic.name_text.isHidden() is (panel_name is None)
-        assert schematic.name_text.text() == (panel_name or "")
+        assert schematic.name_text.text() == (
+            f"At {instant}" if panel_name is None else f"{panel_name}, at {instant}"
+        )
 
         readings = schematic.canvas.readings
         amounts = run.controller.snapshot().compartment_agent_amounts
@@ -254,7 +270,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     view = _dashboard(application, shown, trunk, case)
 
     _assert_every_label_matches_its_run(view)
-    assert _schematic(view).schematics[0].name_text.isHidden()
+    assert _schematic(view).schematics[0].name_text.text().startswith("At ")
 
     # Every frame redraws the instant the run stands at.
     trunk.start()
@@ -273,7 +289,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     assert len(view.runs) == 2
     _assert_every_label_matches_its_run(view)
     names = [schematic.name_text.text() for schematic in _schematic(view).schematics]
-    assert names == ["Run 1", "Run 2"]
+    assert [name.split(",")[0] for name in names] == ["Run 1", "Run 2"]
 
     # The branch moves on its own; each schematic shows its own run.
     branch = view.runs[1].controller
@@ -297,7 +313,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 
     assert len(view.runs) == 1
     _assert_every_label_matches_its_run(view)
-    assert _schematic(view).schematics[0].name_text.isHidden()
+    assert _schematic(view).schematics[0].name_text.text() == "At 0s of simulated time"
     assert {reading.amount for reading in _schematic(view).schematics[0].canvas.readings} == {
         "0 mL vapour"
     }
@@ -314,7 +330,24 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 
     _assert_every_label_matches_its_run(view)
     isoflurane_top = 3 * load_agent_parameters("isoflurane").mac_percent
-    assert f"0 to {isoflurane_top:g}% of 1 atm" in _schematic(view).schematics[0].scale_text.text()
+    schematic = _schematic(view).schematics[0]
+    assert f"0 to {isoflurane_top:g}% of 1 atm" in schematic.scale_text.text()
+
+    # Each fill is read against isoflurane's scale, not sevoflurane's. The
+    # tensions are read from the snapshot's own fields, in the readout row's
+    # order, rather than through the lookup the schematic uses.
+    snapshot = run.controller.snapshot()
+    fractions = (
+        snapshot.inspired_partial_pressure_fraction,
+        snapshot.alveolar_partial_pressure_fraction,
+        snapshot.mixed_venous_partial_pressure_fraction,
+        snapshot.vessel_rich_partial_pressure_fraction,
+        snapshot.muscle_partial_pressure_fraction,
+        snapshot.fat_partial_pressure_fraction,
+    )
+    for reading, fraction in zip(schematic.canvas.readings, fractions, strict=True):
+        percent = float(fraction) * 100.0
+        assert reading.fill == pytest.approx(percent / isoflurane_top, rel=1e-9), reading.name
 
 
 def test_a_branch_taken_at_a_mark_behind_the_clock_draws_that_instant(
@@ -367,3 +400,161 @@ def test_a_tension_above_the_scale_is_marked_and_named_in_words(
     assert schematic.canvas.readings[0].off_scale
     assert not schematic.off_scale_text.isHidden()
     assert schematic.off_scale_text.text().startswith("Above the top of the scale: Circuit.")
+
+
+def _failing_assembly(*args: object, **kwargs: object) -> NoReturn:
+    """Stand in for `assemble_chart_frame` where every frame must fail."""
+
+    del args, kwargs
+    raise RuntimeError("this frame could not be assembled")
+
+
+def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a Reset that no frame has drawn, the schematic shows no value of the discarded run.
+
+    The adversarial review of `PL-RNYV` found that the schematic, written by
+    its View on each tick, kept the run's last values after a Reset while
+    every frame failed. The readouts beside it were withheld. The run now
+    writes and withholds its schematic where it writes and withholds its
+    readouts. The workspace also shows a chart, so a frame is assembled and
+    fails.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_to(controller, 90.0)
+    controller.pause()
+    view = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
+    view.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
+    _settle(application)
+    view.present(False)
+    _assert_every_label_matches_its_run(view)
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    run = view.runs[0]
+    run._reset_button.click()
+    dialog = run._reset_dialog
+    if dialog is not None:
+        dialog.discard_button.click()
+    _settle(application)
+    view.present(False)
+
+    assert run.controller.has_failed is True
+    assert _readout_values(run) == (WITHHELD_CONCENTRATION_TEXT,) * 6
+    schematic = _schematic(view).schematics[0]
+    assert [reading.tension for reading in schematic.canvas.readings] == [
+        WITHHELD_CONCENTRATION_TEXT
+    ] * 6
+    assert [reading.amount for reading in schematic.canvas.readings] == [WITHHELD_AMOUNT_TEXT] * 6
+    assert [reading.fill for reading in schematic.canvas.readings] == [0.0] * 6
+    assert schematic.scale_text.isHidden()
+    assert schematic.off_scale_text.isHidden()
+
+
+def _painted(canvas: SchematicCanvas) -> QImage:
+    image = canvas.grab().toImage()
+    assert image.devicePixelRatio() == 1.0
+
+    return image
+
+
+def _column_centre(canvas: SchematicCanvas, index: int) -> int:
+    return int(canvas.width() / 6 * (index + 0.5))
+
+
+# Where the canvas stands its containers, restated from `app/qt_schematic.py`'s
+# placeholder sizes: their top, their height and their width, in pixels.
+_CONTAINER_TOP_PX = 14
+_CONTAINER_HEIGHT_PX = 96
+_CONTAINER_WIDTH_PX = 44
+
+
+def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The painted fill, not only the reading, is the tension's share of the scale.
+
+    The fill is counted in pixels of the compartment's own colour down the
+    container's centre. The outline and the off-scale bar cover up to three
+    pixels of it, so the count is held to within three pixels of the
+    reading's share of the container's height.
+    """
+
+    off_scale = SimulationController(agent_id="sevoflurane")
+    off_scale.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    off_scale.set_fresh_gas_flow(FreshGasFlow(8.0))
+    off_scale.set_delivered_concentration_percent(Percent(8.0))
+    off_scale.start()
+    _advance(off_scale, 10 * SECONDS_PER_MINUTE)
+    off_scale.pause()
+    ordinary = SimulationController()
+    ordinary.start()
+    _advance(ordinary, 20 * SECONDS_PER_MINUTE)
+    ordinary.pause()
+    warning = QColor(WARNING).rgb()
+
+    for controller in (off_scale, ordinary):
+        canvas = _schematic(_dashboard(application, shown, controller)).schematics[0].canvas
+        image = _painted(canvas)
+
+        for index, reading in enumerate(canvas.readings):
+            x = _column_centre(canvas, index)
+            colour = QColor(trace_style(reading.quantity).color).rgb()
+            painted = sum(image.pixelColor(x, y).rgb() == colour for y in range(image.height()))
+            assert abs(painted - reading.fill * _CONTAINER_HEIGHT_PX) <= 3, reading.name
+            marked = any(
+                image.pixelColor(x, y).rgb() == warning
+                for y in range(_CONTAINER_TOP_PX - 2, _CONTAINER_TOP_PX + 3)
+            )
+            assert marked is reading.off_scale, reading.name
+
+        assert any(reading.off_scale for reading in canvas.readings) is (controller is off_scale)
+
+
+def test_the_tissues_are_drawn_in_parallel_and_never_joined_to_each_other(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """No line joins one tissue's container to the next, as no flow joins them.
+
+    A line joins the circuit to the alveoli and the alveoli to venous blood,
+    at the containers' mid-height. Between venous blood and each tissue, and
+    between tissues, the gap at that height is empty. The arterial line above
+    the row and the venous line below it run the length of the tissues.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 20 * SECONDS_PER_MINUTE)
+    controller.pause()
+    canvas = _schematic(_dashboard(application, shown, controller)).schematics[0].canvas
+    image = _painted(canvas)
+    muted = QColor(MUTED).rgb()
+    middle = _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX // 2
+
+    def lined(left: int, right: int, rows: range) -> list[bool]:
+        """Whether each row has a MUTED pixel in the gap between two containers."""
+
+        xs = range(
+            _column_centre(canvas, left) + _CONTAINER_WIDTH_PX // 2 + 1,
+            _column_centre(canvas, right) - _CONTAINER_WIDTH_PX // 2 - 1,
+        )
+        return [any(image.pixelColor(x, y).rgb() == muted for x in xs) for y in rows]
+
+    across = range(middle - 4, middle + 5)
+    assert any(lined(0, 1, across)), "the circuit is joined to the alveoli"
+    assert any(lined(1, 2, across)), "the alveoli are joined to venous blood"
+    assert not any(lined(2, 3, across)), "venous blood is not joined sideways to a tissue"
+    assert not any(lined(3, 4, across)), "the vessel-rich group is not joined to muscle"
+    assert not any(lined(4, 5, across)), "muscle is not joined to fat"
+
+    bus_rows = range(0, _CONTAINER_TOP_PX)
+    below_rows = range(
+        _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX + 1,
+        _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX + _CONTAINER_TOP_PX,
+    )
+    for left in range(1, 5):
+        assert any(lined(left, left + 1, bus_rows)), f"arterial line spans gap {left}"
+    for left in range(2, 5):
+        assert any(lined(left, left + 1, below_rows)), f"venous line spans gap {left}"

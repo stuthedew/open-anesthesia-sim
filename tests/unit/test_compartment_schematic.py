@@ -57,7 +57,7 @@ def _circuit_percent(dial_percent: float, seconds: float, volume_l: float) -> fl
     )
 
 
-def test_the_containers_are_the_readout_panels_in_the_order_agent_reaches_them() -> None:
+def test_the_containers_are_the_readout_panels_in_the_readout_row_s_order() -> None:
     readings = container_readings(SimulationController(agent_id="sevoflurane").snapshot())
 
     assert [reading.quantity for reading in readings] == list(COMPARTMENT_QUANTITIES)

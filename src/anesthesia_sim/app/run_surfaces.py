@@ -1,8 +1,10 @@
 """The parts of one run that a reader may place in an Area, any number of times, in PySide6.
 
-Two of a run's surfaces sit in an Area rather than in the unconditional
-region, which is the part of the page that is always on screen. These two
-surfaces are the setting controls and the accounting panel (`PL-9LNF`). The
+Three of a run's surfaces sit in an Area rather than in the unconditional
+region, which is the part of the page that is always on screen. Two of them
+are here: the setting controls and the accounting panel (`PL-9LNF`). The
+third, the compartment schematic, is `RunSchematic` in `app/qt_schematic.py`,
+beside the canvas it draws on (`PL-RNYV`). The
 lines that depend on a chart's time window, such as which traces are above
 the axis, belong to each chart. `app/views.py` writes them from the chart's
 frame (`PL-L59K`). An Area can be split, so two Areas can show the same

@@ -201,7 +201,7 @@ remains a question for a reviewer.
 | reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot that names the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never answers from them. The run keeps its setting until the release (§ "A preview of an unapplied setting", `PL-5B1N`) | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
-| reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
+| reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar, once `PL-S79P` draws it, shows the amounts on one scale (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
 | reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid-equivalent amount "mL liquid equiv.". `DisplayUnit` holds each spelling once a View prints it, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit` |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
@@ -12346,8 +12346,8 @@ name `PL-1P15` as the item that owes them.
 ### The compartment schematic: what its heights, amounts and share bar assert
 
 The compartment schematic draws the circuit, the alveoli, venous blood, the
-vessel-rich group, muscle and fat as containers, in the order in which agent
-reaches them (`PL-RNYV`). This subsection says what each mark on it asserts,
+vessel-rich group, muscle and fat as containers, in the readout row's order
+(`PL-RNYV`). This subsection says what each mark on it asserts,
 before any of it is drawn (`PL-2881`, 2026-11-01). It also governs every
 other View that shows an agent amount: the schematic's share bar (`PL-S79P`)
 and the agent cost View (`PL-B396`). Gas Man's Picture draws the same
@@ -12438,10 +12438,16 @@ blood to the venous container, which a line joins back to the alveoli. So the
 three tissue groups are drawn in parallel, as § "Assumptions" perfuses them.
 A row of containers joined one to the next would draw agent passing from the
 vessel-rich group through muscle into fat, which is the intertissue route this
-model omits (`PL-RNYV`). Each schematic shows its run's current instant, from
-the snapshot the readouts are written from. While runs are compared, each
-schematic is named over its containers, as the hazard table's row on reading
-one run's value as the other's requires.
+model omits (`PL-RNYV`). Each schematic shows its run's current instant, and
+the line over it states that instant as the readouts' clock prints it. Two
+compared runs can stand at different times, as a branch taken at an earlier
+mark does, so a difference between two schematics may be elapsed time rather
+than the change the branch made. The run writes its schematic where it writes
+its readouts, from the same snapshot, and withholds the schematic's values
+where it withholds the readouts', after a Reset or an agent change that no
+frame has been drawn since. While runs are compared, the same line names the
+run, as the hazard table's row on reading one run's value as the other's
+requires.
 
 **Why no container is drawn for arterial blood.** This model gives arterial
 blood no volume, capacity or amount of its own, because
