@@ -36,6 +36,18 @@ surely as a wrong number does. So the pairing is one record per trace rather
 than parallel lists. `app/qt_chart.py` draws its curves and its legend from
 this table rather than keeping a second copy (`PL-2CS8`).
 
+**Every coordinate a frame draws is finite, and it is checked where it is
+built.** `app/qt_chart.py` hands each curve its points as numpy arrays with
+pyqtgraph's own finiteness pass switched off (`skipFiniteCheck`). pyqtgraph's
+documentation allows that only for data known to be finite, and leaves the
+result undefined otherwise (`PL-TCNT`). A curve draws three kinds of value, and
+each is checked once, when it is built. A compartment's value is a `Fraction`,
+which rejects NaN and infinity under the compartment's name (`_run_frame`). An
+instant comes from a `DrawnWindow`, which rejects a non-finite instant. A
+wash-in ratio is held by a `WashInStretch`, which rejects a non-finite ratio.
+So a non-finite value raises before any `ChartFrame` exists, and the view halts
+the run with the value named rather than drawing a broken trace.
+
 **The window is a viewport, and the run fills it.** This module decides the
 axis a frame draws from the selected time base and from the newest instant
 that any run on the chart has reached. Under "Fit run" the axis is fitted to
@@ -94,6 +106,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
@@ -677,11 +690,27 @@ class WashInStretch:
             reference line. Only a stretch that *stopped* carries the
             terminus marker, because the growing right-hand end of a run is
             not an ending.
+
+    Raises:
+        SimulationConfigurationError: If a ratio is NaN or infinite. A ratio
+            is formed from two compartment values that the frame has already
+            built as `Fraction`s, and its denominator is at least the smallest
+            concentration the display resolves, so no supported run produces
+            one. The check is here so that the guarantee the module docstring
+            states holds for every stretch by construction, rather than by an
+            argument about the order in which a frame is assembled.
     """
 
     times_s: tuple[float, ...]
     ratios: tuple[float, ...]
     ends_above_equilibrium: bool
+
+    def __post_init__(self) -> None:
+        for time_s, ratio in zip(self.times_s, self.ratios, strict=True):
+            if not isfinite(ratio):
+                raise SimulationConfigurationError(
+                    f"the wash-in ratio F_A/F_I at {time_s} s is {ratio}, which is not finite"
+                )
 
 
 @dataclass(frozen=True, slots=True)

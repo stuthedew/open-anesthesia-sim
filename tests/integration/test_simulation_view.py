@@ -4251,6 +4251,51 @@ def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplica
     } == before
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf")], ids=["nan", "inf"])
+def test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment(
+    application: QApplication, value: float
+) -> None:
+    """A NaN or an infinity halts the run, and the notice names the compartment (`PL-TCNT`).
+
+    The chart draws with pyqtgraph's `skipFiniteCheck`, so pyqtgraph no
+    longer looks for such a value itself, and its documentation leaves the
+    result undefined if one arrives. The frame refuses the value before it
+    exists instead. So the run stops visibly, the notice names the fat
+    compartment, and no trace moves.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    for _ in range(50):
+        controller.advance(SIMULATION_STEP_S)
+    view.render_tick()
+    chart = _concentration(view).chart
+    before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
+
+    _refusing_a_drawn_column(controller, RecordedQuantity.FAT, value)
+    for _ in range(50):
+        controller.advance(SIMULATION_STEP_S)
+
+    view.render_tick()
+
+    status = controller.status()
+    run = view.runs[0]
+
+    assert controller.has_failed is True
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(
+        f"SimulationConfigurationError: fat partial_pressure_fraction of {value} is outside 0 to 1"
+    )
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert f"fat partial_pressure_fraction of {value}" in notice
+    assert {
+        quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES
+    } == before
+
+
 def test_two_runs_that_come_to_be_on_different_agents_halt_visibly(
     application: QApplication,
 ) -> None:

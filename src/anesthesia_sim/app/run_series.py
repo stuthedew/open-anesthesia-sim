@@ -27,6 +27,7 @@ docstring records the renames that this naming has already protected against.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from math import isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -210,6 +211,11 @@ class DrawnWindow:
     Raises:
         SimulationConfigurationError: If the two sequences differ in length.
             A trace would then be drawn against another trace's time axis.
+            Also raised if an instant is NaN or infinite. Every instant here
+            is a time the run reached, so a non-finite one is a defect. The
+            chart hands its points to pyqtgraph without pyqtgraph's own
+            finiteness pass, so this check is what keeps such an instant off
+            the plot (`app/chart_frame.py`, `PL-TCNT`).
     """
 
     substance_id: str
@@ -222,6 +228,13 @@ class DrawnWindow:
                 f"a drawn window has {len(self.times_s)} instants and {len(self.states)} "
                 "states; each state belongs to one instant"
             )
+
+        for time_s in self.times_s:
+            if not isfinite(time_s):
+                raise SimulationConfigurationError(
+                    f"a drawn window holds the instant {time_s} s, which is not finite; "
+                    "every drawn instant is a time the run reached"
+                )
 
     def compartment_fractions(self, series: RecordedSeries) -> list[float]:
         """This trace's value at every drawn instant, as a fraction of 1 atm.

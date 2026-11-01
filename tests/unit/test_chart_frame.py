@@ -710,6 +710,43 @@ def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
             assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
 
 
+@pytest.mark.parametrize("value", [float("nan"), inf, -inf], ids=["nan", "inf", "-inf"])
+def test_a_non_finite_drawn_value_is_refused_naming_its_compartment(value: float) -> None:
+    """No frame can hold a NaN or an infinity, so the chart may skip pyqtgraph's own scan.
+
+    `app/qt_chart.py` draws every curve with `skipFiniteCheck`, and
+    pyqtgraph leaves the result undefined for non-finite data (`PL-TCNT`).
+    That is safe only if the frame refuses such a value before it exists, and
+    names the compartment, as it does a value past one atmosphere.
+    """
+
+    for quantity in COMPARTMENT_QUANTITIES:
+        run = _input_refusing_a_drawn_column(_run(60.0), quantity, value)
+
+        with pytest.raises(
+            SimulationConfigurationError,
+            match=rf"^{COMPARTMENT_FRACTION_NAMES[quantity]} of {value} is outside 0 to 1",
+        ):
+            assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+
+
+@pytest.mark.parametrize("ratio", [float("nan"), inf, -inf], ids=["nan", "inf", "-inf"])
+def test_a_wash_in_stretch_refuses_a_non_finite_ratio(ratio: float) -> None:
+    """A stretch holds only finite ratios, by construction (`PL-TCNT`).
+
+    No supported run forms such a ratio, because both of its fractions are
+    checked first. The stretch checks anyway, so the guarantee that lets the
+    chart skip pyqtgraph's scan does not rest on the order of the steps in
+    `_run_frame`.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"^the wash-in ratio F_A/F_I at 8\.0 s is {ratio}, which is not finite$",
+    ):
+        WashInStretch((4.0, 8.0), (0.5, ratio), False)
+
+
 def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> None:
     """The conversion, the hover and the cursor readouts use the `Fraction`s that the frame built.
 
