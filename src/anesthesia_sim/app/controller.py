@@ -314,11 +314,15 @@ class CompartmentAgentAmounts:
     compartment's `agent_amount_l` in `core/`, so nothing here computes an
     amount (`PL-KFTM`).
 
-    **Keyed by compartment, not ordered.** A container on the compartment
-    schematic looks its amount up by the compartment it draws. A lookup by
-    position could be rebound to a neighbour's amount by an edit to either
-    side, and a correct amount under the wrong compartment's label is a
-    safety failure. The keys are `run_series.COMPARTMENT_QUANTITIES`, in that
+    **Keyed by compartment, not ordered.** A container on the planned
+    compartment schematic (`PL-RNYV`) will look its amount up by the
+    compartment it draws. A lookup by position could be rebound to a
+    neighbour's amount by an edit to either side, and a correct amount under
+    the wrong compartment's label is a safety failure. The key protects the
+    lookup only. Which `core/` compartment each key is read from is paired
+    by hand in `SimulationController.snapshot()`, and
+    `tests/reference/test_compartment_amounts_against_oracles.py` is the test
+    that catches a wrong pairing. The keys are `run_series.COMPARTMENT_QUANTITIES`, in that
     order, so a View that lists every compartment lists them in the order
     the chart does. When the model holds more than one substance, the same
     record is keyed by substance as well, rather than gaining fields.
@@ -326,7 +330,7 @@ class CompartmentAgentAmounts:
     The record holds the parts and not their total. The total is the
     snapshot's `stored_agent_l`, which `core/` sums once
     (`AgentUptakeSystem.total_stored_agent_l`). A unit test holds the two
-    equal exactly, so the share bar's six shares are fractions of the total
+    equal exactly, so the planned share bar's six shares will be fractions of the total
     the accounting panel shows.
 
     Attributes:
@@ -461,10 +465,10 @@ class SimulationSnapshot(RunRecord):
     compartment_agent_amounts: CompartmentAgentAmounts
     """The agent that each compartment holds, in litres of vapour.
 
-    The compartment schematic labels each container with its amount and
-    draws the share bar from these amounts (`docs/MODEL.md` § "The compartment
-    schematic: what its heights, amounts and share bar assert"). They sum to
-    `stored_agent_l` exactly.
+    No View shows them yet. They are carried for the compartment schematic,
+    which will label each container with its amount (`PL-RNYV`), and for its
+    share bar, which will divide each amount by `stored_agent_l`
+    (`PL-S79P`). They sum to `stored_agent_l` exactly.
     """
     stored_agent_l: float
     """All the agent that the circuit and the patient hold, in litres of vapour.
@@ -1340,6 +1344,13 @@ class SimulationController:
             ),
             delivered_agent_l=accounting.delivered_agent_l,
             exhausted_agent_l=accounting.exhausted_agent_l,
+            # This pairs each compartment's key with the `core/` object it is
+            # read from. It is a second pairing beside
+            # `run_series.COMPARTMENT_STATE_INDEX`, which pairs the same keys
+            # with state-vector positions for the traces. Amounts are not in
+            # the state vector, so they cannot be read through that table.
+            # The reference test against the coupled oracle fails on a
+            # swapped pair (`PL-KFTM`).
             compartment_agent_amounts=CompartmentAgentAmounts(
                 {
                     RecordedQuantity.CIRCUIT: circuit.agent_amount_l,
