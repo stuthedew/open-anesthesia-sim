@@ -1624,11 +1624,12 @@ def test_every_curve_is_handed_the_frame_s_own_values_as_float64_arrays(
 
     pyqtgraph's performance guidance asks for `numpy.ndarray`s rather than
     lists, and allows `skipFiniteCheck` for data known to be finite. The
-    chart takes both. The comparison is exact, not approximate: the chart
-    used to hand pyqtgraph `list(...)` of these same values, which pyqtgraph
-    copied into `float64` arrays. So exact equality with the frame shows that
-    no drawn point moved. Every curve is checked, run and preview, on both
-    plots, so that none is left on the old path.
+    chart follows both. The comparison is exact, not approximate. The chart
+    used to hand pyqtgraph `list(...)` of these same values, and pyqtgraph
+    copied them into `float64` arrays. So exact equality with the frame
+    shows that no drawn point changed. The test checks every curve, for the
+    run and for the preview, on both plots, so that no curve is left on the
+    old path.
     """
 
     controller = SimulationController()

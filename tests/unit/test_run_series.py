@@ -37,9 +37,9 @@ def test_a_window_refuses_an_instant_that_is_not_finite(instant_s: float) -> Non
     """Every drawn instant is finite, so the chart may skip pyqtgraph's own scan (`PL-TCNT`).
 
     `app/qt_chart.py` draws every curve with `skipFiniteCheck`, and pyqtgraph
-    leaves the result undefined for a non-finite coordinate. The window is
-    the one place every drawn instant passes through, for a run and for a
-    preview alike, so it is where such an instant is refused.
+    leaves the result undefined for a non-finite coordinate. Every drawn
+    instant passes through the window, for a run and for a preview alike.
+    So the window is where such an instant is rejected.
     """
 
     window = SimulationController().drawn_window(0.0, 0.0, 2)

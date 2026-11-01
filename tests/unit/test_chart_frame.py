@@ -716,8 +716,9 @@ def test_a_non_finite_drawn_value_is_refused_naming_its_compartment(value: float
 
     `app/qt_chart.py` draws every curve with `skipFiniteCheck`, and
     pyqtgraph leaves the result undefined for non-finite data (`PL-TCNT`).
-    That is safe only if the frame refuses such a value before it exists, and
-    names the compartment, as it does a value past one atmosphere.
+    That is safe only if such a value is rejected before the frame is built.
+    The error must name the compartment, as it does for a value above one
+    atmosphere.
     """
 
     for quantity in COMPARTMENT_QUANTITIES:
@@ -735,9 +736,9 @@ def test_a_wash_in_stretch_refuses_a_non_finite_ratio(ratio: float) -> None:
     """A stretch holds only finite ratios, by construction (`PL-TCNT`).
 
     No supported run forms such a ratio, because both of its fractions are
-    checked first. The stretch checks anyway, so the guarantee that lets the
-    chart skip pyqtgraph's scan does not rest on the order of the steps in
-    `_run_frame`.
+    checked first. The stretch checks anyway. The chart skips pyqtgraph's
+    finiteness check because of this guarantee, so the guarantee must not
+    depend on the order of the steps in `_run_frame`.
     """
 
     with pytest.raises(

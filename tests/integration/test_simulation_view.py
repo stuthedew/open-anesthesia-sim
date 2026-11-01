@@ -4258,9 +4258,9 @@ def test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment(
     """A NaN or an infinity halts the run, and the notice names the compartment (`PL-TCNT`).
 
     The chart draws with pyqtgraph's `skipFiniteCheck`, so pyqtgraph no
-    longer looks for such a value itself, and its documentation leaves the
-    result undefined if one arrives. The frame refuses the value before it
-    exists instead. So the run stops visibly, the notice names the fat
+    longer looks for such a value itself. Its documentation leaves the
+    result undefined if one arrives. Instead, the value is rejected before
+    the frame is built. So the run stops visibly, the notice names the fat
     compartment, and no trace moves.
     """
 
