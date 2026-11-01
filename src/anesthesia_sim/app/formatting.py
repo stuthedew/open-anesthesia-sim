@@ -168,26 +168,29 @@ FLOW_DISPLAY_DECIMALS: Final = 1
 
 
 class AgentAmount(Enum):
-    """Which agent amount a displayed precision was derived for.
+    """Identifies the agent amount that a displayed precision was derived for.
 
     A precision is derived for an amount *in a unit*, not for the amount
     alone (`PL-0S0V`). So this enum is the first half of the key of
     `AGENT_AMOUNT_DISPLAY_PRECISION`, and `AgentAmountUnit` is the second.
     The three totals are separate members because one unit can suit one
-    total and not another. The stored total, converted to liquid, comes out
-    5.8% too high. The delivered and exhausted agent convert exactly.
+    total and not another. For example, the stored total comes out 5.8% too
+    high when it is converted to liquid, but the delivered and exhausted
+    agent convert exactly.
 
     Attributes:
         DELIVERED: The agent a run has delivered. The accounting panel and the
             agent cost View show it.
-        EXHAUSTED: The agent a run has exhausted. The accounting panel shows it.
+        EXHAUSTED: The agent that has left the circuit through the exhaust
+            during a run. The accounting panel shows it.
         STORED: The agent a run holds in the circuit and the body. The
             accounting panel shows it.
         COMPARTMENT: One compartment's amount, which the compartment schematic
-            labels. `docs/MODEL.md` § "Displayed precision" derives two
-            significant figures for it (`PL-2881`), which a count of decimals
-            cannot express. Until `PL-RNYV` builds that form, this amount has
-            no entry in any unit, so formatting it is refused.
+            labels. `docs/MODEL.md` § "Displayed precision" derives a precision
+            of two significant figures for it (`PL-2881`). A count of decimals
+            cannot express that precision. `PL-RNYV` builds a form that can.
+            Until then, this amount has no entry in any unit, so formatting it
+            is refused.
     """
 
     DELIVERED = "delivered total"
@@ -201,11 +204,11 @@ class AgentAmountUnit(Enum):
 
     A member identifies a unit but does not say how the unit is written.
     `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
-    and share bar assert" sets the spellings, "mL vapour" and "mL liquid
-    equiv.". The Views that first print them add them to `DisplayUnit`.
-    Every member names whether it measures vapour or liquid. About 183 mL of
-    sevoflurane vapour come from 1 mL of liquid, so a bare "mL" cannot say
-    which is meant.
+    and share bar assert" sets the spellings "mL vapour" and
+    "mL liquid equiv.". The first View to print a spelling adds it to
+    `DisplayUnit`. Every member names whether it measures vapour or liquid.
+    About 183 mL of sevoflurane vapour come from 1 mL of liquid, so a bare
+    "mL" cannot say which is meant.
 
     Attributes:
         LITRES_OF_VAPOUR: Litres of pure agent vapour at the model's reference
@@ -232,25 +235,27 @@ class AgentAmountUnit(Enum):
 #   2026-10-27, ratified, over whole millilitres). The delivered agent is the
 #   vaporizer dial setting times the fresh gas flow times the time, so no
 #   partition coefficient makes it uncertain. Once it is converted to liquid,
-#   its only uncertainty comes from the measured density. One SD of the density
-#   moves the liquid figure by 0.1 mL only above about 190 mL of liquid. The
-#   litre display of this total is coarser than 0.1 mL of liquid. That is
-#   allowed, because the bound is one-sided: it limits how fine a display may
-#   be, not how coarse.
+#   its only uncertainty comes from the measured density. An error of one SD
+#   in the density moves the liquid figure by 0.1 mL only when the total is
+#   above about 190 mL of liquid. The litre display of this total is coarser
+#   than 0.1 mL of liquid. That is allowed, because the derived precision is a
+#   limit in one direction only: it limits how fine a display may be, not how
+#   coarse.
 # - The exhausted total in millilitres of liquid has no decimals. One step of
 #   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
 #   for every shipped agent. 1 mL is the finest power of ten that is no finer
 #   than that step. So the litre and millilitre displays claim the same
 #   resolution for the same amount.
 #
-# A pair of amount and unit with no entry has no derivation behind it. It is
+# A pair of amount and unit with no entry has no derivation behind it, so it is
 # refused rather than shown at a default precision. The stored total has no
-# liquid entry, because a store converted to liquid comes out 5.8% too high.
-# That error is more than 1 mL once the store holds about 17 mL of liquid. A
-# compartment's amount has no entry, because `PL-2881` derived two significant
-# figures for it, not a count of decimals. `PL-RNYV` builds that form. Money has
-# no entry here, because the resolution of a cost depends on the price that the
-# reader sets. `PL-1P15` derives that resolution.
+# liquid entry, because converting the stored total to liquid gives a figure
+# 5.8% too high. That error is more than 1 mL once the store holds about 17 mL
+# of liquid. A compartment's amount has no entry, because `PL-2881` derived a
+# precision of two significant figures for it, not a count of decimals.
+# `PL-RNYV` builds a form that can hold significant figures. Money has no entry
+# here, because the resolution of a cost depends on the price that the reader
+# sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
 _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
     MappingProxyType(
