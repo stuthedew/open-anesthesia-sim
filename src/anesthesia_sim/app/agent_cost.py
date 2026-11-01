@@ -2,8 +2,8 @@
 
 `ROADMAP.md` § "v0.7.0 - the schematic", entry 8, specifies the View
 (`PL-B396`). It shows the delivered agent in millilitres of liquid equivalent
-by default, or in litres of vapour if the reader chooses. The unit is named on
-the value, so a reader never has to remember which unit they picked. This
+by default, or in litres of vapour if the reader chooses. The unit is printed
+with the value, so a reader never has to remember which unit they picked. This
 module turns one snapshot into the texts for both units. The View shows the one
 the reader chose. Nothing here imports Qt.
 
@@ -11,18 +11,19 @@ the reader chose. Nothing here imports Qt.
 left the bottle (`ROADMAP.md`, planned-milestone item 28, and `PL-H4N8`). The
 model computes it as the vaporizer's setting times the fresh gas flow, summed
 over the run, in litres of vapour (`docs/MODEL.md` § "Agent amount"). No
-partition coefficient enters it.
+partition coefficient enters the calculation.
 
 **Why the liquid figure is exact.** The delivered agent is gas at room
-temperature, so it really is at the model's reference condition of 20 °C. So
+temperature, which is the model's reference condition of 20 °C. So
 `core/liquid_agent.py` converts it to liquid exactly. The agent held in the
-body is at body temperature, and the same conversion reads it 5.8 % high. This
-module therefore converts only the delivered agent, and nothing else.
+body is at body temperature, and the same conversion would give a figure 5.8 %
+too high for it. This module therefore converts only the delivered agent, and
+nothing else.
 
 **Why the conversion takes a snapshot.** `liquid_volume_ml` takes a bare
 volume of vapour and a bare ratio. Given those, a caller could convert one
 agent's vapour with another agent's ratio after an agent change. Sevoflurane
-vapour converted with desflurane's ratio reads about 13 % low. So
+vapour converted with desflurane's ratio gives a result about 13 % too low. So
 `delivered_liquid_ml` takes the snapshot, and reads the amount and the ratio
 from that one record. The snapshot carries the ratio beside the agent it
 belongs to (`SimulationSnapshot.agent_vapour_per_liquid`). No other module in
@@ -71,9 +72,9 @@ WITHHELD_AGENT_NAME: Final = "Agent"
 #: amount means nothing without it. The wording is a placeholder.
 DELIVERED_LABEL_TEMPLATE: Final = "{agent} delivered"
 
-#: What the liquid figure is. The caption says that the run holds no liquid,
-#: and where the figure comes from. The wording is a placeholder, but what the
-#: caption must say is not (`PL-B396`).
+#: The caption that says what the liquid figure is. It says that the run holds
+#: no liquid, and where the figure comes from. The wording is a placeholder, but
+#: what the caption must say is not (`PL-B396`).
 LIQUID_CAPTION_TEMPLATE: Final = (
     "{unit}: the volume of liquid {agent} that the delivered vapour came from, at 20 degrees C.\n"
     "Delivered is the vaporizer's output: its setting times the fresh gas flow, over the run."
@@ -186,7 +187,8 @@ def delivered_shown(snapshot: SimulationSnapshot) -> DeliveredShown:
         TypeError: As `format_delivered_agent` raises it.
         ValueError: As `format_delivered_agent` raises it, for a delivered
             amount that is negative or not finite. The model never produces
-            one, so the run halts rather than showing a plausible number.
+            one, so such an amount is a defect, and the run halts rather than
+            show a plausible number.
     """
 
     amounts = {
@@ -204,10 +206,11 @@ def delivered_shown(snapshot: SimulationSnapshot) -> DeliveredShown:
     )
 
 
-#: What the panel shows while the run's values are withheld, after a Reset or
-#: an agent change that no frame has drawn. It names no agent and no amount,
-#: because either could belong to the run that was discarded. Each unit is
-#: still named, so the reader's choice of unit stays visible.
+#: What the panel shows while the run's values are withheld. They are withheld
+#: after a Reset or an agent change, until a frame has drawn the new state. The
+#: panel names no agent and no amount, because either could belong to the run
+#: that was discarded. Each unit is still named, so the reader's choice of unit
+#: stays visible.
 WITHHELD_DELIVERED: Final = DeliveredShown(
     WITHHELD_ELAPSED_TIME_TEXT,
     DELIVERED_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME),

@@ -452,10 +452,10 @@ class SimulationView(QWidget):
         # built (`PL-DWHG`).
         self._store = store
         self._notice = notice
-        # The reader's preferences, which every View is shown on each tick, the
-        # store a change is saved to, and what the reader is told about them.
-        # The dashboard owns them, as it owns the compartment selection, so two
-        # agent cost Views can never show two units (`PL-B396`).
+        # These hold the reader's preferences, which every View is shown on each
+        # tick, the store that a change is saved to, and the notice the reader is
+        # shown about them. The dashboard owns them, as it owns the compartment
+        # selection, so two agent cost Views can never show two units (`PL-B396`).
         loaded = (
             LoadedPreferences(Preferences(), writable=False, notice=None)
             if preferences is None

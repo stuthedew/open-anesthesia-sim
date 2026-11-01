@@ -2,22 +2,23 @@
 
 `uv run anesthesia-sim` runs `main()` below. The window opens maximized
 (`PL-Z4K6`). A maximized window lets the readout row use as many columns as
-the screen allows: seven readouts across on a 1366 px laptop, which the screen
-fraction below missed by a few pixels. Behind the maximized
-state, the window also has a normal geometry. That geometry is a fraction of
-the screen's available area, centred on it (`PL-005`), and never a fixed pixel
-size. `qt_widgets.initial_window_geometry` derives it from the screen that the
-application is given, and the reader gets it back when they un-maximize the
-window. Maximized is not full screen. The title bar and window controls stay,
-and on macOS a maximized window is the zoomed window. So `PL-005`'s refusal of
-a full-screen start does not apply to it. Maximized is also the reference's
-own default window state (`docs/interface-provenance.md` § "Adopted").
+the screen allows. On a 1366 px laptop that is seven readouts across, which the
+fraction of the screen described below missed by a few pixels. Behind the
+maximized state, the window also has a normal geometry. That geometry is a
+fraction of the screen's available area, centred on it (`PL-005`), and never a
+fixed pixel size. `qt_widgets.initial_window_geometry` derives it from the
+screen that the application is given, and the reader gets it back when they
+un-maximize the window. Maximized is not full screen. The title bar and window
+controls stay, and on macOS a maximized window is the zoomed window. So
+`PL-005`'s refusal of a full-screen start does not apply to it. Maximized is
+also the reference's own default window state (`docs/interface-provenance.md`
+§ "Adopted").
 
 The first frame is drawn after the window is shown, because a frame is built
 from the plot's laid-out width. The timers start after that, so the first
 thing a reader sees is a drawn, paused run. The platform applies the maximized
-size later, and each chart then owes the render tick a frame at its new width
-(`ConcentrationChart.owes_a_frame`).
+size later. Each chart then needs a new frame at its new width on the next
+render tick (`ConcentrationChart.owes_a_frame`).
 
 **What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` makes two
 runs on one axis into one patient under two managements, rather than two
@@ -27,13 +28,13 @@ trunk. The learner adds the second run themselves, by taking a branch.
 
 **The interface's colours are declared on the application before the first
 widget exists** (`PL-KRZW`). Qt's palette follows the host's appearance, but
-every colour that this interface declares is a light-theme value. So the parts
-of the window that no stylesheet applies to, such as the page's scroll bars,
-drew a dark host's surfaces around a light window.
-`qt_widgets.declare_application_colours` makes that declaration, and its
-docstring explains why it is a palette rather than a colour-scheme hint. This
-module owns only the ordering: a widget built before the call would be laid
-out under the host's palette.
+every colour that this interface declares is a light-theme value. So, without
+the declaration, the parts of the window that no stylesheet applies to, such as
+the page's scroll bars, were drawn in a dark host's colours around a light
+window. `qt_widgets.declare_application_colours` makes that declaration, and
+its docstring explains why it is a palette rather than a colour-scheme hint.
+This module owns only the ordering: a widget built before the call would be
+laid out under the host's palette.
 
 **The reader's saved Workspaces are loaded here, once** (`PL-DWHG`). `main()`
 gives Qt the organization and application names. It then asks Qt for the

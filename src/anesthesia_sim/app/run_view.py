@@ -280,14 +280,14 @@ class RunView(QWidget):
     methods build a new copy on every call, and the new copy starts from what
     the existing copies show. Each copy is an instance of a class in
     `app/run_surfaces.py`, `app/qt_schematic.py` or `app/qt_agent_cost.py`.
-    Every writer here writes every copy
-    that Qt has not destroyed, so two Areas can show one run (`PL-9LNF`). The
-    other parts belong to the unconditional region, which is always on
-    screen, and stay one per run. Their build methods return the same widgets
-    on every call, laid out once when the run was built. A Qt layout takes a
-    widget from wherever it sits. So an earlier version, which built a new
-    container on each call, took the run's live widgets off the screen. It
-    then deleted them when the container was dropped (`PL-N67T`, `PL-KZR1`).
+    Every writer here writes every copy that Qt has not destroyed, so two
+    Areas can show one run (`PL-9LNF`). The other parts belong to the
+    unconditional region, which is always on screen, and stay one per run.
+    Their build methods return the same widgets on every call, laid out once
+    when the run was built. Adding a widget to a Qt layout removes it from
+    wherever it sat before. So an earlier version, which built a new container
+    on each call, took the run's live widgets off the screen. It then deleted
+    them when the container was dropped (`PL-N67T`, `PL-KZR1`).
 
     At construction, it rejects only a first snapshot that `setting_readouts`
     cannot draw controls for, by raising that function's `ValueError`. No
@@ -310,10 +310,10 @@ class RunView(QWidget):
             (`PL-R2YM`).
         case_restarted: Emitted when this run has started over from
             induction, after a Reset or an accepted change of agent. On a
-            trunk run, that starts a new case, so every branch
-            taken from the old run no longer compares with anything. The
-            dashboard acts on the signal, because this view does not know
-            which other runs are on screen.
+            trunk run, that starts a new case, so no branch taken from the old
+            run can be compared with anything any more. The dashboard acts on
+            the signal, because this view does not know which other runs are
+            on screen.
     """
 
     presentation_requested = Signal(bool)
@@ -971,7 +971,7 @@ class RunView(QWidget):
         """Show `shown` on every copy of the agent cost panel, and keep it for copies built later.
 
         The panel is written and withheld with the schematic, so the delivered
-        agent is never from another state of the run than the readouts are
+        agent always comes from the same state of the run as the readouts
         (`PL-B396`).
         """
 

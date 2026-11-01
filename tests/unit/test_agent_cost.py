@@ -1,4 +1,4 @@
-"""What the agent cost View shows for one run, checked against values worked out apart.
+"""What the agent cost View shows for one run, checked against values worked out independently.
 
 `app/agent_cost.py` turns a snapshot into the delivered agent in millilitres
 of liquid equivalent and in litres of vapour (`PL-B396`). The expected values
@@ -45,9 +45,9 @@ _R = 8.314462618
 _KELVIN_AT_20_C = 293.15
 _ONE_ATM_PA = 101_325.0
 
-#: The two figures that the model's 20 °C condition and Gas Man's constants
-#: give for the vapour from 1 mL of liquid. Gas Man prints 183, 196 and 209
-#: (Philip JH, *Workbook for Gas Man*, chapter 10, printed pp. 103-105).
+#: Gas Man's millilitres of vapour from 1 mL of liquid, for each agent, at
+#: 20 °C. Gas Man prints 183, 196 and 209 (Philip JH, *Workbook for Gas Man*,
+#: chapter 10, printed pp. 103-105).
 _GAS_MAN_VAPOUR_PER_LIQUID = {"sevoflurane": 183.0, "isoflurane": 196.0, "desflurane": 209.0}
 
 _SECONDS_PER_MINUTE = 60.0
@@ -100,8 +100,9 @@ def test_the_delivered_agent_is_the_dial_times_the_flow_times_the_time_in_liquid
 ) -> None:
     """The liquid figure is the delivered vapour divided by the agent's own factor.
 
-    Three agents, so a factor taken from the wrong agent cannot pass: the
-    nearest two differ by 6 %, far more than the 1e-9 tolerance.
+    The test uses three agents, so a factor taken from the wrong agent cannot
+    pass. The two nearest factors differ by 6 %, far more than the 1e-9
+    tolerance.
     """
 
     snapshot = _run(agent_id, dial_percent, flow_l_min, minutes)
@@ -216,10 +217,11 @@ def test_only_the_agent_cost_module_converts_vapour_to_liquid() -> None:
     `liquid_volume_ml` takes a bare amount and a bare ratio. The agent cost
     module reads both from one snapshot, and converts only the delivered
     agent, which the conversion gives exactly (`PL-B396`). A second caller
-    could convert a store, which reads 5.8 % high, or pair one agent's vapour
-    with another's ratio. This test makes that caller fail here first. It
-    reads names, attributes and imported names, so an import under another
-    name is found too. The module that defines the function is left out.
+    could convert the agent held in a compartment, which comes out 5.8 % too
+    high, or pair one agent's vapour with another's ratio. This test makes that
+    caller fail here first. It reads names, attributes and imported names, so
+    an import under another name is found too. The module that defines the
+    function is left out.
     """
 
     callers = []

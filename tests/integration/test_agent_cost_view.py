@@ -364,9 +364,10 @@ def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
 ) -> None:
     """The selector never names a unit that no value on screen is shown in.
 
-    The blind and adversarial reviews of `PL-B396` both found the selector on
-    litres of vapour over panels still in millilitres of liquid, after a pick
-    while frames failed. Once a frame draws again, every View shows the pick.
+    The blind and adversarial reviews of `PL-B396` both found the selector
+    showing litres of vapour while the panels still showed millilitres of
+    liquid, after a pick made while frames were failing. Once a frame draws
+    again, every View shows the pick.
     """
 
     controller = SimulationController()

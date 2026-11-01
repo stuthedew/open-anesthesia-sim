@@ -3,8 +3,8 @@
 `app/agent_cost.py` computes every text this module shows (`PL-B396`). This
 module only lays the texts out and shows the ones for the reader's unit. The
 amount is printed large, with its unit on it, and the caption under it says
-what the unit measures. Every look here, from the sizes to the order of the
-lines, is a placeholder until the visual pass (`ROADMAP.md`,
+what the unit measures. Every visual choice here, from the sizes to the order
+of the lines, is a placeholder until the visual pass (`ROADMAP.md`,
 planned-milestone item 33).
 """
 
@@ -35,10 +35,11 @@ class RunAgentCost(QWidget):
     The panel is one of the run's surfaces, the parts of a run that a reader
     may place in an Area. `RunView.build_agent_cost` builds each copy. The run
     writes every live copy at the same moments as its readouts, from the same
-    snapshot. It withholds the copies whenever it withholds the readouts, and
-    it names them whenever it names its own panels (`app/run_surfaces.py`,
-    `PL-9LNF`). The View that holds the copy sets its unit from the reader's
-    preference on every frame, so every copy shows the same unit.
+    snapshot. It withholds the copies whenever it withholds the readouts. It
+    labels them with the run's name whenever it labels its own panels
+    (`app/run_surfaces.py`, `PL-9LNF`). The View that holds the copy sets its
+    unit from the reader's preference on every frame, so every copy shows the
+    same unit.
 
     Args:
         shown: What the copies built earlier already show.

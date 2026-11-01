@@ -51,10 +51,11 @@ every View in `ViewTick.preferences`, and a View asks for a change through
 through `View.frame_request`: the window, and the plot width the frame must
 be sampled for. The dashboard assembles one `ChartFrame` per distinct window
 on each tick, sampled for the widest plot that asks for that window. So no
-plot draws a chord wider than a pixel (`PL-GS3R`), and two charts at the same
-window draw the same instants (`PL-9LNF`). The adapter hands each View the
-frame for its own window in its `ViewTick`. A View that draws no frame
-returns None from `frame_request`, and its tick carries no frame.
+plot draws a chord, the straight line between two samples, wider than a pixel
+(`PL-GS3R`), and two charts at the same window draw the same instants
+(`PL-9LNF`). The adapter hands each View the frame for its own window in its
+`ViewTick`. A View that draws no frame returns None from `frame_request`, and
+its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -229,7 +230,7 @@ class ViewTick:
             through `View.frame_request`, over every displayed run. None for
             a View that asked for none.
         snapshots: Each displayed run's snapshot, in drawing order. Every
-            frame of the tick was assembled from these same reads.
+            frame of the tick was assembled from these same snapshots.
         runs: Each displayed run's surfaces, in the same order.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.

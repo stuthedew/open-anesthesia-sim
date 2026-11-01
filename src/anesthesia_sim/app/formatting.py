@@ -1420,7 +1420,7 @@ def _format_run_total(amount: float, precision: AgentAmountPrecision, unit: str)
     return f"{rendered} {unit}"
 
 
-# The unit each agent amount unit is written in, read from its `DisplayUnit`
+# How each agent amount unit is written on screen, taken from its `DisplayUnit`
 # member. Every member names vapour or liquid, so no amount is printed with a
 # bare "mL" or "L" beside it (`docs/MODEL.md` § "The compartment schematic: what
 # its heights, amounts and share bar assert").
@@ -1441,9 +1441,9 @@ def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     precision" derives for the delivered agent in that unit. That is a tenth of
     a millilitre of liquid, or a tenth of a litre of vapour, which is also the
     accounting panel's precision. The text follows `format_agent_volume`'s
-    rounding rules. A positive amount that rounds to zero is shown below the
-    resolution, as `<0.1 mL liquid equiv.`, and exactly zero is shown as zero.
-    The unit always says vapour or liquid, as `DisplayUnit` spells it.
+    rounding rules. A positive amount that rounds to zero is shown as less than
+    the resolution, as `<0.1 mL liquid equiv.`, and exactly zero is shown as
+    zero. The unit always says vapour or liquid, as `DisplayUnit` spells it.
 
     Args:
         amount: The delivered agent, in `unit`.

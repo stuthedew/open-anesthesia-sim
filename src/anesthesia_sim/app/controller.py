@@ -473,9 +473,10 @@ class SimulationSnapshot(RunRecord):
     model's reference condition of 20 °C and one standard atmosphere
     (`core/liquid_agent.py`). The agent cost View divides `delivered_agent_l`
     by it to show the delivered agent as liquid (`PL-B396`). It travels in the
-    snapshot beside the agent and the amount it converts, for the reason that
-    `agent_mac_percent` gives. Sevoflurane vapour converted with desflurane's
-    ratio would read about 13 % low, under a correct-looking label.
+    snapshot beside the agent and the amount it converts, so that all three
+    always belong to the same agent. `agent_mac_percent` is carried for the
+    same reason. Sevoflurane vapour converted with desflurane's ratio would
+    come out about 13 % too low, under a correct-looking label.
     """
     exhausted_agent_l: float
     compartment_agent_amounts: CompartmentAgentAmounts
@@ -1999,18 +2000,18 @@ class SimulationController:
         (`PL-NC62`).
 
         Two groups are compared. The first is the equation settings: every field of them and
-        of each tissue group. Those fields are everything that their equality compares, so a
-        setting added to either class is named here without an edit. The second is the
-        agent's four displayed references, which no equation reads: its name, its MAC, its
-        MAC-awake and its vapour-to-liquid ratio. The MAC is the divisor of every MAC
-        multiple on screen. A branch rebuilt under another MAC would show one concentration
-        as two different multiples beside its parent. The ratio converts the delivered agent
-        to liquid on the agent cost View, so the same holds for it (`PL-B396`). The vaporizer
-        maximum is not compared as a displayed reference. The equation settings already carry
-        it, and it is read from the circuit (`PL-1MGB`).
+        of each tissue group. The comparison covers every field that the two classes' equality
+        compares, so a setting added to either class is compared here with no edit to this
+        method. The second is the agent's four displayed references, which no equation reads:
+        its name, its MAC, its MAC-awake and its vapour-to-liquid ratio. The MAC is the
+        divisor of every MAC multiple on screen. A branch rebuilt under another MAC would show
+        one concentration as two different multiples beside its parent. The ratio converts
+        the delivered agent to liquid on the agent cost View, so the same holds for it
+        (`PL-B396`). The vaporizer maximum is not compared as a displayed reference. The
+        equation settings already carry it, and it is read from the circuit (`PL-1MGB`).
 
         Each value is written by its `repr`. For a float, that is the shortest text that
-        reads back as the same float. For a string, it is the string in quotes. So two
+        parses back to the same float. For a string, it is the string in quotes. So two
         values that differ never print alike, even when they differ only in the last bit.
         Any rounding would print two such values identically.
         """
