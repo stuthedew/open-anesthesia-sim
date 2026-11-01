@@ -2370,6 +2370,52 @@ def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions(
     assert container.model == model
 
 
+def test_a_press_on_a_border_inside_a_split_below_its_floors_keeps_the_stored_fractions(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-MH5T`: a border whose enclosing split is too small for its floors does not move.
+
+    The outer row gives 0.8 of a 370 px window to a column whose top half is a row of
+    two Areas, and 0.2 to a fourth Area. The two Areas' floors and a handle, with the
+    fourth Area's floor and another handle, need more than 370 px. So Qt draws the
+    column, and the row inside it, at their least width, while the apportionment gives
+    the inner row 0.8 of the window. A press and a move of zero pixels on the inner
+    row's border used to rewrite its 0.5 / 0.5. Now they keep it, emit no
+    `layout_changed`, and leave the line out of WARNING. Found by the branch's blind
+    review.
+    """
+
+    model = _layout(
+        _row(
+            (0.8, 0.2),
+            _column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3)),
+            _area(4),
+        ),
+        5,
+    )
+    _, container = _host_sized(application, hosts, model, (370, 400))
+    inner = _splitters(container)[(0, 0)]
+    floors = [container.frame(AreaId(number)).minimumWidth() for number in (1, 2, 4)]
+    assert sum(floors) + 2 * AREA_HANDLE_WIDTH > 370
+    handle = inner.handle(1)
+    assert isinstance(handle, _AreaHandle)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+
+    start = _press(handle)
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert container.model == model
+    assert changed == []
+    assert not handle.warning
+
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    application.processEvents()
+
+    assert container.model == model
+
+
 def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
