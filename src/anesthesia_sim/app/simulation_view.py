@@ -862,7 +862,7 @@ class SimulationView(QWidget):
         return run
 
     def _a_question_is_open(self) -> bool:
-        """Whether a window-modal question is open, so that every run holds.
+        """Whether a window-modal question is open, in which case every run holds.
 
         The questions are a run's Reset or new-case question and the Workspace
         strip's question. Each blocks the Pause button of every run while it
@@ -1726,9 +1726,9 @@ class SimulationView(QWidget):
         each opening. So a reader who closes it and opens it again finds their
         selection where they left it. The dialog is non-modal, for the reasons
         that `BookmarkDialog` states, so it is shown with `show()`. Qt's
-        `QDialog.open()` makes a dialog window-modal whatever modality it had,
-        so the editor shown that way blocked every run's Pause button while the
-        runs went on stepping (blind review of `PL-TPBH`).
+        `QDialog.open()` makes a dialog window-modal whatever modality it had.
+        When the editor was shown that way, it blocked every run's Pause button
+        while the runs went on stepping (blind review of `PL-TPBH`).
         """
 
         if self._bookmark_dialog is None:

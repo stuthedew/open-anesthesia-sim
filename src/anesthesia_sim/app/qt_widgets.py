@@ -1186,8 +1186,8 @@ class NewCaseDialog(QDialog):
         """Rewrite every line of the question from the runs as they stand now.
 
         The question names how much work starting over discards. The run
-        view rewrites the question on each refresh, so the reader decides on
-        a figure for the work as it stands now (`PL-WM5P`). Every run holds
+        view rewrites the question on each refresh, so the figure the reader
+        decides on matches the work as it stands now (`PL-WM5P`). Every run holds
         while the dialog is open (`RunView.hold_while`, `PL-TPBH`), so the
         figure no longer changes. The rewrite is kept as a guard against a
         later path that moves a run under an open question.
@@ -1619,7 +1619,7 @@ def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
 
 
 class BookmarkDialog(QDialog):
-    """Where the two kinds of mark are created, listed and removed.
+    """The dialog in which the reader creates, lists and removes both kinds of mark.
 
     One dialog serves both kinds of mark. The reference simulator uses that
     shape, and `PL-LPLD` was scoped on it. Both forms are visible at once,

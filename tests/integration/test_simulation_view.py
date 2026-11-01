@@ -4671,7 +4671,7 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered(
 
 
 def test_an_open_new_case_question_follows_a_running_run(application: QApplication) -> None:
-    """`PL-WM5P`: the question states what the new case discards as the run stands now.
+    """The question states what the new case discards as the run stands now (`PL-WM5P`).
 
     Before the fix, the question was written only once, when it opened, so
     its figure for the run time about to be discarded fell behind the clock.
@@ -10329,8 +10329,8 @@ def test_the_run_does_not_advance_while_a_reset_question_is_open(
     The question is window-modal, so the reader cannot press Pause while it
     is open. The project owner decided on 2026-10-31 that the runs hold and
     then carry on as they were. The branch is running throughout. The trunk
-    is running in one case and paused in the other, and after Keep each run
-    is in the state it was in before the question, at the same playback rate.
+    is running in one case and paused in the other. After Keep, each run is
+    in the state it was in before the question, at the same playback rate.
     """
 
     case = _branched_case()
