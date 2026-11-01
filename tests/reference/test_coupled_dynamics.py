@@ -425,35 +425,34 @@ ALL_GATE_TRAJECTORIES = (
 )
 
 
-# The randomised trajectories (`PL-ZLNN`). Every gate trajectory above was
-# written by hand: the settings either never change or change once, at a moment
-# and to values that somebody chose. A user moves four sliders repeatedly, in
-# combinations that nobody listed. These trajectories stand in for that user.
+# These are the randomised trajectories (`PL-ZLNN`). Every gate trajectory above was
+# written by hand: the settings either never change or change once, at a moment and to
+# values that somebody chose. A user moves four sliders repeatedly, in combinations that
+# nobody listed. These trajectories stand in for that user.
 #
-# Each seed gives one fixed script, so a failure reproduces exactly and the
-# determinism `CLAUDE.md` requires still holds. The trajectory is a function of
-# the seed and the agent, never of the clock or of the order the tests run in.
+# Each seed gives one fixed script, so a failure reproduces exactly and the determinism
+# that `CLAUDE.md` requires still holds. The trajectory depends only on the seed and the
+# agent. It never depends on the clock or on the order in which the tests run.
 #
-# **Why the standard library rather than Hypothesis.** Hypothesis is the better
-# tool for property-based testing. When a case fails, it shrinks the case to a
-# minimal one, which is most of the value of the method. Against it, it is a new
-# dependency, and this project runs `drift.yml` because each dependency is a
-# liability over a horizon of years. A seeded `random.Random` covers the
-# trajectory class without one. The trade is worth revisiting the first time a
+# The trajectories use the standard library's `random.Random` rather than Hypothesis.
+# Hypothesis is the better tool for property-based testing. When a case fails, it shrinks
+# the case to a minimal one, which is most of the value of the method. But Hypothesis would
+# be a new dependency, and this project runs `drift.yml` because each dependency is a
+# liability over a horizon of years. A seeded `random.Random` covers this kind of
+# trajectory without a new dependency. The choice is worth revisiting the first time a
 # failure here needs shrinking to be understood.
 RANDOMISED_TRAJECTORY_SEEDS = (20260903, 20261101, 7919)
 
-# The longest a randomised phase holds its settings, in shipped steps. A phase
-# lasts from one step to this many, uniformly, so the controls move every 10 s
-# on average and sometimes on consecutive steps. Consecutive steps are the
-# case the hand-written trajectories never reach: two changes with only one
-# step between them.
+# This is the longest time a randomised phase holds its settings, counted in shipped steps.
+# Each phase's length is drawn uniformly from one step to this many. So the controls move
+# every 10 s on average, and sometimes on consecutive steps. The hand-written trajectories
+# never test that case: two changes with only one step between them.
 RANDOMISED_PHASE_MAX_STEPS = 200
 
-# How often a moved control lands exactly on a limit of its range rather than
-# inside it. Zero ventilation, zero cardiac output and zero fresh gas flow are
-# each a different regime of the equations, and a uniform draw on a range
-# almost never lands on one of them.
+# This is the probability that a moved control lands exactly on a limit of its range rather
+# than inside it. Zero ventilation, zero cardiac output and zero fresh gas flow each put the
+# equations in a different regime. A uniform draw on a range almost never lands on one of
+# them.
 RANDOMISED_LIMIT_PROBABILITY = 0.2
 
 
@@ -934,10 +933,10 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # reads a JSON document and solves nothing, which is the property this list is
 # about.
 #
-# `SimulationState` is the system under test together with the clock that owns
-# its elapsed time. Only `test_randomised_control_trajectories_keep_every_invariant`
-# drives it, to check that simulated time is exactly the steps taken. The
-# oracle never calls it.
+# `SimulationState` combines the system under test with the clock that owns its elapsed
+# time. Only `test_randomised_control_trajectories_keep_every_invariant` drives it. That
+# test checks that simulated time equals exactly the number of steps taken times the step.
+# The oracle never calls `SimulationState`.
 #
 # `SimulationStep` is the type that the system under test accepts for its step
 # (`PL-0GJC`). It checks a number against the supported range and solves
@@ -1568,13 +1567,13 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
     each of the six fractions must stay finite and within [0, 1], and simulated
     time must end at exactly the steps taken times the step.
 
-    Under the exact step, the propagator of a transfer system like this one is
-    entrywise nonnegative, so a step cannot produce a fraction that the
-    compartments' guards reject (`docs/MODEL.md` § "Supported simulation
-    step"). This test does not assume that. It checks it on trajectories that
-    the hand-written gates never reach, so a later change that breaks the
-    property, such as a model extension whose matrix is no longer a pure
-    transfer system, is found here rather than by a learner whose run stops.
+    With the exact step, the propagator of a transfer system like this one is entrywise
+    nonnegative. So a step cannot produce a fraction that the compartments' guards reject
+    (`docs/MODEL.md` § "Supported simulation step"). This test does not assume that
+    property. It checks the property on trajectories that the hand-written gate tests never
+    cover. So a later change that breaks the property is found here rather than by a
+    learner whose run stops. One such change is a model extension whose matrix is no longer
+    a pure transfer system.
     """
 
     system = _empty_shipped_system(agent_id)
@@ -1612,11 +1611,10 @@ def test_exact_step_matches_the_independent_solution_on_randomised_trajectories(
 ) -> None:
     """The exact step agrees with the oracle on trajectories nobody wrote by hand.
 
-    Conservation cannot see a wrong transfer rate, as this module's docstring
-    explains. So the randomised trajectories are also held to the same oracle
-    and the same tolerance as the five gate trajectories. A rate that is wrong
-    only in some combination of settings that no hand-written trajectory
-    reaches would fail here.
+    Conservation checks cannot detect a wrong transfer rate, as this module's docstring
+    explains. So the randomised trajectories are also compared with the same oracle, at the
+    same tolerance, as the five gate trajectories. Suppose a rate is wrong only for some
+    combination of settings that no hand-written trajectory covers. This test would fail.
 
     Measured 2026-11-01 at the shipped 0.1 s step, the worst disagreement over
     the nine pairs of agent and seed is 1.0977e-14, for desflurane with seed
@@ -1640,12 +1638,12 @@ def test_exact_step_matches_the_independent_solution_on_randomised_trajectories(
     )
 
 
-# The time constants of the coupled system's six modes, in seconds, ascending,
-# and the period of its fastest complex pair, or `None` where the two fastest
-# modes are real. They are computed from the oracle's own transcription of the
-# equations, so they owe nothing to `build_system_matrix` (`PL-JDX0`).
-# `docs/MODEL.md` § "Alveolar gas" prints them to three figures. Measured
-# 2026-11-01.
+# Each entry holds the time constants of the coupled system's six modes, in seconds and in
+# ascending order. It also holds the period of the system's fastest complex pair, or `None`
+# where the two fastest modes are real. The values are computed from the oracle's own
+# transcription of the equations, so they do not depend on `build_system_matrix`
+# (`PL-JDX0`). `docs/MODEL.md` § "Alveolar gas" prints them to three significant figures.
+# Measured 2026-11-01.
 MODAL_TIME_CONSTANTS_S: dict[tuple[str, str], tuple[tuple[float, ...], float | None]] = {
     ("defaults", "sevoflurane"): ((15.819, 15.819, 63.114, 365.17, 10344.0, 166740.0), 753.39),
     ("defaults", "isoflurane"): ((13.671, 13.671, 54.479, 425.99, 11452.0, 187470.0), 465.97),
@@ -1655,9 +1653,9 @@ MODAL_TIME_CONSTANTS_S: dict[tuple[str, str], tuple[tuple[float, ...], float | N
     ("corner", "desflurane"): ((7.1721, 7.1721, 29.094, 114.44, 2887.1, 46975.0), 384.13),
 }
 
-# One part in ten thousand. The pins carry five significant figures, so this is
-# a few units in the last one: wide enough for a different platform's
-# eigenvalue routine, and far too narrow to pass a moved parameter.
+# The tolerance is one part in ten thousand. The pinned values carry five significant
+# figures, so this tolerance is a few units in the last figure. That is wide enough for a
+# different platform's eigenvalue routine, and far too narrow to pass a moved parameter.
 MODAL_RELATIVE_TOLERANCE = 1e-4
 
 
@@ -1701,14 +1699,14 @@ def _modal_time_constants(
 
 @pytest.mark.parametrize(("settings_name", "agent_id"), sorted(MODAL_TIME_CONSTANTS_S))
 def test_modal_time_constants_are_the_pinned_ones(settings_name: str, agent_id: str) -> None:
-    """The coupled system's modes are still the ones `docs/MODEL.md` prints.
+    """The coupled system's modes are still the ones that `docs/MODEL.md` prints.
 
-    `docs/MODEL.md` § "Alveolar gas" gives the six time constants at the
-    default flows and at the corner of the supported settings. They describe
-    every timescale the model can show, so a parameter change that moves them
-    must also change that table. This test fails first, and its message says
-    so. Its tolerance is one part in ten thousand. The document prints three
-    significant figures, so any change that moves a printed figure fails here.
+    `docs/MODEL.md` § "Alveolar gas" gives the six time constants at the default flows and
+    at the corner of the supported settings. They describe every timescale the model can
+    show, so a parameter change that moves them must also change that table. This test
+    fails first, and its failure message says that the table must change too. Its
+    tolerance is one part in ten thousand. The document prints three significant figures,
+    so any change that moves a printed figure fails here.
     """
 
     expected_constants, expected_period = MODAL_TIME_CONSTANTS_S[(settings_name, agent_id)]

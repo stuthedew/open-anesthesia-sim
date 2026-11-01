@@ -201,24 +201,23 @@ def _ragged_bursts(total_steps: int) -> list[int]:
 
 
 def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
-    """Identical inputs must reach the same run, whatever the host did.
+    """Identical inputs must produce the same run, however the host timed its ticks.
 
-    This is a required test from docs/MODEL.md. It covers the half that the
-    test above does not. That test drives both runs identically, so it checks
-    that the model gives the same trajectory twice and says nothing about the
-    machine. Simulated time is the number of steps taken times the step. The
-    run loop takes a fixed number of steps per tick, and never takes extra
-    steps to make up lost wall-clock time. So a host that wakes the loop late
-    or drops a frame runs *slower* than one that does not, but it does not run
-    *differently*.
+    This is a required test from docs/MODEL.md. The test above drives both runs
+    identically, so it checks only that the model gives the same trajectory twice. It says
+    nothing about the machine, and this test covers that part. Simulated time is the number
+    of steps taken times the step length. The run loop takes a fixed number of steps per
+    tick. It never takes extra steps to make up lost wall-clock time. So a host that wakes
+    the loop late or drops a frame runs *slower* than one that does not, but it does not
+    run *differently*.
 
-    Both runs take the same 600 steps, with the same settings at the same step
-    counts. One run takes one step per tick, and the other takes ragged
-    bursts. The run keeps no recorded samples (`PL-2FM6`). The chart draws
-    every value from the run's definition: the settings of each stretch and
-    the keyframe that opens it. So the two runs are compared there, segment by
-    segment, and then by the snapshot the readouts show. A divergence in any
-    segment would show on a chart drawn from it.
+    Both runs take the same 600 steps, with the same settings at the same step counts. One
+    run takes one step per tick, and the other takes ragged bursts. The run keeps no
+    recorded samples (`PL-2FM6`). Instead, the chart draws every value from the run's
+    definition, which is its list of segments: each segment's settings and the keyframe
+    that opens it. So the test compares the two definitions segment by segment, and then
+    compares the snapshots that the readouts show. A divergence in any segment would show
+    on a chart drawn from it.
     """
 
     steps = 600
@@ -236,20 +235,19 @@ def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
 
 
 def test_a_run_reaches_the_same_definition_at_every_playback_rate() -> None:
-    """`PL-SN2C`: playing a run faster must not change the run.
+    """Playing a run faster must not change the run (`PL-SN2C`).
 
-    The playback multiplier sets only how many steps a tick takes. The step
-    stays 0.1 s at every rate. So a case played at 300x takes the same steps
-    in the same order as one played at real time, grouped differently. That
-    makes each rate exactly the kind of burst pattern that the test above
-    generalises over. Here the patterns come from the *shipped* rates rather
-    than invented burst sizes, so a rate added to the ladder is covered by
-    this test on the day it is added.
+    The playback multiplier sets only how many steps a tick takes. The step stays 0.1 s at
+    every rate. So a case played at 300x takes the same steps in the same order as one
+    played at real time. Only the grouping of steps into ticks differs. Each rate is
+    therefore one of the burst patterns that the test above covers in general. Here the
+    patterns come from the *shipped* rates rather than invented burst sizes. So a rate
+    added to the list of shipped rates is covered by this test on the day it is added.
 
-    The runs are compared segment by segment in their definitions, element
-    for element, and by snapshot too. Two learners comparing the same case at
-    different speeds must be comparing the same arithmetic. A divergence in
-    any segment would show on the chart drawn from it.
+    The test compares the runs' definitions segment by segment, element for element, and
+    then compares their snapshots. Two learners comparing the same case at different speeds
+    must be comparing the same arithmetic. A divergence in any segment would show on the
+    chart drawn from it.
     """
 
     steps = 600
