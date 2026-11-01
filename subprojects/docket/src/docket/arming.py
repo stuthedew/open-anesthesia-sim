@@ -1734,27 +1734,65 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     return False, ()
 
 
-def _since_change(
-    root: Path, run: Runner, base: str, paths: Sequence[str], *, merges: bool = True
-) -> list[str] | None:
+def _since_change(root: Path, run: Runner, base: str, paths: Sequence[str]) -> list[str] | None:
     """The revisions `git log` walks for a record made since the newest commit changing `paths`.
 
     With no `paths`, every commit of the branch. `None` when no commit of the
-    branch changed them, so no record can be for them. Without `merges`, a
-    merge does not count as a change, so bringing the base in, which the
-    owner's *Update branch* does, leaves a record standing.
+    branch changed them, so no record can be for them. A merge counts as a
+    change only where it alters the branch's own change to `paths`, which
+    `_merge_keeps_the_work` decides. So bringing the base in, which the
+    owner's *Update branch* does, leaves a record standing, and a conflict
+    resolved there by writing new lines does not.
     """
     span = ["HEAD", f"^{base}"]
     if paths:
-        skip = [] if merges else ["--no-merges"]
-        newest = run(
-            ["log", "-1", *skip, "--format=%H", f"{base}..HEAD", "--", *paths], root
-        ).strip()
-        if not newest:
-            return None
-        parents = run(["rev-parse", f"{newest}^@"], root).split()
-        span.extend(f"^{parent}" for parent in parents)
+        for commit in split_lines(run(["log", "--format=%H", f"{base}..HEAD", "--", *paths], root)):
+            parents = run(["rev-parse", f"{commit}^@"], root).split()
+            if len(parents) > 1 and _merge_keeps_the_work(root, run, commit, parents, paths):
+                continue
+            span.extend(f"^{parent}" for parent in parents)
+            return span
+        return None
     return span
+
+
+def _merge_keeps_the_work(
+    root: Path, run: Runner, merge: str, parents: Sequence[str], paths: Sequence[str]
+) -> bool:
+    """Whether `merge` leaves the branch's own change to `paths` exactly as it was.
+
+    `parents[0]` is the branch's side and `parents[1]` the side brought in, as
+    `git merge` and the forge's *Update branch* both write them. The branch's
+    change before the merge is its first parent against the fork point, and
+    after it is the merge against the side brought in. The two are compared
+    without hunk line numbers, which the base's own edits shift. Where they
+    match, the merge brought in no work of the branch's. Anything git did not
+    answer, or a merge of more than two parents, counts as a change, so a
+    record is dropped rather than stretched over work nobody judged.
+    """
+    if len(parents) != 2:
+        return False
+    fork = run(["merge-base", parents[0], parents[1]], root).strip()
+    if not fork:
+        return False
+    before = _own_change(root, run, fork, parents[0], paths)
+    after = _own_change(root, run, parents[1], merge, paths)
+    return before is not None and before == after
+
+
+def _own_change(
+    root: Path, run: Runner, old: str, new: str, paths: Sequence[str]
+) -> list[str] | None:
+    """The lines of `git diff old new -- paths`, with no context and no hunk positions.
+
+    `None` where git did not answer.
+    """
+    diff = run(
+        ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-renames", old, new, "--", *paths], root
+    )
+    if not answered(diff):
+        return None
+    return [line for line in split_lines(diff) if not line.startswith(("@@", "index "))]
 
 
 def _newest_trailer(root: Path, run: Runner, span: Sequence[str], key: str) -> tuple[str, str]:
@@ -1779,10 +1817,10 @@ def _owner_ask(
     `paths` are what the branch changes outside the store and the records, so
     an ask made before a later change to the work does not cover it, while
     the closure, `record` and claim commits that follow the work do not
-    disturb it, and nor does a merge of the base: the ask has already gone to
-    the owner by then, and a merge brings in no work of the branch's.
+    disturb it, and nor does a merge of the base that leaves the branch's own
+    change as it was (`_since_change`).
     """
-    span = _since_change(root, run, base, paths, merges=False)
+    span = _since_change(root, run, base, paths)
     if span is None:
         return None, ""
     commit, value = _newest_trailer(root, run, span, OWNER_ASK)
@@ -1800,9 +1838,12 @@ def _owner_read(
     """The newest `OWNER_READ` record that covers `paths`, and what went unread.
 
     With `paths`, only a commit made since the newest one that changed them
-    counts, so a judgment cannot cover a change made after it. With none, any
-    commit of the branch counts, since a `needed` record holds a branch
-    whatever it changes. The newest commit carrying the trailer decides, and
+    counts, so a judgment cannot cover a change made after it. A merge of the
+    base that leaves the branch's own change to them as it was is not such a
+    change, exactly as for the `OWNER_ASK` record: the judgment was about that
+    change, and the merge brings in only work the base already holds. With
+    none, any commit of the branch counts, since a `needed` record holds a
+    branch whatever it changes. The newest commit carrying the trailer decides, and
     its last value where it carries several. A value in neither form is said
     and not read, so it covers nothing: a simulator change it was meant for
     still holds, and anything else is `unknown` rather than armed.
