@@ -50,7 +50,7 @@ def test_snapshot_exposes_patient_and_agent_accounting_state() -> None:
     assert snapshot.agent_accounting_passes_validation is True
 
 
-def test_running_controller_advances_patient_and_named_history() -> None:
+def test_running_controller_advances_the_patient_and_draws_its_trace() -> None:
     controller = SimulationController()
     controller.start()
 
@@ -123,7 +123,7 @@ def test_reset_preserves_all_user_settings() -> None:
     assert snapshot.agent_accounting_passes_validation is True
 
 
-def test_identical_runs_produce_identical_snapshots_and_history() -> None:
+def test_identical_runs_produce_identical_snapshots() -> None:
     """Two runs with identical settings, events, and steps must match.
 
     Required test from docs/MODEL.md: deterministic replay across the full
@@ -200,8 +200,8 @@ def _ragged_bursts(total_steps: int) -> list[int]:
     return bursts
 
 
-def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
-    """Identical inputs must reproduce element-wise, whatever the host did.
+def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
+    """Identical inputs must reach the same run, whatever the host did.
 
     This is a required test from docs/MODEL.md. It covers the half that the
     test above does not. That test drives both runs identically, so it checks
@@ -214,10 +214,11 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
 
     Both runs take the same 600 steps, with the same settings at the same step
     counts. One run takes one step per tick, and the other takes ragged
-    bursts. They are compared sample by sample rather than endpoint against
-    endpoint, because that is the comparison a forked run makes against the
-    run it forked from. A divergence anywhere in the recorded history would
-    show on a chart drawn from it.
+    bursts. The run keeps no recorded samples (`PL-2FM6`). The chart draws
+    every value from the run's definition: the settings of each stretch and
+    the keyframe that opens it. So the two runs are compared there, segment by
+    segment, and then by the snapshot the readouts show. A divergence in any
+    segment would show on a chart drawn from it.
     """
 
     steps = 600
@@ -234,7 +235,7 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     assert one_step_per_tick.snapshot() == ragged.snapshot()
 
 
-def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
+def test_a_run_reaches_the_same_definition_at_every_playback_rate() -> None:
     """`PL-SN2C`: playing a run faster must not change the run.
 
     The playback multiplier sets only how many steps a tick takes. The step
@@ -245,10 +246,10 @@ def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
     than invented burst sizes, so a rate added to the ladder is covered by
     this test on the day it is added.
 
-    The runs are compared element for element, and by snapshot too. Two
-    learners comparing the same case at different speeds must be comparing
-    the same arithmetic. A divergence anywhere in the recorded history would
-    show on the chart drawn from it.
+    The runs are compared segment by segment in their definitions, element
+    for element, and by snapshot too. Two learners comparing the same case at
+    different speeds must be comparing the same arithmetic. A divergence in
+    any segment would show on the chart drawn from it.
     """
 
     steps = 600

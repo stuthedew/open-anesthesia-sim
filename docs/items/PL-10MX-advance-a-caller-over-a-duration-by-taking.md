@@ -67,3 +67,23 @@ now about control resolution rather than about accuracy, so what a caller
 wanting an hour of simulated time should ask for is a real question.
 `PL-T691` answers most of it by making the run a closed-form function of its
 control timeline. Re-scope against that rather than against sub-stepping.
+
+**Re-scoped 2026-11-01, and closed on the re-scoped end state.** The tree
+answers the interface question this brief left open, so the item changed
+shape rather than survived as written. Two readings decided it.
+
+- No caller in `src/` wants a duration from `advance`. The run loop takes a
+  whole number of steps per tick (`app/controller.py`). Every loop over
+  `advance` that remains is a test helper, and all but two of those drive the
+  controller rather than `SimulationState`. So an `advance_over` on
+  `SimulationState` would serve one test file and no product code.
+- A caller that wants the state after a duration already has an exact route.
+  `RunDefinition` (`PL-T691`) answers any instant with one matrix exponential
+  over the interval, and the application builds its predictions that way.
+  `test_state_at_matches_a_stepped_run` holds that route to the stepped one.
+
+So the end state is the route written down rather than a new method.
+`docs/MODEL.md` § "Supported simulation step" now says why `advance(30.0)` is
+still refused (control timeline, not accuracy) and what to call instead. The
+"Done when" clauses about steps and a refused non-multiple fell with the
+method; the clause that `docs/MODEL.md` records the route is met.

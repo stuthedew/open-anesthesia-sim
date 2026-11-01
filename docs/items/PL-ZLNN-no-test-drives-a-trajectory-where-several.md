@@ -94,3 +94,15 @@ What it should be re-pointed at is the guard's *new* role, which
 `docs/MODEL.md` § "Supported simulation step" now states: cover for a model
 extension whose matrix is not a pure transfer system, rather than for a caller
 stepping too coarsely.
+
+**Done 2026-11-01.** Three seeded randomised trajectories per agent, 600 s
+each, with a control moved every 0.1 to 20 s and one move in five landing on
+a range limit. Two tests drive them. One checks the invariants this brief
+asked for through `SimulationState`: no raise, accounting passes after every
+step, all six fractions finite and in [0, 1], and time ends at exactly the
+steps taken. The other holds them to the independent oracle at the same 4e-13
+bound as the five gate trajectories, because conservation cannot see a wrong
+rate. Worst disagreement 1.0977e-14, below the gate trajectories' 1.5786e-14.
+The trade between Hypothesis and a seeded `random.Random` is recorded beside
+`RANDOMISED_TRAJECTORY_SEEDS`. The two tests take about 0.9 s per pair of
+agent and seed.

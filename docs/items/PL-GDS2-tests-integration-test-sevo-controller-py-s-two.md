@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: test, docs
 feature: numerical-domain
-touches: tests/integration/test_sevo_controller.py
+touches: tests/integration/test_sevo_controller.py, docs/MODEL.md
 added: 2026-09-14
 verify: ! grep -qE 'def test_.*recorded_histor|def test_.*replay' tests/integration/test_sevo_controller.py && uv run pytest tests/integration/test_sevo_controller.py
 ---

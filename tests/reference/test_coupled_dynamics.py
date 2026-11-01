@@ -27,17 +27,21 @@ history.
 from __future__ import annotations
 
 import ast
+import math
+import random
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
+import numpy
 import pytest
 
 from anesthesia_sim.app import formatting
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -419,6 +423,92 @@ ALL_GATE_TRAJECTORIES = (
     ("envelope corner, held", _envelope_corner_held),
     *SETTING_CHANGE_SCENARIOS,
 )
+
+
+# The randomised trajectories (`PL-ZLNN`). Every gate trajectory above was
+# written by hand: the settings either never change or change once, at a moment
+# and to values that somebody chose. A user moves four sliders repeatedly, in
+# combinations that nobody listed. These trajectories stand in for that user.
+#
+# Each seed gives one fixed script, so a failure reproduces exactly and the
+# determinism `CLAUDE.md` requires still holds. The trajectory is a function of
+# the seed and the agent, never of the clock or of the order the tests run in.
+#
+# **Why the standard library rather than Hypothesis.** Hypothesis is the better
+# tool for property-based testing. When a case fails, it shrinks the case to a
+# minimal one, which is most of the value of the method. Against it, it is a new
+# dependency, and this project runs `drift.yml` because each dependency is a
+# liability over a horizon of years. A seeded `random.Random` covers the
+# trajectory class without one. The trade is worth revisiting the first time a
+# failure here needs shrinking to be understood.
+RANDOMISED_TRAJECTORY_SEEDS = (20260903, 20261101, 7919)
+
+# The longest a randomised phase holds its settings, in shipped steps. A phase
+# lasts from one step to this many, uniformly, so the controls move every 10 s
+# on average and sometimes on consecutive steps. Consecutive steps are the
+# case the hand-written trajectories never reach: two changes with only one
+# step between them.
+RANDOMISED_PHASE_MAX_STEPS = 200
+
+# How often a moved control lands exactly on a limit of its range rather than
+# inside it. Zero ventilation, zero cardiac output and zero fresh gas flow are
+# each a different regime of the equations, and a uniform draw on a range
+# almost never lands on one of them.
+RANDOMISED_LIMIT_PROBABILITY = 0.2
+
+
+def _randomised_value(rng: random.Random, low: float, high: float) -> float:
+    """Draw a supported value for one control, sometimes exactly at a limit."""
+
+    if rng.random() < RANDOMISED_LIMIT_PROBABILITY:
+        return rng.choice((low, high))
+
+    return rng.uniform(low, high)
+
+
+def _randomised_trajectory(agent_id: str, seed: int) -> tuple[Phase, ...]:
+    """Move random controls to random supported values at random moments.
+
+    The run starts empty, at a random point in the settings envelope, and lasts
+    `ENVELOPE_HORIZON_S` like the other gate trajectories. At the start of each
+    later phase, each of the four controls moves with probability one half, and
+    at least one always moves. A phase lasts a whole number of shipped steps,
+    so every change lands on a step boundary, as a change made in the
+    interface does.
+
+    The draws are taken in a fixed order from one generator seeded with `seed`
+    alone. So the same seed gives the same script for every agent. Only the
+    vaporizer dial's range differs, because each agent's vaporizer has its own
+    maximum.
+    """
+
+    rng = random.Random(seed)
+    ranges = (
+        (MIN_DELIVERED_CONCENTRATION_PERCENT, _max_dial(agent_id)),
+        (MIN_FRESH_GAS_FLOW_L_MIN, MAX_FRESH_GAS_FLOW_L_MIN),
+        (MIN_ALVEOLAR_VENTILATION_L_MIN, MAX_ALVEOLAR_VENTILATION_L_MIN),
+        (MIN_CARDIAC_OUTPUT_L_MIN, MAX_CARDIAC_OUTPUT_L_MIN),
+    )
+    settings = [_randomised_value(rng, low, high) for low, high in ranges]
+    steps_left = round(ENVELOPE_HORIZON_S / SHIPPED_STEP_S)
+    phases: list[Phase] = []
+
+    while steps_left > 0:
+        if phases:
+            moved = [rng.random() < 0.5 for _ in ranges]
+
+            if not any(moved):
+                moved[rng.randrange(len(ranges))] = True
+
+            for index, (low, high) in enumerate(ranges):
+                if moved[index]:
+                    settings[index] = _randomised_value(rng, low, high)
+
+        phase_steps = min(rng.randint(1, RANDOMISED_PHASE_MAX_STEPS), steps_left)
+        steps_left -= phase_steps
+        phases.append(Phase(phase_steps * SHIPPED_STEP_S, OperatingPoint(*settings)))
+
+    return tuple(phases)
 
 
 # The trajectory gates run to 600 s and take the maximum over the whole
@@ -844,6 +934,11 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # reads a JSON document and solves nothing, which is the property this list is
 # about.
 #
+# `SimulationState` is the system under test together with the clock that owns
+# its elapsed time. Only `test_randomised_control_trajectories_keep_every_invariant`
+# drives it, to check that simulated time is exactly the steps taken. The
+# oracle never calls it.
+#
 # `SimulationStep` is the type that the system under test accepts for its step
 # (`PL-0GJC`). It checks a number against the supported range and solves
 # nothing, so it has the property too.
@@ -879,6 +974,7 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
+        "SimulationState",
         "SimulationStep",
         "dashboard_frame",
         "formatting",
@@ -1461,6 +1557,177 @@ def test_the_disagreement_does_not_shrink_with_the_step(
         "supported step: "
         + ", ".join(f"{step_s} s -> {error:.3e}" for step_s, error in errors.items())
     )
+
+
+@pytest.mark.parametrize("seed", RANDOMISED_TRAJECTORY_SEEDS)
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, seed: int) -> None:
+    """A run whose controls move at moments nobody scripted stays valid at every step.
+
+    The run must not raise, the agent accounting must pass after every step,
+    each of the six fractions must stay finite and within [0, 1], and simulated
+    time must end at exactly the steps taken times the step.
+
+    Under the exact step, the propagator of a transfer system like this one is
+    entrywise nonnegative, so a step cannot produce a fraction that the
+    compartments' guards reject (`docs/MODEL.md` § "Supported simulation
+    step"). This test does not assume that. It checks it on trajectories that
+    the hand-written gates never reach, so a later change that breaks the
+    property, such as a model extension whose matrix is no longer a pure
+    transfer system, is found here rather than by a learner whose run stops.
+    """
+
+    system = _empty_shipped_system(agent_id)
+    state = SimulationState(uptake_system=system)
+    step = SimulationStep(SHIPPED_STEP_S)
+    steps_taken = 0
+
+    for phase in _randomised_trajectory(agent_id, seed):
+        _apply_operating_point(system, phase.point)
+
+        for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
+            result = state.advance(step)
+            steps_taken += 1
+
+            assert result.agent_accounting.passes_validation, (
+                f"{agent_id}, seed {seed}: the agent accounting failed at step "
+                f"{steps_taken}, relative error {result.agent_accounting.relative_error:.3e}"
+            )
+
+            for label, fraction in zip(STATE_LABELS, _shipped_states(system), strict=True):
+                assert math.isfinite(fraction) and 0.0 <= fraction <= 1.0, (
+                    f"{agent_id}, seed {seed}: the {label} fraction is {fraction!r} "
+                    f"at step {steps_taken}"
+                )
+
+    assert steps_taken == round(ENVELOPE_HORIZON_S / SHIPPED_STEP_S)
+    assert state.step_count == steps_taken
+    assert state.elapsed_s == steps_taken * SHIPPED_STEP_S
+
+
+@pytest.mark.parametrize("seed", RANDOMISED_TRAJECTORY_SEEDS)
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_exact_step_matches_the_independent_solution_on_randomised_trajectories(
+    agent_id: str, seed: int
+) -> None:
+    """The exact step agrees with the oracle on trajectories nobody wrote by hand.
+
+    Conservation cannot see a wrong transfer rate, as this module's docstring
+    explains. So the randomised trajectories are also held to the same oracle
+    and the same tolerance as the five gate trajectories. A rate that is wrong
+    only in some combination of settings that no hand-written trajectory
+    reaches would fail here.
+
+    Measured 2026-11-01 at the shipped 0.1 s step, the worst disagreement over
+    the nine pairs of agent and seed is 1.0977e-14, for desflurane with seed
+    7919, in the vessel-rich fraction at 420.1 s. The tolerance is 4e-13. The
+    worst over the five gate trajectories at this step is 1.5786e-14. So a run
+    whose settings change 48 to 64 times accumulates no more rounding than a
+    run whose settings change once or never. That is what an exact step
+    predicts: rounding is added once per step, and both kinds of run take the
+    same number of steps.
+    """
+
+    error, at_s, state_label = _worst_error_over_phases(
+        agent_id, _randomised_trajectory(agent_id, seed)
+    )
+
+    assert error <= EXACT_STEP_ORACLE_TOLERANCE, (
+        f"{agent_id} on the randomised trajectory with seed {seed} diverges "
+        f"from the independent solution by {error:.3e} in the {state_label} "
+        f"fraction at {at_s:.1f} s, above the exact step's tolerance of "
+        f"{EXACT_STEP_ORACLE_TOLERANCE:.3e}"
+    )
+
+
+# The time constants of the coupled system's six modes, in seconds, ascending,
+# and the period of its fastest complex pair, or `None` where the two fastest
+# modes are real. They are computed from the oracle's own transcription of the
+# equations, so they owe nothing to `build_system_matrix` (`PL-JDX0`).
+# `docs/MODEL.md` § "Alveolar gas" prints them to three figures. Measured
+# 2026-11-01.
+MODAL_TIME_CONSTANTS_S: dict[tuple[str, str], tuple[tuple[float, ...], float | None]] = {
+    ("defaults", "sevoflurane"): ((15.819, 15.819, 63.114, 365.17, 10344.0, 166740.0), 753.39),
+    ("defaults", "isoflurane"): ((13.671, 13.671, 54.479, 425.99, 11452.0, 187470.0), 465.97),
+    ("defaults", "desflurane"): ((16.612, 16.612, 66.082, 263.61, 6016.8, 95493.0), 1542.7),
+    ("corner", "sevoflurane"): ((6.8890, 6.8890, 27.168, 160.67, 4892.5, 81340.0), 397.55),
+    ("corner", "isoflurane"): ((6.0152, 6.2072, 22.367, 190.38, 5275.3, 89486.0), None),
+    ("corner", "desflurane"): ((7.1721, 7.1721, 29.094, 114.44, 2887.1, 46975.0), 384.13),
+}
+
+# One part in ten thousand. The pins carry five significant figures, so this is
+# a few units in the last one: wide enough for a different platform's
+# eigenvalue routine, and far too narrow to pass a moved parameter.
+MODAL_RELATIVE_TOLERANCE = 1e-4
+
+
+def _modal_point(settings_name: str, agent_id: str) -> OperatingPoint:
+    """The flows that a row of `MODAL_TIME_CONSTANTS_S` was computed at."""
+
+    if settings_name == "defaults":
+        return _default_operating_point()
+
+    return _envelope_corner(agent_id)
+
+
+def _modal_time_constants(
+    agent_id: str, point: OperatingPoint
+) -> tuple[tuple[float, ...], float | None]:
+    """Return the six modes' time constants and the fastest pair's period, in seconds.
+
+    The oracle's derivative is affine in the state, F' = A F + b. So column i
+    of A is the derivative at the i-th unit state minus the derivative at the
+    zero state, and the forcing b drops out. The time constant of an
+    eigenvalue is -1 / Re(lambda). A complex pair has one time constant, and
+    its period is 2 pi / |Im(lambda)|.
+    """
+
+    derivative = _build_derivative(agent_id, point)
+    forcing = derivative([0.0] * 6)
+    columns = []
+
+    for index in range(6):
+        unit = [0.0] * 6
+        unit[index] = 1.0
+        columns.append([a - b for a, b in zip(derivative(unit), forcing, strict=True)])
+
+    eigenvalues = sorted(numpy.linalg.eigvals(numpy.array(columns).T), key=lambda z: -z.real)
+    time_constants = tuple(float(-1.0 / z.real) for z in reversed(eigenvalues))
+    fastest = eigenvalues[-1]
+    period = None if fastest.imag == 0.0 else float(2.0 * math.pi / abs(fastest.imag))
+
+    return time_constants, period
+
+
+@pytest.mark.parametrize(("settings_name", "agent_id"), sorted(MODAL_TIME_CONSTANTS_S))
+def test_modal_time_constants_are_the_pinned_ones(settings_name: str, agent_id: str) -> None:
+    """The coupled system's modes are still the ones `docs/MODEL.md` prints.
+
+    `docs/MODEL.md` § "Alveolar gas" gives the six time constants at the
+    default flows and at the corner of the supported settings. They describe
+    every timescale the model can show, so a parameter change that moves them
+    must also change that table. This test fails first, and its message says
+    so. Its tolerance is one part in ten thousand. The document prints three
+    significant figures, so any change that moves a printed figure fails here.
+    """
+
+    expected_constants, expected_period = MODAL_TIME_CONSTANTS_S[(settings_name, agent_id)]
+    time_constants, period = _modal_time_constants(agent_id, _modal_point(settings_name, agent_id))
+    message = (
+        f"{agent_id} at the {settings_name} flows: the modes moved to "
+        f"{', '.join(f'{tau:.5g}' for tau in time_constants)} s, period "
+        f"{period if period is None else f'{period:.5g}'}. Re-derive this table and "
+        "the one in docs/MODEL.md section 'Alveolar gas' together"
+    )
+
+    assert time_constants == pytest.approx(expected_constants, rel=MODAL_RELATIVE_TOLERANCE), (
+        message
+    )
+
+    if expected_period is None:
+        assert period is None, message
+    else:
+        assert period == pytest.approx(expected_period, rel=MODAL_RELATIVE_TOLERANCE), message
 
 
 def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
