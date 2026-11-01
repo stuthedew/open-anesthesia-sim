@@ -75,13 +75,13 @@ DELIVERED_LABEL_TEMPLATE: Final = "{agent} delivered"
 #: and where the figure comes from. The wording is a placeholder, but what the
 #: caption must say is not (`PL-B396`).
 LIQUID_CAPTION_TEMPLATE: Final = (
-    "{unit}: the volume of liquid {agent} that the delivered vapour came from, at 20 °C.\n"
+    "{unit}: the volume of liquid {agent} that the delivered vapour came from, at 20 degrees C.\n"
     "Delivered is the vaporizer's output: its setting times the fresh gas flow, over the run."
 )
 
 #: What the vapour figure is. The wording is a placeholder.
 VAPOUR_CAPTION_TEMPLATE: Final = (
-    "{unit}: pure {agent} vapour at 20 °C and 1 atm, as the vaporizer delivered it.\n"
+    "{unit}: pure {agent} vapour at 20 degrees C and 1 atm, as the vaporizer delivered it.\n"
     "Delivered is the vaporizer's output: its setting times the fresh gas flow, over the run."
 )
 

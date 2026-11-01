@@ -715,9 +715,15 @@ class RunView(QWidget):
         """
 
         self._presented = True
-        self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
-        self._show_schematic(schematic_shown(snapshot))
-        self._show_delivered(delivered_shown(snapshot))
+        # Every value is computed before any is written. So a value that cannot
+        # be computed leaves every surface on the same earlier state, rather than
+        # some on this snapshot and some on the last (`PL-B396`'s review).
+        shown_readouts = readouts(snapshot, self._playback_rate)
+        shown_schematic = schematic_shown(snapshot)
+        shown_delivered = delivered_shown(snapshot)
+        self._readout_row.set_readouts(shown_readouts)
+        self._show_schematic(shown_schematic)
+        self._show_delivered(shown_delivered)
         self._started_over_since_the_cards = False
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()

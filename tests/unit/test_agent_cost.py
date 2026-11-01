@@ -51,7 +51,7 @@ _ONE_ATM_PA = 101_325.0
 _GAS_MAN_VAPOUR_PER_LIQUID = {"sevoflurane": 183.0, "isoflurane": 196.0, "desflurane": 209.0}
 
 _SECONDS_PER_MINUTE = 60.0
-_APP = Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim" / "app"
+_SRC = Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim"
 
 
 def _vapour_ml_per_liquid_ml(agent_id: str) -> float:
@@ -133,8 +133,8 @@ def test_each_caption_names_its_unit_and_says_what_it_measures() -> None:
     vapour = shown.caption_in(AgentAmountUnit.LITRES_OF_VAPOUR)
 
     assert liquid.startswith("mL liquid equiv.: the volume of liquid isoflurane")
-    assert "20 °C" in liquid
-    assert vapour.startswith("L vapour: pure isoflurane vapour at 20 °C and 1 atm")
+    assert "20 degrees C" in liquid
+    assert vapour.startswith("L vapour: pure isoflurane vapour at 20 degrees C and 1 atm")
     assert "the vaporizer's output" in liquid
     assert "the vaporizer's output" in vapour
 
@@ -211,29 +211,38 @@ def test_a_unit_the_view_does_not_offer_is_refused() -> None:
 
 
 def test_only_the_agent_cost_module_converts_vapour_to_liquid() -> None:
-    """No other module in `app/` calls `liquid_volume_ml`, so no caller pairs bare numbers.
+    """No other module under `src/` names `liquid_volume_ml`, so no caller pairs bare numbers.
 
     `liquid_volume_ml` takes a bare amount and a bare ratio. The agent cost
     module reads both from one snapshot, and converts only the delivered
     agent, which the conversion gives exactly (`PL-B396`). A second caller
     could convert a store, which reads 5.8 % high, or pair one agent's vapour
-    with another's ratio. This test makes that caller fail here first.
+    with another's ratio. This test makes that caller fail here first. It
+    reads names, attributes and imported names, so an import under another
+    name is found too. The module that defines the function is left out.
     """
 
     callers = []
 
-    for path in sorted(_APP.glob("*.py")):
+    for path in sorted(_SRC.rglob("*.py")):
+        if path == _SRC / "core" / "liquid_agent.py":
+            continue
+
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        names = {
-            node.id if isinstance(node, ast.Name) else node.attr
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name | ast.Attribute)
-        }
+        names = set()
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                names.add(node.id)
+            elif isinstance(node, ast.Attribute):
+                names.add(node.attr)
+            elif isinstance(node, ast.ImportFrom):
+                names.update(alias.name for alias in node.names)
 
         if "liquid_volume_ml" in names:
-            callers.append(path.name)
+            callers.append(path.relative_to(_SRC).as_posix())
 
-    assert callers == ["agent_cost.py"]
+    assert callers == ["app/agent_cost.py"]
 
 
 @pytest.mark.parametrize(

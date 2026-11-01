@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -31,7 +32,7 @@ from anesthesia_sim.app.dashboard_frame import (
     TRUNK_RUN_INDEX,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
-from anesthesia_sim.app.main import open_preferences
+from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, PreferencesStore
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_COST, REGISTERED
@@ -39,7 +40,8 @@ from anesthesia_sim.app.views import AgentCostView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE
+from anesthesia_sim.layout.serialization import workspace_set_to_json
+from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
@@ -122,13 +124,16 @@ def _dashboard(
     if directory is None:
         view = SimulationView((controller,), case=case, workspaces=workspaces)
     else:
-        launch = open_preferences("", {USER_DIRECTORY_VARIABLE: str(directory)})
-        view = SimulationView(
-            (controller,),
-            case=case,
-            workspaces=workspaces,
-            preferences=launch.loaded,
-            preferences_store=launch.store,
+        # The launch path `main()` takes, over a data directory that already
+        # holds these Workspaces, so the wiring that saves a choice is tested.
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / WORKSPACES_FILE_NAME).write_text(
+            workspace_set_to_json(workspaces), encoding="utf-8"
+        )
+        view = open_dashboard(
+            BranchedCase(controller) if case is None else case,
+            "",
+            {USER_DIRECTORY_VARIABLE: str(directory)},
         )
 
     shown.append(view)
@@ -282,12 +287,142 @@ def test_a_saved_unit_the_build_refuses_falls_back_to_liquid_with_a_notice(
     (cost_view,) = _cost_views(view)
 
     assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
-    assert "refused" in cost_view.preferences_notice.text()
+    assert "furlongs" in cost_view.preferences_notice.text()
 
     _pick(cost_view, AgentAmountUnit.MILLILITRES_OF_LIQUID)
 
     assert cost_view.preferences_notice.isHidden()
     assert PreferencesStore(tmp_path).load().preferences.refused_unit is None
+
+
+_REFUSED_PRICE = {
+    "agent": "sevoflurane",
+    "bottle_price": 0,
+    "bottle_volume_ml": 250,
+    "currency": "USD",
+    "applies_on": "2008-03-05",
+}
+
+
+def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """Picking a unit replaces no price, so the notice of the refused price still applies."""
+
+    (tmp_path / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [_REFUSED_PRICE],
+            }
+        ),
+        encoding="utf-8",
+    )
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    before = cost_view.preferences_notice.text()
+
+    _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    assert "agent_prices[0]" in before
+    assert cost_view.preferences_notice.text() == before
+    assert not cost_view.preferences_notice.isHidden()
+
+
+def test_a_failed_save_says_so_and_still_names_the_refused_price(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """A directory where the save's temporary file belongs makes the save fail."""
+
+    (tmp_path / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [_REFUSED_PRICE],
+            }
+        ),
+        encoding="utf-8",
+    )
+    blocker = tmp_path / f"{PREFERENCES_FILE_NAME}.tmp"
+    blocker.mkdir()
+    (blocker / "keep").write_text("", encoding="utf-8")
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+
+    _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    notice = cost_view.preferences_notice.text()
+    assert cost_view.panels[0].amount_text.text() == "0.0 L vapour"
+    assert notice.startswith("This change lasts only until the application closes")
+    assert "agent_prices[0]" in notice
+
+
+def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The selector never names a unit that no value on screen is shown in.
+
+    The blind and adversarial reviews of `PL-B396` both found the selector on
+    litres of vapour over panels still in millilitres of liquid, after a pick
+    while frames failed. Once a frame draws again, every View shows the pick.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 5 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller, workspaces=_TWO_COST_VIEWS)
+    first, second = _cost_views(view)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _pick(first, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    for cost_view in (first, second):
+        assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
+        assert cost_view.panels[0].amount_text.text() == "2.2 mL liquid equiv."
+
+    monkeypatch.undo()
+    view.present(False)
+
+    for cost_view in (first, second):
+        assert cost_view.unit_selector.currentData() is AgentAmountUnit.LITRES_OF_VAPOUR
+        assert cost_view.panels[0].amount_text.text() == "0.4 L vapour"
+
+
+def test_a_mouse_wheel_over_the_selector_changes_nothing_until_it_has_focus(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    view = _dashboard(application, shown, SimulationController())
+    (cost_view,) = _cost_views(view)
+    selector = cost_view.unit_selector
+    centre = QPointF(selector.rect().center())
+    wheel = QWheelEvent(
+        centre,
+        selector.mapToGlobal(centre),
+        QPoint(0, -120),
+        QPoint(0, -120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+    QApplication.sendEvent(selector, wheel)
+
+    assert selector.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
+    assert cost_view.panels[0].amount_text.text() == "0.0 mL liquid equiv."
+
+
+def test_a_session_with_no_data_directory_keeps_no_choice_and_says_so() -> None:
+    launch = open_preferences("", {})
+
+    assert launch.store is None
+    assert launch.loaded.writable is False
+    assert launch.loaded.notice is not None
+    assert launch.loaded.notice.endswith("No change of preference will be kept after this session")
 
 
 def _failing_assembly(*args: object, **kwargs: object) -> NoReturn:

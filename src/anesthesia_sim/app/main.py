@@ -183,6 +183,37 @@ def open_preferences(standard_location: str, environment: Mapping[str, str]) -> 
     return LaunchPreferences(store.load(), store)
 
 
+def open_dashboard(
+    case: BranchedCase, standard_location: str, environment: Mapping[str, str]
+) -> SimulationView:
+    """Build the dashboard over `case`'s trunk, with the reader's Workspaces and preferences.
+
+    `main()` calls this, and so do the tests of what survives a restart. So
+    the wiring that saves the reader's choices is the one under test.
+
+    Args:
+        case: The case the dashboard opens on.
+        standard_location: As `open_workspaces` takes it.
+        environment: As `open_workspaces` takes it.
+
+    Raises:
+        ShippedWorkspaceError: As `open_workspaces` raises it.
+    """
+
+    launch = open_workspaces(standard_location, environment)
+    preferences = open_preferences(standard_location, environment)
+
+    return SimulationView(
+        (case.trunk,),
+        case=case,
+        workspaces=launch.workspaces,
+        store=launch.store,
+        notice=launch.notice,
+        preferences=preferences.loaded,
+        preferences_store=preferences.store,
+    )
+
+
 def main() -> None:
     """Launch the application and run its event loop until the window closes.
 
@@ -196,18 +227,10 @@ def main() -> None:
     app.setOrganizationName(APP_ORGANIZATION_NAME)
     app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
-    location = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
-    launch = open_workspaces(location, os.environ)
-    preferences = open_preferences(location, os.environ)
-    case = BranchedCase(SimulationController())
-    view = SimulationView(
-        (case.trunk,),
-        case=case,
-        workspaces=launch.workspaces,
-        store=launch.store,
-        notice=launch.notice,
-        preferences=preferences.loaded,
-        preferences_store=preferences.store,
+    view = open_dashboard(
+        BranchedCase(SimulationController()),
+        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation),
+        os.environ,
     )
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)

@@ -47,6 +47,7 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
@@ -70,6 +71,7 @@ from anesthesia_sim.app.dashboard_frame import (
     unmarked_changes_lines,
     wash_in_state_lines,
 )
+from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
@@ -750,7 +752,9 @@ class AgentCostView(QWidget):
         self._requests = context.requests
         self.state_notice = _state_notice_for(context)
         self._copies = _RunCopies(lambda run: run.build_agent_cost(), PAGE_SPACING)
-        self.unit_selector = QComboBox()
+        # The unit the panels were last drawn in, or None before the first tick.
+        self._drawn_unit: AgentAmountUnit | None = None
+        self.unit_selector = _UnitSelector()
         self.unit_selector.setStyleSheet(selector_stylesheet())
 
         for unit, name in UNIT_CHOICES:
@@ -759,6 +763,11 @@ class AgentCostView(QWidget):
         # `activated` is emitted only for a reader's pick, so showing the unit
         # in force on each tick never reads as a request.
         self.unit_selector.activated.connect(self._handle_pick)
+        self.unit_label = styled_label(UNIT_CHOICE_LABEL, color=INK)
+        # Until a tick has drawn the panels, the selector has no unit in force
+        # to show, so it is hidden rather than showing the default.
+        self.unit_label.setHidden(True)
+        self.unit_selector.setHidden(True)
         self.preferences_notice = styled_label(
             "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, wrap=True
         )
@@ -770,7 +779,7 @@ class AgentCostView(QWidget):
         heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
         choice = QHBoxLayout()
         choice.setSpacing(VIEW_HEADING_SPACING)
-        choice.addWidget(styled_label(UNIT_CHOICE_LABEL, color=INK))
+        choice.addWidget(self.unit_label)
         choice.addWidget(self.unit_selector)
         choice.addStretch(1)
         column.addWidget(self.state_notice)
@@ -801,10 +810,13 @@ class AgentCostView(QWidget):
         if index < 0:
             raise ValueError(f"the agent cost View does not offer {unit.value}")
 
-        self.unit_selector.setCurrentIndex(index)
-
         for panel in self._copies.copies:
             panel.show_unit(unit)
+
+        self.unit_selector.setCurrentIndex(index)
+        self.unit_label.setHidden(False)
+        self.unit_selector.setHidden(False)
+        self._drawn_unit = unit
 
         notice = tick.preferences.notice
         self.preferences_notice.setText(notice or "")
@@ -825,6 +837,36 @@ class AgentCostView(QWidget):
         return ()
 
     def _handle_pick(self, index: int) -> None:
-        """Ask for the unit the reader picked. The next tick shows it on every agent cost View."""
+        """Ask for the unit the reader picked. The next tick shows it on every agent cost View.
+
+        The selector is first put back to the unit the panels were drawn in.
+        Only a tick that draws the panels moves it. So while every frame fails,
+        the selector never names a unit that no value on screen is shown in.
+        """
+
+        if self._drawn_unit is not None:
+            self.unit_selector.setCurrentIndex(self.unit_selector.findData(self._drawn_unit))
 
         self._requests.agent_cost_unit(UNIT_CHOICES[index][0])
+
+
+class _UnitSelector(QComboBox):
+    """The agent cost View's unit selector, which a mouse wheel changes only once it has focus.
+
+    Qt's combo box changes its item on a wheel event even without focus, and
+    emits `activated` as if the reader had picked. The Areas sit in a page
+    that scrolls. So a reader scrolling past the View would change the unit,
+    and save it, without meaning to. A click or the keyboard gives the
+    selector focus, and the wheel then works as usual.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        if not self.hasFocus():
+            event.ignore()
+            return
+
+        super().wheelEvent(event)

@@ -1969,7 +1969,11 @@ class SimulationView(QWidget):
             try:
                 self._preferences_store.save(self._preferences)
             except PreferencesFileError as error:
-                self._preferences_notice = unsaved_preferences_notice(error)
+                unsaved = unsaved_preferences_notice(error)
+                refusals = refusals_notice(self._preferences_store.path, self._preferences)
+                self._preferences_notice = (
+                    unsaved if refusals is None else f"{unsaved}. Also, {refusals}"
+                )
             else:
                 self._preferences_notice = refusals_notice(
                     self._preferences_store.path, self._preferences
