@@ -2463,6 +2463,10 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
+    # The one date blocker a reader cannot see in the status line: when the
+    # work may start, so the queue says when the item becomes due (`PL-XNF3`).
+    if item.is_open and (due := item.waits_until) is not None:
+        print(f"  waits until: {due.isoformat()}, from its `blocked-by`")
     # The fixed rule and the model review's measurement, side by side, as
     # `next` marks a pick (`PL-3R6L`). Silent where both are.
     model = []
@@ -3367,7 +3371,9 @@ def _waiting_on(
     by_id = {item.identifier: item for item in items if item.identifier}
     parts = []
     for entry in found.waiting_on:
-        if entry in head.blocking_milestones:
+        if entry in head.blocking_dates:
+            parts.append(f"{entry} (a date it cannot start before)")
+        elif entry in head.blocking_milestones:
             if milestones is None:
                 parts.append(f"{entry} (a milestone; the roadmap was not read to say if scoped)")
             elif milestones.is_cleared(entry):
@@ -6321,7 +6327,7 @@ def build_parser() -> argparse.ArgumentParser:
     for flag, metavar in (
         ("--classes", "A,B"),
         ("--touches", "A.PY,B.PY"),
-        ("--blocked-by", "PL-XXXX,vX.Y.Z"),
+        ("--blocked-by", "PL-XXXX,vX.Y.Z,YYYY-MM-DD"),
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
         ("--reenters", "PL-XXXX"),
         ("--no-successor", "PL-XXXX"),

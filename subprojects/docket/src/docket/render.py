@@ -4016,6 +4016,8 @@ def _outside_cost(gate: GateStatus) -> str:
     parts = []
     if gate.outside_milestones:
         parts.append(", ".join(gate.outside_milestones))
+    if gate.outside_dates:
+        parts.append("the date " + ", ".join(gate.outside_dates))
     if gate.outside_items:
         parts.append(_plural(len(gate.outside_items), "open item", "open items"))
     return " and ".join(parts)
