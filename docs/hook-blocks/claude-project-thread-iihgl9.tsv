@@ -1,0 +1,6 @@
+time	session	guard	rule
+2026-11-01T16:58:42.075669+00:00	81b1e00f-63f0-53fa-b9f0-52dd61d9a38a	gate-status-guard	status-swallowed
+2026-11-01T16:59:00.972550+00:00	81b1e00f-63f0-53fa-b9f0-52dd61d9a38a	gate-status-guard	status-swallowed
+2026-11-01T17:06:34.694581+00:00	81b1e00f-63f0-53fa-b9f0-52dd61d9a38a	gate-status-guard	arm-piped
+2026-11-01T17:15:36.294517+00:00	81b1e00f-63f0-53fa-b9f0-52dd61d9a38a	gate-status-guard	status-swallowed
+2026-11-01T17:52:19.550333+00:00	81b1e00f-63f0-53fa-b9f0-52dd61d9a38a	gate-status-guard	status-swallowed
