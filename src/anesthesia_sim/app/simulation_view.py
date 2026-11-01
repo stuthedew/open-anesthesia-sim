@@ -124,8 +124,16 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
     trunk_reset_question,
 )
-from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.formatting import AgentAmountUnit, mac_multiple
 from anesthesia_sim.app.halt_gate import halt_gate
+from anesthesia_sim.app.preferences import (
+    LoadedPreferences,
+    Preferences,
+    PreferencesFileError,
+    PreferencesStore,
+    refusals_notice,
+    unsaved_preferences_notice,
+)
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -145,7 +153,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
-from anesthesia_sim.app.view_contract import ViewRequests
+from anesthesia_sim.app.view_contract import PreferencesInForce, ViewRequests
 from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
 from anesthesia_sim.core.concentration import fraction_from_percent
@@ -360,6 +368,8 @@ class SimulationView(QWidget):
         workspaces: WorkspaceSet | None = None,
         store: WorkspaceStore | None = None,
         notice: str | None = None,
+        preferences: LoadedPreferences | None = None,
+        preferences_store: PreferencesStore | None = None,
     ) -> None:
         """Build the dashboard with one `RunView` for each of `controllers`, and draw nothing yet.
 
@@ -390,6 +400,12 @@ class SimulationView(QWidget):
                 is shown unavailable, so a test never writes a file.
             notice: What the reader is told about how `workspaces` was
                 loaded, shown under the tab strip, or `None`.
+            preferences: What `preferences_store` loaded: the reader's
+                preferences, whether they may be saved, and the notice about
+                them. By default, the default preferences, with no notice.
+            preferences_store: The store `preferences` was loaded from, which
+                a change of preference is saved to (`PL-B396`). Without one,
+                a change lasts for the session, so a test never writes a file.
 
         Raises:
             ValueError: If no run is given, if more than
@@ -436,6 +452,18 @@ class SimulationView(QWidget):
         # built (`PL-DWHG`).
         self._store = store
         self._notice = notice
+        # The reader's preferences, which every View is shown on each tick, the
+        # store a change is saved to, and what the reader is told about them.
+        # The dashboard owns them, as it owns the compartment selection, so two
+        # agent cost Views can never show two units (`PL-B396`).
+        loaded = (
+            LoadedPreferences(Preferences(), writable=False, notice=None)
+            if preferences is None
+            else preferences
+        )
+        self._preferences = loaded.preferences
+        self._preferences_notice = loaded.notice
+        self._preferences_store = preferences_store
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. It is kept
@@ -578,7 +606,11 @@ class SimulationView(QWidget):
             store=self._store,
             notice=self._notice,
         )
-        requests = ViewRequests(self._handle_frame_request, self._handle_compartment_request)
+        requests = ViewRequests(
+            self._handle_frame_request,
+            self._handle_compartment_request,
+            self._handle_agent_cost_unit_request,
+        )
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
         self._areas.views_changed.connect(partial(self.present, False))
@@ -1586,6 +1618,7 @@ class SimulationView(QWidget):
                 tuple(snapshots[i] for i in drawn),
                 tuple(self._runs[i] for i in drawn),
                 selection,
+                PreferencesInForce(self._preferences, self._preferences_notice),
             )
 
         self._frame_failed = False
@@ -1910,6 +1943,37 @@ class SimulationView(QWidget):
         no simulation state. The time base is a view control. It is never
         disabled, and Reset leaves it alone (`PL-012`).
         """
+
+        self.present(False)
+
+    @halt_gate
+    def _handle_agent_cost_unit_request(self, unit: AgentAmountUnit) -> None:
+        """Put the reader's choice of unit into the preferences, save them, and draw at once.
+
+        The unit is a preference rather than a View's own setting, so every
+        agent cost View shows the new unit on the frame drawn here (`PL-B396`).
+        The preferences are saved when there is a store. If the save fails, or
+        saving is off for the session, the new unit still applies until the
+        application closes, and the View says why it will not be kept. A unit
+        the View does not offer is refused by `Preferences.with_agent_cost_unit`.
+
+        Raises:
+            SimulationConfigurationError: If `unit` is not one the agent cost
+                View offers. The halt gate halts every run, because a View that
+                asks for such a unit disagrees with the preferences store.
+        """
+
+        self._preferences = self._preferences.with_agent_cost_unit(unit)
+
+        if self._preferences_store is not None:
+            try:
+                self._preferences_store.save(self._preferences)
+            except PreferencesFileError as error:
+                self._preferences_notice = unsaved_preferences_notice(error)
+            else:
+                self._preferences_notice = refusals_notice(
+                    self._preferences_store.path, self._preferences
+                )
 
         self.present(False)
 

@@ -46,6 +46,14 @@ One is the store itself, so that the Layout menu's "Save as default" can
 write to it. The other is the store's notice, which the tab strip shows.
 Where the platform reports no directory, the session has no store, so
 nothing is saved, and a notice tells the reader why.
+
+**The reader's preferences are loaded here too, from the same directory**
+(`PL-B396`). `open_preferences` loads `preferences.json` beside
+`workspaces.json`, through `app/preferences.py`, which owns the file. The
+dashboard receives what was loaded and the store, so that a change of
+preference, such as the agent cost View's unit, is saved and survives a
+restart. Where there is no directory, the session uses the default
+preferences, and the agent cost View says that a change will not be kept.
 """
 
 import os
@@ -57,6 +65,7 @@ from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.preferences import LoadedPreferences, Preferences, PreferencesStore
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
     declare_application_colours,
@@ -128,6 +137,52 @@ def open_workspaces(
     return LaunchWorkspaces(loaded.workspaces, store, loaded.notice)
 
 
+@dataclass(frozen=True, slots=True)
+class LaunchPreferences:
+    """The preferences a launch opens with, and where they can be saved.
+
+    Attributes:
+        loaded: What the store loaded, or the default preferences with a
+            notice where there is no directory to load from.
+        store: The store a change of preference is saved to, or `None` where
+            there is no directory to save in.
+    """
+
+    loaded: LoadedPreferences
+    store: PreferencesStore | None
+
+
+def open_preferences(standard_location: str, environment: Mapping[str, str]) -> LaunchPreferences:
+    """Load the reader's preferences from their data directory, the one Workspaces use.
+
+    Args:
+        standard_location: As `open_workspaces` takes it.
+        environment: As `open_workspaces` takes it.
+
+    Returns:
+        What the store loaded, with the store. When neither the override nor
+        the platform names a directory, the result holds the default
+        preferences, no store, and a notice saying that no change of
+        preference will be kept.
+    """
+
+    try:
+        directory = user_data_directory(standard_location, environment)
+    except LayoutRefused as refusal:
+        return LaunchPreferences(
+            LoadedPreferences(
+                Preferences(),
+                writable=False,
+                notice=f"{refusal}. No change of preference will be kept after this session",
+            ),
+            None,
+        )
+
+    store = PreferencesStore(directory)
+
+    return LaunchPreferences(store.load(), store)
+
+
 def main() -> None:
     """Launch the application and run its event loop until the window closes.
 
@@ -141,9 +196,9 @@ def main() -> None:
     app.setOrganizationName(APP_ORGANIZATION_NAME)
     app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
-    launch = open_workspaces(
-        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation), os.environ
-    )
+    location = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
+    launch = open_workspaces(location, os.environ)
+    preferences = open_preferences(location, os.environ)
     case = BranchedCase(SimulationController())
     view = SimulationView(
         (case.trunk,),
@@ -151,6 +206,8 @@ def main() -> None:
         workspaces=launch.workspaces,
         store=launch.store,
         notice=launch.notice,
+        preferences=preferences.loaded,
+        preferences_store=preferences.store,
     )
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)

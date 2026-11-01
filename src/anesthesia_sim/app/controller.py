@@ -466,6 +466,17 @@ class SimulationSnapshot(RunRecord):
     muscle_partial_pressure_fraction: Fraction
     fat_partial_pressure_fraction: Fraction
     delivered_agent_l: float
+    agent_vapour_per_liquid: float
+    """The millilitres of the running agent's vapour that one millilitre of its liquid gives.
+
+    The value is `AgentParameters.vapour_volume_per_liquid_volume`, at the
+    model's reference condition of 20 °C and one standard atmosphere
+    (`core/liquid_agent.py`). The agent cost View divides `delivered_agent_l`
+    by it to show the delivered agent as liquid (`PL-B396`). It travels in the
+    snapshot beside the agent and the amount it converts, for the reason that
+    `agent_mac_percent` gives. Sevoflurane vapour converted with desflurane's
+    ratio would read about 13 % low, under a correct-looking label.
+    """
     exhausted_agent_l: float
     compartment_agent_amounts: CompartmentAgentAmounts
     """The agent that each compartment holds, in litres of vapour.
@@ -901,6 +912,7 @@ class SimulationController:
         self._agent_display_name = agent_parameters.display_name
         self._agent_mac_percent = agent_parameters.mac_percent
         self._agent_mac_awake = agent_parameters.mac_awake
+        self._agent_vapour_per_liquid = agent_parameters.vapour_volume_per_liquid_volume
         self._state = SimulationState(uptake_system=uptake_system)
         # The run records one substance, which is this run's agent. `set_agent`
         # calls this method and builds a new history under the new agent's id.
@@ -1349,6 +1361,7 @@ class SimulationController:
                 name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.FAT],
             ),
             delivered_agent_l=accounting.delivered_agent_l,
+            agent_vapour_per_liquid=self._agent_vapour_per_liquid,
             exhausted_agent_l=accounting.exhausted_agent_l,
             # This pairs each compartment's key with the `core/` object that its
             # amount is read from. It is a second pairing beside
@@ -1988,11 +2001,13 @@ class SimulationController:
         Two groups are compared. The first is the equation settings: every field of them and
         of each tissue group. Those fields are everything that their equality compares, so a
         setting added to either class is named here without an edit. The second is the
-        agent's three displayed references, which no equation reads: its name, its MAC and
-        its MAC-awake. The MAC is the divisor of every MAC multiple on screen. A branch
-        rebuilt under another MAC would show one concentration as two different multiples
-        beside its parent. The vaporizer maximum is not compared as a displayed reference.
-        The equation settings already carry it, and it is read from the circuit (`PL-1MGB`).
+        agent's four displayed references, which no equation reads: its name, its MAC, its
+        MAC-awake and its vapour-to-liquid ratio. The MAC is the divisor of every MAC
+        multiple on screen. A branch rebuilt under another MAC would show one concentration
+        as two different multiples beside its parent. The ratio converts the delivered agent
+        to liquid on the agent cost View, so the same holds for it (`PL-B396`). The vaporizer
+        maximum is not compared as a displayed reference. The equation settings already carry
+        it, and it is read from the circuit (`PL-1MGB`).
 
         Each value is written by its `repr`. For a float, that is the shortest text that
         reads back as the same float. For a string, it is the string in quotes. So two
@@ -2020,6 +2035,11 @@ class SimulationController:
             ),
             ("agent_display_name", self._agent_display_name, branch._agent_display_name),
             ("agent_mac_percent", self._agent_mac_percent, branch._agent_mac_percent),
+            (
+                "agent_vapour_per_liquid",
+                self._agent_vapour_per_liquid,
+                branch._agent_vapour_per_liquid,
+            ),
             *(
                 (
                     f"agent_mac_awake {field.name}",

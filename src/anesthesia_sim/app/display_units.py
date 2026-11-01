@@ -55,6 +55,15 @@ class DisplayUnit(Enum):
     # § "The compartment schematic: what its heights, amounts and share bar
     # assert" sets the spelling. The wording is a placeholder, but the rule is not.
     AGENT_VAPOUR_MILLILITRES = ("millilitres of vapour", "mL vapour", "mL vapour")
+    # The agent cost View shows the delivered agent in one of the next two units
+    # (`PL-B396`). The liquid unit says "equiv." because no liquid is in the run.
+    # The figure is the volume of liquid that the delivered vapour came from.
+    AGENT_VAPOUR_LITRES = ("litres of vapour", "L vapour", "L vapour")
+    AGENT_LIQUID_MILLILITRES = (
+        "millilitres of liquid equivalent",
+        "mL liquid equiv.",
+        "mL liquid equiv.",
+    )
 
     recorded: str
     label: str

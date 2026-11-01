@@ -327,3 +327,51 @@ label a store.
 **Checked 2026-10-27 (`PL-0S0V`): the liquid precision is derived.** The delivered total in millilitres of liquid is to be shown to a tenth (project owner, 2026-10-27, ratified, over whole millilitres). It carries no partition-coefficient uncertainty, and one SD of the measured density moves it by 0.1 mL only above about 190 mL of liquid sevoflurane. The exhausted total stays in whole millilitres. Read it with `agent_amount_display_precision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID)`. The agent cost View's litre figure should read `(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR)`, the entry the accounting panel uses, so the two match. The stored total is refused in liquid, because a store converted to liquid reads 5.8% high. `docs/MODEL.md` § "Displayed precision" has the derivation.
 
 **What `PL-2881` settled for this build, 2026-11-01.** `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and share bar assert" sets the spelling of a liquid-equivalent amount for every View: "mL liquid equiv.", held in `DisplayUnit`. The hazard row on a vapour amount read as liquid names `PL-RNYV`, and this View's test belongs beside it.
+
+**Built 2026-11-01.** The agent cost View (`ViewKind("agent_cost")`, titled
+"Agent cost") is registered, so every Area's View chooser offers it. For each
+displayed run it shows the agent delivered, in millilitres of liquid
+equivalent by default, or in litres of vapour if the reader picks that unit in
+the View's selector. The unit is printed on the value itself, as
+"mL liquid equiv." or "L vapour", from two new `DisplayUnit` members. A caption
+under the value says what the unit measures and that the figure is the
+vaporizer's output. The heading carries "Model outputs — not measurements."
+Both units are shown to a tenth, as `PL-0S0V` derived, through one new
+formatter, `format_delivered_agent`, which shares its rounding rule with the
+accounting panel's `format_agent_volume`.
+
+**How the conversion is kept safe.** `app/agent_cost.py` converts only the
+delivered agent, which the conversion gives exactly. It reads the amount and
+the ratio from one snapshot. The snapshot now carries the running agent's
+ratio beside its id (`SimulationSnapshot.agent_vapour_per_liquid`), as it
+carries the MAC, and a branch's consistency check compares it. So no caller
+can pair one agent's vapour with another agent's ratio, and nothing converts a
+store. This was chosen over an amount record that carries its agent and kind,
+which the brief recommended. The snapshot already is that record for the one
+amount converted, and a unit test refuses any second caller of
+`liquid_volume_ml` in `app/`, so a later caller that converts a store fails
+there first.
+
+**How the unit is kept.** The unit is the reader's preference, so the
+dashboard owns it, as it owns the compartment selection. Each tick shows the
+preferences to every View (`ViewTick.preferences`), and the selector asks for
+a change through `ViewRequests.agent_cost_unit`. So two agent cost Views always
+show one unit. `app/main.py` loads `preferences.json` from the directory it
+already resolves for the Workspaces (`open_preferences`), and the dashboard
+saves on every change. A failed save, or a session where saving is off, keeps
+the change until the application closes, and the View says why it will not be
+kept. A notice about an entry refused at launch is shown in the View until the
+reader replaces the entry.
+
+**Placeholders decided here.** The View's title, heading, captions, selector
+wording and order, the minimum size of 320 x 200 px, the sizes of the lines,
+and where the notice sits.
+
+**Tests.** `tests/unit/test_agent_cost.py` checks the liquid figure for three
+agents against the dial times the flow times the time, divided by a factor
+worked out in the test from the densities and molar masses that
+`docs/MODEL.md` § "Agent amount" tabulates. It checks that factor against Gas
+Man's printed constants to within 0.5 %. `tests/integration/test_agent_cost_view.py`
+runs patient inputs through a real dashboard to the drawn text, checks that a
+unit picked in one View reaches a second View, is saved and survives a
+restart, and checks the withheld, compared and agent-change cases.

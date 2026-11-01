@@ -100,6 +100,8 @@ __all__ = [
     "PreferencesFileError",
     "PreferencesStore",
     "RefusedEntry",
+    "refusals_notice",
+    "unsaved_preferences_notice",
 ]
 
 PREFERENCES_FILE_NAME: Final = "preferences.json"
@@ -466,18 +468,9 @@ class PreferencesStore:
         except _InvalidDocument as invalid:
             return self._read_only(str(invalid))
 
-        refused = [entry.reason for entry in preferences.refused_prices]
-        if preferences.refused_unit is not None:
-            refused.append(preferences.refused_unit.reason)
-
-        notice = (
-            None
-            if not refused
-            else f"some preferences in {self.path} were refused and are not used: "
-            + "; ".join(refused)
+        return LoadedPreferences(
+            preferences, writable=True, notice=refusals_notice(self.path, preferences)
         )
-
-        return LoadedPreferences(preferences, writable=True, notice=notice)
 
     def _read_only(self, reason: str) -> LoadedPreferences:
         return LoadedPreferences(
@@ -489,6 +482,35 @@ class PreferencesStore:
                 "as it is"
             ),
         )
+
+
+def refusals_notice(path: Path, preferences: Preferences) -> str | None:
+    """Return the notice naming each refused entry that `preferences` still keeps, or None.
+
+    A launch shows this notice for the entries refused when the file at `path`
+    was read. After a save, the dashboard asks again, because the reader may
+    have replaced a refused entry by then, and its reason no longer applies.
+    """
+
+    refused = [entry.reason for entry in preferences.refused_prices]
+
+    if preferences.refused_unit is not None:
+        refused.append(preferences.refused_unit.reason)
+
+    if not refused:
+        return None
+
+    return f"some preferences in {path} were refused and are not used: " + "; ".join(refused)
+
+
+def unsaved_preferences_notice(error: PreferencesFileError) -> str:
+    """Return what the reader is told when a change of preference could not be saved.
+
+    The change still applies until the application closes. The wording is a
+    placeholder.
+    """
+
+    return f"This change lasts only until the application closes, because {error}"
 
 
 class _NewerFile(Exception):

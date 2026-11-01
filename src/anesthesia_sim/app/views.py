@@ -17,6 +17,9 @@ hands it on every frame (`PL-TH35`).
 - `CompartmentSchematicView` is every displayed run's compartment schematic:
   six containers filled to their tensions, each labelled with its name,
   tension and amount (`PL-RNYV`).
+- `AgentCostView` is every displayed run's delivered agent, in millilitres of
+  liquid equivalent or litres of vapour, as the reader's preferences say
+  (`PL-B396`).
 
 A View that shows a run's own surfaces asks the run for a copy of each, and
 the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
@@ -31,7 +34,8 @@ from the run.
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, or for the schematic from
-`app/compartment_schematic.py`. Every drawn value comes from the frame or from
+`app/compartment_schematic.py`, or for the agent cost View from
+`app/agent_cost.py`. Every drawn value comes from the frame or from
 a copy of a run surface that the run writes.
 """
 
@@ -43,8 +47,9 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
 from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
@@ -65,6 +70,7 @@ from anesthesia_sim.app.dashboard_frame import (
     unmarked_changes_lines,
     wash_in_state_lines,
 )
+from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
     TimeBaseSelector,
@@ -74,7 +80,7 @@ from anesthesia_sim.app.qt_chart import (
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import styled_label
-from anesthesia_sim.app.stylesheets import panel_stylesheet
+from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     INK,
     METRIC_QUALIFIER_SIZE,
@@ -98,6 +104,7 @@ from anesthesia_sim.app.view_contract import (
 
 __all__ = [
     "AccountingView",
+    "AgentCostView",
     "CompartmentSchematicView",
     "ConcentrationView",
     "ParameterControlsView",
@@ -105,8 +112,10 @@ __all__ = [
 ]
 
 #: The saved-state version for the Views here that have no setting of their
-#: own, which are the accounting View, the setting controls View and the
-#: compartment schematic. Each of them saves only this version and nothing else.
+#: own, which are the accounting View, the setting controls View, the
+#: compartment schematic and the agent cost View. The agent cost View's unit
+#: is the reader's preference, not the View's own setting (`PL-B396`). Each of
+#: them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
 
 #: The version of a chart View's saved state. Version 2 added the chart's
@@ -122,6 +131,7 @@ _TIME_BASE_KEY: Final = "time_base_s"
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
 _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
+_AGENT_COST_VIEW_NAME: Final = "agentCostView"
 
 
 class _RunCopies[W: QWidget]:
@@ -711,3 +721,110 @@ class CompartmentSchematicView(QWidget):
         return tuple(
             text for schematic in self._copies.copies for text in schematic.canvas.painted_strings()
         )
+
+
+class AgentCostView(QWidget):
+    """Every displayed run's delivered agent, in the unit the reader chose (`PL-B396`).
+
+    By default the amount is in millilitres of liquid equivalent, and the
+    reader can choose litres of vapour instead. The unit is printed on every
+    amount, so the choice is never a hidden mode. The unit is the reader's
+    preference, not this View's own setting. So the selector shows the unit
+    that each tick's preferences hold, and asks the dashboard for a change
+    through `ViewRequests.agent_cost_unit`. Every agent cost View shows the
+    same unit, and the choice survives a restart (`app/preferences.py`).
+
+    Each run's panel is a copy of a run surface (`RunView.build_agent_cost`),
+    which the run writes and withholds with its readouts. The View asks for no
+    chart frame. The heading says that the values are model outputs, not
+    measurements. Under it, a notice tells the reader when a preference was
+    refused or will not be kept.
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__()
+        self._drawn = False
+        self._requests = context.requests
+        self.state_notice = _state_notice_for(context)
+        self._copies = _RunCopies(lambda run: run.build_agent_cost(), PAGE_SPACING)
+        self.unit_selector = QComboBox()
+        self.unit_selector.setStyleSheet(selector_stylesheet())
+
+        for unit, name in UNIT_CHOICES:
+            self.unit_selector.addItem(name, userData=unit)
+
+        # `activated` is emitted only for a reader's pick, so showing the unit
+        # in force on each tick never reads as a request.
+        self.unit_selector.activated.connect(self._handle_pick)
+        self.preferences_notice = styled_label(
+            "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, wrap=True
+        )
+        self.preferences_notice.setHidden(True)
+        column = _panel_column(self, _AGENT_COST_VIEW_NAME)
+        heading = QHBoxLayout()
+        heading.setSpacing(VIEW_HEADING_SPACING)
+        heading.addWidget(styled_label(AGENT_COST_HEADING, color=INK, bold=True, wrap=True), 1)
+        heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
+        choice = QHBoxLayout()
+        choice.setSpacing(VIEW_HEADING_SPACING)
+        choice.addWidget(styled_label(UNIT_CHOICE_LABEL, color=INK))
+        choice.addWidget(self.unit_selector)
+        choice.addStretch(1)
+        column.addWidget(self.state_notice)
+        column.addLayout(heading)
+        column.addLayout(choice)
+        column.addWidget(self.preferences_notice)
+        column.addWidget(self._copies.holder)
+        column.addStretch(1)
+
+    @property
+    def panels(self) -> tuple[RunAgentCost, ...]:
+        """The panel shown for each displayed run, in drawing order."""
+
+        return self._copies.copies
+
+    def refresh(self, tick: ViewTick) -> None:
+        """Show one panel for each run in the tick, in the unit the tick's preferences hold.
+
+        Raises:
+            ValueError: If the preferences hold a unit that the selector does
+                not offer. The two read the same list, so that is a defect.
+        """
+
+        self._copies.follow(tick.runs)
+        unit = tick.preferences.preferences.agent_cost_unit
+        index = self.unit_selector.findData(unit)
+
+        if index < 0:
+            raise ValueError(f"the agent cost View does not offer {unit.value}")
+
+        self.unit_selector.setCurrentIndex(index)
+
+        for panel in self._copies.copies:
+            panel.show_unit(unit)
+
+        notice = tick.preferences.notice
+        self.preferences_notice.setText(notice or "")
+        self.preferences_notice.setHidden(notice is None)
+        self._drawn = True
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return not self._drawn
+
+    def frame_request(self) -> FrameRequest | None:
+        return None
+
+    def save_state(self) -> SavedState:
+        return _saved_state()
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return ()
+
+    def _handle_pick(self, index: int) -> None:
+        """Ask for the unit the reader picked. The next tick shows it on every agent cost View."""
+
+        self._requests.agent_cost_unit(UNIT_CHOICES[index][0])

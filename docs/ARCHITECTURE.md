@@ -108,12 +108,12 @@ src/anesthesia_sim/
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case section of bookmarks and branching under the Areas, the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); a right-click on each Area's header opens an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it, or with Ctrl swaps it, with a preview drawn over the Areas (PL-2KXB, PL-R5G4); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no View is drawn below its need, and an Area that cannot be given it shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in every Area's header, or stated absent in place of each View (PL-2KXB)
 │   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu, opened by a right-click on the strip outside a tab, lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352, PL-R5G4); it and each tab's menu end with Save as default, Restore shipped Workspaces and Reset all layouts, and a line under the tabs shows what the store reported (PL-DWHG)
-│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces a View may show, ViewRequests for a change to shared state or a frame, and the saved-state version check (PL-TH35)
-│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35) and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces a View may show, ViewRequests for a change to shared state or a frame, PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
+│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35) and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it, so a raise inside one halts its run, or every run for SimulationView, rather than escaping to Qt (PL-HJKN); toolkit-independent
-│   ├── run_surfaces.py             # the parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF); the third such part, RunSchematic, is in qt_schematic.py
+│   ├── run_surfaces.py             # the parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF); the third such part, RunSchematic, is in qt_schematic.py, and the fourth, RunAgentCost, in qt_agent_cost.py
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── preferences.py              # the reader's preferences.json: an AgentPrice per agent and the agent cost View's unit, each refused alone when invalid and kept for the next save; a newer or unreadable file turns saving off (PL-93B3); toolkit-independent
@@ -122,6 +122,8 @@ src/anesthesia_sim/
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
 │   ├── compartment_schematic.py    # what each container of the compartment schematic is filled to and labelled with, from one snapshot: its fill on the chart's own scale, whether it is off that scale, its tension and its amount (PL-RNYV); toolkit-independent
 │   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
+│   ├── agent_cost.py               # what the agent cost View shows for one run, from one snapshot: the delivered agent in millilitres of liquid equivalent and in litres of vapour, each with its unit named and a caption saying what it measures; converts only the delivered agent, reading the amount and the agent's ratio from one snapshot (PL-B396); toolkit-independent
+│   ├── qt_agent_cost.py            # RunAgentCost on Qt: one run's instant line, delivered amount and caption, in the unit its View sets (PL-B396); computes no value
 │   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text; ShareBar, each compartment's share of the agent the run holds as one bar (PL-S79P); and RunSchematic, the run surface that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
@@ -129,7 +131,7 @@ src/anesthesia_sim/
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
 │   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
-│   └── main.py                     # PySide6 entry point; loads the reader's saved Workspaces from their data directory (PL-DWHG), builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
+│   └── main.py                     # PySide6 entry point; loads the reader's saved Workspaces from their data directory (PL-DWHG) and their preferences from the same directory (PL-B396), builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 ├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
 │   ├── sizing.py                   # how a layout is drawn in whole pixels: each Area held at its View's need, its siblings giving way, and which Areas are too small and held at their floor instead, a size that fits the header and the too-small notice at the width the Area is drawn at (PL-K285, PL-Y65Q, PL-16BG); pure functions of a tree and an extent
@@ -1002,8 +1004,9 @@ price.
 <!-- absent: preferences.json workspaces.json -->
 
 - **When.** `PreferencesStore.save` writes the whole document when its caller
-  asks. The agent cost View will save as soon as the reader sets a price or a
-  unit (`PL-1P15`, `PL-B396`), as Blender saves its preferences on change.
+  asks. The dashboard saves as soon as the reader picks the agent cost View's
+  unit (`PL-B396`), and will save when they set a price (`PL-1P15`), as
+  Blender saves its preferences on change.
   Nothing is written before the first save. A save writes a temporary file,
   `fsync`s it and `os.replace`s the target, through `user_files.py`, which the
   Workspaces store uses too. It keeps no previous generation, because the file
@@ -1019,10 +1022,15 @@ price.
   newer build wrote, that cannot be read, or whose document cannot be checked
   entry by entry turns saving off for the session, so the file is left as it
   is, and the notice says why.
-- **Who reads it.** Nothing reads the preferences yet. The agent cost View,
-  which shows the cost at the reader's price, is their first reader
-  (`PL-1P15`). It will load the store from the directory that
-  `app/main.py` already resolves for the Workspaces.
+- **Who reads it.** `app/main.py` loads the store from the directory it
+  resolves for the Workspaces, through `open_preferences`. The dashboard
+  holds the preferences, as it holds the compartment selection, and shows
+  them to every View in each `ViewTick`. The agent cost View is their one
+  reader (`PL-B396`). It asks for a change of unit through
+  `ViewRequests.agent_cost_unit`, so two agent cost Views always show one
+  unit. A failed save keeps the change for the session, and the View says
+  that it will not be kept. The View also shows the notice of any entry
+  refused at launch, until the reader replaces it.
 
 ## Dependencies
 

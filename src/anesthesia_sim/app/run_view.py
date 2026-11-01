@@ -88,6 +88,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown, delivered_shown
 from anesthesia_sim.app.chart_frame import PreviewRequest
 from anesthesia_sim.app.compartment_schematic import (
     WITHHELD_SCHEMATIC,
@@ -165,6 +166,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
+from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_surfaces import (
@@ -273,10 +275,12 @@ class RunView(QWidget):
     build methods return widgets for `SimulationView` to place, because the
     dashboard decides where one run's parts sit relative to another run's.
 
-    Two surfaces may sit in an Area: the setting controls and the accounting
-    panel. Their build methods build a new copy on every call, and the new
-    copy starts from what the existing copies show. Each copy is an instance
-    of a class in `app/run_surfaces.py`. Every writer here writes every copy
+    Four surfaces may sit in an Area: the setting controls, the accounting
+    panel, the compartment schematic and the agent cost panel. Their build
+    methods build a new copy on every call, and the new copy starts from what
+    the existing copies show. Each copy is an instance of a class in
+    `app/run_surfaces.py`, `app/qt_schematic.py` or `app/qt_agent_cost.py`.
+    Every writer here writes every copy
     that Qt has not destroyed, so two Areas can show one run (`PL-9LNF`). The
     other parts belong to the unconditional region, which is always on
     screen, and stay one per run. Their build methods return the same widgets
@@ -555,6 +559,10 @@ class RunView(QWidget):
         # starts withheld, as nothing has been drawn yet (`PL-RNYV`).
         self._schematic_shown = WITHHELD_SCHEMATIC
         self._schematics: list[RunSchematic] = []
+        # The agent cost panel is written where the readouts are too, for the
+        # same reason (`PL-B396`).
+        self._delivered_shown = WITHHELD_DELIVERED
+        self._agent_costs: list[RunAgentCost] = []
 
         # The control-change panel's heading. It is an instance label rather
         # than a widget built inside `_lay_out_control_record`, because it has
@@ -709,6 +717,7 @@ class RunView(QWidget):
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
         self._show_schematic(schematic_shown(snapshot))
+        self._show_delivered(delivered_shown(snapshot))
         self._started_over_since_the_cards = False
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()
@@ -937,6 +946,7 @@ class RunView(QWidget):
 
         self._show_accounting(WITHHELD_ACCOUNTING)
         self._show_schematic(WITHHELD_SCHEMATIC)
+        self._show_delivered(WITHHELD_DELIVERED)
 
     def _show_schematic(self, shown: SchematicShown) -> None:
         """Show `shown` on every copy of the schematic, and keep it for copies built later.
@@ -950,6 +960,19 @@ class RunView(QWidget):
 
         for schematic in self._schematics:
             schematic.show_schematic(shown)
+
+    def _show_delivered(self, shown: DeliveredShown) -> None:
+        """Show `shown` on every copy of the agent cost panel, and keep it for copies built later.
+
+        The panel is written and withheld with the schematic, so the delivered
+        agent is never from another state of the run than the readouts are
+        (`PL-B396`).
+        """
+
+        self._delivered_shown = shown
+
+        for agent_cost in self._agent_costs:
+            agent_cost.show_delivered(shown)
 
     def _show_accounting(self, shown: Accounting) -> None:
         """Write the accounting panel on every copy of it, and keep it for a copy built later."""
@@ -1894,6 +1917,9 @@ class RunView(QWidget):
         for schematic in self._schematics:
             schematic.show_name(name)
 
+        for agent_cost in self._agent_costs:
+            agent_cost.show_name(name)
+
         self._control_timeline_heading_text.setText(
             compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
         )
@@ -2007,6 +2033,18 @@ class RunView(QWidget):
 
         return keep_until_destroyed(
             self._schematics, RunSchematic(self._schematic_shown, self._run_name, parent=self)
+        )
+
+    def build_agent_cost(self) -> RunAgentCost:
+        """Return a new copy of this run's agent cost panel, for any Area that shows the View.
+
+        Each call builds another copy. The new copy shows what the copies built
+        earlier show, and it is named the same way as this run's own panels
+        (`PL-9LNF`, `PL-B396`). The View that holds the copy sets its unit.
+        """
+
+        return keep_until_destroyed(
+            self._agent_costs, RunAgentCost(self._delivered_shown, self._run_name, parent=self)
         )
 
     def build_control_record(self) -> QWidget:

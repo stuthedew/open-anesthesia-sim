@@ -83,6 +83,7 @@ __all__ = [
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
     "DECIMAL_BASE",
     "AgentAmount",
+    "AGENT_AMOUNT_UNIT_DISPLAY",
     "AgentAmountUnit",
     "AgentAmountPrecision",
     "FLOW_DISPLAY_DECIMALS",
@@ -97,6 +98,7 @@ __all__ = [
     "chart_grid_interval_percent",
     "format_agent_residual",
     "format_agent_volume",
+    "format_delivered_agent",
     "format_branch_discard_warning",
     "format_case_discard_warning",
     "format_compartment_amount",
@@ -1403,13 +1405,75 @@ def format_agent_volume(litres: float) -> str:
         below-resolution form for a positive value that rounds to zero.
     """
 
-    decimals = _RUN_TOTAL_LITRES.decimals
-    rendered = f"{litres:.{decimals}f}"
+    return _format_run_total(litres, _RUN_TOTAL_LITRES, "L")
 
-    if litres > 0.0 and float(rendered) == 0.0:
-        return f"<{_RUN_TOTAL_LITRES.resolution:.{decimals}f} L"
 
-    return f"{rendered} L"
+def _format_run_total(amount: float, precision: AgentAmountPrecision, unit: str) -> str:
+    """Render a run total at `precision`, by the three rules `format_agent_volume` states."""
+
+    decimals = precision.decimals
+    rendered = f"{amount:.{decimals}f}"
+
+    if amount > 0.0 and float(rendered) == 0.0:
+        return f"<{precision.resolution:.{decimals}f} {unit}"
+
+    return f"{rendered} {unit}"
+
+
+# The unit each agent amount unit is written in, read from its `DisplayUnit`
+# member. Every member names vapour or liquid, so no amount is printed with a
+# bare "mL" or "L" beside it (`docs/MODEL.md` § "The compartment schematic: what
+# its heights, amounts and share bar assert").
+AGENT_AMOUNT_UNIT_DISPLAY: Final[Mapping[AgentAmountUnit, DisplayUnit]] = MappingProxyType(
+    {
+        AgentAmountUnit.LITRES_OF_VAPOUR: DisplayUnit.AGENT_VAPOUR_LITRES,
+        AgentAmountUnit.MILLILITRES_OF_LIQUID: DisplayUnit.AGENT_LIQUID_MILLILITRES,
+        AgentAmountUnit.MILLILITRES_OF_VAPOUR: DisplayUnit.AGENT_VAPOUR_MILLILITRES,
+    }
+)
+
+
+def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
+    """Render the agent a run has delivered, in `unit`, with the unit named on the value.
+
+    The agent cost View shows this text (`PL-B396`). `amount` must already be
+    in `unit`. The precision is the one `docs/MODEL.md` § "Displayed
+    precision" derives for the delivered agent in that unit. That is a tenth of
+    a millilitre of liquid, or a tenth of a litre of vapour, which is also the
+    accounting panel's precision. The text follows `format_agent_volume`'s
+    rounding rules. A positive amount that rounds to zero is shown below the
+    resolution, as `<0.1 mL liquid equiv.`, and exactly zero is shown as zero.
+    The unit always says vapour or liquid, as `DisplayUnit` spells it.
+
+    Args:
+        amount: The delivered agent, in `unit`.
+        unit: The unit to show the amount in.
+
+    Returns:
+        The amount at its derived precision, followed by its unit.
+
+    Raises:
+        TypeError: If `amount` is not a number, or is a `bool`, or if `unit`
+            is not an `AgentAmountUnit`.
+        ValueError: If `amount` is negative or not finite, which the model's
+            delivered total never is, or if no precision is derived for the
+            delivered agent in `unit`.
+    """
+
+    if isinstance(amount, bool) or not isinstance(amount, int | float):
+        raise TypeError(f"a delivered amount of agent is a number, not {amount!r}")
+
+    if not isinstance(unit, AgentAmountUnit):
+        raise TypeError(f"a delivered amount's unit is an AgentAmountUnit, not {unit!r}")
+
+    if not isfinite(amount) or amount < 0.0:
+        raise ValueError(
+            f"a delivered amount of agent must be finite and not negative, not {amount!r}"
+        )
+
+    precision = agent_amount_display_precision(AgentAmount.DELIVERED, unit)
+
+    return _format_run_total(amount, precision, AGENT_AMOUNT_UNIT_DISPLAY[unit].label)
 
 
 def format_agent_residual(litres: float) -> str:
