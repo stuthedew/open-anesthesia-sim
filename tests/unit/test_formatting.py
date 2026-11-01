@@ -46,6 +46,7 @@ from anesthesia_sim.app.formatting import (
     format_branch_discard_warning,
     format_case_discard_warning,
     format_chart_time_label,
+    format_compartment_amount,
     format_delivered_label,
     format_elapsed,
     format_mac_awake_reference,
@@ -1695,7 +1696,7 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
     The amount is never formatted at a default precision (`PL-0S0V`). A
     compartment's amount has no entry in any unit. `PL-2881` derived a
     precision of two significant figures for it, which a count of decimals
-    cannot hold, and `PL-RNYV` builds a form that can. Until then, the table
+    cannot hold, so `format_compartment_amount` holds it instead. The table
     must not lend it the litre precision of the run totals. At a resolution of
     0.1 L, the amounts in venous blood and the alveoli would stay below one
     display step for a whole hour. The stored total has no liquid entry,
@@ -1874,3 +1875,59 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
         "in the model; if they differ on the display this test is no longer "
         "measuring what it claims"
     )
+
+
+@pytest.mark.parametrize(
+    ("litres", "expected"),
+    [
+        (0.0384, "38 mL vapour"),
+        (0.000183, "0.18 mL vapour"),
+        (1.234, "1200 mL vapour"),
+        (0.0005, "0.50 mL vapour"),
+        (0.0000234, "0.02 mL vapour"),
+        (0.00996, "10 mL vapour"),
+        (0.09996, "100 mL vapour"),
+        (0.000004, "<0.01 mL vapour"),
+        (0.0, "0 mL vapour"),
+    ],
+    ids=[
+        "two figures",
+        "two figures below 1 mL",
+        "two figures above 1000 mL",
+        "a trailing zero kept as a figure",
+        "no finer than 0.01 mL",
+        "rounded up into the next decade",
+        "rounded up into the third digit",
+        "below 0.01 mL",
+        "zero",
+    ],
+)
+def test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml(
+    litres: float, expected: str
+) -> None:
+    """The expected strings are worked by hand from `docs/MODEL.md` § "Displayed precision".
+
+    An amount is shown to two significant figures, never finer than 0.01 mL.
+    A positive amount below that floor reads `<0.01`, and only zero reads `0`.
+    """
+
+    assert format_compartment_amount(litres) == expected
+
+
+def test_no_agent_amount_is_printed_with_a_bare_millilitre_unit() -> None:
+    """Every compartment amount names vapour, since 1 mL of liquid gives about 180 to 210 mL."""
+
+    for litres in (0.0, 0.000001, 0.00042, 0.0071, 0.093, 0.81, 4.4):
+        assert format_compartment_amount(litres).endswith(" mL vapour")
+
+
+@pytest.mark.parametrize("litres", [-1e-12, math.nan, math.inf])
+def test_a_negative_or_non_finite_compartment_amount_is_refused(litres: float) -> None:
+    with pytest.raises(ValueError, match="must be finite and not negative"):
+        format_compartment_amount(litres)
+
+
+@pytest.mark.parametrize("litres", [True, "0.5", None])
+def test_a_compartment_amount_that_is_not_a_number_is_refused(litres: object) -> None:
+    with pytest.raises(TypeError, match="is a number of litres"):
+        format_compartment_amount(litres)  # type: ignore[arg-type]

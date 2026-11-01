@@ -314,9 +314,9 @@ class CompartmentAgentAmounts:
     that compartment's `agent_amount_l` in `core/`, so nothing here computes
     an amount (`PL-KFTM`).
 
-    **Keyed by compartment, not ordered.** A container on the planned
-    compartment schematic (`PL-RNYV`) will look up its amount by the
-    compartment it draws. If the lookup were by position, an edit to either
+    **Keyed by compartment, not ordered.** A container on the compartment
+    schematic (`app/compartment_schematic.py`, `PL-RNYV`) looks up its amount
+    by the compartment it draws. If the lookup were by position, an edit to either
     the record or the schematic could shift a container onto its
     neighbour's amount. A correct amount under the wrong compartment's label
     is a safety failure. The key protects only the lookup.
@@ -469,10 +469,10 @@ class SimulationSnapshot(RunRecord):
     compartment_agent_amounts: CompartmentAgentAmounts
     """The agent that each compartment holds, in litres of vapour.
 
-    No View shows them yet. They are carried for the compartment schematic,
-    which will label each container with its amount (`PL-RNYV`), and for its
-    share bar, which will divide each amount by `stored_agent_l`
-    (`PL-S79P`). They sum to `stored_agent_l` exactly.
+    The compartment schematic labels each container with its amount
+    (`app/compartment_schematic.py`, `PL-RNYV`). Its share bar will divide
+    each amount by `stored_agent_l` (`PL-S79P`). They sum to
+    `stored_agent_l` exactly.
     """
     stored_agent_l: float
     """All the agent that the circuit and the patient hold, in litres of vapour.

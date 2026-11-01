@@ -1144,7 +1144,7 @@ class Readout:
     secondary: str
 
 
-def _compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
+def compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
     """Return the snapshot field that one readout panel shows.
 
     Raises:
@@ -1196,7 +1196,7 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
             value = format_elapsed(snapshot.elapsed_s)
             secondary = format_playback_rate(playback_rate.multiplier)
         else:
-            fraction = _compartment_fraction(snapshot, panel.quantity)
+            fraction = compartment_fraction(snapshot, panel.quantity)
             value = format_percent(fraction)
             secondary = format_mac_multiple(fraction, mac_percent)
 

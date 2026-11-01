@@ -118,6 +118,7 @@ src/anesthesia_sim/
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
+│   ├── compartment_schematic.py    # what each container of the compartment schematic is filled to and labelled with, from one snapshot: its fill on the chart's own scale, whether it is off that scale, its tension and its amount (PL-RNYV); toolkit-independent
 │   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
@@ -235,8 +236,9 @@ how long they watch.
 
 The snapshot carries each compartment's agent amount as one record,
 `CompartmentAgentAmounts`, keyed by the compartment's `RecordedQuantity`
-(`PL-KFTM`). No View shows it yet. The compartment schematic will label its
-containers from it (`PL-RNYV`) and draw its share bar from it (`PL-S79P`).
+(`PL-KFTM`). `app/compartment_schematic.py` labels each container of the
+compartment schematic from it (`PL-RNYV`), and the schematic's share bar will
+be drawn from it (`PL-S79P`).
 `snapshot()` reads each amount from that
 compartment's `agent_amount_l` in `core/`, so the interface computes no
 amount of its own. The record is keyed rather than ordered, so a container
