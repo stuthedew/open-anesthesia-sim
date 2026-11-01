@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.11
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.7.0 - captured after the freeze; an arming defect in the workflow lane, not safety or science
 added: 2026-10-27

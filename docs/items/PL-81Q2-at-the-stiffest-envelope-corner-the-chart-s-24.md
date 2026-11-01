@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science
 feature: floating-point-domain
+milestone: v0.6.11
 touches: docs/MODEL.md
 added: 2026-11-01
 closed: 2026-11-01

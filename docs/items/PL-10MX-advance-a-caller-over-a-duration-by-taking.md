@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: numerical-domain
+milestone: v0.6.11
 touches: docs/MODEL.md
 added: 2026-08-30
 closed: 2026-11-01

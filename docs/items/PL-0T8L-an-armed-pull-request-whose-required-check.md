@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.11
 touches: tools/open_pull_requests.py, tools/update_armed.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, docket.toml, docs/apparatus.md, tests/unit/test_open_pull_requests.py, tests/unit/test_update_armed.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, tests/unit/test_main_ci_status.py
 deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the workflow lane, not safety or science
 added: 2026-10-27

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, science
 feature: floating-point-domain
+milestone: v0.6.11
 touches: docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
 added: 2026-10-25
 closed: 2026-10-31
