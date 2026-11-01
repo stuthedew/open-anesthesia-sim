@@ -1724,9 +1724,11 @@ class SimulationView(QWidget):
 
         One dialog lasts for the life of the dashboard, rather than one for
         each opening. So a reader who closes it and opens it again finds their
-        selection where they left it. The dialog is non-modal and is shown
-        with `open()` rather than `exec()`, for the reasons that
-        `BookmarkDialog` states.
+        selection where they left it. The dialog is non-modal, for the reasons
+        that `BookmarkDialog` states, so it is shown with `show()`. Qt's
+        `QDialog.open()` makes a dialog window-modal whatever modality it had,
+        so the editor shown that way blocked every run's Pause button while the
+        runs went on stepping (blind review of `PL-TPBH`).
         """
 
         if self._bookmark_dialog is None:
@@ -1738,7 +1740,9 @@ class SimulationView(QWidget):
             self._bookmark_dialog = dialog
 
         self.present(False)
-        self._bookmark_dialog.open()
+        self._bookmark_dialog.show()
+        self._bookmark_dialog.raise_()
+        self._bookmark_dialog.activateWindow()
 
     def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
         """Make one change to every displayed run, or have the first of them refuse it.

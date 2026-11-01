@@ -1628,8 +1628,9 @@ class BookmarkDialog(QDialog):
     have different fields, not the same fields under a different kind, so a
     shared form would have nothing in common to hold.
 
-    The dialog is non-modal, and it is shown with `open()` rather than
-    `exec()` so that a test can drive it. It is non-modal deliberately. A run
+    The dialog is non-modal, and it is shown with `show()` rather than
+    `open()` or `exec()`. Both of those make a dialog modal, and `exec()`
+    would also block a test that drives it. It is non-modal deliberately. A run
     may be playing, and a modal window over a moving chart would lock the
     reader out of the transport controls with a window about something else.
 

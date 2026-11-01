@@ -48,3 +48,15 @@ Two decisions the build took:
    (placeholder, under the 2026-10-18 rule on look and wording). The open
    question covers the window and is the visible reason the clock has stopped,
    and the hold ends when the question does.
+
+**Blind review, 2026-11-01.** Both passes found the same should-fix fault.
+The bookmark editor was shown with `QDialog.open()`, which makes a dialog
+window-modal. So the editor blocked every Pause button while the runs went on
+stepping, and the sentence saying it "is not modal" was false. The editor's
+own docstring meant it to be non-modal, so it is now shown with `show()`, and
+`test_the_bookmark_editor_is_not_modal_and_holds_no_run` checks that Pause
+stays reachable. That test fails on the old `open()` call with "assert not
+True" on `isModal()`. Pass 1 also raised an optional point: the status line
+says "Running" while the runs hold. It stays as recorded above, a placeholder,
+because the open question covers the window and is the visible reason the
+clock has stopped.

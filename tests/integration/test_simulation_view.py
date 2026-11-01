@@ -10417,6 +10417,34 @@ def test_a_running_run_holds_while_a_workspace_question_is_open(application: QAp
     assert _one_tick_advance_s(run) == pytest.approx(tick_s) != 0.0
 
 
+def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplication) -> None:
+    """The bookmark editor leaves Pause reachable, so the runs go on (`PL-TPBH` blind review).
+
+    `QDialog.open()` makes a dialog window-modal. The editor was shown that
+    way, so it blocked every Pause button while the runs went on stepping,
+    which is the defect `PL-TPBH` removes for the questions. The editor is
+    meant to be non-modal, so it is now shown with `show()`.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    view._bookmarks_panel.edit_button.click()
+    _settle(application)
+    dialog = view._bookmark_dialog
+    assert dialog is not None
+    assert dialog.isVisible()
+    assert not dialog.isModal()
+    assert dialog.windowModality() is Qt.WindowModality.NonModal
+    assert _one_tick_advance_s(run) > 0.0
+
+    run._pause_button.click()
+
+    assert not run.is_running
+
+
 def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
     """Keeping the branch keeps the trunk too: nothing is reset, and the comparison stays open."""
 
