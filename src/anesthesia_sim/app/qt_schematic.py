@@ -21,6 +21,13 @@ are never drawn as a chain through which agent passes from one tissue to the
 next. No container stands for arterial blood, for the reason `docs/MODEL.md`
 gives.
 
+**The share bar** (`PL-S79P`). Under the containers, `ShareBar` draws one
+bar divided into each compartment's share of all the agent the run holds, in
+the containers' order and colours, and the lines under it name each share in
+text. The containers' heights are tensions, so fat's container stays nearly
+empty while fat comes to hold a fifth of the agent. The bar is where that
+growing share is seen.
+
 Every size and colour choice here is a placeholder while the interface is being
 built (project owner, 2026-10-18). The parallel drawing of the tissues is not a
 placeholder, because it is what the model asserts.
@@ -40,13 +47,21 @@ from anesthesia_sim.app.compartment_schematic import (
     WIDEST_LABELS,
     ContainerReading,
     SchematicShown,
+    ShareSegment,
     instant_line,
 )
 from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.theme import INK, METRIC_QUALIFIER_SIZE, MUTED, VIEW_ROW_SPACING, WARNING
+from anesthesia_sim.app.theme import (
+    INK,
+    METRIC_QUALIFIER_SIZE,
+    MUTED,
+    PANEL,
+    VIEW_ROW_SPACING,
+    WARNING,
+)
 
-__all__ = ["RunSchematic", "SchematicCanvas"]
+__all__ = ["RunSchematic", "SchematicCanvas", "ShareBar"]
 
 _TISSUES: Final = frozenset(
     {RecordedQuantity.VESSEL_RICH, RecordedQuantity.MUSCLE, RecordedQuantity.FAT}
@@ -248,8 +263,106 @@ class SchematicCanvas(QWidget):
             )
 
 
+# The share bar's height, in logical pixels. A placeholder.
+_SHARE_BAR_HEIGHT: Final = 18
+
+
+class ShareBar(QWidget):
+    """One bar, divided into each compartment's share of the agent the run holds (`PL-S79P`).
+
+    The segments stand left to right in the containers' order, each filled in
+    its compartment's trace colour, and each segment's length is its share of
+    the bar's length. The bar is outlined in INK, so an empty bar still shows
+    where the bar is. The segments are named in text by the line under the bar
+    that `RunSchematic` shows, never by colour alone. A position along one
+    common scale is judged more accurately than an area (`docs/MODEL.md`
+    § "The compartment schematic: what its heights, amounts and share bar
+    assert"), so the bar carries the comparison of amounts that the
+    containers' heights cannot.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._segments: tuple[ShareSegment, ...] | None = None
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    @property
+    def segments(self) -> tuple[ShareSegment, ...] | None:
+        """The segments painted now, or None while the bar is drawn empty."""
+
+        return self._segments
+
+    def show_segments(self, segments: tuple[ShareSegment, ...] | None) -> None:
+        """Paint `segments`, one per container in `CONTAINER_ORDER`, or an empty bar for None.
+
+        Raises:
+            ValueError: If the segments are not one per container in
+                `CONTAINER_ORDER`, which would paint one compartment's share
+                in another's colour.
+        """
+
+        if segments is not None and (
+            tuple(segment.quantity for segment in segments) != CONTAINER_ORDER
+        ):
+            raise ValueError(
+                "the share bar draws one segment per container in "
+                f"{[quantity.name for quantity in CONTAINER_ORDER]}, not "
+                f"{[segment.quantity.name for segment in segments]}"
+            )
+
+        self._segments = segments
+        self.update()
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return self.minimumSizeHint()
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return QSize(_CONTAINER_WIDTH * len(CONTAINER_ORDER), _SHARE_BAR_HEIGHT)
+
+    def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
+        del event
+
+        bar = QRectF(0.0, 0.0, float(self.width()), float(_SHARE_BAR_HEIGHT))
+        painter = QPainter(self)
+
+        # Each segment starts where the shares before it end, so the segments
+        # tile the bar without gaps or overlaps however the lengths round.
+        if self._segments is not None:
+            start = 0.0
+
+            for segment in self._segments:
+                end = start + segment.share
+                painter.fillRect(
+                    QRectF(
+                        bar.left() + bar.width() * start,
+                        bar.top(),
+                        bar.width() * (end - start),
+                        bar.height(),
+                    ),
+                    QBrush(QColor(trace_style(segment.quantity).color)),
+                )
+                start = end
+
+            # A line in the panel's colour divides each pair of neighbours, so
+            # each segment's ends are seen against the panel, whose contrast
+            # with every compartment colour is checked, and never only against
+            # a neighbour's colour, which is not.
+            painter.setPen(QPen(QColor(PANEL), _OUTLINE_WIDTH))
+            start = 0.0
+
+            for segment in self._segments[:-1]:
+                start += segment.share
+                x = bar.left() + bar.width() * start
+                painter.drawLine(QPointF(x, bar.top()), QPointF(x, bar.bottom()))
+
+        painter.setPen(QPen(QColor(INK), _OUTLINE_WIDTH))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(bar.adjusted(0.5, 0.5, -0.5, -0.5))
+        painter.end()
+
+
 class RunSchematic(QWidget):
-    """One copy of a run's compartment schematic, with the run's name, containers and lines.
+    """One copy of a run's compartment schematic: its name, containers, lines and share bar.
 
     The schematic is one of the run's surfaces, the parts of a run that a reader
     may place in an Area. `RunView.build_compartment_schematic` builds each copy.
@@ -277,6 +390,8 @@ class RunSchematic(QWidget):
         self.canvas = SchematicCanvas()
         self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
         self.off_scale_text = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
+        self.share_bar = ShareBar()
+        self.share_text = styled_label("", color=INK, size_px=METRIC_QUALIFIER_SIZE)
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(VIEW_ROW_SPACING)
@@ -284,6 +399,8 @@ class RunSchematic(QWidget):
         column.addWidget(self.canvas)
         column.addWidget(self.off_scale_text)
         column.addWidget(self.scale_text)
+        column.addWidget(self.share_bar)
+        column.addWidget(self.share_text)
         self._name = name
         self._shown = shown
         self.show_schematic(shown)
@@ -300,10 +417,12 @@ class RunSchematic(QWidget):
         self._shown = shown
         self.name_text.setText(instant_line(shown.instant, self._name))
         self.canvas.show_readings(shown.readings)
+        self.share_bar.show_segments(shown.shares)
 
         for label, text in (
             (self.scale_text, shown.scale_caption),
             (self.off_scale_text, shown.off_scale_line),
+            (self.share_text, shown.share_line),
         ):
             label.setText(text or "")
             label.setHidden(text is None)

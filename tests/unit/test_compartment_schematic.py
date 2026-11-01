@@ -14,7 +14,14 @@ from math import exp
 
 import pytest
 
-from anesthesia_sim.app.compartment_schematic import container_readings
+from anesthesia_sim.app.compartment_schematic import (
+    NO_AGENT_SHARE_LINE,
+    WITHHELD_SCHEMATIC,
+    container_readings,
+    schematic_shown,
+    share_line,
+    share_segments,
+)
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import readouts
 from anesthesia_sim.app.playback import DEFAULT_PLAYBACK_RATE
@@ -146,3 +153,119 @@ def test_each_container_prints_the_tension_its_readout_prints() -> None:
 
     for reading in container_readings(snapshot):
         assert reading.tension == readout_values[reading.name]
+
+
+def _run(agent_id: str, seconds: float) -> SimulationController:
+    """Run an agent at its 1 MAC dial with the default ventilation and flow."""
+
+    controller = SimulationController(agent_id=agent_id)
+    controller.set_delivered_concentration_percent(
+        Percent(load_agent_parameters(agent_id).mac_percent)
+    )
+    controller.start()
+
+    for _ in range(round(seconds / STEP_S)):
+        controller.advance(SimulationStep(STEP_S))
+
+    return controller
+
+
+@pytest.mark.parametrize("agent_id", ["sevoflurane", "desflurane", "isoflurane"])
+def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
+    """At every instant tested, the six shares fill the bar, and each is its amount over the total.
+
+    The six amounts are summed here, apart from the snapshot's own total. So
+    the test also checks that the bar divides by all the agent the run holds,
+    circuit included (`docs/MODEL.md` § "The compartment schematic: what its
+    heights, amounts and share bar assert").
+    """
+
+    controller = _run(agent_id, 0.0)
+    elapsed_s = 0.0
+
+    for until_s in (1.0, 60.0, 20 * SECONDS_PER_MINUTE, 60 * SECONDS_PER_MINUTE):
+        for _ in range(round((until_s - elapsed_s) / STEP_S)):
+            controller.advance(SimulationStep(STEP_S))
+        elapsed_s = until_s
+        snapshot = controller.snapshot()
+        segments = share_segments(snapshot)
+        assert segments is not None
+        amounts = snapshot.compartment_agent_amounts
+        total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+
+        assert [segment.quantity for segment in segments] == list(COMPARTMENT_QUANTITIES)
+        assert sum(segment.share for segment in segments) == pytest.approx(1.0, rel=1e-12)
+        for segment in segments:
+            assert segment.share == pytest.approx(amounts.of(segment.quantity) / total, rel=1e-12)
+
+
+def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
+    """With no alveolar ventilation, no agent leaves the circuit, so its share is the whole.
+
+    This is the closed form of the module's oracle. Every other compartment
+    holds nothing, so its share is exactly zero and is shown as `0%`.
+    """
+
+    segments = share_segments(_run_with_no_ventilation(8.0, 90.0).snapshot())
+    assert segments is not None
+
+    assert [(segment.share, segment.text) for segment in segments] == [(1.0, "100%")] + [
+        (0.0, "0%")
+    ] * 5
+
+
+def test_a_run_that_holds_no_agent_draws_an_empty_bar_and_prints_no_share() -> None:
+    """Before any agent is delivered, no share exists, so none is printed, not six zeros."""
+
+    snapshot = SimulationController(agent_id="sevoflurane").snapshot()
+    shown = schematic_shown(snapshot)
+
+    assert snapshot.stored_agent_l == 0.0
+    assert share_segments(snapshot) is None
+    assert shown.shares is None
+    assert shown.share_line == NO_AGENT_SHARE_LINE
+    assert "%" not in NO_AGENT_SHARE_LINE
+
+
+def test_the_share_lines_name_every_segment_with_its_share_in_text() -> None:
+    """The segments are named in text, never by colour alone, in the containers' order."""
+
+    segments = share_segments(_run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot())
+    assert segments is not None
+    text = share_line(segments)
+    names = ["Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat"]
+    positions = [
+        text.index(f"{name} {segment.text}") for name, segment in zip(names, segments, strict=True)
+    ]
+
+    assert text.splitlines()[0] == "Share of the agent the run holds:"
+    assert positions == sorted(positions)
+
+
+def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty() -> None:
+    """The bar shows what the heights cannot: fat's share grows while its tension stays near zero.
+
+    `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+    share bar assert" gives fat about a fifth of the stored agent at one hour
+    of a 1 MAC sevoflurane dial (`PL-H5DV`).
+    """
+
+    controller = _run("sevoflurane", 10 * SECONDS_PER_MINUTE)
+    early = share_segments(controller.snapshot())
+    for _ in range(round(50 * SECONDS_PER_MINUTE / STEP_S)):
+        controller.advance(SimulationStep(STEP_S))
+    snapshot = controller.snapshot()
+    late = share_segments(snapshot)
+    assert early is not None
+    assert late is not None
+    fat_reading = container_readings(snapshot)[-1]
+
+    assert late[-1].quantity is RecordedQuantity.FAT
+    assert late[-1].share > early[-1].share
+    assert 0.15 < late[-1].share < 0.25
+    assert fat_reading.fill < 0.01
+
+
+def test_withheld_values_draw_an_empty_bar_with_no_lines() -> None:
+    assert WITHHELD_SCHEMATIC.shares is None
+    assert WITHHELD_SCHEMATIC.share_line is None

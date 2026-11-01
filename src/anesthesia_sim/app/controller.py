@@ -332,8 +332,8 @@ class CompartmentAgentAmounts:
     The record holds the six amounts and not their total. The total is the
     snapshot's `stored_agent_l`, which `core/` sums once
     (`AgentUptakeSystem.total_stored_agent_l`). A unit test checks that the
-    six amounts sum exactly to that total. So the six shares on the planned
-    share bar will be fractions of the same total that the accounting panel
+    six amounts sum exactly to that total. So the six shares on the
+    share bar are fractions of the same total that the accounting panel
     shows.
 
     Attributes:
@@ -471,8 +471,8 @@ class SimulationSnapshot(RunRecord):
     """The agent that each compartment holds, in litres of vapour.
 
     The compartment schematic labels each container with its compartment's
-    amount (`app/compartment_schematic.py`, `PL-RNYV`). The schematic's planned
-    share bar will divide each amount by `stored_agent_l` (`PL-S79P`). The
+    amount (`app/compartment_schematic.py`, `PL-RNYV`). The schematic's
+    share bar divides each amount by `stored_agent_l` (`PL-S79P`). The
     amounts sum to `stored_agent_l` exactly.
     """
     stored_agent_l: float

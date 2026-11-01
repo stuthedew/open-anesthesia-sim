@@ -122,7 +122,7 @@ src/anesthesia_sim/
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
 │   ├── compartment_schematic.py    # what each container of the compartment schematic is filled to and labelled with, from one snapshot: its fill on the chart's own scale, whether it is off that scale, its tension and its amount (PL-RNYV); toolkit-independent
 │   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
-│   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text, and RunSchematic, the run surface that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
+│   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text; ShareBar, each compartment's share of the agent the run holds as one bar (PL-S79P); and RunSchematic, the run surface that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
@@ -240,8 +240,8 @@ how long they watch.
 The snapshot carries each compartment's agent amount as one record,
 `CompartmentAgentAmounts`, keyed by the compartment's `RecordedQuantity`
 (`PL-KFTM`). `app/compartment_schematic.py` labels each container of the
-compartment schematic from it (`PL-RNYV`), and the schematic's share bar will
-be drawn from it (`PL-S79P`).
+compartment schematic from it (`PL-RNYV`), and the schematic's share bar is
+drawn from it (`PL-S79P`).
 `snapshot()` reads each amount from that
 compartment's `agent_amount_l` in `core/`, so the interface computes no
 amount of its own. The record is keyed rather than ordered, so a container

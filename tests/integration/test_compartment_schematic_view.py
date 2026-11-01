@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QApplication
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
-from anesthesia_sim.app.compartment_schematic import WITHHELD_AMOUNT_TEXT
+from anesthesia_sim.app.compartment_schematic import NO_AGENT_SHARE_LINE, WITHHELD_AMOUNT_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
@@ -34,6 +34,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.qt_schematic import SchematicCanvas
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MUTED, WARNING
@@ -454,6 +455,8 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
     assert [reading.fill for reading in schematic.canvas.readings] == [0.0] * 6
     assert schematic.scale_text.isHidden()
     assert schematic.off_scale_text.isHidden()
+    assert schematic.share_bar.segments is None
+    assert schematic.share_text.isHidden()
 
 
 def _painted(canvas: SchematicCanvas) -> QImage:
@@ -561,3 +564,51 @@ def test_the_tissues_are_drawn_in_parallel_and_never_joined_to_each_other(
         assert any(lined(left, left + 1, bus_rows)), f"arterial line spans gap {left}"
     for left in range(2, 5):
         assert any(lined(left, left + 1, below_rows)), f"venous line spans gap {left}"
+
+
+def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """Each segment's painted length is its share of the bar, and the lines under it name each.
+
+    The segment of each compartment is measured in pixels of its own colour
+    along the bar's middle row. Antialiasing can blend one pixel at each end
+    of a segment, so each count is held to within two pixels of the share of
+    the bar's width.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60 * SECONDS_PER_MINUTE)
+    controller.pause()
+    schematic = _schematic(_dashboard(application, shown, controller)).schematics[0]
+    bar = schematic.share_bar
+    segments = bar.segments
+    assert segments is not None
+    image = bar.grab().toImage()
+    assert image.devicePixelRatio() == 1.0
+    middle = image.height() // 2
+    amounts = controller.snapshot().compartment_agent_amounts
+    total = sum(amounts.of(segment.quantity) for segment in segments)
+
+    for segment in segments:
+        colour = QColor(trace_style(segment.quantity).color).rgb()
+        painted = sum(image.pixelColor(x, middle).rgb() == colour for x in range(image.width()))
+        expected = amounts.of(segment.quantity) / total * image.width()
+        assert abs(painted - expected) <= 2, segment.name
+        assert f"{segment.name} {segment.text}" in schematic.share_text.text()
+
+    assert not schematic.share_text.isHidden()
+
+
+def test_a_run_that_holds_no_agent_shows_an_empty_share_bar_and_says_why(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    schematic = _schematic(_dashboard(application, shown, SimulationController())).schematics[0]
+    image = schematic.share_bar.grab().toImage()
+    middle = image.height() // 2
+    colours = {QColor(trace_style(quantity).color).rgb() for quantity in COMPARTMENT_QUANTITIES}
+
+    assert schematic.share_bar.segments is None
+    assert schematic.share_text.text() == NO_AGENT_SHARE_LINE
+    assert not any(image.pixelColor(x, middle).rgb() in colours for x in range(image.width()))

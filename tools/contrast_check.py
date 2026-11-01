@@ -537,7 +537,9 @@ class Exemption:
 #: What each compartment colour marks: its chart trace, and the fill of its
 #: container on the compartment schematic (`SchematicCanvas`, PL-RNYV). A
 #: fill's edge against the empty part of its container is the PANEL pair.
-_COMPARTMENT_MARK = "a plotted compartment trace, and the fill of its schematic container"
+_COMPARTMENT_MARK = (
+    "a plotted compartment trace, the fill of its schematic container, and its share-bar segment"
+)
 
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(

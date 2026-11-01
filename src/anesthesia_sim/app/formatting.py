@@ -75,6 +75,7 @@ from anesthesia_sim.core.units import MILLILITRES_PER_LITRE, SECONDS_PER_HOUR, S
 
 __all__ = [
     "AGENT_AMOUNT_DISPLAY_PRECISION",
+    "COMPARTMENT_SHARE_DECIMALS",
     "CHART_AXIS_TOP_MAC",
     "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
@@ -98,6 +99,7 @@ __all__ = [
     "format_branch_discard_warning",
     "format_case_discard_warning",
     "format_compartment_amount",
+    "format_compartment_share",
     "format_chart_time_label",
     "format_delivered_label",
     "format_elapsed",
@@ -1530,6 +1532,61 @@ def format_compartment_amount(litres: float) -> str:
         return f"<{floor:.{COMPARTMENT_AMOUNT_FINEST_DECIMALS}f} {unit}"
 
     return f"{rounded:.{max(decimals, 0)}f} {unit}"
+
+
+# A compartment's share of the agent the run holds is shown in whole percent.
+# `docs/MODEL.md` § "Displayed precision" derives it (`PL-2881`): one SD of a
+# partition coefficient moves a share by at most 1.2 percentage points, so one
+# step of 1 percentage point is at least 0.8 SD. This constant is the only
+# place that states the share's precision.
+COMPARTMENT_SHARE_DECIMALS: Final = 0
+
+
+def format_compartment_share(share: float) -> str:
+    """Render one compartment's share of the agent the run holds, for the schematic's share bar.
+
+    The share is shown in whole percent, `COMPARTMENT_SHARE_DECIMALS`
+    decimals, rounded to the nearest with halves to even. Two shares never
+    read as a claim the model does not make (`docs/MODEL.md` § "Displayed
+    precision"). A positive share that rounds to 0% is shown as `<1%`, so a
+    compartment that holds agent never reads as holding none. A share that
+    rounds to 100% but is not the whole is shown as `>99%`, so no
+    compartment reads as holding all of the agent while another holds some.
+    Exactly 0 is shown as `0%` and exactly 1 as `100%`.
+
+    Args:
+        share: The compartment's amount divided by all the agent the run
+            holds, from 0 through 1.
+
+    Returns:
+        The share in percent, with its sign.
+
+    Raises:
+        TypeError: If `share` is not a number, or is a `bool`.
+        ValueError: If `share` is not finite or is outside 0 through 1. A
+            share outside that range means the amounts and their total
+            disagree, which is a defect upstream, so it is rejected rather
+            than printed as a plausible share.
+    """
+
+    if isinstance(share, bool) or not isinstance(share, int | float):
+        raise TypeError(f"a compartment's share is a number from 0 through 1, not {share!r}")
+
+    if not isfinite(share) or not 0.0 <= share <= 1.0:
+        raise ValueError(f"a compartment's share must be from 0 through 1, not {share!r}")
+
+    percent = (Decimal(share) * 100).quantize(
+        Decimal(1).scaleb(-COMPARTMENT_SHARE_DECIMALS), rounding=ROUND_HALF_EVEN
+    )
+    step = Decimal(1).scaleb(-COMPARTMENT_SHARE_DECIMALS)
+
+    if percent == 0 and share > 0.0:
+        return f"<{step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+
+    if percent == 100 and share < 1.0:
+        return f">{100 - step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+
+    return f"{percent:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 
 
 def _round_to_figures(value: Decimal, exponent: int) -> tuple[Decimal, int]:

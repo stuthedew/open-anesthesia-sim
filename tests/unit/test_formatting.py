@@ -47,6 +47,7 @@ from anesthesia_sim.app.formatting import (
     format_case_discard_warning,
     format_chart_time_label,
     format_compartment_amount,
+    format_compartment_share,
     format_delivered_label,
     format_elapsed,
     format_mac_awake_reference,
@@ -1932,3 +1933,55 @@ def test_a_negative_or_non_finite_compartment_amount_is_refused(litres: float) -
 def test_a_compartment_amount_that_is_not_a_number_is_refused(litres: object) -> None:
     with pytest.raises(TypeError, match="is a number of litres"):
         format_compartment_amount(litres)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("share", "expected"),
+    [
+        (0.0, "0%"),
+        (1e-12, "<1%"),
+        (0.00499, "<1%"),
+        (0.00501, "1%"),
+        (0.125, "12%"),
+        (0.375, "38%"),
+        (0.99499, "99%"),
+        (0.99501, ">99%"),
+        (1.0 - 1e-12, ">99%"),
+        (1.0, "100%"),
+    ],
+    ids=[
+        "zero",
+        "a trace",
+        "just below half a percent",
+        "just above half a percent",
+        "a half, to even, down",
+        "a half, to even, up",
+        "just below 99.5%",
+        "just above 99.5%",
+        "all but a trace",
+        "the whole",
+    ],
+)
+def test_a_compartment_s_share_is_shown_in_whole_percent(share: float, expected: str) -> None:
+    """The expected strings are worked out by hand from `docs/MODEL.md` § "Displayed precision".
+
+    A share is shown in whole percent. A positive share less than 0.5% is
+    shown as `<1%`, and a share of 99.5% or more that is not the whole is
+    shown as `>99%`. Only zero is shown as `0%`, and only the whole as `100%`.
+    The two halves, 12.5% and 37.5%, are exact in binary, so they test that
+    halves round to even.
+    """
+
+    assert format_compartment_share(share) == expected
+
+
+@pytest.mark.parametrize("share", [-1e-12, 1.0 + 1e-12, math.nan, math.inf])
+def test_a_share_outside_0_through_1_is_refused(share: float) -> None:
+    with pytest.raises(ValueError, match="must be from 0 through 1"):
+        format_compartment_share(share)
+
+
+@pytest.mark.parametrize("share", [True, "0.5", None])
+def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
+    with pytest.raises(TypeError, match="is a number from 0 through 1"):
+        format_compartment_share(share)  # type: ignore[arg-type]
