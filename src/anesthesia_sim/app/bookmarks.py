@@ -69,50 +69,52 @@ __all__ = [
 ]
 
 HEIGHT_BAND = 1e-5
-"""How close to a MAC target's height a reading must be to count as at it, relative to the height.
+"""A reading within this fraction of a MAC target's height counts as at the height.
 
+The readings within that distance on either side of the height form the target's band.
 A crossing is a reading moving from below the band to inside it or above it,
 or from above the band to inside it or below it (`MacTarget.crossed_between`).
 `PL-QVBR` added the band. Without it, two kinds of reading of one step could
 disagree, and a steady reading could cross a height again and again.
 
 A running case holds two readings of each compartment at every step. The live
-one comes from the stepped system, one propagation per step. The canonical one
-is `RunDefinition.state_at`, one propagation from the stretch's keyframe. Every
-branch opens from the canonical one, and `docs/MODEL.md` § "The canonical
-evaluation rule" makes it the authority. The two can lie about 1e-14 apart, on
-opposite sides of a height. Tested at the exact height, a trunk halted on its
-live readings could stop on a target that a branch opened on the same step read
-as still running.
+reading comes from the stepped system, which propagates the state one step at a
+time. The canonical reading comes from `RunDefinition.state_at`. It makes one
+propagation from the keyframe that starts the stretch, the span of constant
+settings that holds the instant. Every branch opens from the canonical
+reading. `docs/MODEL.md` § "The canonical evaluation rule" makes the canonical
+reading the authority. The two readings can lie about 1e-14 apart, on opposite
+sides of a height. Suppose each reading were compared with the exact height. A
+trunk that halted on its live readings could then stop on a target, while a branch
+opened on the same step showed that target as still running.
 
-Tested from the canonical readings at the exact height, a reading that settles
-on the height crosses it again and again instead. Each canonical reading is
-propagated over a different interval, so a steady compartment's reading moves
-by one unit in the last place from step to step. A run with no ventilation and
-a target on the circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in its
-tenth minute at the target, measured on 2026-11-01.
+Comparing the canonical readings with the exact height fails in a different way. A
+reading that settles on the height crosses it again and again. Each canonical
+reading is propagated over a different interval, so a steady compartment's reading
+moves by one unit in the last place from step to step. A measurement on 2026-11-01
+used a run with no ventilation, a 1 MAC dial and a target on the circuit at
+1.00 ×MAC. The run halted at the target 965 times in its tenth minute.
 
-The band is far finer than anything displayed. A two-decimal percent resolves
-0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane, so the band is
-about five hundred times finer than the readout of a target near 1 MAC.
+The band is far finer than anything displayed. A percentage shown to two decimals
+resolves 0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane. So the band
+is about five hundred times finer than the readout of a target near 1 MAC.
 """
 
 LIVE_READING_GAP = 1e-6
-"""The widest gap allowed between a live and a canonical reading, relative to the height.
+"""A live and a canonical reading may differ by at most this fraction of the height.
 
-A canonical reading costs a matrix exponential, about 2 ms, against about
-60 microseconds for a whole step. So `SimulationController.advance` decides
-from the live readings wherever they give the same answer as the canonical
-ones would. They do wherever neither live reading lies within this gap of an
-edge of a target's band, because a canonical reading then lies on the same
-side of each edge (`MacTarget.reading_is_near_a_band_edge`). `PL-QVBR` measured
-the gap on 2026-11-01 over the three agents, with a setting change on the
-way. Relative to the reading, it was at most 1.4e-10 over 24 h at the 0.1 s
-step, 2.9e-10 over 6 h at the 0.01 s step, and 1.2e-9 over 2 h at the
-0.001 s step. The gap grows with the number of steps. Extrapolated in
-proportion to 24 h at the 0.001 s step, the last is 1.4e-8, and the allowance
-is about seventy times that. It is also ten times finer than the band, so the
-zones around the two edges never meet.
+A canonical reading costs a matrix exponential, which takes about 2 ms. A whole step
+takes about 60 microseconds. So `SimulationController.advance` decides from the live
+readings wherever they give the same result as the canonical ones would. They do so
+wherever neither live reading lies within this gap of an edge of a target's band.
+A canonical reading then lies on the same side of each edge as the live one
+(`MacTarget.reading_is_near_a_band_edge`). `PL-QVBR` measured the gap on 2026-11-01
+for the three agents, in runs that included a setting change. Relative to the
+reading, it was at most 1.4e-10 over 24 h at the 0.1 s step, 2.9e-10 over 6 h at the
+0.01 s step, and 1.2e-9 over 2 h at the 0.001 s step. The gap grows with the number
+of steps. Scaled in proportion to 24 h, the gap at the 0.001 s step would be 1.4e-8,
+and `LIVE_READING_GAP` is about seventy times that. It is also ten times finer than
+`HEIGHT_BAND`, so the zones around the band's two edges never meet.
 """
 
 
@@ -432,43 +434,43 @@ class MacTarget:
         return (self.quantity, self.mac_multiple)
 
     def crossed_between(self, before: MacMultiple, after: MacMultiple) -> bool:
-        """Whether the compartment passed through this height during one step.
+        """Return whether the compartment passed through this height during one step.
 
-        **A transition between two readings, never a comparison at one reading**
-        (project owner, 2026-09-20, with the decision that a target halts on
+        **A crossing is a transition between two readings, never a comparison at one
+        reading** (project owner, 2026-09-20, with the decision that a target halts on
         every crossing). Suppose the test were "the reading is at or above the
         height". A run that settles exactly on the height would then pass the
-        test on every later step and could never be advanced past it. Also, a
-        comparison at a single reading cannot say *which* step crossed, and
-        that is the thing `PL-CTD7` exists to get right.
+        test on every later step and could never be advanced past it. A comparison
+        at a single reading also cannot say *which* step crossed, and the halt
+        must land on that step (`PL-CTD7`).
 
-        **Closed on the arriving side and open on the departing side, in both
-        directions.** The height is a narrow band, `HEIGHT_BAND` of the height
-        on either side, so that a reading that settles on it stays there
-        rather than moving in and out by one unit in the last place
-        (`PL-QVBR`). A step that lands inside the band crosses the height. A
-        run that then stays inside it crosses nothing further. A run that
-        later leaves the band, in either direction, does not cross it again on
-        the way out. This asymmetry makes the halt safe to resume from. A halt leaves
-        the run paused *on* the crossing step, so the next step's `before` is
-        the halt's own reading. A rule closed on both sides would halt the run
-        again at once and never let it pass the target. No per-target armed
-        flag is needed for this. The arithmetic alone does it.
+        **A step counts as a crossing when it arrives at the height, not when it
+        leaves, in both directions.** The test treats the height as a narrow band
+        that extends `HEIGHT_BAND` of the height on either side. A reading that
+        settles on the height then stays inside the band, rather than moving in
+        and out by one unit in the last place (`PL-QVBR`). A step that lands
+        inside the band crosses the height. A run that then stays inside it
+        crosses nothing further. A run that later leaves the band, in either
+        direction, does not cross it again on the way out. This asymmetry makes
+        the halt safe to resume from. A halt leaves the run paused *on* the
+        crossing step, so the next step's `before` is the halt's own reading. A
+        rule that also counted a step starting inside the band would halt the run
+        again at once and never let it pass the target. So no target needs an
+        armed flag. The comparison of the two readings is enough.
 
         Both directions count, because a target has no crossing direction (see
         the class docstring). A case taken up through 0.8 ×MAC and back down
-        through it has reached what the learner marked twice, and it halts
-        twice.
+        through it has reached the learner's mark twice, so it halts twice.
 
         Args:
             before: The reading of this target's compartment before the step,
                 as a multiple of the running agent's 1 MAC. That is the unit
                 the target is stored in, so no conversion happens here.
             after: The same compartment's reading after the step, in the same
-                unit and from the same agent. Dividing the two readings by
-                different agents' MAC would compare a correct number with the
-                wrong divisor. That is why `SimulationController` converts both
-                readings with the one `formatting.mac_multiple` and the
+                unit and from the same agent. If the two readings were divided by
+                different agents' MAC, one of them would be a correct number
+                divided by the wrong MAC. So `SimulationController` converts both
+                readings with the same `formatting.mac_multiple` and the
                 snapshot's own `agent_mac_percent`.
 
         Returns:
@@ -481,13 +483,13 @@ class MacTarget:
         return side_before != 0 and (side_after == 0 or side_after == -side_before)
 
     def reading_is_near_a_band_edge(self, reading: MacMultiple) -> bool:
-        """Whether a live reading lies within `LIVE_READING_GAP` of an edge of this target's band.
+        """Return whether a live reading is within `LIVE_READING_GAP` of this target's band edges.
 
         A live reading that is not near an edge lies on the same side of each
-        edge as the canonical reading of the same instant. So where neither of
-        a step's live readings is near an edge, `crossed_between` gives the
-        same answer from the live readings as from the canonical ones, and the
-        step needs no canonical reading (`PL-QVBR`).
+        edge as the canonical reading of the same instant. So when neither of a
+        step's live readings is near an edge, `crossed_between` returns the same
+        result from the live readings as from the canonical ones. The step then
+        needs no canonical reading (`PL-QVBR`).
 
         Args:
             reading: A live reading of this target's compartment, as a multiple
@@ -816,9 +818,10 @@ class BookmarkSet:
 
         It returns true when a live reading lies near an edge of a target's
         band (`MacTarget.reading_is_near_a_band_edge`). Otherwise the live
-        readings give the canonical answer for every target. Marked instants
-        play no part, because whether a step reaches an instant depends only
-        on the step's two instants, which both readings share.
+        readings give the same result as the canonical ones for every target.
+        Marked instants play no part. Whether a step reaches a marked instant
+        depends only on the times at which the step starts and ends, and the
+        live and canonical readings share those times.
 
         Args:
             before: The live reading of every compartment a target could

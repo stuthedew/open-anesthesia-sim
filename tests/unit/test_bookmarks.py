@@ -520,8 +520,8 @@ def test_a_reading_within_one_part_in_a_hundred_thousand_of_the_height_is_at_it(
     """A reading that settles on the height and moves by a unit in the last place crosses it once.
 
     `PL-QVBR` made the height a band one part in a hundred thousand wide on
-    either side. Without it, a canonical reading that moved between the
-    height and the float below it crossed the height on every return.
+    either side. Without the band, a canonical reading that moved between the
+    height and the float below it crossed the height each time it returned.
     """
 
     target = _target(multiple=1.0)
@@ -1016,9 +1016,9 @@ def _canonical_alveolar_mac_multiple(*, steps: int) -> MacMultiple:
     """Return the canonical alveolar reading after `steps` steps of an unmarked default run.
 
     A branch opens from the canonical state (`RunDefinition.state_at`), so a
-    branch taken where the run stands reads it. That is the reading a crossing
-    is decided from (`PL-QVBR`), where `_alveolar_mac_multiple` on a running
-    trunk returns the live one.
+    branch taken where the run stands sees this reading. A crossing is decided
+    from this reading (`PL-QVBR`). By contrast, `_alveolar_mac_multiple` on a
+    running trunk returns the live reading.
     """
 
     run = SimulationController()
@@ -1124,13 +1124,14 @@ def test_a_halt_leaves_the_run_paused_on_the_crossing_step() -> None:
 
 
 def test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances() -> None:
-    """The boundary case, with the height taken from the run itself so the run lands on it exactly.
+    """In this boundary case the height comes from the run itself, so the run lands on it exactly.
 
-    A rule closed on both sides would report a crossing on every step from
-    here on, and the run could never be advanced past the target at all. The
-    height is the canonical reading at 60 s, which is what a crossing is
-    decided from (`PL-QVBR`). A branch opens from the canonical state, so a
-    branch taken at 60 s reads it.
+    A rule that also counted a step starting inside the band would report a
+    crossing on every step after the run lands, and the run could never be
+    advanced past the target at all. The height is the canonical reading at
+    60 s, because a crossing is decided from the canonical readings
+    (`PL-QVBR`). A branch opens from the canonical state, so a branch taken at
+    60 s sees that reading.
     """
 
     height = _canonical_alveolar_mac_multiple(steps=600)
@@ -1154,13 +1155,14 @@ def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk() -> None:
 
     Each height is the live reading after a whole number of steps, so the
     trunk's live reading lands on it exactly. The canonical reading there can
-    lie about 1e-14 to either side of it (`PL-QVBR`). Before the fix the
-    trunk halted on its live readings and reported the target. A branch
-    opened on that step tested it from the canonical readings, found no
-    crossing, and read the target as still running. Now both readings fall
-    inside the height's band, so on every instant tried the two report the
-    same halt and the same standing. At least one of the instants has to be one
-    where the two readings differ, or the test would not reach the case.
+    lie about 1e-14 to either side of it (`PL-QVBR`). Before the fix, the
+    trunk halted on its live readings and reported the target as reached. A
+    branch opened on that step tested it from the canonical readings, found no
+    crossing, and showed the target as still running. Now both readings fall
+    inside the height's band. So at every instant the test tries, the trunk
+    and the branch report the same halt and the same standing. At least one of
+    those instants must be one where the two readings differ, or the test
+    would not exercise the case.
     """
 
     differing = 0
@@ -1195,16 +1197,17 @@ def test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk() -> None:
 
 
 def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_does() -> None:
-    """A step that its two readings judge differently halts where the canonical reading says.
+    """A step whose live and canonical readings disagree halts where the canonical readings say.
 
     This is the only case in which the trunk's live readings and a branch's
     canonical readings could still disagree (`PL-QVBR`). The test steps the
-    default run until a step's two alveolar readings differ, then puts the
-    lower edge of a target's band between them. So one reading of that step
-    has entered the band and the other has not. The trunk must ask the
-    canonical readings there, halt on the step they cross, and agree with a
-    branch opened on that step. Halting on the live readings would land the
-    halt one step early or one step late, and the branch would then disagree.
+    default run until a step's live and canonical alveolar readings differ. It
+    then puts the lower edge of a target's band between them. So one reading
+    of that step has entered the band and the other has not. The trunk must
+    test the canonical readings there, halt on the step at which they cross,
+    and agree with a branch opened on that step. Halting on the live readings
+    would land the halt one step early or one step late, and the branch would
+    then disagree.
     """
 
     run = SimulationController()
@@ -1258,14 +1261,15 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
 
     The lifecycle review of `PL-ZR49`'s change found this case (`PL-QVBR`).
     The live reading where the run stood lay one unit in the last place below
-    the canonical one. The target read as reached while the run stood there.
+    the canonical one. The target showed as reached while the run stood there.
     After Start, the live readings crossed it on the next step, so the run
-    halted on the same target again. The test steps the default run until
-    its live reading lies below the canonical one on the rising curve, so the
-    live readings would cross the height again on the next step. Such steps
-    are rare: 18 of the first 3 000, the first at 75.1 s, measured on
-    2026-11-01. Pausing and starting a run does not change its trajectory, so
-    the run that found the step is the one tested.
+    halted on the same target again. The test steps the default run until its
+    live reading lies below the canonical one on the rising curve. At such a
+    step, the live readings would cross the height again on the next step.
+    Such steps are rare. A measurement on 2026-11-01 found 18 of them in the
+    first 3 000 steps, the first at 75.1 s. Pausing and starting a run does
+    not change its trajectory, so the run that found the step is the one
+    tested.
     """
 
     run = SimulationController()
@@ -1300,14 +1304,14 @@ def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
     """A circuit that settles on its target halts once, and later steps need no canonical reading.
 
     With no ventilation the patient takes up nothing, so the circuit settles
-    on the delivered 2% of sevoflurane, which is 1.00 ×MAC. Tested at the exact
-    height from the canonical readings, this run halted 965 times in its tenth
-    minute at the target, because the canonical reading moved by one unit in
-    the last place from step to step (`PL-QVBR`, 2026-11-01). For about a
-    hundred steps after the halt the reading still lies near the band's edge,
-    and each is tested from the canonical readings. Once it has settled
-    inside the band, its steps are decided from the live readings and cost no
-    matrix exponential.
+    on the delivered 2% of sevoflurane, which is 1.00 ×MAC. When the halt test
+    compared the canonical readings with the exact height, this run halted at
+    the target 965 times in its tenth minute (`PL-QVBR`, 2026-11-01). The
+    canonical reading moved by one unit in the last place from step to step.
+    For about a hundred steps after the halt, the reading still lies near the
+    band's edge, and each of those steps is tested from the canonical
+    readings. Once the reading has settled inside the band, the run's steps
+    are decided from the live readings and cost no matrix exponential.
     """
 
     target = MacTarget(RecordedQuantity.CIRCUIT, MacMultiple(1.0))
@@ -1346,11 +1350,11 @@ def test_a_halt_target_removed_and_added_back_is_named_again_by_both_records() -
 
     The run halts on a height that a stepped reading lands on exactly.
     Removing the target drops its key from the standings, and the target
-    added back is a new mark. Both records test the step the run stands on
-    again for it, from the canonical readings that decided the halt
-    (`PL-QVBR`). So both name it again, and so does a branch taken there.
-    Before `PL-XV0D`'s fix the halt record kept the old key, so the trunk
-    could report stopping on a target that its own row listed as not
+    added back is a new mark. Both records test the new mark against the step
+    the run stands on, using the canonical readings that decided the halt
+    (`PL-QVBR`). So both records name it again, and so does a branch taken
+    there. Before `PL-XV0D`'s fix, the halt record kept the old key, so the
+    trunk could report stopping on a target that its own row listed as not
     reached.
     """
 
