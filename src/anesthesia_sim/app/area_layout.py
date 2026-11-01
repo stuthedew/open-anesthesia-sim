@@ -1635,8 +1635,8 @@ class AreaLayout(QWidget):
         Where the split's children need more pixels than it has, Qt draws each of them
         at its least size, whatever the fractions say (`border_range`). The same holds
         where an enclosing split is too small for its children, because Qt then draws
-        this split at its own least length, which differs from the length the
-        apportionment gave it. In both cases the border does not move at all, so a
+        this split at a length other than the one the apportionment gave it. In both
+        cases the border does not move at all, so a
         press or a drag in a window smaller than the Areas' floors leaves the stored
         fractions as they were (`PL-MH5T`). The border is stopped there wherever
         `offset_px` is not where Qt draws it.
@@ -1657,9 +1657,10 @@ class AreaLayout(QWidget):
         )
         limits = border_range(split.sizes, address.index, bounds, sum(drawn))
 
-        # An ancestor too small for its children leaves Qt drawing this split at its
-        # least length, not at the length the apportionment gave it. Its children are
-        # then at their bounds, as in a split too small for its own children.
+        # An enclosing split too small for its children makes Qt draw this split at a
+        # length other than the one the apportionment gave it, taking pixels from its
+        # largest child first. Each Area's frame is still held at its least size, so the
+        # frames overlap and none moves when the fractions change.
         if limits is None or _drawable_px(splitter) != sum(drawn):
             # The handle is drawn where Qt's own layout of the split put it.
             here = sum(splitter.sizes()[: address.index + 1])

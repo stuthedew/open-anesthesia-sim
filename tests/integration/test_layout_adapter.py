@@ -2015,6 +2015,73 @@ def test_a_wide_stacked_area_holds_a_lower_floor(
     assert page.frame(AreaId(1)).height() >= 200 + _CHROME_PX
 
 
+def test_a_floor_is_not_lowered_for_a_width_qt_does_not_draw(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: the lower floor is used only where Qt draws the width it was measured at.
+
+    A row gives 0.9 of a 340 px window to a Big view's Area and 0.05 to each of two more.
+    The three floors and two handles need more than 340 px, so Qt draws the first Area at
+    its floor's width, not at 0.9 of the window. Its notice must then be wrapped at that
+    narrow width. So its floor is as tall as the floor of a Big view's Area in a window
+    only as wide as that floor. Found by the branch's adversarial review.
+    """
+
+    model = _layout(
+        _row(
+            (0.9, 0.05, 0.05), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG), Area(AreaId(3), _BIG)
+        ),
+        4,
+    )
+    _, container = _host_sized(application, hosts, model, (340, 250))
+    frame = container.frame(AreaId(1))
+    assert AreaId(1) in {entry.area_id for entry in container.too_small()}
+    assert frame.width() == frame.minimumWidth()
+
+    alone = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
+    _, narrow = _host_sized(application, hosts, alone, (frame.minimumWidth(), 200))
+
+    assert [entry.area_id for entry in narrow.too_small()] == [AreaId(2)]
+    assert frame.minimumHeight() == narrow.frame(AreaId(2)).minimumHeight()
+
+
+def test_no_too_small_notice_is_cut_off_where_the_second_pass_narrows_an_area(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: a floor lowered for one width is not kept where the Area ends up narrower.
+
+    Four Big views nest as a column holding a row, whose first part is a column of two,
+    above a fourth view, in a window 640 by 180 px. The row gives Area 3 0.4 of its width.
+    A second pass that kept its lowered floors would draw Area 3 253 px wide, narrower
+    than the width its notice was measured at, and cut off the notice's statement of
+    the two sizes. That pass is discarded instead, so every notice that is shown has its
+    title and that statement in full. Found by the branch's adversarial review.
+    """
+
+    model = _layout(
+        _column(
+            (0.7, 0.3),
+            _row(
+                (0.6, 0.4),
+                _column((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)),
+                Area(AreaId(3), _BIG),
+            ),
+            Area(AreaId(4), _BIG),
+        ),
+        5,
+    )
+    _, container = _host_sized(application, hosts, model, (640, 180))
+
+    assert container.too_small()
+
+    for entry in container.too_small():
+        notice = container.frame(entry.area_id).too_small_notice
+        assert notice is not None
+
+        for label in (notice.title_label, notice.body_label):
+            assert label.height() >= label.heightForWidth(label.width()) > 0
+
+
 def test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
@@ -2378,11 +2445,11 @@ def test_a_press_on_a_border_inside_a_split_below_its_floors_keeps_the_stored_fr
     The outer row gives 0.8 of a 370 px window to a column whose top half is a row of
     two Areas, and 0.2 to a fourth Area. The two Areas' floors and a handle, with the
     fourth Area's floor and another handle, need more than 370 px. So Qt draws the
-    column, and the row inside it, at their least width, while the apportionment gives
-    the inner row 0.8 of the window. A press and a move of zero pixels on the inner
-    row's border used to rewrite its 0.5 / 0.5. Now they keep it, emit no
-    `layout_changed`, and leave the line out of WARNING. Found by the branch's blind
-    review.
+    column, and the row inside it, narrower than the 0.8 of the window that the
+    apportionment gives them, and holds each Area's frame at its floor. A press and a
+    move of zero pixels on the inner row's border used to rewrite its 0.5 / 0.5. Now
+    they keep it, emit no `layout_changed`, and leave the line out of WARNING. Found by
+    the branch's blind review.
     """
 
     model = _layout(
