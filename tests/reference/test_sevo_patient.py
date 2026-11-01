@@ -2,6 +2,7 @@ from math import isfinite
 
 import pytest
 
+from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent
@@ -55,31 +56,40 @@ STEP_REFINEMENT_HORIZON_S = 60.0
 STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
 STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 
-# How far apart two supported steps may leave a fraction after 60 s.
+# The largest allowed gap in a fraction after 60 s between runs at two
+# supported steps.
 #
-# With the exact step, this gap is set by floating-point rounding rather than
-# by a method error. Measured 2026-09-06, the worst gap between successive
-# halvings across all four reported values is 8.1e-16, in the alveolar
-# fraction. The two gaps for a given value sit within a factor of two of each
-# other rather than halving. This bound allows about twelve times the worst
-# measured gap. That leaves room for another machine's rounding, and it is
-# still four orders of magnitude below the 1.4e-11 that a genuinely
+# The gate takes two gaps for each fraction: the first between 0.1 s and
+# 0.05 s, and the second between 0.05 s and 0.025 s. With the exact step, these
+# gaps come from floating-point rounding, not from error in the method. The
+# bound was set on 2026-09-06 at about twelve times the worst gap measured
+# then, 8.1e-16 in the alveolar fraction. That measurement reported four
+# values, and no record names the fourth. This test has compared the same
+# three fractions since the exact step landed (#376). A new measurement on
+# 2026-11-01 found the worst gap in those three fractions to be 3.4e-16, in
+# the alveolar fraction. The bound now allows about thirty times that gap.
+# The second gap for each fraction is larger than the first rather than half
+# of it, because the finer run takes more steps and rounding accumulates once
+# per step. The bound leaves room for another machine's rounding. It is still
+# about three orders of magnitude below the 1.4e-11 that a genuinely
 # first-order method would show at these steps.
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
-# How far the smallest supported step (the floor) may leave a fraction from
-# the result of the largest (the ceiling) after the same 60 s (PL-YZ17).
+# The largest allowed gap in a fraction after the same 60 s between a run at
+# the smallest supported step and a run at the largest (PL-YZ17). The smallest
+# supported step is called the floor, and the largest the ceiling.
 #
-# This bound is wider than the gap above, because the floor takes the minute
-# in 60 000 steps rather than at most 2 400, and the residual is rounding
-# accumulated once per step. Measured 2026-10-03, the gap is 2.4e-15 in the
-# alveolar fraction, 3.6e-16 in vessel rich and 2.5e-16 in mixed venous. This
-# bound allows about twelve times the worst, the same margin that the gap above
-# allows. It is still more than nine orders of magnitude below one count of the
-# last displayed digit, 1e-4. The gap depends on how the propagator rounds at
-# that one step, and it does not vary smoothly with the step: steps near 1 ms
-# reach 1.2e-14. So on a machine that rounds differently, the margin is nearer
-# two and a half times.
+# This bound is wider than `STEP_REFINEMENT_SETTLED_GAP` above. A run at the
+# floor takes 60 000 steps to cover the minute, rather than at most 2 400, and
+# the remaining gap is rounding that accumulates once per step. On 2026-10-03
+# the gap measured 2.4e-15 in the alveolar fraction, 3.6e-16 in vessel rich
+# and 2.5e-16 in mixed venous. This bound allows about twelve times the worst
+# of these, the same margin used to set `STEP_REFINEMENT_SETTLED_GAP`. It is
+# still more than nine orders of magnitude below one count of the last
+# displayed digit, 1e-4. The gap depends on how the propagator rounds at the
+# floor step, and it does not change smoothly as the step changes. Steps near
+# 1 ms give gaps up to 1.2e-14. So on a machine that rounds differently, the
+# bound may allow only about two and a half times the gap.
 FLOOR_SETTLED_GAP = 3e-14
 
 # The floor at which that bound and docs/MODEL.md's figures were measured. It
@@ -270,20 +280,63 @@ def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fracti
     assert lower_output.agent_simulation_validation.passes_validation is True
 
 
-def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
+def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
+    """Return the F_A / F_I that the wash-in curve plots for this state.
+
+    The ratio comes from `read_wash_in`, the one function that computes the
+    plotted value, so this test checks the quotient a learner sees. The result
+    of `read_wash_in` must lie in the wash-in domain, where agent has reached
+    the circuit and F_A / F_I lies between 0 and 1. Outside that domain the
+    curve plots nothing, and the lesson has nothing to compare.
+    """
+
+    reading = read_wash_in(
+        system.alveoli.partial_pressure_fraction, system.circuit.inspired_partial_pressure_fraction
+    )
+
+    assert reading.domain is WashInDomain.WASH_IN
+    assert reading.plotted_ratio is not None
+
+    return reading.plotted_ratio
+
+
+def test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster() -> None:
+    """Higher alveolar ventilation must bring F_A toward F_I faster.
+
+    Required test from docs/MODEL.md § "Directional ventilation test". Two
+    default sevoflurane wash-ins run side by side, at 2 and 8 L/min of
+    alveolar ventilation. At every whole second of the first minute, F_A / F_I
+    must be higher in the 8 L/min run.
+
+    The test compares the ratio because F_A alone measures the approach to
+    F_I only when F_I is the same in both runs, and here it is not. The
+    circle system rebreathes, and more ventilation carries more agent into
+    the patient. So F_I rises more slowly at 8 L/min than at 2 L/min. On
+    2026-11-01, F_I at 30 s measured 0.0047 at 8 L/min against 0.0053 at
+    2 L/min. The final assertion keeps the older claim that F_A itself is
+    higher at 30 s in the 8 L/min run, because a learner reading the F_A trace
+    sees that too.
+    """
+
     lower_ventilation = AgentUptakeSystem.default()
     higher_ventilation = AgentUptakeSystem.default()
 
     lower_ventilation.set_alveolar_ventilation(AlveolarVentilation(2.0))
     higher_ventilation.set_alveolar_ventilation(AlveolarVentilation(8.0))
 
-    _run_for(lower_ventilation, duration_s=30.0, simulation_step_s=0.1)
-    _run_for(higher_ventilation, duration_s=30.0, simulation_step_s=0.1)
+    for elapsed_s in range(1, 61):
+        _run_for(lower_ventilation, duration_s=1.0, simulation_step_s=0.1)
+        _run_for(higher_ventilation, duration_s=1.0, simulation_step_s=0.1)
 
-    assert (
-        higher_ventilation.alveoli.partial_pressure_fraction
-        > lower_ventilation.alveoli.partial_pressure_fraction
-    )
+        assert _plotted_wash_in_ratio(higher_ventilation) > _plotted_wash_in_ratio(
+            lower_ventilation
+        ), f"F_A/F_I at 8 L/min is not ahead of 2 L/min at {elapsed_s} s"
+
+        if elapsed_s == 30:
+            assert (
+                higher_ventilation.alveoli.partial_pressure_fraction
+                > lower_ventilation.alveoli.partial_pressure_fraction
+            )
 
 
 def _states_after_one_minute(simulation_step_s: float) -> dict[str, float]:
