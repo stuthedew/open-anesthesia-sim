@@ -424,6 +424,14 @@ class PreferencesStore:
         pending = self._directory / _PENDING_FILE_NAME
 
         try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            raise PreferencesFileError(
+                f"the preferences could not be saved to {self.path}: they hold text that is "
+                "not valid Unicode"
+            ) from None
+
+        try:
             self._directory.mkdir(parents=True, exist_ok=True)
             write_synced(pending, text)
             os.replace(pending, self.path)
@@ -559,9 +567,56 @@ def _finite_float(literal: str) -> float:
     return value
 
 
+#: The deepest nesting of lists and objects that a document may hold. A price
+#: entry is one object of plain values, so its document nests three deep. A
+#: refused entry is written back exactly as it was read, so a deeply nested
+#: one made a 30 KB file write 450 MB on its first save, and a 130 KB one ran
+#: the process out of memory (`PL-B396`'s adversarial review).
+_DEEPEST_NESTING: Final = 8
+
+
+def _refuse_what_cannot_be_written_back(document: object) -> None:
+    """Refuse a document that a save could not write back as it was read.
+
+    A save writes every refused entry back unchanged. So a document is refused
+    whole if it nests deeper than `_DEEPEST_NESTING`, or if any of its text is
+    not valid Unicode. JSON lets a file hold a lone surrogate such as
+    `"\\ud800"`, which no UTF-8 file can be written with. Refusing the whole
+    document turns saving off, so the file stays as it is.
+    """
+
+    pending: list[tuple[object, int]] = [(document, 1)]
+
+    while pending:
+        value, depth = pending.pop()
+
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise _InvalidDocument(
+                    "it holds text that is not valid Unicode, so it could not be written back"
+                ) from None
+            continue
+
+        if not isinstance(value, dict | list):
+            continue
+
+        if depth > _DEEPEST_NESTING:
+            raise _InvalidDocument(
+                f"it nests lists and objects more than {_DEEPEST_NESTING} deep, which no "
+                "preferences document does"
+            )
+
+        children = [*value.keys(), *value.values()] if isinstance(value, dict) else value
+        pending.extend((child, depth + 1) for child in children)
+
+
 def _from_document(document: object) -> Preferences:
     if not isinstance(document, dict):
         raise _InvalidDocument("its document is not a JSON object")
+
+    _refuse_what_cannot_be_written_back(document)
 
     version = document.get(_SCHEMA_VERSION_KEY)
 

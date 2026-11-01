@@ -18,6 +18,7 @@ from anesthesia_sim.app.preferences import (
     Preferences,
     PreferencesFileError,
     PreferencesStore,
+    RefusedEntry,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
@@ -192,6 +193,16 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
             '"bottle_volume_ml": 1e400, "currency": "USD", "applies_on": "2008-03-05"}]}',
             "1e400 is too large",
         ),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
+            '"agent_prices": ["\\ud800"]}',
+            "not valid Unicode",
+        ),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
+            '"agent_prices": [' + "[" * 8 + "]" * 8 + "]}",
+            "more than 8 deep",
+        ),
     ],
     ids=[
         "not JSON",
@@ -204,6 +215,8 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
         "prices not a list",
         "NaN",
         "a number too large for a float",
+        "a lone surrogate, which no UTF-8 file can hold",
+        "a refused entry nested past the limit",
     ],
 )
 def test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off(
@@ -405,3 +418,37 @@ def test_a_refused_entry_that_names_no_agent_is_dropped_only_when_the_reader_dis
 
     assert reloaded.notice is None
     assert reloaded.preferences.agent_cost_unit is AgentAmountUnit.MILLILITRES_OF_LIQUID
+
+
+def test_a_refused_entry_nested_to_the_limit_is_kept_and_written_back(tmp_path: Path) -> None:
+    """Six lists inside the price list, eight levels in all, is the deepest the store keeps."""
+
+    nested: object = []
+    for _ in range(5):
+        nested = [nested]
+    _write(tmp_path, _document([nested]))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    assert loaded.writable
+    assert loaded.preferences.refused_prices[0].raw == nested
+
+    store.save(loaded.preferences.with_agent_cost_unit(AgentAmountUnit.LITRES_OF_VAPOUR))
+
+    saved = json.loads((tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+    assert saved["agent_prices"] == [nested]
+
+
+def test_a_save_holding_text_that_is_not_valid_unicode_is_refused_and_writes_nothing(
+    tmp_path: Path,
+) -> None:
+    """Load refuses such a file, so this reaches the save's own guard through a built record."""
+
+    store = PreferencesStore(tmp_path)
+    store.load()
+    preferences = Preferences(refused_prices=(RefusedEntry("\ud800", "a reason", None),))
+
+    with pytest.raises(PreferencesFileError, match="not valid Unicode"):
+        store.save(preferences)
+
+    assert list(tmp_path.iterdir()) == []
