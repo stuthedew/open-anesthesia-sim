@@ -263,8 +263,10 @@ class SchematicCanvas(QWidget):
             )
 
 
-# The share bar's height, in logical pixels. A placeholder.
+# The share bar's height, in logical pixels, and the least width of a segment
+# that a divider is drawn before. Both are placeholders.
 _SHARE_BAR_HEIGHT: Final = 18
+_SHARE_DIVIDED_PX: Final = 3.0
 
 
 class ShareBar(QWidget):
@@ -343,17 +345,27 @@ class ShareBar(QWidget):
                 )
                 start = end
 
-            # A line in the panel's colour divides each pair of neighbours, so
-            # each segment's ends are seen against the panel, whose contrast
-            # with every compartment colour is checked, and never only against
-            # a neighbour's colour, which is not.
+            # A line in the panel's colour divides each pair of neighbouring
+            # visible segments, so each segment's ends are seen against the
+            # panel, whose contrast with every compartment colour is checked,
+            # and never only against a neighbour's colour, which is not. A
+            # segment narrower than `_SHARE_DIVIDED_PX` gets no divider, so a
+            # divider never covers a segment and the visible segments keep
+            # the order the lines under the bar name them in.
             painter.setPen(QPen(QColor(PANEL), _OUTLINE_WIDTH))
             start = 0.0
+            visible_before = False
 
-            for segment in self._segments[:-1]:
+            for segment in self._segments:
+                width = bar.width() * segment.share
+                visible = width >= _SHARE_DIVIDED_PX
+
+                if visible and visible_before:
+                    x = bar.left() + bar.width() * start
+                    painter.drawLine(QPointF(x, bar.top()), QPointF(x, bar.bottom()))
+
+                visible_before = visible_before or visible
                 start += segment.share
-                x = bar.left() + bar.width() * start
-                painter.drawLine(QPointF(x, bar.top()), QPointF(x, bar.bottom()))
 
         painter.setPen(QPen(QColor(INK), _OUTLINE_WIDTH))
         painter.setBrush(Qt.BrushStyle.NoBrush)

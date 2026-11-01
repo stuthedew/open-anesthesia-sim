@@ -227,6 +227,18 @@ def test_a_run_that_holds_no_agent_draws_an_empty_bar_and_prints_no_share() -> N
     assert "%" not in NO_AGENT_SHARE_LINE
 
 
+def test_the_share_lines_keep_their_count_when_the_first_agent_arrives() -> None:
+    """The schematic keeps its size at Start: the empty bar's lines are as many as the shares'.
+
+    The blind review of `PL-S79P` found that the empty bar's one line grew to
+    three when the first agent arrived, which moved everything below it.
+    """
+
+    segments = share_segments(_run("sevoflurane", 1.0).snapshot())
+
+    assert len(NO_AGENT_SHARE_LINE.splitlines()) == len(share_line(segments).splitlines())
+
+
 def test_the_share_lines_name_every_segment_with_its_share_in_text() -> None:
     """The segments are named in text, never by colour alone, in the containers' order."""
 

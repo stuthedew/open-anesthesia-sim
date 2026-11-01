@@ -37,7 +37,7 @@ from anesthesia_sim.app.qt_schematic import SchematicCanvas
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import MUTED, WARNING
+from anesthesia_sim.app.theme import MUTED, PANEL, WARNING
 from anesthesia_sim.app.view_registry import COMPARTMENT_SCHEMATIC, REGISTERED
 from anesthesia_sim.app.views import CompartmentSchematicView
 from anesthesia_sim.core.concentration import Percent
@@ -572,14 +572,24 @@ def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
     """Each segment's painted length is its share of the bar, and the lines under it name each.
 
     The segment of each compartment is measured in pixels of its own colour
-    along the bar's middle row. Antialiasing can blend one pixel at each end
-    of a segment, so each count is held to within two pixels of the share of
-    the bar's width.
+    along the bar's middle row. Antialiasing and the divider before it can
+    take one pixel at each end of a segment, so each count is held to within
+    two pixels of the share of the bar's width. At ten seconds, venous blood,
+    muscle and fat each hold well under 1%. The blind review of `PL-S79P`
+    found that their dividers then covered them and merged into one another,
+    so the bar is checked at that instant as well as at one hour.
     """
 
+    for seconds in (10.0, 60 * SECONDS_PER_MINUTE):
+        _check_the_share_bar(application, shown, seconds)
+
+
+def _check_the_share_bar(
+    application: QApplication, shown: list[SimulationView], seconds: float
+) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 60 * SECONDS_PER_MINUTE)
+    _advance(controller, seconds)
     controller.pause()
     schematic = _schematic(_dashboard(application, shown, controller)).schematics[0]
     bar = schematic.share_bar
@@ -599,6 +609,21 @@ def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
         assert f"{segment.name} {segment.text}" in schematic.share_text.text()
 
     assert not schematic.share_text.isHidden()
+
+    # Inside the outline, the row is coloured segments with one panel-coloured
+    # divider between each pair of neighbours, and no divider that stands
+    # beside another or covers a segment.
+    trace_colours = {QColor(trace_style(segment.quantity).color).rgb() for segment in segments}
+    panel = QColor(PANEL).rgb()
+    runs: list[int] = []
+    for x in range(1, image.width() - 1):
+        colour = image.pixelColor(x, middle).rgb()
+        if not runs or runs[-1] != colour:
+            runs.append(colour)
+    assert set(runs) <= trace_colours | {panel}, "every pixel is a segment or a divider"
+    assert runs[0] != panel
+    assert runs[-1] != panel
+    assert runs.count(panel) == len(runs) - runs.count(panel) - 1, seconds
 
 
 def test_a_run_that_holds_no_agent_shows_an_empty_share_bar_and_says_why(

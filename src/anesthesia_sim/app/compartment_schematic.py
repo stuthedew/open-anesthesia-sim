@@ -242,10 +242,15 @@ def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:
 SHARE_LINE_TEMPLATE: Final = "Share of the agent the run holds:\n{first},\n{second}."
 SHARE_SEGMENT_TEMPLATE: Final = "{name} {share}"
 
-#: The line under the share bar while the run holds no agent. No share exists
-#: then, so the bar is drawn empty, and the line says why rather than showing
-#: six zeros as if they were shares. The wording is a placeholder.
-NO_AGENT_SHARE_LINE: Final = "The run holds no agent yet, so the share bar is empty."
+#: The lines under the share bar while the run holds no agent. No share exists
+#: then, so the bar is drawn empty, and the lines say why rather than showing
+#: six zeros as if they were shares. They are three lines, as many as the
+#: shares take, so the schematic keeps its size when the first agent arrives.
+#: The wording is a placeholder.
+NO_AGENT_SHARE_LINE: Final = (
+    "Share of the agent the run holds:\nnone yet, because the run holds no agent,\n"
+    "so the bar is empty."
+)
 
 
 @dataclass(frozen=True, slots=True)
