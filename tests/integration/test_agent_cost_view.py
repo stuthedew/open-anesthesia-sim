@@ -604,13 +604,15 @@ def test_the_displayed_cost_reproduces_gas_man_s_printed_costs(
     The project owner asked on 2026-10-26 for "a sanity check for calculated
     agent price". The reader enters Gas Man's isoflurane price, US$20.47 for a
     100 mL bottle (Philip JH, *Workbook for Gas Man*, Appendix C, printed
-    p. 171), in the View's form. The run is the exercise's, from the patient
-    inputs through the model to the drawn text. Gas Man rounds isoflurane's
-    vapour-to-liquid ratio to 196, which can move a cost by 0.26 %, and both
-    the book and the readout round to the cent. So the drawn cost may differ
-    from the printed one by a cent's rounding on each side plus 0.26 %. The
-    drawn cost is also checked against this test's own product of the liquid
-    volume worked out here and the price per millilitre.
+    p. 171), in the View's form. The run uses the exercise's flow and dial
+    settings, and the test follows it from the patient inputs through the
+    model to the drawn text.
+    Gas Man rounds isoflurane's vapour-to-liquid ratio to 196, which can move
+    a cost by 0.26 %. Both the book and the readout also round to the cent.
+    So the drawn cost may differ from the printed one by a cent's rounding on
+    each side plus 0.26 %. The test also works out the liquid volume itself,
+    multiplies it by the price per millilitre, and checks the drawn cost
+    against that product.
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -763,9 +765,9 @@ def test_a_refused_price_for_the_first_run_s_agent_can_be_removed_from_the_first
 ) -> None:
     """Remove is offered for a refused entry at launch, and withdrawn once it is gone.
 
-    Blind review pass 2 of `PL-1P15` found Remove left off at launch, because
-    the form refilled only when the stored price changed, and a refused entry
-    leaves no stored price either way.
+    Blind review pass 2 of `PL-1P15` found that Remove was not offered at
+    launch. The form refilled only when the stored price changed, and there is
+    no stored price whether or not a refused entry is in the file.
     """
 
     (tmp_path / PREFERENCES_FILE_NAME).write_text(

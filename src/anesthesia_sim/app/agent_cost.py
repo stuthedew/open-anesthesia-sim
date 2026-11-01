@@ -23,24 +23,25 @@ nothing else.
 **Why the conversion takes a snapshot.** `liquid_volume_ml` takes a bare
 volume of vapour and a bare ratio. Given those, a caller could convert one
 agent's vapour with another agent's ratio after an agent change. Sevoflurane
-vapour converted with desflurane's ratio gives a result about 13 % too low. So
-`delivered_liquid_ml` takes the snapshot, and reads the amount and the ratio
-from that one record. The snapshot carries the ratio beside the agent it
+vapour converted with desflurane's ratio gives a liquid figure about 13 % too
+low. So `delivered_liquid_ml` takes the snapshot, and reads the amount and the
+ratio from that one record. The snapshot carries the ratio beside the agent it
 belongs to (`SimulationSnapshot.agent_vapour_per_liquid`). No other module in
 `src/` calls `liquid_volume_ml`, and a test checks that.
 
 **The cost at the reader's price** (`PL-1P15`). `docs/MODEL.md` § "A cost at
 the reader's price" specifies it. The cost is the delivered liquid volume
-times the price per millilitre of liquid that the reader's bottle price and
-bottle volume give (`AgentPrice.price_per_liquid_ml`). The project ships no
-price, so a run whose agent has no price shows why there is no cost instead.
-`cost_shown` builds every line of the cost readout from one `DeliveredShown`
-and one price record. So the cost and the figures shown beside it cannot come
-from two different instants, agents or prices. Beside the cost, the readout
-shows the liquid volume and the price per millilitre that it multiplied, the
+times the price per millilitre of liquid. That price is the reader's bottle
+price divided by the bottle volume (`AgentPrice.price_per_liquid_ml`). The
+project ships no price, so for a run whose agent has no price, the readout
+shows why there is no cost instead. `cost_shown` builds every line of the cost
+readout from one `DeliveredShown` and one price record. So the cost and the
+figures shown beside it cannot come from two different instants, agents or
+prices. Beside the cost, the readout shows the two figures that were multiplied
+to give it, the liquid volume and the price per millilitre. It also shows the
 bottle price, bottle volume, currency and date that the price came from, and
 words that say the price is the reader's. The cost is computed from the
-unrounded figures, so the readout also says that the figures are rounded.
+unrounded figures, so the readout also says that the figures shown are rounded.
 """
 
 from __future__ import annotations
@@ -134,7 +135,7 @@ class DeliveredShown:
             with the unit named on it, in that order.
         captions: What each amount is, in the same order.
         agent_id: The agent the run delivered, or None while the values are
-            withheld. The cost readout looks the reader's price up by it.
+            withheld. The cost readout uses it to look up the reader's price.
         agent_name: The agent's display name in lower case, as the captions
             print it.
         liquid_ml: The delivered agent in millilitres of liquid, unrounded,
@@ -260,16 +261,16 @@ WITHHELD_DELIVERED: Final = DeliveredShown(
 )
 
 
-#: The line over the cost. It says that the price is the reader's, in words
-#: rather than only in a colour or a style, so the statement reaches every
-#: reader (`docs/MODEL.md` § "A cost at the reader's price", item 6). The
-#: wording is a placeholder, but what it must say is not.
+#: The line over the cost. It says in words that the price is the reader's,
+#: not only through a colour or a style, so that no reader misses the statement
+#: (`docs/MODEL.md` § "A cost at the reader's price", item 6). The wording is a
+#: placeholder, but what it must say is not.
 COST_LABEL_TEMPLATE: Final = "Cost of the delivered {agent}, at your price"
 
-#: The working beside the cost: the liquid volume and the price per millilitre
-#: that it multiplied. The volume is always shown in liquid equivalent, even
-#: when the reader shows the View's amounts in litres of vapour, because it is
-#: the figure the cost multiplies (item 1). The wording is a placeholder.
+#: The calculation shown beside the cost, which is the liquid volume times the
+#: price per millilitre. The volume is always shown in liquid equivalent, even
+#: when the reader has chosen litres of vapour for the View's amounts, because
+#: the cost is computed from that figure (item 1). The wording is a placeholder.
 COST_WORKING_TEMPLATE: Final = "{volume} delivered x {price_per_ml}"
 
 #: Where the price per millilitre came from. The wording is a placeholder.
@@ -311,7 +312,7 @@ COST_NOT_CONVERTED_TEXT: Final = (
 
 @dataclass(frozen=True, slots=True)
 class CostShown:
-    """What one run's cost readout shows: a cost with its working, or why there is none.
+    """What one run's cost readout shows, which is a cost and its calculation or why there is none.
 
     Attributes:
         label: The line over the cost, which says the price is the reader's.
@@ -321,7 +322,7 @@ class CostShown:
             when no cost is shown.
         price: The bottle price, bottle volume, currency and date that the
             price per millilitre came from, or "" when no cost is shown.
-        rounded: `COST_ROUNDED_TEXT` beside a cost, or "".
+        rounded: `COST_ROUNDED_TEXT` when a cost is shown, or "" when none is.
     """
 
     label: str
@@ -355,11 +356,11 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
 
     The price is the one stored for the agent that `delivered` is for, so a
     run after an agent change is priced at the new agent's price. Every line
-    is built from `delivered` and that one price record. No cost is shown, and
-    the readout says why, when the run has no valid price, when the price per
-    millilitre or the cost is not a positive finite number, or when the
-    delivered agent could not be converted to liquid. A cost of zero is shown
-    only for a run that has delivered no agent.
+    is built from `delivered` and that one price record. The readout shows no
+    cost when the run has no valid price, when the price per millilitre or the
+    cost is not a positive finite number, or when the delivered agent could
+    not be converted to liquid. In each of these cases, it says why. A cost of
+    zero is shown only for a run that has delivered no agent.
 
     Args:
         delivered: What the run's panel shows, from one snapshot.
@@ -414,8 +415,8 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     )
 
 
-# A figure the reader types into the price entry: digits with at most one
-# decimal point, and nothing else. A sign, an exponent, a thousands separator
+# A figure that the reader types into the price entry may hold only digits,
+# with at most one decimal point. A sign, an exponent, a thousands separator
 # or a decimal comma is refused rather than guessed at, because "1,250" could
 # mean 1250 or 1.25 (`PL-1P15`).
 _ENTERED_FIGURE_PATTERN: Final = re.compile(r"[0-9]+(\.[0-9]*)?|\.[0-9]+")

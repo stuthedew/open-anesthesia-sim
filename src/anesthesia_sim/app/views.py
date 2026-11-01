@@ -736,18 +736,19 @@ class AgentCostView(QWidget):
     through `ViewRequests.agent_cost_unit`. Every agent cost View shows the
     same unit, and the choice survives a restart (`app/preferences.py`).
 
-    Each run's panel is a copy of a run surface (`RunView.build_agent_cost`),
-    which the run writes and withholds with its readouts. The View asks for no
-    chart frame. The heading says that the values are model outputs, not
-    measurements. Under it, a notice tells the reader when a preference was
-    refused or will not be kept (`PL-B396`).
+    Each run's panel is a copy of a run surface (`RunView.build_agent_cost`).
+    The run updates and withholds the panel together with its readouts. The
+    View asks for no chart frame. The heading says that the values are model
+    outputs, not measurements. Under it, a notice tells the reader when a
+    preference was refused or will not be kept (`PL-B396`).
 
     Each panel also shows the delivered agent's cost at the reader's price for
-    the run's agent, with the figures it multiplied and where the price came
-    from (`PL-1P15`). Under the panels, a form lets the reader set or remove
-    that price, and asks the dashboard through `ViewRequests.agent_price`. The
-    project ships no price, so until the reader sets one each panel says that
-    no cost is shown and why.
+    the run's agent. Beside the cost, it shows the figures that were
+    multiplied to give it, and where the price came from (`PL-1P15`). Under
+    the panels, a form lets the reader set or remove that price. The form
+    sends the request to the dashboard through `ViewRequests.agent_price`.
+    The project ships no price, so until the reader sets one, each panel says
+    that no cost is shown and why.
 
     Args:
         context: What the View is built from.

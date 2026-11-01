@@ -1,4 +1,4 @@
-"""The View contract: what every View implements, and what it is given.
+"""Define the View contract, which says what every View implements and what it is given.
 
 An Area holds one View, and any View can occupy any Area (`ROADMAP.md`
 § "v0.6.0 - the layout is the reader's", Required scope entry 5). That works
@@ -36,8 +36,8 @@ the layout is the reader's", Required scope entry 11, puts the window in each
 View's own state instead, so that one chart can be zoomed to the first minutes
 while another shows the whole run. So a chart View holds its window, sets it
 from its own control and saves it. It asks for a frame at once through
-`ViewRequests.frame` when the reader changes it. `PL-1RFZ` is the later,
-opt-in sync of windows between charts.
+`ViewRequests.frame` when the reader changes it. An opt-in sync of windows
+between charts is left to a later item, `PL-1RFZ`.
 
 **The reader's preferences are shared state too** (`PL-B396`). The agent cost
 View shows the delivered agent in the unit that the reader's preferences hold.
@@ -47,15 +47,15 @@ preferences and saves them (`app/preferences.py`). Each tick shows them to
 every View in `ViewTick.preferences`, and a View asks for a change through
 `ViewRequests.agent_cost_unit` or `ViewRequests.agent_price` (`PL-1P15`).
 
-**What a View is drawn from** (Q3). Each View says which frame it draws
-through `View.frame_request`: the window, and the plot width the frame must
-be sampled for. The dashboard assembles one `ChartFrame` per distinct window
-on each tick, sampled for the widest plot that asks for that window. So no
-plot draws a chord, the straight line between two samples, wider than a pixel
-(`PL-GS3R`), and two charts at the same window draw the same instants
-(`PL-9LNF`). The adapter hands each View the frame for its own window in its
-`ViewTick`. A View that draws no frame returns None from `frame_request`, and
-its tick carries no frame.
+**What a View is drawn from** (Q3). Each View states which frame it draws,
+through `View.frame_request`. The request gives the window and the plot width
+that the frame must be sampled for. The dashboard assembles one `ChartFrame`
+per distinct window on each tick, sampled for the widest plot that asks for
+that window. So no plot draws a chord, the straight line between two samples,
+wider than a pixel (`PL-GS3R`). Two charts at the same window also draw the
+same instants (`PL-9LNF`). The adapter hands each View the frame for its own
+window in its `ViewTick`. A View that draws no frame returns None from
+`frame_request`, and its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -164,8 +164,8 @@ class RunSurfaces(Protocol):
 class ViewRequests:
     """How a View asks the dashboard for a change or for a frame.
 
-    A control over shared state shows the value in each tick and calls one of
-    these. It never stores the value (Q7, `PL-VN6M`).
+    A control over shared state shows the value that each tick carries, and
+    calls one of these to change it. It never stores the value (Q7, `PL-VN6M`).
 
     Attributes:
         frame: Asks for a frame at once, after the View changed a drawing

@@ -2044,7 +2044,7 @@ def test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liqui
     ],
 )
 def test_a_figure_the_reader_entered_is_shown_as_typed(figure: float, expected: str) -> None:
-    """Shown in plain digits, so the price form can read back the text it is filled with.
+    """A figure is shown in plain digits, so the price form can read back the text it holds.
 
     Blind review pass 1 of `PL-1P15` found 0.00005 shown as `5e-05`, which
     the form then refused when the reader pressed Set price again.
@@ -2083,21 +2083,22 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
 
 
 def test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost() -> None:
-    """Derive both precisions from the stored densities, apart from the formatter.
+    """Derive both precisions from the stored densities, independently of the formatter.
 
     `docs/MODEL.md` § "Displayed precision" gives the derivation (`PL-1P15`).
     The price is the reader's own figure, so the cost's only modelled
     uncertainty is the liquid figure's, which comes from the measured density
-    alone. Its largest relative SD is sevoflurane's, 0.0008 / 1.5203, or
-    0.053 %. A cost shown to n significant figures has a smallest relative
-    step of 1 in (10^n - 1), at a value such as 999. At three figures that is
-    0.10 %, coarser than one SD of the density, as the one-sided bound
-    requires. At four figures it would be 0.010 %, finer than one SD.
+    alone. The largest relative SD of a stored density is sevoflurane's,
+    0.0008 / 1.5203, or 0.053 %. A cost shown to n significant figures has a
+    smallest relative step of 1 in (10^n - 1), at a value such as 999. At
+    three figures that is 0.10 %, coarser than one SD of the density, as the
+    one-sided bound requires. At four figures it would be 0.010 %, finer than
+    one SD.
 
     The price per millilitre carries no model uncertainty. Four figures is the
-    fewest at which its rounding moves the product of the figures shown by at
-    most half of the cost's smallest step: half a step at four figures is at
-    most 0.5 in 1000, or 0.050 %, against 0.5 in 999 for the cost.
+    fewest at which rounding the price moves the product of the figures shown
+    by at most half of the cost's smallest step. Half a step at four figures is
+    at most 0.5 in 1000, or 0.050 %, against 0.5 in 999 for the cost.
     """
 
     largest_relative_sd = max(

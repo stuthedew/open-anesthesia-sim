@@ -1673,7 +1673,7 @@ PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES: Final = 4
 
 
 def _require_currency_amount(amount: float, what: str) -> None:
-    """Refuse an amount of money that is not a finite number, not negative.
+    """Refuse an amount of money unless it is a finite number that is not negative.
 
     Raises:
         TypeError: If `amount` is not a number, or is a `bool`.
@@ -1704,7 +1704,7 @@ def _require_currency_code(currency: str) -> None:
 
 
 def format_agent_cost(cost: float, currency: str) -> str:
-    """Render the cost of the delivered agent at the reader's price, after its currency code.
+    """Render the cost of the delivered agent at the reader's price, with its currency code first.
 
     The cost is rounded to `AGENT_COST_SIGNIFICANT_FIGURES` significant
     figures, and never to more than `AGENT_COST_FINEST_DECIMALS` decimals. So
@@ -1769,7 +1769,7 @@ def format_price_per_liquid_ml(price_per_ml: float, currency: str) -> str:
         The currency code, the rounded price and its unit.
 
     Raises:
-        TypeError: As `format_agent_cost` raises it.
+        TypeError: In the same cases as `format_agent_cost`.
         ValueError: If `price_per_ml` is not positive and finite, or if
             `currency` is not three capital letters.
     """
@@ -1793,7 +1793,7 @@ def format_entered_figure(figure: float) -> str:
     """Render a figure the reader entered, such as a bottle price, as the reader typed it.
 
     The figure is not a model output, so no displayed precision applies to
-    it. It is shown as the shortest decimal that reads back as the same
+    it. It is shown as the shortest decimal that converts back to the same
     float, in plain digits with trailing zeros dropped. That gives back the
     digits the reader typed: 20.47 as `20.47`, 100.0 as `100` and 0.00005 as
     `0.00005`. It is never written with an exponent, because the price form
@@ -1816,9 +1816,10 @@ def _round_to_figures(
 
     `finest_decimals` of None sets no limit on the decimals. The rounding is
     to the nearest figure, with halves rounded to even. A value can round up
-    into the next power of ten, as 9.96 does to 10.0 at three figures. It is
-    then rounded again at that power's number of decimals, so 9.96 becomes 10
-    at two figures, not 10.0, which would claim three.
+    into the next power of ten, as 9.96 does to 10.0 at three figures. The
+    value is then rounded again with the number of decimals for that power of
+    ten. So at two figures, 9.96 becomes 10 and not 10.0, which would claim
+    three figures.
 
     Returns:
         The rounded value and the number of decimals it has. The number of

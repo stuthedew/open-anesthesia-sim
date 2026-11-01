@@ -1,18 +1,19 @@
-"""What the agent cost View shows for one run, and its cost, checked against values found apart.
+"""Test what the agent cost View shows for one run, and its cost, against independent values.
 
 `app/agent_cost.py` turns a snapshot into the delivered agent in millilitres
 of liquid equivalent and in litres of vapour (`PL-B396`). The expected values
 here come from a closed form and from transcribed constants, never from the
 conversion under test. The delivered vapour is the dial times the fresh gas
-flow times the time. The vapour-to-liquid factor is worked out here from each
-agent's liquid density at 20 °C and its molar mass, as `docs/MODEL.md`
-§ "Agent amount" tabulates them (Laster, Fang and Eger's densities, and
-formula masses), and from the ideal-gas molar volume at 20 °C and 1 atm,
-written out from R.
+flow times the time. The tests work out the vapour-to-liquid factor for each
+agent from three values. Two are the agent's liquid density at 20 °C and its
+molar mass, as `docs/MODEL.md` § "Agent amount" tabulates them (Laster, Fang
+and Eger's densities, and formula masses). The third is the ideal-gas molar
+volume at 20 °C and 1 atm, written out from R.
 
 The cost at the reader's price (`PL-1P15`) is checked the same way. The
-expected cost is the liquid volume worked out here times the bottle price over
-the bottle volume, divided here, and printed in this file's own format.
+expected cost is the liquid volume worked out here times the bottle price
+divided by the bottle volume. This file does that division itself, and prints
+the result in its own format.
 """
 
 import ast
@@ -303,9 +304,9 @@ def test_a_unit_with_no_derived_precision_for_the_delivered_agent_is_refused() -
         format_delivered_agent(1.0, AgentAmountUnit.MILLILITRES_OF_VAPOUR)
 
 
-#: Gas Man's isoflurane price, as its parameter file holds it: US$20.47 for a
-#: 100 mL bottle, "as of March 5, 2008" (Philip JH, *Workbook for Gas Man*,
-#: Appendix C, printed p. 171, and printed p. 105).
+#: Gas Man's parameter file prices isoflurane at US$20.47 for a 100 mL bottle,
+#: "as of March 5, 2008" (Philip JH, *Workbook for Gas Man*, Appendix C,
+#: printed p. 171, and printed p. 105).
 _GAS_MAN_ISOFLURANE = AgentPrice("isoflurane", 20.47, 100.0, "USD", date(2008, 3, 5))
 
 
@@ -325,12 +326,12 @@ def _shown_with_liquid(liquid_ml: float | None) -> DeliveredShown:
 
 
 def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume() -> None:
-    """Gas Man's Exercise 14-1 to 13 min: 2 % isoflurane at 8 L/min, 2.08 L of vapour.
+    """In Gas Man's Exercise 14-1, 2 % isoflurane at 8 L/min delivers 2.08 L of vapour by 13 min.
 
     The cost worked out here is 2080 / 195.8 x 20.47 / 100 = USD 2.17, which
     is the book's printed $2.17 (printed p. 133). The readout shows the
-    figures it multiplied, the price they came from, words that say the price
-    is the reader's, and that the figures are rounded.
+    figures that were multiplied, the price they came from, words that say the
+    price is the reader's, and a statement that the figures are rounded.
     """
 
     snapshot = _run("isoflurane", 2.0, 8.0, 13.0)
@@ -352,7 +353,7 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
 
 
 def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() -> None:
-    """`docs/MODEL.md`'s desflurane case: USD 115.13 per 240 mL, 6 % at 1 L/min for 60 min.
+    """Run `docs/MODEL.md`'s desflurane case, 6 % at 1 L/min for 60 min at USD 115.13 per 240 mL.
 
     The cost is 3600 / 209.7 x 115.13 / 240 = USD 8.23. The figures shown
     beside it, 17.2 mL and USD 0.4797 per mL, multiply to USD 8.25. So the

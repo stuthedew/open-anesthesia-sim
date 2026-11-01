@@ -1,11 +1,12 @@
 """State the one rule for what a currency code must look like (`PL-93B3`, `PL-1P15`).
 
-`docs/MODEL.md` § "A cost at the reader's price" stores and shows a price's
-currency as its ISO 4217 alphabetic code, never as a sign such as "$" that
-several currencies share. The store refuses a code that is not three capital
-letters, and the formatters refuse to print one. Both read the rule here, so
-they cannot disagree about it. The code is not checked against the list of
-codes ISO 4217 assigns, for the reason `app/preferences.py` gives.
+`docs/MODEL.md` § "A cost at the reader's price" says that a price's currency
+is stored and shown as its ISO 4217 alphabetic code. It is never shown as a
+sign such as "$" that several currencies share. The store refuses a code that
+is not three capital letters, and the formatters refuse to print one. Both
+read the rule here, so they cannot disagree about it. The code is not checked
+against the list of codes ISO 4217 assigns, for the reason `app/preferences.py`
+gives.
 """
 
 from __future__ import annotations

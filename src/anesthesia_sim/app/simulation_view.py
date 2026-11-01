@@ -1972,7 +1972,8 @@ class SimulationView(QWidget):
         Every cost at that agent's price is redrawn on the frame drawn here,
         whether or not the run is advancing (`docs/MODEL.md` § "A cost at the
         reader's price", `PL-1P15`). Setting a price drops any refused entry
-        for the agent, and removing one drops both.
+        for the agent. Removing a price drops both the price and any refused
+        entry.
 
         Raises:
             SimulationConfigurationError: If `price` is for an agent other

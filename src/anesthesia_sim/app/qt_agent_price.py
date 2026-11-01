@@ -2,11 +2,12 @@
 
 `docs/MODEL.md` § "A cost at the reader's price" specifies what a price holds
 and what is refused (`PL-1P15`). The reader enters the price of one bottle
-and the bottle's volume in millilitres of liquid, its currency as an ISO 4217
-code, and the date on which the price applied. The date starts at the day of
-entry, for the reader to change, because a price goes stale from the day it
-was quoted. `app/agent_cost.py` turns the texts into a price and refuses an
-entry it cannot read. A refused entry changes nothing, and the form says why.
+and the bottle's volume in millilitres of liquid, the price's currency as an
+ISO 4217 code, and the date on which the price applied. The date starts at the
+day of entry, and the reader can change it to the day the price was quoted,
+because a price goes stale from that day. `app/agent_cost.py` turns the texts
+into a price and refuses an entry it cannot read. A refused entry changes
+nothing, and the form says why.
 
 The form only asks for a change, through `ViewRequests.agent_price`. The
 dashboard holds the prices and saves them, so every agent cost View prices
@@ -55,8 +56,8 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 __all__ = ["PRICE_ENTRY_HEADING", "PriceEntry"]
 
 #: The form's heading, and the labels of its fields and buttons. Every one is
-#: a placeholder. The bottle volume's label names its unit, so a volume typed
-#: in litres or as a count of bottles is less likely (`docs/MODEL.md`
+#: a placeholder. The bottle volume's label names its unit, so the reader is less
+#: likely to type a volume in litres or as a count of bottles (`docs/MODEL.md`
 #: § "A cost at the reader's price").
 PRICE_ENTRY_HEADING: Final = "Your price for an agent. The project supplies none."
 AGENT_FIELD_LABEL: Final = "Agent"
@@ -70,8 +71,8 @@ SET_PRICE_LABEL: Final = "Set price"
 REMOVE_PRICE_LABEL: Final = "Remove price"
 
 #: The date field shows a date as ISO 8601 writes it, as the readout does, so
-#: 2008-03-05 never reads as May 3 (`docs/MODEL.md` § "A cost at the reader's
-#: price").
+#: 2008-03-05 is never mistaken for May 3 (`docs/MODEL.md` § "A cost at the
+#: reader's price").
 _DATE_FORMAT: Final = "yyyy-MM-dd"
 
 #: The most letters the currency field takes, the length of an ISO 4217 code.
@@ -102,9 +103,10 @@ class PriceEntry(QWidget):
         self._request = request
         self._today = today
         self._preferences = Preferences()
-        # What the fields were last filled from: the agent, its stored price,
-        # and whether a refused entry for it is in the file. The last decides
-        # whether Remove is offered, so a change to it refills too.
+        # What the fields were last filled from. It is the agent, its stored
+        # price, and whether a refused entry for the agent is in the file. The
+        # last of the three decides whether Remove is offered, so a change to it
+        # also fills the fields again.
         self._filled_from: tuple[str, AgentPrice | None, bool] | None = None
         self._agent_chosen = False
         self.agent_selector = FocusedComboBox()

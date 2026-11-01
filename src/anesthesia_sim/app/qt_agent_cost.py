@@ -4,9 +4,10 @@
 `PL-1P15`). This module only lays the texts out and shows the ones for the
 reader's unit and prices. The amount is printed large, with its unit on it,
 and the caption under it says what the unit measures. The cost readout
-follows, with the figures it multiplied and where the price came from. Every
-look here, from the sizes to the order of the lines, is a placeholder until
-the visual pass (`ROADMAP.md`, planned-milestone item 33).
+follows. It shows the figures that were multiplied to give the cost, and where
+the price came from. Every visual choice here, from the sizes to the order of
+the lines, is a placeholder until the visual pass (`ROADMAP.md`,
+planned-milestone item 33).
 """
 
 from __future__ import annotations
@@ -31,18 +32,19 @@ __all__ = ["RunAgentCost"]
 
 
 class RunAgentCost(QWidget):
-    """One copy of a run's agent cost panel: its instant, the delivered amount and its cost.
+    """One copy of a run's agent cost panel, showing its instant, the delivered amount and its cost.
 
     The panel is one of the run's surfaces, the parts of a run that a reader
     may place in an Area. `RunView.build_agent_cost` builds each copy. The run
-    writes every live copy at the same moments as its readouts, from the same
+    updates every live copy at the same moments as its readouts, from the same
     snapshot. It withholds the copies whenever it withholds the readouts, and
     it names them whenever it names its own panels (`app/run_surfaces.py`,
     `PL-9LNF`). The View that holds the copy gives it the reader's
-    preferences on every frame, so every copy shows the same unit and prices
-    the run at the reader's price for its own agent. Each write recomputes the
-    cost from the snapshot and the preferences it holds then, so no cost from
-    an earlier instant, agent or price stays on screen.
+    preferences on every frame. So every copy shows the same unit, and prices
+    the run at the reader's price for the run's own agent. Each update
+    recomputes the cost from the snapshot and from the preferences that the
+    copy holds at that moment. So no cost from an earlier instant, agent or
+    price stays on screen.
 
     Args:
         shown: What the copies built earlier already show.

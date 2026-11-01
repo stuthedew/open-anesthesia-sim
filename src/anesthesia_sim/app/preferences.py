@@ -227,8 +227,9 @@ class AgentPrice:
     def price_per_liquid_ml(self) -> float:
         """Return the price of one millilitre of liquid agent, in `currency`.
 
-        This is the one place that derives it. The store never holds it, so it
-        cannot disagree with the bottle price and volume it comes from
+        This property is the only place that computes the price per
+        millilitre. The store never holds the price per millilitre, so it
+        cannot disagree with the bottle price and volume that it comes from
         (`docs/MODEL.md` § "A cost at the reader's price"). Both figures are
         positive and finite, but the quotient of two such floats can still be
         infinite or zero, such as 1e308 over 0.5. The cost readout shows no
