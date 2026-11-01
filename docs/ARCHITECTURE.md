@@ -1023,23 +1023,24 @@ price.
 
 ## Dependencies
 
-**Three declared runtime dependencies** are listed in `pyproject.toml`:
-`PySide6-Essentials`, `pyqtgraph` and `pydantic`. `flet` and `flet-charts`
-were removed by `PL-3SQT`, after `PL-25KS` had deleted the last module that
-imported either of them. Removing them from that list is not what keeps Flet
-out, though. `tools/import_boundary_check.py` permits neither of them in any
-module under `src/`, and that check is the rule.
+**Four declared runtime dependencies** are listed in `pyproject.toml`:
+`PySide6-Essentials`, `pyqtgraph`, `numpy` and `pydantic`. `flet` and
+`flet-charts` were removed by `PL-3SQT`, after `PL-25KS` had deleted the last
+module that imported either of them. Removing them from that list is not what
+keeps Flet out, though. `tools/import_boundary_check.py` permits neither of
+them in any module under `src/`, and that check is the rule.
 
-**numpy arrives underneath pyqtgraph.** The metadata of pyqtgraph requires
-`numpy>=1.25.0` outright, so numpy is installed in every environment and
-`uv.lock` names its version. But no module under `src/` imports numpy, and
-`import_boundary_check.py` permits it in no module under `core/`. The tests
-declare numpy for themselves, in the `dev` group. They need it because
+**numpy is the chart's array type, and nothing else's.** `app/qt_chart.py`
+hands pyqtgraph every curve's points as `numpy.ndarray`s, which is the form
+pyqtgraph's performance guidance asks for (`PL-TCNT`). pyqtgraph requires
+numpy for itself, so numpy was installed before then, but a package this
+project imports is one it declares. The tests use it too:
 `tests/reference/test_late_washout_against_published_fits.py` decomposes the
-model's open-circuit system with `numpy.linalg.eig` (`PL-921Y`). This
-document takes no position on declaring numpy for the application.
-`docs/WORKING_NOTES.md` § "Decided: no numpy" says why that question stays
-open until a module under `src/` wants numpy.
+model's open-circuit system with `numpy.linalg.eig` (`PL-921Y`).
+`import_boundary_check.py` permits numpy in no module under `core/`, so the
+model's propagator stays the pure-Python one that `docs/MODEL.md` § "The
+reproducibility guarantee" describes. `app/chart_frame.py` does not import it
+either: a frame holds plain values, and only the toolkit layer converts them.
 
 **What Linux has to supply, which the Qt wheels do not carry.** This was
 measured on 2026-09-16 by running `ldd` over two files in the wheel itself,

@@ -1,9 +1,15 @@
 ---
 id: PL-TCNT
 title: The chart hands pyqtgraph Python lists on every frame and checks every value for NaN, where pyqtgraph's own performance guidance asks for numpy arrays and allows skipFiniteCheck once the values are known finite; take both, behind a frame-side guarantee that every drawn value is finite, so the chart's per-frame cost follows the library's recommended path
-status: untriaged
+priority: P3
+effort: S
+status: done
 feature: chart-readout
+touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/run_series.py, pyproject.toml, uv.lock, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md, tests/integration/test_qt_chart.py, tests/integration/test_simulation_view.py, tests/unit/test_chart_frame.py, tests/unit/test_run_series.py
 added: 2026-11-01
+closed: 2026-11-01
+pr: 1924
+verify: .venv/bin/python -m pytest -q tests/integration/test_qt_chart.py::test_every_curve_is_handed_the_frame_s_own_values_as_float64_arrays tests/integration/test_simulation_view.py::test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment tests/unit/test_chart_frame.py::test_a_non_finite_drawn_value_is_refused_naming_its_compartment tests/unit/test_chart_frame.py::test_a_wash_in_stretch_refuses_a_non_finite_ratio tests/unit/test_run_series.py::test_a_window_refuses_an_instant_that_is_not_finite
 ---
 
 **Problem.** The chart hands pyqtgraph Python lists on every frame and checks every value for NaN, where pyqtgraph's own performance guidance asks for numpy arrays and allows skipFiniteCheck once the values are known finite; take both, behind a frame-side guarantee that every drawn value is finite, so the chart's per-frame cost follows the library's recommended path
@@ -17,3 +23,9 @@ added: 2026-11-01
 Sources: https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/plotdataitem.html and https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/plotcurveitem.html (read 2026-11-01).
 
 **Done when.** Every `setData` on the concentration and wash-in charts receives numpy arrays. `skipFiniteCheck=True` is set only where the frame guarantees finite values, and a test shows a non-finite value still halts the run with its compartment named. The drawn points are unchanged, shown by comparing the arrays handed to pyqtgraph before and after.
+
+**Generator check.** Not a generator. It is one change to one adapter, and nothing else was filed from it. It touches `docs/WORKING_NOTES.md` only to record the numpy decision that note left open until a module under `src/` wanted numpy.
+
+**Outcome (2026-11-01).** `app/qt_chart.py` hands every curve and dot `float64` arrays through `_plot_coordinates`, and draws every curve through `_draw_curve`, which passes `skipFiniteCheck=True`. Those two functions are the one place where each happens. The finite-value guarantee is stated in `app/chart_frame.py`'s module docstring and enforced where each coordinate is built. A compartment value is a `Fraction`, which already rejected NaN and infinity under the compartment's name. `DrawnWindow` now rejects a non-finite instant, and `WashInStretch` now rejects a non-finite ratio. numpy became a declared runtime dependency, since a package the project imports is one it declares, and the `dev` group's copy went in the same commit. `app/chart_frame.py` and `core/` still do not import numpy.
+
+A checked `CaseInstant` type for every drawn instant was considered instead of the finiteness check in `DrawnWindow`. It would also check the supported run length, but it reaches into `core/run_definition.py`, which produces the instants, and finiteness is all that `skipFiniteCheck` needs. The pens stay as they are: the item's context records why the wider, dashed, antialiased pens are kept.
