@@ -70,6 +70,7 @@ from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, areas_in
 __all__ = [
     "Apportionment",
     "Fit",
+    "Floor",
     "PixelSize",
     "TooSmall",
     "apportion",
@@ -117,6 +118,66 @@ class PixelSize:
         """The extent across `orientation`'s axis: the height for a row, the width for a column."""
 
         return self.height_px if orientation is Orientation.ROW else self.width_px
+
+
+@dataclass(frozen=True, slots=True)
+class Floor:
+    """The least size at which an Area is held while it is too small for its View.
+
+    An Area that is too small shows a notice in place of its View. The notice's
+    text wraps at the width at which the Area is drawn, so a wider Area needs
+    fewer lines (`PL-9Z74`). So the floor's height depends on that width, and the
+    floor is stated only at a width. `at` takes the width as a required argument,
+    and `fits_in` reads it from the size it is given. Each reader of an Area's
+    floor names the width it means, and none can fall back to a default
+    (`PL-16BG`).
+
+    Attributes:
+        width_px: The floor's width, which is the least width that holds the
+            Area's header. It does not depend on the width at which the Area is
+            drawn, and an Area is never drawn narrower than it.
+        height_at: The floor's height for an Area drawn a given number of pixels
+            wide, at least `width_px`. A wider Area never needs a taller floor.
+
+    Raises:
+        TypeError: `width_px` is not an `int`, or is a `bool`.
+        InvalidLayout: `width_px` is negative.
+    """
+
+    width_px: int
+    height_at: Callable[[int], int]
+
+    def __post_init__(self) -> None:
+        PixelSize(self.width_px, 0)
+
+    @classmethod
+    def fixed(cls, size: PixelSize) -> Floor:
+        """Return a floor that is `size` at every width.
+
+        It is the floor of an Area whose floor holds no wrapped text.
+        """
+
+        height_px = size.height_px
+
+        return cls(size.width_px, lambda _width_px: height_px)
+
+    def at(self, drawn_width_px: int) -> PixelSize:
+        """Return the floor of an Area drawn `drawn_width_px` wide.
+
+        A width less than `width_px` is taken as `width_px`, because an Area is
+        never drawn narrower than its floor.
+
+        Raises:
+            TypeError: the height `height_at` gives is not an `int`.
+            InvalidLayout: that height is negative.
+        """
+
+        return PixelSize(self.width_px, self.height_at(max(self.width_px, drawn_width_px)))
+
+    def fits_in(self, size: PixelSize) -> bool:
+        """Return whether an Area drawn at `size` holds its floor at the width of `size`."""
+
+        return size.covers(self.at(size.width_px))
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,11 +277,14 @@ def split_sizes(
 
 
 def drawn_bounds(
-    needs: Mapping[AreaId, PixelSize], floors: Mapping[AreaId, PixelSize]
+    needs: Mapping[AreaId, PixelSize], floors: Mapping[AreaId, Floor]
 ) -> dict[AreaId, PixelSize]:
     """Return the size at which each Area is held while it draws its View.
 
-    That size is the larger of the Area's need and its floor on each axis.
+    That size is the larger of the Area's need and its floor on each axis. The
+    floor is measured at the width of the need. An Area that draws its View is
+    drawn at least that wide, and a wider Area never needs a taller floor. So the
+    bound holds at every width at which the Area draws its View.
 
     An Area whose floor is wider or taller than its View's need is held at the
     floor on that axis, so its header still fits. `settle` holds a drawn Area
@@ -229,10 +293,12 @@ def drawn_bounds(
     size.
 
     Raises:
-        KeyError: `floors` has no size for an Area in `needs`.
+        KeyError: `floors` has no floor for an Area in `needs`.
     """
 
-    return {area_id: _larger(need, floors[area_id]) for area_id, need in needs.items()}
+    return {
+        area_id: _larger(need, floors[area_id].at(need.width_px)) for area_id, need in needs.items()
+    }
 
 
 def border_range(
@@ -477,7 +543,7 @@ def settle(
     extent: PixelSize,
     handle_px: int,
     needs: Mapping[AreaId, PixelSize],
-    floors: Mapping[AreaId, PixelSize],
+    floors: Mapping[AreaId, Floor],
     kept: AbstractSet[AreaId],
 ) -> Fit:
     """Decide which Areas of `tree` can be given their need in `extent`, and lay every one out.
@@ -505,14 +571,72 @@ def settle(
     by the same rules, until the shortfall is the least it can be. Every Area
     that is then given its need is drawn, and every other Area is too small.
 
+    **Each floor is measured at the width at which its Area is drawn**
+    (`PL-9Z74`, `PL-16BG`). That width is known only once the Areas are laid
+    out, so the Areas are settled twice. The first time, each floor is measured
+    at its own width, the narrowest width at which an Area is drawn. That gives
+    the tallest floor, which fits the notice at any width. The second time,
+    each floor is measured at the width at which the first time drew its Area.
+    A wider Area, such as one in a column as wide as the window, then has a
+    lower floor. That can leave enough room for a neighbouring Area to keep its
+    View.
+
+    The second fit is used only where it is safe, and that takes two
+    conditions. First, every width that the second fit gives must be the width
+    at which the Area is drawn. That holds where no split is too narrow for its
+    Areas (`_widths_held`). Second, every too-small Area must be drawn at least
+    as wide as the width at which its floor was measured, so that no notice is
+    cut off. Where either condition fails, the first fit is used.
+
     Raises:
         TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
         InvalidLayout: `handle_px` is negative.
-        KeyError: `needs` or `floors` has no size for an Area of `tree`.
+        KeyError: `needs` or `floors` has no entry for an Area of `tree`.
     """
 
     areas = tuple(areas_in(tree))
     held = drawn_bounds({area.id: needs[area.id] for area in areas}, floors)
+    narrowest = {area.id: floors[area.id].at(floors[area.id].width_px) for area in areas}
+    first = _settled_at(tree, extent, handle_px, needs, held, narrowest, kept)
+
+    if not _widths_held(tree, extent, handle_px, first):
+        return first
+
+    widths = first.apportionment.areas
+    lowered = {area.id: floors[area.id].at(widths[area.id].width_px) for area in areas}
+
+    if lowered == narrowest:
+        return first
+
+    second = _settled_at(tree, extent, handle_px, needs, held, lowered, kept)
+
+    if not _widths_held(tree, extent, handle_px, second):
+        return first
+
+    for entry in second.too_small:
+        measured = floors[entry.area_id].at(entry.available.width_px)
+
+        if measured.height_px > lowered[entry.area_id].height_px:
+            return first
+
+    return second
+
+
+def _settled_at(
+    tree: Node,
+    extent: PixelSize,
+    handle_px: int,
+    needs: Mapping[AreaId, PixelSize],
+    held: Mapping[AreaId, PixelSize],
+    floors: Mapping[AreaId, PixelSize],
+    kept: AbstractSet[AreaId],
+) -> Fit:
+    """Return `settle`'s fit with each Area's floor fixed at `floors`.
+
+    `held` is each Area's `drawn_bounds` entry.
+    """
+
+    areas = tuple(areas_in(tree))
     laid_out = apportion(tree, extent, handle_px, held)
 
     if laid_out.unheld:
@@ -531,6 +655,19 @@ def settle(
     )
 
     return Fit(laid_out, MappingProxyType(final), drawn, too_small)
+
+
+def _widths_held(tree: Node, extent: PixelSize, handle_px: int, fit: Fit) -> bool:
+    """Return whether every Area of `fit` is drawn at the width that `fit` gives it.
+
+    That holds where the tree's least width, with each Area at its bound in
+    `fit`, fits in `extent`. Every split then has room along the width for the
+    bound of each Area in it. Where the least width does not fit in `extent`,
+    the adapter's splitters draw an Area at its bound rather than at the width
+    that `fit` gives it.
+    """
+
+    return _minimum_extent(tree, handle_px, fit.bounds).width_px <= extent.width_px
 
 
 # `settle` weighs every subset of a tree's Areas when the tree has at most this
