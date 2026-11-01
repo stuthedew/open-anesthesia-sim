@@ -1,4 +1,4 @@
-"""The steps that write a reader's file to disk atomically, shared by every store that keeps one.
+"""Write a reader's file to disk atomically, for every store that keeps such a file.
 
 Two stores keep a file in the reader's data directory: the Workspaces
 (`layout/store.py`) and the preferences (`app/preferences.py`). Both write a
