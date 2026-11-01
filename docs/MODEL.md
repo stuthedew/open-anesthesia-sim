@@ -4564,8 +4564,14 @@ in `tests/reference/test_sevo_patient.py` and for isoflurane and desflurane in
 
 With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_I`$.
 
-Held by `test_higher_ventilation_increases_early_alveolar_fraction` in
-`tests/reference/test_sevo_patient.py`.
+Held by `test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster`
+in `tests/reference/test_sevo_patient.py`. It runs the default sevoflurane
+wash-in at 2 and 8 L/min of alveolar ventilation and requires $`F_A/F_I`$ to
+be higher at 8 L/min at every whole second of the first minute. The test
+compares the ratio because $`F_A`$ alone measures the approach to $`F_I`$
+only when $`F_I`$ is the same in both runs, and here it is not. The circle
+system rebreathes, and more ventilation carries more agent into the patient,
+so $`F_I`$ itself rises more slowly at the higher ventilation.
 
 ### Directional solubility test
 
@@ -4629,9 +4635,14 @@ with the step and converged to a limit that none of the three steps reached.
 Every supported step now lands on that limit. The gaps therefore sit at the
 smallest size that floating-point rounding allows, and they no longer shrink.
 Requiring them to shrink would fail correct arithmetic. The gate requires
-instead that the gaps stay at that rounding level. Measured on 2026-09-06, the
-worst successive-halving gap across the four reported values is 8.1e-16. A
-first-order method would show 1.4e-11 at these steps.
+instead that the gaps stay at that rounding level. The gate compares three
+values: the alveolar, vessel-rich and mixed-venous fractions after 60 s.
+Measured on 2026-11-01, the worst successive-halving gap across the three is
+3.4e-16, in the alveolar fraction. A first-order method would show 1.4e-11 at
+these steps. The gate's bound, 1e-14, was sized on 2026-09-06 at about twelve
+times the worst gap measured then, 8.1e-16. That measurement reported four
+values, and no record names the fourth. The test has compared the same three
+since the exact step landed.
 
 **A second test beside the gate drives the bottom of the supported domain**,
 `MINIMUM_SIMULATION_STEP_S` (`PL-YZ17`). A minute simulated in 1 ms steps
@@ -4640,7 +4651,7 @@ compared fraction. This bound is wider than the bound for the halvings
 because that minute takes 60 000 steps rather than at most 2 400, and the
 residual is rounding error that accumulates once per step. Measured on 2026-10-03, the
 worst gap is 2.4e-15, in the alveolar fraction. The bound allows about twelve
-times that gap, which is the same margin the halvings have. The gap does not
+times that gap, which is the margin at which the halvings' bound was sized. The gap does not
 vary smoothly with the step. It depends on how the propagator happens to
 round at that particular step, and steps near 1 ms reach 1.2e-14. Against a
 machine that rounds differently, the margin is therefore nearer two and a half
