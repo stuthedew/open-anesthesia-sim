@@ -63,7 +63,9 @@ that the list missed went on showing the run as it was at the last frame
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
 number of steps that the playback rate sets, and it never draws. The
 dashboard's own render timer does the drawing. No wall clock is read.
-Simulation time is a count of the steps taken.
+Simulation time is a count of the steps taken. A tick takes no step while a
+question is open in the window, because the question blocks the Pause button
+(`hold_while`).
 """
 
 from __future__ import annotations
@@ -369,6 +371,10 @@ class RunView(QWidget):
         # acted on once.
         self._reset_question: Callable[[], NewCaseQuestion | None] | None = None
         self._reset_dialog: NewCaseDialog | None = None
+        # Whether this run must take no step. Until the dashboard says
+        # otherwise (`hold_while`), the run holds while one of its own
+        # questions is open.
+        self._held: Callable[[], bool] = lambda: self.asks_a_question
         # Whether a frame has drawn this run yet. A coalesced slider change
         # rewrites this run's own labels at once, but only after the first
         # frame has written everything.
@@ -592,6 +598,33 @@ class RunView(QWidget):
         """Whether this run is advancing."""
 
         return self.controller.is_running
+
+    @property
+    def asks_a_question(self) -> bool:
+        """Whether this run's Reset question or new-case question is open."""
+
+        return self._reset_dialog is not None or self._new_case_dialog is not None
+
+    def hold_while(self, held: Callable[[], bool]) -> None:
+        """Take no step on any tick at which `held` returns True.
+
+        A question that this run or the dashboard opens is window-modal, so
+        while it is open the reader cannot press Pause on any run. The run
+        therefore holds, and it carries on as it was once the question closes:
+        a running run runs again, a paused run stays paused, and the playback
+        rate is unchanged. The hold changes nothing in the controller. It only
+        skips ticks, so the run's trajectory is the same as if the reader had
+        answered at once (`PL-TPBH`, decided by the project owner on
+        2026-10-31). Before this, a reader who read the question for ten
+        seconds at 300× came back to a case 50 simulated minutes on.
+
+        Args:
+            held: Returns True while a question is open anywhere in the
+                window. The dashboard passes one predicate to every run, so
+                a question about one run holds all of them.
+        """
+
+        self._held = held
 
     @property
     def owes_a_frame(self) -> bool:
@@ -1308,13 +1341,15 @@ class RunView(QWidget):
         """Rewrite an open Reset question from the runs as they stand now.
 
         The trunk's Reset question names each branch it discards and the
-        instant that branch has run to. Reset stays enabled while the runs
-        step, and a branch goes on stepping while the question is open. So a
-        question written only once, when it opened, understated the branch
-        work that the reader was about to discard (`PL-WM5P`). The
-        dashboard's `ask_before_reset` callback reads every branch's
-        controller, and each controller has already stepped by the time this
-        run is refreshed.
+        instant that branch has run to. Before `PL-TPBH`, a branch went on
+        stepping while the question was open. So a question written only once,
+        when it opened, understated the branch work that the reader was about
+        to discard (`PL-WM5P`). Every run now holds while the question is open
+        (`hold_while`), so the figures do not change. The question is still
+        rewritten on each frame. That costs one callback per frame, and it
+        keeps the question true to the runs even if a later change lets a run
+        move while a question is open. The dashboard's `ask_before_reset`
+        callback reads every branch's controller.
 
         If the callback now returns no question, the dialog is left as it
         is. That case does not arise, because a branch's work only grows
@@ -1565,12 +1600,14 @@ class RunView(QWidget):
         """Rewrite an open new-case question from the frame's snapshot.
 
         The question states how much run time and how many control changes
-        the new case discards. The run is not paused while the question is
-        open, so a running run goes on stepping. A question written only
-        once, when it opened, therefore understated what the reader was
-        about to lose (`PL-WM5P`). A halt does not rewrite the question. A
-        halted run does not step, so the figure from the last frame is still
-        correct.
+        the new case discards. Before `PL-TPBH`, a running run went on
+        stepping while the question was open. A question written only once,
+        when it opened, therefore understated what the reader was about to
+        lose (`PL-WM5P`). The run now holds while the question is open
+        (`hold_while`), so the figures do not change. The question is still
+        rewritten on each frame, for the reason `_restate_reset_question`
+        gives. A halt does not rewrite the question. A halted run does not
+        step, so the figure from the last frame is still correct.
 
         Args:
             snapshot: The snapshot the frame drew from.
@@ -1724,10 +1761,11 @@ class RunView(QWidget):
         steps are abandoned, and the gate halts the run on the last completed step.
         The slot keeps working afterwards, so Reset can restart the run. A tick that
         fires late costs the run real time but never changes its trajectory, because
-        no step is made up.
+        no step is made up. A tick takes no step while `hold_while`'s
+        predicate returns True, that is, while a question is open.
         """
 
-        if not self.controller.is_running:
+        if not self.controller.is_running or self._held():
             return
 
         steps = self._playback_rate.steps_per_tick(

@@ -4671,12 +4671,13 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered(
 
 
 def test_an_open_new_case_question_follows_a_running_run(application: QApplication) -> None:
-    """`PL-WM5P`: the question states what the new case discards as the run stands now.
+    """The question states what the new case discards as the run stands now (`PL-WM5P`).
 
-    The run is not paused while the question is open, so a running run goes
-    on stepping. Before the fix, the question was written only once, when it
-    opened, so its figure for the run time about to be discarded fell behind
-    the clock.
+    Before the fix, the question was written only once, when it opened, so
+    its figure for the run time about to be discarded fell behind the clock.
+    Since `PL-TPBH` the run's own ticks hold while the question is open, so
+    the test moves the controller directly. The rewrite is kept as a guard
+    against any later path that moves a run under an open question.
     """
 
     controller = _paused_run_with_history(60.0)
@@ -8777,6 +8778,9 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
         "it returns the question that the trunk's Reset asks, and the trunk's own gated "
         "Reset slot calls it"
     ),
+    ("SimulationView", "self._a_question_is_open"): (
+        "it returns whether a question is open, and each run's own gated step_tick calls it"
+    ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),
@@ -10275,12 +10279,13 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     """The Reset question reports the branch's work as it is now (`PL-WM5P`).
 
     The question does not report the work as it was when it was asked.
-    Reset stays enabled while the runs advance, so a branch goes on running
-    while the trunk's question is open. The test compares the warning with a
-    literal string. Four steps of 0.1 s from the fork at 60 s reach 1m0.4s,
-    and four more reach 1m0.8s. The one recorded change is the trunk's change
-    at 1m. The branch opened with that change, and its "Control changes"
-    panel lists it (`PL-ZR49`).
+    Before `PL-TPBH` a branch went on running while the trunk's question was
+    open. The runs' ticks now hold while it is open, so the test moves the
+    branch's controller directly, and the rewrite is kept as a guard. The
+    test compares the warning with a literal string. Four steps of 0.1 s
+    from the fork at 60 s reach 1m0.4s, and four more reach 1m0.8s. The one
+    recorded change is the trunk's change at 1m. The branch opened with that
+    change, and its "Control changes" panel lists it (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -10294,7 +10299,9 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     assert dialog is not None
     assert "run to 1m0.4s" in dialog.body_labels[1].text()
 
-    _steps(branch, 4)
+    for _ in range(4):
+        branch.controller.advance(SIMULATION_STEP_S)
+
     view.present(False)
 
     assert dialog.body_labels[1].text() == (
@@ -10302,6 +10309,140 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
         "discarded along with its chart history. This cannot be undone."
     )
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
+
+
+def _one_tick_advance_s(run: RunView) -> float:
+    """Step `run` by one tick and return how far its clock moved."""
+
+    before = run.snapshot().elapsed_s
+    run.step_tick()
+
+    return run.snapshot().elapsed_s - before
+
+
+@pytest.mark.parametrize("trunk_running", [True, False], ids=["running", "paused"])
+def test_the_run_does_not_advance_while_a_reset_question_is_open(
+    application: QApplication, trunk_running: bool
+) -> None:
+    """Every run holds while the trunk's Reset question is open, and resumes as it was (`PL-TPBH`).
+
+    The question is window-modal, so the reader cannot press Pause while it
+    is open. The project owner decided on 2026-10-31 that the runs hold and
+    then carry on as they were. The branch is running throughout. The trunk
+    is running in one case and paused in the other. After Keep, each run is
+    in the state it was in before the question, at the same playback rate.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = _branch_holding_work(view, application, "elapsed")
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    branch._start_button.click()
+
+    if trunk_running:
+        trunk._start_button.click()
+
+    tick_s = {run.run_id: _one_tick_advance_s(run) for run in view.runs}
+    assert tick_s[branch.run_id] > 0.0
+    assert (tick_s[trunk.run_id] > 0.0) is trunk_running
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+    assert dialog is not None
+    held_at = [run.snapshot().elapsed_s for run in view.runs]
+
+    for run in view.runs:
+        _steps(run, 10)
+
+    assert [run.snapshot().elapsed_s for run in view.runs] == held_at
+    assert [run.is_running for run in view.runs] == [trunk_running, True]
+
+    dialog.keep_button.click()
+    _settle(application)
+
+    assert trunk._reset_dialog is None
+    assert {run.run_id: _one_tick_advance_s(run) for run in view.runs} == pytest.approx(tick_s)
+    assert [run.is_running for run in view.runs] == [trunk_running, True]
+
+
+def test_a_running_run_holds_while_its_new_case_question_is_open(application: QApplication) -> None:
+    """The question asked before a new agent discards the run holds it too (`PL-TPBH`)."""
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    tick_s = _one_tick_advance_s(run)
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    held_at = run.snapshot().elapsed_s
+    _steps(run, 10)
+
+    assert run.snapshot().elapsed_s == held_at
+
+    dialog.keep_button.click()
+    _settle(application)
+
+    assert run._new_case_dialog is None
+    assert run.is_running
+    assert _one_tick_advance_s(run) == pytest.approx(tick_s) != 0.0
+
+
+def test_a_running_run_holds_while_a_workspace_question_is_open(application: QApplication) -> None:
+    """A Workspace question blocks Pause as a Reset question does, so it holds the run too."""
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    tick_s = _one_tick_advance_s(run)
+    strip = view.tab_strip
+    _restore, reset_all = strip.default_operations()
+    assert reset_all.question is not None
+
+    strip.choose(reset_all)
+    question = strip.question
+    assert question is not None
+    held_at = run.snapshot().elapsed_s
+    _steps(run, 10)
+
+    assert run.snapshot().elapsed_s == held_at
+
+    question.keep_button.click()
+    _settle(application)
+
+    assert strip.question is None
+    assert _one_tick_advance_s(run) == pytest.approx(tick_s) != 0.0
+
+
+def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplication) -> None:
+    """The bookmark editor leaves Pause reachable, so the runs go on (`PL-TPBH` blind review).
+
+    `QDialog.open()` makes a dialog window-modal. The editor was shown that
+    way, so it blocked every Pause button while the runs went on stepping,
+    which is the defect `PL-TPBH` removes for the questions. The editor is
+    meant to be non-modal, so it is now shown with `show()`.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    view._bookmarks_panel.edit_button.click()
+    _settle(application)
+    dialog = view._bookmark_dialog
+    assert dialog is not None
+    assert dialog.isVisible()
+    assert not dialog.isModal()
+    assert dialog.windowModality() is Qt.WindowModality.NonModal
+    assert _one_tick_advance_s(run) > 0.0
+
+    run._pause_button.click()
+
+    assert not run.is_running
 
 
 def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
