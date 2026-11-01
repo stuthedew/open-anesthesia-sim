@@ -3,7 +3,7 @@ id: PL-RNYV
 title: Build the compartment schematic View: the circuit, the alveoli, venous blood and the three tissue groups as containers filled to tension, each labelled with its tension and its amount of agent vapour
 priority: P1
 effort: L
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: schematic
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md
