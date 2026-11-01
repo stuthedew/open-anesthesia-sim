@@ -67,10 +67,11 @@ be stepped. A step rounded one fraction to 1.0000000000349965, the check refused
 it, and the run halted for a rounding error. The display path drew 1.000033 from
 the same state. No shipped vaporizer's maximum comes near 100% of the ambient
 pressure, so no supported run needs a state that close to 1. The fix is
-therefore to stop the inputs short of 1 rather than to widen the check. The delivered concentration and every
-fraction that the stepped system opens from must be at or below
-`MAXIMUM_INPUT_FRACTION`. Because the model conserves agent, no computed
-fraction then exceeds that ceiling by more than rounding. The largest excess
+therefore to stop the inputs short of 1 rather than to widen the check. The
+delivered concentration and every fraction that the stepped system opens from
+must be at or below `MAXIMUM_INPUT_FRACTION`. Because the model conserves
+agent, no computed fraction then exceeds that ceiling by more than the
+propagator's error, which the squarings set. The largest excess
 measured at every envelope corner was 3.3e-5, and `docs/MODEL.md` § "The
 numerical envelope" gives the measurement (project owner, 2026-10-31, ratified,
 over a fraction check that accepts a value slightly above 1).
