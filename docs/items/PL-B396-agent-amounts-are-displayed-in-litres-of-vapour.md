@@ -3,7 +3,7 @@ id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: ux, docs, safety, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md, docs/ARCHITECTURE.md
