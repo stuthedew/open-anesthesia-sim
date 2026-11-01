@@ -63,6 +63,7 @@ from typing import Final
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import (
+    PERCENT_PER_UNIT_FRACTION,
     Fraction,
     MacMultiple,
     MacPercent,
@@ -1576,16 +1577,15 @@ def format_compartment_share(share: float) -> str:
     if not isfinite(share) or not 0.0 <= share <= 1.0:
         raise ValueError(f"a compartment's share must be from 0 through 1, not {share!r}")
 
-    percent = (Decimal(share) * 100).quantize(
-        Decimal(1).scaleb(-COMPARTMENT_SHARE_DECIMALS), rounding=ROUND_HALF_EVEN
-    )
+    whole = Decimal(PERCENT_PER_UNIT_FRACTION)
     step = Decimal(1).scaleb(-COMPARTMENT_SHARE_DECIMALS)
+    percent = (Decimal(share) * whole).quantize(step, rounding=ROUND_HALF_EVEN)
 
     if percent == 0 and share > 0.0:
         return f"<{step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 
-    if percent == 100 and share < 1.0:
-        return f">{100 - step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+    if percent == whole and share < 1.0:
+        return f">{whole - step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 
     return f"{percent:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 

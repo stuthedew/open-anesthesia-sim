@@ -79,6 +79,12 @@ _LINE_WIDTH: Final = 2.0
 _OUTLINE_WIDTH: Final = 1.0
 _OFF_SCALE_WIDTH: Final = 4.0
 _LABEL_LINES: Final = 3
+# Where in its column a container stands: at the column's centre, half of the
+# column's width from its left edge.
+_COLUMN_CENTRE: Final = 0.5
+# Half a pixel, by which the share bar's 1 px outline is inset so that it is
+# drawn on whole pixels, inside the bar.
+_HALF_PIXEL: Final = 0.5
 
 
 class SchematicCanvas(QWidget):
@@ -175,7 +181,7 @@ class SchematicCanvas(QWidget):
         return int(self._containers_top()) + _CONTAINER_HEIGHT + _BUS_GAP + _LABEL_GAP
 
     def _container(self, index: int, column: float) -> QRectF:
-        centre = column * (index + 0.5)
+        centre = column * (index + _COLUMN_CENTRE)
 
         return QRectF(
             centre - _CONTAINER_WIDTH / 2.0,
@@ -369,7 +375,7 @@ class ShareBar(QWidget):
 
         painter.setPen(QPen(QColor(INK), _OUTLINE_WIDTH))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRect(bar.adjusted(0.5, 0.5, -0.5, -0.5))
+        painter.drawRect(bar.adjusted(_HALF_PIXEL, _HALF_PIXEL, -_HALF_PIXEL, -_HALF_PIXEL))
         painter.end()
 
 
