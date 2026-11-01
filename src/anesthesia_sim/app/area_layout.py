@@ -1251,7 +1251,7 @@ class AreaLayout(QWidget):
             least = minimum_extent(tree, AREA_HANDLE_WIDTH, held)
 
             if self.isVisible():
-                fit = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
+                fit = self._settled(tree, extent, needs, floors, kept)
             else:
                 laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, held)
                 fit = Fit(laid_out, held, frozenset(held), ())
@@ -1278,6 +1278,64 @@ class AreaLayout(QWidget):
         finally:
             self._settling = False
 
+    def _settled(
+        self,
+        tree: Node,
+        extent: PixelSize,
+        needs: Mapping[AreaId, PixelSize],
+        floors: Mapping[AreaId, PixelSize],
+        kept: AbstractSet[AreaId],
+    ) -> Fit:
+        """Return `settle`'s fit, with each too-small notice wrapped at the width it is drawn at.
+
+        `floors` wraps each notice at the floor's own width, the narrowest an Area is drawn.
+        A wider Area, such as one in a column as wide as the window, needs fewer lines for
+        the same notice. So a second `settle` lowers each Area's floor to the height of
+        its notice at the width the first one drew it at (`PL-9Z74`). That can let a
+        neighbour keep its View.
+
+        The second fit is used only where it is safe. Every width it gives must be the
+        width Qt draws, which holds where no split is too narrow for its Areas. Every
+        too-small Area must then be drawn at least as wide as its notice was measured at,
+        so that no notice is cut off. Otherwise the first fit is used, whose floors fit
+        every notice at any width Qt can draw.
+        """
+
+        first = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
+
+        if not self._widths_held(tree, extent, first):
+            return first
+
+        widths = {area_id: size.width_px for area_id, size in first.apportionment.areas.items()}
+        lowered = {area_id: self._floor(area_id, widths[area_id]) for area_id in floors}
+
+        if lowered == dict(floors):
+            return first
+
+        second = settle(tree, extent, AREA_HANDLE_WIDTH, needs, lowered, kept)
+
+        if not self._widths_held(tree, extent, second):
+            return first
+
+        for entry in second.too_small:
+            measured = self._floor(entry.area_id, entry.available.width_px)
+
+            if measured.height_px > lowered[entry.area_id].height_px:
+                return first
+
+        return second
+
+    @staticmethod
+    def _widths_held(tree: Node, extent: PixelSize, fit: Fit) -> bool:
+        """Return whether every Area of `fit` is drawn at the width `fit` gives it.
+
+        That holds where the tree's least width at `fit`'s bounds fits in `extent`. Then
+        every split has room along the width for each Area's bound. Where it does not,
+        Qt draws an Area at its bound rather than at the width `fit` gives it.
+        """
+
+        return minimum_extent(tree, AREA_HANDLE_WIDTH, fit.bounds).width_px <= extent.width_px
+
     def _need(self, area_id: AreaId) -> PixelSize:
         """Return the least size at which the Area `area_id` draws its View, header included.
 
@@ -1295,15 +1353,18 @@ class AreaLayout(QWidget):
 
         return PixelSize(view.width_px, view.height_px + _chrome_height(frame))
 
-    def _floor(self, area_id: AreaId) -> PixelSize:
+    def _floor(self, area_id: AreaId, drawn_width_px: int = 0) -> PixelSize:
         """Return the size at which the Area `area_id` is held while it is too small for its View.
 
         Its width is the width from `_structural_minimum`. Its height is enough for the
         header, the too-small notice's title and the notice's short statement of two sizes:
-        the size the View needs and the size the Area has. That text is wrapped at the
-        floor's own width (`PL-Y65Q` route B). The height is never more than the View's
-        need. The notice's advice sentence is shown only where the Area has room for it. An
-        Area that shows a notice in place of a View is held at `_structural_minimum`.
+        the size the View needs and the size the Area has. That text is wrapped at the width
+        the Area is drawn at, `drawn_width_px`, or at the floor's own width where that is
+        wider (`PL-Y65Q` route B, `PL-9Z74`). The default wraps it at the floor's own width,
+        which is the narrowest an Area is drawn and so the tallest the text can be. The
+        height is never more than the View's need. The notice's advice sentence is shown
+        only where the Area has room for it. An Area that shows a notice in place of a View
+        is held at `_structural_minimum`.
         """
 
         frame = self._frames[area_id]
@@ -1321,7 +1382,7 @@ class AreaLayout(QWidget):
         probe.title_label.setText(too_small_title(self._registered[shown[0]].title))
         probe.body_label.setText(too_small_short_text(needed, needed))
 
-        notice = _chrome_height(frame) + probe.heightForWidth(width)
+        notice = _chrome_height(frame) + probe.heightForWidth(max(width, drawn_width_px))
 
         # An Area that has its View's need is drawn and shows no notice, so the
         # notice never raises the floor above the need.

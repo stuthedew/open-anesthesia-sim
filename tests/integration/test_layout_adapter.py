@@ -1977,6 +1977,44 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
         assert label.height() >= label.heightForWidth(label.width()) > 0
 
 
+def test_a_wide_stacked_area_holds_a_lower_floor(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-9Z74`: a too-small Area's floor wraps its notice at the width it is drawn at.
+
+    A Big view's Area takes the bottom tenth of a window 200 px tall, far less than the
+    227 px its View needs, so it is held at its floor. At 170 px wide the notice wraps
+    onto more lines than at 800 px, so the wide Area's floor is lower. The wide notice
+    still shows its title and its statement of the two sizes in full.
+
+    The room this saves goes to a neighbour. Two Big views stacked in a window 800 by
+    350 px cannot both have their 227 px. The one that gives way is held at its floor,
+    and with its notice wrapped at 800 px that floor is low enough for the other to keep
+    its 227 px. With the notice wrapped at the floor's own width, the floor was too
+    tall, and both Areas showed the notice.
+    """
+
+    model = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
+    _, narrow = _host_sized(application, hosts, model, (170, 200))
+    _, wide = _host_sized(application, hosts, model, (800, 200))
+    notice = wide.frame(AreaId(2)).too_small_notice
+
+    assert [entry.area_id for entry in narrow.too_small()] == [AreaId(2)]
+    assert [entry.area_id for entry in wide.too_small()] == [AreaId(2)]
+    assert wide.frame(AreaId(2)).minimumHeight() < narrow.frame(AreaId(2)).minimumHeight()
+    assert notice is not None
+
+    for label in (notice.title_label, notice.body_label):
+        assert label.height() >= label.heightForWidth(label.width()) > 0
+
+    stacked = _layout(_column((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
+    _, page = _host_sized(application, hosts, stacked, (800, 350))
+
+    assert [entry.area_id for entry in page.too_small()] == [AreaId(2)]
+    assert page.frame(AreaId(1)).content.isVisible()
+    assert page.frame(AreaId(1)).height() >= 200 + _CHROME_PX
+
+
 def test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
