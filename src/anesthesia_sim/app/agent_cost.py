@@ -1,4 +1,4 @@
-"""Compute what the agent cost View shows for one run: the agent it has delivered.
+"""Compute what the agent cost View shows for one run: the agent it has delivered, and its cost.
 
 `ROADMAP.md` § "v0.7.0 - the schematic", entry 8, specifies the View
 (`PL-B396`). It shows the delivered agent in millilitres of liquid equivalent
@@ -27,28 +27,54 @@ vapour converted with desflurane's ratio gives a result about 13 % too low. So
 `delivered_liquid_ml` takes the snapshot, and reads the amount and the ratio
 from that one record. The snapshot carries the ratio beside the agent it
 belongs to (`SimulationSnapshot.agent_vapour_per_liquid`). No other module in
-`app/` calls `liquid_volume_ml`, and a test checks that.
+`src/` calls `liquid_volume_ml`, and a test checks that.
+
+**The cost at the reader's price** (`PL-1P15`). `docs/MODEL.md` § "A cost at
+the reader's price" specifies it. The cost is the delivered liquid volume
+times the price per millilitre of liquid that the reader's bottle price and
+bottle volume give (`AgentPrice.price_per_liquid_ml`). The project ships no
+price, so a run whose agent has no price shows why there is no cost instead.
+`cost_shown` builds every line of the cost readout from one `DeliveredShown`
+and one price record. So the cost and the figures shown beside it cannot come
+from two different instants, agents or prices. Beside the cost, the readout
+shows the liquid volume and the price per millilitre that it multiplied, the
+bottle price, bottle volume, currency and date that the price came from, and
+words that say the price is the reader's. The cost is computed from the
+unrounded figures, so the readout also says that the figures are rounded.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import date
+from math import isfinite
 from typing import Final
 
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import WITHHELD_ELAPSED_TIME_TEXT
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_UNIT_DISPLAY,
     AgentAmountUnit,
+    format_agent_cost,
     format_delivered_agent,
     format_elapsed,
+    format_entered_figure,
+    format_price_per_liquid_ml,
 )
-from anesthesia_sim.app.preferences import AGENT_COST_VIEW_UNITS
+from anesthesia_sim.app.preferences import AGENT_COST_VIEW_UNITS, AgentPrice, Preferences
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.liquid_agent import liquid_volume_ml
 
 __all__ = [
     "AGENT_COST_HEADING",
+    "COST_LABEL_TEMPLATE",
+    "COST_ROUNDED_TEXT",
+    "WITHHELD_COST",
+    "CostShown",
+    "cost_shown",
+    "price_from_entry",
     "DELIVERED_LABEL_TEMPLATE",
     "LIQUID_CAPTION_TEMPLATE",
     "NOT_CONVERTED_TEXT",
@@ -107,12 +133,22 @@ class DeliveredShown:
         amounts: The delivered amount in each unit of `AGENT_COST_VIEW_UNITS`,
             with the unit named on it, in that order.
         captions: What each amount is, in the same order.
+        agent_id: The agent the run delivered, or None while the values are
+            withheld. The cost readout looks the reader's price up by it.
+        agent_name: The agent's display name in lower case, as the captions
+            print it.
+        liquid_ml: The delivered agent in millilitres of liquid, unrounded,
+            or None when it could not be converted or is withheld. The cost
+            is computed from it, never from the rounded text.
     """
 
     instant: str
     label: str
     amounts: tuple[str, ...]
     captions: tuple[str, ...]
+    agent_id: str | None
+    agent_name: str
+    liquid_ml: float | None
 
     def amount_in(self, unit: AgentAmountUnit) -> str:
         """Return the delivered amount in `unit`, with the unit named on it.
@@ -149,15 +185,13 @@ def delivered_liquid_ml(snapshot: SimulationSnapshot) -> float:
     return liquid_volume_ml(snapshot.delivered_agent_l, snapshot.agent_vapour_per_liquid)
 
 
-def _liquid_text(snapshot: SimulationSnapshot) -> str:
-    """Return the delivered liquid equivalent with its unit, or say it cannot be shown."""
+def _converted_liquid_ml(snapshot: SimulationSnapshot) -> float | None:
+    """Return the delivered liquid equivalent, or None when it cannot be converted."""
 
     try:
-        millilitres = delivered_liquid_ml(snapshot)
+        return delivered_liquid_ml(snapshot)
     except SimulationConfigurationError:
-        return NOT_CONVERTED_TEXT
-
-    return format_delivered_agent(millilitres, AgentAmountUnit.MILLILITRES_OF_LIQUID)
+        return None
 
 
 def _captions(agent: str) -> tuple[str, ...]:
@@ -185,18 +219,28 @@ def delivered_shown(snapshot: SimulationSnapshot) -> DeliveredShown:
             show a plausible number.
     """
 
+    liquid_ml = _converted_liquid_ml(snapshot)
     amounts = {
-        AgentAmountUnit.MILLILITRES_OF_LIQUID: _liquid_text(snapshot),
+        AgentAmountUnit.MILLILITRES_OF_LIQUID: (
+            NOT_CONVERTED_TEXT
+            if liquid_ml is None
+            else format_delivered_agent(liquid_ml, AgentAmountUnit.MILLILITRES_OF_LIQUID)
+        ),
         AgentAmountUnit.LITRES_OF_VAPOUR: format_delivered_agent(
             snapshot.delivered_agent_l, AgentAmountUnit.LITRES_OF_VAPOUR
         ),
     }
 
+    agent_name = snapshot.agent_display_name.lower()
+
     return DeliveredShown(
         format_elapsed(snapshot.elapsed_s),
         DELIVERED_LABEL_TEMPLATE.format(agent=snapshot.agent_display_name),
         tuple(amounts[unit] for unit in AGENT_COST_VIEW_UNITS),
-        _captions(snapshot.agent_display_name.lower()),
+        _captions(agent_name),
+        snapshot.agent_id,
+        agent_name,
+        liquid_ml,
     )
 
 
@@ -210,4 +254,212 @@ WITHHELD_DELIVERED: Final = DeliveredShown(
     DELIVERED_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME),
     tuple(f"\u2014 {AGENT_AMOUNT_UNIT_DISPLAY[unit].label}" for unit in AGENT_COST_VIEW_UNITS),
     _captions(WITHHELD_AGENT_NAME.lower()),
+    None,
+    WITHHELD_AGENT_NAME.lower(),
+    None,
 )
+
+
+#: The line over the cost. It says that the price is the reader's, in words
+#: rather than only in a colour or a style, so the statement reaches every
+#: reader (`docs/MODEL.md` § "A cost at the reader's price", item 6). The
+#: wording is a placeholder, but what it must say is not.
+COST_LABEL_TEMPLATE: Final = "Cost of the delivered {agent}, at your price"
+
+#: The working beside the cost: the liquid volume and the price per millilitre
+#: that it multiplied. The volume is always shown in liquid equivalent, even
+#: when the reader shows the View's amounts in litres of vapour, because it is
+#: the figure the cost multiplies (item 1). The wording is a placeholder.
+COST_WORKING_TEMPLATE: Final = "{volume} delivered x {price_per_ml}"
+
+#: Where the price per millilitre came from. The wording is a placeholder.
+COST_PRICE_TEMPLATE: Final = (
+    "Your price, not one the project supplies: {currency} {bottle_price} per bottle of "
+    "{bottle_volume} {unit}, as of {applies_on}."
+)
+
+#: Why the figures beside a cost may not multiply to it. The cost is computed
+#: from the unrounded volume and price, so the product of the rounded figures
+#: can differ from it (`docs/MODEL.md` § "Displayed precision" says by how much).
+#: The wording is a placeholder.
+COST_ROUNDED_TEXT: Final = (
+    "The figures are rounded. The cost is computed before rounding, so they may not multiply "
+    "to it exactly."
+)
+
+#: Why no cost is shown, in each case that `docs/MODEL.md` § "A cost at the
+#: reader's price" lists. The wording is a placeholder.
+NO_PRICE_TEXT: Final = (
+    "No cost is shown: you have not set a price for {agent}. The project supplies no price."
+)
+REFUSED_PRICE_TEXT: Final = (
+    "No cost is shown: your price for {agent} was refused when the preferences file was "
+    "read. Set it again below."
+)
+PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
+    "No cost is shown: your bottle price and bottle volume for {agent} do not give a price "
+    "per millilitre that is a positive finite number."
+)
+COST_NOT_COMPUTED_TEXT: Final = (
+    "No cost is shown: the cost of the delivered {agent} at your price is too large or too "
+    "small to compute."
+)
+COST_NOT_CONVERTED_TEXT: Final = (
+    "No cost is shown: the delivered {agent} could not be converted to liquid."
+)
+
+
+@dataclass(frozen=True, slots=True)
+class CostShown:
+    """What one run's cost readout shows: a cost with its working, or why there is none.
+
+    Attributes:
+        label: The line over the cost, which says the price is the reader's.
+        cost: The cost with its currency code, or the reason no cost is
+            shown.
+        working: The liquid volume times the price per millilitre, or ""
+            when no cost is shown.
+        price: The bottle price, bottle volume, currency and date that the
+            price per millilitre came from, or "" when no cost is shown.
+        rounded: `COST_ROUNDED_TEXT` beside a cost, or "".
+    """
+
+    label: str
+    cost: str
+    working: str
+    price: str
+    rounded: str
+
+
+#: What the cost readout shows while the run's values are withheld. It names no
+#: agent and no figure, because each could belong to the run that was discarded.
+WITHHELD_COST: Final = CostShown(
+    COST_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME.lower()), "\u2014", "", "", ""
+)
+
+
+def _no_cost(delivered: DeliveredShown, reason: str) -> CostShown:
+    """Return a readout that shows `reason`, formatted for the run's agent, and no cost."""
+
+    return CostShown(
+        COST_LABEL_TEMPLATE.format(agent=delivered.agent_name),
+        reason.format(agent=delivered.agent_name),
+        "",
+        "",
+        "",
+    )
+
+
+def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown:
+    """Return what the cost readout shows for one run, at the reader's price for its agent.
+
+    The price is the one stored for the agent that `delivered` is for, so a
+    run after an agent change is priced at the new agent's price. Every line
+    is built from `delivered` and that one price record. No cost is shown, and
+    the readout says why, when the run has no valid price, when the price per
+    millilitre or the cost is not a positive finite number, or when the
+    delivered agent could not be converted to liquid. A cost of zero is shown
+    only for a run that has delivered no agent.
+
+    Args:
+        delivered: What the run's panel shows, from one snapshot.
+        preferences: The reader's preferences, which hold the prices.
+
+    Returns:
+        The lines of the cost readout.
+    """
+
+    agent_id = delivered.agent_id
+
+    if agent_id is None:
+        return WITHHELD_COST
+
+    price = preferences.price_for(agent_id)
+
+    if price is None:
+        refused = any(entry.agent_id == agent_id for entry in preferences.refused_prices)
+        return _no_cost(delivered, REFUSED_PRICE_TEXT if refused else NO_PRICE_TEXT)
+
+    if delivered.liquid_ml is None:
+        return _no_cost(delivered, COST_NOT_CONVERTED_TEXT)
+
+    price_per_ml = price.price_per_liquid_ml
+
+    if not isfinite(price_per_ml) or price_per_ml <= 0.0:
+        return _no_cost(delivered, PRICE_PER_ML_NOT_SHOWN_TEXT)
+
+    cost = delivered.liquid_ml * price_per_ml
+
+    # A product of two positive finite floats can overflow to infinity, or
+    # underflow to zero, which would show a run that has delivered agent as
+    # costing nothing.
+    if not isfinite(cost) or (cost == 0.0 and delivered.liquid_ml > 0.0):
+        return _no_cost(delivered, COST_NOT_COMPUTED_TEXT)
+
+    return CostShown(
+        COST_LABEL_TEMPLATE.format(agent=delivered.agent_name),
+        format_agent_cost(cost, price.currency),
+        COST_WORKING_TEMPLATE.format(
+            volume=delivered.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID),
+            price_per_ml=format_price_per_liquid_ml(price_per_ml, price.currency),
+        ),
+        COST_PRICE_TEMPLATE.format(
+            currency=price.currency,
+            bottle_price=format_entered_figure(price.bottle_price),
+            bottle_volume=format_entered_figure(price.bottle_volume_ml),
+            unit=DisplayUnit.AGENT_LIQUID_MILLILITRES.label,
+            applies_on=price.applies_on.isoformat(),
+        ),
+        COST_ROUNDED_TEXT,
+    )
+
+
+# A figure the reader types into the price entry: digits with at most one
+# decimal point, and nothing else. A sign, an exponent, a thousands separator
+# or a decimal comma is refused rather than guessed at, because "1,250" could
+# mean 1250 or 1.25 (`PL-1P15`).
+_ENTERED_FIGURE_PATTERN: Final = re.compile(r"[0-9]+(\.[0-9]*)?|\.[0-9]+")
+
+
+def _entered_figure(text: str, what: str) -> float:
+    """Return the number the reader typed for `what`.
+
+    Raises:
+        SimulationConfigurationError: If `text`, without surrounding spaces,
+            is not digits with at most one decimal point.
+    """
+
+    figure = text.strip()
+
+    if _ENTERED_FIGURE_PATTERN.fullmatch(figure) is None:
+        raise SimulationConfigurationError(
+            f"write the {what} as a number with digits and at most one decimal point, such as "
+            f"20.47, not {text!r}"
+        )
+
+    return float(figure)
+
+
+def price_from_entry(
+    agent_id: str, bottle_price: str, bottle_volume_ml: str, currency: str, applies_on: date
+) -> AgentPrice:
+    """Return the price the reader entered, or refuse it with the reason.
+
+    The texts are as the reader typed them. `AgentPrice` then applies every
+    check that `docs/MODEL.md` § "A cost at the reader's price" lists, the
+    same checks it applies when the preferences file is read. A refused entry
+    changes nothing, so the stored price, if any, stays in force.
+
+    Raises:
+        SimulationConfigurationError: If a figure is not a plain number, or
+            if `AgentPrice` refuses the price. The message says which field
+            and why.
+    """
+
+    return AgentPrice(
+        agent_id,
+        _entered_figure(bottle_price, "bottle price"),
+        _entered_figure(bottle_volume_ml, "bottle volume"),
+        currency.strip(),
+        applies_on,
+    )

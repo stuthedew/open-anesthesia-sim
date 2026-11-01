@@ -48,7 +48,7 @@ from math import ceil
 from typing import Final
 
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent, QWheelEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -1955,3 +1955,26 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     top = available.y() + (available.height() - height) // 2
 
     return QRect(left, top, width, height)
+
+
+class FocusedComboBox(QComboBox):
+    """A combo box that a mouse wheel changes only once it has focus.
+
+    Qt's combo box changes its item on a wheel event even without focus, and
+    emits `activated` as if the reader had picked. The Areas sit in a page
+    that scrolls. So a reader scrolling past the agent cost View would change
+    its unit, or the agent whose price is shown, without meaning to
+    (`PL-B396`). A click or the keyboard gives the
+    selector focus, and the wheel then works as usual.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        if not self.hasFocus():
+            event.ignore()
+            return
+
+        super().wheelEvent(event)

@@ -45,7 +45,7 @@ A preference belongs to the reader, not to a View or a layout (`PL-MQHN`), so
 two agent cost Views always show the same unit. The dashboard holds the
 preferences and saves them (`app/preferences.py`). Each tick shows them to
 every View in `ViewTick.preferences`, and a View asks for a change through
-`ViewRequests.agent_cost_unit`.
+`ViewRequests.agent_cost_unit` or `ViewRequests.agent_price` (`PL-1P15`).
 
 **What a View is drawn from** (Q3). Each View says which frame it draws
 through `View.frame_request`: the window, and the plot width the frame must
@@ -107,7 +107,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.formatting import AgentAmountUnit
-from anesthesia_sim.app.preferences import Preferences
+from anesthesia_sim.app.preferences import AgentPrice, Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -173,11 +173,14 @@ class ViewRequests:
         compartment: Asks for one compartment's trace to be shown or hidden.
         agent_cost_unit: Asks for the agent cost View's unit to become the
             given one, in the reader's preferences.
+        agent_price: Asks for the reader's price for the given agent to become
+            the given one, or to be removed when it is None.
     """
 
     frame: Callable[[], None]
     compartment: Callable[[RecordedQuantity, bool], None]
     agent_cost_unit: Callable[[AgentAmountUnit], None]
+    agent_price: Callable[[str, AgentPrice | None], None]
 
 
 @dataclass(frozen=True, slots=True)

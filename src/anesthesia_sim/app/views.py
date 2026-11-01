@@ -47,8 +47,7 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
-from PySide6.QtGui import QWheelEvent
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
 from anesthesia_sim.app.chart_frame import ChartFrame
@@ -73,6 +72,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
+from anesthesia_sim.app.qt_agent_price import PriceEntry
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
     TimeBaseSelector,
@@ -81,7 +81,7 @@ from anesthesia_sim.app.qt_chart import (
     WashInLegend,
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import FocusedComboBox, styled_label
 from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     INK,
@@ -726,7 +726,7 @@ class CompartmentSchematicView(QWidget):
 
 
 class AgentCostView(QWidget):
-    """Every displayed run's delivered agent, in the unit the reader chose (`PL-B396`).
+    """Every displayed run's delivered agent, in the unit the reader chose, and its cost.
 
     By default the amount is in millilitres of liquid equivalent, and the
     reader can choose litres of vapour instead. The unit is printed on every
@@ -740,7 +740,14 @@ class AgentCostView(QWidget):
     which the run writes and withholds with its readouts. The View asks for no
     chart frame. The heading says that the values are model outputs, not
     measurements. Under it, a notice tells the reader when a preference was
-    refused or will not be kept.
+    refused or will not be kept (`PL-B396`).
+
+    Each panel also shows the delivered agent's cost at the reader's price for
+    the run's agent, with the figures it multiplied and where the price came
+    from (`PL-1P15`). Under the panels, a form lets the reader set or remove
+    that price, and asks the dashboard through `ViewRequests.agent_price`. The
+    project ships no price, so until the reader sets one each panel says that
+    no cost is shown and why.
 
     Args:
         context: What the View is built from.
@@ -754,7 +761,7 @@ class AgentCostView(QWidget):
         self._copies = _RunCopies(lambda run: run.build_agent_cost(), PAGE_SPACING)
         # The unit the panels were last drawn in, or None before the first tick.
         self._drawn_unit: AgentAmountUnit | None = None
-        self.unit_selector = _UnitSelector()
+        self.unit_selector = FocusedComboBox()
         self.unit_selector.setStyleSheet(selector_stylesheet())
 
         for unit, name in UNIT_CHOICES:
@@ -787,6 +794,8 @@ class AgentCostView(QWidget):
         column.addLayout(choice)
         column.addWidget(self.preferences_notice)
         column.addWidget(self._copies.holder)
+        self.price_entry = PriceEntry(context.requests.agent_price)
+        column.addWidget(self.price_entry)
         column.addStretch(1)
 
     @property
@@ -811,13 +820,16 @@ class AgentCostView(QWidget):
             raise ValueError(f"the agent cost View does not offer {unit.value}")
 
         for panel in self._copies.copies:
-            panel.show_unit(unit)
+            panel.show_preferences(tick.preferences.preferences)
 
         self.unit_selector.setCurrentIndex(index)
         self.unit_label.setHidden(False)
         self.unit_selector.setHidden(False)
         self._drawn_unit = unit
 
+        self.price_entry.show_prices(
+            tick.preferences.preferences, tick.snapshots[0].agent_id if tick.snapshots else None
+        )
         notice = tick.preferences.notice
         self.preferences_notice.setText(notice or "")
         self.preferences_notice.setHidden(notice is None)
@@ -848,25 +860,3 @@ class AgentCostView(QWidget):
             self.unit_selector.setCurrentIndex(self.unit_selector.findData(self._drawn_unit))
 
         self._requests.agent_cost_unit(UNIT_CHOICES[index][0])
-
-
-class _UnitSelector(QComboBox):
-    """The agent cost View's unit selector, which a mouse wheel changes only once it has focus.
-
-    Qt's combo box changes its item on a wheel event even without focus, and
-    emits `activated` as if the reader had picked. The Areas sit in a page
-    that scrolls. So a reader scrolling past the View would change the unit,
-    and save it, without meaning to. A click or the keyboard gives the
-    selector focus, and the wheel then works as usual.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self.hasFocus():
-            event.ignore()
-            return
-
-        super().wheelEvent(event)

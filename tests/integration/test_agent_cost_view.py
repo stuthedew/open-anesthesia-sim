@@ -16,15 +16,17 @@ preferences file is under `tmp_path`.
 
 import json
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
+from PySide6.QtCore import QDate, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
+from anesthesia_sim.app.agent_cost import NO_PRICE_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     INTERPRETATION_DISCLAIMER_TEXT,
@@ -33,7 +35,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
-from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, PreferencesStore
+from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_COST, REGISTERED
 from anesthesia_sim.app.views import AgentCostView
@@ -443,7 +445,10 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
     view = _dashboard(application, shown, controller)
     (cost_view,) = _cost_views(view)
 
+    _enter_price(cost_view, "sevoflurane", "240.34", "250", "USD", date(2008, 3, 5))
+
     assert cost_view.panels[0].amount_text.text() == "2.2 mL of liquid"
+    assert cost_view.panels[0].cost_text.text().startswith("USD ")
 
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     run = view.runs[0]
@@ -461,6 +466,9 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
     assert panel.amount_text.text() == "— mL of liquid"
     assert panel.label_text.text() == "Agent delivered"
     assert panel.name_text.text() == "At — of simulated time"
+    assert panel.cost_text.text() == "—"
+    assert panel.working_text.isHidden()
+    assert "sevoflurane" not in panel.cost_label_text.text()
 
 
 def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
@@ -524,3 +532,227 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     assert alone.label_text.text() == "Desflurane delivered"
     assert alone.amount_text.text() == f"{desflurane_ml:.1f} mL of liquid"
     assert alone.name_text.text() == "At 5m of simulated time"
+
+
+def _enter_price(
+    cost_view: AgentCostView,
+    agent_id: str,
+    bottle_price: str,
+    bottle_volume_ml: str,
+    currency: str,
+    applies_on: date,
+) -> None:
+    """Fill the price form for `agent_id` and press Set price, as a reader does."""
+
+    entry = cost_view.price_entry
+    index = entry.agent_selector.findData(agent_id)
+    entry.agent_selector.setCurrentIndex(index)
+    entry.agent_selector.activated.emit(index)
+    entry.bottle_price_edit.setText(bottle_price)
+    entry.bottle_volume_edit.setText(bottle_volume_ml)
+    entry.currency_edit.setText(currency)
+    entry.applies_on_edit.setDate(QDate(applies_on.year, applies_on.month, applies_on.day))
+    entry.set_button.click()
+
+
+def _cost_line(cost_view: AgentCostView) -> str:
+    (panel,) = cost_view.panels
+
+    return panel.cost_text.text()
+
+
+def test_no_cost_is_shown_before_the_reader_sets_a_price(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    controller = SimulationController(agent_id="isoflurane")
+    controller.start()
+    _advance(controller, 5 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller)
+    (cost_view,) = _cost_views(view)
+    (panel,) = cost_view.panels
+
+    assert panel.cost_text.text() == NO_PRICE_TEXT.format(agent="isoflurane")
+    assert panel.working_text.isHidden()
+    assert panel.price_text.isHidden()
+    assert cost_view.price_entry.agent_id == "isoflurane"
+    assert cost_view.price_entry.bottle_price_edit.text() == ""
+    assert not cost_view.price_entry.remove_button.isEnabled()
+
+
+@pytest.mark.parametrize(
+    ("flow_l_min", "first_percent", "second_percent", "printed_at_13_min", "printed_at_60_min"),
+    [
+        # Exercise 14-1, printed pp. 133-134: 2 % at 8 L/min to 13 min, then 1.5 %.
+        pytest.param(8.0, 2.0, 1.5, 2.17, 8.06, id="exercise 14-1"),
+        # Exercise 14-2, printed pp. 135-136: 5 % at 1 L/min to 13 min, then 2.7 %.
+        pytest.param(1.0, 5.0, 2.7, 0.68, 2.00, id="exercise 14-2"),
+    ],
+)
+def test_the_displayed_cost_reproduces_gas_man_s_printed_costs(
+    application: QApplication,
+    shown: list[SimulationView],
+    tmp_path: Path,
+    flow_l_min: float,
+    first_percent: float,
+    second_percent: float,
+    printed_at_13_min: float,
+    printed_at_60_min: float,
+) -> None:
+    """The project owner's sanity check on a calculated price, end to end (`PL-1P15`).
+
+    The project owner asked on 2026-10-26 for "a sanity check for calculated
+    agent price". The reader enters Gas Man's isoflurane price, US$20.47 for a
+    100 mL bottle (Philip JH, *Workbook for Gas Man*, Appendix C, printed
+    p. 171), in the View's form. The run is the exercise's, from the patient
+    inputs through the model to the drawn text. Gas Man rounds isoflurane's
+    vapour-to-liquid ratio to 196, which can move a cost by 0.26 %, and both
+    the book and the readout round to the cent. So the drawn cost may differ
+    from the printed one by a cent's rounding on each side plus 0.26 %. The
+    drawn cost is also checked against this test's own product of the liquid
+    volume worked out here and the price per millilitre.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
+    controller.set_delivered_concentration_percent(Percent(first_percent))
+    view = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+    usd_per_ml = 20.47 / 100.0
+
+    def drawn_usd() -> float:
+        text = _cost_line(cost_view)
+        assert text.startswith("USD ")
+        return float(text.removeprefix("USD "))
+
+    def allowed(printed: float) -> float:
+        return 0.005 + 0.005 + printed * 0.5 / 196.0
+
+    controller.start()
+    _advance(controller, 13 * _SECONDS_PER_MINUTE)
+    view.present(False)
+    liquid_at_13_ml = _liquid_ml("isoflurane", first_percent / 100.0 * flow_l_min * 13.0)
+
+    assert abs(drawn_usd() - printed_at_13_min) <= allowed(printed_at_13_min)
+    assert _cost_line(cost_view) == f"USD {liquid_at_13_ml * usd_per_ml:.2f}"
+
+    controller.set_delivered_concentration_percent(Percent(second_percent))
+    _advance(controller, 47 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view.present(False)
+    vapour_l = (first_percent * 13.0 + second_percent * 47.0) / 100.0 * flow_l_min
+    liquid_ml = _liquid_ml("isoflurane", vapour_l)
+    (panel,) = cost_view.panels
+
+    assert abs(drawn_usd() - printed_at_60_min) <= allowed(printed_at_60_min)
+    assert _cost_line(cost_view) == f"USD {liquid_ml * usd_per_ml:.2f}"
+    assert panel.working_text.text() == (
+        f"{liquid_ml:.1f} mL of liquid delivered x USD 0.2047 per mL of liquid"
+    )
+    assert panel.price_text.text().endswith(
+        "USD 20.47 per bottle of 100 mL of liquid, as of 2008-03-05."
+    )
+    assert "not one the project supplies" in panel.price_text.text()
+    assert not panel.rounded_text.isHidden()
+
+
+def test_a_price_change_redraws_the_cost_at_once_while_paused_and_survives_a_restart(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_fresh_gas_flow(FreshGasFlow(8.0))
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 13 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    liquid_ml = _liquid_ml("isoflurane", 0.02 * 8.0 * 13.0)
+
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+
+    assert _cost_line(cost_view) == f"USD {liquid_ml * 0.2047:.2f}"
+
+    _enter_price(cost_view, "isoflurane", "78", "100", "USD", date(2008, 3, 5))
+
+    assert _cost_line(cost_view) == f"USD {liquid_ml * 0.78:.2f}"
+    assert PreferencesStore(tmp_path).load().preferences.price_for("isoflurane") == AgentPrice(
+        "isoflurane", 78.0, 100.0, "USD", date(2008, 3, 5)
+    )
+
+    restarted = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(restarted)
+
+    assert _cost_line(cost_view) == f"USD {liquid_ml * 0.78:.2f}"
+    assert cost_view.price_entry.bottle_price_edit.text() == "78"
+    assert cost_view.price_entry.bottle_volume_edit.text() == "100"
+    assert cost_view.price_entry.currency_edit.text() == "USD"
+    assert cost_view.price_entry.applies_on_edit.date() == QDate(2008, 3, 5)
+
+
+def test_a_refused_entry_changes_nothing_and_says_why(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """A bottle price typed with a decimal comma is refused, and the earlier price stays."""
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.start()
+    _advance(controller, 5 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+    before = _cost_line(cost_view)
+
+    _enter_price(cost_view, "isoflurane", "20,47", "100", "USD", date(2008, 3, 5))
+
+    assert _cost_line(cost_view) == before
+    assert before.startswith("USD ")
+    assert not cost_view.price_entry.refusal.isHidden()
+    assert "nothing changed" in cost_view.price_entry.refusal.text()
+    assert "20,47" in cost_view.price_entry.refusal.text()
+    assert PreferencesStore(tmp_path).load().preferences.price_for("isoflurane") == AgentPrice(
+        "isoflurane", 20.47, 100.0, "USD", date(2008, 3, 5)
+    )
+
+
+def test_removing_the_price_shows_no_cost_again(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    controller = SimulationController(agent_id="isoflurane")
+    view = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+
+    assert cost_view.price_entry.remove_button.isEnabled()
+
+    cost_view.price_entry.remove_button.click()
+
+    assert _cost_line(cost_view) == NO_PRICE_TEXT.format(agent="isoflurane")
+    assert cost_view.price_entry.bottle_price_edit.text() == ""
+    assert PreferencesStore(tmp_path).load().preferences.price_for("isoflurane") is None
+
+
+def test_the_cost_s_working_stays_in_liquid_when_the_amounts_are_shown_in_vapour(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The liquid figure the cost multiplies stays on screen in either unit (item 1)."""
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_fresh_gas_flow(FreshGasFlow(8.0))
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 13 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller)
+    (cost_view,) = _cost_views(view)
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+
+    _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    (panel,) = cost_view.panels
+    assert panel.amount_text.text() == "2.1 L vapour"
+    assert panel.working_text.text().startswith(
+        f"{_liquid_ml('isoflurane', 2.08):.1f} mL of liquid delivered x"
+    )

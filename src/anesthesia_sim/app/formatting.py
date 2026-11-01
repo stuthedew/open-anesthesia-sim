@@ -60,6 +60,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import Final
 
+from anesthesia_sim.app.currency_code import is_currency_code
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import (
@@ -76,6 +77,9 @@ from anesthesia_sim.core.units import MILLILITRES_PER_LITRE, SECONDS_PER_HOUR, S
 
 __all__ = [
     "AGENT_AMOUNT_DISPLAY_PRECISION",
+    "AGENT_COST_FINEST_DECIMALS",
+    "AGENT_COST_SIGNIFICANT_FIGURES",
+    "PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES",
     "COMPARTMENT_SHARE_DECIMALS",
     "CHART_AXIS_TOP_MAC",
     "CHART_GRID_INTERVAL_MAC",
@@ -96,6 +100,7 @@ __all__ = [
     "agent_amount_display_precision",
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
+    "format_agent_cost",
     "format_agent_residual",
     "format_agent_volume",
     "format_delivered_agent",
@@ -106,12 +111,14 @@ __all__ = [
     "format_chart_time_label",
     "format_delivered_label",
     "format_elapsed",
+    "format_entered_figure",
     "format_flow",
     "format_mac_awake_reference",
     "format_mac_multiple",
     "format_mac_reference",
     "format_percent",
     "format_playback_rate",
+    "format_price_per_liquid_ml",
     "format_subtitle",
     "format_time_base",
     "format_wash_in_ratio",
@@ -261,8 +268,8 @@ class AgentAmountUnit(Enum):
 # of liquid. A compartment's amount has no entry, because `PL-2881` derived a
 # precision of two significant figures for it, not a count of decimals.
 # `format_compartment_amount` applies that precision instead. Money has no entry
-# here, because the resolution of a cost depends on the price that the reader
-# sets. `PL-1P15` derives that resolution.
+# here, because a cost's precision is a count of significant figures, which
+# `format_agent_cost` applies (`PL-1P15`).
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
 _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
     MappingProxyType(
@@ -1587,11 +1594,11 @@ def format_compartment_amount(litres: float) -> str:
     if litres == 0.0:
         return f"0 {unit}"
 
-    millilitres = Decimal(litres * MILLILITRES_PER_LITRE)
-    rounded, decimals = _round_to_figures(millilitres, millilitres.adjusted())
-
-    if rounded.adjusted() > millilitres.adjusted():
-        rounded, decimals = _round_to_figures(millilitres, rounded.adjusted())
+    rounded, decimals = _round_to_figures(
+        Decimal(litres * MILLILITRES_PER_LITRE),
+        COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES,
+        COMPARTMENT_AMOUNT_FINEST_DECIMALS,
+    )
 
     if rounded == 0:
         floor = Decimal(1).scaleb(-COMPARTMENT_AMOUNT_FINEST_DECIMALS)
@@ -1655,11 +1662,166 @@ def format_compartment_share(share: float) -> str:
     return f"{percent:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 
 
-def _round_to_figures(value: Decimal, exponent: int) -> tuple[Decimal, int]:
-    """Round `value` to the significant figures that the schematic shows.
+# A cost at the reader's price is shown to three significant figures, and never
+# finer than two decimals of its currency. A price per millilitre of liquid is
+# shown to four significant figures. `docs/MODEL.md` § "Displayed precision"
+# derives both (`PL-1P15`). These three constants are the only place that
+# states either precision.
+AGENT_COST_SIGNIFICANT_FIGURES: Final = 3
+AGENT_COST_FINEST_DECIMALS: Final = 2
+PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES: Final = 4
 
-    `exponent` is the decade of `value`: its first significant digit is in the
-    place of 10 to the power `exponent`.
+# How many significant figures a figure the reader entered is echoed with. A
+# binary64 float holds 15 decimal figures exactly, so 15 gives back what the
+# reader typed, such as 20.47 rather than 20.469999999999999.
+_ENTERED_FIGURE_SIGNIFICANT_FIGURES: Final = 15
+
+
+def _require_currency_amount(amount: float, what: str) -> None:
+    """Refuse an amount of money that is not a finite number, not negative.
+
+    Raises:
+        TypeError: If `amount` is not a number, or is a `bool`.
+        ValueError: If `amount` is negative or not finite.
+    """
+
+    if isinstance(amount, bool) or not isinstance(amount, int | float):
+        raise TypeError(f"{what} is a number, not {amount!r}")
+
+    if not isfinite(amount) or amount < 0.0:
+        raise ValueError(f"{what} must be finite and not negative, not {amount!r}")
+
+
+def _require_currency_code(currency: str) -> None:
+    """Refuse a currency that is not a str of three capital letters.
+
+    Raises:
+        TypeError: If `currency` is not a str.
+        ValueError: If it is not three capital letters, the form of an
+            ISO 4217 alphabetic code.
+    """
+
+    if not isinstance(currency, str):
+        raise TypeError(f"a currency is an ISO 4217 code, not {currency!r}")
+
+    if not is_currency_code(currency):
+        raise ValueError(f"a currency is three capital letters, not {currency!r}")
+
+
+def format_agent_cost(cost: float, currency: str) -> str:
+    """Render the cost of the delivered agent at the reader's price, after its currency code.
+
+    The cost is rounded to `AGENT_COST_SIGNIFICANT_FIGURES` significant
+    figures, and never to more than `AGENT_COST_FINEST_DECIMALS` decimals. So
+    8.0703 is shown as `USD 8.07`, 0.6812 as `USD 0.68`, 50.04 as
+    `USD 50.0` and 1234.5 as `USD 1230`. The rounding is to the nearest
+    figure, with halves rounded to even. A positive cost that rounds to zero
+    at the finest decimal is shown as `USD <0.01`, so a run that has delivered
+    agent never appears to have cost nothing. Exactly zero is shown as
+    `USD 0`, the cost before any agent is delivered. The currency is printed
+    as its ISO 4217 code, never as a sign such as "$" that several currencies
+    share (`docs/MODEL.md` § "A cost at the reader's price").
+
+    Args:
+        cost: The cost, in `currency`.
+        currency: The price's ISO 4217 alphabetic code, such as `USD`.
+
+    Returns:
+        The currency code and the rounded cost.
+
+    Raises:
+        TypeError: If `cost` is not a number or is a `bool`, or if `currency`
+            is not a str.
+        ValueError: If `cost` is negative or not finite, or if `currency` is
+            not three capital letters. The cost readout shows no cost in
+            either case, so such a value arriving here is a defect upstream.
+    """
+
+    _require_currency_amount(cost, "a cost")
+    _require_currency_code(currency)
+
+    if cost == 0.0:
+        return f"{currency} 0"
+
+    rounded, decimals = _round_to_figures(
+        Decimal(cost), AGENT_COST_SIGNIFICANT_FIGURES, AGENT_COST_FINEST_DECIMALS
+    )
+
+    if rounded == 0:
+        floor = Decimal(1).scaleb(-AGENT_COST_FINEST_DECIMALS)
+        return f"{currency} <{floor:.{AGENT_COST_FINEST_DECIMALS}f}"
+
+    return f"{currency} {rounded:.{max(decimals, 0)}f}"
+
+
+def format_price_per_liquid_ml(price_per_ml: float, currency: str) -> str:
+    """Render a price per millilitre of liquid agent, with its currency code and its unit.
+
+    The price is rounded to `PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES`
+    significant figures, with halves rounded to even, and with no limit on
+    the decimals. So 0.2047 is shown as `USD 0.2047 per mL of liquid`, and
+    0.961360 as `USD 0.9614 per mL of liquid`. The unit says liquid, because
+    a price per millilitre of vapour would be about 180 to 210 times smaller
+    (`docs/MODEL.md` § "A cost at the reader's price").
+
+    Args:
+        price_per_ml: The price of one millilitre of liquid agent, in
+            `currency`. It is positive, because the store refuses a bottle
+            price or a bottle volume that is not.
+        currency: The price's ISO 4217 alphabetic code.
+
+    Returns:
+        The currency code, the rounded price and its unit.
+
+    Raises:
+        TypeError: As `format_agent_cost` raises it.
+        ValueError: If `price_per_ml` is not positive and finite, or if
+            `currency` is not three capital letters.
+    """
+
+    _require_currency_amount(price_per_ml, "a price per millilitre")
+    _require_currency_code(currency)
+
+    if price_per_ml == 0.0:
+        raise ValueError("a price per millilitre must be positive, not 0.0")
+
+    rounded, decimals = _round_to_figures(
+        Decimal(price_per_ml), PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES, None
+    )
+
+    unit = DisplayUnit.AGENT_LIQUID_MILLILITRES.label
+
+    return f"{currency} {rounded:.{max(decimals, 0)}f} per {unit}"
+
+
+def format_entered_figure(figure: float) -> str:
+    """Render a figure the reader entered, such as a bottle price, as the reader typed it.
+
+    The figure is not a model output, so no displayed precision applies to
+    it. It is shown to `_ENTERED_FIGURE_SIGNIFICANT_FIGURES` significant
+    figures with trailing zeros dropped, which gives back the digits the
+    reader typed: 20.47 as `20.47`, 100.0 as `100` and 240.34 as `240.34`.
+
+    Raises:
+        TypeError: If `figure` is not a number, or is a `bool`.
+        ValueError: If `figure` is negative or not finite.
+    """
+
+    _require_currency_amount(figure, "an entered figure")
+
+    return f"{figure:.{_ENTERED_FIGURE_SIGNIFICANT_FIGURES}g}"
+
+
+def _round_to_figures(
+    value: Decimal, figures: int, finest_decimals: int | None
+) -> tuple[Decimal, int]:
+    """Round a positive `value` to `figures` significant figures, and to at most `finest_decimals`.
+
+    `finest_decimals` of None sets no limit on the decimals. The rounding is
+    to the nearest figure, with halves rounded to even. A value can round up
+    into the next power of ten, as 9.96 does to 10.0 at three figures. It is
+    then rounded again at that power's number of decimals, so 9.96 becomes 10
+    at two figures, not 10.0, which would claim three.
 
     Returns:
         The rounded value and the number of decimals it has. The number of
@@ -1667,8 +1829,17 @@ def _round_to_figures(value: Decimal, exponent: int) -> tuple[Decimal, int]:
         place.
     """
 
-    decimals = min(
-        COMPARTMENT_AMOUNT_FINEST_DECIMALS, COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES - 1 - exponent
-    )
+    def at_decade(exponent: int) -> tuple[Decimal, int]:
+        decimals = figures - 1 - exponent
 
-    return value.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_EVEN), decimals
+        if finest_decimals is not None:
+            decimals = min(finest_decimals, decimals)
+
+        return value.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_EVEN), decimals
+
+    rounded, decimals = at_decade(value.adjusted())
+
+    if rounded != 0 and rounded.adjusted() > value.adjusted():
+        rounded, decimals = at_decade(rounded.adjusted())
+
+    return rounded, decimals

@@ -97,3 +97,41 @@ and shows the currency as its ISO 4217 code. So part 2's example reads
   closes with either row still naming it.
 
 **Checked 2026-10-27 (`PL-0S0V`): where the liquid volume's precision comes from.** `app/formatting.py`'s `AGENT_AMOUNT_DISPLAY_PRECISION` holds the delivered total's precision in millilitres of liquid. Whether that is 1 mL or 0.1 mL is open in `PL-0S0V`, because § "A cost at the reader's price" shows one decimal in its examples. The cost's and the price per millilitre's precisions stay this item's to derive.
+
+**Built 2026-11-01.** `app/agent_cost.py`'s `cost_shown` builds each run's
+cost readout from the panel's values for one snapshot and the one price stored
+for that run's agent. The price per millilitre is derived in one place,
+`AgentPrice.price_per_liquid_ml`, and never stored. Beside the cost the panel
+shows the liquid volume and the price per millilitre it multiplied, the
+bottle price, bottle volume, currency and date, and the words "Your price, not
+one the project supplies". In each case that § "A cost at the reader's price"
+lists, it shows the reason and no number. A form under the panels
+(`app/qt_agent_price.py`) sets or removes the price through a new request,
+`ViewRequests.agent_price`, and the dashboard saves it in `preferences.json`.
+The currency rule moved to `app/currency_code.py`, so the store and the
+formatters read one rule.
+
+**The two precisions** (this item's to derive). The price carries no modelled
+uncertainty, so the cost's only one is the liquid figure's, from the density,
+at most 0.053 % (sevoflurane). Three significant figures is the most whose
+every step is coarser than that, so a cost is shown to three, and never finer
+than a hundredth. The price per millilitre is shown to four, the fewest at
+which its own rounding moves the product by at most half the cost's smallest
+step. The liquid volume's 0.1 mL can still move the product by more than one
+step, so the readout always says the figures are rounded. § "Displayed
+precision" has the derivation.
+
+**Placeholders decided here.** Every label and the layout of the cost lines
+and the form. The cost is written after its currency code, "USD 8.07". The
+form takes digits with at most one decimal point, and refuses a sign, an
+exponent, a thousands separator or a decimal comma rather than guessing. The
+date field starts at the day of entry and writes ISO 8601. The agent selector
+starts on the first displayed run's agent.
+
+**Tests.** `tests/unit/test_agent_cost.py` (the cost against a worked
+product, the unrounded-cost case, each agent's own price, every no-cost case,
+the form's refusals), `tests/unit/test_formatting.py` (both formats and the
+precision derivation), and `tests/integration/test_agent_cost_view.py`
+(Gas Man's Exercises 14-1 and 14-2 end to end through the form, a price change
+redrawn while paused and kept across a restart, a refused entry, removal, the
+working kept in liquid when the View shows vapour, and the withheld cost).
