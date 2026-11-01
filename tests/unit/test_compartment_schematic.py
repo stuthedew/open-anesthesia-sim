@@ -174,10 +174,10 @@ def _run(agent_id: str, seconds: float) -> SimulationController:
 def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
     """At every instant tested, the six shares fill the bar, and each is its amount over the total.
 
-    The six amounts are summed here, apart from the snapshot's own total. So
-    the test also checks that the bar divides by all the agent the run holds,
-    circuit included (`docs/MODEL.md` § "The compartment schematic: what its
-    heights, amounts and share bar assert").
+    The test sums the six amounts itself, independently of the snapshot's own
+    total. So the test also checks that the bar divides by all the agent the
+    run holds, circuit included (`docs/MODEL.md` § "The compartment schematic:
+    what its heights, amounts and share bar assert").
     """
 
     controller = _run(agent_id, 0.0)
@@ -200,9 +200,9 @@ def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
 
 
 def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
-    """With no alveolar ventilation, no agent leaves the circuit, so its share is the whole.
+    """With no alveolar ventilation, no agent leaves the circuit, which then holds the whole share.
 
-    This is the closed form of the module's oracle. Every other compartment
+    This is the closed form that the module's docstring describes. Every other compartment
     holds nothing, so its share is exactly zero and is shown as `0%`.
     """
 
@@ -228,7 +228,7 @@ def test_a_run_that_holds_no_agent_draws_an_empty_bar_and_prints_no_share() -> N
 
 
 def test_the_share_lines_keep_their_count_when_the_first_agent_arrives() -> None:
-    """The schematic keeps its size at Start: the empty bar's lines are as many as the shares'.
+    """The empty bar has as many lines as the shares, so the schematic keeps its size at Start.
 
     The blind review of `PL-S79P` found that the empty bar's one line grew to
     three when the first agent arrived, which moved everything below it.
@@ -255,11 +255,12 @@ def test_the_share_lines_name_every_segment_with_its_share_in_text() -> None:
 
 
 def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty() -> None:
-    """The bar shows what the heights cannot: fat's share grows while its tension stays near zero.
+    """The bar shows fat's share growing while fat's tension stays near zero.
 
-    `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
-    share bar assert" gives fat about a fifth of the stored agent at one hour
-    of a 1 MAC sevoflurane dial (`PL-H5DV`).
+    The containers' heights are tensions, so the heights cannot show this
+    growth. `docs/MODEL.md` § "The compartment schematic: what its heights,
+    amounts and share bar assert" gives fat about a fifth of the stored agent
+    after one hour with the sevoflurane dial at 1 MAC (`PL-H5DV`).
     """
 
     controller = _run("sevoflurane", 10 * SECONDS_PER_MINUTE)

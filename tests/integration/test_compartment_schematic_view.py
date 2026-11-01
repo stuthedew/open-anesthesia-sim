@@ -572,12 +572,12 @@ def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
     """Each segment's painted length is its share of the bar, and the lines under it name each.
 
     The segment of each compartment is measured in pixels of its own colour
-    along the bar's middle row. Antialiasing and the divider before it can
-    take one pixel at each end of a segment, so each count is held to within
-    two pixels of the share of the bar's width. At ten seconds, venous blood,
-    muscle and fat each hold well under 1%. The blind review of `PL-S79P`
-    found that their dividers then covered them and merged into one another,
-    so the bar is checked at that instant as well as at one hour.
+    along the bar's middle row. Antialiasing and the divider before a segment
+    can take one pixel at each end of it. So each count must be within two
+    pixels of the share multiplied by the bar's width. At ten seconds, venous
+    blood, muscle and fat each hold far less than 1%. The blind review of
+    `PL-S79P` found that their dividers then covered them and merged into one
+    another. So the test checks the bar at that instant as well as at one hour.
     """
 
     for seconds in (10.0, 60 * SECONDS_PER_MINUTE):

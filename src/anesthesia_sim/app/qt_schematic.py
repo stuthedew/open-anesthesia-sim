@@ -21,12 +21,12 @@ are never drawn as a chain through which agent passes from one tissue to the
 next. No container stands for arterial blood, for the reason `docs/MODEL.md`
 gives.
 
-**The share bar** (`PL-S79P`). Under the containers, `ShareBar` draws one
-bar divided into each compartment's share of all the agent the run holds, in
-the containers' order and colours, and the lines under it name each share in
-text. The containers' heights are tensions, so fat's container stays nearly
-empty while fat comes to hold a fifth of the agent. The bar is where that
-growing share is seen.
+**The share bar** (`PL-S79P`). Under the containers, `ShareBar` draws one bar.
+The bar is divided into each compartment's share of all the agent the run
+holds, in the containers' order and colours. The lines under the bar name each
+share in text. The containers' heights are tensions, so fat's container stays
+nearly empty even while fat comes to hold a fifth of the agent. The bar is
+where the learner sees that growing share.
 
 Every size and colour choice here is a placeholder while the interface is being
 built (project owner, 2026-10-18). The parallel drawing of the tissues is not a
@@ -272,15 +272,15 @@ _SHARE_DIVIDED_PX: Final = 3.0
 class ShareBar(QWidget):
     """One bar, divided into each compartment's share of the agent the run holds (`PL-S79P`).
 
-    The segments stand left to right in the containers' order, each filled in
-    its compartment's trace colour, and each segment's length is its share of
-    the bar's length. The bar is outlined in INK, so an empty bar still shows
-    where the bar is. The segments are named in text by the line under the bar
-    that `RunSchematic` shows, never by colour alone. A position along one
-    common scale is judged more accurately than an area (`docs/MODEL.md`
-    § "The compartment schematic: what its heights, amounts and share bar
-    assert"), so the bar carries the comparison of amounts that the
-    containers' heights cannot.
+    The segments stand left to right in the containers' order. Each is filled
+    in its compartment's trace colour, and each segment's length is its share
+    of the bar's length. The bar is outlined in INK, so an empty bar still
+    shows where the bar is. `RunSchematic` shows lines under the bar that name
+    the segments in text, so no segment is told apart by colour alone. Readers
+    judge a position along one common scale more accurately than an area
+    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert"). So the bar carries the comparison of amounts that
+    the containers' heights cannot.
     """
 
     def __init__(self) -> None:
@@ -345,13 +345,13 @@ class ShareBar(QWidget):
                 )
                 start = end
 
-            # A line in the panel's colour divides each pair of neighbouring
-            # visible segments, so each segment's ends are seen against the
-            # panel, whose contrast with every compartment colour is checked,
-            # and never only against a neighbour's colour, which is not. A
-            # segment narrower than `_SHARE_DIVIDED_PX` gets no divider, so a
-            # divider never covers a segment and the visible segments keep
-            # the order the lines under the bar name them in.
+            # A line in the panel's colour divides each pair of neighbouring visible
+            # segments. So the ends of each segment are seen against the panel, and
+            # the panel's contrast with every compartment colour is checked. They
+            # are never seen only against a neighbour's colour, whose contrast is
+            # not checked. A segment narrower than `_SHARE_DIVIDED_PX` gets no
+            # divider. So a divider never covers a segment, and the visible segments
+            # stay in the order in which the lines under the bar name them.
             painter.setPen(QPen(QColor(PANEL), _OUTLINE_WIDTH))
             start = 0.0
             visible_before = False

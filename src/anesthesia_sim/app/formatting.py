@@ -1535,38 +1535,39 @@ def format_compartment_amount(litres: float) -> str:
 
 
 # A compartment's share of the agent the run holds is shown in whole percent.
-# `docs/MODEL.md` § "Displayed precision" derives it (`PL-2881`): one SD of a
-# partition coefficient moves a share by at most 1.2 percentage points, so one
-# step of 1 percentage point is at least 0.8 SD. This constant is the only
-# place that states the share's precision.
+# `docs/MODEL.md` § "Displayed precision" derives that precision (`PL-2881`). A change
+# of one standard deviation (SD) in a partition coefficient moves a share by at most
+# 1.2 percentage points. So one display step of 1 percentage point is at least 0.8 SD.
+# This constant is the only place that states the share's precision.
 COMPARTMENT_SHARE_DECIMALS: Final = 0
 
 
 def format_compartment_share(share: float) -> str:
     """Render one compartment's share of the agent the run holds, for the schematic's share bar.
 
-    The share is shown in whole percent, `COMPARTMENT_SHARE_DECIMALS`
-    decimals, rounded to the nearest with halves to even. Two shares never
-    read as a claim the model does not make (`docs/MODEL.md` § "Displayed
-    precision"). A positive share that rounds to 0% is shown as `<1%`, so a
-    compartment that holds agent never reads as holding none. A share that
-    rounds to 100% but is not the whole is shown as `>99%`, so no
-    compartment reads as holding all of the agent while another holds some.
-    Exactly 0 is shown as `0%` and exactly 1 as `100%`.
+    The share is shown in whole percent, with `COMPARTMENT_SHARE_DECIMALS`
+    decimal places. It is rounded to the nearest whole percent, and halves
+    round to even. The two exceptions below keep a printed share from
+    claiming what the model does not (`docs/MODEL.md` § "Displayed
+    precision"). A positive share that rounds
+    to 0% is shown as `<1%`, so a compartment that holds agent never appears
+    to hold none. A share that rounds to 100% but is less than the whole is
+    shown as `>99%`, so no compartment appears to hold all of the agent while
+    another holds some. Exactly 0 is shown as `0%`, and exactly 1 as `100%`.
 
     Args:
         share: The compartment's amount divided by all the agent the run
             holds, from 0 through 1.
 
     Returns:
-        The share in percent, with its sign.
+        The share in percent, followed by a percent sign.
 
     Raises:
         TypeError: If `share` is not a number, or is a `bool`.
         ValueError: If `share` is not finite or is outside 0 through 1. A
-            share outside that range means the amounts and their total
-            disagree, which is a defect upstream, so it is rejected rather
-            than printed as a plausible share.
+            share outside that range means that the amounts and their total
+            disagree. That is a defect upstream, so the function rejects the
+            share rather than printing it as a plausible share.
     """
 
     if isinstance(share, bool) or not isinstance(share, int | float):

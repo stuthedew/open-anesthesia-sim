@@ -235,10 +235,11 @@ def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:
     return OFF_SCALE_LINE_TEMPLATE.format(compartments=", ".join(above))
 
 
-#: The lines under the share bar, which name every segment in text, so no
-#: compartment is told apart by colour alone. They are three fixed lines, the
-#: heading and three segments on each of the others, for the reason the scale
-#: caption gives. The wording is a placeholder.
+#: The lines under the share bar. They name every segment in text, so no compartment
+#: is told apart by colour alone. There are always three lines. The first is the
+#: heading, and each of the other two names three segments. The count is fixed
+#: because Qt leaves a wrapped label's extra lines out of a View's minimum size,
+#: as the scale caption's comment explains. The wording is a placeholder.
 SHARE_LINE_TEMPLATE: Final = "Share of the agent the run holds:\n{first},\n{second}."
 SHARE_SEGMENT_TEMPLATE: Final = "{name} {share}"
 
@@ -255,14 +256,14 @@ NO_AGENT_SHARE_LINE: Final = (
 
 @dataclass(frozen=True, slots=True)
 class ShareSegment:
-    """One compartment's segment of the share bar, as one snapshot sizes and labels it.
+    """One compartment's segment of the share bar, sized and labelled from one snapshot.
 
     Attributes:
         quantity: The compartment that the segment stands for.
         name: The compartment's name, as its readout panel names it.
-        share: The compartment's amount divided by all the agent the run
-            holds, `stored_agent_l`, from 0 through 1. The segment's length
-            is this share of the bar's length.
+        share: The compartment's amount divided by `stored_agent_l`, all the
+            agent that the run holds. It runs from 0 through 1. The segment's
+            length is this share of the bar's length.
         text: The share in whole percent, as `format_compartment_share`
             writes it.
     """
@@ -276,18 +277,20 @@ class ShareSegment:
 def share_segments(snapshot: SimulationSnapshot) -> tuple[ShareSegment, ...] | None:
     """Return the share bar's six segments, or None while the run holds no agent.
 
-    The segments stand in the containers' order. Each share is the
+    The segments are in the same order as the containers. Each share is the
     compartment's amount from the snapshot's per-compartment record
     (`PL-KFTM`), divided by the snapshot's `stored_agent_l`. The six
     amounts sum to that total exactly, so the six shares fill the bar
     (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
-    and share bar assert"). When the run holds no agent, no share exists, and
-    None is returned rather than a division by zero or six zeros.
+    and share bar assert"). When the run holds no agent, no share exists. The
+    function then returns None, rather than dividing by zero or returning six
+    zeros.
 
     Raises:
-        ValueError: If `stored_agent_l` is negative or not finite, or a share
-            falls outside 0 through 1 (`format_compartment_share`). Either
-            means the amounts and their total disagree.
+        ValueError: If `stored_agent_l` is negative or not finite, or if a
+            share falls outside 0 through 1, which `format_compartment_share`
+            rejects. Either fault means that the amounts and their total
+            disagree.
     """
 
     total = snapshot.stored_agent_l
