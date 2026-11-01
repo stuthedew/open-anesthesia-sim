@@ -2161,6 +2161,60 @@ def test_a_side_by_side_split_is_refused_where_a_narrower_half_could_not_hold_th
     assert "too small to hold its header and a notice" in beside.refusal
 
 
+def test_a_split_is_refused_where_its_halves_would_lose_the_width_the_view_held(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-16BG`: a half's floor is measured at the width at which `settle` would draw it.
+
+    A Big view's Area takes 0.3 of a row 500 px wide and 250 px tall, and is held at its
+    View's 300 px need. Stacked halves would each be (250 - 8) / 2 = 121 px tall, too
+    small for the Big view. Once both halves show the too-small notice, they no longer
+    need 300 px of width, so the row gives them their share, less than 150 px. Wrapped at
+    that width, the notice needs a floor 146 px tall, so the split is refused. Measured at
+    the Area's 300 px frame, the notice would need only 95 px. Found by the branch's blind
+    review.
+    """
+
+    model = _layout(_row((0.3, 0.7), Area(AreaId(1), _BIG), _area(2)), 3)
+    container = _show_sized(application, shown, model, (500, 250))
+
+    assert container.frame(AreaId(1)).width() >= 300
+    assert not _operation(container, 1, SPLIT_STACKED_LABEL).available
+
+
+def test_a_drag_stops_before_a_too_small_area_is_too_narrow_for_its_notice(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-16BG`: a drag holds a too-small Area to its floor at the width the drag gives it.
+
+    Two Big views sit side by side in a window 808 px wide and 104 px tall. Each Area is
+    400 px wide and too small for its View, and its notice wrapped at 400 px needs 95 px.
+    Dragging the border 270 px left would leave the first Area about 130 px wide, where
+    the notice needs 146 px, more than the row's height. So the drag stops while the first
+    Area's notice still fits, and every notice is shown in full. Found by the branch's
+    blind review.
+    """
+
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
+    _, container = _host_sized(application, hosts, model, (808, 104))
+
+    assert len(container.too_small()) == 2
+
+    _drag(application, _splitters(container)[()], 1, -270)
+    application.processEvents()
+
+    assert container.frame(AreaId(1)).width() < 400
+
+    for entry in container.too_small():
+        frame = container.frame(entry.area_id)
+        notice = frame.too_small_notice
+        assert notice is not None
+        assert frame.minimumHeight() <= 104
+
+        for label in (notice.title_label, notice.body_label):
+            assert label.height() >= label.heightForWidth(label.width()) > 0
+
+
 def test_a_drag_stops_where_the_neighbour_reaches_its_views_declared_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:

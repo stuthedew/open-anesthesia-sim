@@ -497,6 +497,8 @@ class AreaLayout(QWidget):
         # Each Area's need as of the last settle. When a frame's need changes, the
         # Areas settle again.
         self._needs: dict[AreaId, PixelSize] = {}
+        # Each Area's floor as of the last settle, which `_fits` measures at a dragged width.
+        self._floors: dict[AreaId, Floor] = {}
         self._build(frozenset())
 
     @property
@@ -941,16 +943,16 @@ class AreaLayout(QWidget):
         """
 
         at = offset_px / extent_px if extent_px > 0 else 0.0
-        result: LayoutModel | None = None
         parts = (offset_px, extent_px - offset_px - AREA_HANDLE_WIDTH)
 
-        if self._parts_hold_the_floor(area_id, orientation, parts):
-            try:
-                result = self._model.split(area_id, orientation, at)[0]
-            except LayoutRefused:
-                result = None
+        try:
+            split, new_id = self._model.split(area_id, orientation, at)
+        except LayoutRefused:
+            return SplitPreview(area_id, orientation, at, None)
 
-        return SplitPreview(area_id, orientation, at, result)
+        held = self._parts_hold_the_floor(split, area_id, new_id, orientation, parts)
+
+        return SplitPreview(area_id, orientation, at, split if held else None)
 
     def _title(self, area_id: AreaId) -> str:
         """Name the View an Area shows by its registry title, or by its tag if no entry has it."""
@@ -977,28 +979,49 @@ class AreaLayout(QWidget):
             (_MENU_SPLIT_AT, 1 - _MENU_SPLIT_AT), max(along - AREA_HANDLE_WIDTH, 0)
         )
 
-        if not self._parts_hold_the_floor(area_id, orientation, halves):
-            return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+        try:
+            split, new_id = self._model.split(area_id, orientation, _MENU_SPLIT_AT)
+        except LayoutRefused:
+            # `_attempt` below states the model's own refusal.
+            pass
+        else:
+            if not self._parts_hold_the_floor(split, area_id, new_id, orientation, halves):
+                return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
 
         return _attempt(label, None, partial(_split_layout, self._model, area_id, orientation))
 
     def _parts_hold_the_floor(
-        self, area_id: AreaId, orientation: Orientation, parts_px: tuple[int, ...]
+        self,
+        split: LayoutModel,
+        area_id: AreaId,
+        new_id: AreaId,
+        orientation: Orientation,
+        parts_px: tuple[int, ...],
     ) -> bool:
-        """Return whether each part of a split of the Area `area_id` could hold the Area's floor.
+        """Return whether each part of a cut of the Area `area_id` could hold the Area's floor.
 
-        `parts_px` holds each part's length on the axis that the split divides. On the other
-        axis, each part is as long as the Area is now. Every part would show the View that the
-        Area shows now, so each part has the Area's floor. That floor is measured at the width
-        at which the part would be drawn (`Floor.fits_in`). A stacked part is as wide as the
-        Area, so its too-small notice wraps at the Area's width rather than at the floor's own
-        width (`PL-7DXG`). A part beside another is narrower than the Area, so its notice may
-        need more lines.
+        `split` is this layout with the Area cut in two, and `new_id` names the new part.
+        `parts_px` holds each part's length on the axis that the cut divides, as the cut
+        leaves it. Every part would show the View that the Area shows now, so each part has
+        the Area's need and its floor. A part's floor is measured at the width at which the
+        part would be drawn (`Floor.fits_in`).
+
+        A part's extent on the other axis is taken from `settle`'s layout of `split` at this
+        widget's size, not from the Area's frame. An Area can be drawn wider than its share
+        because its View needs that width. Once its parts are too small for the View, they
+        lose that width, and a narrower part's notice may need more lines (`PL-16BG`). A
+        stacked part of a wide Area keeps the Area's width, so its notice wraps at that width
+        rather than at the floor's own width (`PL-7DXG`).
         """
 
-        frame = self._frames[area_id]
-        floor = self._floor(area_id)
-        across = frame.height() if orientation is Orientation.ROW else frame.width()
+        tree = split.windows[MAIN_WINDOW].tree
+        needs = dict(self._needs)
+        floors = {each: self._floor(each) for each in self._frames}
+        needs[new_id], floors[new_id] = needs[area_id], floors[area_id]
+        extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
+        fit = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, self._drawn - {area_id})
+        laid_out = fit.apportionment.areas
+        across = min(laid_out[part].across(orientation) for part in (area_id, new_id))
 
         for along in parts_px:
             if along < 0:
@@ -1010,7 +1033,7 @@ class AreaLayout(QWidget):
                 else PixelSize(across, along)
             )
 
-            if not floor.fits_in(part):
+            if not floors[area_id].fits_in(part):
                 return False
 
         return True
@@ -1278,6 +1301,7 @@ class AreaLayout(QWidget):
             needs = {area_id: self._need(area_id) for area_id in self._frames}
             self._needs = needs
             floors = {area_id: self._floor(area_id) for area_id in self._frames}
+            self._floors = floors
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
             held = drawn_bounds(needs, floors)
@@ -1706,13 +1730,17 @@ class AreaLayout(QWidget):
     def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
         """Return whether every Area of `moved` is drawn at no less than its least size.
 
-        An Area's least size is the bound it was given when the Areas were last settled
-        (`Fit.bounds`). The Area's frame is held to that size. The Area's drawn size is
-        estimated as its share of this widget, less one handle's width. The estimate
-        ignores the handles of nested splits. It also overstates the drawn size of an
-        Area whose neighbour in its split is held wider than its share. Some Areas are
-        already smaller than their least size when the drag starts, because the window
-        is small. Such an Area may stay as it was, but it may not shrink further.
+        The Area's drawn size is estimated as its share of this widget, less one handle's
+        width. The estimate ignores the handles of nested splits. It also overstates the
+        drawn size of an Area whose neighbour in its split is held wider than its share
+        (`PL-501T`). An Area that draws its View has as its least size the bound it was
+        given when the Areas were last settled (`Fit.bounds`). An Area that is too small
+        for its View has its floor as its least size, measured at the width the drag would
+        give it (`Floor.at`). A narrower Area needs a taller floor, so a drag that leaves
+        its notice no room stops (`PL-16BG`).
+
+        Some Areas are already smaller than their least size when the drag starts, because
+        the window is small. Such an Area may stay as it was, but it may not shrink further.
         """
 
         fit = self._fit
@@ -1727,13 +1755,27 @@ class AreaLayout(QWidget):
                 (place.bottom - place.top) * height - AREA_HANDLE_WIDTH,
             )
 
-        for area in moved.areas():
-            bound = fit.bounds[area.id]
-            least = (bound.width_px, bound.height_px)
-            now, then = drawn(moved, area.id), drawn(start, area.id)
+        def least(area_id: AreaId, width_px: float) -> tuple[int, int]:
+            bound = (
+                fit.bounds[area_id]
+                if area_id in fit.drawn
+                else self._floors[area_id].at(int(width_px))
+            )
 
-            if any(now[axis] < min(least[axis], then[axis]) for axis in (0, 1)):
-                return False
+            return bound.width_px, bound.height_px
+
+        for area in moved.areas():
+            now, then = drawn(moved, area.id), drawn(start, area.id)
+            least_now, least_then = least(area.id, now[0]), least(area.id, then[0])
+
+            for axis in (0, 1):
+                # An Area that held its least size at the start must still hold it. One
+                # that did not may stay as it was.
+                held = then[axis] >= least_then[axis]
+                allowed = least_now[axis] if held else min(least_now[axis], then[axis])
+
+                if now[axis] < allowed:
+                    return False
 
         return True
 

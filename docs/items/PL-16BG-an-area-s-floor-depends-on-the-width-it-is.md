@@ -73,10 +73,13 @@ now tested without Qt. `drawn_bounds` measures each floor at its need's width,
 which is the narrowest width at which an Area draws its View. The minimum size
 hint reads that. `AreaLayout._floor` takes no width and returns a `Floor`.
 The split refusal, for the Area menu and the corner drag alike, asks
-`Floor.fits_in` of each part at the size the part would be drawn at
-(`_parts_hold_the_floor`). The border warning's `_fits` reads each Area's least
-size from `Fit.bounds` instead of reading it back from Qt. The drag
-(`_drawn_position`) already read `Fit.bounds`, and still does.
+`Floor.fits_in` of each part (`_parts_hold_the_floor`). Each part keeps the
+length the cut gives it, so a cut too close to an edge is still refused
+(`PL-30L5` Q2). Its extent on the other axis comes from `settle`'s layout of
+the split, not from the Area's frame. The border warning's `_fits` holds a
+drawn Area to its `Fit.bounds` entry, and a too-small Area to its floor at the
+width the drag would give it. The drag (`_drawn_position`) already read
+`Fit.bounds`, and still does.
 
 The split refusal now also checks a side-by-side half's height against the
 floor at the half's own width. Before, it compared that half's width alone. So
@@ -100,5 +103,24 @@ One reader still works out an Area's drawn size on its own path. `_fits`
 estimates it as the Area's share of the window minus one handle, rather than
 from the apportionment the splitters draw. Moving it changes where a line drag
 stops by about a handle's width, which two adapter tests pin as `PL-RQT1` Q3's
-stop. So it is filed as `PL-501T` rather than changed here. It does not read a
-floor, so it cannot re-enter this head's fact.
+stop. So it is filed as `PL-501T` rather than changed here. The floor it reads
+is now measured at that estimated width through `Floor.at`, so the estimate
+can be wrong by a handle, but the floor cannot be read at a stale width.
+
+**Blind review, 2026-11-01, one pass.** Both findings were real and are fixed
+on this branch.
+
+- F1, blocking: the first version of `_parts_hold_the_floor` measured a stacked
+  half's floor at the Area's frame width. An Area held wider than its share for
+  its View's need loses that width once its halves drop to their floors, so the
+  split was allowed where the old check refused it. Fixed by taking the part's
+  width from `settle`'s layout of the split.
+  `test_a_split_is_refused_where_its_halves_would_lose_the_width_the_view_held`
+  failed before the fix with `assert not True` on the stacked split's
+  `available`.
+- F2, should-fix, present on `main` too: `_fits` held a too-small Area to its
+  floor at the width of the last settle, so a drag could narrow it until its
+  notice no longer fitted the row. Fixed by measuring the floor at the dragged
+  width. `test_a_drag_stops_before_a_too_small_area_is_too_narrow_for_its_notice`
+  failed before the fix with `assert 146 <= 104` on the first Area's
+  `minimumHeight`.
