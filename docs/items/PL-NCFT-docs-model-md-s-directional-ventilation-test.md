@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, docs
 feature: invariant-test-gaps
+milestone: v0.6.12
 touches: docs/MODEL.md, tests/reference/test_sevo_patient.py
 added: 2026-09-19
 closed: 2026-11-01

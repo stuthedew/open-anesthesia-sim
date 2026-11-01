@@ -152,7 +152,8 @@ rule above applies.
 | v0.6.8 | Completed | **The release where `docs/MODEL.md`, `ROADMAP.md` and every docstring and comment in the simulator tests are rewritten in plain English with no equation, unit, number or test changed, where `tools/fact_home_check.py` refuses a plain string copied under a second name, where the untied-restatement check reads slash-joined lists, lower-case units and figures in math spans, and where `bin/docket verify` runs a core module's mutants against a changed core unit test.** 15 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/` resolves to `7be0bb4` at the v0.6.7 tag and here. `tests/reference/` moved only in its docstrings and comments, and `tools/ast_identity.py` finds no code moved in any of its 10 files. `docs/MODEL.md` moved because `PL-BZR4` (`#1808`) rewrote its prose, keeping every equation, unit, number, marker, section heading and citation. `PL-FDMJ` and `PL-WL5L` (`#1805`) rewrote the simulator tests' prose, `PL-K7N7` (`#1822`) rewrote `ROADMAP.md`'s, and three test docstrings that stated wrong figures were corrected (`PL-FJMW`, `PL-KM19`, `PL-KYVR`). One source of truth carries five defects (`PL-3PKN`, `PL-6GP9`, `PL-H716`, `PL-2T6S`, `PL-P0RG`), `PL-H57W` closes a gap in `verify`'s mutation check, `PL-J7YG` ranks the model review on fixes that did not hold, and `PL-PV5Q` re-reads `docs/interface-provenance.md`'s Blender rationale against Blender's own pages. **It finishes `one-source-of-truth` and `prose-quality`**, and closes no generator head. **One is a Gate 3 entry**, `PL-H57W`, and with `PL-QX2G` and `PL-YT3T` added to the list by `#1820` the gate stands at 25 of 48 cleared, from 24 of 46 at the v0.6.7 tag. `PL-43Z5`, the cut, ships in no release under `PL-KRS6`. | 15 items |
 | v0.6.9 | Completed | **The release where every input to `core/` has a closed range that is refused when it is built, from each compartment volume and partition coefficient to the opening state, where every way of branching at a paused instant opens under the same settings and records the same provenance, where each agent stores its molar mass and its measured liquid density, and where the accounting check's delivered total now equals dial × flow × time to the last bit.** 95 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state is bit-identical**: `core/` moved (`5e150fb` to `dbba1c0`) and `data/` moved (`2a85cd0` to `2f84dbb`), and the trajectory comparison against the v0.6.8 tag found every state vector, canonical state, drawn window and hover string identical over 81 cases and three 24-hour runs. `data/` gained each agent's molar mass and liquid density (`PL-KZ99`, `#1866`) and changed no value it already held. What moved is the agent accounting: `PL-XST1` (`#1826`) sums the delivered and exhausted totals with Kahan compensation, so the delivered total, shown in litres to a tenth, reads a different tenth in 398 of 236,313 sampled readouts, each one an amount exactly halfway between two tenths. **It finishes ten features**, among them `model-spec-accuracy` and `fewer-red-runs`, and closes four generator heads, all spent (`PL-58D7`, `PL-HJKN`, `PL-N7MM`, `PL-ZR49`). **39 are Gate 3 entries**, three of them in v0.7.0's Required scope, and the gate stands at 64 of 87 cleared, from 25 of 48 at the v0.6.8 tag. `PL-8D7L`, the cut, ships in no release under `PL-KRS6`. | 95 items |
 | v0.6.10 | Completed | **The release where each value on the run screen is written from the same step as the label, divisor and verdict beside it, where a dial moved on a stopped run is refused, where the accounting panel of a run that an accounting failure halted shows the rejected step's own verdict and totals, where a run that a mark stopped says so in its status word, and where a test holds `docs/MODEL.md`'s MAC-awake washout figures to the model.** 12 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`dbba1c0` to `26931f6`) only in the accounting error, which now carries the failing check and says the step was rolled back, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.9 tag found every state vector, canonical state, drawn window, hover string, readout string and halt identical over 81 cases and three 24-hour runs. A snapshot gains one field, the rejected step's check, which no case in the comparison fills. **It finishes two features**, `mac-awake-reference-text` and `one-source-of-truth`, and closes one generator head, spent (`PL-J5GC`). **Nine are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 73 of 88 cleared, from 64 of 87 at the v0.6.9 tag. `PL-8BDX`, the cut, ships in no release under `PL-KRS6`. | 12 items |
-| v0.6.11 | Completed / current baseline | **The release where the coupled model refuses an input fraction above 0.99 of the ambient pressure and the chart refuses to draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9 tolerance with the reason recorded, where holding a slider's thumb previews the trajectory that the held value would give, where every run holds while a Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states the coupled system's modal time constants.** 14 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`26931f6` to `8186a8c`) only for `PL-9B1M`'s input ceiling and the new check on every drawn column, which no shipped vaporizer's maximum reaches, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.10 tag found every state vector, canonical state, drawn window, hover string, readout string, halt and snapshot field identical over 81 cases and three 24-hour runs. **It finishes two features**, `floating-point-domain` and `numerical-domain`, and closes no generator head. **Five are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 78 of 89 cleared, from 73 of 88 at the v0.6.10 tag. `PL-KDDS`, the cut, ships in no release under `PL-KRS6`. | 14 items |
+| v0.6.11 | Completed | **The release where the coupled model refuses an input fraction above 0.99 of the ambient pressure and the chart refuses to draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9 tolerance with the reason recorded, where holding a slider's thumb previews the trajectory that the held value would give, where every run holds while a Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states the coupled system's modal time constants.** 14 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`26931f6` to `8186a8c`) only for `PL-9B1M`'s input ceiling and the new check on every drawn column, which no shipped vaporizer's maximum reaches, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.10 tag found every state vector, canonical state, drawn window, hover string, readout string, halt and snapshot field identical over 81 cases and three 24-hour runs. **It finishes two features**, `floating-point-domain` and `numerical-domain`, and closes no generator head. **Five are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 78 of 89 cleared, from 73 of 88 at the v0.6.10 tag. `PL-KDDS`, the cut, ships in no release under `PL-KRS6`. | 14 items |
+| v0.6.12 | Completed / current baseline | **The release where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, and where `docs/MODEL.md`'s step-refinement paragraph names the three fractions its test compares.** Two items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/` resolves to the same tree at the v0.6.11 tag and here (`ca9bd1e`), so the trajectories were not re-measured. **It finishes one feature**, `invariant-test-gaps`, and closes no generator head. **Neither item is a Gate 3 entry**, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 2 items |
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -268,125 +269,70 @@ checkout will produce it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.6.11
+## Current baseline: v0.6.12
 
-v0.6.11 is the release where the coupled model refuses an input fraction above
-0.99 of the ambient pressure, so that rounding in a step can no longer carry a
-computed fraction past 1. It is also the release where the chart refuses to
-draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9
-tolerance with the reason recorded, where holding a slider's thumb previews the
-trajectory that the held value would give, where every run holds while a
-Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states
-the coupled system's modal time constants. The release has 14 items, and it is
-a patch on both halves of § "Versioning decision"'s test. No capability
-boundary is crossed. The next milestone, v0.7.0, the schematic, is scoped and
-not built, and v0.7.0 and v0.8.0 are given to milestone sections. None of
-v0.7.0's own Required scope ships here.
+v0.6.12 is the release where the test behind `docs/MODEL.md` § "Directional
+ventilation test" checks the lesson the section states. Higher alveolar
+ventilation must bring F_A toward F_I faster, and the test now requires F_A/F_I
+to be higher at 8 L/min than at 2 L/min at every whole second of the first
+minute. It is also the release where `docs/MODEL.md`'s step-refinement
+paragraph names the three fractions its test compares. The release has two
+items, and it is a patch on both halves of § "Versioning decision"'s test. No
+capability boundary is crossed. The next milestone, v0.7.0, the schematic, is
+scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections.
+None of v0.7.0's own Required scope ships here.
 
-Five of the 14 items are on Gate 3's frozen list. One of them, `PL-4LS8`,
-joined that list after the v0.6.10 tag. It records the answer on how thin a
-preview curve may be drawn. So the gate stands at 78 of 89 cleared, from 73 of
-88 at the v0.6.10 tag.
+Neither item is on Gate 3's frozen list, so the gate stands at 78 of 89
+cleared, as at the v0.6.11 tag.
 
-**No stored value changed, and the input ceiling moves no supported run:**
+**Nothing in `src/` changed, and no run can differ:**
 
-| Tree | v0.6.10 tag | This cut | What moved |
+| Tree | v0.6.11 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `46b28b1` | `ca9bd1e` | `core/` and `app/` |
-| `src/anesthesia_sim/core/` | `26931f6` | `8186a8c` | the 0.99 input ceiling, and a check on every drawn column |
+| `src/` | `ca9bd1e` | `ca9bd1e` | nothing |
+| `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
 | `src/anesthesia_sim/data/` | `2f84dbb` | `2f84dbb` | nothing |
-| `tests/reference/` | `32dfee2` | `070c70c` | seeded random control trajectories, and the modal time constants |
-| `docs/MODEL.md` | `d43dff2` | `97d56c6` | the input ceiling, the tolerance, the modal time constants, the long propagator, the preview and the hold |
+| `tests/reference/` | `070c70c` | `696db73` | the directional ventilation test, and the step-refinement bound's comment |
+| `docs/MODEL.md` | `97d56c6` | `3af29e8` | the directional ventilation test and the step-refinement paragraph |
 | `README.md` | `7db4f10` | `7db4f10` | nothing |
 | `.github/` | `3f5e7c1` | `3f5e7c1` | nothing |
 
-`tools/ast_identity.py` finds code moved in four files of `core/`:
-`governing_equations.py`, `run_definition.py`, `supported_ranges.py` and
-`uptake_system.py`. All of it is `PL-9B1M` (`#1901`).
-`core/supported_ranges.py` gains `MAXIMUM_INPUT_FRACTION`, 0.99. The dial and
-the opening state are refused above it, and a compartment that stores an amount
-is checked by its amount, because a fraction set to 0.99 reads back as
-0.9900000000000001. A computed fraction is still checked from 0 through 1.
-`run_definition._drawable` now checks every column that the chart evaluates,
-and refuses a fraction above 1 with a `SimulationNumericalError` that names the
-compartment. Before, a full state could round to 1.0000000000349965 and halt
-the run, and the chart drew up to 1.000033 without refusing it. Three more
-files, `circuit.py`, `concentration.py` and `exceptions.py`, changed only in
-docstrings. Each was read: they reword their text and state the new 99%
-limit, and no unit, model version or source changed. No shipped vaporizer
-reaches the ceiling, since desflurane's 18% is the highest maximum.
+Because `src/` resolves to the same tree at the v0.6.11 tag and here, the
+trajectories were not re-measured. Every run is the run v0.6.11 gave.
 
-Because code moved, the trajectories were measured against the v0.6.10 tag.
-The comparison ran 81 cases, three agents at three fresh gas flows, three
-cardiac outputs and three ventilations, each with a time mark, a MAC target,
-four control changes and two branches, and three 24-hour runs. Every state
-vector at every step, all 9,153,000 of them, is bit-identical. So are the
-11,178 canonical states, the 2,187 drawn windows, the 19,212,552 hover
-strings, the 236,313 sampled readout strings, all 271 halts and every
-snapshot field. Neither tree has a field the other lacks, and the comparison
-found 0 differences. The scripts and the full count are in the project's
-shared `release-trajectory` folder.
+**The model's required tests.** `docs/MODEL.md` requires that higher alveolar
+ventilation speed the approach of F_A toward F_I. The test that enforced it
+asserted only that F_A was higher at 30 s (`PL-NCFT`). F_A alone measures that
+approach only when F_I is the same in both runs, and in the circle system it
+is not. More ventilation carries more agent into the patient, so F_I rises
+more slowly at the higher ventilation: at 30 s it measured 0.0047 at 8 L/min
+against 0.0053 at 2 L/min. The renamed test,
+`test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster`, runs the
+default sevoflurane wash-in at both ventilations. It reads F_A/F_I through
+`read_wash_in`, the function that computes the wash-in curve a learner sees,
+and requires the 8 L/min ratio to be ahead at every whole second of the first
+minute. It keeps the older check that F_A itself is higher at 30 s.
 
-**The model's numerical domain.** The mass-balance check keeps its fixed
-relative tolerance of 1e-9 (`PL-D88N`, the owner's answer of 2026-10-31).
-Every supported setting steps with no squarings of the propagator, so a correct
-run's residual stays far below the tolerance: the worst over 24 h at the 0.1 s
-step was 3.08e-12. A tolerance summed from the propagator's error bound would
-be 58 times looser at the 1 ms step. A test fails on the day a stiffer profile
-ships, and names `PL-D88N` as the place to choose again. `PL-81Q2` measured
-the chart's longest propagator at the stiffest corner and changed nothing.
-Splitting the interval into 100 s, 10 s or 1 s propagators leaves the excess
-at 5.8e-7 to 5.9e-7, against 6.0e-7 for one, and no run the application allows
-reaches that window. `docs/MODEL.md` § "Alveolar gas" now gives the six modal
-time constants of each agent's coupled system, and a test pins them
-(`PL-JDX0`). The fastest mode anywhere in the envelope is isoflurane's, at
-5.83 s, so the 0.1 s step is about a sixtieth of it. `PL-10MX` built no new
-way to advance over a duration, because `RunDefinition.state_at` already gives
-the closed-form state at any instant, and § "Supported simulation step" says
-so. `tests/reference/test_coupled_dynamics.py` gains seeded random control
-trajectories, where one to four controls move in each phase and any control
-can land on a range limit (`PL-ZLNN`). The exact step agrees with the
-independent solution on them to 1.10e-14, and every step passes the agent
-accounting and the max-principle bound. Four replay tests are renamed for what
-they compare (`PL-GDS2`). All five are `#1909`.
+The step-refinement paragraph reported its measured gap "across the four
+reported values", while its test compares three fractions after 60 s: the
+alveolar, vessel-rich and mixed-venous fractions (`PL-6F9H`). No record names
+the fourth value. The paragraph and the test's comment now name the three. A
+new measurement on 2026-11-01 put the worst successive-halving gap at 3.4e-16,
+in the alveolar fraction. The bound stays at 1e-14, which was sized on
+2026-09-06 at about twelve times the 8.1e-16 measured then, so it now allows
+about thirty times the gap. Both items are `#1913`.
 
-**The run screen.** While a learner holds a slider's thumb, both plots draw
-the trajectory that the held value would give from where the run stands, and
-the run keeps its setting until the thumb is released (`PL-5B1N`, `#1896`).
-The preview sits in a tinted region to the right of now, under a label such as
-"Preview: Fresh gas flow 8.0 L/min, not applied". Each curve keeps its
-compartment's colour and dash, one pixel thinner than the run's own curve and
-never below 2 px. The hover never reads from it, and a preview above the
-3 MAC axis is named with its highest predicted value. A key press, wheel step
-or groove click applies at once and draws no preview. `PL-4LS8` records the
-2 px floor as a placeholder look choice. While the trunk's Reset question, the
-new-case question or a Workspace question is open, every run now holds and
-then carries on as it was, because the window-modal question blocks Pause
-(`PL-TPBH`, `#1908`). Before, a learner who read the question for ten seconds
-at 300× came back to a case 50 simulated minutes on. The hold only skips
-ticks, so the trajectory is the one an immediate answer would give. The
-bookmark editor is now non-modal, as its docstring always said.
-
-**The workflow.** `bin/docket flight` and the session-start digest name an
-armed pull request whose required check failed, which `update-armed` skips and
-which had waited about 24 hours unnoticed (`PL-0T8L`, `#1907`). `bin/docket
-arm` keeps a branch's `Owner-read` record through a clean merge of `main`, as
-it already kept the `Owner-ask` record (`PL-F7ZW`, `#1906`). `blocked-by` can
-name a date before which an item cannot start, so `next` stops offering such an
-item early (`PL-XNF3`, `#1904`). The model-review skill now loads for a request
-to analyse what the blind review passes caught (`PL-3XP7`, `#1905`).
-
-The release finishes two features, `floating-point-domain` and
-`numerical-domain`. It closes no generator head. The release item is
-`PL-KDDS`, whose `resource: release-train` keeps it out of every later
-release. Every closure carried its `pr:` number before the cut, so every
-bullet cites its pull request. `bin/docket release` reported the same three
-missed apparatus-inflow predictions as at v0.6.10, over the same week,
-2026-10-19 to 2026-10-25. `bin/docket inflow` has the table.
+The release finishes one feature, `invariant-test-gaps`. It closes no
+generator head. The release item is `PL-2JYB`, whose `resource:
+release-train` keeps it out of every later release. Every closure carried its
+`pr:` number before the cut, so every bullet cites its pull request.
+`bin/docket release` reported the same three missed apparatus-inflow
+predictions as at v0.6.11, over the same week, 2026-10-19 to 2026-10-25.
+`bin/docket inflow` has the table.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.11 tag. It is described in the
-next release, and v0.6.11's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.12 tag. It is described in the
+next release, and v0.6.12's notes take a pointer to it at that release's cut.
 
 ## The plan
 
