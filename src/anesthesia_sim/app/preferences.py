@@ -47,8 +47,9 @@ notice for the reader. Nothing is silent:
   The reader is told which price was refused and why, and that agent then has
   no valid price. A refused unit falls back to the default unit, with a
   notice. Each refused entry is kept exactly as it was written and is written
-  back on the next save, unless the reader sets a new value in its place. So
-  a save never deletes something the reader wrote.
+  back on the next save, unless the reader sets a new value in its place or
+  discards it (`Preferences.without_refused_entries`). So a save never
+  deletes something the reader wrote without the reader asking.
 - *A file a newer build wrote.* It is not read. Saving is off for the
   session, so the file is never overwritten, and the notice names the file,
   its version and this build's version. This is the rule that `PL-SSQW` set
@@ -56,7 +57,8 @@ notice for the reader. Nothing is silent:
 - *A file that cannot be read*, or whose document is not one this build can
   check entry by entry, is handled in the same way. That covers a file that
   is not UTF-8 JSON, a duplicated key, a missing or unknown key, a container
-  of the wrong kind, and two prices for one agent. Saving is off, so the
+  of the wrong kind, two prices for one agent, and a number too large for a
+  float, such as 1e400, which could not be written back. Saving is off, so the
   file stays as it is for the reader to repair or remove, and the notice says
   what is wrong with it.
 
@@ -75,6 +77,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
+from math import isfinite
 from pathlib import Path
 from types import MappingProxyType
 from typing import Final
@@ -317,6 +320,17 @@ class Preferences:
             ),
         )
 
+    def without_refused_entries(self) -> Preferences:
+        """Return these preferences with every refused entry discarded.
+
+        The interface offers this so that the reader can clear a refused entry
+        that no new value replaces, such as a price entry that names no agent.
+        Without it, such an entry would be written back at every save and
+        named in the notice at every launch.
+        """
+
+        return replace(self, refused_prices=(), refused_unit=None)
+
     def with_agent_cost_unit(self, unit: AgentAmountUnit) -> Preferences:
         """Return these preferences with the agent cost View shown in `unit`.
 
@@ -428,7 +442,10 @@ class PreferencesStore:
 
         try:
             document = json.loads(
-                text, object_pairs_hook=_refuse_repeated_keys, parse_constant=_refuse_constant
+                text,
+                object_pairs_hook=_refuse_repeated_keys,
+                parse_constant=_refuse_constant,
+                parse_float=_finite_float,
             )
         except (ValueError, RecursionError) as error:
             return self._read_only(f"it is not a JSON document this build can read ({error})")
@@ -498,6 +515,20 @@ def _refuse_repeated_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 def _refuse_constant(constant: str) -> float:
     raise ValueError(f"{constant} is not a number a preference can hold")
+
+
+def _finite_float(literal: str) -> float:
+    # A literal too large for a float, such as 1e400, parses to an infinity
+    # rather than raising. An infinity kept in a refused entry could not be
+    # written back, because JSON has no way to write it, so every later save
+    # would fail. Refusing it here treats the whole file as one this build
+    # cannot check, which turns saving off and leaves the file as it is.
+    value = float(literal)
+
+    if not isfinite(value):
+        raise ValueError(f"{literal} is too large to be a number a preference can hold")
+
+    return value
 
 
 def _from_document(document: object) -> Preferences:

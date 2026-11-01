@@ -184,6 +184,12 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
             '"bottle_volume_ml": 100, "currency": "USD", "applies_on": "2008-03-05"}]}',
             "NaN is not a number",
         ),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
+            '"agent_prices": [{"agent": "isoflurane", "bottle_price": 20.47, '
+            '"bottle_volume_ml": 1e400, "currency": "USD", "applies_on": "2008-03-05"}]}',
+            "1e400 is too large",
+        ),
     ],
     ids=[
         "not JSON",
@@ -195,6 +201,7 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
         "a repeated key",
         "prices not a list",
         "NaN",
+        "a number too large for a float",
     ],
 )
 def test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off(
@@ -254,7 +261,6 @@ def test_a_file_that_cannot_be_read_turns_saving_off(tmp_path: Path) -> None:
         ("bottle_price", "20.47", "bottle price"),
         ("bottle_price", True, "bottle price"),
         ("bottle_volume_ml", 0.0, "bottle volume"),
-        ("bottle_volume_ml", 1e400, "bottle volume"),
         ("currency", "usd", "three capital"),
         ("currency", "US", "three capital"),
         ("currency", "USDX", "three capital"),
@@ -268,7 +274,7 @@ def test_a_refused_price_is_not_used_and_the_others_are(
     tmp_path: Path, field: str, value: object, reason: str
 ) -> None:
     refused = {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", field: value}
-    text = json.dumps(_document([SEVOFLURANE_PRICE_ENTRY, refused])).replace("Infinity", "1e400")
+    text = json.dumps(_document([SEVOFLURANE_PRICE_ENTRY, refused]))
     (tmp_path / PREFERENCES_FILE_NAME).write_text(text, encoding="utf-8")
 
     loaded = PreferencesStore(tmp_path).load()
@@ -376,3 +382,24 @@ def test_setting_and_removing_a_price_leaves_the_other_agents_alone() -> None:
     assert removed.price_for("isoflurane") is None
     assert removed.price_for("sevoflurane") == sevoflurane
     assert preferences.price_for("isoflurane") == ISOFLURANE_PRICE
+
+
+def test_a_refused_entry_that_names_no_agent_is_dropped_only_when_the_reader_discards_it(
+    tmp_path: Path,
+) -> None:
+    nameless = {key: value for key, value in SEVOFLURANE_PRICE_ENTRY.items() if key != "agent"}
+    _write(tmp_path, _document([nameless], unit="mL"))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    store.save(loaded.preferences.without_price("sevoflurane"))
+    kept = json.loads((tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+
+    assert kept["agent_prices"] == [nameless]
+    assert kept["agent_cost_unit"] == "mL"
+
+    store.save(store.load().preferences.without_refused_entries())
+    reloaded = PreferencesStore(tmp_path).load()
+
+    assert reloaded.notice is None
+    assert reloaded.preferences.agent_cost_unit is AgentAmountUnit.MILLILITRES_OF_LIQUID
