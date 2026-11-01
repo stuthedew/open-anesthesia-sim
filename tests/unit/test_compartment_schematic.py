@@ -113,14 +113,14 @@ def test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value
 
 
 def test_a_container_s_height_is_its_tension_and_not_its_amount() -> None:
-    """At a 1 MAC sevoflurane dial, fat stands under 1% of its height at 60 min.
+    """At a 1 MAC sevoflurane dial, fat's container is less than 1% full at 60 min.
 
-    It then holds about a fifth of the agent the run holds, more than the
-    alveoli hold, while the alveolar container stands near a third of its
-    height (`docs/MODEL.md` § "The compartment schematic: what its heights,
-    amounts and share bar assert"). So a reader who took the heights for
-    amounts would rank the two the wrong way round, and the labels must carry
-    the amounts.
+    Fat then holds about a fifth of all the agent in the run, which is more than
+    the alveoli hold. Yet the alveolar container is filled to nearly a third of
+    its height (`docs/MODEL.md` § "The compartment schematic: what its heights,
+    amounts and share bar assert"). So a reader who took the heights for amounts
+    would rank fat and the alveoli the wrong way round. That is why the labels
+    must give the amounts.
     """
 
     controller = SimulationController(agent_id="sevoflurane")

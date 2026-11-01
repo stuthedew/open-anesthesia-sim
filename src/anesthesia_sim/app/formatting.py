@@ -190,8 +190,9 @@ class AgentAmount(Enum):
             labels. `docs/MODEL.md` § "Displayed precision" derives a precision
             of two significant figures for it (`PL-2881`). A count of decimals
             cannot express that precision, so this amount has no entry in the
-            table of decimal counts. `format_compartment_amount` shows it, in
-            millilitres of vapour, the one unit derived for it (`PL-RNYV`).
+            table of decimal counts. `format_compartment_amount` shows it in
+            millilitres of vapour, the only unit for which its precision was
+            derived (`PL-RNYV`).
     """
 
     DELIVERED = "delivered total"
@@ -240,7 +241,7 @@ class AgentAmountUnit(Enum):
 #   in the density moves the liquid figure by 0.1 mL only when the total is
 #   above about 190 mL of liquid. The litre display of this total is coarser
 #   than 0.1 mL of liquid. That is allowed, because the derived precision is a
-#   limit in one direction only: it limits how fine a display may be, not how
+#   limit in one direction only. It limits how fine a display may be, not how
 #   coarse.
 # - The exhausted total in millilitres of liquid has no decimals. One step of
 #   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
@@ -254,7 +255,7 @@ class AgentAmountUnit(Enum):
 # 5.8% too high. That error is more than 1 mL once the store holds about 17 mL
 # of liquid. A compartment's amount has no entry, because `PL-2881` derived a
 # precision of two significant figures for it, not a count of decimals.
-# `format_compartment_amount` holds that precision instead. Money has no entry
+# `format_compartment_amount` applies that precision instead. Money has no entry
 # here, because the resolution of a cost depends on the price that the reader
 # sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
@@ -1457,12 +1458,13 @@ def format_agent_residual(litres: float) -> str:
 
 
 # A compartment's amount is shown to two significant figures, and never finer
-# than 0.01 mL of vapour. `docs/MODEL.md` § "Displayed precision" derives both
-# (`PL-2881`): one SD of a partition coefficient moves an amount by a share of
-# it, not by a fixed volume, so the precision is a count of figures rather than
-# of decimals. The floor of two decimals is a legibility choice, coarse in the
-# allowed direction. The amount has no entry in `AGENT_AMOUNT_DISPLAY_PRECISION`
-# for that reason, and these two constants are its only statement.
+# than 0.01 mL of vapour. `docs/MODEL.md` § "Displayed precision" derives the
+# two figures and sets the floor (`PL-2881`). One SD of a partition coefficient
+# moves an amount by a fraction of the amount, not by a fixed volume. So the precision is a count of
+# significant figures rather than of decimals, and the amount has no entry in
+# `AGENT_AMOUNT_DISPLAY_PRECISION`. These two constants are the only place that
+# states its precision. The floor of two decimals is a legibility choice. It is
+# coarser than the derivation requires, which is the allowed direction.
 COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES: Final = 2
 COMPARTMENT_AMOUNT_FINEST_DECIMALS: Final = 2
 
@@ -1470,22 +1472,25 @@ COMPARTMENT_AMOUNT_FINEST_DECIMALS: Final = 2
 def format_compartment_amount(litres: float) -> str:
     """Render one compartment's agent amount in millilitres of vapour, for the schematic.
 
-    The amount is rounded to `COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES`, and
-    never to more than `COMPARTMENT_AMOUNT_FINEST_DECIMALS` decimals. So
-    38.4 mL reads `38 mL vapour`, 0.183 mL reads `0.18 mL vapour`, and 1234 mL
-    reads `1200 mL vapour`. A trailing zero is kept where it is a significant
-    figure, so 0.5 mL reads `0.50 mL vapour`. The rounding is to the nearest
-    figure, half to even, as `format_percent`'s is. A value that rounds up
-    into the next decade is rounded again at that decade's count, so 9.96 mL
-    reads `10 mL vapour`, not `10.0 mL vapour`, which would claim three figures.
+    The amount is rounded to `COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES`
+    significant figures, and never to more than
+    `COMPARTMENT_AMOUNT_FINEST_DECIMALS` decimals. So 38.4 mL is shown as
+    `38 mL vapour`, 0.183 mL as `0.18 mL vapour`, and 1234 mL as
+    `1200 mL vapour`. A trailing zero is kept where it is a significant
+    figure, so 0.5 mL is shown as `0.50 mL vapour`. The rounding is to the
+    nearest figure, with halves rounded to even, as in `format_percent`. A
+    value can round up into the next power of ten. It is then rounded again
+    with that power's number of decimals, so 9.96 mL is shown as
+    `10 mL vapour`. It is not shown as `10.0 mL vapour`, which would claim
+    three figures.
 
-    A positive amount that rounds to zero at the finest decimal reads
-    `<0.01 mL vapour`, so a compartment that holds agent never reads as empty.
-    Exactly zero reads `0 mL vapour`, the amount before agent arrives. The unit
-    is `DisplayUnit.AGENT_VAPOUR_MILLILITRES`, never a bare "mL", because a
-    millilitre of liquid gives about 180 to 210 mL of vapour (`docs/MODEL.md`
-    § "The compartment schematic: what its heights, amounts and share bar
-    assert").
+    A positive amount that rounds to zero at the finest decimal is shown as
+    `<0.01 mL vapour`, so a compartment that holds agent never looks empty.
+    Exactly zero is shown as `0 mL vapour`, the amount before agent arrives.
+    The unit is `DisplayUnit.AGENT_VAPOUR_MILLILITRES`, never a bare "mL",
+    because a millilitre of liquid gives about 180 to 210 mL of vapour
+    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert").
 
     Args:
         litres: The amount, in litres of equivalent pure agent vapour, as the
@@ -1496,8 +1501,8 @@ def format_compartment_amount(litres: float) -> str:
 
     Raises:
         ValueError: If `litres` is negative or not finite. The snapshot's
-            record refuses both, so one arriving here is a defect upstream.
-            It is refused rather than printed as a plausible amount.
+            record rejects both, so such a value arriving here means a defect
+            upstream. It is rejected rather than printed as a plausible amount.
         TypeError: If `litres` is not a number, or is a `bool`.
     """
 
@@ -1528,11 +1533,15 @@ def format_compartment_amount(litres: float) -> str:
 
 
 def _round_to_figures(value: Decimal, exponent: int) -> tuple[Decimal, int]:
-    """Round `value` to the schematic's figures for a value in the decade `exponent`.
+    """Round `value` to the significant figures that the schematic shows.
+
+    `exponent` is the decade of `value`: its first significant digit is in the
+    place of 10 to the power `exponent`.
 
     Returns:
-        The rounded value and the number of decimals it has, which is
-        negative where the last figure is to the left of the units place.
+        The rounded value and the number of decimals it has. The number of
+        decimals is negative when the last figure is to the left of the units
+        place.
     """
 
     decimals = min(

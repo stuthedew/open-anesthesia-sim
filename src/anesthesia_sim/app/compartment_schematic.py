@@ -1,18 +1,20 @@
-"""What each container of the compartment schematic is filled to and labelled with.
+"""Compute how each container of the compartment schematic is filled and labelled.
 
 `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" specifies the schematic (`PL-2881`). This module turns one
-snapshot into one reading per container, and the View draws the readings
+snapshot into one reading per container. A reading says how full the container
+is and what its label prints. The schematic's View draws the readings
 (`PL-RNYV`). Nothing here imports Qt, so every number a reader interprets is
 computed and tested apart from the drawing.
 
-A container's fill is the compartment's tension on the concentration chart's
-own scale, from zero to `chart_axis_top_percent`. It is not an amount. A
-tension above that top fills the container and is marked off the scale, and
-the label still prints the tension. Each label is the compartment's name, its
-tension as its readout prints it, and its amount from the snapshot's record of
-each compartment's agent (`PL-KFTM`). So a label and a readout cannot disagree,
-and the schematic computes no amount of its own.
+A container's fill is the compartment's tension, on the concentration chart's
+own scale, from zero to `chart_axis_top_percent`. The fill is not an amount. A
+tension above the top of that scale fills the container, and the container is
+marked as off the scale. Its label still prints the tension. Each label gives
+the compartment's name, its tension as its readout prints it, and its amount.
+The amount comes from the snapshot's record of the agent in each compartment
+(`PL-KFTM`). So a label cannot disagree with its readout, and the schematic
+computes no amount of its own.
 """
 
 from __future__ import annotations
@@ -78,33 +80,34 @@ COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
-#: tension on the concentration chart's scale, so the caption names that scale
+#: tension on the concentration chart's scale. So the caption names that scale
 #: and says that a height is not an amount (`docs/MODEL.md` § "The compartment
-#: schematic: what its heights, amounts and share bar assert"). It is two lines
-#: rather than one wrapped line, because Qt does not count a wrapped label's
-#: extra lines in the least size a View declares, and the containers' labels
-#: would then lose the room their amounts are printed in. The wording is a
-#: placeholder; what it must say is not.
+#: schematic: what its heights, amounts and share bar assert"). The caption is
+#: two lines rather than one wrapped line. Qt leaves a wrapped label's extra
+#: lines out of the minimum size that a View declares, so the containers'
+#: labels would lose the room in which their amounts are printed. The wording
+#: is a placeholder, but what the caption must say is not.
 SCALE_CAPTION_TEMPLATE: Final = (
     "Fill height is tension, on the concentration chart's scale: 0 to {top}{unit} ({top_mac}).\n"
     "A container's height is its tension, not its amount of agent."
 )
 
-#: The lines naming the containers whose tension is above the top of the scale.
-#: Each such container is drawn full and marked, and its label still prints its
-#: tension. The lines say so in words, so the mark is never read by colour or
-#: shape alone. Two lines, for the reason the scale caption gives. The wording
-#: is a placeholder.
+#: The lines that name the containers whose tension is above the top of the
+#: scale. Each such container is drawn full and marked, and its label still
+#: prints its tension. The lines say this in words, so that a reader never has
+#: to tell an off-scale container by colour or shape alone. The text is two
+#: lines for the same reason as the scale caption. The wording is a placeholder.
 OFF_SCALE_LINE_TEMPLATE: Final = (
     "Above the top of the scale: {compartments}.\n"
     "Each is drawn full, and its label gives its tension."
 )
 
-#: The label texts whose width each container's column reserves, so that a
-#: column does not widen while a run fills. A tension is reserved as the
-#: readouts reserve it. An amount is reserved at the floor's form and at a
-#: five-figure amount, each written by the formatter that prints it. The View
-#: also widens a column for any label wider than these, so none is clipped.
+#: The label texts that set the width of each container's column, so that a
+#: column does not widen while a run fills. Room for a tension is reserved in the
+#: same way as the readouts reserve it. Room for an amount is reserved for two
+#: texts: an amount below the display floor, and a five-figure amount. The
+#: formatter that prints amounts writes both texts. The View also widens a
+#: column for any label wider than these, so that no label is clipped.
 WIDEST_LABELS: Final[tuple[str, ...]] = (
     *(panel.name for panel in READOUT_PANELS if panel.quantity is not None),
     WIDEST_COMPARTMENT_VALUE,
@@ -118,17 +121,19 @@ class ContainerReading:
     """One container of the schematic, as one snapshot fills and labels it.
 
     Attributes:
-        quantity: The compartment the container stands for.
+        quantity: The compartment that the container stands for.
         name: The compartment's name, as its readout panel names it.
         fill: The share of the container's height that is filled, from 0 to
-            1. It is the tension over the chart's axis top, and it is 1 for a
-            tension above the top.
-        off_scale: Whether the tension is above the chart's axis top by more
-            than the readouts resolve, as the chart's off-scale notice decides
-            it (`above_the_axis_top`). The View then marks the container as
-            off the scale.
+            1. It is the tension divided by the top of the chart's axis, and
+            it is 1 for a tension above the top.
+        off_scale: Whether the tension is above the top of the chart's axis
+            by more than the smallest step that the readouts show. The test is
+            `above_the_axis_top`, the same one that the chart's off-scale
+            notice uses. When it is true, the View marks the container as off
+            the scale.
         tension: The tension, written as the compartment's readout writes it.
-        amount: The compartment's agent, in millilitres of vapour.
+        amount: The amount of agent in the compartment, written in millilitres
+            of vapour.
     """
 
     quantity: RecordedQuantity
@@ -142,10 +147,11 @@ class ContainerReading:
 def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, ...]:
     """Return one reading per container, in the readout row's order.
 
-    The order and the names are the readout panels' own, so the schematic and
-    the readout row list the six compartments alike. Every container of the
-    run fills against one top, read once from this snapshot's MAC, so two
-    containers can never be drawn against two agents' scales.
+    The schematic uses the readout panels' own order and names, so the
+    schematic and the readout row list the six compartments in the same way.
+    Every container of the run fills against one top of scale. The top is
+    computed once from this snapshot's MAC, so no two containers can be drawn
+    against two different agents' scales.
 
     Args:
         snapshot: The run's state at the instant drawn.
@@ -156,9 +162,9 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
-            `MacPercent` (`chart_axis_top_percent`).
+            `MacPercent`. `chart_axis_top_percent` raises it.
         ValueError: If a compartment's recorded amount is negative or not
-            finite (`format_compartment_amount`).
+            finite. `format_compartment_amount` raises it.
     """
 
     top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
@@ -189,13 +195,13 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
 def scale_caption(snapshot: SimulationSnapshot) -> str:
     """Return the caption naming the scale that every container of this run fills against.
 
-    The top is written as the concentration chart labels its own top
-    gridline (`percent_axis_ticks`), so the caption and the chart's axis
-    cannot print the same scale two ways.
+    The caption writes the top of the scale in the same way as the concentration
+    chart labels its own top gridline, through `percent_axis_ticks`. So the
+    caption and the chart's axis cannot print the same scale in two ways.
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
-            `MacPercent` (`chart_axis_top_percent`).
+            `MacPercent`. `chart_axis_top_percent` raises it.
     """
 
     mac_percent = snapshot.agent_mac_percent
@@ -226,14 +232,15 @@ class SchematicShown:
     """Everything one run's schematic shows at one instant, as plain values.
 
     Attributes:
-        instant: The simulated time the values are read at, as the readouts'
-            clock prints it. Two compared runs can stand at different times,
-            so each schematic says which instant it shows.
+        instant: The simulated time at which the values are read, as the
+            readouts' clock prints it. Two runs that are compared can be at
+            different times, so each schematic says which instant it shows.
         readings: One reading per container, in `CONTAINER_ORDER`.
-        scale_caption: The caption naming the scale the containers fill
+        scale_caption: The caption naming the scale that the containers fill
             against, or None while the values are withheld.
-        off_scale_line: The lines naming each container above the scale, or
-            None when none is above it or the values are withheld.
+        off_scale_line: The lines naming each container that is above the
+            scale. It is None when no container is above the scale or the values
+            are withheld.
     """
 
     instant: str
@@ -263,11 +270,11 @@ def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
 #: What an amount label shows while the run's values are withheld.
 WITHHELD_AMOUNT_TEXT: Final = f"\u2014 {DisplayUnit.AGENT_VAPOUR_MILLILITRES.label}"
 
-#: What a run's schematic shows while its values are withheld: after a Reset
-#: or an agent change that no frame has been drawn since. The readouts are
-#: withheld at the same moments, with the same mark (`RunView`). Every
-#: container is drawn empty, and no caption is shown, because the scale it
-#: names may be the discarded agent's.
+#: What a run's schematic shows while its values are withheld. They are withheld
+#: after a Reset or an agent change, until a frame has been drawn. The readouts
+#: are withheld at the same moments, with the same mark (`RunView`). Every
+#: container is drawn empty and no caption is shown, because the caption's scale
+#: may belong to the agent that was discarded.
 WITHHELD_SCHEMATIC: Final = SchematicShown(
     WITHHELD_ELAPSED_TIME_TEXT,
     tuple(
@@ -288,11 +295,12 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
 
 
 def instant_line(instant: str, run_name: str | None) -> str:
-    """Return the line over one run's schematic: the instant it shows, and its run while compared.
+    """Return the line above one run's schematic.
 
-    A lone run is not named, as its own panels are not. While runs are
-    compared, the line names the run, because stacking order cannot say
-    which run a tension belongs to.
+    The line gives the instant that the schematic shows. A lone run is not
+    named, just as its own panels are not. While runs are compared, the line
+    also names the run, because the order in which the schematics are stacked
+    cannot say which run a tension belongs to.
     """
 
     if run_name is None:

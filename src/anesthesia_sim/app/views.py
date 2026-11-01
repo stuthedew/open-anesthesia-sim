@@ -657,12 +657,14 @@ class CompartmentSchematicView(QWidget):
 
     Each schematic draws the circuit, the alveoli, venous blood and the three
     tissue groups as containers. Each container is filled to its tension on
-    the concentration chart's scale and labelled with its name, its tension
-    and its amount of agent vapour. Each schematic is a copy of a run surface,
-    so the run writes it where it writes its readouts, from the same snapshot,
-    and withholds it where it withholds them (`RunView.build_compartment_schematic`).
-    It asks for no chart frame. The interpretation statement is in its heading,
-    once, because every value it shows is a model output.
+    the concentration chart's scale, and labelled with its name, its tension
+    and its amount of agent vapour. Each schematic is a copy of a run surface.
+    So the run writes it at the same moments as its readouts, from the same
+    snapshot, and withholds it whenever it withholds them
+    (`RunView.build_compartment_schematic`). The View asks for no chart frame.
+    The statement that its values are model outputs, not measurements, appears
+    once, in the View's heading, because every value the View shows is a model
+    output.
 
     Args:
         context: What the View is built from.

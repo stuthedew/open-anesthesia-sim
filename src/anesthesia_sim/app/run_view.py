@@ -939,11 +939,11 @@ class RunView(QWidget):
         self._show_schematic(WITHHELD_SCHEMATIC)
 
     def _show_schematic(self, shown: SchematicShown) -> None:
-        """Write the compartment schematic on every copy of it, and keep it for a copy built later.
+        """Show `shown` on every copy of the schematic, and keep it for copies built later.
 
-        It is written beside the readouts, from the same snapshot, and
-        withheld beside them. So a schematic and the readouts never show two
-        different states of the run (`PL-RNYV`).
+        The schematic is written at the same moment as the readouts, from the
+        same snapshot, and it is withheld whenever they are. So the schematic
+        and the readouts never show two different states of the run (`PL-RNYV`).
         """
 
         self._schematic_shown = shown
@@ -1998,10 +1998,11 @@ class RunView(QWidget):
         )
 
     def build_compartment_schematic(self) -> RunSchematic:
-        """A new copy of this run's compartment schematic, for any Area that shows the View.
+        """Return a new copy of this run's compartment schematic, for any Area that shows the View.
 
-        Every call builds another copy showing what the copies already built
-        show, named as this run's own panels are named (`PL-9LNF`, `PL-RNYV`).
+        Each call builds another copy. The new copy shows what the copies built
+        earlier show, and it is named the same way as this run's own panels
+        (`PL-9LNF`, `PL-RNYV`).
         """
 
         return keep_until_destroyed(

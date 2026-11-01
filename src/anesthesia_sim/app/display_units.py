@@ -50,10 +50,10 @@ class DisplayUnit(Enum):
     # states the convention.
     MAC_MULTIPLE = ("multiple of MAC", "×MAC", "×MAC")
     # An agent amount's unit always says whether it counts vapour or liquid. A
-    # millilitre of liquid gives about 180 to 210 mL of vapour, by agent, so a
-    # bare "mL" could be misread by that factor. `docs/MODEL.md` § "The
-    # compartment schematic: what its heights, amounts and share bar assert"
-    # sets the spelling. The wording is a placeholder, and the rule is not.
+    # millilitre of liquid gives about 180 to 210 mL of vapour, depending on the
+    # agent, so a bare "mL" could be misread by that factor. `docs/MODEL.md`
+    # § "The compartment schematic: what its heights, amounts and share bar
+    # assert" sets the spelling. The wording is a placeholder, but the rule is not.
     AGENT_VAPOUR_MILLILITRES = ("millilitres of vapour", "mL vapour", "mL vapour")
 
     recorded: str

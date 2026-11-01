@@ -2992,13 +2992,15 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
 
 
 def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
-    """Whether a value exceeds the concentration axis's top by more than the readouts resolve.
+    """Return whether a value exceeds the concentration axis's top by more than a display step.
 
-    This is the one test of "off the scale" that the chart's off-scale
-    notice and the compartment schematic's off-scale mark both read, so the
-    two Views cannot disagree about one tension (`PL-RNYV`). The margin is
-    there because a top such as isoflurane's 3 x 1.2 is 3.5999999999999996 in
-    binary, and a value the readouts print as the top is not above it.
+    A display step is the smallest change that the readouts print. This is the
+    one test of "off the scale", and both the chart's off-scale notice and the
+    compartment schematic's off-scale mark use it. So the two Views cannot
+    disagree about one tension (`PL-RNYV`). The margin of one display step is
+    needed because of binary rounding. For example, isoflurane's top of 3 x 1.2
+    is 3.5999999999999996 in binary. A value that the readouts print as the top
+    is not above it.
     """
 
     return percent - axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT

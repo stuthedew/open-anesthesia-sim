@@ -1695,14 +1695,14 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
 
     The amount is never formatted at a default precision (`PL-0S0V`). A
     compartment's amount has no entry in any unit. `PL-2881` derived a
-    precision of two significant figures for it, which a count of decimals
-    cannot hold, so `format_compartment_amount` holds it instead. The table
-    must not lend it the litre precision of the run totals. At a resolution of
-    0.1 L, the amounts in venous blood and the alveoli would stay below one
-    display step for a whole hour. The stored total has no liquid entry,
-    because converting the stored total to liquid gives a figure 5.8% too high
-    (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid, that error is
-    already one whole step of 1 mL.
+    precision of two significant figures for it. A count of decimals cannot
+    express that precision, so `format_compartment_amount` applies it instead.
+    The table must not lend the compartment's amount the litre precision of the
+    run totals. At a resolution of 0.1 L, the amounts in venous blood and the
+    alveoli would stay below one display step for a whole hour. The stored total
+    has no liquid entry, because converting the stored total to liquid gives a
+    figure 5.8% too high (`docs/MODEL.md` § "Known limitations"). At 17 mL of
+    liquid, that error is already one whole step of 1 mL.
     """
 
     refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
@@ -1905,10 +1905,11 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
 def test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml(
     litres: float, expected: str
 ) -> None:
-    """The expected strings are worked by hand from `docs/MODEL.md` § "Displayed precision".
+    """The expected strings are worked out by hand from `docs/MODEL.md` § "Displayed precision".
 
     An amount is shown to two significant figures, never finer than 0.01 mL.
-    A positive amount below that floor reads `<0.01`, and only zero reads `0`.
+    A positive amount below that floor is shown as `<0.01`, and only zero is
+    shown as `0`.
     """
 
     assert format_compartment_amount(litres) == expected

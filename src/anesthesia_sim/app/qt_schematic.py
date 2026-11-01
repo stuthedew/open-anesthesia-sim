@@ -1,28 +1,29 @@
 """The drawing of one run's compartment schematic, in PySide6.
 
 `SchematicCanvas` paints six containers and the lines that join them, from
-the readings that `app/compartment_schematic.py` computes. It computes no
-value of its own. Each container fills from its bottom to the reading's
-`fill`, in the colour of its compartment's chart trace, so a learner who moves
-between the schematic and the chart finds each compartment in one colour. Its
-name, tension and amount are painted under it, in text, so no value is carried
-by colour or height alone (`docs/MODEL.md` § "The compartment schematic: what
-its heights, amounts and share bar assert").
+the readings that `app/compartment_schematic.py` computes. The canvas computes
+no value of its own. Each container fills from its bottom to the reading's
+`fill`, in the colour of its compartment's chart trace. So a learner who moves
+between the schematic and the chart finds each compartment in one colour. The
+compartment's name, tension and amount are painted under its container, in
+text, so no value is carried by colour or height alone (`docs/MODEL.md`
+§ "The compartment schematic: what its heights, amounts and share bar assert").
 
 **How the containers are joined** (`PL-RNYV`). The containers stand in one row
 in the order the readout row lists them: the circuit, the alveoli, venous
 blood, the vessel-rich group, muscle and fat. A line joins the circuit to the
-alveoli, which is ventilation. A line above the row carries arterial blood from
-the alveoli to each tissue group, and a line below the row carries each tissue
-group's venous blood to the venous container. A line joins the venous
-container to the alveoli, which is the blood's return to the lungs. So the
-three tissue groups are drawn in parallel, as the model perfuses them, and
-never as a chain through which agent passes from one tissue to the next. No
-container stands for arterial blood, for the reason `docs/MODEL.md` gives.
+alveoli, and stands for ventilation. A line above the row carries arterial
+blood from the alveoli to each tissue group. A line below the row carries each
+tissue group's venous blood to the venous container. A line joins the venous
+container to the alveoli, and stands for the blood's return to the lungs. So
+the three tissue groups are drawn in parallel, as the model perfuses them. They
+are never drawn as a chain through which agent passes from one tissue to the
+next. No container stands for arterial blood, for the reason `docs/MODEL.md`
+gives.
 
 Every size and colour choice here is a placeholder while the interface is being
-built (project owner, 2026-10-18). The parallel drawing of the tissues is not:
-it is what the model asserts.
+built (project owner, 2026-10-18). The parallel drawing of the tissues is not a
+placeholder, because it is what the model asserts.
 """
 
 from __future__ import annotations
@@ -248,22 +249,24 @@ class SchematicCanvas(QWidget):
 
 
 class RunSchematic(QWidget):
-    """One run's schematic, as a copy of a run surface: its name, its containers and its lines.
+    """One copy of a run's compartment schematic, with the run's name, containers and lines.
 
-    `RunView.build_compartment_schematic` builds each copy, and the run writes
-    every live copy where it writes its readouts and from the same snapshot.
-    It withholds them where it withholds the readouts, and names them where
-    it names its own panels (`app/run_surfaces.py`, `PL-9LNF`). So a
-    schematic can never show a state its run has left while the readouts
-    show another. A lone run is not named. While runs are compared, each
-    schematic is named, because stacking order cannot say which run a
-    tension belongs to (`docs/MODEL.md`, the hazard table's row on reading
-    one run's value as the other's).
+    The schematic is one of the run's surfaces, the parts of a run that a reader
+    may place in an Area. `RunView.build_compartment_schematic` builds each copy.
+    The run writes every live copy at the same moments as its readouts, from the
+    same snapshot. It withholds the copies whenever it withholds the readouts, and
+    it names them whenever it names its own panels (`app/run_surfaces.py`,
+    `PL-9LNF`). So a schematic can never show a state that its run has left
+    while the readouts show another. A lone run is not named. While runs are
+    compared, each schematic is named, because the order in which the
+    schematics are stacked cannot say which run a tension belongs to
+    (`docs/MODEL.md`, the hazard table's row on reading one run's value as the
+    other's).
 
     Args:
-        shown: What the copies already built show.
+        shown: What the copies built earlier already show.
         name: The run's name while runs are compared, or None.
-        parent: The run's view, so the copy is deleted with its run.
+        parent: The run's view, so that the copy is deleted with its run.
     """
 
     def __init__(

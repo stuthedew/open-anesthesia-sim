@@ -2,14 +2,15 @@
 
 `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" is the specification (`PL-2881`), and `PL-RNYV` built the
-View. These tests check two things. First, a run's inputs reach the drawn
-labels through the model, against a closed form computed apart from the code
-under test. Second, after each action a learner takes that changes which
-state a run is in (a reset, an agent change, a branch, a branch taken at a
-mark behind the clock, and a comparison opened and closed), every label
-matches the run's state at that moment, and each schematic is named as the
-run's own panel is named. They render under the `offscreen` platform that
-`tests/conftest.py` selects.
+View. These tests check two things. First, they check that a run's inputs reach
+the drawn labels through the model. The expected labels come from a closed form
+that is computed apart from the code under test. Second, they check the labels
+after each action by a learner that changes which state a run is in. The
+actions are a reset, an agent change, a branch, a branch taken at a mark behind
+the clock, and opening and closing a comparison. After each one, every label
+matches the run's state at that moment, and each schematic is named the same
+way as the run's own panel. The tests render under the `offscreen` platform
+that `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
@@ -128,12 +129,13 @@ def _readout_values(run: RunView) -> tuple[str, ...]:
 
 
 def _assert_every_label_matches_its_run(view: SimulationView) -> None:
-    """Each run has one schematic, named as its panel is named, labelled from its state now.
+    """Check that each run has one schematic, and that its name and labels match the run now.
 
-    A tension is checked against the run's own readout, which is written from
-    the same snapshot by a different path. An amount is checked against the
-    run's controller, read at this moment, in millilitres to two significant
-    figures. So a schematic left at a state its run has left fails here.
+    Each schematic is named as its run's panel is named. A tension is checked
+    against the run's own readout, which is written from the same snapshot by a
+    different path. An amount is checked against the run's controller, read at
+    this moment, in millilitres to two significant figures. So the check fails
+    for a schematic that still shows a state its run has left.
     """
 
     schematics = _schematic(view).schematics
@@ -228,11 +230,12 @@ def test_the_schematic_is_registered_and_offered_in_every_workspace() -> None:
 def test_patient_inputs_reach_the_drawn_circuit_label_through_the_model(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """With no ventilation, the circuit follows F_D(1 - exp(-t FGF / V)) and holds V times that.
+    """With no ventilation, the circuit's agent fraction follows F_D(1 - exp(-t FGF / V)).
 
-    The closed form is computed here, from the inputs and the circuit volume
-    alone. The expected labels are written in this test's own format, so the
-    View's formatter is not used to check itself.
+    The circuit's amount is V times that fraction. The closed form is computed
+    here, from the inputs and the circuit volume alone. The expected labels are
+    written in this test's own format, so the View's formatter is not used to
+    check itself.
     """
 
     dial_percent, flow_l_min, seconds = 4.0, 8.0, 30.0
@@ -333,9 +336,9 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     schematic = _schematic(view).schematics[0]
     assert f"0 to {isoflurane_top:g}% of 1 atm" in schematic.scale_text.text()
 
-    # Each fill is read against isoflurane's scale, not sevoflurane's. The
-    # tensions are read from the snapshot's own fields, in the readout row's
-    # order, rather than through the lookup the schematic uses.
+    # Each fill must be measured against isoflurane's scale, not sevoflurane's.
+    # The expected tensions come from the snapshot's own fields, in the readout
+    # row's order, rather than through the lookup that the schematic uses.
     snapshot = run.controller.snapshot()
     fractions = (
         snapshot.inspired_partial_pressure_fraction,
@@ -414,12 +417,12 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
 ) -> None:
     """After a Reset that no frame has drawn, the schematic shows no value of the discarded run.
 
-    The adversarial review of `PL-RNYV` found that the schematic, written by
-    its View on each tick, kept the run's last values after a Reset while
-    every frame failed. The readouts beside it were withheld. The run now
-    writes and withholds its schematic where it writes and withholds its
-    readouts. The workspace also shows a chart, so a frame is assembled and
-    fails.
+    The adversarial review of `PL-RNYV` found this defect. At the time, the
+    schematic's View wrote the schematic on each tick. After a Reset, while
+    every frame failed, the schematic kept the run's last values, although the
+    readouts beside it were withheld. The run now writes and withholds its
+    schematic at the same moments as its readouts. The workspace in this test
+    also shows a chart, so that a frame is assembled and fails.
     """
 
     controller = SimulationController()
@@ -476,9 +479,9 @@ def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked
 ) -> None:
     """The painted fill, not only the reading, is the tension's share of the scale.
 
-    The fill is counted in pixels of the compartment's own colour down the
-    container's centre. The outline and the off-scale bar cover up to three
-    pixels of it, so the count is held to within three pixels of the
+    The test measures the fill by counting pixels of the compartment's own colour
+    down the container's centre. The outline and the off-scale bar cover up to
+    three pixels of the fill. So the count must be within three pixels of the
     reading's share of the container's height.
     """
 
