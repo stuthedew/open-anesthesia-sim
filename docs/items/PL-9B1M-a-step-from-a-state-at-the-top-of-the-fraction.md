@@ -139,3 +139,16 @@ ceiling. An adversarial mutation pass found 11 opening and display checks
 that a mutant could delete with every test still passing, and `verify
 --self` found 18 surviving mutants of changed lines. Tests added on the
 branch now kill all of them.
+
+**Reworded and explained, 2026-11-01.** The owner pointed out that one
+atmosphere is an arbitrary pressure, and that a later model might let the
+ambient pressure change. So the ceiling is now stated as 0.99 of the ambient
+pressure, which § "Assumptions" of `docs/MODEL.md` fixes at 760 mmHg. A later
+pressure input would change only that assumption. The display path's excess of
+3.3e-5 was traced to the propagator's error, not rounding in the state. At the
+stiffest corner, a 60-column window over 24 hours advances each column by a
+1464.4 s propagator that needs 32 squarings. Its worst entry differs from a
+50-digit reference by 5.65e-7, and 59 applications give 3.3e-5. Shipped agents
+need no more than 19 squarings over 24 hours. The owner agreed that the input
+cap, rather than projecting a computed fraction back to 1, is the right
+response.
