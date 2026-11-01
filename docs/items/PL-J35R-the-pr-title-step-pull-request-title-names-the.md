@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: model-review
+milestone: v0.6.12
 touches: .claude/skills/model-review/SKILL.md
 added: 2026-10-26
 closed: 2026-11-01
