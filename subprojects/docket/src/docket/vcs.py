@@ -2636,6 +2636,15 @@ class FailingPullRequests:
     failing: tuple[FailingPullRequest, ...] = ()
     #: Whether the forge answered, and the remotes the match reads were read.
     asked: bool = False
+    #: Git was asked something beneath this reading and did not answer: the
+    #: flight report's own silence, which can drop a ref a failing pull request
+    #: would have been matched to.
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether every question this reading rests on was answered."""
+        return not self.declined and self.asked
 
     def by_ref(self) -> Mapping[str, FailingPullRequest]:
         """Each failing pull request under every flight ref that is its branch."""
@@ -2667,13 +2676,13 @@ def failing_pull_requests(
     """
     answer = failing()
     if answer is None:
-        return FailingPullRequests()
+        return FailingPullRequests(declined=report.declined)
     run = _Silences(runner or _run_git)
     remotes = _remotes(root, run)
     if run.reason:
         # Without the remotes, `origin/claude/x` cannot be matched to the
         # branch the forge names, so no row could be marked as failing.
-        return FailingPullRequests()
+        return FailingPullRequests(declined=report.declined or run.reason)
     refs: dict[str, list[str]] = {}
     for name in sorted({branch.name for branch in report.branches}):
         refs.setdefault(_head_name(name, remotes), []).append(name)
@@ -2683,6 +2692,7 @@ def failing_pull_requests(
             for branch, (number, checks) in sorted(answer.items())
         ),
         asked=True,
+        declined=report.declined,
     )
 
 

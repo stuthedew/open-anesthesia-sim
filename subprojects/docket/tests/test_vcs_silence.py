@@ -61,6 +61,7 @@ from docket.vcs import (
     cuts_in_flight,
     default_base,
     default_branch,
+    failing_pull_requests,
     filed_here,
     filed_with_work,
     files_in_flight,
@@ -374,6 +375,19 @@ READS: tuple[Read, ...] = (
             runner=g,
         ),
         _findings("numbers"),
+    ),
+    Read(
+        # As `open_pull_requests`: the forge answers for the fixture's own
+        # branch, so what a silence can take is the match to its ref, which
+        # `refs` carries (`PL-0T8L`).
+        "failing_pull_requests",
+        lambda r, g: failing_pull_requests(
+            r,
+            holdings(r, now=datetime.now(UTC), runner=g).flight(),
+            failing=lambda: {"claude/pl-k7qx-carried": (757, "'checks'")},
+            runner=g,
+        ),
+        _findings("failing"),
     ),
     Read("stranded", lambda r, g: stranded(r, set(), runner=g), _findings("items")),
     Read("lost", lambda r, g: lost(r, runner=g), _findings("items")),
