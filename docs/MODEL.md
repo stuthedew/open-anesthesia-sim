@@ -4568,10 +4568,10 @@ Held by `test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster`
 in `tests/reference/test_sevo_patient.py`. It runs the default sevoflurane
 wash-in at 2 and 8 L/min of alveolar ventilation and requires $`F_A/F_I`$ to
 be higher at 8 L/min at every whole second of the first minute. The test
-compares the ratio rather than $`F_A`$ alone because the circle system
-rebreathes: more ventilation carries more agent into the patient, so $`F_I`$
-itself rises more slowly at the higher ventilation. A higher $`F_A`$ alone
-would therefore not show a faster approach to $`F_I`$.
+compares the ratio because $`F_A`$ alone measures the approach to $`F_I`$
+only when $`F_I`$ is the same in both runs, and here it is not. The circle
+system rebreathes, and more ventilation carries more agent into the patient,
+so $`F_I`$ itself rises more slowly at the higher ventilation.
 
 ### Directional solubility test
 

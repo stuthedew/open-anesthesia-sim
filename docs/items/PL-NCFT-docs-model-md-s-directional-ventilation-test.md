@@ -42,6 +42,6 @@ and requires F_A/F_I to be higher at 8 than at 2 L/min at every whole second
 of the first minute of the default sevoflurane wash-in. It keeps the old
 assertion that F_A itself is higher at 30 s. Measured 2026-11-01: F_A/F_I is
 0.155 against 0.460 at 30 s and 0.248 against 0.605 at 60 s, while F_I itself
-is lower at 8 L/min (0.0047 against 0.0053 at 30 s). That last figure is why
-F_A alone did not show the approach. `docs/MODEL.md` names the test beside the
+is lower at 8 L/min (0.0047 against 0.0053 at 30 s). Because F_I differs
+between the two runs, F_A alone does not measure the approach to F_I. `docs/MODEL.md` names the test beside the
 heading and says why it compares the ratio.
