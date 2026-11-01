@@ -19,7 +19,10 @@ branch* call, which merges the base in, when all of these hold:
 
 The last is `CLAUDE.md`'s rule for a base merge - once, when `behind` is all
 that stops a pull request. A red one would re-run a failing check on every push
-to `main`, and fixing it is its session's work. Only required checks count,
+to `main`, and fixing it is its session's work. This run's summary is read by
+nobody, so `docket flight` and the session-start digest name that pull request
+as failing, through `open_pull_requests.failed_required`, the rule this reads
+too (`PL-0T8L`). Only required checks count,
 because auto-merge waits on nothing else: a failure it ignores must not strand
 the pull request here either. Checks still running do not hold one back, since
 they would finish on a base that has already moved.
@@ -69,8 +72,6 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.vcs import default_branch, github_token  # noqa: E402
 
-from main_ci_status import FAILED  # noqa: E402
-
 # GitHub's host, the request's headers and the size of its largest page are
 # each read in one place, the client every tool here shares (`PL-LGDV`).
 from open_pull_requests import (  # noqa: E402
@@ -79,6 +80,7 @@ from open_pull_requests import (  # noqa: E402
     ListingFailed,
     api_request,
     every_page,
+    failed_required,
     repo_slug,
 )
 from required_checks_check import required_contexts  # noqa: E402
@@ -249,26 +251,18 @@ def behind_by(api: GitHub, base: str, sha: str) -> int:
 def failed_checks(api: GitHub, sha: str, required: set[str]) -> list[str]:
     """The required checks whose latest run on `sha` failed.
 
-    Commit statuses are not read: no required check here reports as one. Were one
-    to, a failure in it would be missed, which costs an update the rule meant to
-    save and never strands a pull request.
+    Read by `open_pull_requests.failed_required`, the rule `docket flight` and
+    the digest also read through `--armed-failing`, so the pull request this
+    skips is the one they name as failed (`PL-0T8L`). This client reads the
+    answer, since it retries where that one does not.
     """
     payload = api.get(f"/repos/{api.slug}/commits/{sha}/check-runs?per_page={PAGE}")
-    runs = payload.get("check_runs") if isinstance(payload, dict) else None
-    total = payload.get("total_count") if isinstance(payload, dict) else None
-    if not isinstance(runs, list) or not isinstance(total, int):
-        raise Declined(f"GitHub's check runs for {sha[:12]} could not be read")
-    if total > len(runs):
-        raise Declined(f"{sha[:12]} has more check runs than one page of GitHub's answer holds")
-    return sorted(
-        {
-            run["name"]
-            for run in runs
-            if isinstance(run, dict)
-            and run.get("name") in required
-            and run.get("conclusion") in FAILED
-        }
-    )
+    try:
+        return list(failed_required(payload, required))
+    except ListingFailed as failed:
+        raise Declined(
+            f"GitHub's check runs for {sha[:12]} could not be read: {failed}"
+        ) from failed
 
 
 def screen(pull: Pull) -> str | None:

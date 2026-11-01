@@ -101,6 +101,8 @@ from .vcs import (
     UNFETCHABLE,
     BranchState,
     CutsInFlight,
+    FailingPullRequest,
+    FailingPullRequests,
     FilingCommit,
     FilingReport,
     FlightReport,
@@ -488,6 +490,7 @@ def format_digest(
     read: Holdings | None = None,
     interrupted: str = "",
     focus: str = "",
+    failures: FailingPullRequests | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -654,6 +657,9 @@ def format_digest(
             # so the line carries one per item, and names the command that adds
             # the pull request - which the digest does not ask the forge for,
             # because it runs on every session start and must answer offline.
+            # The one question it does ask is whether an armed pull request's
+            # required check failed, which `_digest_failing` answers below and
+            # which says nothing unless one has (`PL-0T8L`).
             if now is None:
                 named = ", ".join(
                     f"{branch.item_id}{_held_here(branch.item_id, read)}" for branch in landed
@@ -680,6 +686,7 @@ def format_digest(
                 f"{', '.join(filed)} - no copy here to start from; `bin/docket stranded` "
                 "recovers it from the branch that claims it."
             )
+    lines.extend(f"  {line}" for line in _digest_failing(failures, flight))
     if unread := format_unread(flight):
         lines.append(f"  {unread}")
     if flight.unattributed:
@@ -1195,14 +1202,77 @@ def _since(last_commit: datetime | None, now: datetime) -> str:
     return f"last commit {age} ago"
 
 
-def _review(name: str, reviews: OpenPullRequests | None) -> str:
-    """A row's pull-request clause, or nothing where the forge was not asked."""
+def _review(
+    name: str, reviews: OpenPullRequests | None, failures: FailingPullRequests | None = None
+) -> str:
+    """A row's pull-request clause, or nothing where the forge was not asked.
+
+    A pull request armed to merge whose required check failed is named as that
+    rather than as open (`PL-0T8L`), because it will not merge on its own.
+    """
+    failing = failures.by_ref().get(name) if failures is not None else None
+    if failing is not None:
+        return f"  {_failing_clause(failing)}"
     if reviews is None or not reviews.asked:
         return ""
     if name not in reviews.numbers:
         return "  no pull request open"
     number = reviews.numbers[name]
     return "  pull request open" if number is None else f"  pull request #{number} open"
+
+
+def _failing_clause(failing: FailingPullRequest) -> str:
+    """`pull request #1845 armed, required check failed: 'checks'`, for a row or a line."""
+    number = "pull request" if failing.number is None else f"pull request #{failing.number}"
+    checks = f": {failing.checks}" if failing.checks else ""
+    return f"{number} armed, required check failed{checks}"
+
+
+#: What a failing armed pull request means, said once wherever one is named.
+FAILING_MEANS = (
+    "An armed pull request whose required check failed will not merge on its own: "
+    "auto-merge waits on that check, and the workflow that brings main into an armed "
+    "pull request skips it. Nothing else reports it, so its session fixes it or the "
+    "owner is told."
+)
+
+#: What a reader is told where the forge could not be asked about failed checks.
+FAILING_UNREAD = (
+    "Whether an armed pull request's required check failed could not be read here, so a "
+    "pull request that will not merge on its own reads as open."
+)
+
+#: The digest's form of `FAILING_UNREAD`, since the digest names no pull request as open.
+DIGEST_FAILING_UNREAD = (
+    "Whether an armed pull request's required check failed could not be read from GitHub; "
+    "`bin/docket flight` asks again."
+)
+
+
+def _format_failing(failures: FailingPullRequests | None, named: Collection[str]) -> list[str]:
+    """The lines `flight` adds about failed checks, after its rows.
+
+    `named` is the refs whose rows were printed, so a failing pull request on
+    any other branch is listed here instead of going unsaid. Nothing where the
+    forge was not asked at all.
+    """
+    if failures is None:
+        return []
+    if not failures.asked:
+        return ["", FAILING_UNREAD]
+    unrowed = [entry for entry in failures.failing if not set(entry.refs) & set(named)]
+    lines: list[str] = []
+    if unrowed:
+        lines.append("")
+        lines.append(
+            f"{_plural(len(unrowed), 'armed pull request', 'armed pull requests')} on a branch "
+            "that no row above names:"
+        )
+        lines.extend(f"  {entry.branch}  {_failing_clause(entry)}" for entry in unrowed)
+    if failures.failing:
+        lines.append("")
+        lines.append(FAILING_MEANS)
+    return lines
 
 
 def _digest_age(last_commit: datetime | None, now: datetime) -> str:
@@ -1220,6 +1290,7 @@ def format_flight(
     read: Holdings | None = None,
     unclaimed: Unclaimed | None = None,
     here: Collection[str] = (),
+    failures: FailingPullRequests | None = None,
 ) -> str:
     """Which items are on a branch, how long each has sat, and what went unread.
 
@@ -1291,6 +1362,12 @@ def format_flight(
     `only_on_a_branch` about beside the base, as the digest and `stranded` do:
     asked of the base alone, it told a session its own claimed capture was in
     no queue here (`PL-LFNK`). Left empty, every item the base lacks is marked.
+
+    `failures` names an armed pull request whose required check failed as
+    that rather than as open, on its row or in a list of its own where no row
+    is its branch (`PL-0T8L`). Where the forge could not be asked, a line says
+    so, because once a row can say "failed", a row saying "open" claims the
+    checks did not fail.
     """
     lines: list[str] = []
     finished = {entry.name for entry in settled.branches} if settled else set()
@@ -1317,9 +1394,10 @@ def format_flight(
             # which no age can.
             hold = held.get(branch.item_id)
             token = f"  session {hold.session}" if hold is not None and hold.session else ""
+            clause = _review(branch.name, reviews, failures)
             row = (
                 f"{branch.item_id}  {branch.name:<{width}}  {kind}"
-                f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}{token}"
+                f"{ages[branch.name]:<{age_width}}{clause}{mark}{token}"
             )
             lines.append(row.rstrip())
         lines.append("")
@@ -1366,6 +1444,8 @@ def format_flight(
         # Every claim there was is in the section below, which explains itself.
         # Repeating "no branch claims an item" here would contradict it.
         lines.append("No branch is carrying an item anybody is still working.")
+
+    lines.extend(_format_failing(failures, {branch.name for branch in live}))
 
     if settled and settled.branches:
         lines.append("")
@@ -1415,6 +1495,34 @@ def held_as(key: str, read: Holdings | None) -> str:
     """
     hold = read.holding().get(key) if read is not None else None
     return f" ({hold.state} {_kind(hold)})" if hold is not None else ""
+
+
+def _digest_failing(failures: FailingPullRequests | None, flight: FlightReport) -> list[str]:
+    """One line per armed pull request whose required check failed, for the digest.
+
+    **The digest asks the forge this one question, and stays silent unless the
+    answer needs acting on** (`PL-0T8L`). It asks nothing else, because it runs
+    at every session start (`PL-7TVT`). But a stuck armed pull request is named
+    by nothing else a session reads, and `#1845` waited about 24 hours that
+    way. Each line names the items the branch carries, so a reader can match
+    it to the in-flight line above. A forge that could not be asked gets one
+    line, since silence here would say no check failed.
+    """
+    if failures is None:
+        return []
+    if not failures.asked:
+        return [DIGEST_FAILING_UNREAD]
+    lines: list[str] = []
+    for entry in failures.failing:
+        carried = sorted({b.item_id for b in flight.branches if b.name in entry.refs})
+        items = f", which carries {', '.join(carried)}," if carried else ""
+        number = "Pull request" if entry.number is None else f"Pull request #{entry.number}"
+        checks = f": {entry.checks}" if entry.checks else ""
+        lines.append(
+            f"{number} on {entry.branch}{items} is armed, but a required check failed{checks}. "
+            "It will not merge until the check passes."
+        )
+    return lines
 
 
 def _held_here(key: str, read: Holdings | None) -> str:

@@ -276,6 +276,18 @@ class Config:
     #: `open_pull_requests_command`'s reason: without it both commands answer
     #: from the branch's content alone, and say so.
     newest_pull_request_command: str = ""
+    #: A command naming each open pull request armed to merge whose required
+    #: check failed on its head, which `docket flight` and the digest read so
+    #: that such a pull request is named as failing rather than open
+    #: (`PL-0T8L`). Auto-merge waits on that check, so the work will not merge
+    #: until somebody fixes it. The command owes exit 0 and one line per such
+    #: pull request, `BRANCH NUMBER CHECKS`, CHECKS being the rest of the line
+    #: and naming the failed checks, or exit 0 and nothing where none has; and
+    #: non-zero where it could not ask. A command of its own rather than more
+    #: fields in `open_pull_requests_command`'s listing, because it reads more
+    #: of the forge and `claim` should not wait on that. Empty by default, for
+    #: `open_pull_requests_command`'s reason.
+    armed_failing_command: str = ""
     #: A command saying when a pull request's auto-merge was last switched,
     #: which `docket arm` reads so that a switch off nobody recorded holds the
     #: pull request rather than being armed again (`PL-8TPV`). The package
@@ -675,6 +687,11 @@ def load(root: Path) -> Config:
             section.get("newest_pull_request_command"),
             defaults.newest_pull_request_command,
             "newest_pull_request_command",
+        ),
+        armed_failing_command=_str(
+            section.get("armed_failing_command"),
+            defaults.armed_failing_command,
+            "armed_failing_command",
         ),
         auto_merge_command=_str(
             section.get("auto_merge_command"), defaults.auto_merge_command, "auto_merge_command"
