@@ -3,11 +3,13 @@ id: PL-2881
 title: Specify the compartment schematic in docs/MODEL.md before it is drawn: what a fill height and an amount assert, how a vapour amount and a liquid-equivalent amount name their units, and the precision a compartment's amount is shown at
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, docs
 feature: schematic
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, docs/items/PL-RNYV-build-the-compartment-schematic-view-the.md, docs/items/PL-S79P-draw-each-compartment-s-share-of-the-agent-the.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-KFTM-carry-each-compartment-s-modelled-agent-amount.md
 added: 2026-10-25
+closed: 2026-11-01
+pr: 1918
 payoff: docs/MODEL.md states what the schematic's heights, amounts and share bar assert, how vapour and liquid-equivalent amounts name their units, and the precision a compartment's amount is shown at, before any of it is drawn
 verify: grep -qE '^#+ .*[Cc]ompartment schematic' docs/MODEL.md
 ---
