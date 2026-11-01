@@ -16,6 +16,7 @@ does not also depend on the controller.
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
 from math import isfinite
+from types import MappingProxyType
 
 from anesthesia_sim.app.bookmarks import (
     BookmarkCrossing,
@@ -45,6 +46,7 @@ from anesthesia_sim.app.control_timeline import CONTROL_INPUT_LABELS
 from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
     DrawnWindow,
     RecordedQuantity,
@@ -82,6 +84,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_supported_run_length,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.validation import require_nonnegative_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +303,87 @@ class RunRecord(RunSettings):
 
 
 @dataclass(frozen=True, slots=True)
+class CompartmentAgentAmounts:
+    """The agent that each of the six compartments holds, in litres of vapour.
+
+    Each amount is $`M_x`$ of `docs/MODEL.md` § "Agent amount". It is the
+    volume that the compartment's agent would take up as pure vapour at
+    20 °C and 760 mmHg, dry. It is a statement about the model's store, not
+    about gas in the body: the agent in blood and tissue is dissolved.
+    `SimulationController.snapshot()` reads each amount from that
+    compartment's `agent_amount_l` in `core/`, so nothing here computes an
+    amount (`PL-KFTM`).
+
+    **Keyed by compartment, not ordered.** A container on the compartment
+    schematic looks its amount up by the compartment it draws. A lookup by
+    position could be rebound to a neighbour's amount by an edit to either
+    side, and a correct amount under the wrong compartment's label is a
+    safety failure. The keys are `run_series.COMPARTMENT_QUANTITIES`, in that
+    order, so a View that lists every compartment lists them in the order
+    the chart does. When the model holds more than one substance, the same
+    record is keyed by substance as well, rather than gaining fields.
+
+    The record holds the parts and not their total. The total is the
+    snapshot's `stored_agent_l`, which `core/` sums once
+    (`AgentUptakeSystem.total_stored_agent_l`). A unit test holds the two
+    equal exactly, so the share bar's six shares are fractions of the total
+    the accounting panel shows.
+
+    Attributes:
+        amounts_l: Each compartment's amount, in litres of vapour, keyed by
+            the compartment's `RecordedQuantity`.
+    """
+
+    amounts_l: Mapping[RecordedQuantity, float]
+
+    def __post_init__(self) -> None:
+        """Refuse a record that does not hold exactly the six compartments, each a valid amount.
+
+        The record is read-only once built. A copy of the mapping is held
+        behind a `MappingProxyType`, so a caller's later edit to the mapping
+        it passed cannot change an amount on a snapshot.
+
+        Raises:
+            SimulationConfigurationError: If the keys are not
+                `COMPARTMENT_QUANTITIES` in that order, or if an amount is
+                negative or not finite. A missing compartment would leave a
+                container with nothing to show, and a negative amount is no
+                quantity of agent at all.
+            TypeError: If an amount is not a number.
+        """
+
+        if tuple(self.amounts_l) != COMPARTMENT_QUANTITIES:
+            expected = ", ".join(quantity.value for quantity in COMPARTMENT_QUANTITIES)
+            given = ", ".join(str(quantity) for quantity in self.amounts_l)
+            raise SimulationConfigurationError(
+                f"a record of compartment amounts must hold {expected}, in that order, "
+                f"and this one holds {given or 'none'}"
+            )
+
+        for quantity, amount_l in self.amounts_l.items():
+            require_nonnegative_finite(f"{quantity.value} agent amount in litres", amount_l)
+
+        object.__setattr__(self, "amounts_l", MappingProxyType(dict(self.amounts_l)))
+
+    def of(self, compartment: RecordedQuantity) -> float:
+        """Return the agent that `compartment` holds, in litres of vapour.
+
+        Raises:
+            SimulationConfigurationError: If `compartment` is not one of the
+                six compartments, such as `RecordedQuantity.WASH_IN_RATIO`.
+                That member is a quotient of two compartments and holds no
+                agent, so no amount can be returned for it.
+        """
+
+        if compartment not in self.amounts_l:
+            raise SimulationConfigurationError(
+                f"{compartment.value} is not a compartment and holds no agent amount"
+            )
+
+        return self.amounts_l[compartment]
+
+
+@dataclass(frozen=True, slots=True)
 class SimulationSnapshot(RunRecord):
     """Read-only simulation data exposed to the user interface.
 
@@ -359,6 +443,13 @@ class SimulationSnapshot(RunRecord):
     # When the model holds N substances present at the same time (`ROADMAP.md`
     # Phase 1, ahead of planned item 6), a mapping is the right shape, and it
     # replaces this block.
+    #
+    # The compartment schematic is the consumer that the roadmap's line waited
+    # for, so each compartment's agent amount now travels too
+    # (`compartment_agent_amounts`, `PL-KFTM`). It travels as one keyed record
+    # rather than as six more flat floats, because the record can be keyed by
+    # substance later without new fields. The six fractions stay flat until
+    # the second substance arrives.
     inspired_partial_pressure_fraction: Fraction
     alveolar_partial_pressure_fraction: Fraction
     mixed_venous_partial_pressure_fraction: Fraction
@@ -367,7 +458,22 @@ class SimulationSnapshot(RunRecord):
     fat_partial_pressure_fraction: Fraction
     delivered_agent_l: float
     exhausted_agent_l: float
+    compartment_agent_amounts: CompartmentAgentAmounts
+    """The agent that each compartment holds, in litres of vapour.
+
+    The compartment schematic labels each container with its amount and
+    draws the share bar from these amounts (`docs/MODEL.md` § "The compartment
+    schematic: what its heights, amounts and share bar assert"). They sum to
+    `stored_agent_l` exactly.
+    """
     stored_agent_l: float
+    """All the agent that the circuit and the patient hold, in litres of vapour.
+
+    It is the accounting check's own reading, `core/`'s single sum of the six
+    compartments' amounts. It is read here rather than summed again from
+    `compartment_agent_amounts`, so the accounting panel's stored total and
+    its unaccounted residual come from one sum (`PL-KFTM`).
+    """
     unaccounted_agent_l: float
     agent_accounting_absolute_error_l: float
     agent_accounting_passes_validation: bool
@@ -1234,6 +1340,16 @@ class SimulationController:
             ),
             delivered_agent_l=accounting.delivered_agent_l,
             exhausted_agent_l=accounting.exhausted_agent_l,
+            compartment_agent_amounts=CompartmentAgentAmounts(
+                {
+                    RecordedQuantity.CIRCUIT: circuit.agent_amount_l,
+                    RecordedQuantity.ALVEOLAR: alveoli.agent_amount_l,
+                    RecordedQuantity.MIXED_VENOUS: patient.venous_blood.agent_amount_l,
+                    RecordedQuantity.VESSEL_RICH: patient.vessel_rich.agent_amount_l,
+                    RecordedQuantity.MUSCLE: patient.muscle.agent_amount_l,
+                    RecordedQuantity.FAT: patient.fat.agent_amount_l,
+                }
+            ),
             stored_agent_l=accounting.currently_stored_agent_l,
             unaccounted_agent_l=accounting.unaccounted_agent_l,
             agent_accounting_absolute_error_l=accounting.absolute_error_l,

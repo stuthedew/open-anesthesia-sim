@@ -51,6 +51,7 @@ from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
+    CompartmentAgentAmounts,
     HereForkPoint,
     MarkForkPoint,
     ResumePoint,
@@ -423,6 +424,15 @@ def _snapshot(
         fat_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.FAT]),
         delivered_agent_l=delivered_agent_l,
         exhausted_agent_l=exhausted_agent_l,
+        # No frame here draws a compartment's amount, so the circuit holds the
+        # whole stored total. That keeps the record and the total in agreement,
+        # as a snapshot from the controller always is.
+        compartment_agent_amounts=CompartmentAgentAmounts(
+            {
+                quantity: stored_agent_l if quantity is RecordedQuantity.CIRCUIT else 0.0
+                for quantity in COMPARTMENT_QUANTITIES
+            }
+        ),
         stored_agent_l=stored_agent_l,
         unaccounted_agent_l=1.5e-13,
         agent_accounting_absolute_error_l=1.5e-13,

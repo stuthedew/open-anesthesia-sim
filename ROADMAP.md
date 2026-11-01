@@ -7231,9 +7231,11 @@ take.
    tensions. Each amount is read from that compartment's `agent_amount_l` in
    `core/`. The amounts travel as one record per compartment rather than as
    six more flat floats. That way v0.8.0 can key the same record by substance
-   instead of adding fields. `stored_agent_l` becomes the sum of the amounts,
-   read from that record, instead of a second reading of the same state. No
-   equation changes. `core/` already computes every amount, and this item only
+   instead of adding fields. `stored_agent_l` stays `core/`'s one sum of the
+   amounts, and a test holds the record's amounts equal to it to the last bit.
+   Summing the record again in `app/` would have been a second sum of the same
+   fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01). No equation
+   changes. `core/` already computes every amount, and this item only
    passes the amounts on. A test compares each amount at stated instants with
    an oracle independent of `core/`, as `.claude/rules/test-oracles.md`
    requires.

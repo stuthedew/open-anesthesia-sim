@@ -233,6 +233,23 @@ timeline therefore reproduces the run rather than approximating it. The
 length of a timeline is bounded by how often a user touches a control, not by
 how long they watch.
 
+The snapshot carries each compartment's agent amount as one record,
+`CompartmentAgentAmounts`, keyed by the compartment's `RecordedQuantity`
+(`PL-KFTM`). The compartment schematic labels its containers from it and
+draws its share bar from it. `snapshot()` reads each amount from that
+compartment's `agent_amount_l` in `core/`, so the interface computes no
+amount of its own. The record is keyed rather than ordered, so a container
+looks its amount up by the compartment it draws and cannot be handed a
+neighbour's. A later model that holds several substances keys the same
+record by substance too, rather than adding fields. The record holds the
+parts and not their total. The snapshot's `stored_agent_l` is still the
+accounting check's reading, `core/`'s one sum of the six amounts
+(`AgentUptakeSystem.total_stored_agent_l`). Summing the record again in
+`app/` would be a second sum of the same fact. Instead, a unit test holds
+the six amounts, added in `core/`'s order, equal to `stored_agent_l` to the
+last bit, and a reference test compares each amount with oracles that do not
+read `core/`.
+
 **A run is its inputs, and its states are derived from them** (PL-T691).
 The controller holds the run as a `core/run_definition.py`
 `RunDefinition`. The definition holds the settings in force at each moment,
