@@ -824,6 +824,7 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
+        run.hold_while(self._a_question_is_open)
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         notice = run.build_notice()
         self._run_column.insertWidget(self._run_column.indexOf(self._readout_rows), notice)
@@ -859,6 +860,18 @@ class SimulationView(QWidget):
         self._rename_runs()
 
         return run
+
+    def _a_question_is_open(self) -> bool:
+        """Whether a window-modal question is open, in which case every run holds.
+
+        The questions are a run's Reset or new-case question and the Workspace
+        strip's question. Each blocks the Pause button of every run while it
+        is open, so a question about one run holds them all
+        (`RunView.hold_while`). The bookmark editor is not modal and holds
+        nothing.
+        """
+
+        return self._tabs.question is not None or any(run.asks_a_question for run in self._runs)
 
     def add_run(self, controller: SimulationController) -> RunView:
         """Draw a second run beside the one already shown, from the next frame on.
@@ -1711,9 +1724,11 @@ class SimulationView(QWidget):
 
         One dialog lasts for the life of the dashboard, rather than one for
         each opening. So a reader who closes it and opens it again finds their
-        selection where they left it. The dialog is non-modal and is shown
-        with `open()` rather than `exec()`, for the reasons that
-        `BookmarkDialog` states.
+        selection where they left it. The dialog is non-modal, for the reasons
+        that `BookmarkDialog` states, so it is shown with `show()`. Qt's
+        `QDialog.open()` makes a dialog window-modal whatever modality it had.
+        When the editor was shown that way, it blocked every run's Pause button
+        while the runs went on stepping (blind review of `PL-TPBH`).
         """
 
         if self._bookmark_dialog is None:
@@ -1725,7 +1740,9 @@ class SimulationView(QWidget):
             self._bookmark_dialog = dialog
 
         self.present(False)
-        self._bookmark_dialog.open()
+        self._bookmark_dialog.show()
+        self._bookmark_dialog.raise_()
+        self._bookmark_dialog.activateWindow()
 
     def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
         """Make one change to every displayed run, or have the first of them refuse it.
