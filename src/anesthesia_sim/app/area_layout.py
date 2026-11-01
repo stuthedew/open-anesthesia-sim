@@ -1288,17 +1288,19 @@ class AreaLayout(QWidget):
     ) -> Fit:
         """Return `settle`'s fit, with each too-small notice wrapped at the width it is drawn at.
 
-        `floors` wraps each notice at the floor's own width, the narrowest an Area is drawn.
-        A wider Area, such as one in a column as wide as the window, needs fewer lines for
-        the same notice. So a second `settle` lowers each Area's floor to the height of
-        its notice at the width the first one drew it at (`PL-9Z74`). That can let a
-        neighbour keep its View.
+        The heights in `floors` wrap each notice at the floor's own width, which is the
+        narrowest width at which an Area is drawn. A wider Area, such as one in a column as
+        wide as the window, needs fewer lines for the same notice. So a second call to
+        `settle` lowers each Area's floor to the height of its notice at the width at which
+        the first call drew that Area (`PL-9Z74`). That can leave enough room for a
+        neighbouring Area to keep its View.
 
-        The second fit is used only where it is safe. Every width it gives must be the
-        width Qt draws, which holds where no split is too narrow for its Areas. Every
-        too-small Area must then be drawn at least as wide as its notice was measured at,
-        so that no notice is cut off. Otherwise the first fit is used, whose floors fit
-        every notice at any width Qt can draw.
+        The second fit is used only where it is safe, and that takes two conditions. First,
+        every width that the second fit gives must be the width that Qt draws. That holds
+        where no split is too narrow for its Areas. Second, every too-small Area must be
+        drawn at least as wide as the width at which its notice was measured, so that no
+        notice is cut off. Where either condition fails, the first fit is used. Its floors
+        fit every notice at any width that Qt can draw.
         """
 
         first = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
@@ -1327,11 +1329,12 @@ class AreaLayout(QWidget):
 
     @staticmethod
     def _widths_held(tree: Node, extent: PixelSize, fit: Fit) -> bool:
-        """Return whether every Area of `fit` is drawn at the width `fit` gives it.
+        """Return whether every Area of `fit` is drawn at the width that `fit` gives it.
 
-        That holds where the tree's least width at `fit`'s bounds fits in `extent`. Then
-        every split has room along the width for each Area's bound. Where it does not,
-        Qt draws an Area at its bound rather than at the width `fit` gives it.
+        That holds where the tree's least width, with each Area at its bound in `fit`, fits
+        in `extent`. Every split then has room along the width for the bound of each Area in
+        it. Where the least width does not fit in `extent`, Qt draws an Area at its bound
+        rather than at the width that `fit` gives it.
         """
 
         return minimum_extent(tree, AREA_HANDLE_WIDTH, fit.bounds).width_px <= extent.width_px
@@ -1358,13 +1361,15 @@ class AreaLayout(QWidget):
 
         Its width is the width from `_structural_minimum`. Its height is enough for the
         header, the too-small notice's title and the notice's short statement of two sizes:
-        the size the View needs and the size the Area has. That text is wrapped at the width
-        the Area is drawn at, `drawn_width_px`, or at the floor's own width where that is
-        wider (`PL-Y65Q` route B, `PL-9Z74`). The default wraps it at the floor's own width,
-        which is the narrowest an Area is drawn and so the tallest the text can be. The
-        height is never more than the View's need. The notice's advice sentence is shown
-        only where the Area has room for it. An Area that shows a notice in place of a View
-        is held at `_structural_minimum`.
+        the size the View needs and the size the Area has. That text is wrapped at
+        `drawn_width_px`, the width at which the Area is drawn. Where the floor's own width
+        is wider, the text is wrapped at the floor's own width instead (`PL-Y65Q` route B,
+        `PL-9Z74`). So the default `drawn_width_px` of 0 wraps the text at the floor's own
+        width. That is the narrowest width at which an Area is drawn, so it gives the
+        tallest text. The height is never more than the View's need. The notice's advice
+        sentence is shown only where the Area has room for it. An Area that has no View,
+        and shows a notice such as an unknown kind's instead, is held at
+        `_structural_minimum`.
         """
 
         frame = self._frames[area_id]
@@ -1456,10 +1461,11 @@ class AreaLayout(QWidget):
         if reach is None:
             return
 
-        # The line turns WARNING both where the model or `_fits` stops the border
-        # and where the pointer is past the place where the border can be drawn
-        # (`PL-XX18`). A drag into an Area held at its need is the second kind:
-        # the border does not move, so `_farthest` alone would not say it stopped.
+        # The border's line turns WARNING in two cases (`PL-XX18`). In the first, the model
+        # or `_fits` stops the border. In the second, the pointer is past the farthest place
+        # at which the border can be drawn. A drag into an Area held at its need is the
+        # second case. The border does not move, so `_farthest` alone would not report that
+        # the border stopped.
         moved, stopped = self._farthest(drag, reach.position)
         self._at_minimum = stopped or reach.stopped
         self._resized(moved)
@@ -1619,27 +1625,27 @@ class AreaLayout(QWidget):
     ) -> _BorderReach | None:
         """Return where in the window `address` lies once it is drawn `offset_px` along its split.
 
-        `offset_px` counts the pixels of the children before the border.
-        `border_share` turns it into a share of the split, using the sizes that the
-        splitter draws. Those sizes hold a child at its bound where its fraction
-        would make it smaller (`PL-97WX`). The split's span in the model then turns
-        the share into a fraction of the window. A drag and a keyboard step both
-        move a border through this one mapping.
+        `offset_px` counts the pixels of the children before the border. `border_share`
+        turns it into a share of the split, using the sizes that the splitter draws. Those
+        sizes hold a child at its bound wherever its fraction would make it smaller than
+        that bound (`PL-97WX`). The split's span in the model then turns the share into a
+        fraction of the window. A drag and a keyboard step both move a border through this
+        one mapping.
 
-        The result holds the position, whether the border moves from where `start`
-        draws it, and whether it is stopped short of `offset_px`. The border does not
-        move when it is already drawn at `offset_px`, or as near to it as it can be
-        drawn. The position is then the one in `start`. So a press, or a nudge toward
-        an Area held at its need, changes no fraction.
+        The result contains three things: the position, whether the border moves from where
+        `start` draws it, and whether the border is stopped short of `offset_px`. The border
+        does not move when it is already drawn at `offset_px`, or as near to it as it can
+        be drawn. The position is then the one in `start`. So a press, or a nudge toward an
+        Area held at its need, changes no fraction.
 
-        Where the split's children need more pixels than it has, Qt draws each of them
-        at its least size, whatever the fractions say (`border_range`). The same holds
-        where an enclosing split is too small for its children, because Qt then draws
-        this split at a length other than the one the apportionment gave it. In both
-        cases the border does not move at all, so a
-        press or a drag in a window smaller than the Areas' floors leaves the stored
-        fractions as they were (`PL-MH5T`). The border is stopped there wherever
-        `offset_px` is not where Qt draws it.
+        In two cases Qt draws each child at its least size, whatever the fractions say. The
+        first case is where the split's children need more pixels than the split has
+        (`border_range`). The second case is where an enclosing split is too small for its
+        children. Qt then draws this split at a length other than the one that the
+        apportionment gave it. In both cases the border does not move at all. So a press or
+        a drag in a window smaller than the Areas' floors leaves the stored fractions as
+        they were (`PL-MH5T`). In both cases the border is also reported as stopped
+        wherever `offset_px` is not where Qt draws it.
 
         The result is None when the split has no pixels to share.
         """
@@ -1657,10 +1663,11 @@ class AreaLayout(QWidget):
         )
         limits = border_range(split.sizes, address.index, bounds, sum(drawn))
 
-        # An enclosing split too small for its children makes Qt draw this split at a
-        # length other than the one the apportionment gave it, taking pixels from its
-        # largest child first. Each Area's frame is still held at its least size, so the
-        # frames overlap and none moves when the fractions change.
+        # Where an enclosing split is too small for its children, Qt draws this split at a
+        # length other than the one that the apportionment gave it. The enclosing split
+        # takes the missing pixels from its largest child first. Each Area's frame is still
+        # held at its least size, so the frames overlap, and no frame moves when the
+        # fractions change.
         if limits is None or _drawable_px(splitter) != sum(drawn):
             # The handle is drawn where Qt's own layout of the split put it.
             here = sum(splitter.sizes()[: address.index + 1])
@@ -2318,11 +2325,12 @@ class _BorderReach:
     """Where a border drag or a keyboard step takes a border, and whether it is stopped.
 
     Attributes:
-        position: Where the border lies in the window, as a fraction of it.
-        moves: Whether the border moves from where the layout it started from draws it.
-        stopped: Whether the pointer or the step asks for the border somewhere it cannot be
-            drawn, because an Area beside it would be smaller than the least size it can be
-            drawn at. A stopped border's line is drawn in WARNING (`PL-RQT1` Q3).
+        position: Where the border lies in the window, as a fraction of the window.
+        moves: Whether the border moves away from where the starting layout draws it.
+        stopped: Whether the pointer or the step asks for the border at a place where it
+            cannot be drawn. That happens when an Area beside the border would be smaller
+            than the least size at which that Area can be drawn. A stopped border's line is
+            drawn in WARNING (`PL-RQT1` Q3).
     """
 
     position: float

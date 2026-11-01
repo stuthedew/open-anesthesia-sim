@@ -1987,11 +1987,11 @@ def test_a_wide_stacked_area_holds_a_lower_floor(
     onto more lines than at 800 px, so the wide Area's floor is lower. The wide notice
     still shows its title and its statement of the two sizes in full.
 
-    The room this saves goes to a neighbour. Two Big views stacked in a window 800 by
-    350 px cannot both have their 227 px. The one that gives way is held at its floor,
-    and with its notice wrapped at 800 px that floor is low enough for the other to keep
-    its 227 px. With the notice wrapped at the floor's own width, the floor was too
-    tall, and both Areas showed the notice.
+    The room that this saves goes to a neighbour. Two Big views stacked in a window 800 by
+    350 px cannot both have their 227 px. The one that gives way is held at its floor.
+    With its notice wrapped at 800 px, that floor is low enough for the other to keep its
+    227 px. When the notice was wrapped at the floor's own width, the floor was too tall,
+    and both Areas showed the notice.
     """
 
     model = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
@@ -2050,12 +2050,13 @@ def test_no_too_small_notice_is_cut_off_where_the_second_pass_narrows_an_area(
 ) -> None:
     """`PL-9Z74`: a floor lowered for one width is not kept where the Area ends up narrower.
 
-    Four Big views nest as a column holding a row, whose first part is a column of two,
-    above a fourth view, in a window 640 by 180 px. The row gives Area 3 0.4 of its width.
-    A second pass that kept its lowered floors would draw Area 3 253 px wide, narrower
-    than the width its notice was measured at, and cut off the notice's statement of
-    the two sizes. That pass is discarded instead, so every notice that is shown has its
-    title and that statement in full. Found by the branch's adversarial review.
+    Four Big views nest in a window 640 by 180 px. A column holds a row above the fourth
+    view. The row's first part is a column of two views, and the row gives 0.4 of its
+    width to Area 3. A second pass that kept its lowered floors would draw Area 3 only
+    253 px wide. That is narrower than the width at which its notice was measured, so the
+    notice's statement of the two sizes would be cut off. That pass is discarded instead,
+    so every notice that is shown has its title and that statement in full. Found by the
+    branch's adversarial review.
     """
 
     model = _layout(
@@ -2337,7 +2338,7 @@ def test_a_one_pixel_nudge_of_a_held_border_keeps_the_stored_fraction(
 def test_a_drag_into_a_held_neighbour_lights_the_border_warning(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-XX18`: a drag that a held neighbour stops says so, as a keyboard step does.
+    """`PL-XX18`: a drag stopped by a held neighbour shows WARNING, as a keyboard step does.
 
     The row splits 800 px as 0.7 / 0.3. The Big view on the right needs 300 px, so it is
     held at 300 and the border is drawn at 500. A drag of 30 px to the right would make
@@ -2389,11 +2390,11 @@ def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions(
     Three Big views sit side by side in a window fixed at 300 px wide. Each Area's floor
     is as wide as its header, so the three floors and the two 8 px handles need more
     than 300 px. Qt then draws every Area at its floor, whatever the stored fractions
-    say, so no border can move on screen. The fractions are the ones in the item's
-    reproduction, (0.4026, 0.4647, 0.1328), with the middle one cut to 0.4646 so that
+    say, so no border can move on screen. The fractions come from the reproduction in
+    `PL-MH5T`, (0.4026, 0.4647, 0.1328), with the middle one cut to 0.4646 so that
     they sum to one. A press and a move of zero pixels on either border used to rewrite
-    them. Now they keep them, and emit no `layout_changed`. A drag of 30 px is stopped in
-    the same way, and the border's line turns WARNING to say so.
+    the fractions. Now the fractions are kept, and no `layout_changed` is emitted. A drag
+    of 30 px is stopped in the same way, and the border's line turns WARNING to say so.
     """
 
     fractions = (0.4026, 0.4646, 0.1328)
@@ -2442,14 +2443,14 @@ def test_a_press_on_a_border_inside_a_split_below_its_floors_keeps_the_stored_fr
 ) -> None:
     """`PL-MH5T`: a border whose enclosing split is too small for its floors does not move.
 
-    The outer row gives 0.8 of a 370 px window to a column whose top half is a row of
-    two Areas, and 0.2 to a fourth Area. The two Areas' floors and a handle, with the
-    fourth Area's floor and another handle, need more than 370 px. So Qt draws the
+    The outer row gives 0.8 of a 370 px window to a column and 0.2 to a fourth Area. The
+    column's top half is a row of two Areas. The floors of those two Areas, the fourth
+    Area's floor and the two handles together need more than 370 px. So Qt draws the
     column, and the row inside it, narrower than the 0.8 of the window that the
-    apportionment gives them, and holds each Area's frame at its floor. A press and a
-    move of zero pixels on the inner row's border used to rewrite its 0.5 / 0.5. Now
-    they keep it, emit no `layout_changed`, and leave the line out of WARNING. Found by
-    the branch's blind review.
+    apportionment gives them. Qt also holds each Area's frame at its floor. A press and a
+    move of zero pixels on the inner row's border used to rewrite the row's 0.5 / 0.5. Now
+    the 0.5 / 0.5 is kept, no `layout_changed` is emitted, and the border's line does not
+    turn WARNING. Found by the branch's blind review.
     """
 
     model = _layout(

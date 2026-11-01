@@ -422,11 +422,12 @@ def test_a_border_ranges_between_the_bounds_of_the_children_beside_it() -> None:
     # child 300 px, so the border can be drawn from 10 to 800 - 300 = 500.
     assert border_range((0.7, 0.3), 0, (10, 300), 800) == (10, 500)
 
-    # In a row of three split 0.25 / 0.25 / 0.5, the middle border's range starts
-    # where the middle child is held at its 20 px bound. The other two children
-    # then share the remaining 780 px by their fractions, 0.25 to 0.5 + 0.25, so the
-    # first child gets 195 px and the border is drawn at 195 + 20 = 215. The range
-    # ends where the third child is held at its 30 px bound, at 800 - 30 = 770.
+    # In a row of three split 0.25 / 0.25 / 0.5, border 1 lies between the middle and
+    # the third child. Its range starts where the middle child is held at its 20 px
+    # bound. The other two children then share the remaining 780 px by their fractions,
+    # 0.25 to 0.5 + 0.25, because the middle child's 0.25 has passed to the third child.
+    # So the first child gets 195 px, and the border is drawn at 195 + 20 = 215. The
+    # range ends where the third child is held at its 30 px bound, at 800 - 30 = 770.
     assert border_range((0.25, 0.25, 0.5), 1, (10, 20, 30), 800) == (215, 770)
 
 

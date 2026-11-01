@@ -268,10 +268,10 @@ def border_range(
 
 
 def _border_ends(fractions: tuple[float, ...], index: int) -> tuple[float, float]:
-    """Return the least and the greatest share that border `index` can take before it.
+    """Return the least and the greatest share of the split that can lie before border `index`.
 
-    The split's ends themselves would leave a child with no share at all, so the
-    border's range is measured one float inside them.
+    At either end of that range, one of the two children beside the border would have no
+    share at all. So each end of the range is moved one float step inward.
     """
 
     before = math.fsum(fractions[:index])
@@ -304,13 +304,14 @@ def border_share(
 ) -> float | None:
     """Return the share of a split that lies before border `index` once it is drawn at `offset_px`.
 
-    The fractions of the split's children along its axis are `fractions`, and
-    their bounds are `bounds`. The children share `available` pixels, as
-    `split_sizes` lays them out. Border `index` lies between child `index` and
-    the child after it. Moving the border changes only those two children's
-    fractions. A held child can still move another border on screen, since it
-    takes its pixels from every child that is not held. `offset_px` is where the
-    border is to be drawn, given as the pixels of the children before it.
+    The fractions of the split's children along its axis are `fractions`. `bounds` holds
+    each child's bound, the fewest pixels at which `split_sizes` draws that child. The
+    children share `available` pixels, as `split_sizes` lays them out. Border `index`
+    lies between child `index` and the child after it. Moving the border changes only
+    those two children's fractions. Even so, the move can shift another border on screen
+    when a child is held at its bound. That is because a held child takes its pixels from
+    every child that is not held. `offset_px` is where the border is to be drawn, given
+    as the pixels of the children before it.
 
     While a child is held at its bound, a whole range of shares draws the
     border in the same place. So the pointer is mapped through the drawn sizes,
@@ -327,8 +328,8 @@ def border_share(
     The result is None when the border is already drawn at `offset_px`, or as
     near to it as it can be drawn. A press, or a nudge toward an Area held at its
     bound, then leaves the stored fractions exactly as they were. The result is
-    also None where the children's bounds need more than `available`, because
-    the border cannot move on screen there (`border_range`).
+    also None where the children's bounds need more than `available` pixels,
+    because the border cannot move on screen there (`border_range`).
 
     Raises:
         IndexError: `index` is not a border of the split.
