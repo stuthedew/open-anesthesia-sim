@@ -8462,8 +8462,8 @@ and each must be assigned when its milestone is fully specified.
     chart, `PL-QYBW`). Where the drug *is*, in millilitres, and where the
     *tension* is are different questions. Confusing them is a standard novice
     error. The view needs per-compartment agent amounts exposed on the
-    snapshot. The core already computes those amounts, but the snapshot does
-    not yet carry them.
+    snapshot. The core already computes those amounts, and since `PL-KFTM`
+    (2026-11-01) the snapshot carries them as one record per compartment.
 28. Add agent cost, from the delivered-agent amount that the model already
     tracks. The economic argument for low fresh gas flow is a standard
     teaching point. It is currently the one lesson in this class of simulator
