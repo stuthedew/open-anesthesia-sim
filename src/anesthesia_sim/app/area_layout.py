@@ -210,6 +210,7 @@ from anesthesia_sim.layout.sizing import (
     PixelSize,
     TooSmall,
     apportion,
+    border_range,
     border_share,
     drawn_bounds,
     minimum_extent,
@@ -1389,12 +1390,17 @@ class AreaLayout(QWidget):
         if drag is None:
             return
 
-        position = self._position_at(handle, drag, at)
+        reach = self._position_at(handle, drag, at)
 
-        if position is None:
+        if reach is None:
             return
 
-        moved, self._at_minimum = self._farthest(drag, position)
+        # The line turns WARNING both where the model or `_fits` stops the border
+        # and where the pointer is past the place where the border can be drawn
+        # (`PL-XX18`). A drag into an Area held at its need is the second kind:
+        # the border does not move, so `_farthest` alone would not say it stopped.
+        moved, stopped = self._farthest(drag, reach.position)
+        self._at_minimum = stopped or reach.stopped
         self._resized(moved)
 
     def border_released(self) -> None:
@@ -1469,19 +1475,18 @@ class AreaLayout(QWidget):
         if reached is None:
             return
 
-        target, moves = reached
-
-        if not moves:
+        if not reached.moves:
             # The border is already as far as it can be drawn that way, because
             # an Area beside it is held at its need. So it stops, and nothing in
             # the layout changes.
-            self._at_minimum = True
+            self._at_minimum = reached.stopped
             self._relight()
 
             return
 
         step = _BorderDrag(address, alone, self._model, 0)
-        moved, self._at_minimum = self._farthest(step, target)
+        moved, stopped = self._farthest(step, reached.position)
+        self._at_minimum = stopped or reached.stopped
         self._resized(moved)
 
     def border_restored(self, handle: _AreaHandle) -> None:
@@ -1526,7 +1531,9 @@ class AreaLayout(QWidget):
 
         return Handle(MAIN_WINDOW, splitter.path, index - 1)
 
-    def _position_at(self, handle: _AreaHandle, drag: _BorderDrag, at: QPoint) -> float | None:
+    def _position_at(
+        self, handle: _AreaHandle, drag: _BorderDrag, at: QPoint
+    ) -> _BorderReach | None:
         """Return where in the window the dragged border lies with the pointer at screen point `at`.
 
         The splitter places a handle's leading edge after the children before it
@@ -1544,13 +1551,11 @@ class AreaLayout(QWidget):
         horizontal = splitter.orientation() == Qt.Orientation.Horizontal
         edge = (local.x() if horizontal else local.y()) - drag.offset_px
         offset = edge - splitter.handleWidth() * (index - 1)
-        reached = self._drawn_position(splitter, drag.start, drag.handle, offset)
-
-        return None if reached is None else reached[0]
+        return self._drawn_position(splitter, drag.start, drag.handle, offset)
 
     def _drawn_position(
         self, splitter: _AreaSplitter, start: LayoutModel, address: Handle, offset_px: int
-    ) -> tuple[float, bool] | None:
+    ) -> _BorderReach | None:
         """Return where in the window `address` lies once it is drawn `offset_px` along its split.
 
         `offset_px` counts the pixels of the children before the border.
@@ -1560,12 +1565,19 @@ class AreaLayout(QWidget):
         the share into a fraction of the window. A drag and a keyboard step both
         move a border through this one mapping.
 
-        The result is a pair: the position, and whether the border moves from where
-        `start` draws it. The border does not move when it is already drawn at
-        `offset_px`, or as near to it as it can be drawn. The position is then the
-        one in `start`. So a press, or a nudge toward an Area held at its need,
-        changes no fraction while the layout fits the window. The result is None
-        when the split has no pixels to share.
+        The result holds the position, whether the border moves from where `start`
+        draws it, and whether it is stopped short of `offset_px`. The border does not
+        move when it is already drawn at `offset_px`, or as near to it as it can be
+        drawn. The position is then the one in `start`. So a press, or a nudge toward
+        an Area held at its need, changes no fraction.
+
+        Where the split's children need more pixels than it has, Qt draws each of them
+        at its least size, whatever the fractions say (`border_range`). Then the border
+        does not move at all, so a press or a drag in a window smaller than the Areas'
+        floors leaves the stored fractions as they were (`PL-MH5T`). The border is
+        stopped there wherever `offset_px` is not where Qt draws it.
+
+        The result is None when the split has no pixels to share.
         """
 
         fit = self._fit
@@ -1579,14 +1591,23 @@ class AreaLayout(QWidget):
             minimum_extent(child, AREA_HANDLE_WIDTH, fit.bounds).along(split.orientation)
             for child in split.children
         )
+        limits = border_range(split.sizes, address.index, bounds, sum(drawn))
+
+        if limits is None:
+            # The handle is drawn where Qt's own layout of the split put it.
+            here = sum(splitter.sizes()[: address.index + 1])
+
+            return _BorderReach(start.position(address), False, offset_px != here)
+
+        stopped = not limits[0] <= offset_px <= limits[1]
         share = border_share(split.sizes, address.index, bounds, sum(drawn), offset_px)
 
         if share is None:
-            return start.position(address), False
+            return _BorderReach(start.position(address), False, stopped)
 
         low, high = start.span(address)
 
-        return low + (high - low) * share, True
+        return _BorderReach(low + (high - low) * share, True, stopped)
 
     def _farthest(self, drag: _BorderDrag, position: float) -> tuple[LayoutModel, bool]:
         """Return the layout with the border as near `position` as it goes, and whether it stopped.
@@ -2222,6 +2243,23 @@ class _BorderDrag:
     alone: bool
     start: LayoutModel
     offset_px: int
+
+
+@dataclass(frozen=True)
+class _BorderReach:
+    """Where a border drag or a keyboard step takes a border, and whether it is stopped.
+
+    Attributes:
+        position: Where the border lies in the window, as a fraction of it.
+        moves: Whether the border moves from where the layout it started from draws it.
+        stopped: Whether the pointer or the step asks for the border somewhere it cannot be
+            drawn, because an Area beside it would be smaller than the least size it can be
+            drawn at. A stopped border's line is drawn in WARNING (`PL-RQT1` Q3).
+    """
+
+    position: float
+    moves: bool
+    stopped: bool
 
 
 @dataclass(frozen=True)

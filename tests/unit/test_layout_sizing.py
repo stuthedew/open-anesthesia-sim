@@ -19,6 +19,7 @@ from anesthesia_sim.layout.sizing import (
     PixelSize,
     TooSmall,
     apportion,
+    border_range,
     border_share,
     drawn_bounds,
     minimum_extent,
@@ -414,6 +415,36 @@ def test_a_border_between_two_unheld_children_maps_the_pointer_by_the_fractions(
     assert moved is not None
     # The first child keeps its 0.25, and only the two beside the border change.
     assert split_sizes((0.25, moved - 0.25, 1 - moved), bounds, 800) == (200, 280, 320)
+
+
+def test_a_border_ranges_between_the_bounds_of_the_children_beside_it() -> None:
+    # A row of 800 px is split 0.7 / 0.3. The left child needs 10 px and the right
+    # child 300 px, so the border can be drawn from 10 to 800 - 300 = 500.
+    assert border_range((0.7, 0.3), 0, (10, 300), 800) == (10, 500)
+
+    # In a row of three split 0.25 / 0.25 / 0.5, the middle border's range starts
+    # where the middle child is held at its 20 px bound. The other two children
+    # then share the remaining 780 px by their fractions, 0.25 to 0.5 + 0.25, so the
+    # first child gets 195 px and the border is drawn at 195 + 20 = 215. The range
+    # ends where the third child is held at its 30 px bound, at 800 - 30 = 770.
+    assert border_range((0.25, 0.25, 0.5), 1, (10, 20, 30), 800) == (215, 770)
+
+
+def test_a_border_cannot_move_where_its_childrens_bounds_need_more_than_the_split_has() -> None:
+    """`PL-MH5T`: below the bounds, no share moves the border on screen, so none is offered."""
+
+    # Three children need 124 px each, 372 px in all, from a split of 284 px.
+    fractions, bounds = (0.4026, 0.4646, 0.1328), (124, 124, 124)
+
+    assert border_range(fractions, 0, bounds, 284) is None
+    assert border_range(fractions, 1, bounds, 284) is None
+    assert border_share(fractions, 1, bounds, 284, 150) is None
+    assert border_share(fractions, 1, bounds, 284, 0) is None
+
+
+def test_border_range_refuses_a_border_the_split_does_not_have() -> None:
+    with pytest.raises(IndexError):
+        border_range((0.5, 0.5), 1, (10, 10), 800)
 
 
 def test_border_share_refuses_a_border_the_split_does_not_have() -> None:

@@ -2229,6 +2229,109 @@ def test_a_one_pixel_nudge_of_a_held_border_keeps_the_stored_fraction(
     application.processEvents()
 
 
+def test_a_drag_into_a_held_neighbour_lights_the_border_warning(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-XX18`: a drag that a held neighbour stops says so, as a keyboard step does.
+
+    The row splits 800 px as 0.7 / 0.3. The Big view on the right needs 300 px, so it is
+    held at 300 and the border is drawn at 500. A drag of 30 px to the right would make
+    that View narrower than it needs. So the border stays at 500, the stored 0.7 stays,
+    and the border's line turns WARNING. With the pointer back on the border, the line is
+    no longer WARNING.
+    """
+
+    model = _layout(_row((0.7, 0.3), _area(1), Area(AreaId(2), _BIG)), 3)
+    container = _show_sized(application, shown, model, (_SIDE_PX, _SIDE_PX))
+    splitter = _splitters(container)[()]
+    handle = splitter.handle(1)
+    assert isinstance(handle, _AreaHandle)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+    assert splitter.sizes() == [500, 300]
+
+    start = _press(handle)
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert handle.lit and not handle.warning
+
+    QTest.mouseMove(handle, start + QPoint(30, 0))
+    application.processEvents()
+
+    assert container.model == model
+    assert changed == []
+    assert splitter.sizes() == [500, 300]
+    assert handle.lit and handle.warning
+
+    QTest.mouseMove(handle, start)
+    application.processEvents()
+
+    assert handle.lit and not handle.warning
+
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    application.processEvents()
+
+    assert container.model == model
+    assert not handle.warning
+
+
+def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-MH5T`: in a window too small for the Areas' floors, a border press changes nothing.
+
+    Three Big views sit side by side in a window fixed at 300 px wide. Each Area's floor
+    is as wide as its header, so the three floors and the two 8 px handles need more
+    than 300 px. Qt then draws every Area at its floor, whatever the stored fractions
+    say, so no border can move on screen. The fractions are the ones in the item's
+    reproduction, (0.4026, 0.4647, 0.1328), with the middle one cut to 0.4646 so that
+    they sum to one. A press and a move of zero pixels on either border used to rewrite
+    them. Now they keep them, and emit no `layout_changed`. A drag of 30 px is stopped in
+    the same way, and the border's line turns WARNING to say so.
+    """
+
+    fractions = (0.4026, 0.4646, 0.1328)
+    model = _layout(
+        _row(fractions, Area(AreaId(1), _BIG), Area(AreaId(2), _BIG), Area(AreaId(3), _BIG)), 4
+    )
+    _, container = _host_sized(application, hosts, model, (300, 300))
+    splitter = _splitters(container)[()]
+    floors = [container.frame(AreaId(number)).minimumWidth() for number in (1, 2, 3)]
+    assert container.width() == 300
+    assert sum(floors) + 2 * AREA_HANDLE_WIDTH > 300
+    drawn = splitter.sizes()
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+
+    for index in (1, 2):
+        handle = splitter.handle(index)
+        assert isinstance(handle, _AreaHandle)
+
+        start = _press(handle)
+        QTest.mouseMove(handle, start)
+        application.processEvents()
+
+        assert _tree(container).sizes == fractions
+        assert changed == []
+        assert not handle.warning
+
+        QTest.mouseMove(handle, start + QPoint(-30, 0))
+        application.processEvents()
+
+        assert _tree(container).sizes == fractions
+        assert changed == []
+        assert splitter.sizes() == drawn
+        assert handle.warning
+
+        QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+        application.processEvents()
+
+        assert not handle.warning
+
+    assert container.model == model
+
+
 def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
