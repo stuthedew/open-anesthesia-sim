@@ -2569,6 +2569,8 @@ shipped run's propagators carry the smaller bound. The input ceiling keeps the
 envelope's worst case inside the ambient pressure. Projecting a computed
 fraction back to 1 instead would hide an error of this size rather than
 bound it.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
