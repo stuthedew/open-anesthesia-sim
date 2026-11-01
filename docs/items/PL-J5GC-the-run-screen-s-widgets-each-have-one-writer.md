@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: defect-review-2026-10
+milestone: v0.6.10
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-25
 closed: 2026-10-27
