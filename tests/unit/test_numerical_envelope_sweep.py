@@ -729,7 +729,7 @@ drawn fraction in the sweep (measured 2026-10-31).
 
 
 def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None:
-    """A window that would draw a fraction above 1 of the ambient pressure is refused, not returned.
+    """A window that would draw a fraction above 1 (the ambient pressure) is refused, not returned.
 
     No supported opening reaches such a window. The stepped system refuses an
     opening above `CEILING`, and so does a settings record's dial. A

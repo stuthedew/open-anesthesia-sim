@@ -2553,6 +2553,23 @@ shipped vaporizer maximum, the highest of which is desflurane's 18%. So no
 shipped run is affected.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+**Why the display path's excess is the largest.** It is the propagator's error,
+not rounding in the state. The display path's excess is about 3e11 units in the last
+place, far more than rounding a state could produce. It arises at the
+stiffest corner: every volume at 0.01 L, blood:gas at 1e4 and tissue:blood at
+1e-3. There, the 60-column window over 86 400 s advances each column by a
+propagator over 1464.4 s. That propagator needs 32 squarings, the most that
+`core/matrix_exponential.py` performs. Its worst entry differed from a
+50-digit reference by 5.65e-7, about 2^32 times the unit roundoff, which
+is 4.8e-7. The window applies it 59 times, and 59
+times 5.65e-7 is 3.3e-5, the excess measured (2026-10-31). The same corner's
+0.1 s step needs 19 squarings and differs from the reference by 1.6e-11. No
+shipped agent needs more than 19 squarings over the 24-hour horizon, so a
+shipped run's propagators carry the smaller bound. The input ceiling keeps the
+envelope's worst case inside the ambient pressure. Projecting a computed
+fraction back to 1 instead would hide an error of this size rather than
+bound it.
+
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
 `core/matrix_exponential.py` halves the interval until the scaled matrix is

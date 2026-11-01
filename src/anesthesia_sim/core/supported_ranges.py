@@ -65,9 +65,9 @@ carry a computed fraction a little above the largest fraction it started from.
 So a state at the very top of the range, with every compartment at 1, could not
 be stepped. A step rounded one fraction to 1.0000000000349965, the check refused
 it, and the run halted for a rounding error. The display path drew 1.000033 from
-the same state. No shipped vaporizer comes near the ambient pressure, so no supported
-run needs a state that close to 1. The fix is therefore to stop the inputs short
-of 1 rather than to widen the check. The delivered concentration and every
+the same state. No shipped vaporizer's maximum comes near 100% of the ambient
+pressure, so no supported run needs a state that close to 1. The fix is
+therefore to stop the inputs short of 1 rather than to widen the check. The delivered concentration and every
 fraction that the stepped system opens from must be at or below
 `MAXIMUM_INPUT_FRACTION`. Because the model conserves agent, no computed
 fraction then exceeds that ceiling by more than rounding. The largest excess
@@ -441,8 +441,9 @@ def require_within_input_ceiling(name: str, concentration: float) -> None:
     """Refuse a concentration too close to the ambient pressure for the coupled model to start from.
 
     `concentration` is either the delivered concentration, as a `Percent`, or
-    the fraction of the ambient pressure held by a part that stores a fraction, as the
-    circuit does. A `Percent` is converted to a fraction before the comparison,
+    the fraction that a part stores, as the circuit does. That fraction is the
+    agent's partial pressure as a fraction of the ambient pressure. A `Percent`
+    is converted to a fraction before the comparison,
     and the message quotes it in percent, the unit of the dial. The value's
     range and type were checked where it was built, so only the ceiling is
     checked here. A compartment that stores an amount of agent is checked by
