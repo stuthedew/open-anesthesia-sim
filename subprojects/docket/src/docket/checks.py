@@ -2218,9 +2218,10 @@ def _note_cost(report: Report, landed: LandedReport | None) -> None:
 def _check_references(report: Report, milestones: MilestoneStates | None = None) -> None:
     """Hold every cross-reference to an item, or a milestone, that exists.
 
-    `blocked-by` carries two kinds of entry since `PL-W8XP`, and both are held
-    to something real: an id must name an item in this store, a `vX.Y.Z` must
-    name a milestone the roadmap places. The second check is what keeps a
+    `blocked-by` carries three kinds of entry, and each is held to something
+    real: an id must name an item in this store, a `vX.Y.Z` must name a
+    milestone the roadmap places (`PL-W8XP`), and a `YYYY-MM-DD` must be a
+    calendar date (`PL-XNF3`). The second check is what keeps a
     milestone blocker from being a way to park an item forever - a typo would
     otherwise read as a dependency on something that is never going to be
     scoped, which is indistinguishable from a live block and never fires.
@@ -2242,6 +2243,12 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
                 )
                 report.errors.append(
                     f"{_where(item)}: blocked by {blocker}, which is not an item{near_miss}"
+                )
+        for written in item.blocking_dates:
+            if not _is_date(written):
+                report.errors.append(
+                    f"{_where(item)}: blocked by {written}, which is not a calendar date; "
+                    "a date blocker is written YYYY-MM-DD"
                 )
         if milestones is None:
             continue
@@ -3223,6 +3230,91 @@ def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) ->
         )
 
 
+def _ready_before_its_date(report: Report, today: date) -> None:
+    """Refuse `ready` on an item whose `blocked-by` names a date still to come.
+
+    The date half of `_ready_with_an_open_blocker`: `ready` says the work can
+    start now, and the date says it cannot start before then. `next`, `show`
+    and `status` read the status alone through `Item.is_startable`, so the
+    date would otherwise be recorded and the item offered anyway, which is
+    `PL-R4Y2` exactly (`PL-XNF3`).
+
+    The error can only go away as days pass, never arrive with one: on and
+    after the date the item is no longer refused, so a pull request that
+    passed this check yesterday cannot fail it today.
+    """
+    for item in report.items:
+        if item.status != "ready":
+            continue
+        due = item.waits_until
+        if due is None or due <= today:
+            continue
+        report.errors.append(
+            f"{_where(item)}: sits at `ready` while its `blocked-by` waits until "
+            f"{due.isoformat()}; `ready` says the work can be started now, so set "
+            "`status: blocked` until then, or drop the date if it no longer holds"
+        )
+
+
+def _advise_arrived_dates(
+    report: Report, today: date, milestones: MilestoneStates | None, resolved: set[str]
+) -> set[str]:
+    """Advise on each open item whose date blockers have all arrived; return those named ready.
+
+    A date clears when it arrives, which is no closure and has no pull request
+    to refuse, so this is advice where an item blocker's closure is an error
+    (`_blocked_with_every_blocker_closed`). It is said on the day itself,
+    because `waits_until` is the first day the work may start.
+
+    A `blocked` item whose every other blocker has cleared is named ready to
+    promote: item blockers closed, and each milestone scoped and not shipping
+    with it, which needs the roadmap, so an unread one declines. Any other
+    open item still naming the arrived date carries an edge that holds
+    nothing, and is told to drop it.
+    """
+    named: set[str] = set()
+    for item in report.items:
+        due = item.waits_until
+        if not item.is_open or due is None or due > today:
+            continue
+        # A malformed entry beside a real one leaves the item to
+        # `_check_references`' error, since the item may wait on it.
+        if not all(_is_date(written) for written in item.blocking_dates):
+            continue
+        written = ", ".join(item.blocking_dates)
+        others_clear = set(item.blocking_items) <= resolved and (
+            not item.blocking_milestones
+            or (
+                milestones is not None
+                and all(
+                    milestones.is_cleared(version)
+                    and not milestones.ships_with(version, item.identifier)
+                    for version in item.blocking_milestones
+                )
+            )
+        )
+        if item.status == "blocked" and others_clear:
+            named.add(item.identifier)
+            report.advisories.append(
+                f"{item.identifier}: {written} has arrived and every other blocker has "
+                "cleared; it is ready to promote"
+            )
+        else:
+            report.advisories.append(
+                f"{item.identifier}: `blocked-by` names {written}, which has arrived and "
+                "so holds nothing; drop it from the field"
+            )
+    return named
+
+
+def _is_date(written: str) -> bool:
+    try:
+        date.fromisoformat(written)
+    except ValueError:
+        return False
+    return True
+
+
 def stale_blocked_error(item: Item) -> str:
     """The error `docket check` raises on a `blocked` item nothing open holds.
 
@@ -4124,8 +4216,10 @@ def _groom(
             continue
         # An item blocker as well makes it `_blocked_with_every_blocker_closed`'s
         # error once the milestones have cleared, since a closure released it
-        # (`PL-LL9F`), so this advisory is left to the milestone-only case.
-        if item.blocking_items:
+        # (`PL-LL9F`), so this advisory is left to the milestone-only case. A
+        # date as well is the date advisory's below, which also reads the
+        # milestones.
+        if item.blocking_items or item.blocking_dates:
             continue
         # A milestone blocker needs the roadmap to answer, and an unreadable
         # one declines: this advisory says an item may now be started, and
@@ -4161,6 +4255,8 @@ def _groom(
             f"{'is' if one else 'are'} scoped and every other blocker has closed; "
             "it is ready to promote"
         )
+
+    named_ready |= _advise_arrived_dates(report, today, milestones, resolved)
 
     # A milestone that has shipped holds nothing, so an open item still naming
     # one in `blocked-by` carries an edge that only misleads. `PL-JS6P`,
@@ -4587,6 +4683,7 @@ def analyze(
     _check_records(report, records)
     _check_written(report, written, settings, today)
     _check_lost(report, lost)
+    _ready_before_its_date(report, today)
     _groom(
         report,
         today,

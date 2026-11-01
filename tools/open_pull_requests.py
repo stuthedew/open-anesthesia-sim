@@ -40,6 +40,16 @@ number then exists before the claimed item closes, so the closing commit can
 carry it. This is the one question here that writes. It exits 1 where it could
 not open one, and prints the reason on stderr for `claim` to pass on.
 
+**`--armed-failing` names each armed pull request whose required check failed
+on its head**, for `docket flight` and the session-start digest through
+`armed_failing_command` (`PL-0T8L`). It prints `BRANCH NUMBER CHECKS`, CHECKS
+naming the failed checks in quotes, or nothing where none has. Auto-merge waits on a
+required check, so such a pull request will not merge until its session fixes
+it, and `#1845` waited about 24 hours that way while `flight` called it open.
+It is a question of its own because it reads each base's required checks and
+each armed head's check runs, which the plain listing that `claim` also reads
+should not wait on.
+
 **The contract is the exit status, and it is the whole point of the script.**
 Exit 0 means the forge was asked and these - possibly none - are the branches
 with something open. Exit 1 means it could not be asked, and stdout is then
@@ -73,7 +83,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -212,17 +222,30 @@ def fetch(slug: str, query: Query, listing: str = "pulls") -> list[object]:
     `listing` is the path under the repository that is listed: its pull
     requests by default, or one pull request's timeline for `auto_merge`.
 
-    The one request every question here makes. Its failures are named apart -
+    The one request every listing here makes. Its failures are named apart -
     no token or a refusal is `NO_PERMISSION`, nothing answering is
     `NO_NETWORK`, an answer that is not a JSON list is `UNREADABLE_ANSWER` - because
     `left_behind_check.py` must say which; a caller that does the same thing
     with all of them, as this script's own do, catches the one exception.
     """
+    payload = _answer(slug, listing, query)
+    if not isinstance(payload, list):
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not a listing")
+    return payload
+
+
+def _answer(slug: str, path: str, query: Query) -> object:
+    """GitHub's decoded answer at `path` under `slug`, or `ListingFailed` saying why not.
+
+    `fetch` reads a listing through this, and `armed_failing` reads one
+    commit's check runs, which GitHub answers as an object rather than a list.
+    The failures are named as `fetch` says.
+    """
     token = github_token()
     if not token:
         raise ListingFailed(NO_PERMISSION, "no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
     request = api_request(
-        f"{GITHUB_API}/repos/{slug}/{listing}?{urllib.parse.urlencode(query)}",
+        f"{GITHUB_API}/repos/{slug}/{path}?{urllib.parse.urlencode(query)}",
         agent="open_pull_requests",
         token=token,
     )
@@ -238,12 +261,9 @@ def fetch(slug: str, query: Query, listing: str = "pulls") -> list[object]:
         # cut short raises `IncompleteRead`, which is not an `OSError`.
         raise ListingFailed(NO_NETWORK, f"GitHub could not be reached ({error})") from error
     try:
-        payload = json.loads(body)
+        return json.loads(body)
     except ValueError as error:
         raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not JSON") from error
-    if not isinstance(payload, list):
-        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not a listing")
-    return payload
 
 
 def _numbers(page: list[object]) -> list[object]:
@@ -367,6 +387,112 @@ def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRe
     return () if found is None else (found,)
 
 
+@dataclass(frozen=True)
+class ArmedFailure:
+    """An open pull request armed to merge, and the required checks that failed on its head."""
+
+    number: int
+    head: str
+    checks: tuple[str, ...]
+
+
+def failed_required(payload: object, required: Collection[str]) -> tuple[str, ...]:
+    """The checks in `required` whose latest run failed, read from one commit's check runs.
+
+    `payload` is GitHub's answer to `commits/{sha}/check-runs`, which lists the
+    latest run of each check by default, so a check re-run since it failed
+    reads by its new run. Only required checks count, because auto-merge waits
+    on nothing else. A run still going, or one that stopped short of a verdict,
+    has not failed. `update_armed.py` reads its hold through this too, so the
+    two cannot disagree about which pull request is stuck (`PL-0T8L`).
+
+    An answer this cannot read is `ListingFailed`, and so is one holding more
+    runs than its page: a failure on the next page would be missed. Commit
+    statuses are not read, since no required check here reports as one.
+    """
+    # Imported here, because `main_ci_status` imports this module.
+    from main_ci_status import FAILED
+
+    runs = payload.get("check_runs") if isinstance(payload, dict) else None
+    total = payload.get("total_count") if isinstance(payload, dict) else None
+    if not isinstance(runs, list) or not isinstance(total, int):
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's check runs could not be read")
+    if total > len(runs):
+        raise ListingFailed(
+            UNREADABLE_ANSWER, "the commit has more check runs than one page of the answer holds"
+        )
+    return tuple(
+        sorted(
+            {
+                run["name"]
+                for run in runs
+                if isinstance(run, dict)
+                and run.get("name") in required
+                and run.get("conclusion") in FAILED
+            }
+        )
+    )
+
+
+def armed_failing(slug: str) -> tuple[ArmedFailure, ...]:
+    """Every open pull request armed to merge whose required check failed on its head.
+
+    **Armed is a promise that the work will merge with nobody acting, and a
+    failed required check breaks it silently** (`PL-0T8L`). Auto-merge waits on
+    that check, and `update_armed.py` will not bring the base in either, so the
+    pull request waits until its session comes back. `#1845` waited about 24
+    hours that way, while `docket flight` called it open.
+
+    An entry without `auto_merge` is `ListingFailed` rather than unarmed, as
+    `update_armed.parse_pull` refuses one. Each base's required checks are read
+    once, by `required_checks_check.required_contexts`. A base on which none can
+    be read is `ListingFailed` too, because an empty set would read every
+    armed pull request as passing.
+    """
+    # Imported here, because `required_checks_check` imports this module.
+    from required_checks_check import required_contexts
+
+    armed: list[tuple[int, str, str, str]] = []
+    for entry in every_page(lambda asked: fetch(slug, asked), {"state": "open"}):
+        if not isinstance(entry, dict) or "auto_merge" not in entry:
+            raise ListingFailed(
+                UNREADABLE_ANSWER, "a pull request in the listing has no auto_merge"
+            )
+        if entry["auto_merge"] is None:
+            continue
+        number, head, base = entry.get("number"), entry.get("head"), entry.get("base")
+        branch = head.get("ref") if isinstance(head, dict) else None
+        sha = head.get("sha") if isinstance(head, dict) else None
+        target = base.get("ref") if isinstance(base, dict) else None
+        if not (
+            isinstance(number, int)
+            and isinstance(branch, str)
+            and isinstance(sha, str)
+            and isinstance(target, str)
+        ):
+            raise ListingFailed(
+                UNREADABLE_ANSWER, "an armed pull request has no number, head or base"
+            )
+        armed.append((number, branch, sha, target))
+    required: dict[str, set[str]] = {}
+    found: list[ArmedFailure] = []
+    for number, branch, sha, target in armed:
+        if target not in required:
+            try:
+                names, _ = required_contexts(slug, target, github_token())
+            except RuntimeError as error:
+                raise ListingFailed(NO_NETWORK, str(error)) from error
+            if not names:
+                raise ListingFailed(
+                    UNREADABLE_ANSWER, f"no required check could be read on {target}"
+                )
+            required[target] = names
+        runs = _answer(slug, f"commits/{sha}/check-runs", {"per_page": PAGE})
+        if failed := failed_required(runs, required[target]):
+            found.append(ArmedFailure(number=number, head=branch, checks=failed))
+    return tuple(found)
+
+
 #: The timeline events that switch auto-merge on, one per merge method, and
 #: the one that switches it off. GitHub's REST timeline names them so.
 AUTO_MERGE_ON_EVENTS = frozenset(
@@ -487,8 +613,24 @@ def main(argv: Sequence[str] = ()) -> int:
         help="open a draft pull request from BRANCH into BASE titled TITLE instead, and print "
         "its number; exit non-zero, naming why on stderr, where it could not",
     )
+    parser.add_argument(
+        "--armed-failing",
+        action="store_true",
+        help="print `BRANCH NUMBER CHECKS` for each open pull request armed to merge whose "
+        "required check failed on its head instead, CHECKS naming them; nothing where none has",
+    )
     args = parser.parse_args(list(argv))
     slug = repo_slug()
+    if args.armed_failing:
+        if not slug:
+            return 1
+        try:
+            failures = armed_failing(slug)
+        except ListingFailed:
+            return 1
+        for failure in failures:
+            print(f"{failure.head} {failure.number} {', '.join(map(repr, failure.checks))}")
+        return 0
     if args.open_draft is not None:
         if not slug:
             print("origin is not a GitHub repository this can name", file=sys.stderr)

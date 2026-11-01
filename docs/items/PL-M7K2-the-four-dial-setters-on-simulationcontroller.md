@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: one-source-of-truth
+milestone: v0.6.10
 touches: src/anesthesia_sim/app/controller.py
 added: 2026-10-27
 closed: 2026-10-27

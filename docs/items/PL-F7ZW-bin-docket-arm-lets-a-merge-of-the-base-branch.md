@@ -3,13 +3,15 @@ id: PL-F7ZW
 title: bin/docket arm lets a merge of the base branch cancel a branch's Owner-read record but not its Owner-ask record, so a routine update from main makes an armed housekeeping pull request answer hold and tells the session to disarm it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.7.0 - captured after the freeze; an arming defect in the workflow lane, not safety or science
 added: 2026-10-27
+closed: 2026-11-01
+pr: 1906
 payoff: a routine update from main no longer makes bin/docket arm tell a session to disarm a correctly armed pull request
-verify: grep -q 'def test_owner_read_survives_a_merge_of_the_base' subprojects/docket/tests/test_arming.py
+verify: grep -q 'def test_arm_keeps_an_owner_read_record_through_a_merge_of_the_base' subprojects/docket/tests/test_cli.py && grep -q 'def _merge_keeps_the_work' subprojects/docket/src/docket/arming.py
 ---
 
 **Problem.** bin/docket arm lets a merge of the base branch cancel a branch's Owner-read record but not its Owner-ask record, so a routine update from main makes an armed housekeeping pull request answer hold and tells the session to disarm it
@@ -23,3 +25,7 @@ Found on 2026-10-27 while merging #1844 (`PL-ZR49`). `docket.arming._since_chang
 **Done when.** A merge of the base that brings in none of the branch's own work leaves the Owner-read record standing, exactly as it leaves the Owner-ask record. A test in `subprojects/docket/tests/test_arming.py` pins this. The ask docstring's reason is that a merge brings in no work of the branch's, and the same holds for a read. If the builder finds a case where the two records must differ, such as a conflict resolution inside the branch's own paths, the docstrings state that case, and the test pins it instead.
 
 **Generator check.** A one-off. One predicate, whether a merge of the base counts as a change to the branch's work, is answered two ways by two callers of one function. No head's `misread:` states it.
+
+**Resolved 2026-11-01.** The two records do not need to differ, so both now read one rule. `_since_change` no longer takes `merges`. It walks the commits that changed the paths, newest first, and passes over a merge only where `_merge_keeps_the_work` finds the branch's own change unchanged by it: the first parent's diff against the fork point equals the merge's diff against the side brought in, with hunk line numbers ignored. So a clean merge of the base leaves both records standing. A merge that resolves a conflict by writing new lines counts as a change for both records, because that resolution is work nobody judged. Before this fix, the ask record skipped every merge with `--no-merges`, so a conflict resolution left it standing too. A git call that fails, or an octopus merge, counts as a change, so the answer errs toward holding.
+
+The tests sit in `subprojects/docket/tests/test_cli.py`, not `test_arming.py`, because the `arm` repository fixtures live there and `test_arming.py`'s docstring sends branch-reading tests there. `test_arm_keeps_an_owner_read_record_through_a_merge_of_the_base` failed on the unfixed code and passes now. `test_arm_drops_an_owner_read_record_when_a_merge_resolves_a_conflict_in_new_lines` pins the conflict case. The commissioned `verify:` grepped for a test name in `test_arming.py` that the work never had a reason to create. It is rewritten to grep for the test and the new function, and it fails on `main`.

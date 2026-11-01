@@ -178,9 +178,24 @@ class TestUnjudgedAdvisory:
         assert "no whole-store verdict" in line and "main is red" not in line
 
     def test_failed_is_the_one_set_update_armed_reads(self) -> None:
+        """`update_armed` reads its hold through `open_pull_requests.failed_required`.
+
+        That rule judges a check run failed by this set and no other, and
+        `docket flight` reads the same rule through `--armed-failing`
+        (`PL-0T8L`).
+        """
+        import open_pull_requests
         import update_armed
 
-        assert update_armed.FAILED is main_ci_status.FAILED
+        assert update_armed.failed_required is open_pull_requests.failed_required
+        ends = sorted(
+            main_ci_status.FAILED | {"success", "cancelled", "action_required", "neutral"}
+        )
+        runs = {
+            "total_count": len(ends),
+            "check_runs": [{"name": e, "conclusion": e} for e in ends],
+        }
+        assert set(open_pull_requests.failed_required(runs, set(ends))) == main_ci_status.FAILED
         assert "action_required" not in main_ci_status.FAILED | main_ci_status.VERDICTS
 
     def test_names_the_cancelled_run_and_the_older_verdict(self) -> None:

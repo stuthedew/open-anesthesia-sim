@@ -1049,6 +1049,12 @@ ask. `auto_merge_command` is the same boundary for `arm`'s other question
 (`PL-8TPV`): the package appends the pull request's number, and the command
 prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
 where it was never switched on, or exits non-zero where it could not ask.
+`armed_failing_command` is the same boundary for `flight` and `digest`
+(`PL-0T8L`): the command prints `BRANCH NUMBER CHECKS` for each open pull
+request armed to merge whose required check failed on its head, nothing where
+none has, or exits non-zero where it could not ask. Auto-merge waits on that
+check, so `flight` names such a pull request as failing rather than open, and
+the digest gives it a line of its own. The digest asks the forge nothing else.
 `open_draft_command` is the one forge command that writes (`PL-86DN`): after
 `claim` publishes a claim on a branch with no pull request open, the package
 appends the branch, the default branch's name and a title, and the command
@@ -3277,11 +3283,11 @@ exempt: `docket gate` counts that status as debt somebody can resolve, and
 forcing it to `blocked` would take a pending decision out of the gate by
 renaming it rather than by answering it.
 
-**The field takes two kinds of entry, on one line: an item id, and a milestone
-version.**
+**The field takes three kinds of entry, on one line: an item id, a milestone
+version, and a calendar date.**
 
 ```yaml
-blocked-by: PL-K7QX, v0.5.0
+blocked-by: PL-K7QX, v0.5.0, 2026-11-02
 ```
 
 An id names work in this queue and clears when that item closes. A version
@@ -3318,11 +3324,37 @@ rejected: it keeps id parsing simple at the cost of two fields meaning one
 thing and every reader of `blocked-by` having to know about the second
 (`PL-W8XP`).
 
-The two kinds cannot collide — an id is `PL-`-prefixed, a version is
-`v`-prefixed — and are partitioned fail-closed: a milestone is matched
-positively and *everything else* is treated as an item entry, so an entry of
-neither shape is refused by name rather than falling out of both halves and
-being silently ignored.
+**A date names the first day the remaining work can start** (`PL-XNF3`). It
+is for work that waits on the calendar and on nothing in the queue: a
+re-measurement due two weeks after a change, or a reading that needs a full
+week of data. `PL-R4Y2` sat at `ready` with its due date in its brief alone,
+so `docket next` and `docket show` offered it five days early.
+
+- An item waiting on a date sits at `blocked`, and `docket check` refuses
+  `ready` while the date is still to come. The error can only go away as days
+  pass, so a pull request that passed the check yesterday cannot fail it
+  today.
+- `docket show` prints `waits until:` with the latest date the field names.
+  The item waits for its last date, never its first.
+- From the date itself, `docket check` advises that the item is ready to
+  promote, once every other blocker has also cleared. It is advice rather than
+  an error, because a date arrives with no closure and no pull request to
+  refuse, so `plan.promotable` never returns an item that names one. An open
+  item still naming an arrived date with something else holding it is told to
+  drop the date.
+- A gate counts a date apart from its open items, as it counts a milestone.
+- An entry shaped `YYYY-MM-DD` that is no real date, such as `2026-13-40`, is
+  an error by name.
+
+`Item.is_startable` reads no date. It refuses `blocked` already, so the model
+stays a function of the files alone, and only `docket check`, which is given
+the day, compares a date against it.
+
+The three kinds cannot collide — an id is `PL-`-prefixed, a version is
+`v`-prefixed, and a date is neither — and are partitioned fail-closed: a
+milestone and a date are matched positively and *everything else* is treated
+as an item entry, so an entry of no known shape is refused by name rather than
+falling out of every part and being silently ignored.
 
 **An item that names both kinds is released by whichever clears last.** Where
 the milestone was scoped first, the item blocker's closure is what releases

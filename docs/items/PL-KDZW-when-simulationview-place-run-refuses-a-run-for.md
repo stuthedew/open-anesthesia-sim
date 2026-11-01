@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.10
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-10-31

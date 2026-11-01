@@ -739,6 +739,10 @@ def promotable(items: list[Item], milestones: MilestoneStates | None = None) -> 
     advisory (`PL-LL9F`). Without `milestones` the roadmap was not read, so an
     item naming any milestone stays out, which is the fail-closed reading.
 
+    An item naming a date stays out whatever else it names. A date clears when
+    it arrives, which is no closure either, and this reading is given no day
+    to compare it with, so `checks._groom` advises on it instead (`PL-XNF3`).
+
     An id the store cannot place counts as unresolved, which is the
     fail-closed half: a `blocked-by` naming nothing is not evidence that the
     blocker closed.
@@ -750,6 +754,7 @@ def promotable(items: list[Item], milestones: MilestoneStates | None = None) -> 
             for item in items
             if item.status == "blocked"
             and item.blocked_by
+            and not item.blocking_dates
             and set(item.blocking_items) <= resolved
             and _milestones_released(item, milestones)
         ),
@@ -925,8 +930,9 @@ class UnrankedGenerator:
     head: Item
     #: What the head waits on and cannot start: its open item blockers in the
     #: order `blocked-by` writes them, an id the store cannot place included,
-    #: then the milestones that have not cleared for it. Empty where every
-    #: blocker it names has closed or cleared, or where it names none but itself.
+    #: then the milestones that have not cleared for it, then every date it
+    #: names. Empty where every blocker it names has closed or cleared, or
+    #: where it names none but itself.
     waiting_on: tuple[str, ...]
     #: Startable or in-flight items at the far end of a chain - reached through
     #: blockers that are themselves `blocked`, by id. The work the rank would
@@ -1032,10 +1038,13 @@ def unranked_generators(
             or not milestones.is_cleared(version)
             or milestones.ships_with(version, head.identifier)
         ]
+        # Every date it names, arrived or not: this reading has no day to
+        # compare with, and the head stays `blocked` until a session moves it.
+        dates = tuple(dict.fromkeys(head.blocking_dates))
         unranked.append(
             UnrankedGenerator(
                 head=head,
-                waiting_on=(*direct, *pending),
+                waiting_on=(*direct, *pending, *dates),
                 behind=tuple(sorted(behind)),
                 generator=standing.generator,
             )

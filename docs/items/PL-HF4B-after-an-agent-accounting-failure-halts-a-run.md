@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: replay-findings
+milestone: v0.6.10
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/exceptions.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-10-26

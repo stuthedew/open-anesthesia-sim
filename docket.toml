@@ -429,6 +429,7 @@ retired_features = ["dev-tooling", "parallel-sessions", "queue-hygiene"]
 # carrying them and the items working on them stopped reading `crossing`.
 workflow_paths = [
   ".claude",
+  ".claude-plugin",
   ".gitattributes",
   ".github",
   ".gitignore",
@@ -515,6 +516,7 @@ workflow_paths = [
   "tests/unit/test_rules_paths_check.py",
   "tests/unit/test_stop_hook_patch.py",
   "tests/unit/test_thread_hooks.py",
+  "tests/unit/test_thread_probe.py",
   "tests/unit/test_tools_portability.py",
   "tests/unit/test_generator_check.py",
   "tests/unit/test_context_reading.py",
@@ -654,6 +656,12 @@ newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
 # was never switched on, or exits non-zero where it could not ask - which `arm`
 # answers `unknown` on.
 auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
+
+# How `bin/docket flight` and the session-start digest ask which armed pull
+# requests have a required check that failed on their head (`PL-0T8L`).
+# Auto-merge waits on that check, so such a pull request will not merge until
+# somebody fixes it, and `flight` used to call it open.
+armed_failing_command = "python3 tools/open_pull_requests.py --armed-failing"
 
 # How `bin/docket claim` opens a draft pull request once it has pushed a claim
 # onto a branch with no pull request open (`PL-86DN`). Opened at the claim, the

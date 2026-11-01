@@ -2606,6 +2606,96 @@ def open_pull_requests(
     )
 
 
+@dataclass(frozen=True)
+class FailingPullRequest:
+    """An open pull request armed to merge whose required check failed on its head."""
+
+    #: The branch, by the name the forge gave it.
+    branch: str
+    #: Its number, or `None` where the forge named the branch without one.
+    number: int | None
+    #: The failed checks, as the forge command named them.
+    checks: str
+    #: The refs in the flight report that are this branch, spelled as
+    #: `FlightReport.branches` spells them. Empty where no ref carrying an item
+    #: is this branch.
+    refs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FailingPullRequests:
+    """Which armed pull requests have a failed required check, where the forge was asked.
+
+    **`asked` is why this is a type rather than a tuple**, for the reason
+    `OpenPullRequests.asked` is. A pull request absent from `failing` is passing
+    only when the forge answered. Read as "none failed", a lookup that could not
+    look would call a stuck pull request open, which is the reading `PL-0T8L`
+    exists to end.
+    """
+
+    failing: tuple[FailingPullRequest, ...] = ()
+    #: Whether the forge answered, and the remotes the match reads were read.
+    asked: bool = False
+    #: Git was asked something beneath this reading and did not answer: the
+    #: flight report's own silence, which can drop a ref a failing pull request
+    #: would have been matched to.
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether every question this reading rests on was answered."""
+        return not self.declined and self.asked
+
+    def by_ref(self) -> Mapping[str, FailingPullRequest]:
+        """Each failing pull request under every flight ref that is its branch."""
+        return {ref: entry for entry in self.failing for ref in entry.refs}
+
+
+def failing_pull_requests(
+    root: Path,
+    report: FlightReport,
+    *,
+    failing: Callable[[], Mapping[str, tuple[int | None, str]] | None],
+    runner: Runner | None = None,
+) -> FailingPullRequests:
+    """The armed pull requests whose required check failed, matched to the refs carrying items.
+
+    **An armed pull request is the promise that the work merges with nobody
+    acting, and a failed required check breaks it silently** (`PL-0T8L`).
+    Auto-merge waits on that check, and the workflow that brings `main` into an
+    armed pull request skips a red one. So `#1845` waited about 24 hours while
+    `flight` called it open and its session had told the owner nothing needed
+    them.
+
+    `failing` asks the forge through the project's `armed_failing_command`,
+    because this package knows nothing about GitHub. It maps each branch the
+    forge named to its pull request's number and the failed checks. Every pull
+    request it names is kept, including one on a branch that carries no item,
+    since a stuck one is worth naming wherever it is. Where the forge or the
+    remotes could not be read, `asked` is `False`, never an empty answer.
+    """
+    answer = failing()
+    if answer is None:
+        return FailingPullRequests(declined=report.declined)
+    run = _Silences(runner or _run_git)
+    remotes = _remotes(root, run)
+    if run.reason:
+        # Without the remotes, `origin/claude/x` cannot be matched to the
+        # branch the forge names, so no row could be marked as failing.
+        return FailingPullRequests(declined=report.declined or run.reason)
+    refs: dict[str, list[str]] = {}
+    for name in sorted({branch.name for branch in report.branches}):
+        refs.setdefault(_head_name(name, remotes), []).append(name)
+    return FailingPullRequests(
+        failing=tuple(
+            FailingPullRequest(branch, number, checks, tuple(refs.get(branch, ())))
+            for branch, (number, checks) in sorted(answer.items())
+        ),
+        asked=True,
+        declined=report.declined,
+    )
+
+
 # What the forge says became of a pull request, as `newest_pull_request_command`
 # prints it (`PL-8BR0`). Not a branch's disposition - `MERGE`, `LANDED` and the
 # rest below are those - but the pull request's own state.
