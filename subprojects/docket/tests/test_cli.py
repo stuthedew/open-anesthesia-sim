@@ -10485,6 +10485,27 @@ class TestAskingTheForgeWhichBranchesAreOpen:
         assert ask is not None
         assert ask() == {"claude/one": 841, "claude/two": None}
 
+    def test_an_armed_failing_line_is_read_as_branch_number_and_checks(
+        self, tmp_path: Path
+    ) -> None:
+        """`PL-0T8L`: the rest of the line names the checks, spaces and all."""
+        config = with_fields(
+            Config(),
+            armed_failing_command="printf 'claude/one 1845 checks, pr-title\nclaude/two\n'",
+        )
+        ask = cli._armed_failing(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() == {"claude/one": (1845, "checks, pr-title"), "claude/two": (None, "")}
+
+    def test_an_armed_failing_command_that_could_not_look_answers_none(
+        self, tmp_path: Path
+    ) -> None:
+        config = with_fields(Config(), armed_failing_command="false")
+        ask = cli._armed_failing(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+        assert cli._armed_failing(self._args(no_remote=True), tmp_path, config) is None
+
     def test_a_command_that_could_not_look_answers_none(self, tmp_path: Path) -> None:
         """Exit non-zero is the contract `tools/open_pull_requests.py` holds to."""
         config = with_fields(Config(), open_pull_requests_command="false")
@@ -11859,6 +11880,70 @@ def test_arm_keeps_a_recorded_ask_through_a_merge_of_the_base(
     lines = capsys.readouterr().out.splitlines()
     assert arming.ASK_LINE in lines
     assert arming.READ_ASK not in lines
+
+
+ARM_SIMULATOR = "src/anesthesia_sim/core/uptake.py"
+
+
+def _simulator_branch_judged_not_needed(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
+    """A branch whose one simulator change has a `not needed` record, with `main` moved on.
+
+    `main` holds a three-line `ARM_SIMULATOR`. The branch rewrites its first
+    line and records its judgment. `main` then rewrites its last line, so a
+    merge differs from both parents in that file and `git log` names it
+    among the file's changes.
+    """
+    root, git = _arm_repo(tmp_path)
+    git("checkout", "-q", "main")
+    _put(git, root, ARM_SIMULATOR, "2026-08-02T12:00:00+00:00", text="A = 1\nB = 1\nC = 1\n")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--ff-only", "main")
+    _commit_file(git, root, ARM_SIMULATOR, "A = 2\nB = 1\nC = 1\n", ARM_T0)
+    _record_read(git, "not needed - a rename with its outputs pinned", "2026-09-01T12:00:10+00:00")
+    git("checkout", "-q", "main")
+    text = "A = 1\nB = 1\nC = 2\n"
+    _commit_file(git, root, ARM_SIMULATOR, text, "2026-09-01T12:00:20+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    return root, git
+
+
+def test_arm_keeps_an_owner_read_record_through_a_merge_of_the_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A merge of the base leaves the read record standing, as it leaves the ask (`PL-F7ZW`).
+
+    `_owner_read` counted the merge as a change while `_owner_ask` did not, so
+    after `git merge origin/main` an armed housekeeping pull request answered
+    hold and its session was told to disarm it.
+    """
+    root, git = _simulator_branch_judged_not_needed(tmp_path)
+    git("merge", "-q", "--no-edit", "main", when="2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
+    assert "judges need no read: a rename with its outputs pinned." in out
+
+
+def test_arm_drops_an_owner_read_record_when_a_merge_resolves_a_conflict_in_new_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A conflict resolved by writing new lines is the branch's own work, which nobody judged."""
+    root, git = _simulator_branch_judged_not_needed(tmp_path)
+    git("checkout", "-q", "main")
+    text = "A = 3\nB = 1\nC = 2\n"
+    _commit_file(git, root, ARM_SIMULATOR, text, "2026-09-01T12:00:25+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    subprocess.run(["git", "merge", "-q", "main"], cwd=root, capture_output=True, check=False)
+    (root / ARM_SIMULATOR).write_text("A = 4\nB = 1\nC = 2\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "--no-edit", when="2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    assert "no Owner-read record on a commit since its newest change" in capsys.readouterr().out
 
 
 def test_arm_no_ask_hold_leads_with_send_nothing_and_exits_3(

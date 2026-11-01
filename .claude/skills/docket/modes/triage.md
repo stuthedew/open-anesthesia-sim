@@ -125,6 +125,14 @@ hidden from `bin/docket next` after v0.5.0 was scoped. A patch track
 (`v0.5.x`) is not a version anything can wait on: it freezes no gate and takes
 no section, so nothing resolves it.
 
+**Work that waits on the calendar is `blocked-by: <date>`.** A re-measurement
+due two weeks after a change, or a reading that needs a full week of data,
+cannot start before its day, and its brief saying so is not enough: `PL-R4Y2`
+sat at `ready` with its date in prose, and `next` offered it five days early
+(`PL-XNF3`). Write the first day the work may start as `YYYY-MM-DD` in
+`blocked-by`, and set `status: blocked`. `docket check` refuses `ready` before
+that day, and from the day itself advises that the item is ready to promote.
+
 **And `needs-decision` says the next step is a decision, never whose.** That is
 the third case, and it is the one taken by mistake, because the status looks
 like an invitation - and `bin/docket next` ranked it until `PL-JW39` named it

@@ -171,6 +171,7 @@ from .vcs import (
     BranchCut,
     ClosureReport,
     CutsInFlight,
+    FailingPullRequests,
     FilingReport,
     FlightReport,
     GitRunner,
@@ -195,6 +196,7 @@ from .vcs import (
     cuts_in_flight,
     default_base,
     default_branch,
+    failing_pull_requests,
     fetch_remote,
     filed_here,
     filed_with_work,
@@ -1315,9 +1317,10 @@ def cmd_digest(args: argparse.Namespace) -> int:
     report = _complete_report(root, items, config, args)
     current = read_version(root / config.version_file)
     ready = readiness(items, current, config.minor_classes)
+    flight = _flight(args)
     rendered = render.format_digest(
         report,
-        _flight(args),
+        flight,
         ready,
         _plan(root, items, config),
         _stranded(items, args),
@@ -1330,6 +1333,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         read=_holdings(args),
         interrupted=_interrupted(root, items, current),
         focus=config.focus,
+        failures=_failing_pull_requests(args, _invocation(args), flight),
     )
     if rendered:
         print(rendered)
@@ -2459,6 +2463,10 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
+    # The one date blocker a reader cannot see in the status line: when the
+    # work may start, so the queue says when the item becomes due (`PL-XNF3`).
+    if item.is_open and (due := item.waits_until) is not None:
+        print(f"  waits until: {due.isoformat()}, from its `blocked-by`")
     # The fixed rule and the model review's measurement, side by side, as
     # `next` marks a pick (`PL-3R6L`). Silent where both are.
     model = []
@@ -3363,7 +3371,9 @@ def _waiting_on(
     by_id = {item.identifier: item for item in items if item.identifier}
     parts = []
     for entry in found.waiting_on:
-        if entry in head.blocking_milestones:
+        if entry in head.blocking_dates:
+            parts.append(f"{entry} (a date it cannot start before)")
+        elif entry in head.blocking_milestones:
             if milestones is None:
                 parts.append(f"{entry} (a milestone; the roadmap was not read to say if scoped)")
             elif milestones.is_cleared(entry):
@@ -5213,6 +5223,52 @@ def _open_pull_requests(
     return ask
 
 
+def _armed_failing(
+    args: argparse.Namespace, root: Path, config: Config
+) -> Callable[[], Mapping[str, tuple[int | None, str]] | None] | None:
+    """A way to ask which armed pull requests have a failed required check, or None.
+
+    `armed_failing_command` answers it (`PL-0T8L`). Each line is `BRANCH
+    NUMBER CHECKS`: a branch name holds no space and a number none, so the rest
+    of the line names the checks however it is spelt. The answer maps each
+    branch to its number and that text. None for the whole is a command that
+    failed, timed out or could not run, which is never "none failed", as
+    `_open_pull_requests` says of its own.
+    """
+    command = config.armed_failing_command
+    if getattr(args, "no_remote", False) or not command:
+        return None
+
+    def ask() -> Mapping[str, tuple[int | None, str]] | None:
+        done = _run_forge_command(command, root)
+        if isinstance(done, str) or done.returncode != 0:
+            return None
+        found: dict[str, tuple[int | None, str]] = {}
+        for line in split_lines(done.stdout):
+            fields = line.split(maxsplit=2)
+            if not fields:
+                continue
+            number = pr_number(fields[1].lstrip("#")) if len(fields) > 1 else None
+            found.setdefault(fields[0], (number, fields[2] if len(fields) > 2 else ""))
+        return found
+
+    return ask
+
+
+def _failing_pull_requests(
+    args: argparse.Namespace, inv: Invocation, report: FlightReport
+) -> FailingPullRequests | None:
+    """`_armed_failing`'s answer matched to the refs in `report`, or None where none was asked.
+
+    None means no command, `--no-remote` or `--no-git`, and a report that says
+    nothing about checks is then the honest answer.
+    """
+    ask = _armed_failing(args, inv.root, inv.config)
+    if ask is None or inv.git is None:
+        return None
+    return failing_pull_requests(inv.root, report, failing=ask, runner=inv.git)
+
+
 def _run_forge_command(
     command: str, root: Path, *extra: str, timeout: float = OPEN_LOOKUP_TIMEOUT
 ) -> subprocess.CompletedProcess[str] | str:
@@ -5409,6 +5465,9 @@ def cmd_flight(args: argparse.Namespace) -> int:
     opened = None if lookup is None else (lambda: answer)
     settled = settled_branches(inv.root, _holdings(args), opened=opened, runner=inv.git)
     reviews = open_pull_requests(inv.root, report, opened=opened, runner=inv.git)
+    # Asked on every run, rows or none: a stuck pull request on a branch that
+    # carries no item is still worth naming (`PL-0T8L`).
+    failures = _failing_pull_requests(args, inv, report)
     read = _holdings(args)
     # The queue as `holdings` read it: the store this command was pointed at,
     # with the roadmap and the notes the project's settings name.
@@ -5417,7 +5476,11 @@ def cmd_flight(args: argparse.Namespace) -> int:
     # The ids this checkout's store holds, which `filed there` asks about beside
     # the base, so this branch's own capture is not called absent (`PL-LFNK`).
     here = frozenset(item.identifier for item in _load(args)[1])
-    print(render.format_flight(report, _now(args), settled, reviews, read, forgetful, here))
+    print(
+        render.format_flight(
+            report, _now(args), settled, reviews, read, forgetful, here, failures=failures
+        )
+    )
     _say_snapshot(args)
     return 0
 
@@ -6264,7 +6327,7 @@ def build_parser() -> argparse.ArgumentParser:
     for flag, metavar in (
         ("--classes", "A,B"),
         ("--touches", "A.PY,B.PY"),
-        ("--blocked-by", "PL-XXXX,vX.Y.Z"),
+        ("--blocked-by", "PL-XXXX,vX.Y.Z,YYYY-MM-DD"),
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
         ("--reenters", "PL-XXXX"),
         ("--no-successor", "PL-XXXX"),

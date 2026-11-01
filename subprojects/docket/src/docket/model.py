@@ -215,6 +215,22 @@ SEMVER_PATTERN = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
 # a typo rather than a third kind, and `checks.py` refuses it by name.
 MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}$")
 
+# The third kind of entry `blocked-by` accepts: a calendar date, written as ISO
+# 8601 writes one, before which the item's remaining work cannot start - a
+# re-measurement due two weeks after a change, a reading that needs a full
+# week of data. Nothing else in the store could say so. `PL-R4Y2` sat at
+# `ready` with its due date in prose only, so `next` and `show` offered it
+# five days early and the session named to it found nothing due (`PL-XNF3`).
+#
+# A date is `v`-less and `PL-`-less, so it cannot collide with either other
+# kind. It clears when the date arrives, which is no closure and has no pull
+# request of its own, so like a milestone it leaves `blocked` through the
+# advisory `checks._groom` raises, never through `plan.promotable`'s error.
+# `Item.is_startable` already refuses `blocked`, so it needs no clock: the
+# model stays a function of the files alone, and only `docket check`, which
+# is given the day, reads a date against it.
+DATE_BLOCKER_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
 # Efforts a delegated item may carry. An `L` item is a milestone in disguise;
 # nothing that large has a brief precise enough to be worked without judgment.
 DELEGABLE_EFFORTS = ("S", "M")
@@ -1045,18 +1061,40 @@ class Item:
         """The `blocked-by` entries naming a queue item.
 
         Every reader asking "which *items* must close first" wants this rather
-        than the raw field, which may also carry milestones.
+        than the raw field, which may also carry milestones and dates.
 
-        Defined as the complement of `blocking_milestones` rather than by
-        matching the id grammar, so that the partition is fail-closed: an entry
-        of neither shape - a typo, or a syntax a later version invents - stays
-        here and is refused by name in `checks.py`, where an unrecognised
-        blocker is already an error. Recognising ids positively would let such
-        an entry fall out of both halves and be silently ignored, which on a
-        field that decides what may be started is the wrong way to fail.
+        Defined as the complement of `blocking_milestones` and
+        `blocking_dates` rather than by matching the id grammar, so that the
+        partition is fail-closed: an entry of no known shape - a typo, or a
+        syntax a later version invents - stays here and is refused by name in
+        `checks.py`, where an unrecognised blocker is already an error.
+        Recognising ids positively would let such an entry fall out of every
+        part and be silently ignored, which on a field that decides what may
+        be started is the wrong way to fail.
         """
-        milestones = set(self.blocking_milestones)
-        return tuple(e for e in self.blocked_by if e not in milestones)
+        other_kinds = set(self.blocking_milestones) | set(self.blocking_dates)
+        return tuple(e for e in self.blocked_by if e not in other_kinds)
+
+    @property
+    def blocking_dates(self) -> tuple[str, ...]:
+        """The `blocked-by` entries naming a calendar date, as written.
+
+        Shaped like a date rather than proved to be one, so `2026-13-40` stays
+        here and `checks.py` refuses it by name instead of it falling into
+        `blocking_items` and reading as an unknown item.
+        """
+        return tuple(e for e in self.blocked_by if DATE_BLOCKER_RE.match(e) is not None)
+
+    @property
+    def waits_until(self) -> date | None:
+        """The latest date `blocked-by` names: the first day the work may start.
+
+        None where it names no date, or none that is a real one. Every reader
+        that compares a date blocker against a day reads this, so the item
+        waits until its last date has arrived, never its first.
+        """
+        dates = [d for e in self.blocking_dates if (d := _parse_date(e)) is not None]
+        return max(dates) if dates else None
 
     def lane(self, workflow_paths: tuple[str, ...]) -> str:
         """Which half of the project this work sits in, from its declared paths.

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 
 from . import markdown
 from .lines import split_lines
-from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN, split_deferred_from
+from .model import DATE_BLOCKER_RE, MILESTONE_BLOCKER_RE, SEMVER_PATTERN, split_deferred_from
 from .release import SEMVER_RE, version_key
 from .store import CITED_ID_RE
 from .vcs import leading_ids
@@ -1218,9 +1218,25 @@ class GateStatus:
         own = frozenset(self.milestone.own_scope_ids)
         return tuple(
             sorted(
-                i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is None and i not in own
+                i
+                for i in self._outside
+                if MILESTONE_BLOCKER_RE.match(i) is None
+                and DATE_BLOCKER_RE.match(i) is None
+                and i not in own
             )
         )
+
+    @property
+    def outside_dates(self) -> tuple[str, ...]:
+        """The distinct dates those entries are waiting on, earliest first.
+
+        Counted apart from the items for the reason `outside_milestones` is: a
+        date is not work anybody can pick up, and folded into the item count it
+        would read as one more open item (`PL-XNF3`). Told apart by the grammar
+        `Item.blocking_dates` uses. Every date is listed, arrived or not,
+        because `gate_status` is given no day to compare with.
+        """
+        return tuple(sorted(i for i in self._outside if DATE_BLOCKER_RE.match(i) is not None))
 
     @property
     def scope_items(self) -> tuple[str, ...]:

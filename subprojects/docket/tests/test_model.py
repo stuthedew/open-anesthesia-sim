@@ -1593,6 +1593,38 @@ def test_startable_is_open_triaged_and_not_blocked() -> None:
     assert not _item(status="done", closed=date(2026, 8, 2)).is_startable
 
 
+def test_blocked_by_splits_into_items_milestones_and_dates() -> None:
+    """`PL-XNF3`: a date is a third kind of entry, and never an item.
+
+    The complement is fail-closed, so an entry of no known shape stays with
+    the items, where `checks.py` refuses it by name. A date-shaped entry that
+    is no real date stays with the dates for the same reason, and
+    `waits_until` reads only the real ones, taking the latest.
+    """
+    item = _item(
+        status="blocked",
+        blocked_by=("PL-1111", "v0.9.0", "2026-11-02", "2026-10-30", "2026-13-40", "soon"),
+    )
+
+    assert item.blocking_items == ("PL-1111", "soon")
+    assert item.blocking_milestones == ("v0.9.0",)
+    assert item.blocking_dates == ("2026-11-02", "2026-10-30", "2026-13-40")
+    assert item.waits_until == date(2026, 11, 2)
+    assert _item().waits_until is None
+    assert _item(blocked_by=("2026-13-40",)).waits_until is None
+
+
+def test_an_item_waiting_on_a_date_is_not_startable() -> None:
+    """`PL-XNF3`: an item waiting on a date sits at `blocked`, so
+    `is_startable`, which `next`, `show` and `status` read, does not offer it.
+    It needs no clock for that. `waits_until` says when it becomes due, and
+    `docket check` refuses the same date at `ready` until the day arrives."""
+    waiting = _item(status="blocked", blocked_by=("2026-11-02",))
+
+    assert not waiting.is_startable
+    assert waiting.waits_until == date(2026, 11, 2)
+
+
 def test_open_means_not_recorded_closed_and_a_status_in_neither_set_is_never_startable() -> None:
     """`PL-TSXD`: one answer to whether an item is open, for every status.
 
