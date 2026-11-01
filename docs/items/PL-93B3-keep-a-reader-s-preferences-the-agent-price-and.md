@@ -3,11 +3,13 @@ id: PL-93B3
 title: Keep a reader's preferences, the agent price and the agent cost unit first, in a preferences file of their own, separate from the Workspaces
 priority: P1
 effort: M
-status: ready
+status: done
 classes: feature
 feature: preferences-store
-touches: src/anesthesia_sim, tests/unit, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim, tests/unit, docs/ARCHITECTURE.md, docs/MODEL.md, ROADMAP.md
 added: 2026-10-25
+closed: 2026-11-01
+pr: 1920
 payoff: a reader's agent price and cost unit persist across a restart in a store of their own, separate from the Workspaces
 verify: grep -rq 'def test_a_preference_survives_a_restart' tests
 ---
