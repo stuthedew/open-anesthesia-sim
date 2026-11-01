@@ -1,10 +1,10 @@
 """Tests for `CompartmentAgentAmounts`, the snapshot's record of each compartment's agent.
 
 `tests/reference/test_compartment_amounts_against_oracles.py` checks each amount against
-oracles independent of `core/`. This module checks the record itself: which
-records it refuses, that it cannot be changed once built, and that its six
-amounts add up to the snapshot's `stored_agent_l` exactly, so that the share
-bar divides the parts by their own total (`PL-KFTM`).
+oracles independent of `core/`. This module checks the record type itself. It checks
+which records are rejected and that a record cannot be changed once built. It also checks
+that a record's six amounts add up to the snapshot's `stored_agent_l` exactly, so that
+the planned share bar will divide the parts by their own total (`PL-KFTM`).
 """
 
 from collections.abc import Callable
@@ -107,8 +107,8 @@ def _snapshots_of_a_changing_run(agent_id: str) -> list[tuple[CompartmentAgentAm
     """Return the record and the stored total at five instants of a run whose settings change.
 
     The run opens the vaporizer, raises the flow, stops ventilation, lowers the
-    cardiac output and closes the vaporizer, so the instants cover wash-in,
-    a circuit that fills without the patient, and wash-out.
+    cardiac output and closes the vaporizer. So the instants cover wash-in, a
+    circuit that fills while no agent reaches the patient, and wash-out.
     """
 
     controller = SimulationController(agent_id=agent_id)

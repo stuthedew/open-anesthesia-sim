@@ -1,14 +1,14 @@
 """Check each compartment's agent amount on the snapshot against oracles independent of `core/`.
 
 `SimulationSnapshot.compartment_agent_amounts` passes on the amount that each
-compartment in `core/` holds (`PL-KFTM`). The compartment schematic labels its
-containers with these amounts and draws its share bar from them. So a wrong
-pairing, a wrong capacity or a wrong unit here would put a plausible number on
-the wrong container. Two oracles check the amounts, and neither reads the
-code under test.
+compartment in `core/` holds (`PL-KFTM`). The planned compartment schematic
+will label its containers with these amounts and draw its share bar from them.
+So a wrong pairing, a wrong capacity or a wrong unit here would put a plausible
+but wrong number on a container. Two oracles check the amounts, and neither
+reads the code under test.
 
-The first is a closed form. With alveolar ventilation at zero, no agent leaves
-the circuit, so the circuit fills from empty as
+The first is a closed form. With alveolar ventilation at zero, no agent moves
+from the circuit to the alveoli, so the circuit fills from empty as
 $`M_C(t) = V_C F_D (1 - e^{-t \\dot V_F / V_C})`$ and every other compartment
 stays empty (`docs/MODEL.md` § "Governing equations").
 
@@ -24,12 +24,12 @@ the twelve states are restated here rather than imported.
 **What the comparison can detect.** The tolerance is one part in a billion of
 the amount. The shipped step matches the oracle's fractions to within 1e-12
 (`HELD_RUN_ROUNDING_BOUND` in that module), and the transcribed fractions carry
-thirteen significant figures. So any error of a whole capacity term fails it:
-two compartments' amounts swapped, a tissue's capacity taken with the blood:gas
-coefficient instead of its own tissue:gas coefficient, or an amount reported in
-millilitres where litres are meant. An error smaller than one part in a billion
-of an amount passes, and no displayed precision resolves one
-(`docs/MODEL.md` § "Displayed precision").
+thirteen significant figures. So the test fails on any error as large as a
+whole capacity term: two compartments' amounts swapped, a tissue's capacity
+taken with the blood:gas coefficient instead of its own tissue:gas coefficient,
+or an amount reported in millilitres where litres are meant. An error smaller
+than one part in a billion of an amount passes, but no displayed precision is
+fine enough to show such an error (`docs/MODEL.md` § "Displayed precision").
 """
 
 from math import exp
@@ -48,7 +48,7 @@ from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOut
 # `test_coupled_dynamics.py` gives for its own `SHIPPED_STEP_S`.
 SHIPPED_STEP_S = 0.1
 
-# The operating point at which `PINNED_REFERENCE_STATES` was computed: a 5% dial,
+# `PINNED_REFERENCE_STATES` was computed at this operating point: a 5% dial,
 # 4.0 L/min of fresh gas into a 6.0 L circuit, and the reference adult's default
 # ventilation and cardiac output.
 DELIVERED_PERCENT = 5.0
@@ -181,9 +181,10 @@ def test_each_amount_matches_the_coupled_oracle(agent_id: str, duration_s: float
         )
 
 
-# With no ventilation, only the fresh gas exchanges with the circuit. At
-# 6.0 L/min into 6.0 L, tau_C = 60 s. A 2% dial is 0.02 of an atmosphere, so the
-# circuit approaches 6.0 L x 0.02 = 0.12 L of vapour.
+# With no ventilation, only the fresh gas exchanges with the circuit. With
+# 6.0 L/min of fresh gas into a 6.0 L circuit, the circuit's time constant tau_C
+# is 60 s. A 2% dial is 0.02 of an atmosphere, so the circuit approaches
+# 6.0 L x 0.02 = 0.12 L of vapour.
 CLOSED_FORM_FRESH_GAS_FLOW_L_MIN = 6.0
 CLOSED_FORM_TIME_CONSTANT_S = 60.0
 CLOSED_FORM_FULL_CIRCUIT_L = 0.12

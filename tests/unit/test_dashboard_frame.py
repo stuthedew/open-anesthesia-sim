@@ -424,9 +424,9 @@ def _snapshot(
         fat_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.FAT]),
         delivered_agent_l=delivered_agent_l,
         exhausted_agent_l=exhausted_agent_l,
-        # No frame here draws a compartment's amount, so the circuit holds the
-        # whole stored total. That keeps the record and the total in agreement,
-        # as a snapshot from the controller always is.
+        # No frame here draws a compartment's amount, so this helper puts the
+        # whole stored total in the circuit. That keeps the record and the total
+        # in agreement, as they always are in a snapshot from the controller.
         compartment_agent_amounts=CompartmentAgentAmounts(
             {
                 quantity: stored_agent_l if quantity is RecordedQuantity.CIRCUIT else 0.0
