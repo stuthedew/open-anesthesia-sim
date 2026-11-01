@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, ux
 feature: area-layout-sizing
+milestone: v0.6.12
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/sizing.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-26
