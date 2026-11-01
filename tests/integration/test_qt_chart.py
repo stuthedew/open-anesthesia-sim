@@ -32,6 +32,7 @@ from anesthesia_sim.app.chart_frame import (
     WASH_IN_HOVER_LABEL,
     WASH_IN_TERMINUS_CEILING,
     ChartFrame,
+    PreviewRequest,
     RunInput,
     assemble_chart_frame,
     chart_columns,
@@ -46,7 +47,7 @@ from anesthesia_sim.app.compartment_selection import (
 )
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
-from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     compared_trace_legend_label,
     run_label,
@@ -1551,3 +1552,137 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     assert branch_mark is not None
     assert branch_mark.label == BRANCH_POINT_LEGEND_LABEL
     assert branch_mark.vertical
+
+
+# ------------------------------------------------------ the preview of a dragged setting
+
+
+def _previewing_frame(
+    controller: SimulationController,
+    value: float,
+    control: ControlInput = ControlInput.FRESH_GAS_FLOW,
+) -> ChartFrame:
+    snapshot = controller.snapshot()
+
+    return assemble_chart_frame(
+        [
+            RunInput(
+                run_label(FIRST_RUN),
+                controller,
+                snapshot,
+                (),
+                preview=PreviewRequest(
+                    SettingPreview(control, value), "Preview: Fresh gas flow 6.0 L/min, not applied"
+                ),
+            )
+        ],
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+
+def test_both_plots_draw_a_preview_thinner_inside_its_labelled_region(
+    application: QApplication,
+) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    frame = _previewing_frame(controller, 6.0)
+    preview = frame.runs[0].preview
+    assert preview is not None
+    chart = _shown(application, ConcentrationChart(), 480)
+    wash_in = _shown(application, WashInChart(), 240)
+    chart.draw(frame)
+    wash_in.draw(frame)
+
+    for style in COMPARTMENT_TRACES:
+        times, percents = chart.preview_points(0, style.quantity)
+        pen = chart.preview_pen(0, style.quantity)
+
+        assert times == pytest.approx(preview.times_s)
+        assert percents == pytest.approx(preview.percents(style.quantity))
+        assert pen.color().name() == QColor(style.color).name()
+        assert pen.widthF() == max(2, style.stroke_width - 1)
+        assert pen.style() == chart.drawn_pen(0, style.quantity).style()
+
+    for plot in (chart, wash_in):
+        assert plot.preview_region(0) == pytest.approx(preview.region_s)
+        assert plot.preview_label(0) == preview.label
+
+    drawn = [point for stretch in wash_in.preview_stretches(0) for point in stretch]
+    assert drawn
+    assert all(preview.region_s[0] <= time_s <= preview.region_s[1] for time_s, _ in drawn)
+    assert wash_in.preview_pen(0).widthF() == WASH_IN_STROKE_WIDTH - 1
+
+
+def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
+    application: QApplication,
+) -> None:
+    """Previewing the dial at 0% ends the predicted F_A/F_I, and a dot marks the end.
+
+    Without the dot, a predicted stretch that stops would look like one that
+    runs on out of view. The run's own trace marks a stop with a dot, so the
+    prediction does too (found by the blind review of `PL-5B1N`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    frame = _previewing_frame(controller, 0.0, ControlInput.DELIVERED)
+    preview = frame.runs[0].preview
+    assert preview is not None
+    wash_in = _shown(application, WashInChart(), 240)
+
+    wash_in.draw(frame)
+
+    ended = [
+        (stretch.times_s[-1], stretch.ratios[-1])
+        for stretch in preview.wash_in
+        if stretch.ends_above_equilibrium and stretch.times_s
+    ]
+    assert ended
+    assert wash_in.preview_terminus_points(0) == pytest.approx(ended)
+
+    wash_in.draw(_previewing_frame(controller, 2.0, ControlInput.DELIVERED))
+
+    assert wash_in.preview_terminus_points(0) == ()
+
+
+def test_a_frame_with_no_preview_takes_the_preview_off_both_plots(
+    application: QApplication,
+) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    chart = _shown(application, ConcentrationChart(), 480)
+    wash_in = _shown(application, WashInChart(), 240)
+    chart.draw(_previewing_frame(controller, 6.0))
+    wash_in.draw(_previewing_frame(controller, 6.0))
+
+    released = _frame(controller)
+    chart.draw(released)
+    wash_in.draw(released)
+
+    assert all(chart.preview_points(0, q) == ((), ()) for q in COMPARTMENT_QUANTITIES)
+    assert wash_in.preview_stretches(0) == ()
+    for plot in (chart, wash_in):
+        assert plot.preview_region(0) is None
+        assert plot.preview_label(0) is None
+
+
+def test_the_hover_does_not_answer_over_a_predicted_point(application: QApplication) -> None:
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    frame = _previewing_frame(controller, 10.0)
+    preview = frame.runs[0].preview
+    assert preview is not None
+    chart = _shown(application, ConcentrationChart(), 480)
+    chart.draw(frame)
+    index = len(preview.times_s) * 3 // 4
+
+    assert (
+        chart.readout_at(preview.times_s[index], preview.percents(RecordedQuantity.ALVEOLAR)[index])
+        is None
+    )
