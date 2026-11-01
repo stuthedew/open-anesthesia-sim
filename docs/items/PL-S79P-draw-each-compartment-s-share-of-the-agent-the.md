@@ -3,7 +3,7 @@ id: PL-S79P
 title: Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: schematic
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, tools/contrast_check.py
