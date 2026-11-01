@@ -9,6 +9,7 @@ feature: replay-findings
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/app/qt_widgets.py, docs/MODEL.md, tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-10-31
+pr: 1908
 payoff: a learner reading a Reset question returns to the case where they left it, instead of finding that minutes of simulated time passed while the dialog blocked Pause
 verify: grep -q 'def test_the_run_does_not_advance_while_a_reset_question_is_open' tests/integration/test_simulation_view.py
 ---
