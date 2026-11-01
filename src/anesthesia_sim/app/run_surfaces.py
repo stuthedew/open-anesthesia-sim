@@ -127,10 +127,15 @@ class ParameterControls(QWidget):
         setting_requested: Emitted with the control and the value a slider
             was moved to. The run applies it or refuses it, and the next
             `show_settings` writes the value in force on every copy.
+        preview_requested: Emitted with the control and the value where a
+            held thumb stands, so the run can preview it (`PL-5B1N`).
+        preview_ended: Emitted when a held thumb is released.
     """
 
     adjustment_started = Signal()
     setting_requested = Signal(object, float)
+    preview_requested = Signal(object, float)
+    preview_ended = Signal()
 
     def __init__(self, settings: Sequence[SettingReadout], parent: QWidget | None = None) -> None:
         """Build the four controls from the settings in force.
@@ -170,6 +175,10 @@ class ParameterControls(QWidget):
             slider.value_changed.connect(
                 lambda value, control=setting.control: self.setting_requested.emit(control, value)
             )
+            slider.preview_moved.connect(
+                lambda value, control=setting.control: self.preview_requested.emit(control, value)
+            )
+            slider.preview_ended.connect(self.preview_ended)
 
     @property
     def sliders(self) -> tuple[ParameterSlider, ...]:

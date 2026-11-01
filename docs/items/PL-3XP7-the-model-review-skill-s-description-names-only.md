@@ -3,11 +3,13 @@ id: PL-3XP7
 title: The model-review skill's description names only the monthly review, so an ad hoc request to analyse what the blind review passes caught does not load the skill that runs tools/blind_review_report.py; add that trigger to its description
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/skills/model-review/SKILL.md
 deferred-from: v0.7.0 - captured after the freeze; a skill description in the workflow lane, not safety or science
 added: 2026-10-26
+closed: 2026-11-01
+pr: 1905
 payoff: a request to analyse what the blind review passes caught loads the procedure for counting them, instead of a session reinventing the method
 verify: grep -qE '^description:.*blind review' .claude/skills/model-review/SKILL.md
 ---

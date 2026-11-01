@@ -80,9 +80,12 @@ from anesthesia_sim.app.chart_frame import (
     HoverTarget,
     RunCount,
     RunIndex,
+    RunPreview,
     TraceStyle,
     nearest_trace_point,
     nearest_wash_in_point,
+    preview_stroke_width,
+    preview_trace_style,
     resample_owed,
     run_trace_style,
     trace_style,
@@ -145,6 +148,9 @@ from anesthesia_sim.app.theme import (
     ONE_MAC_LINE_DASH_PATTERN,
     ONE_MAC_LINE_STROKE_WIDTH,
     PANEL,
+    PREVIEW_REGION_COLOR,
+    PREVIEW_REGION_EDGE_STROKE_WIDTH,
+    PREVIEW_REGION_FILL_OPACITY,
     TIME_BASE_SELECTOR_WIDTH,
     WASH_IN_CHART_HEIGHT,
     WASH_IN_COLOR,
@@ -167,6 +173,7 @@ __all__ = [
     "WashInChart",
     "WashInLegend",
     "dashed_pen",
+    "preview_trace_pen",
     "run_trace_pen",
     "trace_pen",
 ]
@@ -216,6 +223,7 @@ _Z_GRIDLINE: Final = -50
 _Z_CONTROL_MARK: Final = -30
 _Z_REFERENCE_BAND: Final = -20
 _Z_REFERENCE_LINE: Final = -10
+_Z_PREVIEW_LABEL: Final = 5
 _Z_HOVER: Final = 10
 
 
@@ -294,6 +302,22 @@ def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: Ru
     return trace_pen(run_trace_style(quantity, run_index, run_count))
 
 
+def preview_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: RunCount) -> QPen:
+    """Return the pen for one run's preview of a compartment (`chart_frame.preview_trace_style`).
+
+    Args:
+        quantity: Which compartment.
+        run_index: Which run, as a position in the frame's runs.
+        run_count: How many runs are on the chart.
+
+    Returns:
+        The pen, in the compartment's colour and dash pattern at the preview's
+        width.
+    """
+
+    return trace_pen(preview_trace_style(quantity, run_index, run_count))
+
+
 def _branch_point_pen() -> QPen:
     """The pen for a fork mark, which is vertical and solid where a control mark is dashed.
 
@@ -343,6 +367,35 @@ def _wash_in_pen(
         ValueError: If `run_index` does not address one of `run_count` runs.
     """
 
+    return dashed_pen(WASH_IN_COLOR, _wash_in_width(run_index, run_count), None)
+
+
+def _wash_in_preview_pen(run_index: RunIndex, run_count: RunCount) -> QPen:
+    """Return the pen for one run's predicted F_A/F_I, thinner than any run's own.
+
+    The width is based on the width used when only one run is drawn, for the
+    reason that `chart_frame.preview_trace_style` gives. In compare mode, a
+    preview must not be wider than the other run's real trace inside its
+    region.
+
+    Raises:
+        ValueError: As `_wash_in_pen`.
+    """
+
+    _wash_in_width(run_index, run_count)
+
+    return dashed_pen(
+        WASH_IN_COLOR, preview_stroke_width(_wash_in_width(_LONE_RUN_INDEX, _LONE_RUN_COUNT)), None
+    )
+
+
+def _wash_in_width(run_index: RunIndex, run_count: RunCount) -> float:
+    """The width one run's F_A/F_I trace is drawn at, in display pixels.
+
+    Raises:
+        ValueError: If `run_index` does not address one of `run_count` runs.
+    """
+
     if run_index >= run_count:
         raise ValueError(
             f"run {run_index} is not one of the {run_count} runs on the plot; a trace "
@@ -350,9 +403,8 @@ def _wash_in_pen(
         )
 
     widened = run_count > 1 and run_index == 0
-    width = WASH_IN_STROKE_WIDTH + (COMPARED_RUN_WIDTH_STEP if widened else 0)
 
-    return dashed_pen(WASH_IN_COLOR, width, None)
+    return WASH_IN_STROKE_WIDTH + (COMPARED_RUN_WIDTH_STEP if widened else 0)
 
 
 def _control_mark_pen() -> QPen:
@@ -698,25 +750,109 @@ def _place_branch_point(mark: Any, time_s: float | None) -> None:
     mark.show()
 
 
+class _PreviewMarks:
+    """One run's preview region and its label on one plot, hidden until a drag is held.
+
+    The region runs from the run's reach to the axis's right edge. It is drawn
+    beneath every trace, as the MAC-awake band is. Its left edge is a stroke at
+    the reach, where the run stands now. The label sits inside the region, at
+    the top, in the same kind of box as the hover's text. So a screenshot
+    taken during a drag says in words that the curves there did not happen
+    (`PL-5B1N`).
+    """
+
+    def __init__(self, item: Any) -> None:
+        fill = QColor(PREVIEW_REGION_COLOR)
+        fill.setAlphaF(PREVIEW_REGION_FILL_OPACITY)
+        self.region = pg.LinearRegionItem(
+            values=(0.0, 0.0),
+            orientation="vertical",
+            movable=False,
+            brush=pg.mkBrush(fill),
+            pen=pg.mkPen(PREVIEW_REGION_COLOR, width=PREVIEW_REGION_EDGE_STROKE_WIDTH),
+        )
+        self.region.setZValue(_Z_REFERENCE_BAND)
+        self.region.hide()
+        item.addItem(self.region, ignoreBounds=True)
+        self.label = pg.TextItem(
+            color=INK, fill=pg.mkBrush(PANEL), border=pg.mkPen(MUTED), anchor=(0, 0)
+        )
+        self.label.setZValue(_Z_PREVIEW_LABEL)
+        self.label.hide()
+        item.addItem(self.label, ignoreBounds=True)
+
+    def place(self, preview: RunPreview | None, top: float) -> None:
+        """Show the region and the label for a preview, or hide both where there is none.
+
+        Args:
+            preview: The run's preview, or `None`.
+            top: The top of the plot's value axis, where the label is hung.
+        """
+
+        if preview is None:
+            self.hide()
+            return
+
+        start_s, _ = preview.region_s
+        self.region.setRegion(preview.region_s)
+        self.region.show()
+        self.label.setText(preview.label)
+        self.label.setPos(start_s, top)
+        # `setVisible` rather than `show`, for the reason `_HoverReadout.show`
+        # gives: it orients the box for the view at once (`PL-J0F7`).
+        self.label.setVisible(True)
+
+    def hide(self) -> None:
+        self.region.hide()
+        self.label.hide()
+
+    def shown_region(self) -> tuple[float, float] | None:
+        if not self.region.isVisible():
+            return None
+
+        start, stop = self.region.getRegion()
+
+        return float(start), float(stop)
+
+    def shown_label(self) -> str | None:
+        return str(self.label.textItem.toPlainText()) if self.label.isVisible() else None
+
+
 class _RunItems:
-    """One run's items on the concentration chart: its curves, its fork, its marks."""
+    """One run's items on the concentration chart: its curves, its fork, its marks, its preview."""
 
     def __init__(self, item: Any, run_index: RunIndex) -> None:
+        self._run_index = run_index
         self.pens = _RunPens(run_index)
         self.curves: dict[RecordedQuantity, Any] = {}
+        self.preview_curves: dict[RecordedQuantity, Any] = {}
 
         for style in COMPARTMENT_TRACES:
             curve = pg.PlotCurveItem(pen=trace_pen(style), antialias=True)
             item.addItem(curve)
             self.curves[style.quantity] = curve
 
+        for style in COMPARTMENT_TRACES:
+            curve = pg.PlotCurveItem(pen=trace_pen(style), antialias=True)
+            curve.hide()
+            item.addItem(curve)
+            self.preview_curves[style.quantity] = curve
+
+        self.preview = _PreviewMarks(item)
         self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
 
+    def repen_preview(self, run_count: RunCount) -> None:
+        """Give every preview curve the preview pen for this many runs."""
+
+        for quantity, curve in self.preview_curves.items():
+            curve.setPen(preview_trace_pen(quantity, self._run_index, run_count))
+
     def hide(self) -> None:
-        for curve in self.curves.values():
+        for curve in (*self.curves.values(), *self.preview_curves.values()):
             curve.hide()
 
+        self.preview.hide()
         self.branch_point.hide()
 
         for mark in self.marks:
@@ -878,6 +1014,9 @@ class ConcentrationChart(QWidget):
         for items, run in zip(self._runs, frame.runs, strict=False):
             repen = items.pens.changed_for(run_count)
 
+            if repen:
+                items.repen_preview(run_count)
+
             for quantity, curve in items.curves.items():
                 if repen:
                     curve.setPen(items.pens.of(quantity, run_count))
@@ -893,6 +1032,16 @@ class ConcentrationChart(QWidget):
                 else:
                     curve.hide()
 
+            # A preview is drawn with the same compartments as the run, and
+            # only while a drag is held on this run (`PL-5B1N`).
+            for quantity, curve in items.preview_curves.items():
+                if run.preview is not None and quantity in frame.visible:
+                    curve.setData(list(run.preview.times_s), list(run.preview.percents(quantity)))
+                    curve.show()
+                else:
+                    curve.hide()
+
+            items.preview.place(run.preview, frame.axis_top_percent)
             _place_branch_point(items.branch_point, run.branch_point_s)
             _place_marks(items.marks, run.control_marks_s)
 
@@ -907,6 +1056,42 @@ class ConcentrationChart(QWidget):
         """The frame last drawn, or `None` before the first."""
 
         return self._frame
+
+    def preview_points(
+        self, run: int, quantity: RecordedQuantity
+    ) -> tuple[tuple[float, ...], tuple[float, ...]]:
+        """The instants and percents of one run's preview of a compartment, read from the plot item.
+
+        Returns:
+            Times in simulated seconds and values in percent. Both are empty
+            where no preview of that compartment is drawn.
+        """
+
+        curve = self._runs[run].preview_curves[quantity]
+
+        if not curve.isVisible():
+            return (), ()
+
+        times, values = curve.getData()
+
+        return tuple(float(t) for t in times), tuple(float(v) for v in values)
+
+    def preview_pen(self, run: int, quantity: RecordedQuantity) -> QPen:
+        """The pen one run's preview of a compartment is drawn with, read from the plot item."""
+
+        pen: QPen = self._runs[run].preview_curves[quantity].opts["pen"]
+
+        return pen
+
+    def preview_region(self, run: int) -> tuple[float, float] | None:
+        """Where one run's preview region is drawn, in simulated seconds, or None if hidden."""
+
+        return self._runs[run].preview.shown_region()
+
+    def preview_label(self, run: int) -> str | None:
+        """What one run's preview label says, or None while it is hidden."""
+
+        return self._runs[run].preview.shown_label()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """As wide as the plot asks and `theme.CHART_HEIGHT` tall. It grows into spare height."""
@@ -1116,6 +1301,21 @@ class _WashInRunItems:
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
         item.addItem(self.termini, ignoreBounds=True)
+        self.preview_stretches = []
+
+        for _ in range(MAX_CHART_WASH_IN_SEGMENTS):
+            stretch = pg.PlotCurveItem(pen=pen, antialias=True)
+            stretch.hide()
+            item.addItem(stretch)
+            self.preview_stretches.append(stretch)
+
+        # A predicted stretch that stops gets its dot too, by the same rule as
+        # the run's, so a preview that crosses equilibrium reads as ended.
+        self.preview_termini = pg.ScatterPlotItem(
+            size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
+        )
+        item.addItem(self.preview_termini, ignoreBounds=True)
+        self.preview = _PreviewMarks(item)
         self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
 
@@ -1127,15 +1327,21 @@ class _WashInRunItems:
 
         self._penned_for = run_count
         pen = _wash_in_pen(self._run_index, run_count)
+        preview_pen = _wash_in_preview_pen(self._run_index, run_count)
 
         for stretch in self.stretches:
             stretch.setPen(pen)
 
+        for stretch in self.preview_stretches:
+            stretch.setPen(preview_pen)
+
     def hide(self) -> None:
-        for stretch in self.stretches:
+        for stretch in (*self.stretches, *self.preview_stretches):
             stretch.hide()
 
         self.termini.setData([], [])
+        self.preview_termini.setData([], [])
+        self.preview.hide()
         self.branch_point.hide()
 
         for mark in self.marks:
@@ -1227,6 +1433,23 @@ class WashInChart(QWidget):
                 curve.hide()
 
             items.termini.setData(ends_x, ends_y)
+            predicted = () if run.preview is None else run.preview.wash_in
+            ends_x, ends_y = [], []
+
+            for curve, stretch in zip(items.preview_stretches, predicted, strict=False):
+                curve.setData(list(stretch.times_s), list(stretch.ratios))
+                curve.show()
+
+                if stretch.ends_above_equilibrium and stretch.times_s:
+                    ends_x.append(stretch.times_s[-1])
+                    ends_y.append(stretch.ratios[-1])
+
+            items.preview_termini.setData(ends_x, ends_y)
+
+            for curve in items.preview_stretches[len(predicted) :]:
+                curve.hide()
+
+            items.preview.place(run.preview, WASH_IN_AXIS_MAXIMUM)
             _place_branch_point(items.branch_point, run.branch_point_s)
             _place_marks(items.marks, run.control_marks_s)
 
@@ -1281,10 +1504,48 @@ class WashInChart(QWidget):
 
         return tuple(drawn)
 
+    def preview_stretches(self, run: int) -> tuple[tuple[tuple[float, float], ...], ...]:
+        """Each visible predicted stretch of one run, as its drawn (time, ratio) points."""
+
+        drawn = []
+
+        for curve in self._runs[run].preview_stretches:
+            if not curve.isVisible():
+                continue
+
+            times, ratios = curve.getData()
+            drawn.append(tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True)))
+
+        return tuple(drawn)
+
+    def preview_pen(self, run: int) -> QPen:
+        """The pen one run's predicted stretches are drawn with, read from the plot item."""
+
+        pen: QPen = self._runs[run].preview_stretches[0].opts["pen"]
+
+        return pen
+
+    def preview_region(self, run: int) -> tuple[float, float] | None:
+        """Where one run's preview region is drawn, in simulated seconds, or None if hidden."""
+
+        return self._runs[run].preview.shown_region()
+
+    def preview_label(self, run: int) -> str | None:
+        """What one run's preview label says, or None while it is hidden."""
+
+        return self._runs[run].preview.shown_label()
+
     def terminus_points(self, run: int) -> tuple[tuple[float, float], ...]:
         """Where one run's terminus dots are drawn, as (time, ratio)."""
 
         times, ratios = self._runs[run].termini.getData()
+
+        return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
+
+    def preview_terminus_points(self, run: int) -> tuple[tuple[float, float], ...]:
+        """Where one run's predicted stretches end in a dot, as (time, ratio)."""
+
+        times, ratios = self._runs[run].preview_termini.getData()
 
         return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
 

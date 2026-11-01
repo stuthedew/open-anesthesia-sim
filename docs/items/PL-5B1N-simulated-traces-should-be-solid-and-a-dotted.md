@@ -3,12 +3,14 @@ id: PL-5B1N
 title: Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, docs/MODEL.md, tests/integration/test_qt_chart.py, tests/integration/test_qt_widgets.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_theme.py, tests/unit/test_contrast_check.py
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/integration/test_qt_chart.py, tests/integration/test_qt_widgets.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-YBFB, project owner, 2026-09-27, ratified, over building the preview now as the next item of the presentation-safety chain): an M feature build, blocked on v0.7.0; not live at 9ea31db2 - nothing in src/anesthesia_sim/app/ draws a predicted trajectory
 added: 2026-09-12
+closed: 2026-10-31
+pr: 1896
 verify: grep -qF 'PREVIEW_REGION' src/anesthesia_sim/app/theme.py && grep -qF 'preview' tests/integration/test_qt_chart.py
 ---
 
@@ -316,3 +318,61 @@ blocker cleared. This item is on Gate 3's frozen list in `ROADMAP.md`
 implementation begins, so it is worked now, ahead of the schematic.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Nothing under `app/` draws a predicted trajectory: each "preview" there is the layout's split and join preview. Dash pattern is still the traces' second channel, and the circuit is still the only solid trace. `ParameterSlider` still applies a drag as it moves, and nothing connects `sliderReleased`. Each symbol the 2026-09-27 design round names still exists.
+
+## Built 2026-10-31
+
+Built as the 2026-09-27 design round recommends, with five things the build
+found or decided. The preview is computed by
+`SimulationController.preview_window`, which opens a second `RunDefinition`
+at the run's reach under the previewed settings and evaluates it over the
+window's columns. `chart_frame.assemble_chart_frame` re-anchors the window
+through `chart_time_base.preview_window`, and both plots draw the result in
+`qt_chart.py`.
+
+1. **Compare mode differs from the brief, because the brief misread the
+   tree.** The brief says a control applies to every drawn run through
+   `_apply_to_every_run`. That function is used only for marks. Each compared
+   run has its own sliders, so a drag on one run's slider previews and applies
+   to that run alone, from that run's own reach. The other run is drawn
+   unchanged. This keeps what the slider already does; it is not a new
+   behaviour. The design round's "3 to 2, 2 to 1, which keeps the
+   compare-mode width order" does not survive this either. The blind review
+   found that a preview one step under the first run's widened curve is wider
+   than the second run's real curve, which can lie inside the region. So a
+   preview takes its width from the lone-run width in every case.
+2. **Alveolar ventilation previews too.** The owner named the vaporizer dial,
+   fresh gas flow and cardiac output as examples of "any control that moves
+   the trajectory". Ventilation moves it as well, and leaving it on
+   apply-while-dragging would make one of four sliders behave differently.
+3. **A preview curve is never thinner than 2 px.** `docs/MODEL.md` records
+   that a 1 px antialiased line falls below 3:1 against the panel, and "one
+   width step thinner" would put the 2 px traces at 1 px. So a 3 px trace
+   previews at 2 px and a 2 px trace previews at 2 px. The width cue then
+   holds only for the emphasised traces, and position, region and label carry
+   the rest. This was put to the project owner as a decision on 2026-10-31,
+   with this option recommended and built. `PL-4LS8` held the question. It
+   was then decided by the session as a placeholder look choice on
+   2026-10-31, keeping the 2 px floor, and `PL-4LS8` records why.
+4. **No typed entry exists**, so the design's "a typed entry previews on each
+   parse" has nothing to attach to. A drag applies on release. A key press, a
+   wheel step and a click on the groove apply at once and draw no preview,
+   because `QSlider` with tracking off still emits `valueChanged` at once for
+   those.
+5. **Two cues the design round did not name, added after the blind
+   review.** A preview clipped at the top of the concentration axis is named
+   in the off-scale notice with its highest predicted value in view, since
+   nothing else shows a preview's values. A predicted F_A/F_I stretch that
+   stops ends in a dot, as the run's does.
+6. **Placeholders, decided by the session under the 2026-10-18 rule on look
+   and wording.** The label reads "Preview: Fresh gas flow 8.0 L/min, not
+   applied", or "Run 2 preview: ..." while runs are compared. The time-axis
+   caption reads "{span} shown, centred on now during the preview". The
+   region is `MUTED` at 10% fill with a 1.5 px edge. A stopped or failed run
+   draws no preview, because it refuses a setting.
+
+**Measured on 2026-10-31 in this container.** A preview over 500 columns costs
+about 8.4 ms per frame once the hypothetical settings are memoised, and about
+13 ms on the first frame of a drag. A preview at the run's own setting agrees
+with what the run later draws to 6.6e-14 relative on alveolar.
+`PREVIEW_REGION_COLOR` is the `MUTED` alias, not a new colour, so
+`tools/contrast_check.py` needed no entry.
