@@ -36,7 +36,7 @@ import pytest
 from anesthesia_sim.app.chart_frame import chart_columns
 from anesthesia_sim.core import run_definition
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     DELIVERED_AGENT_L,
@@ -44,6 +44,7 @@ from anesthesia_sim.core.governing_equations import (
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
     STATE_SIZE,
+    TISSUE_GROUP_COUNT,
     UNIT_STATE,
     VENOUS_FRACTION,
     UptakeEquationSettings,
@@ -2101,3 +2102,105 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
                 worst = max(worst, state.values[index] - high, low - state.values[index])
 
     assert worst * 100.0 < 0.005
+
+
+@pytest.mark.parametrize(
+    ("index", "named"),
+    (
+        (INSPIRED_FRACTION, "inspired fraction F_I"),
+        (ALVEOLAR_FRACTION, "alveolar fraction F_A"),
+        (VENOUS_FRACTION, "mixed venous fraction F_v"),
+    ),
+)
+def test_a_refused_drawn_gas_or_blood_fraction_names_its_compartment(
+    index: int, named: str
+) -> None:
+    """The display path rejects an inspired, alveolar or venous fraction above 1 that it would draw.
+
+    At the stiffest corner, the inspired fraction was the first drawn value to
+    pass 1. On 2026-10-31, the sweep's test still passed with these three
+    checks removed, because the tissue fractions passed 1 later in the same
+    window.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    state = list(system.state_vector())
+    state[index] = 1.0000000000001568
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        run_definition._drawable(tuple(state), system.equation_settings())
+
+    assert str(raised.value).startswith(
+        f"the display path computed a value it cannot draw: state[{index}] ({named}) "
+        "of 1.0000000000001568 is outside 0 to 1"
+    ), raised.value
+
+
+def test_every_column_a_window_returns_has_been_checked_for_drawing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both display paths pass every column that they return through the check for drawing.
+
+    A stretch is the part of the run between two changes of its settings. Each
+    path appends columns in two places: once for the first column it draws in
+    a stretch, and once for each column it then advances from that one. When
+    the check was removed from one place, no test noticed, because the check
+    in the other place still rejected the window. So this test counts the
+    checks and compares the count with the number of columns returned. The
+    run's settings change twice, and the windows start after the opening
+    state, so the test takes every path through each method.
+    """
+
+    checked: list[DisplayState] = []
+    exact = run_definition._drawable
+
+    def counting_drawable(
+        state: tuple[float, ...], settings: UptakeEquationSettings
+    ) -> DisplayState:
+        drawn = exact(state, settings)
+        checked.append(drawn)
+
+        return drawn
+
+    monkeypatch.setattr(run_definition, "_drawable", counting_drawable)
+    definition = _changed_at_12_5_and_30()
+    definition.advance_to(CaseInstant(60.0))
+
+    for window in (
+        lambda: definition.evaluate(5.0, 60.0, 23),
+        lambda: definition.evaluate_anchored(5.0, 60.0, 2.5),
+    ):
+        checked.clear()
+        drawn = window()
+
+        assert len(drawn.states) > 3
+        assert checked == list(drawn.states)
+
+
+@pytest.mark.parametrize("offset", range(TISSUE_GROUP_COUNT))
+def test_a_refused_drawn_tissue_fraction_names_its_tissue_group(offset: int) -> None:
+    """The halt banner for a refused window says which tissue group refused (`PL-SPN6`).
+
+    The display path's check runs before the chart frame's own check, so its
+    message is the one a learner reads. A position such as "tissue group 2"
+    does not tell a learner which trace failed. So the message also gives the
+    tissue group's name from the settings record, which `patient.py` built.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    settings = system.equation_settings()
+    state = list(system.state_vector())
+    index = FIRST_TISSUE_FRACTION + offset
+    state[index] = 1.0000000000001568
+    name = settings.tissues[offset].name
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        run_definition._drawable(tuple(state), settings)
+
+    message = str(raised.value)
+    assert message.startswith(
+        f"the display path computed a value it cannot draw: state[{index}] "
+        f"(tissue group {offset + 1} fraction F_{offset + 1}, {name}) of 1.0000000000001568 "
+        "is outside 0 to 1"
+    ), message
+    assert name in {"vessel_rich", "muscle", "fat"}
