@@ -392,12 +392,12 @@ def _notice_floor(width_px: int) -> int:
 
 
 def test_a_floor_is_computed_only_at_a_width() -> None:
-    """`PL-16BG`: no caller can compute a floor without naming the width it is drawn at.
+    """`PL-16BG`: no caller can compute a floor without naming the Area's drawn width.
 
-    `AreaLayout._floor` used to default the width to 0, and the split refusal relied on
-    that default (`PL-7DXG`). `Floor.at` takes the width as a required argument, so a
-    caller that leaves it out fails mypy and raises here. This test fails if a default
-    width is given back to it.
+    `AreaLayout._floor` used to default the width to 0, and the check that refuses a split
+    relied on that default (`PL-7DXG`). `Floor.at` takes the width as a required argument.
+    So a caller that leaves out the width fails mypy, and the call raises an error in this
+    test. This test fails if `Floor.at` is given a default width again.
     """
 
     floor = Floor(100, lambda width_px: _notice_floor(width_px))
@@ -428,15 +428,16 @@ def test_a_floor_is_measured_at_the_width_it_is_drawn_at() -> None:
 def test_settle_measures_a_too_small_areas_floor_at_the_width_it_draws_the_area() -> None:
     """`PL-9Z74`: a wide too-small Area is held at its lower floor, so a neighbour keeps its View.
 
-    Two Areas are stacked in a window 400 px wide and 308 px tall, so the column shares
-    308 - 8 = 300 px. Each View needs 300 by 200 px. Each floor is 100 px wide, 150 px
-    tall below 300 px wide and 80 px tall from 300 px.
+    Two Areas are stacked in a window 400 px wide and 308 px tall. The handle between them
+    takes 8 px, so the two Areas share 308 - 8 = 300 px of height. Each View needs 300 px of
+    width and 200 px of height. Each floor is 100 px wide. Its height is 150 px for an Area
+    drawn less than 300 px wide, and 80 px for one drawn 300 px wide or more.
 
-    At the floors' own width, 100 px, both floors are 150 px tall. One Area at its need
-    and one at its floor would need 200 + 150 = 350 px, so both drop and both are too
-    small. But both are drawn 400 px wide, where each floor is 80 px. Then 200 + 80 = 280
-    px fits. The later Area drops to its floor, and the earlier keeps its View. It is held
-    at its need of 200 px, and the later Area gets the other 100 px.
+    At the floors' own width, 100 px, both floors are 150 px tall. One Area at its need and
+    one at its floor would need 200 + 150 = 350 px, so both drop and both are too small. But
+    both are drawn 400 px wide, where each floor is 80 px tall. Then 200 + 80 = 280 px fits
+    in the 300 px. The later Area drops to its floor, and the earlier keeps its View. The
+    earlier Area is held at its need of 200 px, and the later Area gets the other 100 px.
     """
 
     tree = _column((0.5, 0.5), _area(1), _area(2))
@@ -459,8 +460,8 @@ def test_settle_measures_a_too_small_areas_floor_at_the_width_it_draws_the_area(
 def test_drawn_bounds_measure_each_floor_at_the_width_of_its_need() -> None:
     """A drawn Area is at least as wide as its need, so its floor is measured at that width.
 
-    Area 1 needs 300 by 60 px, where its floor is 80 px tall, so it is held 80 px tall.
-    Area 2 needs 200 by 60 px, where its floor is 150 px tall.
+    Area 1 needs 300 by 60 px. At 300 px wide its floor is 80 px tall, so Area 1 is held
+    80 px tall. Area 2 needs 200 by 60 px. At 200 px wide its floor is 150 px tall.
     """
 
     needs = {AreaId(1): PixelSize(300, 60), AreaId(2): PixelSize(200, 60)}

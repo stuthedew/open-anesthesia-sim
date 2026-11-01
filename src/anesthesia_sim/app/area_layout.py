@@ -472,9 +472,9 @@ class AreaLayout(QWidget):
         # The state of each View the reader replaced, by its Area and kind.
         self._saved: dict[tuple[AreaId, ViewKind], SavedState] = _flattened(states or {})
         self._notices: list[AreaNotice] = []
-        # A notice that is never shown. Each `Floor` that `_floor` returns lays
-        # the too-small notice out in it, to measure how tall the notice is at
-        # the width at which an Area is drawn.
+        # This notice is never shown. Each `Floor` that `_floor` returns lays out the
+        # too-small notice in this hidden copy, to measure how tall the notice is at the
+        # width at which an Area is drawn.
         self._notice_probe = AreaNotice("", "")
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
@@ -965,9 +965,10 @@ class AreaLayout(QWidget):
     ) -> AreaOperation:
         """Return the menu entry that splits the Area halfway across.
 
-        The entry is refused if a half could not hold the Area's floor at the width the
-        half would be drawn at (`_parts_hold_the_floor`). The halves are the sizes that
-        `pixel_sizes` gives the split, which are the sizes its splitter draws.
+        The entry is unavailable if either half could not hold the Area's floor at the
+        width at which that half would be drawn (`_parts_hold_the_floor`). Each half's
+        size is the one that `pixel_sizes` gives for the split, which is the size that the
+        split's splitter draws.
         """
 
         frame = self._frames[area_id]
@@ -986,12 +987,13 @@ class AreaLayout(QWidget):
     ) -> bool:
         """Return whether each part of a split of the Area `area_id` could hold the Area's floor.
 
-        `parts_px` holds each part's length along the split. Each part is as long across the
-        split as the Area is now. Every part would show the View that the Area shows now, so
-        each part has the Area's floor. That floor is measured at the width at which the part
-        would be drawn (`Floor.fits_in`). A stacked part is as wide as the Area, so its
-        notice wraps at the Area's width rather than at the floor's own width (`PL-7DXG`).
-        A part beside another is narrower than the Area, so its notice may need more lines.
+        `parts_px` holds each part's length on the axis that the split divides. On the other
+        axis, each part is as long as the Area is now. Every part would show the View that the
+        Area shows now, so each part has the Area's floor. That floor is measured at the width
+        at which the part would be drawn (`Floor.fits_in`). A stacked part is as wide as the
+        Area, so its too-small notice wraps at the Area's width rather than at the floor's own
+        width (`PL-7DXG`). A part beside another is narrower than the Area, so its notice may
+        need more lines.
         """
 
         frame = self._frames[area_id]
@@ -1245,25 +1247,25 @@ class AreaLayout(QWidget):
         return notice
 
     def _settle(self, kept: AbstractSet[AreaId]) -> None:
-        """Decide which Areas can be given their View's size, and lay every splitter out.
+        """Decide which Areas can be given their View's size, and lay out every splitter.
 
-        The decision is made by `settle` in `layout/sizing.py`, at this widget's current
-        size, so the sizes drawn are the ones `settle` worked out (`PL-K285`). Each Area's
-        frame is held at the bound that `settle` gave it, so it is never drawn smaller. An
-        Area that draws its View is held at the larger of its need and its floor. Its need
-        is the smallest size at which its View can be drawn. An Area that is too small for
-        its View is held at its floor (`_floor`), measured at the width at which `settle`
-        draws the Area. In place of the View, that Area shows a statement of the size its
-        View needs.
+        `settle` in `layout/sizing.py` makes the decision at this widget's current size, so
+        the sizes drawn are the ones that `settle` worked out (`PL-K285`). Each Area's frame
+        is held at the bound that `settle` gave it, so the frame is never drawn smaller than
+        that bound. An Area's need is the smallest size at which its View can be drawn. An
+        Area that draws its View is held at the larger of its need and its floor. An Area
+        that is too small for its View is held at its floor (`_floor`), measured at the width
+        at which `settle` draws the Area. In place of the View, that Area shows a statement
+        of the size its View needs.
 
-        Before this widget is shown, its size is not yet the size it will be drawn at. So
-        until it is shown, every Area keeps its View and is held at its need.
+        Before this widget is shown, its size is not yet the size at which it will be drawn.
+        So until the widget is shown, every Area keeps its View and is held at its need.
 
         When the Areas' bounds add up to a new minimum size for this widget, this method
-        tells the host through `minimumSizeHint`. Each Area is counted at the larger of
-        its View's need and its floor (`drawn_bounds`), which is the size at which
-        `settle` holds a drawn Area. A host that can grow, such as the dashboard's
-        scrolling page, then gives this widget room for every View.
+        reports that size to the host through `minimumSizeHint`. Each Area is counted at the
+        larger of its View's need and its floor (`drawn_bounds`). That is the size at which
+        `settle` holds an Area that draws its View. A host that can grow, such as the
+        dashboard's scrolling page, then gives this widget room for every View.
         """
 
         if self._settling:
@@ -1329,14 +1331,16 @@ class AreaLayout(QWidget):
     def _floor(self, area_id: AreaId) -> Floor:
         """Return the size at which the Area `area_id` is held while it is too small for its View.
 
-        Its width is the width from `_structural_minimum`. Its height is enough for the
-        header, the too-small notice's title and the notice's short statement of two sizes:
-        the size the View needs and the size the Area has. That text is wrapped at the width
-        at which the Area is drawn (`PL-Y65Q` route B, `PL-9Z74`). So the floor is stated
-        only at a width, and each caller names the width it means (`Floor.at`, `PL-16BG`).
-        The height is never more than the View's need. The notice's advice sentence is shown
-        only where the Area has room for it. An Area that has no View, and shows a notice
-        such as an unknown kind's instead, is held at `_structural_minimum` at every width.
+        This size is the Area's floor. Its width is the width from `_structural_minimum`. Its
+        height is enough for the header, the too-small notice's title and the notice's short
+        statement of two sizes. Those are the size the View needs and the size the Area has.
+        The notice's text is wrapped at the width at which the Area is drawn
+        (`PL-Y65Q` route B, `PL-9Z74`). So the floor is defined only for a given width, and
+        each caller names the width it means (`Floor.at`, `PL-16BG`). The height is never
+        more than the View's need. The notice's advice sentence is shown only where the Area
+        has room for it. An Area that has no View shows another notice instead, such as the
+        one for an unknown View kind. That Area is held at `_structural_minimum` at every
+        width.
         """
 
         frame = self._frames[area_id]
@@ -1702,14 +1706,13 @@ class AreaLayout(QWidget):
     def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
         """Return whether every Area of `moved` is drawn at no less than its least size.
 
-        An Area's least size is the bound at which the last settle holds it
-        (`Fit.bounds`), which is the size its frame is held to. Its drawn size
-        is estimated as its share of this widget minus one handle's width. The
-        estimate ignores the handles of nested splits, and it overstates an
-        Area whose neighbour in its split is held wider than its share. An Area
-        that was already smaller than its least size when the drag started,
-        because the window is small, may stay as it was but may not shrink
-        further.
+        An Area's least size is the bound it was given when the Areas were last settled
+        (`Fit.bounds`). The Area's frame is held to that size. The Area's drawn size is
+        estimated as its share of this widget, less one handle's width. The estimate
+        ignores the handles of nested splits. It also overstates the drawn size of an
+        Area whose neighbour in its split is held wider than its share. Some Areas are
+        already smaller than their least size when the drag starts, because the window
+        is small. Such an Area may stay as it was, but it may not shrink further.
         """
 
         fit = self._fit

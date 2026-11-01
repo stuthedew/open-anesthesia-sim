@@ -125,19 +125,20 @@ class Floor:
     """The least size at which an Area is held while it is too small for its View.
 
     An Area that is too small shows a notice in place of its View. The notice's
-    text wraps at the width at which the Area is drawn, so a wider Area needs
-    fewer lines (`PL-9Z74`). So the floor's height depends on that width, and the
-    floor is stated only at a width. `at` takes the width as a required argument,
-    and `fits_in` reads it from the size it is given. Each reader of an Area's
-    floor names the width it means, and none can fall back to a default
-    (`PL-16BG`).
+    text wraps at the width at which the Area is drawn, so the notice needs fewer
+    lines in a wider Area (`PL-9Z74`). So the floor's height depends on that
+    width, and the floor is defined only for a given width. `at` takes the width
+    as a required argument, and `fits_in` takes it from the size it is given.
+    Every caller that reads an Area's floor names the width it means, and none
+    can fall back to a default width (`PL-16BG`).
 
     Attributes:
-        width_px: The floor's width, which is the least width that holds the
-            Area's header. It does not depend on the width at which the Area is
-            drawn, and an Area is never drawn narrower than it.
-        height_at: The floor's height for an Area drawn a given number of pixels
-            wide, at least `width_px`. A wider Area never needs a taller floor.
+        width_px: The floor's width, which is the least width at which the Area's
+            header fits. It does not depend on the width at which the Area is
+            drawn. An Area is never drawn narrower than `width_px`.
+        height_at: A function that returns the floor's height for an Area drawn
+            a given number of pixels wide. That width is at least `width_px`. A
+            wider Area never needs a taller floor.
 
     Raises:
         TypeError: `width_px` is not an `int`, or is a `bool`.
@@ -281,16 +282,17 @@ def drawn_bounds(
 ) -> dict[AreaId, PixelSize]:
     """Return the size at which each Area is held while it draws its View.
 
-    That size is the larger of the Area's need and its floor on each axis. The
-    floor is measured at the width of the need. An Area that draws its View is
-    drawn at least that wide, and a wider Area never needs a taller floor. So the
-    bound holds at every width at which the Area draws its View.
+    This size is the Area's bound. On each axis, it is the larger of the Area's
+    need and its floor. The floor is measured at the width of the need. An Area
+    that draws its View is drawn at least that wide, and a wider Area never needs
+    a taller floor. So the bound is large enough at every width at which the Area
+    draws its View.
 
     An Area whose floor is wider or taller than its View's need is held at the
-    floor on that axis, so its header still fits. `settle` holds a drawn Area
-    at this bound. The adapter's least size is the `minimum_extent` of these
-    bounds (`PL-C9XP`). A sum of the needs alone would understate that least
-    size.
+    floor on that axis, so its header still fits. `settle` holds an Area that
+    draws its View at this bound. The adapter's least size is the
+    `minimum_extent` of these bounds (`PL-C9XP`). A sum of the needs alone would
+    understate that least size.
 
     Raises:
         KeyError: `floors` has no floor for an Area in `needs`.
@@ -546,16 +548,16 @@ def settle(
     floors: Mapping[AreaId, Floor],
     kept: AbstractSet[AreaId],
 ) -> Fit:
-    """Decide which Areas of `tree` can be given their need in `extent`, and lay every one out.
+    """Decide which Areas of `tree` can be given their need in `extent`, and lay out every Area.
 
     `kept` names the Areas that were drawn before the change being settled, and
     that the change left with the same View in the same place. Every Area is
     first held at its `drawn_bounds` entry, the larger of its need and its
     floor. Where the extent cannot hold those bounds, some Areas drop to their
-    floors. The Areas that drop are the fewest that must give way, so a small
-    shortfall blanks only those (`PL-QZ7Z`). The rules below choose the Areas
-    to drop. Each rule decides only among the choices that the rules before it
-    leave tied.
+    floors. The Areas that drop are the fewest that must give way. So a small
+    shortfall blanks only those Areas, which show a notice in place of their
+    Views (`PL-QZ7Z`). The rules below choose the Areas to drop. Each rule
+    decides only among the choices that the rules before it leave tied.
 
     1. Leave the least shortfall that dropping Areas can reach. Where the floors
        fit, that is no shortfall.
@@ -567,26 +569,28 @@ def settle(
     5. Drop the later Areas in reading order.
 
     Where the tree has at most `_EXACT_SEARCH_AREAS` Areas, every subset of them
-    is weighed. In a larger tree, Areas are dropped one at a time, each chosen
-    by the same rules, until the shortfall is the least it can be. Every Area
-    that is then given its need is drawn, and every other Area is too small.
+    is tried against these rules. In a larger tree, Areas are dropped one at a
+    time, each chosen by the same rules, until the shortfall is the least it can
+    be. Every Area that is then given its need draws its View, and every other
+    Area is too small.
 
     **Each floor is measured at the width at which its Area is drawn**
     (`PL-9Z74`, `PL-16BG`). That width is known only once the Areas are laid
-    out, so the Areas are settled twice. The first time, each floor is measured
-    at its own width, the narrowest width at which an Area is drawn. That gives
-    the tallest floor, which fits the notice at any width. The second time,
-    each floor is measured at the width at which the first time drew its Area.
-    A wider Area, such as one in a column as wide as the window, then has a
-    lower floor. That can leave enough room for a neighbouring Area to keep its
-    View.
+    out, so the Areas are settled in two passes. The first pass measures each
+    floor at the floor's own width, which is the narrowest width at which an
+    Area is drawn. That gives the tallest floor, which fits the notice at any
+    width. The second pass measures each floor at the width at which the first
+    pass drew its Area. A wider Area, such as one in a column as wide as the
+    window, then has a lower floor. That can leave enough room for a
+    neighbouring Area to keep its View.
 
-    The second fit is used only where it is safe, and that takes two
+    The second pass's fit is used only where it is safe, which needs two
     conditions. First, every width that the second fit gives must be the width
-    at which the Area is drawn. That holds where no split is too narrow for its
-    Areas (`_widths_held`). Second, every too-small Area must be drawn at least
-    as wide as the width at which its floor was measured, so that no notice is
-    cut off. Where either condition fails, the first fit is used.
+    at which the Area is drawn. That is true where no split is too narrow for
+    its Areas (`_widths_held`). Second, every too-small Area must be drawn at
+    least as wide as the width at which its floor was measured, so that no
+    notice is cut off. Where either condition fails, the first pass's fit is
+    used.
 
     Raises:
         TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
@@ -660,11 +664,11 @@ def _settled_at(
 def _widths_held(tree: Node, extent: PixelSize, handle_px: int, fit: Fit) -> bool:
     """Return whether every Area of `fit` is drawn at the width that `fit` gives it.
 
-    That holds where the tree's least width, with each Area at its bound in
-    `fit`, fits in `extent`. Every split then has room along the width for the
-    bound of each Area in it. Where the least width does not fit in `extent`,
-    the adapter's splitters draw an Area at its bound rather than at the width
-    that `fit` gives it.
+    That is true where the tree's least width fits in `extent`, with each Area at
+    its bound in `fit`. Every split then has room along the width for the bound
+    of each Area in it. Where the least width does not fit in `extent`, the
+    adapter's splitters draw an Area at its bound rather than at the width that
+    `fit` gives it.
     """
 
     return _minimum_extent(tree, handle_px, fit.bounds).width_px <= extent.width_px

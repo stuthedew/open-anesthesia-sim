@@ -2088,12 +2088,13 @@ def test_a_stacked_split_is_refused_where_a_half_could_not_hold_the_notice_at_it
 ) -> None:
     """`PL-Y65Q`: a split is refused where a half could not hold the Area's floor.
 
-    The Big view's Area fills a window 150 by 250 px. Stacked halves would each be 150 px wide and
-    (250 - 8) / 2 = 121 px tall. Each half would be too small for the Big view, so each
-    would have to show the too-small notice. Wrapped at 150 px, the notice needs a floor
-    146 px tall, so the split is refused from the Area menu and from a corner drag. Halves
-    side by side would be (150 - 8) / 2 = 71 px wide, less than the 124 px header, so that
-    split is refused too.
+    The Big view's Area fills a window 150 px wide and 250 px tall. Stacked halves would share
+    that height less the 8 px handle between them, so each would be 150 px wide and
+    (250 - 8) / 2 = 121 px tall. Each half would be too small for the Big view, so each would
+    have to show the too-small notice. Wrapped at 150 px, the notice needs a floor 146 px
+    tall. So both the Area menu and a corner drag refuse the split. Halves side by side would
+    be (150 - 8) / 2 = 71 px wide, narrower than the 124 px header, so that split is refused
+    too.
     """
 
     _, container = _host_sized(application, hosts, LayoutModel.single_area(_BIG), (150, 250))
@@ -2114,15 +2115,16 @@ def test_a_stacked_split_is_refused_where_a_half_could_not_hold_the_notice_at_it
 def test_a_wide_area_splits_stacked_where_each_half_holds_the_notice_at_the_areas_width(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-7DXG`: a stacked half's floor is measured at the Area's width, not at its own.
+    """`PL-7DXG`: a stacked half's floor is measured at the Area's width, not the floor's width.
 
-    The Big view's Area is 400 by 250 px. Stacked halves would each be 400 px wide and
-    121 px tall. Wrapped at 400 px, the too-small notice needs a floor 95 px tall, so each
-    half holds its notice and the split is allowed. The refusal used to wrap the notice
-    at the floor's own width of 124 px, which needs 146 px, and so refused this split.
-    The same holds for a corner drag that cuts the Area 129 px from its top, which leaves
-    halves 129 and 113 px tall. Halves side by side would be 196 px wide and 250 px tall,
-    and the notice wrapped at 196 px needs 112 px, so that split is allowed too.
+    The Big view's Area is 400 px wide and 250 px tall. Stacked halves would each be 400 px
+    wide and 121 px tall. Wrapped at 400 px, the too-small notice needs a floor 95 px tall,
+    so each half holds its notice and the split is allowed. The check that refuses a split
+    used to wrap the notice at the floor's own width of 124 px. There the notice needs a
+    floor 146 px tall, so the check refused this split. A corner drag that cuts the Area
+    129 px from its top is allowed too. It leaves halves 129 and 113 px tall. Halves side
+    by side would be 196 px wide and 250 px tall. The notice wrapped at 196 px needs a floor
+    112 px tall, so that split is allowed too.
     """
 
     container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (400, 250))
@@ -2141,14 +2143,14 @@ def test_a_wide_area_splits_stacked_where_each_half_holds_the_notice_at_the_area
 def test_a_side_by_side_split_is_refused_where_a_narrower_half_could_not_hold_the_notice(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
-    """`PL-16BG`: a half beside another has the Area's floor at the half's own width.
+    """`PL-16BG`: a half beside another has the Area's floor measured at the half's own width.
 
-    The Big view's Area fills a window 400 by 104 px. That is too small for the Big view,
-    but holds the Area's floor at 400 px wide, 95 px. The
-    halves side by side would be (400 - 8) / 2 = 196 px wide, wider than the 124 px header.
+    The Big view's Area fills a window 400 px wide and 104 px tall. That window is too small
+    for the Big view, but it holds the Area's floor, which is 95 px tall at 400 px wide.
+    Halves side by side would be (400 - 8) / 2 = 196 px wide, wider than the 124 px header.
     But the notice wrapped at 196 px needs a floor 112 px tall, more than the 104 px the
-    halves would have. So the split is refused. Before the floor was stated only at a
-    width, the refusal compared the halves' width alone and allowed this split.
+    halves would have. So the split is refused. Before the floor was defined only for a
+    given width, the check compared only the halves' width and allowed this split.
     """
 
     _, container = _host_sized(application, hosts, LayoutModel.single_area(_BIG), (400, 104))
