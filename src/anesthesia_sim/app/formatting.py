@@ -1671,11 +1671,6 @@ AGENT_COST_SIGNIFICANT_FIGURES: Final = 3
 AGENT_COST_FINEST_DECIMALS: Final = 2
 PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES: Final = 4
 
-# How many significant figures a figure the reader entered is echoed with. A
-# binary64 float holds 15 decimal figures exactly, so 15 gives back what the
-# reader typed, such as 20.47 rather than 20.469999999999999.
-_ENTERED_FIGURE_SIGNIFICANT_FIGURES: Final = 15
-
 
 def _require_currency_amount(amount: float, what: str) -> None:
     """Refuse an amount of money that is not a finite number, not negative.
@@ -1798,9 +1793,11 @@ def format_entered_figure(figure: float) -> str:
     """Render a figure the reader entered, such as a bottle price, as the reader typed it.
 
     The figure is not a model output, so no displayed precision applies to
-    it. It is shown to `_ENTERED_FIGURE_SIGNIFICANT_FIGURES` significant
-    figures with trailing zeros dropped, which gives back the digits the
-    reader typed: 20.47 as `20.47`, 100.0 as `100` and 240.34 as `240.34`.
+    it. It is shown as the shortest decimal that reads back as the same
+    float, in plain digits with trailing zeros dropped. That gives back the
+    digits the reader typed: 20.47 as `20.47`, 100.0 as `100` and 0.00005 as
+    `0.00005`. It is never written with an exponent, because the price form
+    refuses one, and the form is filled again from this text (`PL-1P15`).
 
     Raises:
         TypeError: If `figure` is not a number, or is a `bool`.
@@ -1809,7 +1806,7 @@ def format_entered_figure(figure: float) -> str:
 
     _require_currency_amount(figure, "an entered figure")
 
-    return f"{figure:.{_ENTERED_FIGURE_SIGNIFICANT_FIGURES}g}"
+    return f"{Decimal(repr(float(figure))).normalize():f}"
 
 
 def _round_to_figures(

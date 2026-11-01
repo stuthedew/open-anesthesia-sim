@@ -102,8 +102,10 @@ class PriceEntry(QWidget):
         self._request = request
         self._today = today
         self._preferences = Preferences()
-        # The stored price the fields were last filled from, and for which agent.
-        self._filled_from: tuple[str, AgentPrice | None] | None = None
+        # What the fields were last filled from: the agent, its stored price,
+        # and whether a refused entry for it is in the file. The last decides
+        # whether Remove is offered, so a change to it refills too.
+        self._filled_from: tuple[str, AgentPrice | None, bool] | None = None
         self._agent_chosen = False
         self.agent_selector = FocusedComboBox()
         self.agent_selector.setStyleSheet(selector_stylesheet())
@@ -187,14 +189,15 @@ class PriceEntry(QWidget):
 
         agent_id = self.agent_id
 
-        if self._filled_from != (agent_id, preferences.price_for(agent_id)):
+        if self._filled_from != _fill_key(preferences, agent_id):
             self._fill(agent_id)
 
     def _fill(self, agent_id: str) -> None:
         """Fill the fields with the stored price for `agent_id`, or empty them when it has none."""
 
-        price = self._preferences.price_for(agent_id)
-        self._filled_from = (agent_id, price)
+        key = _fill_key(self._preferences, agent_id)
+        _, price, refused = key
+        self._filled_from = key
 
         if price is None:
             self.bottle_price_edit.clear()
@@ -210,7 +213,6 @@ class PriceEntry(QWidget):
         self.applies_on_edit.setDate(QDate(applies_on.year, applies_on.month, applies_on.day))
         # Removing also discards a refused entry for the agent, which the
         # reader may want gone although no price is in force.
-        refused = any(entry.agent_id == agent_id for entry in self._preferences.refused_prices)
         self.remove_button.setEnabled(price is not None or refused)
 
     def _show_refusal(self, reason: str | None) -> None:
@@ -249,3 +251,11 @@ class PriceEntry(QWidget):
 
         self._show_refusal(None)
         self._request(self.agent_id, None)
+
+
+def _fill_key(preferences: Preferences, agent_id: str) -> tuple[str, AgentPrice | None, bool]:
+    """Return what the form's fields and its Remove button show for `agent_id`."""
+
+    refused = any(entry.agent_id == agent_id for entry in preferences.refused_prices)
+
+    return agent_id, preferences.price_for(agent_id), refused

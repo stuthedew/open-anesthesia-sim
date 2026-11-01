@@ -756,3 +756,38 @@ def test_the_cost_s_working_stays_in_liquid_when_the_amounts_are_shown_in_vapour
     assert panel.working_text.text().startswith(
         f"{_liquid_ml('isoflurane', 2.08):.1f} mL of liquid delivered x"
     )
+
+
+def test_a_refused_price_for_the_first_run_s_agent_can_be_removed_from_the_first_frame(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """Remove is offered for a refused entry at launch, and withdrawn once it is gone.
+
+    Blind review pass 2 of `PL-1P15` found Remove left off at launch, because
+    the form refilled only when the stored price changed, and a refused entry
+    leaves no stored price either way.
+    """
+
+    (tmp_path / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [_REFUSED_PRICE],
+            }
+        ),
+        encoding="utf-8",
+    )
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    entry = cost_view.price_entry
+
+    assert entry.agent_id == "sevoflurane"
+    assert entry.remove_button.isEnabled()
+
+    entry.remove_button.click()
+
+    assert not entry.remove_button.isEnabled()
+    assert cost_view.preferences_notice.isHidden()
+    assert _cost_line(cost_view) == NO_PRICE_TEXT.format(agent="sevoflurane")
+    assert PreferencesStore(tmp_path).load().preferences.refused_prices == ()

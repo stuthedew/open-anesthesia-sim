@@ -14,6 +14,7 @@ the control that shows it.
 
 import inspect
 import math
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -23,6 +24,7 @@ from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from anesthesia_sim.app import formatting as formatting_module
+from anesthesia_sim.app.agent_cost import price_from_entry
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_DISPLAY_PRECISION,
@@ -2031,10 +2033,25 @@ def test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liqui
 
 
 @pytest.mark.parametrize(
-    ("figure", "expected"), [(20.47, "20.47"), (100.0, "100"), (240.34, "240.34"), (0.25, "0.25")]
+    ("figure", "expected"),
+    [
+        (20.47, "20.47"),
+        (100.0, "100"),
+        (240.34, "240.34"),
+        (0.25, "0.25"),
+        (0.00005, "0.00005"),
+        (1.5e15, "1500000000000000"),
+    ],
 )
 def test_a_figure_the_reader_entered_is_shown_as_typed(figure: float, expected: str) -> None:
+    """Shown in plain digits, so the price form can read back the text it is filled with.
+
+    Blind review pass 1 of `PL-1P15` found 0.00005 shown as `5e-05`, which
+    the form then refused when the reader pressed Set price again.
+    """
+
     assert format_entered_figure(figure) == expected
+    assert price_from_entry("isoflurane", expected, "100", "USD", date(2026, 1, 2))
 
 
 @pytest.mark.parametrize("amount", [-0.01, math.inf, math.nan])
