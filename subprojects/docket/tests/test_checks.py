@@ -1826,6 +1826,58 @@ def test_a_released_milestone_clears_its_blocker() -> None:
     assert _has(report.advisories, "v0.4.0 is scoped and every other blocker has closed")
 
 
+def test_an_item_waits_at_blocked_until_its_date_and_is_named_on_it() -> None:
+    """`PL-XNF3`, both sides of the date. `PL-R4Y2` sat at `ready` with its due
+    date in prose, and `next` offered it five days early.
+
+    The day before, `ready` is refused and `blocked` is quiet. On the date
+    itself `ready` is accepted, and `blocked` is named ready to promote.
+    """
+    due = date(2026, 11, 2)
+    before = due - timedelta(days=1)
+
+    ready = _item("PL-R4Y2", blocked_by=("2026-11-02",))
+    blocked = _item("PL-R4Y2", status="blocked", blocked_by=("2026-11-02",), body=BLOCKED_BODY)
+
+    early = analyze([ready], before)
+    assert _has(early.errors, "sits at `ready` while its `blocked-by` waits until 2026-11-02")
+    assert not _has(analyze([blocked], before).advisories, "PL-R4Y2")
+
+    assert not _has(analyze([ready], due).errors, "waits until")
+    on_the_day = analyze([blocked], due)
+    assert on_the_day.errors == []
+    assert _has(
+        on_the_day.advisories,
+        "PL-R4Y2: 2026-11-02 has arrived and every other blocker has cleared; "
+        "it is ready to promote",
+    )
+
+
+def test_an_item_waits_for_its_last_date_and_its_open_blockers() -> None:
+    """An arrived date beside an open item holds nothing, and says so. An item
+    is not named ready while another of its dates is still to come."""
+    other = _item("PL-1111")
+    waits_on_item = _item(
+        "PL-2222", status="blocked", blocked_by=("PL-1111", "2026-08-20"), body=BLOCKED_BODY
+    )
+    two_dates = _item(
+        "PL-3333", status="blocked", blocked_by=("2026-08-20", "2026-09-01"), body=BLOCKED_BODY
+    )
+
+    report = analyze([other, waits_on_item, two_dates], TODAY)
+
+    assert report.errors == []
+    assert _has(report.advisories, "PL-2222: `blocked-by` names 2026-08-20, which has arrived")
+    assert not _has(report.advisories, "PL-3333")
+
+
+def test_a_date_blocker_that_is_no_calendar_date_is_an_error() -> None:
+    item = _item("PL-C2C2", status="blocked", blocked_by=("2026-13-40",), body=BLOCKED_BODY)
+
+    assert _has(_errors(item), "blocked by 2026-13-40, which is not a calendar date")
+    assert not _has(_errors(item), "which is not an item")
+
+
 def test_a_milestone_the_roadmap_places_nowhere_is_an_error() -> None:
     """Otherwise a typo is indistinguishable from a live block, forever."""
     report = analyze([_blocked_on("v9.9.9")], TODAY, milestones=_milestones())
