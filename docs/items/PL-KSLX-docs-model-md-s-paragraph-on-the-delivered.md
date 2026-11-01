@@ -13,6 +13,7 @@ closed: 2026-11-01
 pr: 1915
 payoff: docs/MODEL.md names the unit that every recorded change of the delivered dial carries, percent of 1 atm, so a reader of the specification cannot read a recorded 2 as 200%
 verify: ! grep -qF 'carry the unit *fraction of 1 atm*' docs/MODEL.md && grep -qF 'carry the unit *percent of 1 atm*' docs/MODEL.md && ! grep -qF 'fraction of one atmosphere. It is displayed as a percent' docs/MODEL.md
+reenters: PL-4FBP
 ---
 
 **Problem.** docs/MODEL.md's paragraph on the delivered-concentration control says its recorded changes carry the unit 'fraction of 1 atm', but control_record.CONTROL_INPUT_UNITS records 'percent of 1 atm' since PL-NJPB, so the specification names the wrong unit for every recorded dial change (found closing PL-000W)
@@ -43,3 +44,11 @@ places, so this item corrects both, and its `verify:` checks both.
 **Generator check.** One-off. The fact is the recorded unit of the delivered
 control. `PL-NJPB` changed it, and this is a sentence its docs sweep missed.
 No live head's `misread:` names the recorded unit of a control.
+
+**Checked 2026-11-01:** the generator check above is revised. The fact is
+`PL-4FBP`'s: a value the code holds once, `CONTROL_INPUT_UNITS` in
+`app/control_record.py`, restated in `docs/MODEL.md` prose instead of cited.
+`PL-FM15` gave `PL-D1LR` the same answer, and said clause 1 of `PL-4FBP`
+covers the case. So this item records `reenters: PL-4FBP`. It is the first
+filing to re-enter `PL-4FBP` after `PL-FM15`'s no-successor answer of
+2026-10-31. Three such filings reopen that answer.
