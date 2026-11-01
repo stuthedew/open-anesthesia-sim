@@ -124,6 +124,9 @@ from anesthesia_sim.layout.serialization import (
     workspace_set_to_json,
 )
 from anesthesia_sim.layout.workspace import WorkspaceSet
+from anesthesia_sim.user_files import remove_quietly as _remove_quietly
+from anesthesia_sim.user_files import sync_directory_quietly as _sync_directory_quietly
+from anesthesia_sim.user_files import write_synced as _write_synced
 
 __all__ = [
     "PENDING_FILE_NAME",
@@ -628,15 +631,6 @@ def _attempt(doing: str, path: Path, action: Callable[[], object]) -> None:
         raise WorkspaceFileError(doing, path, error) from None
 
 
-def _write_synced(path: Path, text: str) -> None:
-    """Write `text` to `path` and `fsync` it, so it is on the disk before anything points at it."""
-
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
-        handle.flush()
-        os.fsync(handle.fileno())
-
-
 def _copy_replacing(source: Path, pending: Path, target: Path) -> None:
     """Copy `source` over `target` via `pending`, so `target` is whole or still the one before."""
 
@@ -662,36 +656,3 @@ def _lossy_suffix(read: ReadWorkspaceSet) -> str:
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
-
-
-def _sync_directory_quietly(directory: Path) -> None:
-    """Flush the directory's own entries where the platform lets a directory be opened.
-
-    This is a best effort. The file is already on the disk and the directory
-    already names it, so a filesystem that refuses to `fsync` a directory has
-    not failed the save.
-    """
-
-    flag = getattr(os, "O_DIRECTORY", None)
-
-    if flag is None:
-        return
-
-    try:
-        descriptor = os.open(directory, os.O_RDONLY | flag)
-    except OSError:
-        return
-
-    try:
-        os.fsync(descriptor)
-    except OSError:
-        return
-    finally:
-        os.close(descriptor)
-
-
-def _remove_quietly(path: Path) -> None:
-    try:
-        path.unlink()
-    except OSError:
-        return
