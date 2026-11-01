@@ -90,7 +90,12 @@ def test_every_shipped_workspace_names_only_registered_kinds() -> None:
         named |= {area.view for area in layout.areas()}
 
     # The check above would also pass if the files named no View at all.
-    assert named == {"concentration_chart", "wash_in", "parameter_controls"}
+    assert named == {
+        "concentration_chart",
+        "wash_in",
+        "parameter_controls",
+        "compartment_schematic",
+    }
 
 
 def test_no_retired_tag_is_registered() -> None:

@@ -14,9 +14,13 @@ origin.
 - `induction.json` - the concentration chart over the wash-in chart, with
   the parameter controls on the right. The wash-in curve, alveolar as a
   fraction of the circuit, changes fastest in the first minutes.
-- `maintenance.json` - the big picture: the concentration chart across the
-  whole width, with the wash-in chart and the parameter controls side by
-  side below it.
+- `maintenance.json` - the concentration chart on the left half of the
+  window at full height, with the compartment schematic beside it and the
+  parameter controls under the schematic. During maintenance, agent moves
+  into muscle and fat while their tensions stay low, and the schematic's
+  share bar is where a learner sees that (`PL-PR1W`). The wash-in chart,
+  whose lesson is the first minutes, stays in Induction. Which Workspace
+  holds the schematic is a placeholder.
 
 None of the three contains the agent accounting View (project owner,
 2026-09-16). `docs/MODEL.md` puts the accounting in the tier that a layout may
