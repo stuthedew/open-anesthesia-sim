@@ -7231,9 +7231,11 @@ take.
    tensions. Each amount is read from that compartment's `agent_amount_l` in
    `core/`. The amounts travel as one record per compartment rather than as
    six more flat floats. That way v0.8.0 can key the same record by substance
-   instead of adding fields. `stored_agent_l` becomes the sum of the amounts,
-   read from that record, instead of a second reading of the same state. No
-   equation changes. `core/` already computes every amount, and this item only
+   instead of adding fields. `stored_agent_l` stays `core/`'s one sum of the
+   amounts, and a test holds the record's amounts equal to it to the last bit.
+   Summing the record again in `app/` would have been a second sum of the same
+   fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01). No equation
+   changes. `core/` already computes every amount, and this item only
    passes the amounts on. A test compares each amount at stated instants with
    an oracle independent of `core/`, as `.claude/rules/test-oracles.md`
    requires.
@@ -8460,8 +8462,8 @@ and each must be assigned when its milestone is fully specified.
     chart, `PL-QYBW`). Where the drug *is*, in millilitres, and where the
     *tension* is are different questions. Confusing them is a standard novice
     error. The view needs per-compartment agent amounts exposed on the
-    snapshot. The core already computes those amounts, but the snapshot does
-    not yet carry them.
+    snapshot. The core already computes those amounts, and since `PL-KFTM`
+    (2026-11-01) the snapshot carries them as one record per compartment.
 28. Add agent cost, from the delivered-agent amount that the model already
     tracks. The economic argument for low fresh gas flow is a standard
     teaching point. It is currently the one lesson in this class of simulator
