@@ -435,12 +435,13 @@ ALL_GATE_TRAJECTORIES = (
 # agent. It never depends on the clock or on the order in which the tests run.
 #
 # The trajectories use the standard library's `random.Random` rather than Hypothesis.
-# Hypothesis is the better tool for property-based testing. When a case fails, it shrinks
-# the case to a minimal one, which is most of the value of the method. But Hypothesis would
-# be a new dependency, and this project runs `drift.yml` because each dependency is a
-# liability over a horizon of years. A seeded `random.Random` covers this kind of
-# trajectory without a new dependency. The choice is worth revisiting the first time a
-# failure here needs shrinking to be understood.
+# Hypothesis is already a test dependency (`PL-V10T`), and it is the better tool for
+# property-based testing in one respect: when a case fails, it shrinks the case to a minimal
+# one. The cost here is time. Each trajectory takes about 0.9 s to compare with the oracle,
+# so Hypothesis's default of 100 examples would add about 90 s per agent to the suite, and
+# shrinking a failure would rerun the comparison many times more. Three fixed seeds test the
+# same trajectories on every run, in under 3 s per agent. The choice is worth revisiting the
+# first time a failure here needs shrinking to be understood.
 RANDOMISED_TRAJECTORY_SEEDS = (20260903, 20261101, 7919)
 
 # This is the longest time a randomised phase holds its settings, counted in shipped steps.
@@ -454,6 +455,13 @@ RANDOMISED_PHASE_MAX_STEPS = 200
 # equations in a different regime. A uniform draw on a range almost never lands on one of
 # them.
 RANDOMISED_LIMIT_PROBABILITY = 0.2
+
+# The relative amount by which rounding may carry a compartment's fraction above the highest
+# fraction delivered so far. The bound allows a few units in the last place. A measurement on
+# 2026-11-01 over the nine pairs of agent and seed found that no compartment came near the
+# bound. The highest compartment reached 51% of the highest fraction delivered, and every
+# compartment stayed exactly zero until agent was first delivered.
+RANDOMISED_FRACTION_ROUNDING = 1e-14
 
 
 def _randomised_value(rng: random.Random, low: float, high: float) -> float:
@@ -933,10 +941,10 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # reads a JSON document and solves nothing, which is the property this list is
 # about.
 #
-# `SimulationState` combines the system under test with the clock that owns its elapsed
-# time. Only `test_randomised_control_trajectories_keep_every_invariant` drives it. That
-# test checks that simulated time equals exactly the number of steps taken times the step.
-# The oracle never calls `SimulationState`.
+# `SimulationState` combines the system under test with the step count from which its elapsed
+# time is computed. `test_randomised_control_trajectories_keep_every_invariant` is the only test
+# that drives `SimulationState`. It does so that the randomised runs go through the same
+# `advance` that the application calls. The oracle never calls `SimulationState`.
 #
 # `SimulationStep` is the type that the system under test accepts for its step
 # (`PL-0GJC`). It checks a number against the supported range and solves
@@ -1563,9 +1571,13 @@ def test_the_disagreement_does_not_shrink_with_the_step(
 def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, seed: int) -> None:
     """A run whose controls move at moments nobody scripted stays valid at every step.
 
-    The run must not raise, the agent accounting must pass after every step,
-    each of the six fractions must stay finite and within [0, 1], and simulated
-    time must end at exactly the steps taken times the step.
+    The run must not raise, the agent accounting must pass after every step, and
+    the state must count every step taken. Each of the six fractions must stay
+    finite, at or above zero, and at or below the highest fraction delivered so
+    far. Every compartment is fed only from the others and from the vaporizer, so
+    no compartment can hold agent at a higher fraction than was ever delivered.
+    A fixed upper bound of 1, the largest possible fraction, would be far looser,
+    because the highest dial setting in these runs is 5 to 18%.
 
     With the exact step, the propagator of a transfer system like this one is entrywise
     nonnegative. So a step cannot produce a fraction that the compartments' guards reject
@@ -1581,8 +1593,16 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
     step = SimulationStep(SHIPPED_STEP_S)
     steps_taken = 0
 
+    highest_delivered = 0.0
+
     for phase in _randomised_trajectory(agent_id, seed):
         _apply_operating_point(system, phase.point)
+        highest_delivered = max(
+            highest_delivered, phase.point.delivered_percent / PERCENT_PER_UNIT_FRACTION
+        )
+        # A few units in the last place above the highest delivered fraction, for
+        # the rounding a step adds. A fraction never delivered stays exactly zero.
+        ceiling = highest_delivered * (1.0 + RANDOMISED_FRACTION_ROUNDING)
 
         for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
             result = state.advance(step)
@@ -1594,14 +1614,14 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
             )
 
             for label, fraction in zip(STATE_LABELS, _shipped_states(system), strict=True):
-                assert math.isfinite(fraction) and 0.0 <= fraction <= 1.0, (
+                assert math.isfinite(fraction) and 0.0 <= fraction <= ceiling, (
                     f"{agent_id}, seed {seed}: the {label} fraction is {fraction!r} "
-                    f"at step {steps_taken}"
+                    f"at step {steps_taken}, against a highest delivered fraction of "
+                    f"{highest_delivered!r}"
                 )
 
     assert steps_taken == round(ENVELOPE_HORIZON_S / SHIPPED_STEP_S)
     assert state.step_count == steps_taken
-    assert state.elapsed_s == steps_taken * SHIPPED_STEP_S
 
 
 @pytest.mark.parametrize("seed", RANDOMISED_TRAJECTORY_SEEDS)

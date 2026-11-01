@@ -3,12 +3,14 @@ id: PL-10MX
 title: Advance a caller over a duration by taking supported steps
 priority: P2
 effort: S
-status: ready
+status: done
 classes: feature
 feature: numerical-domain
-touches: src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md
+touches: docs/MODEL.md
 added: 2026-08-30
-verify: uv run pytest -k advance_over
+closed: 2026-11-01
+pr: 1909
+verify: grep -qF '(`PL-10MX`)' docs/MODEL.md && grep -q 'def test_state_at_matches_a_stepped_run' tests/unit/test_run_definition.py
 ---
 
 **Problem.** After PL-VP7N a caller that wants 30 s of simulated time gets a

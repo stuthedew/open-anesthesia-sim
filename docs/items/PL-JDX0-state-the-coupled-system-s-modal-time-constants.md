@@ -3,12 +3,14 @@ id: PL-JDX0
 title: State the coupled system's modal time constants in docs/MODEL.md, so the timescales the model resolves are readable
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: numerical-domain
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-09-05
-verify: grep -qF 'Modal time constants' docs/MODEL.md && python3 tools/doc_check.py check
+closed: 2026-11-01
+pr: 1909
+verify: grep -qF 'test_modal_time_constants_are_the_pinned_ones' docs/MODEL.md && grep -q 'def test_modal_time_constants_are_the_pinned_ones' tests/reference/test_coupled_dynamics.py
 ---
 
 **Problem.** `docs/MODEL.md` states two single-mechanism time constants under
@@ -87,3 +89,12 @@ values, which may explain them.
 `test_modal_time_constants_are_the_pinned_ones` pins the table to five
 figures, so a parameter change that moves a printed figure fails there as
 well as in `tools/doc_check.py`'s `derived:` markers.
+
+**The fastest mode is not at the corner (found by blind review, 2026-11-01).**
+Both review passes found that isoflurane's fastest time constant falls to
+5.83 s at 10 L/min of fresh gas, 12 L/min of ventilation and 9.32 L/min of
+cardiac output, below the corner's 6.02 s, where its complex pair splits. A
+grid sweep of all three flows (11 × 13 × 21 per agent, refined along cardiac
+output) confirmed it, and found the corner fastest for the other two agents.
+`docs/MODEL.md` now states 5.83 s as the fastest anywhere in the supported
+settings, and § "Supported simulation step" uses it.

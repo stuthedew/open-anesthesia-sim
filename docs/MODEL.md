@@ -1384,8 +1384,15 @@ volume is the reference circle system's 6 L in both.
 Three things follow from the table.
 
 - **The fastest mode is 13.7 to 16.6 s at the default flows, and 6.02 to
-  7.17 s at the corner.** No change in the model is faster than that.
-  § "Supported simulation step" compares the step with it.
+  7.17 s at the corner.** The corner is not where the model is fastest,
+  though. A sweep of all three flows, on a grid of 11 fresh gas flows, 13
+  ventilations and 21 cardiac outputs for each agent, refined along cardiac
+  output, found the fastest mode anywhere in the supported settings to be
+  5.83 s. That is isoflurane at 10 L/min of fresh gas, 12 L/min of
+  ventilation and 9.32 L/min of cardiac output, where its complex pair splits
+  into the two real modes of the corner row. For sevoflurane and desflurane
+  the fastest mode is at the corner. No change in the model is faster than
+  5.83 s. § "Supported simulation step" compares the step with it.
 - **The slowest mode is the fat mode, at 47 000 s (13 hours) to 187 000 s
   (52 hours).** The ratio of the slowest to the fastest time constant is
   between about 5 700 and 14 900, so the system is stiff. An explicit method
@@ -1401,6 +1408,7 @@ Three things follow from the table.
   allows cannot be seen. Its period is 384 to 1 540 s, and over half a period
   the pair decays by a factor of at least $`e^{17}`$, about $`2.5\times10^{7}`$.
   At the corner, isoflurane's two fastest modes are real and distinct.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
 `test_modal_time_constants_are_the_pinned_ones` in
 `tests/reference/test_coupled_dynamics.py` recomputes every figure in the
@@ -2067,13 +2075,14 @@ happened at all.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The physical timescale beside the step** (`PL-JDX0`). The fastest mode of the
-coupled system has a time constant of 6.02 s, for isoflurane at the corner of
-the supported settings, and 13.7 to 16.6 s at the default flows (§ "Alveolar
-gas"). The 0.1 s step is about a sixtieth of the fastest. That ratio is not an
-accuracy condition, because the exact step has none. It is why a control
-change that lands one step late moves the states so little. In one step, the
-fastest mode closes about 1.6% of its remaining gap, because
-$`1 - e^{-0.1/6.02} = 0.0165`$. It also means that a chart sampled once per
+coupled system anywhere in the supported settings has a time constant of
+5.83 s, for isoflurane at the widest fresh gas flow and ventilation and a
+cardiac output of 9.32 L/min. At the default flows it is 13.7 to 16.6 s
+(§ "Alveolar gas"). The 0.1 s step is about a sixtieth of the fastest. That
+ratio is not an accuracy condition, because the exact step has none. It is why
+a control change that lands one step late moves the states so little. In one
+step, the fastest mode closes about 1.7% of its remaining gap, because
+$`1 - e^{-0.1/5.83} = 0.0170`$. It also means that a chart sampled once per
 step sees every mode the model has.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
@@ -2250,16 +2259,21 @@ The largest supported step and the shipped step are the same number, and the
 interface runs at it.
 
 **A caller that wants a duration rather than a step asks the run's
-definition** (`PL-10MX`). `advance()` refuses a step longer than the ceiling,
-so `advance(30.0)` raises a `SimulationConfigurationError`. That refusal no
-longer protects accuracy, because the exact step is exact over any interval.
+definition** (`PL-10MX`). A step longer than the ceiling cannot be built:
+`SimulationStep(30.0)` raises a `SimulationConfigurationError`, so no call to
+`advance()` can ask for 30 s. That refusal no longer protects accuracy,
+because the exact step is exact over any interval.
 It protects the control timeline: a run taken in steps is one the interface
 could have produced, with each setting held for whole steps. A caller that
 wants the state after 30 s, or after an hour, of settings it does not change
 needs no steps at all. It builds a `RunDefinition` from the system's
-`equation_settings()` and `state_vector()`, moves it with `advance_to`, and
-reads `state_at`. That forms one matrix exponential over the whole interval
-(§ "The canonical evaluation rule"), in place of 300 or 36 000 steps.
+`equation_settings()` and `state_vector()`, with `opened_at_s` set to the
+instant the system has reached, which is `SimulationState.elapsed_s` for a
+run already under way. It then moves the definition with `advance_to` and
+reads `state_at`. The opening instant is required, with no default, so that a
+run partway through a case cannot be opened at zero by mistake. `state_at`
+forms one matrix exponential over the whole interval (§ "The canonical
+evaluation rule"), in place of 300 or 36 000 steps.
 `test_state_at_matches_a_stepped_run` in `tests/unit/test_run_definition.py`
 holds the two routes to the same answer. The application builds its
 predictions this way. No method on `SimulationState` takes steps in a loop on
@@ -2668,6 +2682,38 @@ fraction back to 1 instead would hide an error of this size rather than
 bound it.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+
+**Neither shorter propagators nor a method with fewer squarings would shrink
+it, so the display path keeps its method** (`PL-81Q2`, 2026-11-01). Two
+remedies were measured at that corner over the window's 1464.4 s column
+spacing, against the same 50-digit reference, with no fresh gas:
+
+- **Capping the interval does not help.** One propagator over 1464.4 s needs
+  32 squarings, and its worst entry was off by 6.0e-7. Building the same
+  interval from propagators over 100 s, 10 s or 1 s needs 28, 25 or 22
+  squarings each, and the product was off by 5.9e-7, 5.8e-7 and 5.8e-7. Each
+  shorter propagator carries a smaller error, but more of them are multiplied
+  together. That is what "What it costs" in `core/matrix_exponential.py`
+  predicts: the bound grows with the interval times the fastest rate, however
+  the interval is divided.
+- **A method that chooses fewer squarings cannot choose many fewer here.**
+  Al-Mohy and Higham's algorithm saves squarings when a matrix's norm is much
+  larger than its spectral radius. Here they are close: the 1-norm of the
+  system matrix is 1.83e5 /s, and its spectral radius is 1.67e5 /s. Scaling
+  the spectral radius times 1464.4 s down to the degree-13 Padé
+  approximant's threshold of 5.37 still takes 26 squarings. It would
+  also give up the shift that makes the propagator nonnegative in floating
+  point, which every compartment's guard relies on (Al-Mohy AH, Higham NJ. A
+  new scaling and squaring algorithm for the matrix exponential. SIAM J Matrix
+  Anal Appl 2009;31(3):970-989. doi:10.1137/09074721X; read from its abstract).
+<!-- not-restated: 1 s -->
+
+No run in the application reaches that window anyway. A stepped run at the
+stiffest corners halts on the mass-balance check within a few dozen steps, as
+the paragraph on stepped runs below shows, so its chart never spans 24 hours.
+The excess, 3.3e-5 of an atmosphere, is also less than half of one displayed
+count, which is 1e-4 at two decimals of a percent.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
@@ -4773,9 +4819,13 @@ predicts: a run that turns 48 to 64 times takes as many steps as one that
 never turns, so it accumulates as much rounding and no more.
 `test_randomised_control_trajectories_keep_every_invariant` drives the same
 runs through `SimulationState`. It checks that no step raises, that the agent
-accounting passes after every step, that all six fractions stay finite and
-within [0, 1], and that simulated time ends at exactly the steps taken times
-the step.
+accounting passes after every step, and that the state counts every step
+taken. It also checks that each of the six fractions stays finite, at or
+above zero, and at or below the highest fraction delivered so far. Every
+compartment is fed only from the others and from the vaporizer, so no
+compartment can hold agent at a higher fraction than was ever delivered. A
+looser bound of 1 would pass a model change that drove a compartment to
+several times the dial setting.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 In every case the maximum is taken over the whole trajectory rather than at
