@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: area-layout-sizing
+milestone: v0.6.12
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - filed after the gate froze; it needs a window smaller than every Area's floor, and it changes a layout, not a displayed value
 added: 2026-10-27

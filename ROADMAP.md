@@ -153,7 +153,7 @@ rule above applies.
 | v0.6.9 | Completed | **The release where every input to `core/` has a closed range that is refused when it is built, from each compartment volume and partition coefficient to the opening state, where every way of branching at a paused instant opens under the same settings and records the same provenance, where each agent stores its molar mass and its measured liquid density, and where the accounting check's delivered total now equals dial × flow × time to the last bit.** 95 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state is bit-identical**: `core/` moved (`5e150fb` to `dbba1c0`) and `data/` moved (`2a85cd0` to `2f84dbb`), and the trajectory comparison against the v0.6.8 tag found every state vector, canonical state, drawn window and hover string identical over 81 cases and three 24-hour runs. `data/` gained each agent's molar mass and liquid density (`PL-KZ99`, `#1866`) and changed no value it already held. What moved is the agent accounting: `PL-XST1` (`#1826`) sums the delivered and exhausted totals with Kahan compensation, so the delivered total, shown in litres to a tenth, reads a different tenth in 398 of 236,313 sampled readouts, each one an amount exactly halfway between two tenths. **It finishes ten features**, among them `model-spec-accuracy` and `fewer-red-runs`, and closes four generator heads, all spent (`PL-58D7`, `PL-HJKN`, `PL-N7MM`, `PL-ZR49`). **39 are Gate 3 entries**, three of them in v0.7.0's Required scope, and the gate stands at 64 of 87 cleared, from 25 of 48 at the v0.6.8 tag. `PL-8D7L`, the cut, ships in no release under `PL-KRS6`. | 95 items |
 | v0.6.10 | Completed | **The release where each value on the run screen is written from the same step as the label, divisor and verdict beside it, where a dial moved on a stopped run is refused, where the accounting panel of a run that an accounting failure halted shows the rejected step's own verdict and totals, where a run that a mark stopped says so in its status word, and where a test holds `docs/MODEL.md`'s MAC-awake washout figures to the model.** 12 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`dbba1c0` to `26931f6`) only in the accounting error, which now carries the failing check and says the step was rolled back, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.9 tag found every state vector, canonical state, drawn window, hover string, readout string and halt identical over 81 cases and three 24-hour runs. A snapshot gains one field, the rejected step's check, which no case in the comparison fills. **It finishes two features**, `mac-awake-reference-text` and `one-source-of-truth`, and closes one generator head, spent (`PL-J5GC`). **Nine are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 73 of 88 cleared, from 64 of 87 at the v0.6.9 tag. `PL-8BDX`, the cut, ships in no release under `PL-KRS6`. | 12 items |
 | v0.6.11 | Completed | **The release where the coupled model refuses an input fraction above 0.99 of the ambient pressure and the chart refuses to draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9 tolerance with the reason recorded, where holding a slider's thumb previews the trajectory that the held value would give, where every run holds while a Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states the coupled system's modal time constants.** 14 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`26931f6` to `8186a8c`) only for `PL-9B1M`'s input ceiling and the new check on every drawn column, which no shipped vaporizer's maximum reaches, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.10 tag found every state vector, canonical state, drawn window, hover string, readout string, halt and snapshot field identical over 81 cases and three 24-hour runs. **It finishes two features**, `floating-point-domain` and `numerical-domain`, and closes no generator head. **Five are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 78 of 89 cleared, from 73 of 88 at the v0.6.10 tag. `PL-KDDS`, the cut, ships in no release under `PL-KRS6`. | 14 items |
-| v0.6.12 | Completed / current baseline | **The release where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, where `docs/MODEL.md`'s step-refinement paragraph names the three fractions its test compares, and where the model review keeps counting a failed pull request title as a red CI run, because a measurement found that none of its 102 failures was by design.** Three items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/` resolves to the same tree at the v0.6.11 tag and here (`ca9bd1e`), so the trajectories were not re-measured. **It finishes two features**, `invariant-test-gaps` and `model-review`, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 3 items |
+| v0.6.12 | Completed / current baseline | **The release where a press on an Area border in a window too small for the Areas no longer rewrites the saved arrangement, where a drag pushed into an Area held at its View's need turns the border WARNING as a keyboard step already did, where a too-small Area's notice is wrapped at the width the Area is drawn at, where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, and where the model review keeps counting a failed pull request title as a red CI run, because a measurement found that none of its 102 failures was by design.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` (`8186a8c`) and `data/` (`2f84dbb`) resolve to the same trees at the v0.6.11 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/area_layout.py` and `layout/sizing.py`, for the Area borders and floors. **It finishes two features**, `invariant-test-gaps` and `model-review`, and closes no generator head. **None is a Gate 3 entry**, though three were deferred from it, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 6 items |
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -271,26 +271,29 @@ There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 ## Current baseline: v0.6.12
 
-v0.6.12 is the release where the test behind `docs/MODEL.md` § "Directional
-ventilation test" checks the lesson the section states. Higher alveolar
-ventilation must bring F_A toward F_I faster, and the test now requires F_A/F_I
-to be higher at 8 L/min than at 2 L/min at every whole second of the first
-minute. It is also the release where `docs/MODEL.md`'s step-refinement
-paragraph names the three fractions its test compares, and where the model
-review keeps counting a failed pull request title as a red CI run. The release
-has three items, and it is a patch on both halves of § "Versioning decision"'s test. No
-capability boundary is crossed. The next milestone, v0.7.0, the schematic, is
-scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections.
-None of v0.7.0's own Required scope ships here.
+v0.6.12 is the release where the Area borders and floors behave correctly in a
+window too small for the Areas. A press on a border there no longer rewrites
+the saved arrangement, a drag pushed into an Area held at its View's need turns
+the border WARNING, and a too-small Area's notice is wrapped at the width the
+Area is drawn at. It is also the release where the test behind `docs/MODEL.md`
+§ "Directional ventilation test" checks the lesson the section states, where
+`docs/MODEL.md`'s step-refinement paragraph names the three fractions its test
+compares, and where the model review keeps counting a failed pull request
+title as a red CI run. The release has six items, and it is a patch on both
+halves of § "Versioning decision"'s test. No capability boundary is crossed.
+The next milestone, v0.7.0, the schematic, is scoped and not built, and v0.7.0
+and v0.8.0 are given to milestone sections. None of v0.7.0's own Required
+scope ships here.
 
-None of the three items is on Gate 3's frozen list, so the gate stands at 78
-of 89 cleared, as at the v0.6.11 tag.
+None of the six items is on Gate 3's frozen list, so the gate stands at 78 of
+89 cleared, as at the v0.6.11 tag. Three of them, `PL-MH5T`, `PL-XX18` and
+`PL-9Z74`, were deferred from that list with `deferred-from: v0.7.0`.
 
-**Nothing in `src/` changed, and no run can differ:**
+**No equation, parameter or stored value changed, and no run can differ:**
 
 | Tree | v0.6.11 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `ca9bd1e` | `ca9bd1e` | nothing |
+| `src/` | `ca9bd1e` | `3ecaeee` | `app/` and `layout/` |
 | `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
 | `src/anesthesia_sim/data/` | `2f84dbb` | `2f84dbb` | nothing |
 | `tests/reference/` | `070c70c` | `696db73` | the directional ventilation test, and the step-refinement bound's comment |
@@ -298,8 +301,26 @@ of 89 cleared, as at the v0.6.11 tag.
 | `README.md` | `7db4f10` | `7db4f10` | nothing |
 | `.github/` | `3f5e7c1` | `3f5e7c1` | nothing |
 
-Because `src/` resolves to the same tree at the v0.6.11 tag and here, the
-trajectories were not re-measured. Every run is the run v0.6.11 gave.
+`src/` moved only in `app/area_layout.py` and `layout/sizing.py`, which decide
+where Area borders are drawn and how much room each Area gets. Because `core/`
+and `data/` resolve to the same trees at the v0.6.11 tag and here, the
+trajectories were not re-measured. Every modelled run is the run v0.6.11 gave.
+
+**The Areas in a small window.** In a window smaller than the Areas' floors,
+Qt draws every Area of an over-full split at its floor, whatever the stored
+fractions say. A press or a zero-pixel move on a border there used to rewrite
+the saved arrangement while nothing moved on screen. Now the border stays
+still, the fractions are kept, and no change is emitted (`PL-MH5T`).
+`layout/sizing.py` gains `border_range`, the offsets at which a border can be
+drawn. A drag pushed into an Area held at its View's need now turns the
+border's line WARNING, as a keyboard step into the same Area already did
+(`PL-XX18`). A too-small Area's notice is now wrapped at the width the Area is
+drawn at, not at the View chooser's width, so a wide Area no longer reserves
+lines it never uses (`PL-9Z74`). In an 800 by 350 px window, two stacked Big
+views now keep one View drawn where both used to show the notice. All three
+are `#1912`. One item of `area-layout-sizing` stays open: `PL-7DXG`, filed
+there, because a stacked split is still refused against a floor measured at
+its own width.
 
 **The model's required tests.** `docs/MODEL.md` requires that higher alveolar
 ventilation speed the approach of F_A toward F_I. The test that enforced it
@@ -334,8 +355,7 @@ runs the same check before a push. So the step stays in the count, and the
 model review skill's red-run row now says why (`#1911`).
 
 The release finishes two features, `invariant-test-gaps` and `model-review`.
-It closes no
-generator head. The release item is `PL-2JYB`, whose `resource:
+It closes no generator head. The release item is `PL-2JYB`, whose `resource:
 release-train` keeps it out of every later release. Every closure carried its
 `pr:` number before the cut, so every bullet cites its pull request.
 `bin/docket release` reported the same three missed apparatus-inflow
