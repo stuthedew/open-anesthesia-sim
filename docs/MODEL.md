@@ -6770,17 +6770,22 @@ supported run under § "Supported run length". So the second row is the worst
 that a supported run reaches at this column count.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**The headroom differs by four orders between those two columns, which is why
-the rule is enforced rather than trusted.** A fraction is displayed as a
-two-decimal percent, so "Displayed precision" resolves 1e-4. The measured
-difference is eight orders below that. If the fractions were all that a run
-held, that margin would make the separation between the two paths academic. The
-accumulators are displayed as six decimals of a litre, which resolves 1e-6 L.
-The measured difference is less than three orders below that. Three orders is
-ample, but it is not fourteen. A display value that reached the mass-balance
-readout would be wrong in a place a reader could eventually see. It would also
-look exactly like the right answer.
-<!-- not-restated: 6 L -->
+**The headroom is wide against every amount on screen, and there is none
+against the residual lines, which is why the rule is enforced rather than
+trusted.** A fraction is displayed as a two-decimal percent, so § "Displayed
+precision" resolves 1e-4. The measured difference is eight orders below that.
+The agent-accounting panel displays its three amounts to 0.1 L (`PL-TG60`), and
+the accumulators' measured difference is more than seven orders below that. If
+those readouts were all that a run showed, the margins would make the
+separation between the two paths academic. But the panel's two residual lines
+print the power of ten that a residual lies below, and a residual is formed from
+the two accumulators. § "Displayed precision" records passing residuals below
+2.1e-11 L. The display path's accumulator difference is 3.1e-12 L at 1800 s,
+which is the size of such a residual, and 3.1e-9 L at 24 h, which is larger.
+So a display value that reached the mass-balance readout would change the
+decade it prints. That is a place a reader can see, and the wrong decade would
+look exactly like an ordinary passing residual.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What this requires of a branch.** `ROADMAP.md` item 12 asks that a branched
 run reproduce its parent element-wise, not merely within a tolerance. This rule
@@ -7172,8 +7177,10 @@ composed in a different order. This was measured on 2026-09-20 on the 3 600 s
 case above, forked at the 655.3 s bookmark. Both runs were advanced 1 200 s,
 and both were asked for a 601-column axis from zero to 1 800 s. **2 977 of
 3 438 shared column elements differ, worst 7.70e-16 as a fraction and
-8.17e-14 L on an accumulator**. These are eleven and seven orders of magnitude
-below the 1e-4 and 1e-6 of § "Displayed precision". A branch forked at the
+8.17e-14 L on an accumulator**. The first is eleven orders of magnitude below
+the 1e-4 to which § "Displayed precision" resolves a fraction. The second is
+twelve orders below the 0.1 L to which the agent-accounting panel displays an
+amount. A branch forked at the
 600 s control event instead differs at none of the columns it shares.
 
 The guarantee above is unaffected, because it rests on `state_at` and not on
@@ -10081,8 +10088,9 @@ it.
 
 **Recorded values are the model's, not the interface's.** Each value is read
 back from the compartment that holds it, after the core has accepted it. It is
-stored in the unit that the core uses. So the delivered dial is stored as a
-fraction of one atmosphere. It is displayed as a percent, like every other
+stored in the unit that the core uses. So the delivered dial is stored as the
+percent of one atmosphere it was set to, which is the percent the core is set
+with (`PL-NJPB`). It is displayed through the same formatter as every other
 concentration on the page, and it is converted once, at the display. A record
 of what was *asked for*, rather than of what took effect, would diverge from
 the run the first time the two differed. The core rejects an out-of-range
@@ -12298,7 +12306,7 @@ percent by another.
 **The delivered-concentration control is where that assumption does the most
 work.** The control is a vaporizer dial rather than a modeled gas state. It is
 `app/control_record.py`'s `ControlInput.DELIVERED`, and its recorded changes
-carry the unit *fraction of 1 atm*. A dial position means a partial pressure,
+carry the unit *percent of 1 atm* (`PL-NJPB`). A dial position means a partial pressure,
 the quantity that produces the anesthetic effect, only once the ambient
 pressure is known. At 760 mmHg it means the *same* partial pressure whichever
 class of vaporizer the dial belongs to. That is why this model needs no
