@@ -7302,7 +7302,7 @@ take.
 10. **A preferences file** (queue item `PL-93B3`). The price and the cost
     View's unit belong to the reader, not to a layout. So they are kept in a
     versioned preferences file separate from the Workspaces, as `PL-MQHN`
-    decided. Nothing in `src/` stores a preference yet.
+    decided. `app/preferences.py` is that store (`PL-93B3`, 2026-11-01).
 
 11. **The cost in money** (queue item `PL-1P15`). The agent cost View shows
     the delivered agent's cost at a price per agent that the reader sets. The

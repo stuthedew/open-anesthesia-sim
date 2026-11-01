@@ -12103,9 +12103,9 @@ label names the run the preview belongs to.
 ### A cost at the reader's price
 
 This section specifies what a stored agent price carries, and what a readout
-that shows a cost must show beside it (`PL-VJZK`). Nothing in `src/` stores a
-price or shows a cost yet. `PL-93B3` builds the store, and `PL-1P15` builds
-the cost on the agent cost View.
+that shows a cost must show beside it (`PL-VJZK`). `app/preferences.py`
+stores a price (`PL-93B3`). Nothing in `src/` shows a cost yet: `PL-1P15`
+builds the cost on the agent cost View.
 
 **A price is neither modelled nor measured.** This document separates
 modelled values from measured ones, and every value the interface shows today
@@ -12169,8 +12169,11 @@ widely. At Gas Man's sevoflurane default of 240.34 for a 250 mL bottle
 (printed p. 172), a swap changes the cost by 8 %, and nothing on screen would
 show it. One function derives the price per millilitre from the two
 stored figures. The store never holds it, so it cannot disagree with them.
-Whether the store also refuses a bottle volume outside the sizes in which the
-agents are sold is `PL-93B3`'s decision, because no source gives a bound.
+The store refuses no positive finite bottle volume, whatever its size,
+because no source gives the sizes in which the agents are sold (`PL-93B3`,
+2026-11-01). A volume typed in litres or as a count of bottles is caught on
+screen instead: it makes the price per millilitre, which the readout shows
+beside every cost, 100 to 1000 times the true one.
 
 <!-- not-restated: 8 % -->
 
@@ -12194,8 +12197,12 @@ as it was, so the readout goes on showing the cost at that earlier price, with
 that price beside it. A price refused when the preferences file is read is not
 used, and it is never replaced by a default. The readout then says that no
 valid price is set for the agent.
-Whether the store also checks the three letters against the codes that
-ISO 4217 assigns is `PL-93B3`'s decision.
+The store does not also check the three letters against the codes that
+ISO 4217 assigns (`PL-93B3`, 2026-11-01). That list changes several times a
+year, so the check would need a dated copy of it with its own provenance, and
+a copy that fell out of date would refuse a real currency. Any three letters
+remove the ambiguity of "$", and a mistyped code is shown beside every cost and
+price, where the reader sees it.
 
 **What a cost readout shows.** A cost is never shown alone. Beside it, the
 readout shows these six things:
