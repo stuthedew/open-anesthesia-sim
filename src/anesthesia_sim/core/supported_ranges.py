@@ -59,22 +59,24 @@ It is not a physiological claim but a numerical one, and it bounds the opening
 state of the coupled system too.
 
 **The coupled model's inputs stop at 0.99 of the ambient pressure** (`PL-9B1M`). A
-fraction is checked from 0 through 1 wherever it is built, including every
-fraction that a step or an evaluation computes. The coupled step's rounding can
-carry a computed fraction a little above the largest fraction it started from.
-So a state at the very top of the range, with every compartment at 1, could not
-be stepped. A step rounded one fraction to 1.0000000000349965, the check refused
-it, and the run halted for a rounding error. The display path drew 1.000033 from
+fraction of the ambient pressure is checked to lie from 0 through 1 wherever it
+is built, including every fraction that a step or an evaluation computes.
+Rounding in the coupled step can carry a computed fraction a little above the
+largest fraction that the step started from. So a state at the very top of the
+range, with every compartment at 1, could not be stepped. A step rounded one
+fraction to 1.0000000000349965, the check refused it, and the run halted for a
+rounding error. The path that produces displayed values computed 1.000033 from
 the same state. No shipped vaporizer's maximum comes near 100% of the ambient
 pressure, so no supported run needs a state that close to 1. The fix is
-therefore to stop the inputs short of 1 rather than to widen the check. The
-delivered concentration and every fraction that the stepped system opens from
-must be at or below `MAXIMUM_INPUT_FRACTION`. Because the model conserves
-agent, no computed fraction then exceeds that ceiling by more than the
-propagator's error, which the squarings set. The largest excess
-measured at every envelope corner was 3.3e-5, and `docs/MODEL.md` § "The
-numerical envelope" gives the measurement (project owner, 2026-10-31, ratified,
-over a fraction check that accepts a value slightly above 1).
+therefore to stop the inputs short of 1 rather than to widen the check (project
+owner, 2026-10-31, ratified, over a fraction check that accepts a value slightly
+above 1). The delivered concentration must be at or below
+`MAXIMUM_INPUT_FRACTION`, and so must every fraction in the state that the
+stepped system starts from. The model conserves agent, so no computed fraction
+then exceeds that ceiling by more than the propagator's error. That error grows
+with the number of times `core/matrix_exponential.py` squares the propagator.
+The largest excess measured across the envelope's corners was 3.3e-5, and
+`docs/MODEL.md` § "The numerical envelope" gives the measurement.
 
 **Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
 `PL-51B7`). `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are
