@@ -3,12 +3,15 @@ id: PL-ZT47
 title: docs/MODEL.md still reads as machine-written after PL-BZR4's rewrite: tautological asides, 'X, not Y' and 'rather than' contrasts, and narration about its own provenance; the plain-writing rule names none of these patterns, and the close-out prose review reads only .py files, so MODEL.md's 2,348 lines added since were never reviewed
 priority: P2
 effort: M
-status: untriaged
+status: done
 classes: docs, infra
 feature: prose-quality
-touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tools/model_rewrite.py, tests/unit/test_new_prose.py, tests/unit/test_model_rewrite.py
+touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md, docs/resident-instructions.md, docs/apparatus.md, docket.toml, tools/new_prose.py, tools/model_rewrite.py, tests/unit/test_new_prose.py, tests/unit/test_model_rewrite.py
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1943
 payoff: every later change to the model specification gets the same plain-prose review as a docstring, and each section rewrite can show the reader what it removed
+verify: grep -qF 'A table cell or paragraph that has grown into an essay' .claude/rules/plain-writing.md && uv run pytest -q -p no:cacheprovider tests/unit/test_model_rewrite.py tests/unit/test_new_prose.py
 reenters: PL-PRCS
 ---
 

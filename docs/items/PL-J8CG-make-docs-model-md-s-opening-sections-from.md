@@ -3,13 +3,14 @@ id: PL-J8CG
 title: Make docs/MODEL.md's opening sections, from § "Status" through § "Model boundary" and including the hazard table, readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
+verify: uv run python tools/model_rewrite.py ids "Status" "Intended use, and the safety class this project holds itself to" "Reasonably foreseeable misuse, and the hazards the presentation carries" "How this document is held to the tree" "Purpose" "Model boundary"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
 ---
 
@@ -30,9 +31,14 @@ unit and the limitation the reader came for.
 history out to the items first, in its own commit, then rewrite the phrasing,
 and account for every line `tools/model_rewrite.py lost` prints. No equation,
 unit, value, assumption, limitation, citation, marker, named test or
-declared-none form may be lost. This item is blocked until `PL-ZT47` lands the
-rule and the tools it uses.
+declared-none form may be lost. `PL-ZT47` built the rule and the tools this
+uses.
 
 **Generator check.** Work the owner asked for: one section part of `PL-ZT47`'s
 decided split. The mechanism that let the history and padding accumulate,
 `docs/MODEL.md` prose that no close-out review read, is `PL-ZT47`'s to fix.
+
+**Done when.** `uv run python tools/model_rewrite.py ids` prints nothing for this part's sections, which its
+`verify:` runs. The pull request body accounts for every line
+`tools/model_rewrite.py lost` prints, and the project owner has read the
+rewrite.
