@@ -3,13 +3,16 @@ id: PL-CSK0
 title: Under the drift run's upgraded dependencies, test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one finds a QWidget that reads differently on a halted dashboard and on the same one drawn; it passes on uv.lock, so either a newer PySide6 exposes a real stale-state surface after a halt or the test reads a property the new Qt changed (drift run 41279184121, 2026-11-01)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, test
 feature: drift-2026-11-01
 touches: tests/integration/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
+closed: 2026-11-02
+pr: 1937
 payoff: the lock can take PySide6 6.12 knowing whether a halted dashboard shows a learner anything stale, instead of the halt-state guard failing unexplained
+verify: grep -q 'def test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_the_bar' tests/integration/test_simulation_view.py
 not-delegable: the failure has not been reproduced outside CI, so no command on the locked tree fails before the work and passes after it; only a manual run of drift.yml under the upgraded dependencies shows the result
 ---
 
@@ -103,3 +106,11 @@ reason now names both scroll areas. An exemption for the container's own type,
 `test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_the_bar`
 makes the record overflow on purpose. It fails without the fix with the CI
 failure's own difference, `{'QScrollBar', 'QWidget'}`, and passes with it.
+
+**Closed 2026-11-02 in #1937.** Drift run 41392804086, dispatched on this
+branch with the fix, passed all four jobs that had finished when this closed:
+`dependencies` (PySide6 6.12.0, pytest 9.2.0), `interpreter` (Python 3.15.2),
+`order` and `doc-quotes`. The first run, 41391573783, on the commit before the
+fix, failed `dependencies` and `interpreter` on this test alone. In that run's
+`interpreter` job, 11768 other tests passed, which is also the first CI proof
+for `PL-ZH36`.
