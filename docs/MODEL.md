@@ -477,8 +477,7 @@ outputs on a 0.1 L/min grid across the supported 0 to 10 L/min range
 (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min). The tissue flows formed from cardiac
 output inherit the difference. So settings rebuilt from a per-second record would
 describe a run that nobody set up. `UptakeEquationSettings` in
-`core/governing_equations.py` stores the flows this way, and `PL-SM5V` records
-the measurement.
+`core/governing_equations.py` stores the flows this way.
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
@@ -491,13 +490,12 @@ of a duration carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A
 component that is zero is dropped. A tenth of a second is shown only where
 there is one, so a stamp still identifies the step at which it was taken.
 
-The clock and the stamps showed seconds until `PL-Q4M4` and `PL-CZFY`. They
-were moved onto the axis's form because the two forms were on screen together.
-A reader looking for a control mark stamped `5400.0 s` on an axis reading
-`1h30m` had to convert by hand between two displayed forms of one quantity. At
-the supported 24-hour run length, the clock's top reading was `86400.0 s`.
-That is false precision on a boundary that this document states in hours
-(`PL-Q4M4`, `PL-CZFY`).
+The clock and the stamps use the axis's form because all three are on screen
+together. A control mark stamped `5400.0 s` on an axis reading `1h30m` would
+make the reader convert by hand between two displayed forms of one quantity.
+At the supported 24-hour run length, a clock in seconds would read
+`86400.0 s`, which is false precision on a boundary that this document states
+in hours.
 
 The width of time that the chart is drawing is the one thing still spelled out
 in words: `15 minutes` above an axis whose last tick reads `15m`. That is a
@@ -548,7 +546,7 @@ The restriction stops at `core/` because the paragraph above allows the
 interface its wall clock. The check closes every route by which a compartment
 could get a clock of its own: the clock directly, an unseeded generator, or an
 identifier made from either. Any of those routes would leave this section
-looking verified while it was false (`PL-J833`, `PL-ZK9R`).
+looking verified while it was false.
 
 Two of those imports are worth naming, because seeding cannot undo their
 effect. `secrets` draws from `random.SystemRandom`. Its `seed()` is a
@@ -605,7 +603,7 @@ The guarantee does not cover four things, and none of them is a defect:
   different. It takes effect at the next step boundary, and the boundaries
   fall at different times on each step grid. So a change's timing moves with
   the step, and two runs with any setting change follow different
-  trajectories by more than rounding after it (`PL-5RPD`).
+  trajectories by more than rounding after it.
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
 - **A different platform.** Addition, multiplication and division are
@@ -648,20 +646,15 @@ $$
 
 `src/anesthesia_sim/core/concentration.py` is the only place where that
 arithmetic is written, in both directions. The two forms are distinct types
-there, so a type checker rejects a percent where a fraction is wanted. Since
-`PL-4R3W`, the code also rejects that mix-up at run time wherever a
-concentration is stored (see below). Since `PL-SWD1`, the conversion itself
-rejects a value that is already in the form it returns, rather than
-converting it again. Since `PL-1DP1`, the conversion also rejects a value that
-was never built as the form it takes, a bare number included, because such a
+there, so a type checker rejects a percent where a fraction is wanted. The
+code also rejects that mix-up at run time wherever a concentration is stored
+(see below). The conversion rejects a value that is already in the form it
+returns, instead of converting it again. It also rejects a value that was
+never built as the form it takes, a bare number included, because such a
 value carries no form to convert it by. The conversion is used in two places
 and no others. The circuit and the recorded settings derive $`F_D`$ from the
 dial's percent where the governing equations use it. The interface converts
-for display. Before `PL-WVSK`, the factor was written out twelve times across
-six modules, and seven of those copies were on the path to a displayed value.
-This section also said then that the interface alone converted. `core/` had
-contradicted that statement ever since the agent data files began carrying a
-MAC.
+for display.
 
 **The percent dialled is the record, and $`F_D`$ is derived from it.** The
 circuit, the settings that a run records for each stretch, and the control
@@ -672,8 +665,7 @@ backwards. Multiplying a fraction by 100 does not always return the percent
 it came from. It fails for 126 of the 801 settings that a 0 to 8% dial makes
 at 0.01% steps. The first failure is at 0.23%, and 0.9% comes back as
 0.9000000000000001. So a record kept as a fraction could not give back what a
-learner dialled. § "Time" states the same rule for the flows, and `PL-NJPB`
-records the measurement. A rejected setting is quoted back in the percent it
+learner dialled. § "Time" states the same rule for the flows. A rejected setting is quoted back in the percent it
 was set in, beside the vaporizer maximum. That maximum is stored in the same
 unit, so the message gives both values in percent.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
@@ -692,7 +684,7 @@ quantity, and nothing in `core/` computes it.
 The divisor is stored as a `MacPercent` (`core/concentration.py`). That type
 is a `Percent` that rejects zero when it is built. So the quotient is never
 formed against a zero MAC. Every formatter that forms the quotient rejects a
-divisor that was not built as a `MacPercent` (`PL-F9TC`). The type sets no
+divisor that was not built as a `MacPercent`. The type sets no
 lower bound other than zero. A MAC far below any real agent's MAC would still
 give multiples too large to read. The shipped MACs are 1.2% to 6.0%.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
@@ -704,7 +696,7 @@ $$
 0 \leq F \leq 1
 $$
 
-**The range is enforced by the type, where a value is built** (`PL-4R3W`).
+**The range is enforced by the type, where a value is built.**
 `Fraction` and `Percent` in `core/concentration.py` check a value when it is
 built. Each rejects a value that is not finite, or that lies outside 0 to 1
 for a `Fraction` or 0 to 100 for a `Percent`. Each rejects a value of the
@@ -716,7 +708,7 @@ checked quantity, such as a step, a flow, an instant or a count. Each stores
 minus zero as zero. `core/checked_number.py` states these rules once, for the
 concentrations and for the flows: what counts as a number, that one checked
 quantity is never built from another, and that minus zero is stored as zero
-(`PL-LLMN`, `PL-979Z`; § "Supported input ranges"). Every place that stores a
+(§ "Supported input ranges"). Every place that stores a
 concentration takes the type. These
 places are each compartment's setter, the driving fraction that a
 compartment's own closed form takes, `BreathingCircuit` when it is built or
@@ -735,7 +727,7 @@ one, 0 through 1. The coupled model's rounding can carry a computed fraction a
 little above the largest fraction it started from. So the coupled model's
 inputs stop short of 1: the delivered concentration and each fraction that the
 stepped system is built with must be at or below 0.99 of the ambient pressure
-(§ "The numerical envelope", `PL-9B1M`). No supported setting computes a
+(§ "The numerical envelope"). No supported setting computes a
 fraction outside the range, and `core/concentration.py` records the
 measurements.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
@@ -771,10 +763,8 @@ millilitres of liquid that a vaporizer is filled from. For that conversion,
 the two candidate conditions differ by a factor of 1.058. The reason is that
 the ideal-gas molar volume is 24.055 L/mol at 20 °C and 25.450 L/mol at 37 °C.
 
-**Why 20 °C, and what it was chosen over** (project owner, 2026-09-17,
-ratified, over 37 °C, the condition at which the stored amounts are natively
-exact, `PL-S6WW`). The choice rests on three grounds. The first can be
-checked, rather than resting on convention.
+**Why 20 °C.** Three grounds support it, and the first can be checked by
+arithmetic.
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one composite number per agent: the vapour
@@ -860,8 +850,8 @@ the stores. And the published constants that any figure will be compared
 against are 20 °C constants. What choosing 20 °C costs is recorded under
 § "Known limitations".
 
-**The conversion's inputs are stored, and one module does the conversion**
-(`PL-KZ99`). Each agent file stores the liquid's density as
+**The conversion's inputs are stored, and one module does the conversion.**
+Each agent file stores the liquid's density as
 `liquid_density`, with its spread and the temperature at which it was
 measured. It stores the molar mass as `molar_mass_g_mol`. Each has its own
 `sources` entry. `core/liquid_agent.py` derives the millilitres of vapour per
@@ -880,7 +870,7 @@ within 0.5 %. It also prices the isoflurane delivered in the Gas Man
 Workbook's Exercises 14-1 and 14-2 with the derived ratio. The prices must
 match the costs the book prints, allowing for the cent and for Gas Man's
 ratio being rounded to a whole millilitre. The agent cost View is the one
-reader of the conversion (`PL-B396`). It shows the delivered agent as liquid,
+reader of the conversion. It shows the delivered agent as liquid,
 and it converts nothing else, so no figure it shows carries the 5.8 % error.
 It reads the amount and the ratio from one snapshot, which carries the
 running agent's ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`).
@@ -888,7 +878,7 @@ So it cannot pair one agent's vapour with another agent's ratio, which would
 misread sevoflurane by about 13 % against desflurane's ratio. A unit test
 refuses any second caller of `liquid_volume_ml` under `src/`. The cost on the
 same View multiplies this liquid figure by the reader's price (§ "A cost at the
-reader's price", `PL-1P15`).
+reader's price").
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -923,8 +913,7 @@ was read.
   liquid-injection section (printed pp. 103-105) is the source for the five
   expansion constants. In that section the constants are the unit of an
   *input*, the volume injected, rather than of a readout. Both were read from
-  the private reference corpus on 2026-09-16 and recorded in `PL-S6WW` and
-  `PL-B396`. `docs/references/README.md` § "Philip — *Workbook for Gas Man*"
+  the private reference corpus on 2026-09-16. `docs/references/README.md` § "Philip — *Workbook for Gas Man*"
   has the extraction note. The workbook is Tier 3 under § "Source hierarchy":
   it fixes what the reference implementation does, and it measures nothing.
 
@@ -1021,17 +1010,16 @@ $$
 The blood:gas partition coefficient relates the concentration of agent
 dissolved in blood to the gas-phase concentration at equilibrium.
 
-**The patient holds one blood:gas coefficient** (`PL-DQL9`). The agent's
+**The patient holds one blood:gas coefficient.** The agent's
 parameter file stores it, and `PatientCompartments.from_parameters` writes it
 once, into the venous pool. The lung's uptake term and every tissue group's
 tissue:blood coefficient read that one value, through
 `PatientCompartments.blood_gas_partition_coefficient`. The tissue groups store
 none. The pool refuses a second write of its coefficient, and the patient
-refuses a replacement pool whose coefficient differs. Until `PL-DQL9` each
-tissue group stored a copy of its own, and nothing checked that the four
-agreed. A pool replaced at 0.1 beside groups at sevoflurane's 0.65 conserved
-agent, so no check fired, and the run gave uptake curves that looked
-plausible and were wrong.
+refuses a replacement pool whose coefficient differs. Copies kept by each
+group could disagree with no check firing. A pool at 0.1 beside groups at
+sevoflurane's 0.65 still conserves agent, and the run gives uptake curves that
+look plausible and are wrong.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
 Arterial blood is flow-limited (see § "Model boundary"). It has no capacity
@@ -1170,7 +1158,7 @@ labels that control "Fresh gas flow", with the gloss "common gas outlet" on
 the line below it. The alveolar readout uses the same two-line form for
 "end-tidal-equivalent", for the same reason. The unqualified name is the one
 on a real flowmeter bank, and the label must not be shortened back to that
-name to fit a layout (`PL-71CF`).
+name to fit a layout.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
@@ -1180,7 +1168,7 @@ name to fit a layout (`PL-71CF`).
 figure.** The model has one well-mixed gas compartment in front of the
 patient, so the corrugated limbs and the Y-piece can only be inside $`V_C`$.
 The machine profile's `circuit_volume_l`, which supplies $`V_C`$, is therefore the
-assembled total of the apparatus plus the patient circuit (`PL-TBMX`). The
+assembled total of the apparatus plus the patient circuit. The
 *apparatus* is the workstation's internal volume, including its absorber and
 excluding the breathing circuit. Every volume that `docs/machine-survey.md`
 § "(a1) Apparatus gas volume" found is stated that way (Shin et al. cite
@@ -1192,9 +1180,7 @@ et al. added to each machine's figure. The exception is a profile that
 assumes a circuit whose own volume is stated (*BMC Anesthesiol*
 2017;17(1):10, PMID 28103806; read at full text 2026-10-04 from PubMed
 Central, PMC5248460). Shin et al.'s sums leave out the circuit's 3 L
-reservoir bag, so a total built from them leaves it out too (project owner,
-2026-10-04, ratified, over counting the bag in the total or leaving the point
-open). If the apparatus figure is stored alone, $`\tau_C`$ is shortened by the
+reservoir bag, so a total built from them leaves it out too. If the apparatus figure is stored alone, $`\tau_C`$ is shortened by the
 circuit's share. A Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min, where its
 assembled 3.3 L gives 49.5 s, so the first value is 36% short. No check can
 catch that error. Both are correctly cited volumes, and
@@ -1384,7 +1370,7 @@ plausible number for a rate that the simulation does not exhibit.
 <!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
 <!-- derived: 20.7 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
-**The coupled system's own time constants** (`PL-JDX0`). What does describe the
+**The coupled system's own time constants.** What does describe the
 trajectory is the spectrum of the system. Set the delivered fraction to zero
 in the six concentration equations of § "Governing equations". They become
 $`d\mathbf{F}/dt = A_6\mathbf{F}`$, where $`A_6`$ is the 6×6 block of the
@@ -1451,12 +1437,7 @@ table from that module's independent transcription of the equations. It fails
 when a change to a parameter file or to the equations moves any of them, and
 its message says to re-derive this table. On 2026-11-01 the eigenvalues of
 the matrix that `build_system_matrix` assembles agreed with those figures to
-within 3e-15 relative. The table was first measured on 2026-09-05, from a
-transcription of the equations. Since then, the venous pool's volume has moved
-from 1.0 L to 1.222 L (`PL-8ZJQ`). That change merged the two fastest modes,
-then 12.7 and 15.9 s for sevoflurane at the default flows, into the complex
-pair above.
-<!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
+within 3e-15 relative.
 
 The pulmonary uptake rate is:
 
@@ -1467,7 +1448,7 @@ $$
 A positive value represents net uptake from alveolar gas into blood. A negative value represents net return from blood to alveolar gas during washout.
 
 **The alveolar volume is held constant, and that is what excludes nitrous
-oxide** (`PL-L2F2`). The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as
+oxide.** The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as
 a constant and divides through by it. `core/governing_equations.py` implements
 exactly that. The alveolar row of `build_system_matrix` divides each of its
 terms by `alveolar_volume_l`, and the equation settings keep that volume fixed
@@ -1684,7 +1665,7 @@ Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount
 that prevents division by zero.
 
 **$`M_{\mathrm{initial}}`$ is counted from the system's own parts, which are
-written once** (`PL-N7MM`). The parts are the circuit, the alveoli, the patient
+written once.** The parts are the circuit, the alveoli, the patient
 and the accounting validator, built together for one agent. A part written
 onto a built system is refused with a `SimulationConfigurationError`. A part
 holding agent the anchor did not count would otherwise halt the next step on
@@ -1770,10 +1751,9 @@ stricter than the 1e-9 halt threshold. Passing the gate therefore says
 strictly more than that the run did not stop. A real conservation defect would
 raise the residual by orders of magnitude, not by factors of two.
 
-**The delivered and exhausted totals are kept by compensated summation**
-(`PL-XST1`, measured 2026-10-25). Each total is a running sum of one transfer
-per step. Until `PL-XST1`, each transfer was added with plain floating-point
-addition, which can round by up to half a unit in the last place each time.
+**The delivered and exhausted totals are kept by compensated summation.**
+Each total is a running sum of one transfer per step. Plain floating-point
+addition can round by up to half a unit in the last place each time.
 For a nearly constant transfer it rounds the same way step after step, so the
 error grows with the number of steps. The worst case in the supported envelope
 is desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas, at the
@@ -1784,7 +1764,7 @@ steps of a 24 h run.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-That run was measured four ways, each for the full 24 h. Two settings of the
+That run was measured four ways on 2026-10-25, each for the full 24 h. Two settings of the
 patient were used. "Default" is the reference adult's alveolar ventilation of
 4 L/min and cardiac output of 5 L/min. "No uptake" sets both to zero, so that
 nearly all the delivered agent is exhausted again. Each total's drift is its
