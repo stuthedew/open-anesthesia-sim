@@ -3,12 +3,14 @@ id: PL-J8CG
 title: Make docs/MODEL.md's opening sections, from § "Status" through § "Model boundary" and including the hazard table, readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1944
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Status" "Intended use, and the safety class this project holds itself to" "Reasonably foreseeable misuse, and the hazards the presentation carries" "How this document is held to the tree" "Purpose" "Model boundary"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
