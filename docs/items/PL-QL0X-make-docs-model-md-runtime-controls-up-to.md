@@ -3,12 +3,14 @@ id: PL-QL0X
 title: Make docs/MODEL.md § "Runtime controls" up to § "Supported input ranges" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1953
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Halting on a marked crossing" "The control-input record"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -42,3 +44,16 @@ decided split. The mechanism that let the history and padding accumulate,
 `verify:` runs. The pull request body accounts for every line
 `tools/model_rewrite.py lost` prints, and the project owner has read the
 rewrite.
+
+**Three sentences changed meaning on purpose (2026-11-02).** The paragraph on
+how a branch's drawn range is clipped quoted the line
+`first_s = max(start_s, self._run_definition.opened_at_s)` from
+`app/controller.py`, with its comment "a branch opens at its fork". That line
+is gone: `drawn_window` now clips at `self.began_at_s`. The paragraph now quotes
+the line the code holds. The same paragraph and § "The canonical evaluation
+rule"'s bookmark-fork paragraph said that only a bookmark fork opens its
+definition at an earlier keyframe and carries the fork instant. Since `PL-ZR49`
+every fork reads its provenance from `RunDefinition.reaching_segment_at`, which
+at a keyframe returns the stretch before it, so a control-event fork opens at
+an earlier keyframe too. Both now say "every fork". The second blind review
+found this.
