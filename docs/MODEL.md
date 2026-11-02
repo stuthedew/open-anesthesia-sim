@@ -3857,9 +3857,10 @@ rather than the patient. So they live in
 
 - **Circuit volume, 6.0 L.** The Workbook's own page-168 table publishes 8.0 L.
   The Methods of De Wolf et al. 2012 print the same 8 L for the simulations to
-  which their Table 1 supplied the coefficients. This project keeps 6.0
-  deliberately. The project owner ruled on 2026-09-01 that which value is used
-  is not critical. The departure changes the machine's own share of the early
+  which their Table 1 supplied the coefficients. The 6.0 L arrived with the
+  first circuit model on 2026-08-22, and no record gives a reason for choosing
+  it. It was kept, rather than moved to 8.0 L, because the project owner ruled
+  on 2026-09-01 that the exact value is not critical. The departure changes the machine's own share of the early
   rise. $`\tau_C = V_C/\dot V_F`$ is 90 s here, against 120 s at 8.0 L and the
   same flow, which makes the apparatus lag 25% shorter. That lag is the part
   of the inspired curve that a learner is most likely to attribute to uptake.
