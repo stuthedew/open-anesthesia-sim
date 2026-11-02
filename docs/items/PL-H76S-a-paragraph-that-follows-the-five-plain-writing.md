@@ -1,8 +1,8 @@
 ---
 id: PL-H76S
 title: A paragraph that follows the five plain-writing patterns and passes both reviews is still unintelligible to a clinician when it uses numerical-methods vocabulary ("operator split", "relative gap", "4e-4"), because no step in drafting, review or audit asks whether the intended reader understands it
-priority: P2
-effort: S
+priority: P1
+effort: L
 status: ready
 classes: docs
 feature: prose-quality
@@ -10,6 +10,9 @@ touches: .claude/skills/docket/modes/close-out.md, .claude/rules/plain-writing.m
 added: 2026-11-02
 payoff: the project's writing and review process produces paragraphs a clinician can follow, so the owner stops finding unreadable text after every review has passed it
 not-delegable: finding why the writing process failed is a judgment about how reviews are briefed, which no command can confirm
+root-cause-of: PL-8ZTQ, PL-BZR4, PL-ZT47, PL-VGDX, PL-1K5X, PL-FDMJ, PL-TPS7, PL-K7N7
+generator: live - the owner found unreadable prose on 2026-11-02 in a section rewrite that had passed the plain-writing rule and its reviews, after eight earlier writing items each added a rule or review step and closed
+misread: Whether a paragraph can be understood by the reader it is written for
 ---
 
 **Problem.** On 2026-11-02 the owner found a paragraph of `docs/MODEL.md`
@@ -49,6 +52,41 @@ pushed branch after its two blind review passes (`4fc015ed`):
 
 So the failure does not depend on one late paragraph. The drafting rule and
 both review passes let this vocabulary through.
+
+**The second failure ran the opposite way.** The session was told to rewrite
+the paragraph for a clinician, and a reviewer read the result as a clinician
+would. At 20:10Z it posted this paragraph, which replaced both paragraphs
+above:
+
+> **The release check, and why it allows 0.5%.** The simulator moves the
+> model forward in fixed time steps, normally 0.1 s long. A shorter step
+> should give almost the same result. If it does not, the step is too long.
+> Before each release, the test runs the first minute of the default
+> sevoflurane induction three times, with steps of 0.1 s, 0.05 s and
+> 0.025 s. In each run, the alveolar, vessel-rich and mixed-venous
+> concentrations must be within 0.5% of the run with the next shorter step.
+> The 0.5% margin was set for the simulator's earlier calculation method.
+> With that method, the alveolar concentrations of the 0.1 s and 0.025 s
+> runs differed by about 0.04%, so the margin allowed about ten times that
+> difference. The check compares each run only with the next shorter step.
+> Under the earlier method, a direct comparison of the 0.1 s run with the
+> 0.025 s run would have failed. Their mixed-venous concentrations, which
+> have barely begun to rise at one minute, differed by 0.55%. With the
+> current method, the three runs agree to better than one part in a
+> trillion (measured 2026-10-03). So this check is now only a coarse safety
+> net. The much tighter limit in the paragraphs above is the one that would
+> catch a real error. One extra rule covers a compartment that still holds
+> almost no agent. There, a tiny difference can be a large percentage, so a
+> percentage means little. Two values for such a compartment also pass if
+> they differ by less than 0.000001 vol%, which is one part in a hundred
+> million of the gas.
+
+The owner's words: "Way too verbose" (project owner, 2026-11-02, 20:17Z, on
+#1950's thread). The jargon was gone, but every figure and the history of the
+old method stayed. The same system that keeps every fact in the text turned an
+unreadable paragraph into a long one. Any fix has to hold against both
+failures: plain words alone produce length when nothing decides which facts a
+clinician needs here and which belong in the item.
 
 **Why it matters.** `docs/MODEL.md` is read by clinicians and educators. A
 paragraph they cannot follow hides the model's limits from exactly the reader
@@ -91,8 +129,18 @@ place: `PL-8ZTQ` (awkward wording, no plain default style), `PL-BZR4` (the
 first cut of `docs/MODEL.md`), `PL-ZT47` (`docs/MODEL.md` still read as
 machine-written after `PL-BZR4`), `PL-VGDX` (pull request titles in the
 building session's own vocabulary) and `PL-BGN1` (owner review requests in
-the repository's shorthand). Triage should decide whether this item is the
-head of those, recorded as a generator.
+the repository's shorthand).
+
+**Generator check.** A generator whose mechanism is not yet known, recorded
+at the owner's word: "Set this as a generator of unknown mechanism requiring
+significant effort to understand and fix. Specifically, the generator big
+picture being despite a supposed plain language system we are still getting
+garbage output that is passing checks. This sounds like a system issue. Not
+just a one off" (project owner, 2026-11-02, 20:15Z). It is live because the
+failure came back today after the eight items above each closed. The
+`misread:` field names the question no step asks, which is the best current
+statement of the shared fact. The design round may restate it once the
+mechanism is found.
 
 **Open question for a design round.** Why do the drafting, review and audit
 steps pass prose that a clinician cannot read? Examine who each step is told
