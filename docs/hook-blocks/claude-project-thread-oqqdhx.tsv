@@ -4,3 +4,12 @@ time	session	guard	rule
 2026-11-02T15:45:04.406803+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
 2026-11-02T15:45:21.238673+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
 2026-11-02T15:45:32.994157+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
+2026-11-02T15:58:47.544412+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
+2026-11-02T16:09:36.560666+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	arm-piped
+2026-11-02T16:12:49.545963+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	owner_ask_guard	bare-read-ask
+2026-11-02T16:32:04.934711+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	floor-interpreter-guard	floor-interpreter
+2026-11-02T16:32:04.968744+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
+2026-11-02T16:32:07.748513+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	floor-interpreter-guard	floor-interpreter
+2026-11-02T16:33:11.095976+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed
+2026-11-02T16:41:17.764940+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	arm-piped
+2026-11-02T16:47:50.100444+00:00	75da70c5-b861-5a30-a2df-61d7355fb3a1	gate-status-guard	status-swallowed

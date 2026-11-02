@@ -15,7 +15,11 @@ citation. This tool answers the two questions that part asks of the tree.
   default branch with the working tree. It prints each equation, code span,
   number and citation that the fork held more often than the working tree
   does, with the line where the fork held it. A fact the branch added to a
-  file under the item store is marked `moved`. Item ids and dates are counted
+  file under the item store is marked `moved`. A number is read with its
+  sign, its exponent and its unit, so a changed unit or mantissa reads as a
+  lost value, and the ordinal of a numbered list is not read. Facts are
+  counted and not placed, so two values swapped within a sentence print
+  nothing, which the diff still shows. Item ids and dates are counted
   apart, because they are the history the part removes on purpose. Exits 0
   whenever it read both versions, since whether a dropped number was history
   or a value is a judgment for the session and the owner. Exits 1 when git
@@ -64,8 +68,16 @@ SOURCE_LOCATOR_RE = re.compile(
     r"|https?://[^\s)\]>]*[^\s)\]>.,;]"
     r"|\bpp?\.\s?\d+(?:[-–]\d+)?"
 )
-#: A number as written in prose, with its thousands separators and decimals.
-PROSE_NUMBER_RE = re.compile(r"(?<![\w.])\d+(?:[.,]\d+)*(?![\w])")
+#: A number as written in prose: its sign, thousands separators, decimals and
+#: exponent, and the unit after it from `doc_check.PROSE_UNITS`, so that
+#: "1.32 L" changed to "1.32 mL" reads as a different value.
+PROSE_NUMBER_RE = re.compile(
+    r"(?<![\w.])[−+-]?\d+(?:[.,]\d+)*(?:[eE][−+-]?\d+)?"
+    r"(?:[  ]?×?(?:" + doc_check.PROSE_UNITS + r")(?![\w/]))?"
+    r"(?![\w])"
+)
+#: The marker of a numbered list item, whose ordinal is not a value.
+LIST_ORDINAL_RE = re.compile(r"^[ \t]*\d+\.(?=[ \t])", re.M)
 
 #: The kinds `lost` prints one by one, in the order it prints them.
 FACT_KINDS = ("equation", "code", "citation", "number")
@@ -169,9 +181,10 @@ def facts(text: str) -> Iterable[tuple[str, str, int]]:
         for match in pattern.finditer(scanned):
             yield kind, match.group(), line_of(match.start())
             take(match)
-    scanned = "".join(blank)
-    for match in PULL_RE.finditer(scanned):
-        take(match)
+    for pattern in (PULL_RE, LIST_ORDINAL_RE):
+        scanned = "".join(blank)
+        for match in pattern.finditer(scanned):
+            take(match)
     scanned = "".join(blank)
     for match in PROSE_NUMBER_RE.finditer(scanned):
         yield "number", match.group(), line_of(match.start())
