@@ -342,9 +342,7 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
     assert expected_usd == pytest.approx(2.17, abs=0.005)
     assert cost.cost == f"USD {expected_usd:.2f}"
     assert cost.label == "Cost of the delivered isoflurane, at your price"
-    assert cost.working == (
-        f"{liquid_ml:.1f} mL of liquid delivered x USD 0.2047 per mL of liquid"
-    )
+    assert cost.working == (f"{liquid_ml:.1f} mL of liquid delivered x USD 0.2047 per mL of liquid")
     assert cost.price == (
         "Your price, not one the project supplies: USD 20.47 per bottle of 100 mL of liquid, "
         "as of 2008-03-05."
