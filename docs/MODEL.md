@@ -6395,8 +6395,7 @@ rate does decide the grid of simulated instants at which a control changed
 same slider moves made at two different rates are not the same inputs, and
 they do not produce the same run. Nothing here is stale or resized. The reader
 simply has a coarser choice of when an input acts. § "Supported simulation
-step" measures this, and `PL-NBWP` is where the claim above was found to be
-overstated.
+step" measures this.
 
 ### Halting on a marked crossing
 
@@ -6449,7 +6448,7 @@ paused, and the setters apply unconditionally. So a halt that pauses makes the
 pause-change-resume route automatic. A learner does not have to know to use
 it. The run's status word says that a mark stopped it, "Paused — stopped on
 your mark", so the halt is not mistaken for the learner's own Pause while two
-runs are compared and the branch control is withdrawn (`PL-QBQX`).
+runs are compared and the branch control is withdrawn.
 
 **A crossing is a transition between two steps, never a comparison at one
 step.** The test asks whether the reading was on one side of the height at the
@@ -6463,8 +6462,7 @@ rule also makes a halt resumable. The run is left standing on the crossing
 step. So the earlier reading for the next step is the crossing step's own
 reading, and the crossing that was just halted on is not crossed again.
 
-**A MAC target halts on every crossing, in either direction** (project owner,
-2026-09-20). A target names a compartment and a height and has no crossing
+**A MAC target halts on every crossing, in either direction.** A target names a compartment and a height and has no crossing
 direction. Consider a case taken up through 0.8 ×MAC and back down through it.
 It has reached what the learner marked both times, so it stops both times. The
 alternative was to halt once and then require the target to be re-armed. That
@@ -6492,8 +6490,7 @@ outcomes would be mistaken for one of the others.
   run rather than of the mark, so a reset and a change of agent clear it,
   because each begins a new run.
   Two steps are checked again every time the standings are read, against the
-  marks as they are at that moment (`PL-1ZQ4`; project owner, 2026-10-17,
-  ratified, over keeping MAC targets historical everywhere). The first is the
+  marks as they are at that moment. The first is the
   step on which a stopped run's clock ends. The run may be paused, halted, or
   at the supported run length, on a trunk or on a branch. A run that stopped
   after a failure does not count, because a failure is not a pause. The second
@@ -6538,8 +6535,7 @@ outcomes would be mistaken for one of the others.
   setting afterwards.
 
 **The two kinds of mark are reported in two vocabularies, and the clock is
-what divides them** (project owner, 2026-09-20, ratified, over reusing
-"reached" for both kinds). A run's clock only increases, and it never goes
+what divides them.** A run's clock only increases, and it never goes
 below the instant the run began. So the state of a *time bookmark* is a
 position: either ahead of the clock, or at or behind it. No history is needed
 to decide it. A *MAC target* names a height, and no clock orders heights. A
@@ -6550,7 +6546,7 @@ thing that can be said of a target is what the run did. Therefore "passed" and
 outcomes apply to both.
 
 **Reporting a passed bookmark as "reached" was measured to be wrong in seven
-ways, and it is refused** (`PL-3K9B`, measured 2026-09-20). Suppose a bookmark
+ways, and it is refused.** Suppose a bookmark
 is decided from the set of halts alone. Then every instant that the run is at
 or behind, but never *stopped on*, would read "still running". That says the
 run can still reach the mark. In none of the seven cases could any step make
@@ -6613,23 +6609,21 @@ the smallest difference that the two-decimal percent readout under
 § "The canonical evaluation rule" below states, as a guarantee, which of the
 two paths a stored, exported or branched value may be taken from.
 
-**What this is for, measured rather than argued.** Until PL-2FM6, the run
-recorded one sample per step. That cost 130.8 bytes per sample, measured over
-20 000 samples of a live run. A 30-day case at the fixed 0.1 s step is
+**What this is for, measured rather than argued.** Recording one sample per
+step costs 130.8 bytes per sample, measured over 20 000 samples of a live run. A 30-day case at the fixed 0.1 s step is
 25 920 000 samples, or 3.16 GiB. The same case stored as a definition is
 1.6 MiB, about two thousand times smaller. That figure assumes a busy ICU day
 with 50 setting changes, which over the case gives 1 501 stretches. The second
 gain is that the cost of drawing a window no longer depends on how long the run
 has been going. A one-hour window at 600 columns costs 10.6 ms on a two-hour
-run and 13.0 ms on a thirty-day run. The recorded path cost 62.6 ms at four
-hours and 207.7 ms at twelve.
+run and 13.0 ms on a thirty-day run. Drawing from per-step samples cost 62.6 ms
+at four hours and 207.7 ms at twelve.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Where the cost does still move is the number of changes inside the window**,
 because each stretch in view needs its own propagator. As measured on the same
 thirty-day run, a full-span window at 600 columns cost 14.2 ms with two
-changes in view, 231 ms with sixty, and about 1.1 s with six hundred. That
-cost was paid on every frame until PL-CNCF. In that regime the columns are
+changes in view, 231 ms with sixty, and about 1.1 s with six hundred. In that regime the columns are
 sparser than the changes, and sampling 600 instants is the wrong way to draw
 the run in any case. What to draw instead is a question for the interface, not
 for the model.
@@ -6645,11 +6639,11 @@ column is the first one past the left edge. So a window that follows the run
 forms new propagators for its two bounds. It forms the third one on a frame
 whose left edge has passed a grid column since the frame before. It also forms
 those of any stretch newly in view. A new column spacing forms them all once
-more. This was re-measured on 2026-10-04 on a 24-hour run, the longest that
+more. This was measured on 2026-10-04 on a 24-hour run, the longest that
 § "Supported run length" allows, with every setting distinct. The full-span
 window at 600 columns has its left edge at the run's opening, which never
 moves. On its first frame it costs 13.2 ms, 179 ms and 819 ms with two, sixty
-and six hundred changes in view, as it did before. On each frame after that it
+and six hundred changes in view. On each frame after that it
 costs 6.3 ms, 5.9 ms and 8.3 ms. Only the last window's propagators are kept.
 Each is about 3.1 KB, and six hundred of them take 1.8 MiB. So what is kept is
 bounded by one window and does not grow with the run. A kept propagator is, bit
@@ -6660,7 +6654,7 @@ window drawn last, but no drawn value can depend on it. So the store is not a
 second record of the run, and `state_at` reads none of it.
 
 **What `drawn_window` costs a frame, at the settings the dashboard draws with**
-(PL-CNCF, measured 2026-10-04). The dashboard draws every 200 ms
+(measured 2026-10-04). The dashboard draws every 200 ms
 (`RENDER_INTERVAL_S` in `app/dashboard_frame.py`). It draws at most two runs
 (`MAX_DISPLAYED_RUNS`). Each run is drawn through one
 `SimulationController.drawn_window` call at
@@ -6692,14 +6686,11 @@ were kept, sixty changes in view on two runs at 1 069 columns took about
 240 ms. That is longer than the frame they were drawn in.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
-**This is the only record.** Until PL-2FM6, a recorded history was kept beside
-the definition, and the chart was drawn from that history. The
-"Closed-form agreement test" checked that the two agreed. PL-2FM6 deleted the
-history. The chart is now drawn from the definition, through
+**This is the only record.** The chart is drawn from the definition, through
 `SimulationController.drawn_window` and `RunDefinition.evaluate_anchored`.
 There is no second record in which a divergence could appear. The stepped
-system that advances the run still exists, and the agreement test checks the
-definition against it.
+system that advances the run still exists, and the "Closed-form agreement test"
+checks the definition against it.
 
 #### The canonical evaluation rule
 
@@ -6770,17 +6761,17 @@ that a supported run reaches at this column count.
 against the residual lines, which is why the rule is enforced rather than
 trusted.** A fraction is displayed as a two-decimal percent, so § "Displayed
 precision" resolves 1e-4. The measured difference is eight orders below that.
-The agent-accounting panel displays its three amounts to 0.1 L (`PL-TG60`), and
+The agent-accounting panel displays its three amounts to 0.1 L, and
 the accumulators' measured difference is more than seven orders below that. If
 those readouts were all that a run showed, the margins would make the
 separation between the two paths academic. But the panel's two residual lines
 print the power of ten that a residual lies below, and a residual is formed from
 the two accumulators. § "Displayed precision" records passing residuals below
-2.1e-11 L, measured on branches played for 30 minutes (`PL-KXW1`). The display
+2.1e-11 L, measured on branches played for 30 minutes. The display
 path's accumulator difference at 1800 s, 3.1e-12 L, is the size of such a
 residual. A passing residual grows over a longer run: over 24 h the worst
 relative residual measured was 3.08e-12, which on amounts of tens of litres is
-of the order of 1e-10 L (`PL-D88N`). The difference at 24 h, 3.1e-9 L, is
+of the order of 1e-10 L. The difference at 24 h, 3.1e-9 L, is
 larger than that too. So a display value that reached the mass-balance readout would change the
 decade it prints. That is a place a reader can see, and the wrong decade would
 look exactly like an ordinary passing residual.
@@ -6801,7 +6792,7 @@ Both were measured rather than assumed:
   measurement. The first found up to 5.3e-13 in an accumulator (2026-09-07).
   The second forked at 1 234.5 s and probed the 141 instants at or past the
   fork. It found 1 109 of the 1 269 state elements differing, worst 7.8e-15 as
-  a fraction and 1.9e-12 L on an accumulator (2026-09-21, `PL-Z3W6`). The size
+  a fraction and 1.9e-12 L on an accumulator (2026-09-21). The size
   of the difference depends on where the fork is taken and how far past it a
   reader looks. So these are instances of the divergence, not a bound on it.
   What is bounded is the route the program actually takes, and that bound is
@@ -6815,21 +6806,19 @@ Both were measured rather than assumed:
 
 Restarting at an instant with no keyframe, which the first condition rules out,
 is a defect that a plausible branch implementation would introduce. The second
-condition removes a second defect. Until 2026-09-14 (`PL-ZMRT`, project owner),
-a branch's definition opened at a zero of its own. The rule here then required
-every caller to reach a branch instant by *subtracting* the fork instant from
-the case's time, rather than by naming the branch's own elapsed time. That
-distinction mattered, because the subtraction does not always round-trip. With
+condition removes a second defect. If a branch's definition opened at a zero of
+its own, every caller would have to reach a branch instant by *subtracting* the
+fork instant from the case's time, rather than by naming the branch's own
+elapsed time. The subtraction does not always round-trip. With
 a fork at 900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 and not
-1e-6. So a child asked for its own `1e-6` propagated over a different interval
-from its parent, and landed one unit in the last place away. The measurement is
-still arithmetically true, but it no longer describes a hazard this program can
-express. With one time frame, there is no offset for a caller to name and no
+1e-6. So a child asked for its own `1e-6` would propagate over a different
+interval from its parent, and land one unit in the last place away. With one
+time frame, there is no offset for a caller to name and no
 conversion to get right.
 <!-- not-restated: 900 s -->
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
-way** (`PL-B8MK`, decided and built 2026-09-20). The two conditions above
+way.** The two conditions above
 coincided for every fork the program took before bookmarks. Those forks were
 taken *at* control events, and a control event is a keyframe. So "opens at a
 keyframe" and "opens at the fork instant" named one instant, and nothing
@@ -6858,7 +6847,7 @@ the bookmark.
 
 **A branch taken where a run is paused or stopped runs under the settings the
 dials show there, and records the settings the run had on its way there as
-where it came from** (`PL-ZR49`, 2026-10-26). The two can differ, because the
+where it came from.** The two can differ, because the
 learner can turn a dial while the run is paused. Take a sevoflurane run at 2%
 that is paused at 10 min, after which the learner turns the vaporizer to 3%.
 The run reached 10 min under a stretch of settings at 2%. That stretch has
@@ -6869,12 +6858,9 @@ reaches back into the 2% stretch. So turning the dial again before the next
 step replaces the 3%. Below, the *reaching stretch* is the stretch that ran up
 to the instant, the 2% one here. The *stretch in force* is the stretch that
 runs from the instant on, the 3% one here. Where nothing changed at the
-instant, the two are the same stretch. Before this item, the three ways of
-branching each chose between the two stretches on their own. So did a
-branch's reset and the halt record, which lists the marks a run stopped on.
-Their choices disagreed, and eight defects followed (`PL-3K9B`, `PL-2N43`,
-`PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`, `PL-NRR6`, `PL-K5BS`, `PL-XV0D`). Every
-branch now follows one rule:
+instant, the two are the same stretch. The three ways of branching, a branch's
+reset and the halt record, which lists the marks a run stopped on, all follow
+one rule:
 <!-- not-restated: 2 % -->
 
 - **Its provenance, the record of where it came from, is the reaching
@@ -6895,9 +6881,8 @@ branch now follows one rule:
   the learner changes a setting there runs under the old setting. A branch
   taken after that change runs under the new one, as do the branches taken
   from that instant's mark and keyframe entries in the "From" selector
-  (`PL-HSP8`). The project owner chose this rule as the more intuitive one: a
-  branch opens at what the dial says and does not go back to the previous
-  setting (project owner, 2026-10-26).
+  This is the more intuitive rule: a branch opens at what the dial says and
+  does not go back to the previous setting.
 - **The branch's timeline opens with the parent's changes at the fork.** The
   branch's run definition records, as a change at the fork, each setting it
   runs under that differs from its provenance. Its control timeline opens with
@@ -6908,11 +6893,10 @@ branch now follows one rule:
   the copies are the changes the parent made before Start, each shown from the
   value the parent's timeline starts at. Either way, the branch's timeline
   states the settings it opened under, whatever the trunk does at the fork
-  instant afterwards (`PL-TNYP`). No later change merges into a copied entry or
+  instant afterwards. No later change merges into a copied entry or
   removes it. A change that the learner makes at the fork is recorded after
   the copies.
-- **A reset branch keeps its settings and the entries it opened with**
-  (`PL-K5BS`). It reopens at the fork on the same provenance. Its timeline
+- **A reset branch keeps its settings and the entries it opened with.** It reopens at the fork on the same provenance. Its timeline
   opens with the entries from its first opening. After them, it records each
   setting that differs from the one the branch opened under. An opened entry
   records where the branch began, not something done to it since. So when the
@@ -6926,10 +6910,10 @@ branch now follows one rule:
   the marks that the step it stopped on crossed. That step is the step that
   halted a trunk, or the step that reached a branch's fork. The record is
   computed again whenever it is read, against the current marks, as the
-  standings are (`PL-1ZQ4`). So a mark removed and added back under another
-  label is named as it now is (`PL-XV0D`).
+  standings are. So a mark removed and added back under another
+  label is named as it now is.
 - **A crossing has the answer the canonical readings give, on the trunk as on
-  every branch** (`PL-QVBR`). A running trunk also holds its live, stepped
+  every branch.** A running trunk also holds its live, stepped
   readings, and the two can lie about 1e-14 apart on opposite sides of a
   height. When the trunk halted on its live readings at the exact height, a
   branch opened on the halting step could read the same target as still
@@ -6960,15 +6944,14 @@ branch now follows one rule:
 
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the
-opening still replaces the opening stretch, as it did before this item, even
-after a branch was taken there. The branch's provenance then names settings
+opening still replaces the opening stretch, even after a branch was taken there. The branch's provenance then names settings
 the trunk no longer opens under. That provenance has not become false, because
 the opening keyframe is a state that no setting produced, and the branch did
 run under those settings from there. Its own timeline still states them, as
 its copy of the trunk's changes made before Start.
 
 **Returning to a marked instant the run has already passed is that fork taken
-late** (`PL-W4XQ`, 2026-10-12). Consider a learner paused at three hours who
+late.** Consider a learner paused at three hours who
 marks the one-hour point and goes back to it. The learner is asking for a fork
 at an instant for which the run holds no keyframe, and on which the run is not
 standing. So neither of the two earlier ways of forking applies. The
@@ -6990,12 +6973,12 @@ what that reproduces, and what it does not:
   after the clock went past it is forked here. The two branches' whole
   provenance compares equal: stretch, fork state, step count and the step the
   fork ends. Taken at the same moment, both run under the same settings,
-  including a change the trunk made while it stood on the halt (`PL-HSP8`).
+  including a change the trunk made while it stood on the halt.
   The branch also stays the halt's branch for a mark added later. Every run
   asks which marks were crossed by the step it opened on or stands on. It asks
   against the marks as they are whenever its standings are read. So a mark
   added inside that step is treated the same on the trunk and on the branch,
-  whether it was added before the branch or after (`PL-1ZQ4`). Each way of
+  whether it was added before the branch or after. Each way of
   forking asks about that step in the same way, including a fork at a control
   event. So `resumed_at` at a keyframe the trunk halted on opens on the halt's
   crossing, as `resumed_here` does.
@@ -7019,16 +7002,15 @@ what that reproduces, and what it does not:
   the trunk's. This is how it differs from the reference simulator's rewind.
   That rewind returns to time zero, keeps the recorded settings and plays them
   back as it runs (Philip JH, *Workbook for Gas Man®*, Med Man Simulations,
-  appendix E, "Replaying Simulations", printed pages 186-87, as read and quoted
-  in `PL-W4XQ`). That simulator takes the trunk back and truncates it at the
-  mark. Returning to a mark here forks instead (project owner, 2026-10-12,
-  ratified, over truncating the run at the mark after a confirm, `PL-ZW0J`).
-  The run that happened stays on the axis beside the alternative.
+  appendix E, "Replaying Simulations", printed pages 186-87, read and quoted
+  at those pages). That simulator takes the trunk back and truncates it at the
+  mark. Returning to a mark here forks instead, so the run that happened stays
+  on the axis beside the alternative.
 - **Its opening readouts are the canonical state's, not the ones the trunk
   showed when it stood there.** A running case displays its stepped live state,
   which is one propagation per step from the opening. Every branch opens from
-  the canonical state. Over three hours of the run in the item's measurement
-  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is about nine
+  the canonical state. Over three hours of a run measured on 2026-10-12, the
+  two agree to 4.9e-14 as a fraction. That is about nine
   orders of magnitude below the 1e-4 that a two-decimal percent can show, so no
   reader can see the difference. The same is true for a fork at a control event
   or at a halt.
@@ -7041,7 +7023,7 @@ a run. The learner reaches such a mark by running on, and the halt there is
 then the fork.
 
 **Branching where a paused run stands is the same fork, with the clock naming
-the instant** (`PL-Y2SL`, 2026-10-12). The clock always stands on a whole
+the instant.** The clock always stands on a whole
 number of steps. The construction above reproduces the case at any instant the
 run has reached. So `SimulationController.resumed_here` forks wherever the
 trunk is paused, on a halt or anywhere else. It forks from the canonical state
@@ -7049,13 +7031,13 @@ there, inside the parent's own stretch, and records nothing on the trunk. The
 branch opens standing on the crossing made by the step that ends there. That
 crossing is asked again of the marks as they are now, as `resumed_at_mark` asks
 it. It is not read from a halt's record, which names only what was marked when
-the run stopped (`PL-2N43`). Three kinds of run are refused. A running run is
+the run stopped. Three kinds of run are refused. A running run is
 refused, because where it stands moves with every step. A failed run is
 refused, because a failure is not a pause. A run at the supported run length is
 refused, because it has no step left for a branch to take.
 
-**So nothing is left over to bound, and there is nothing to show a learner**
-(`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this
+**So nothing is left over to bound, and there is nothing to show a learner.**
+`ROADMAP.md`'s v0.5.0 definition of done asks this
 document for "the bound on any divergence that could not be eliminated". On the
 canonical path, no such divergence survives. A branch and its parent agree
 element for element at every instant they share. That holds for a fork on a
@@ -7099,7 +7081,7 @@ after its learner has dialled something new. It stands at the fork state under
 settings its parent never used. Its definition still opens at the parent's
 keyframe under the parent's settings. What the learner has dialled is recorded
 as a *change at the fork*, in the run definition and in the branch's own
-control timeline (`PL-K5BS`). The keyframe that this change opens is the
+control timeline. The keyframe that this change opens is the
 fork's own state. So the trace starts where the readouts say the branch is standing,
 and the parent's stretch stays the parent's.
 
@@ -7121,8 +7103,8 @@ distinction.
 
 **What is not relaxed is the one frame.** The definition still opens at a case
 instant on the case's own axis. The clock still continues the parent's. Nothing
-converts between frames. So the hazard that `PL-ZMRT` removed, a subtraction on
-the caller's side that does not round-trip, does not come back this way. The
+converts between frames. So a subtraction on the caller's side that does not
+round-trip does not come back this way. The
 only change is that the definition's opening no longer equals the fork instant.
 It is earlier than the fork instant, on the same axis.
 
@@ -7147,9 +7129,8 @@ safety-critical standard counts as a failure in its own right. Continuing the
 case's time also keeps simulated time to the single multiplication that
 § "Simulated time is a count of steps, not a running total" describes. A
 branch's instants are the case's step count times the step. They are not the
-fork instant plus a second total. Since `PL-ZMRT` this applies to the run
-definition's instants as well as to the clock's. Before `PL-ZMRT` it applied
-only to the clock.
+fork instant plus a second total. This applies to the run definition's
+instants as well as to the clock's.
 
 **What one frame is worth, measured 2026-09-14.** Two measurements were taken,
 on a 120 s sevoflurane run and on the branches taken from it.
@@ -7178,7 +7159,7 @@ then could not be read against each other at matched points.
 `tests/reference/test_canonical_evaluation.py` test both measurements.
 
 **A fork at a bookmark adds exactly one column to that, and it is the fork
-itself** (`PL-B8MK`, measured 2026-09-20 on a 120 s axis at 150 columns). The
+itself** (measured 2026-09-20 on a 120 s axis at 150 columns). The
 fork above lands on the trunk's own columns because a control event is drawn
 on every run that has one. A bookmark's instant is not a control event, so the
 trunk draws it only if it happens to fall on the grid. The branch always draws
