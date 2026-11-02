@@ -2276,7 +2276,6 @@ the tests that drive the controller step by step, as the interface does.
 **The floor.** `MINIMUM_SIMULATION_STEP_S` is 1 ms. It is the one bound on the
 step that is numerical.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 What a finer step costs is rounding, which the sweep above already shows as "a
 finer step is slightly worse". Each step adds the amount it changed to what
