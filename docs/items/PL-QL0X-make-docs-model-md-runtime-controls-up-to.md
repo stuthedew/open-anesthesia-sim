@@ -42,8 +42,9 @@ decided split. The mechanism that let the history and padding accumulate,
 
 **Done when.** `uv run python tools/model_rewrite.py ids` prints nothing for this part's sections, which its
 `verify:` runs. The pull request body accounts for every line
-`tools/model_rewrite.py lost` prints, and the project owner has read the
-rewrite.
+`tools/model_rewrite.py lost` prints. The owner reads it only where
+`PL-ZTZF`'s rule sends it: a changed value, equation, code span or citation,
+or a sentence whose meaning needs their judgment.
 
 **Three sentences changed meaning on purpose (2026-11-02).** The paragraph on
 how a branch's drawn range is clipped quoted the line
