@@ -734,7 +734,7 @@ port changed what this note is about rather than answering it again. pyqtgraph
 requires `numpy>=1.25.0` outright, so numpy is installed in every environment
 this project has and `uv.lock` names the version - and no module under `src/`
 imports it. Nothing is being avoided, and nothing is bending in order to avoid
-it: `app/qt_chart.py` hands pyqtgraph `list(...)` because a list is one of the
+it: `app/qt_chart.py` handed pyqtgraph `list(...)` because a list is one of the
 two types `PlotCurveItem` takes, and producing arrays upstream instead would
 recover 0.04-0.14% of a frame (measured 2026-09-16, six traces, three plot
 widths).
@@ -756,6 +756,18 @@ modes, so the `dev` dependency group declares numpy, by the rule above
 would have been a second hand-built numerical method needing verification in a
 test whose job is to verify the first). No module under `src/` calls it, so for
 the application this note still stands where it did.
+
+**Decided for the application on 2026-11-01, in the commit that wanted it
+(`PL-TCNT`).** The project owner asked for the chart's redraw to follow
+pyqtgraph's own best practice rather than be measured for whether it was good
+enough (`PL-0KPD`, dropped). pyqtgraph's documentation asks for
+`numpy.ndarray`s rather than lists, so `app/qt_chart.py` now imports numpy and
+`pyproject.toml` declares it as a runtime dependency, by the rule above. The
+`dev` group's copy went in the same commit, since one declaration covers both.
+The 2026-09-16 figure, 0.04-0.14% of a frame, measured producing arrays
+upstream, and it is not the reason for the change: following the library's
+documented path is. `core/` still may not import numpy, and
+`app/chart_frame.py` still does not.
 
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
