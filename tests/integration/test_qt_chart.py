@@ -1706,9 +1706,9 @@ def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
         if stretch.ends_above_equilibrium and stretch.times_s
     ]
     assert ended
-    # One flat list per side, since pytest.approx refuses nested sequences
-    # from pytest 9.2 on (`PL-R74V`). The lengths are compared first, so a
-    # missing dot still fails rather than shifting the pairs.
+    # Flatten each side into one list, because pytest.approx rejects nested sequences
+    # from pytest 9.2 on (`PL-R74V`). The test compares the lengths first. A missing
+    # dot then fails the test, rather than shifting every later value onto the wrong partner.
     drawn = wash_in.preview_terminus_points(0)
     assert len(drawn) == len(ended)
     assert [value for point in drawn for value in point] == pytest.approx(

@@ -437,15 +437,15 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
 def test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone(
     simulation_step_s: float,
 ) -> None:
-    """`PL-YT3T`: the venous pool stepped on its own refuses a step longer than 24 h.
+    """The venous pool, stepped on its own, refuses a step longer than 24 h (`PL-YT3T`).
 
-    Every compartment stepped alone has the same ceiling, the supported run length, so one
-    function states which steps a compartment accepts. The step is refused and the amount held
-    does not change. A step of exactly 86 400 s is accepted, and it brings the venous pool to
-    its equilibrium, 0.02 of its capacity. The step just past the ceiling is built from
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. The expected ceiling and the refusal message are written
-    out as the test's expected values, so `tools/restated_constants.py` lists this test as
-    failing on purpose when the run length moves (`PL-DPDG`).
+    Every compartment stepped on its own has the same ceiling, which is the supported run
+    length. So one function defines which steps any compartment accepts. The pool refuses the
+    step, and the amount it holds does not change. The pool accepts a step of exactly 86 400 s,
+    which brings it to its equilibrium amount, 0.02 of its capacity. The test builds the step
+    just past the ceiling from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. It writes out the expected
+    ceiling and the refusal message as literal expected values, so a change to the run length
+    fails this test on purpose (`PL-DPDG`).
     """
 
     venous = _build_venous_blood()

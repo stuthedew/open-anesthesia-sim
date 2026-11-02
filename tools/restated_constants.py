@@ -79,13 +79,16 @@ a reported test should change is left to the session that reads the report.
 
 A module that fails to collect is reported as its file, with no test in it
 to judge. A copied value cannot make a module fail to import, because a copy
-does not change when the constant does. So the file counts as reading the
-constant when one of its module-level statements, or a decorator on one of
-its functions or classes, reads it, directly or through a module-level name
-that does. On 2026-11-01 `MAXIMUM_INPUT_FRACTION` widened from 0.99 to 1.98,
-which is no fraction at all. `tests/unit/test_numerical_envelope_sweep.py`
-builds its dial ceiling from the constant at import, so it failed to collect
-and was named as restating it (`PL-DPDG`).
+does not change when the constant does. So where the module reads the
+constant at import and the rerun collects it without the perturbation, it is
+listed as not judged and does not fail the run. Import runs the module-level
+statements, the decorators and default values of its functions, and the
+bodies of its classes. On 2026-11-01 `MAXIMUM_INPUT_FRACTION` widened from
+0.99 to 1.98, which is no fraction at all.
+`tests/unit/test_numerical_envelope_sweep.py` builds its dial ceiling from
+the constant at import, so it failed to collect and was named as restating
+it (`PL-DPDG`). A module that fails to collect without reading the constant
+at import is still named.
 
 The suite takes several minutes for each constant, so this runs in the
 `restated-constants` job of `.github/workflows/drift.yml` and not in
@@ -136,10 +139,6 @@ _PINNED_MESSAGE = (
     "it pins the refusal message whole, as .claude/rules/test-oracles.md asks, so a "
     "moved limit means rewriting the message it expects"
 )
-_WRITTEN_OUT_CEILING = (
-    "it writes out the 86 400 s ceiling it accepts and pins the refusal message whole, so a "
-    "moved run length means rewriting both"
-)
 TRIPWIRES: Mapping[tuple[str, str], str] = {
     (
         "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
@@ -178,19 +177,6 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
         ): _PINNED_MESSAGE
         for name in ("MAXIMUM_ALVEOLAR_VENTILATION_L_MIN", "MAXIMUM_CARDIAC_OUTPUT_L_MIN")
     },
-    # The three below write the 86 400 s ceiling out on purpose, as each
-    # docstring says, and pin the refusal message whole (`PL-DPDG`).
-    **{
-        ("MAXIMUM_ELAPSED_SIMULATION_TIME_S", nodeid): _WRITTEN_OUT_CEILING
-        for nodeid in (
-            "tests/unit/test_circuit.py"
-            "::test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone",
-            "tests/unit/test_tissue.py"
-            "::test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone",
-            "tests/unit/test_blood.py"
-            "::test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone",
-        )
-    },
     **{
         (
             name,
@@ -216,7 +202,6 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
             "MAXIMUM_FRESH_GAS_FLOW_L_MIN",
             "MAXIMUM_ALVEOLAR_VENTILATION_L_MIN",
             "MAXIMUM_CARDIAC_OUTPUT_L_MIN",
-            "MAXIMUM_INPUT_FRACTION",
             "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
         )
     },
@@ -485,15 +470,14 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     whose file imports the name for other tests and that copies the value is
     so still named. A test that is not found in its file is judged not to read
     it, so it is named and a person looks at it. A node id that names only a
-    file is a module that failed to collect, and `reads_at_import` judges it.
+    file is a module that failed to collect. It is named here too, and
+    `judge` sets it apart once the rerun shows the failure is the perturbation's.
     """
 
     if not imports_name(source, name):
         return False
     tree = ast.parse(source)
     path = [part.partition("[")[0] for part in nodeid.split("::")[1:]]
-    if not path:
-        return reads_at_import(tree, name)
     scope: Sequence[ast.stmt] = tree.body
     references: set[str] = set()
     found = False
@@ -521,25 +505,53 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     return name in references or bool(references & _module_readers(tree, name))
 
 
-def reads_at_import(tree: ast.Module, name: str) -> bool:
-    """Whether importing the module `tree` reads `name`, which only a reader can fail on.
+def _run_at_import(statement: ast.stmt) -> set[str]:
+    """Every name that executing `statement` at import reads, leaving function bodies out.
 
-    The statements run at import are the module-level ones other than the
-    bodies of functions and classes, and the decorators on those functions and
-    classes, such as a `pytest.mark.parametrize` list. Each counts when it
-    names `name`, or names a module-level function, class or assignment that
-    reads it.
+    A function's decorators and default values run when it is defined. A
+    class's decorators, bases and keywords run then too, and so does its body,
+    which holds its methods' decorators, such as a `pytest.mark.parametrize`
+    list on a method.
+    """
+
+    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        defaults = [*statement.args.defaults, *filter(None, statement.args.kw_defaults)]
+        return set().union(*map(_references, [*statement.decorator_list, *defaults]))
+    if isinstance(statement, ast.ClassDef):
+        header = [*statement.decorator_list, *statement.bases, *statement.keywords]
+        found = set().union(*map(_references, header))
+        return found.union(*map(_run_at_import, statement.body))
+    return _references(statement)
+
+
+def reads_at_import(tree: ast.Module, name: str) -> bool:
+    """Whether importing the module `tree` reads `name`, directly or through a module-level name.
+
+    Only a module that reads the constant at import can fail to collect when
+    the constant moves, because a copied value does not change.
     """
 
     readers = _module_readers(tree, name)
-    for statement in tree.body:
-        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            references = set().union(*map(_references, statement.decorator_list))
-        else:
-            references = _references(statement)
-        if name in references or references & readers:
-            return True
-    return False
+    return any(
+        name in references or bool(references & readers)
+        for references in map(_run_at_import, tree.body)
+    )
+
+
+def uncollected(
+    failures: Sequence[Failure], name: str, read: Callable[[str], str]
+) -> list[Failure]:
+    """The failures that are whole modules which read `name` at import, read through `read(file)`.
+
+    A module that failed to collect is reported as its file, with no test in
+    it to judge, so these are listed as not judged rather than as restating.
+    """
+
+    return [
+        failure
+        for failure in failures
+        if "::" not in failure.nodeid and reads_at_import(ast.parse(read(failure.file)), name)
+    ]
 
 
 def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:
@@ -612,6 +624,9 @@ class Finding:
     unjudged: tuple[str, ...] = ()
     #: Tests in a file that imports `subprocess`, which were not judged.
     through_subprocess: tuple[str, ...] = ()
+    #: Modules that read the limit at import and failed to collect only with
+    #: the perturbation, so none of their tests was judged.
+    uncollected: tuple[str, ...] = ()
     #: Tests on `TRIPWIRES`, which fail on purpose when the limit moves.
     tripwires: tuple[str, ...] = ()
     #: Why the run gave no answer, or an empty string when it gave one.
@@ -657,7 +672,10 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         )
         return finding
     still = {failure.nodeid for failure in rerun.failures}
-    restated = [f.nodeid for f in candidates if f.nodeid not in still]
+    perturbed = [f for f in candidates if f.nodeid not in still]
+    modules = {f.nodeid for f in uncollected(perturbed, constant.name, read)}
+    finding.uncollected = tuple(sorted(modules))
+    restated = [f.nodeid for f in perturbed if f.nodeid not in modules]
     on_purpose = {nodeid for nodeid in restated if tripwire_reason(constant.name, nodeid)}
     finding.restating = tuple(nodeid for nodeid in restated if nodeid not in on_purpose)
     finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in on_purpose)
@@ -699,6 +717,11 @@ def report(
         lines.extend(
             f"  not judged, its file imports subprocess: {nodeid}"
             for nodeid in finding.through_subprocess
+        )
+        lines.extend(
+            f"  not judged, it reads the limit at import and could not be collected with "
+            f"the moved value: {nodeid}"
+            for nodeid in finding.uncollected
         )
         failing = failing or bool(finding.restating or finding.unjudged)
     lines.extend(

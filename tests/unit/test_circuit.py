@@ -1124,15 +1124,15 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
 def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone(
     simulation_step_s: float,
 ) -> None:
-    """`PL-YT3T`: the circuit stepped on its own refuses a step longer than 24 h.
+    """The circuit, stepped on its own, refuses a step longer than 24 h (`PL-YT3T`).
 
-    Before the ceiling existed, a step near 1e308 s made the count of elapsed time constants
-    overflow to `inf`, and the exhaust came back as `inf` or `nan`. Both `advance_fresh_gas` and
-    `advance` refuse the step, and the inspired fraction does not change. The ceiling itself is
-    accepted. The step just past the ceiling is built from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
-    The expected ceiling, 86 400 s, and the refusal message are written out as the test's
-    expected values, so `tools/restated_constants.py` lists this test as failing on purpose
-    when the run length moves (`PL-DPDG`).
+    Before the ceiling existed, a step near 1e308 s made the number of elapsed time constants
+    overflow to `inf`. The exhaust then came back as `inf` or `nan`. Both `advance_fresh_gas`
+    and `advance` refuse such a step, and the inspired fraction does not change. A step equal
+    to the ceiling is accepted. The test builds the step just past the ceiling from
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. It writes out the expected ceiling, 86 400 s, and the
+    refusal message as literal expected values, so a change to the run length fails this test
+    on purpose (`PL-DPDG`).
     """
 
     circuit = BreathingCircuit(
