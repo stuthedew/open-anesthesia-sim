@@ -16,6 +16,7 @@ import pytest
 from anesthesia_sim.app.view_contract import View, ViewContext
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
+    AGENT_COST,
     COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
@@ -59,12 +60,14 @@ def test_each_tag_is_the_string_a_saved_file_holds() -> None:
         PARAMETER_CONTROLS,
         AGENT_ACCOUNTING,
         COMPARTMENT_SCHEMATIC,
+        AGENT_COST,
     ] == [
         "concentration_chart",
         "wash_in",
         "parameter_controls",
         "agent_accounting",
         "compartment_schematic",
+        "agent_cost",
     ]
     assert set(REGISTERED) == {
         "concentration_chart",
@@ -72,6 +75,7 @@ def test_each_tag_is_the_string_a_saved_file_holds() -> None:
         "parameter_controls",
         "agent_accounting",
         "compartment_schematic",
+        "agent_cost",
     }
 
 
