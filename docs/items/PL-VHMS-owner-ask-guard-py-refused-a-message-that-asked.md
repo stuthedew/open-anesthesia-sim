@@ -41,14 +41,26 @@ row rather than a sign of a live generator. Recorded as `reenters: PL-TLPH`.
 
 **Fixed 2026-11-02.** `asked()` in `.claude/hooks/owner_ask_guard.py` now lets
 one form of the hold pattern (`HOLD_FOR_YOUR_READ`, "waits on your read",
-"ready for your review") through. A modal such as "will", "would", "'ll" or "is
-going to" must come just before the verb, with at most one word between them,
-as "be" does. The hold still counts as an ask when its subject is "it", "this" or "that", or
-when its sentence names a pull request in any form. So "each will wait for your
-read" passes, while "#1945 will wait for your read", "The pull request will
-wait for your read" and "It will wait for your read" are still refused, because
-each may be about a pull request that exists. The hole this leaves is a future
-hold about an existing pull request whose sentence neither names it nor points
-at it, such as "They will need your review" written about open ones. `tests/unit/test_owner_ask_guard.py` adds the
-refused sentence and two other future holds to the replies let through, and
-five future holds to the asks refused.
+"ready for your review") through. Its subject must be a distributive word from
+a short list (`_FORETELLING_SUBJECT`: "each", "each one", "each of them",
+"both", "both of them", "all of them", "every one"). A modal ("will", "would",
+"is going to") must follow it, with at most one word such as "be" before the
+verb. And the hold's sentence must name no pull request. So "each will wait for
+your read" passes. "#1945 will wait for your read", "The pull request will
+wait for your read", "It will wait for your read", "These will wait for your
+read", "#1944 is open. I will wait for your read." and "I have opened #1950.
+Both changes would need your review." are all still refused.
+
+A first version exempted any subject but "it", "this" and "that", and ended a
+sentence at any dot. The two blind reviews on `#1948` showed that it let through
+asks about open pull requests: "I will wait", "Merging will wait", "These
+will", and "#1945 and #1946 both touch docs/MODEL.md, so each will wait", where
+the dot in `MODEL.md` cut the sentence before the numbers. So the subject became
+a list, and a sentence now ends only at a mark followed by a space or the end
+of the text, or at a line break (`_SENTENCE_END`).
+
+The check reads only the hold's own sentence, so "#1944 is open. Each will wait
+for your read." still passes. That is the hole this leaves.
+`tests/unit/test_owner_ask_guard.py` adds the refused sentence and three other
+distributive future holds to the replies let through, and nine future holds to
+the asks refused, four of them the reviews' rows.

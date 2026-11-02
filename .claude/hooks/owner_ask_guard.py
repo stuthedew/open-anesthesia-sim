@@ -18,8 +18,9 @@ sessions have used, the closing-block lines that carry them, and close
 variants of each. A hand-off such as "over to you" or "your call" counts only
 in a sentence that also names a pull request. A noun hand-off that reports a
 decision already recorded, such as "recorded your choice" or "your choice is
-recorded", does not count (`PL-YGR6`). Nor does a hold put in the future
-for pull requests not yet opened, such as "each will wait for your read"
+recorded", does not count (`PL-YGR6`). Nor does a hold that "each" or
+"both" puts in the future, in a sentence naming no pull request, such as "each
+will wait for your read" in a plan for pull requests not yet opened
 (`PL-VHMS`). A wording the list does not
 name still passes, so a new one seen in a thread is added to `ASKS` with a
 test row. A message that matches by accident is told to reword. A false
@@ -153,50 +154,56 @@ _SAME_SENTENCE = r"[^.!?\n]{0,80}?"
 #: A pull request held for the owner: "It waits on your read", "#1676 is ready
 #: for your review". This is the one phrasing that is also a plain statement
 #: of what will happen, so `asked` lets one future form of it through
-#: (`_FORETOLD`).
+#: (`_foretold`).
 HOLD_FOR_YOUR_READ = (
     r"\b(?:waiting|waits|wait|awaiting|awaits|needs|need|ready)[ \t]+(?:(?:for|on)[ \t]+)?"
     r"your[ \t]+(?:read|review|approval|merge|go-ahead)\b"
 )
 
-#: A hold put in the future, just before `HOLD_FOR_YOUR_READ`: "each will wait
-#: for your read", "both would need your review", "they'll be ready for your
-#: read". One word may come between the modal and the verb, as "be" does.
-#: The hook refused "each will wait for your read" in a reply that planned
-#: pull requests not yet opened, on 2026-11-02 (`PL-VHMS`).
-_FUTURE = re.compile(
-    r"(?:\b(?:will|would|(?:is|are)[ \t]+going[ \t]+to)|\w'll)(?:[ \t]+\w+)?[ \t]+$", re.IGNORECASE
-)
-
-#: A future hold whose subject points at one thing already there: "it will
-#: wait for your read", "this'll need your review". That thing is most likely
-#: the pull request the message is about, so the sentence is still an ask.
-_POINTED = re.compile(
-    r"\b(?:it|this|that)(?:[ \t]+(?:will|would|is[ \t]+going[ \t]+to)|'ll)"
-    r"(?:[ \t]+\w+)?[ \t]+$",
+#: A hold put in the future by a distributive subject, just before
+#: `HOLD_FOR_YOUR_READ`: "each will wait for your read", "both would need your
+#: review", "each one is going to be ready for your read". One word may come
+#: between the modal and the verb, as "be" does. The hook refused "each will
+#: wait for your read" in a reply that planned pull requests not yet opened, on
+#: 2026-11-02 (`PL-VHMS`). The subject is a short list, not any word, because
+#: "I will wait for your read", "Merging will wait for your go-ahead" and "This
+#: change will need your review" are asks about a pull request that exists.
+_FORETELLING_SUBJECT = re.compile(
+    r"(?:^|[^\w'#-])(?:each(?:[ \t]+one|[ \t]+of[ \t]+them)?|both(?:[ \t]+of[ \t]+them)?"
+    r"|all[ \t]+of[ \t]+them|every[ \t]+one)"
+    r"[ \t]+(?:will|would|(?:is|are)[ \t]+going[ \t]+to)(?:[ \t]+\w+)?[ \t]+$",
     re.IGNORECASE,
 )
 
 #: A pull request named in any form, for `_foretold`.
 _NAMES_A_PULL_REQUEST = re.compile(_PULL_REQUEST, re.IGNORECASE)
 
+#: The end of a sentence: a full stop, question mark or exclamation mark
+#: followed by a space or the end of the text, or a line break. A dot inside
+#: `MODEL.md` or `v0.7.0` does not end one.
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)|\n")
+
 
 def _foretold(shown: str, start: int, end: int) -> bool:
     """Whether the hold matched at `start:end` only says what will happen later.
 
-    It does when a modal such as "will" puts the hold in the future, its
-    subject is not "it", "this" or "that", and its sentence names no pull
-    request. A plan that says "each will wait for your read" is about pull
-    requests not yet opened, so there is nothing yet to read. "#1945 will wait
-    for your read", "The pull request will wait for your read" and "It will
-    wait for your read" are still refused, because each may be about one that
-    exists. That is the direction this hook leans.
+    It does when its subject is one of `_FORETELLING_SUBJECT`'s distributive
+    words, such as "each" or "both", a modal such as "will" puts it in the
+    future, and its sentence names no pull request. A plan that says "each will
+    wait for your read" is about pull requests not yet opened, so there is
+    nothing yet to read. "#1945 and #1946 touch MODEL.md, so each will wait for
+    your read" and "Each pull request will wait for your read" are still
+    refused, because each may be about one that exists. The check reads only
+    the hold's own sentence, so "#1944 is open. Each will wait for your read."
+    passes. That is the hole this leaves, and a reworded ask that falls in it
+    is added to the tests.
     """
-    sentence_start = max(shown.rfind(mark, 0, start) for mark in ".!?\n") + 1
-    ends = [found for found in (shown.find(mark, end) for mark in ".!?\n") if found >= 0]
-    sentence_end = min(ends, default=len(shown))
-    before = shown[sentence_start:start]
-    if _FUTURE.search(before) is None or _POINTED.search(before) is not None:
+    sentence_start = 0
+    for found in _SENTENCE_END.finditer(shown, 0, start):
+        sentence_start = found.end()
+    following = _SENTENCE_END.search(shown, end)
+    sentence_end = following.start() if following is not None else len(shown)
+    if _FORETELLING_SUBJECT.search(shown[sentence_start:start]) is None:
         return False
     return _NAMES_A_PULL_REQUEST.search(shown[sentence_start:sentence_end]) is None
 

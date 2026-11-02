@@ -8731,8 +8731,9 @@ and each must be assigned when its milestone is fully specified.
     keeps a real patient's data out of a run". Once age, sex and weight are
     inputs, a run can be built from a real patient's data. So this item
     rewrites that section and its hazard row.
-    `test_every_run_simulates_the_shipped_reference_adult` fails when the
-    inputs land, which makes the rewrite hard to miss.
+    `test_every_run_simulates_the_shipped_reference_adult` pins the one
+    shipped patient file and the absence of any patient argument or control,
+    so it fails when the inputs land, which makes the rewrite hard to miss.
 
     *Body composition defaults, and is editable per case (project owner,
     2026-09-02).* A case opens with a body composition already set, rather

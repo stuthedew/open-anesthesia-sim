@@ -65,11 +65,17 @@ The cell is one sentence and a pointer, with the detail in the subsection,
 following `PL-ZT47`'s fifth pattern.
 
 `tests/integration/test_controller.py` gains
-`test_every_run_simulates_the_shipped_reference_adult`. It pins the four
-learner controls and the controller's constructor arguments. It then moves
-every control, changes the agent and resets, and checks that every run segment
-holds the reference adult's alveolar and venous volumes, tissue volumes and
-perfusion fractions. It fails when patient factors arrive, on purpose.
+`test_every_run_simulates_the_shipped_reference_adult`. It pins the ways a
+patient could get into a run today: one JSON file under `data/patients/`,
+`AgentUptakeSystem.for_agent` taking only an agent, the four learner controls,
+and the controller's constructor arguments. It then moves every control,
+changes the agent and resets, collecting each run's stretches before the next
+run replaces them. Every stretch must hold the reference adult's alveolar and
+venous volumes, tissue volumes and perfusion fractions. It fails when patient
+factors arrive, on purpose. The two blind reviews on `#1948` found that a
+first version checked only the stretch after the Reset and pinned no file or
+builder, so the trip wire promised more than it held. Both are fixed, and the
+table cell now names the residual case too.
 `ROADMAP.md` planned-milestone item 30 gains a paragraph saying that the item
 removes this safeguard and rewrites the subsection and its row.
 

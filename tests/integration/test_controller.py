@@ -1,6 +1,7 @@
 import dataclasses
 import inspect
 from collections.abc import Callable
+from importlib import resources
 from itertools import permutations
 
 import pytest
@@ -257,7 +258,7 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
 
 
 def test_every_run_simulates_the_shipped_reference_adult() -> None:
-    """No control reaches the patient's body, so every run is the reference adult (`PL-DXJR`).
+    """No input reaches the patient's body, so every run is the reference adult (`PL-DXJR`).
 
     `docs/MODEL.md`'s hazard row for entering an identifiable patient's data
     names this as one of its two safeguards. A learner can set four flows and
@@ -266,11 +267,26 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
     the compartment volumes and perfusion fractions of
     `data/patients/reference_adult.json`, whatever the learner sets.
 
-    This test fails when patient factors arrive (`ROADMAP.md` planned-milestone
-    item 30). That is intended: the hazard row has to be rewritten with that
-    work, because this safeguard no longer holds once it lands.
+    The first five assertions pin the ways a patient could get in today. The
+    package ships one patient file, the uptake system is built from an agent
+    alone, and the controller and its four controls take no patient argument.
+    Patient factors (`ROADMAP.md` planned-milestone item 30) have to change at
+    least one of them, so this test fails when they land. That is intended,
+    because the hazard row has to be rewritten with that work.
+
+    An agent change and a Reset each start a new run definition, so the
+    stretches of each run are collected before the next one replaces them.
     """
 
+    shipped_patients = {
+        entry.name
+        for entry in resources.files("anesthesia_sim.data.patients").iterdir()
+        if entry.name.endswith(".json")
+    }
+    assert shipped_patients == {"reference_adult.json"}
+    assert set(inspect.signature(uptake_system.AgentUptakeSystem.for_agent).parameters) == {
+        "agent_id"
+    }
     learner_controls = {
         ControlInput.FRESH_GAS_FLOW,
         ControlInput.DELIVERED,
@@ -288,6 +304,7 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
         "cardiac_output_l_min",
     }
 
+    stretches: list[RunSegment] = []
     controller = SimulationController(agent_id="isoflurane")
     controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     controller.set_fresh_gas_flow(FreshGasFlow(1.0))
@@ -295,11 +312,14 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
     controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     controller.set_cardiac_output(CardiacOutput(3.0))
     controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
     controller.set_agent("desflurane")
     controller.set_cardiac_output(CardiacOutput(8.0))
     controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
     controller.reset()
     controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
 
     reference = load_reference_adult_parameters()
     expected_tissues = {
@@ -307,10 +327,10 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
         "muscle": (reference.muscle_volume_l, reference.muscle_perfusion_fraction),
         "fat": (reference.fat_volume_l, reference.fat_perfusion_fraction),
     }
-    segments = controller.run_segments
-    assert segments
-    for segment in segments:
-        settings = segment.settings
+    cardiac_outputs = {stretch.settings.cardiac_output_l_min for stretch in stretches}
+    assert {3.0, 8.0} <= cardiac_outputs
+    for stretch in stretches:
+        settings = stretch.settings
         assert settings.alveolar_volume_l == reference.alveolar_gas_volume_l
         assert settings.venous_volume_l == reference.venous_pool_volume_l
         held = {
