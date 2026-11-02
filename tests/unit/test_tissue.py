@@ -9,7 +9,7 @@ import pytest
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.supported_ranges import CardiacOutput
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CardiacOutput
 from anesthesia_sim.core.tissue import TissueGroup
 
 BLOOD_FLOW_L_MIN = 1.0
@@ -663,7 +663,8 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
 
 
 @pytest.mark.parametrize(
-    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1.7976931348623157e308]
+    "simulation_step_s",
+    [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), 1e6, 1.7976931348623157e308],
 )
 def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
     simulation_step_s: float,
@@ -673,8 +674,10 @@ def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
     Every compartment stepped alone has the same ceiling, the supported run length, so one
     function states which steps a compartment accepts. The step is refused and the amount held
     does not change. A step of exactly 86 400 s is accepted, and it brings the tissue group to
-    its equilibrium, 0.02 of its capacity. The expected ceiling is written out here rather than
-    read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    its equilibrium, 0.02 of its capacity. The step just past the ceiling is built from
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. The expected ceiling and the refusal message are written
+    out as the test's expected values, so `tools/restated_constants.py` lists this test as
+    failing on purpose when the run length moves (`PL-DPDG`).
     """
 
     tissue = _build_tissue()

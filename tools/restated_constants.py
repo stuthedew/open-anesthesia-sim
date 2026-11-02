@@ -77,6 +77,16 @@ The cases of one parametrized test are judged together, so a case that
 copies the value beside a case that names the constant is not seen. Whether
 a reported test should change is left to the session that reads the report.
 
+A module that fails to collect is reported as its file, with no test in it
+to judge. A copied value cannot make a module fail to import, because a copy
+does not change when the constant does. So the file counts as reading the
+constant when one of its module-level statements, or a decorator on one of
+its functions or classes, reads it, directly or through a module-level name
+that does. On 2026-11-01 `MAXIMUM_INPUT_FRACTION` widened from 0.99 to 1.98,
+which is no fraction at all. `tests/unit/test_numerical_envelope_sweep.py`
+builds its dial ceiling from the constant at import, so it failed to collect
+and was named as restating it (`PL-DPDG`).
+
 The suite takes several minutes for each constant, so this runs in the
 `restated-constants` job of `.github/workflows/drift.yml` and not in
 `make check`. `--constant NAME` limits a run to the named constants. Standard
@@ -126,6 +136,10 @@ _PINNED_MESSAGE = (
     "it pins the refusal message whole, as .claude/rules/test-oracles.md asks, so a "
     "moved limit means rewriting the message it expects"
 )
+_WRITTEN_OUT_CEILING = (
+    "it writes out the 86 400 s ceiling it accepts and pins the refusal message whole, so a "
+    "moved run length means rewriting both"
+)
 TRIPWIRES: Mapping[tuple[str, str], str] = {
     (
         "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
@@ -164,6 +178,53 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
         ): _PINNED_MESSAGE
         for name in ("MAXIMUM_ALVEOLAR_VENTILATION_L_MIN", "MAXIMUM_CARDIAC_OUTPUT_L_MIN")
     },
+    # The three below write the 86 400 s ceiling out on purpose, as each
+    # docstring says, and pin the refusal message whole (`PL-DPDG`).
+    **{
+        ("MAXIMUM_ELAPSED_SIMULATION_TIME_S", nodeid): _WRITTEN_OUT_CEILING
+        for nodeid in (
+            "tests/unit/test_circuit.py"
+            "::test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone",
+            "tests/unit/test_tissue.py"
+            "::test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone",
+            "tests/unit/test_blood.py"
+            "::test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone",
+        )
+    },
+    **{
+        (
+            name,
+            "tests/unit/test_governing_equations.py"
+            "::test_require_canonical_state_refuses_more_agent_than_a_case_can_move",
+        ): (
+            "it pins MAXIMUM_CUMULATIVE_AGENT_L at 14 400 L, worked by hand as 10 L/min over "
+            "24 h, and pins the refusal message whole, so a moved flow or run length means "
+            "working the bound out again"
+        )
+        for name in ("MAXIMUM_FRESH_GAS_FLOW_L_MIN", "MAXIMUM_ELAPSED_SIMULATION_TIME_S")
+    },
+    **{
+        (
+            name,
+            "tests/unit/test_numerical_envelope_sweep.py"
+            "::test_every_core_operation_refuses_inputs_outside_its_floating_point_domain",
+        ): (
+            "its EDGES table writes out each interval docs/MODEL.md records, as its docstring "
+            "says, so that a bound that moves fails it and is noticed"
+        )
+        for name in (
+            "MAXIMUM_FRESH_GAS_FLOW_L_MIN",
+            "MAXIMUM_ALVEOLAR_VENTILATION_L_MIN",
+            "MAXIMUM_CARDIAC_OUTPUT_L_MIN",
+            "MAXIMUM_INPUT_FRACTION",
+            "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
+        )
+    },
+    (
+        "MAXIMUM_INPUT_FRACTION",
+        "tests/unit/test_supported_ranges.py"
+        "::test_a_dial_and_a_fraction_above_the_input_ceiling_are_refused_in_their_own_units",
+    ): _PINNED_MESSAGE,
 }
 
 
@@ -423,13 +484,16 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     class, fixture or constant defined in the same file that reads it. A test
     whose file imports the name for other tests and that copies the value is
     so still named. A test that is not found in its file is judged not to read
-    it, so it is named and a person looks at it.
+    it, so it is named and a person looks at it. A node id that names only a
+    file is a module that failed to collect, and `reads_at_import` judges it.
     """
 
     if not imports_name(source, name):
         return False
     tree = ast.parse(source)
     path = [part.partition("[")[0] for part in nodeid.split("::")[1:]]
+    if not path:
+        return reads_at_import(tree, name)
     scope: Sequence[ast.stmt] = tree.body
     references: set[str] = set()
     found = False
@@ -455,6 +519,27 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     if not found:
         return False
     return name in references or bool(references & _module_readers(tree, name))
+
+
+def reads_at_import(tree: ast.Module, name: str) -> bool:
+    """Whether importing the module `tree` reads `name`, which only a reader can fail on.
+
+    The statements run at import are the module-level ones other than the
+    bodies of functions and classes, and the decorators on those functions and
+    classes, such as a `pytest.mark.parametrize` list. Each counts when it
+    names `name`, or names a module-level function, class or assignment that
+    reads it.
+    """
+
+    readers = _module_readers(tree, name)
+    for statement in tree.body:
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            references = set().union(*map(_references, statement.decorator_list))
+        else:
+            references = _references(statement)
+        if name in references or references & readers:
+            return True
+    return False
 
 
 def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:

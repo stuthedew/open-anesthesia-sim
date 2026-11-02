@@ -93,6 +93,45 @@ def test_a_test_restating_a_constant_is_named_and_one_importing_it_is_not(tmp_pa
     ]
 
 
+#: How each module below reads the limit at import, if it does.
+IMPORT = f"from anesthesia_sim.core.supported_ranges import {NAME}\n"
+
+
+@pytest.mark.parametrize(
+    ("body", "reads"),
+    [
+        # A module-level name built from the limit, directly or through another.
+        (f"CEILING = {NAME}\n", True),
+        (f"CEILING = {NAME}\nHALF = CEILING / 2\n", True),
+        # A parametrize list is evaluated at import.
+        (f"@pytest.mark.parametrize('s', [{NAME}])\ndef test_x(s): ...\n", True),
+        # A module-level call of a function that reads it.
+        (f"def ceiling():\n    return {NAME}\nCEILING = ceiling()\n", True),
+        # Read only inside a test body, which import does not run.
+        (f"def test_x():\n    assert {NAME} > 0\n", False),
+        # Imported and never read at all.
+        ("STEP = 0.1\n", False),
+    ],
+)
+def test_a_module_that_fails_to_collect_is_judged_by_what_its_import_reads(
+    body: str, reads: bool
+) -> None:
+    """`PL-DPDG`: a failed collection is named only where import could not have read the limit.
+
+    A copy does not change when the limit does, so it cannot make a module fail
+    to import. A module that reads the limit at import can, when the widened
+    value is out of range, as `MAXIMUM_INPUT_FRACTION` at 1.98 was on
+    2026-11-01.
+    """
+
+    source = IMPORT + body
+    failed = [Failure("tests/test_module.py", "tests/test_module.py")]
+
+    named = restating(failed, NAME, lambda file: source)
+
+    assert named == ([] if reads else failed)
+
+
 @pytest.mark.parametrize(
     "source",
     [
