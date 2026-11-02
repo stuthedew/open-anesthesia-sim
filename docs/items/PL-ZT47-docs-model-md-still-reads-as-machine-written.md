@@ -46,13 +46,31 @@ cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (pp.
 and the $`F_I - F_A`$ gradient to uptake (p. 171), and describe the teaching
 role of the $`F_A/F_I`$ curve (p. 167)." The full citation follows unchanged.
 
-**Open questions for the design round.** Whether the audit trail (decision
-histories, item ids, re-measurement narratives) moves out of `docs/MODEL.md`
-into the items that hold it, leaving a specification a clinician can read.
-That would shorten the file most, and it is the owner's call because the
-document is the authoritative specification. Whether the plain-writing rule
-gains the four patterns above. Whether `tools/new_prose.py` reviews changed
-paragraphs of `docs/MODEL.md` as well as `.py` units.
+**Decided 2026-11-02 (project owner, 2026-11-02).** This is a specified
+decision, not a ratified one. The owner first agreed with the recommendation
+and then said: "Strongly agree with item 1 actually in terms of making it a
+document that clinicians can read. Not just a ratification." So the bar to
+reopen it is a compelling argument, not ordinary evidence.
+
+The goal is a `docs/MODEL.md` that a clinician can read. The decision history
+comes out first, and the phrasing is rewritten after. The history means item
+ids, re-measurement narratives, who-supplied-what notes and accounts of how a
+choice was reached. It goes to the item that already holds it. Rewriting the
+phrasing first would be undone by the next change that adds history in the
+same style.
+
+**Proposed split, for the session that triages this.** Each section-sized
+part fits one session, since the whole file is about 140,800 words.
+
+1. Move the decision history out, one group of sections per item. Each moved
+   passage lands in its item file, or in a new one where no item holds it.
+2. Rewrite the remaining prose of the same sections, against the four
+   patterns above as well as `.claude/rules/plain-writing.md`.
+3. Add the four patterns to `.claude/rules/plain-writing.md`, with this item's
+   line-395 paragraph as the before-and-after example.
+4. Make `tools/new_prose.py` return changed paragraphs of `docs/MODEL.md`, so
+   the close-out prose review reads them. Parts 3 and 4 are workflow changes,
+   so check the generator pause in `CLAUDE.md` before building them.
 
 **Constraint.** As in `PL-BZR4`: no equation, unit, assumption, limitation or
 provenance note may be lost. A citation stays; narration about the citation
