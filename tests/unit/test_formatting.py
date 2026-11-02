@@ -1698,15 +1698,15 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
     precision table has no entry for a compartment's amount in any unit. That
     amount's precision was derived as two significant figures (`PL-2881`). A
     precision stored as a count of decimals cannot express significant figures,
-    so `format_compartment_amount` applies it instead. The table must not give a
-    compartment's amount the litre precision of the run totals. At a resolution
-    of 0.1 L, the amount of agent in venous blood would stay less than one
-    display step for a whole hour at 1 MAC. So would the amount in the alveoli
-    with sevoflurane and isoflurane. The stored total has no entry in
-    millilitres of liquid, because converting the stored total to liquid gives
-    a figure 5.8% too high (`docs/MODEL.md` § "Known limitations"). When the
-    stored total is 17 mL of liquid, that error is already one whole display
-    step of 1 mL.
+    so `format_compartment_amount` applies the two significant figures itself.
+    The table must not give a compartment's amount the precision in litres that
+    the run totals use. At a resolution of 0.1 L, the amount of agent in venous
+    blood would stay less than one display step for a whole hour at 1 MAC. So
+    would the amount of agent in the alveoli, for sevoflurane and isoflurane.
+    The table has no entry for the stored total in millilitres of liquid,
+    because converting the stored total to liquid gives a figure 5.8% too high
+    (`docs/MODEL.md` § "Known limitations"). When the stored total is 17 mL of
+    liquid, that error is already one whole display step of 1 mL.
     """
 
     refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
