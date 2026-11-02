@@ -4506,18 +4506,23 @@ means re-measuring these figures, not just editing a constant.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-**The release check, and why it allows 0.5%.** The model advances in fixed
-steps of 0.1 s, and a shorter step should give almost the same result. Every
-change must pass a test that reruns the first minute of the default
-sevoflurane induction with steps of 0.1 s, 0.05 s and 0.025 s. Each run's
-alveolar, vessel-rich and mixed-venous concentrations must be within 0.5% of
-the run with the next shorter step. The 0.5% dates from the simulator's
-earlier calculation method, whose runs differed by about 0.04% in alveolar
-concentration. The current method's runs agree to better than one part in a
-trillion (measured 2026-10-03), so the much tighter limits above are the ones
-that would catch a real error. A compartment that holds almost no agent also
-passes if its two values differ by less than 0.000001 vol%. There, a tiny
-difference is a large percentage.
+**Why the step-size check allows 0.5%, and how to change it.**
+
+- **What it checks.** Every change must pass a test that reruns the first
+  minute of the default sevoflurane induction with steps of 0.1 s, 0.05 s and
+  0.025 s. Each run's alveolar, vessel-rich and mixed-venous concentrations
+  must be within 0.5% of the next run's, or within 1e-8 as a fraction
+  (0.000001 vol%) near zero, where a tiny gap is a large percentage.
+- **Why 0.5%.** No record says how it was chosen. It dates from an earlier,
+  approximate method, whose runs differed by about 0.04% in the alveolar
+  concentration and by more in mixed venous. The same test also requires
+  each gap to stay below 1e-14 as a fraction. Any gap that breaks 0.5% is at
+  least 1e-8, so it breaks 1e-14 too. Today the 0.5% limit changes no outcome.
+- **How to change it.** A fork with an approximate method fails 1e-14 even
+  when its arithmetic is correct: a first-order method shows gaps near
+  1.4e-11. Relax 1e-14, and 0.5% becomes the working check. Set it above the
+  method's own gaps at these steps and below a difference a learner could
+  see. The constants are in `tests/reference/test_sevo_patient.py`.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 This gate tests self-consistency across the supported steps, not
