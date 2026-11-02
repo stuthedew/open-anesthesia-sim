@@ -3,7 +3,7 @@ id: PL-PR1W
 title: Place the compartment schematic beside the concentration chart in one shipped Workspace
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: feature
 feature: schematic
 touches: src/anesthesia_sim/data/workspaces, tests/unit

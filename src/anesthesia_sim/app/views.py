@@ -14,6 +14,9 @@ hands it on every frame (`PL-TH35`).
   § "Minimum displayed outputs" requires it to stay reachable in every layout,
   which the registry enforces.
 - `ParameterControlsView` is every displayed run's setting controls.
+- `CompartmentSchematicView` is every displayed run's compartment schematic:
+  six containers filled to their tensions, each labelled with its name,
+  tension and amount (`PL-RNYV`).
 
 A View that shows a run's own surfaces asks the run for a copy of each, and
 the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
@@ -27,7 +30,9 @@ from its own frame. It writes one line per run, rather than showing a copy
 from the run.
 
 These classes compute nothing that a reader interprets. Every caption comes
-from `app/dashboard_frame.py`, and every drawn value comes from the frame.
+from `app/dashboard_frame.py`, or for the schematic from
+`app/compartment_schematic.py`. Every drawn value comes from the frame or from
+a copy of a run surface that the run writes.
 """
 
 from __future__ import annotations
@@ -42,8 +47,10 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
+from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
+    INTERPRETATION_DISCLAIMER_TEXT,
     NO_TRACES_SHOWN_TEXT,
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
@@ -65,6 +72,7 @@ from anesthesia_sim.app.qt_chart import (
     WashInChart,
     WashInLegend,
 )
+from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.stylesheets import panel_stylesheet
 from anesthesia_sim.app.theme import (
@@ -88,11 +96,17 @@ from anesthesia_sim.app.view_contract import (
     unreadable_state_text,
 )
 
-__all__ = ["AccountingView", "ConcentrationView", "ParameterControlsView", "WashInView"]
+__all__ = [
+    "AccountingView",
+    "CompartmentSchematicView",
+    "ConcentrationView",
+    "ParameterControlsView",
+    "WashInView",
+]
 
 #: The saved-state version for the Views here that have no setting of their
-#: own, which are the accounting View and the setting controls View. Each of
-#: them saves only this version and nothing else.
+#: own, which are the accounting View, the setting controls View and the
+#: compartment schematic. Each of them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
 
 #: The version of a chart View's saved state. Version 2 added the chart's
@@ -107,6 +121,7 @@ _TIME_BASE_KEY: Final = "time_base_s"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
+_SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 
 
 class _RunCopies[W: QWidget]:
@@ -635,3 +650,64 @@ class ParameterControlsView(_RunSurfaceView):
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__(context, lambda run: run.build_parameter_controls())
+
+
+class CompartmentSchematicView(QWidget):
+    """Every displayed run's compartment schematic, one above the next (`PL-RNYV`).
+
+    Each schematic draws the circuit, the alveoli, venous blood and the three
+    tissue groups as containers. Each container is filled to its tension on
+    the concentration chart's scale, and labelled with its name, its tension
+    and its amount of agent vapour. Each schematic is a copy of a run surface.
+    So the run writes it at the same moments as its readouts, from the same
+    snapshot, and withholds it whenever it withholds them
+    (`RunView.build_compartment_schematic`). The View asks for no chart frame.
+    The statement that its values are model outputs, not measurements, appears
+    once, in the View's heading, because every value the View shows is a model
+    output.
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__()
+        self._drawn = False
+        self.state_notice = _state_notice_for(context)
+        self._copies = _RunCopies(lambda run: run.build_compartment_schematic(), PAGE_SPACING)
+        column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
+        heading = QHBoxLayout()
+        heading.setSpacing(VIEW_HEADING_SPACING)
+        heading.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True), 1)
+        heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
+        column.addWidget(self.state_notice)
+        column.addLayout(heading)
+        column.addWidget(self._copies.holder)
+        column.addStretch(1)
+
+    @property
+    def schematics(self) -> tuple[RunSchematic, ...]:
+        """The schematic shown for each displayed run, in drawing order."""
+
+        return self._copies.copies
+
+    def refresh(self, tick: ViewTick) -> None:
+        """Show one schematic for each run in the tick. The runs write the schematics' values."""
+
+        self._copies.follow(tick.runs)
+        self._drawn = True
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return not self._drawn
+
+    def frame_request(self) -> FrameRequest | None:
+        return None
+
+    def save_state(self) -> SavedState:
+        return _saved_state()
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return tuple(
+            text for schematic in self._copies.copies for text in schematic.canvas.painted_strings()
+        )

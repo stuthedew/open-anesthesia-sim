@@ -16,6 +16,7 @@ import pytest
 from anesthesia_sim.app.view_contract import View, ViewContext
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
+    COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
     REGISTERED,
@@ -52,17 +53,25 @@ def _factory(context: ViewContext) -> View:
 def test_each_tag_is_the_string_a_saved_file_holds() -> None:
     """Changing one of these strings changes what every saved layout means."""
 
-    assert [CONCENTRATION_CHART, WASH_IN, PARAMETER_CONTROLS, AGENT_ACCOUNTING] == [
+    assert [
+        CONCENTRATION_CHART,
+        WASH_IN,
+        PARAMETER_CONTROLS,
+        AGENT_ACCOUNTING,
+        COMPARTMENT_SCHEMATIC,
+    ] == [
         "concentration_chart",
         "wash_in",
         "parameter_controls",
         "agent_accounting",
+        "compartment_schematic",
     ]
     assert set(REGISTERED) == {
         "concentration_chart",
         "wash_in",
         "parameter_controls",
         "agent_accounting",
+        "compartment_schematic",
     }
 
 
