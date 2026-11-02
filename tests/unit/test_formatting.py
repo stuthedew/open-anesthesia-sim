@@ -1690,15 +1690,18 @@ def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
 
 
 def test_a_unit_with_no_derived_precision_is_refused() -> None:
-    """An amount in a unit with no derivation fails loudly.
+    """Formatting an amount in a unit with no derived precision fails loudly.
 
-    It is never formatted at a default precision (`PL-0S0V`). A compartment's
-    amount has no entry in any unit until `PL-2881` derives one. The table must
-    not lend it the litre precision of the run totals. At 0.1 L, venous blood
-    and the alveoli would show below resolution for a whole hour. The stored
-    total has no liquid entry, because a store converted to liquid comes out
-    5.8% too high (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid,
-    that error is already one whole step of 1 mL.
+    The amount is never formatted at a default precision (`PL-0S0V`). A
+    compartment's amount has no entry in any unit. `PL-2881` derived a
+    precision of two significant figures for it, which a count of decimals
+    cannot hold, and `PL-RNYV` builds a form that can. Until then, the table
+    must not lend it the litre precision of the run totals. At a resolution of
+    0.1 L, the amounts in venous blood and the alveoli would stay below one
+    display step for a whole hour. The stored total has no liquid entry,
+    because converting the stored total to liquid gives a figure 5.8% too high
+    (`docs/MODEL.md` § "Known limitations"). At 17 mL of liquid, that error is
+    already one whole step of 1 mL.
     """
 
     refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
