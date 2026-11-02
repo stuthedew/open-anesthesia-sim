@@ -4095,9 +4095,11 @@ project through one table, De Wolf et al. 2012, Table 1, which is the paper
 already cited for sevoflurane. So the three data files share one source and
 can be compared directly.
 
-**The nine tissue:gas values in that table are one study's measurements.**
-They are the human measurements of Yasuda, Targ and Eger 1989, checked against
-the paper and adopted as described below. So all three agents' tissue
+**The nine tissue:gas values in that table derive from one study's
+measurements.** They are Gas Man's figures for the human measurements of
+Yasuda, Targ and Eger 1989, checked against the paper and adopted as described
+below. Five of the nine differ from the study's means by up to 9%, as the
+table below shows. So all three agents' tissue
 coefficients come from *one study, one laboratory, one technique and one
 cohort*, measured side by side in the same specimens. Whatever systematic
 error that technique has, every agent carries it identically. A MAC-normalized
@@ -4113,8 +4115,8 @@ opposite directions for sevoflurane and desflurane.
 file records the primary measurement beside its stored number and states the
 difference.
 
-**Gas Man's Workbook attributes these coefficients to Yasuda, Targ and Eger,
-and the paper confirms it.** The note under the Workbook's page-168 parameter
+**Gas Man's Workbook attributes the nine tissue:gas coefficients to Yasuda,
+Targ and Eger, and the paper confirms it.** The note under the Workbook's page-168 parameter
 table reads "Values for isoflurane, halothane, desflurane and sevoflurane are
 taken from Yasuda, Targ and Eger". The note alone could not move the
 coefficients' tier. A program's statement about its own provenance is the
@@ -4285,14 +4287,15 @@ Three things move with it at that point:
 
 Until then, the circuit and the dial read the same number from the same file.
 
-**The three maxima come from two classes of vaporizer, which behave
-differently only away from sea level.** Sevoflurane's 8% and isoflurane's 5%
+**The three maxima come from two classes of vaporizer, a distinction this
+model needs only away from sea level.** Sevoflurane's 8% and isoflurane's 5%
 are the maxima of variable-bypass dials. Desflurane's 18% is the upper end of
 the Tec 6's range, and a Tec 6 is a heated gas–vapour blender rather than a
 variable-bypass vaporizer. At the 760 mmHg fixed under § "Assumptions", a dial
 position on either class gives the same partial pressure. So nothing in the
-core has to know which kind of device a given limit came from. The two classes
-behave differently only at reduced ambient pressure, which is not modelled.
+core has to know which kind of device a given limit came from. In this model
+the two classes would differ only at reduced ambient pressure, which is not
+modelled.
 See § "Known limitations".
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
@@ -4679,8 +4682,9 @@ magnitude closer to the independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 900 s -->
 
-The oracle runs at an eighth of the step under test. At that step, refining
-the oracle further stops changing the answer.
+The oracle runs at an eighth of the step under test. At that step its
+truncation error no longer contributes to the residual, as the next paragraph
+shows.
 
 **The residual is rounding, not truncation, which its lack of a direction
 shows.** Refining the oracle a further
@@ -4825,7 +4829,8 @@ the operator split's error coefficient:
 
 <!-- not-restated: 5 L/min -->
 
-Under the exact step, the two setting-change trajectories have swapped
+Under the operator split the unperfused load had the larger error and the
+ventilator start the smaller. Under the exact step the two have swapped
 places, and the residual does accumulate over a run. Three ventilator starts
 in a row give desflurane 2.46e-14, against 1.39e-14 for one (measured
 2026-10-25). So the sweep still shows where a method that is not exact has its
