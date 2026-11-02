@@ -363,6 +363,19 @@ no record supports.
    This turns his reads into a regression test for the review, so it cannot
    pass again a kind of text he has already rejected.
 
+   The set lives in one folder in the repository beside the review's
+   instructions, one short file per entry. Two limits keep it small. First,
+   only a miss is added: a paragraph that the review passed and the owner
+   then rejected. A rejection that the current review already catches adds
+   nothing. Second, the set keeps at most two entries for each kind of
+   failure, such as jargon, length, a reason a developer cannot use, or a
+   reason with no source. A new miss of a kind already held replaces the
+   older entry of that kind. So today's six versions of one paragraph become
+   four entries, one for each kind they show, and the set grows only when the
+   review fails in a new way. The question was the owner's (project owner,
+   2026-11-02, 22:14Z: "Where do the rejected paragraphs go? Seems like that
+   could add up over time?").
+
 **Decided in the round.** Three calls have one clearly correct option.
 
 - The blind review brief is unchanged. Readability has one owner, the prose
