@@ -3,13 +3,14 @@ id: PL-TCD3
 title: A numeric paragraph passes check_bound_families on any marker in its scope, even a not-restated: marker, which says its figure is tied to nothing, or a marker that ties a different figure: decide whether a marker should hold only the figures it names
 priority: P1
 effort: S
-status: needs-decision
+status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items
 deferred-from: v0.7.0 - filed 2026-11-02 from PL-B6YV's blind review; a question about the check's rule that the schematic does not wait on
-payoff: a computed figure in a section the check holds cannot pass on a marker written for a different figure
 added: 2026-11-02
+payoff: a computed figure in a section the check holds cannot pass on a marker written for a different figure
+verify: grep -q 'def _marker_held_figures' tools/doc_check.py && grep -q '_marker_held_figures' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `PL-B6YV` built the rule as decided: a numeric paragraph passes
@@ -45,7 +46,22 @@ passing forms, so the choice is the owner's. The alternative is to keep the
 paragraph-level rule and rely on each pass to declare the figures a marker
 does not cover, as `PL-B6YV` did by hand.
 
-**Done when.** The decision is recorded here. If adopted,
-`_holds_its_figures` holds a paragraph through a marker only for the figures
-the marker names, with unit tests, and every section in `BOUND_FAMILIES`
-still conforms.
+**Decided 2026-11-02 (project owner, 2026-11-02, ratified).** Adopted as
+recommended: a marker holds a numeric paragraph only through the figures it
+names, and a `not-restated:` marker holds nothing for this rule. It was chosen
+over keeping the paragraph-level rule and relying on each pass to declare the
+figures a marker does not cover. It reopens, for markers only, the forms
+`PL-B6YV` listed. The answer was "agree with recs", so it reopens on ordinary
+evidence.
+
+**Done when.** `_holds_its_figures` holds a paragraph through a marker only
+for the figures the marker names. A `provenance:` marker covers each figure
+equal to a value it asserts, a `derived:` marker covers the figure it states
+it computed, and a `not-restated:` marker covers none. A paragraph with any
+other figure in a unit needs a test, a source, a date or the declared-none
+form. The reader that says which figures a marker covers is
+`_marker_held_figures`, built on `_marker_ties` and `_prose_figure`, with
+unit tests for each marker kind. Every section in `BOUND_FAMILIES` still
+conforms, and any paragraph the change newly fails is annotated in the same
+change. If the reader lands under another name, update `verify:` in the same
+commit.
