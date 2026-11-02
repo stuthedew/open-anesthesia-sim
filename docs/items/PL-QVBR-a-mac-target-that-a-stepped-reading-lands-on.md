@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: defect-review-2026-10
+milestone: v0.6.13
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
 added: 2026-10-26
 closed: 2026-11-01

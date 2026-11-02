@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.6.13
 touches: .github/workflows/drift.yml
 added: 2026-11-01
 closed: 2026-11-02

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, docs
 feature: schematic
+milestone: v0.6.13
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, docs/items/PL-RNYV-build-the-compartment-schematic-view-the.md, docs/items/PL-S79P-draw-each-compartment-s-share-of-the-agent-the.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-KFTM-carry-each-compartment-s-modelled-agent-amount.md
 added: 2026-10-25
 closed: 2026-11-01
