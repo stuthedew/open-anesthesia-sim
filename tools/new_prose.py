@@ -1,4 +1,4 @@
-"""Print each long docstring and comment that a branch added or changed in the simulator.
+"""Print each long docstring, comment and document paragraph that a branch changed in the simulator.
 
 The close-out step in `.claude/skills/docket/modes/close-out.md` hands this
 tool's output to one fresh reviewer, who reads each unit against
@@ -13,6 +13,14 @@ A unit is printed when it has `MIN_WORDS` words or more and a line the branch
 changed falls inside it. In `PL-Y55Q`'s blind re-measure, short units were
 awkward in 25% of verdicts and long ones in 61%, so the long ones are where a
 review pays (project owner, 2026-10-18, ratified, `PL-PRCS`).
+
+**Which document prose is printed.** In `docs/MODEL.md` and `README.md`, the
+documents that `doc_check.PROVENANCE_DOCUMENTS` holds to the specialist
+standard, a unit is a paragraph or a table row, as `docket.markdown` reads the
+blocks. A paragraph inside a list item or a block quote is a unit of its own. A
+table row is a unit because one cell can carry a whole essay. A fence, an HTML
+comment and a heading are not prose to review. The same `MIN_WORDS` applies
+(`PL-ZT47`).
 
 **Which files are the simulator's.** A Python file under `src/`, or a Python
 file under `tests/` that imports the product package, by `docket.arming`'s
@@ -61,6 +69,8 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import SOURCE, TESTS, imports_product  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.markdown import PARAGRAPH, TABLE  # noqa: E402
+from docket.markdown import read as read_markdown  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
@@ -77,6 +87,9 @@ from diff_mutation import changed_rows  # noqa: E402
 #: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
 #: short and long units here.
 MIN_WORDS = 30
+#: The documents whose paragraphs are reviewed as well, as repository paths.
+DOCUMENTS = frozenset(path.as_posix() for path in doc_check.PROVENANCE_DOCUMENTS)
+
 #: How many lines of code to print above and below each unit, so the reviewer
 #: can see what an "it" or a name points at without opening the file.
 CONTEXT_ROWS = 4
@@ -117,6 +130,33 @@ def prose_units(path: str, source: str) -> list[Unit]:
     return sorted(found, key=lambda unit: unit.first)
 
 
+def document_units(path: str, source: str) -> list[Unit]:
+    """Every paragraph and table row in the Markdown `source`, in the order they start.
+
+    A table's delimiter row, the second line of the table, holds no prose and
+    is left out.
+    """
+    lines = split_lines(source)
+    found: list[Unit] = []
+    for block in read_markdown(lines).blocks:
+        if block.kind == PARAGRAPH:
+            text = "\n".join(line.strip() for line in lines[block.start : block.end])
+            found.append(Unit(path, "paragraph", block.start + 1, block.end, text))
+        elif block.kind == TABLE:
+            for index in range(block.start, block.end):
+                if index != block.start + 1:
+                    row = index + 1
+                    found.append(Unit(path, "table row", row, row, lines[index].strip()))
+    return found
+
+
+def units_of(path: str, source: str) -> list[Unit]:
+    """The prose units of the file at `path`: a document's paragraphs, or a Python file's."""
+    if path in DOCUMENTS:
+        return document_units(path, source)
+    return prose_units(path, source)
+
+
 def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
     """The units of `MIN_WORDS` or more in `source` that a changed row falls inside.
 
@@ -124,7 +164,7 @@ def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
     """
     return [
         unit
-        for unit in prose_units(path, source)
+        for unit in units_of(path, source)
         if unit.words >= MIN_WORDS
         and (rows is None or any(unit.first <= row <= unit.last for row in rows))
     ]
@@ -155,9 +195,10 @@ def branch_prose(root: Path, base: str, *, committed: bool = False) -> Found:
     units: list[Unit] = []
     unread: list[str] = []
     for path in paths:
-        if PurePosixPath(path).suffix != ".py":
+        document = path in DOCUMENTS
+        if not document and PurePosixPath(path).suffix != ".py":
             continue
-        if not (path.startswith(SOURCE) or path.startswith(TESTS)):
+        if not document and not (path.startswith(SOURCE) or path.startswith(TESTS)):
             continue
         if not committed and not (root / path).is_file():
             continue
@@ -166,7 +207,7 @@ def branch_prose(root: Path, base: str, *, committed: bool = False) -> Found:
                 source = read_git(["show", f"HEAD:{path}"], root)
             else:
                 source = (root / path).read_text(encoding="utf-8")
-            if not is_simulator_file(path, ast.parse(source, filename=path)):
+            if not document and not is_simulator_file(path, ast.parse(source, filename=path)):
                 continue
             to = ["HEAD"] if committed else []
             rows = changed_rows(read_git(["diff", "-U0", fork, *to, "--", path], root))
@@ -191,7 +232,7 @@ def unreviewed(root: Path, found: Found, since: str | None) -> list[Unit]:
             continue
         try:
             before = read_git(["show", f"{since}:{path}"], root)
-            reviewed[path] = {unit.text for unit in prose_units(path, before)}
+            reviewed[path] = {unit.text for unit in units_of(path, before)}
         except UNTOKENIZABLE:
             pass
     return [unit for unit in found.units if unit.text not in reviewed[unit.path]]
@@ -211,9 +252,9 @@ def report(root: Path, found: Found) -> str:
     out: list[str] = []
     if found.units:
         out.append(
-            f"{len(found.units)} docstrings and comments of {MIN_WORDS} words or more changed "
-            f"in the simulator's files, against {found.against}. Rows marked > are the unit; "
-            "rows marked | are the code around it."
+            f"{len(found.units)} docstrings, comments and document paragraphs of {MIN_WORDS} "
+            f"words or more changed in the simulator's files, against {found.against}. Rows "
+            "marked > are the unit; rows marked | are the lines around it."
         )
         texts: dict[str, list[str]] = {}
         for number, unit in enumerate(found.units, start=1):
@@ -227,8 +268,8 @@ def report(root: Path, found: Found) -> str:
             ]
     else:
         out.append(
-            f"No docstring or comment of {MIN_WORDS} words or more changed in the simulator's "
-            f"files, against {found.against}."
+            f"No docstring, comment or document paragraph of {MIN_WORDS} words or more changed "
+            f"in the simulator's files, against {found.against}."
         )
     if found.unread:
         out += ["", "Not read, because Python would not parse the file:"]
