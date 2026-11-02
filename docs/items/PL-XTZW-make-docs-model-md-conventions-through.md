@@ -3,12 +3,15 @@ id: PL-XTZW
 title: Make docs/MODEL.md § "Conventions" through § "Conservation of agent mass" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1945
+reason: docs/MODEL.md from Conventions to Conservation of agent mass cites no item id, and its phrasing is rewritten against the five patterns; every line model_rewrite lost prints is accounted for in the pull request body
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Conventions" "Symbols" "Compartment capacities" "Tissue groups" "Governing equations" "Conservation of agent mass"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -42,3 +45,13 @@ decided split. The mechanism that let the history and padding accumulate,
 `verify:` runs. The pull request body accounts for every line
 `tools/model_rewrite.py lost` prints, and the project owner has read the
 rewrite.
+
+**Two sentences changed meaning on purpose (2026-11-02).** The Symbols
+section's first Code-column convention said that `VenousBloodCompartment` and
+every `TissueGroup` keep a copy of the blood:gas coefficient. That has been
+false since `PL-DQL9`, and no Code cell names `core/parameters.py`, so the
+convention was deleted rather than reworded. The reservoir-bag sentence in
+§ "Breathing circuit" lost its ratification note in the history move, which
+left it applying only to totals built from Shin et al. It now states
+`PL-TBMX`'s rule for every stored circuit total, as the first blind pass
+pointed out.

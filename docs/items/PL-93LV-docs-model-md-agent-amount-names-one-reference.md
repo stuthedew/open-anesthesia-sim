@@ -3,11 +3,14 @@ id: PL-93LV
 title: docs/MODEL.md § "Agent amount" names "One reference condition, where the model physically has two" without the § mark (PL-KZ99's conversion paragraph), so tools/doc_check.py advises on it every run and a rename of that Known-limitations entry would pass unreported
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-27
+closed: 2026-11-02
+pr: 1945
+reason: docs/MODEL.md § "Agent amount" now writes § "One reference condition, where the model physically has two" with its section mark, fixed alongside PL-XTZW's rewrite of that section
 payoff: doc_check stops advising on the same sentence every run, and a rename of that Known-limitations entry is caught
 verify: grep -qF '§ "One reference condition' docs/MODEL.md
 ---
