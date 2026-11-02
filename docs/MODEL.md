@@ -5425,14 +5425,15 @@ only 0.14 to 0.25. That spread is narrower than a perfusion-limited model
 produces.
 <!-- not-restated: 2.4 -->
 
-**The three questions about the published apparatus are answered.** They
-were the breathing system, how end-tidal gas was sampled, and the alveolar
-ventilation during elimination. The published circuit is non-rebreathing, so
-the potent agents' inspired fraction in it is zero by construction. Its 50 ml
-of series dead space cannot account for the residual. Neither paper publishes
-a ventilation: it was titrated in each subject to normocapnia, and neither
-paper reports a $`\dot V_E`$ or an $`f_A`$. So there is no published
-ventilation at which to run the comparison.
+**Two of the three questions about the published protocol are answered, and the
+third cannot be.** They are the breathing system, how end-tidal gas was
+sampled, and the alveolar ventilation during elimination. The published circuit
+is non-rebreathing, so the potent agents' inspired fraction in it is zero by
+construction. Its 50 ml of series dead space cannot account for the residual.
+Neither paper publishes a ventilation: it was titrated in each subject to
+normocapnia, and neither paper reports a $`\dot V_E`$ or an $`f_A`$. So the
+ventilation during elimination is unknown, and there is no published value at
+which to run the comparison.
 
 So one candidate is left, the published value itself, and no measurement
 available to this project can settle it. **Neither it nor any struck candidate
@@ -5444,9 +5445,9 @@ the table above, with what ruled each of them out.
 cohort mean.** A deterministic model compared against a cohort *mean* would
 conventionally be judged against the standard error of that mean,
 $`\text{SD}/\sqrt{n}`$. For these cohorts that band is 2.6 to 2.8 times
-narrower. This section makes the weaker claim on purpose, because one
-deterministic run stands for one patient: the model is a **plausible
-individual** drawn from the published cohort. Desflurane's wash-in
+narrower. This section makes the weaker claim on purpose. It asks only
+whether the model is a **plausible individual** drawn from the published
+cohort. Desflurane's wash-in
 sits at +0.79 SD, which is +2.2 SEM, so it passes this claim and would fail a
 claim about the mean. A passing wash-in must not be restated as "reproduces
 the published mean", because no test here tests that.
@@ -5592,13 +5593,13 @@ shipped:
 
 Raising desflurane's blood:gas coefficient also closes little of its washout
 residual. At 0.57 the open-circuit 5-minute ratio moves from −2.33 SD to
-−1.97 SD. So the two findings do not share this cause. Nothing stored changes,
-and the disagreement is a known limitation. The five desflurane points and the
-isoflurane point at 12.5 minutes are checked against a regression band from
-−1 to +2.5 SD instead of the agreement band, so the gap cannot grow without a
-test failing. The band's upper edge sits above the largest distance measured,
-+2.10 SD. A primary-literature coefficient set, `ROADMAP.md`'s
-planned-milestone item 31, is where this would be weighed again.
+−1.97 SD. Nothing stored changes, and the disagreement is a known
+limitation. The five desflurane points and the isoflurane point at 12.5 minutes are checked against
+a regression band from −1 to +2.5 SD instead of the agreement band. The band's
+upper edge sits above the largest distance measured, +2.10 SD, so the gap
+cannot grow past +2.5 SD without a test failing. A primary-literature
+coefficient set, `ROADMAP.md`'s planned-milestone item 31, is where this would
+be weighed again.
 <!-- not-restated: 2.10 -->
 
 Caveat 1 above applies here too, and the early curve is where a second-gas
@@ -5726,10 +5727,9 @@ vessel-rich group. Elimination at five minutes is a vessel-rich measurement
 that barely sees blood:gas. This fits the rebreathing explanation above. The
 circuit sets *where* the elimination ratio sits against the published mean,
 as an offset fixed by the operating point. Among the model's own parameters,
-vessel-rich solubility is the one that the ratio moves with. No other section
-compares the model with a *measured* human washout. § "The first 24 hours of
-elimination against the published mean curves" compares it with the fitted
-mean curves over the rest of the day.
+vessel-rich solubility is the one that the ratio moves with. The model's
+departure from the fitted mean curves over the rest of the day is in
+§ "The first 24 hours of elimination against the published mean curves".
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Two tests keep the table in step with the code.**
