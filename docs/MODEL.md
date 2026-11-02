@@ -4590,23 +4590,27 @@ means re-measuring these figures, not just editing a constant.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-The release comparison tolerance is 5e-3 relative or 1e-8 absolute, and
-meeting either one is enough. It applies to the alveolar, vessel-rich and
-mixed-venous fractions after 60 s of the default sevoflurane wash-in. Under
-the operator split, comparing 0.1 s directly with 0.025 s exceeded the
-tolerance in the mixed-venous fraction alone. That compartment has barely
-begun to fill at 60 s, so the split's gap of 1.4e-6 in fraction between those
-two steps was 0.55% of the mixed-venous fraction. Under the exact step, the
-two runs land about 4e-17 apart there (measured 2026-10-03).
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-The 5e-3 relative tolerance was chosen when the simulator used the operator
-split. At that time, the split showed a relative gap of 4e-4 in the alveolar
-fraction between steps of 0.1 s and 0.025 s, and 5e-3 is about ten times that
-gap. The tolerance is kept as a coarse check, because with the exact step the
-same comparison gives gaps of about 1.4e-13 relative (measured 2026-10-03).
-The 1e-8 absolute tolerance covers a fraction so close to zero that a relative
-gap means little. For such a fraction, a negligible difference still passes.
+**The release check, and why it allows 0.5%.** The simulator moves the model
+forward in fixed time steps, normally 0.1 s long. A shorter step should give
+almost the same result. If it does not, the step is too long. Before each
+release, the test runs the first minute of the default sevoflurane induction
+three times, with steps of 0.1 s, 0.05 s and 0.025 s. In each run, the
+alveolar, vessel-rich and mixed-venous concentrations must be within 0.5% of
+the run with the next shorter step. The 0.5% margin was set for the
+simulator's earlier calculation method. With that method, the alveolar
+concentrations of the 0.1 s and 0.025 s runs differed by about 0.04%, so the
+margin allowed about ten times that difference. The check compares each run
+only with the next shorter step. Under the earlier method, a direct comparison
+of the 0.1 s run with the 0.025 s run would have failed. Their mixed-venous
+concentrations, which have barely begun to rise at one minute, differed by
+0.55%. With the current method, the three runs agree to better than one part
+in a trillion (measured 2026-10-03). So this check is now only a coarse safety
+net. The much tighter limit in the paragraphs above is the one that would
+catch a real error. One extra rule covers a compartment that still holds
+almost no agent. There, a tiny difference can be a large percentage, so a
+percentage means little. Two values for such a compartment also pass if they
+differ by less than 0.000001 vol%, which is one part in a hundred million of
+the gas.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 This gate tests self-consistency across the supported steps, not
