@@ -98,7 +98,7 @@ _EVERY_VIEW = WorkspaceSet(
 # The notice, written out here rather than read from the module that writes it.
 _NOTICE = "This View's saved settings could not be read, so it shows its default settings."
 
-_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None)
+_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None, lambda _unit: None)
 
 _ENTRIES = list(REGISTERED.values())
 

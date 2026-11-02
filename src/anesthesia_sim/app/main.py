@@ -2,22 +2,23 @@
 
 `uv run anesthesia-sim` runs `main()` below. The window opens maximized
 (`PL-Z4K6`). A maximized window lets the readout row use as many columns as
-the screen allows: seven readouts across on a 1366 px laptop, which the screen
-fraction below missed by a few pixels. Behind the maximized
-state, the window also has a normal geometry. That geometry is a fraction of
-the screen's available area, centred on it (`PL-005`), and never a fixed pixel
-size. `qt_widgets.initial_window_geometry` derives it from the screen that the
-application is given, and the reader gets it back when they un-maximize the
-window. Maximized is not full screen. The title bar and window controls stay,
-and on macOS a maximized window is the zoomed window. So `PL-005`'s refusal of
-a full-screen start does not apply to it. Maximized is also the reference's
-own default window state (`docs/interface-provenance.md` § "Adopted").
+the screen allows. On a 1366 px laptop that is seven readouts across, which the
+fraction of the screen described below missed by a few pixels. Behind the
+maximized state, the window also has a normal geometry. That geometry is a
+fraction of the screen's available area, centred on it (`PL-005`), and never a
+fixed pixel size. `qt_widgets.initial_window_geometry` derives it from the
+screen that the application is given, and the reader gets it back when they
+un-maximize the window. Maximized is not full screen. The title bar and window
+controls stay, and on macOS a maximized window is the zoomed window. So
+`PL-005`'s refusal of a full-screen start does not apply to it. Maximized is
+also the reference's own default window state (`docs/interface-provenance.md`
+§ "Adopted").
 
 The first frame is drawn after the window is shown, because a frame is built
 from the plot's laid-out width. The timers start after that, so the first
 thing a reader sees is a drawn, paused run. The platform applies the maximized
-size later, and each chart then owes the render tick a frame at its new width
-(`ConcentrationChart.owes_a_frame`).
+size later. Each chart then needs a new frame at its new width on the next
+render tick (`ConcentrationChart.owes_a_frame`).
 
 **What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` makes two
 runs on one axis into one patient under two managements, rather than two
@@ -27,13 +28,13 @@ trunk. The learner adds the second run themselves, by taking a branch.
 
 **The interface's colours are declared on the application before the first
 widget exists** (`PL-KRZW`). Qt's palette follows the host's appearance, but
-every colour that this interface declares is a light-theme value. So the parts
-of the window that no stylesheet applies to, such as the page's scroll bars,
-drew a dark host's surfaces around a light window.
-`qt_widgets.declare_application_colours` makes that declaration, and its
-docstring explains why it is a palette rather than a colour-scheme hint. This
-module owns only the ordering: a widget built before the call would be laid
-out under the host's palette.
+every colour that this interface declares is a light-theme value. So, without
+the declaration, the parts of the window that no stylesheet applies to, such as
+the page's scroll bars, were drawn in a dark host's colours around a light
+window. `qt_widgets.declare_application_colours` makes that declaration, and
+its docstring explains why it is a palette rather than a colour-scheme hint.
+This module owns only the ordering: a widget built before the call would be
+laid out under the host's palette.
 
 **The reader's saved Workspaces are loaded here, once** (`PL-DWHG`). `main()`
 gives Qt the organization and application names. It then asks Qt for the
@@ -46,6 +47,14 @@ One is the store itself, so that the Layout menu's "Save as default" can
 write to it. The other is the store's notice, which the tab strip shows.
 Where the platform reports no directory, the session has no store, so
 nothing is saved, and a notice tells the reader why.
+
+**The reader's preferences are loaded here too, from the same directory**
+(`PL-B396`). `open_preferences` loads `preferences.json` beside
+`workspaces.json`, through `app/preferences.py`, which owns the file. The
+dashboard receives what was loaded and the store, so that a change of
+preference, such as the agent cost View's unit, is saved and survives a
+restart. Where there is no directory, the session uses the default
+preferences, and the agent cost View says that a change will not be kept.
 """
 
 import os
@@ -57,6 +66,7 @@ from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.preferences import LoadedPreferences, Preferences, PreferencesStore
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
     declare_application_colours,
@@ -128,6 +138,83 @@ def open_workspaces(
     return LaunchWorkspaces(loaded.workspaces, store, loaded.notice)
 
 
+@dataclass(frozen=True, slots=True)
+class LaunchPreferences:
+    """The preferences a launch opens with, and where they can be saved.
+
+    Attributes:
+        loaded: What the store loaded, or the default preferences with a
+            notice where there is no directory to load from.
+        store: The store a change of preference is saved to, or `None` where
+            there is no directory to save in.
+    """
+
+    loaded: LoadedPreferences
+    store: PreferencesStore | None
+
+
+def open_preferences(standard_location: str, environment: Mapping[str, str]) -> LaunchPreferences:
+    """Load the reader's preferences from their data directory, the one Workspaces use.
+
+    Args:
+        standard_location: As `open_workspaces` takes it.
+        environment: As `open_workspaces` takes it.
+
+    Returns:
+        What the store loaded, with the store. When neither the override nor
+        the platform names a directory, the result holds the default
+        preferences, no store, and a notice saying that no change of
+        preference will be kept.
+    """
+
+    try:
+        directory = user_data_directory(standard_location, environment)
+    except LayoutRefused as refusal:
+        return LaunchPreferences(
+            LoadedPreferences(
+                Preferences(),
+                writable=False,
+                notice=f"{refusal}. No change of preference will be kept after this session",
+            ),
+            None,
+        )
+
+    store = PreferencesStore(directory)
+
+    return LaunchPreferences(store.load(), store)
+
+
+def open_dashboard(
+    case: BranchedCase, standard_location: str, environment: Mapping[str, str]
+) -> SimulationView:
+    """Build the dashboard over `case`'s trunk, with the reader's Workspaces and preferences.
+
+    `main()` calls this, and so do the tests of what survives a restart. So
+    the wiring that saves the reader's choices is the one under test.
+
+    Args:
+        case: The case the dashboard opens on.
+        standard_location: As `open_workspaces` takes it.
+        environment: As `open_workspaces` takes it.
+
+    Raises:
+        ShippedWorkspaceError: As `open_workspaces` raises it.
+    """
+
+    launch = open_workspaces(standard_location, environment)
+    preferences = open_preferences(standard_location, environment)
+
+    return SimulationView(
+        (case.trunk,),
+        case=case,
+        workspaces=launch.workspaces,
+        store=launch.store,
+        notice=launch.notice,
+        preferences=preferences.loaded,
+        preferences_store=preferences.store,
+    )
+
+
 def main() -> None:
     """Launch the application and run its event loop until the window closes.
 
@@ -141,16 +228,10 @@ def main() -> None:
     app.setOrganizationName(APP_ORGANIZATION_NAME)
     app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
-    launch = open_workspaces(
-        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation), os.environ
-    )
-    case = BranchedCase(SimulationController())
-    view = SimulationView(
-        (case.trunk,),
-        case=case,
-        workspaces=launch.workspaces,
-        store=launch.store,
-        notice=launch.notice,
+    view = open_dashboard(
+        BranchedCase(SimulationController()),
+        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation),
+        os.environ,
     )
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)

@@ -58,6 +58,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
     AREA_HANDLE_LINE_WIDTH,
@@ -68,6 +69,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     FrameRequest,
+    PreferencesInForce,
     SavedState,
     ViewContext,
     ViewRequests,
@@ -90,7 +92,8 @@ _BUILT: list[_TestView] = []
 _REFRESHED: list[_TestView] = []
 
 # A View asks the dashboard for nothing here.
-_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None)
+_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None, lambda _unit: None)
+_PREFERENCES = PreferencesInForce(Preferences(), None)
 
 
 class _TestView(QWidget):
@@ -1034,12 +1037,13 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 
     assert container.owes_a_frame
 
-    container.refresh(frames, (snapshot,), (), selection)
+    container.refresh(frames, (snapshot,), (), selection, _PREFERENCES)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
     assert all(view.ticks[0].snapshots == (snapshot,) for view in _BUILT)
     assert all(view.ticks[0].selection is selection for view in _BUILT)
+    assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert _REFRESHED == _BUILT
     assert not container.owes_a_frame
     assert [text for _, text in container.painted_strings()] == [
@@ -1063,7 +1067,7 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
     _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
     with pytest.raises(KeyError):
-        container.refresh(frames, (snapshot,), (), selection)
+        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES)
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(
