@@ -4130,21 +4130,10 @@ tier, and the first is enough on its own:
 - The Workbook names a different document from the one that the agent files
   cite. Its reference 45 is the abstract `Anesthesiology 69:A615`, from the
   1988 ASA annual-meeting supplement. It is not Yasuda, Targ and Eger's 1989
-  *Anesthesia & Analgesia* paper. What the abstract reports is unknown here.
+  *Anesthesia & Analgesia* paper.
 - The same paragraph contradicts itself for sevoflurane. It credits
   sevoflurane's values to Yasuda and, one sentence later, to
   "the package insert and Abbott data".
-- The arithmetic is close but not exact. Multiplying Yasuda's measured
-  brain:blood by each file's stored blood:gas reproduces the stored
-  vessel-rich tissue:gas exactly for sevoflurane and desflurane (1.1050 → 1.1;
-  0.5418 → 0.54). For isoflurane it gives 2.0410 against a stored 2.1, a miss
-  of 2.9%. That miss is less than half the measurement's own standard
-  deviation. The arithmetic is close enough to suggest the route, but never
-  enough to name it.
-
-<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
-<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
-<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
 
 **The check has since been run, and the claim is confirmed.** Yasuda, Targ
 and Eger was read at full text on 2026-09-13 and is in the private reference
