@@ -280,3 +280,20 @@ limitations", new paragraph), `src/anesthesia_sim/data/patients/reference_adult.
 carries the gap they have). `PL-BD94` was filed for the naming hazard the
 venous-pool note above exposes. The provenance table's eleven rows are unchanged
 because no value or key changed, and `make doc-check` confirms it.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+**The lineage is Lowe and Ernst's, not Mapleson's, and this is now confirmed
+from the source rather than inferred.** Until 2026-09-06 this file named
+Mapleson's 1963, 1964 and 1973 papers as its primary lineage. It did so on the
+strength of their titles, and nobody had opened them. `PL-6Q8N` removed that
+framing. Later the same day the project owner supplied the Workbook's front
+matter and appendices.
+
+And from the same section, the paragraph that answered that framing:
+
+Mapleson 1963 turns out to be one of the four, but that does not rehabilitate
+the lineage that was removed. The removed claim was that Mapleson's papers were
+the *Workbook's* primary source, on the strength of their titles. The Workbook
+attributes nothing to Mapleson. This is a different document, which cites him
+for a table it collected, two links further up the chain.

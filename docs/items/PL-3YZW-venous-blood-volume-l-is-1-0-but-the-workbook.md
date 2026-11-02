@@ -113,3 +113,17 @@ could not be retrieved), Lowe and Ernst at one remove (`PL-7HDS`), and Davis and
 Mapleson 1981 at the source. So the item closes on a stronger finding than its
 Done-when asked for: not "we cannot trace it", but "we have read everything it
 was ever traced to, and it is ours".
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+**It is in the Workbook, one appendix further on.** Appendix C's `GASMAN.INI`
+listing, on page 172, reads `[Volumes] … VEN=1.0`. The v0.1.0 note's sentence
+matches that listing's three blocks item for item. It has the volumes. It has
+the flow fractions as the *percentages* `76`/`18`/`6` that the INI writes,
+rather than the table's 0.76/0.18/0.06. And it has `VA=4` with `CO=5` from
+`[Defaults]`. So the original citation was **mis-sectioned rather than
+borrowed**. It named Appendix E, but the numbers were read off Appendix C, and
+every value in that sentence, including 1.0 L, is on that page. `PL-XTMB` and
+`PL-3YZW` quote Appendix B and Appendix E and never Appendix C. Whether that
+page was among those supplied on 2026-09-06 and went unread is not recorded.
+<!-- not-restated: 0.76, 0.18, 0.06 -->
