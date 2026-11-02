@@ -151,6 +151,26 @@ The fifth version, as evidence and not as a model:
 >   the method's own gaps at these steps and below a difference a learner
 >   could see. The constants are in `tests/reference/test_sevo_patient.py`.
 
+The owner's words on it: "I like format and first paragraph is reasonable.
+Second paragraph structure ok, but how do we not know where the 0.5% came
+from? We should absolutely know where that came from. And the last paragraph
+is starting to be unintelligible again" (project owner, 2026-11-02, 20:40Z).
+Two more facts follow:
+
+1. "No record says how it was chosen" was written without looking. `git log
+   -S 5e-3` finds the origin: the value was set with no stated reason in the
+   first v0.1.0 build (2026-08-22, `875ba085`), and checked against the old
+   method and kept on 2026-08-30 (`60b3bb30`). `docs/MODEL.md` has said since
+   that first build that the tolerance "must be documented before tagging",
+   and its reason never was. `PL-VXM0`, filed on #1950's branch, holds that
+   gap.
+2. The part written for a developer slid back into jargon ("first-order
+   method", "1.4e-11"). So the developer who wants to change a value needs
+   plain words too.
+
+The rewrite of `docs/MODEL.md` paused at 20:42Z, with a sixth version drafted
+and not read by the owner. The evidence file holds it.
+
 **Every rewrite quoted in this item is evidence, not a model to copy** (project
 owner, 2026-11-02, 20:33Z: "The new text shouldn't be used as an exact model
 to follow without thought, just as another example of where we have
@@ -275,9 +295,13 @@ no record supports.
    the history held none.** The owner asked that no number read as a magic
    number. The history was in the items, so each version told how the number
    arose. What the number does was in the test file, and no version read it
-   until the fifth. Where no record gave a reason, two versions stated one.
-   No step checks a stated reason against its source: `tools/doc_check.py`
-   checks that a cited path exists, and the prose review checks wording.
+   until the fifth. Where no record gave a reason, two versions stated one,
+   and the fifth said that no record existed without tracing the value's
+   history. No step checks a stated reason against its source:
+   `tools/doc_check.py` checks that a cited path exists, and the prose review
+   checks wording. Behind this sits a gap in the code itself. The value's
+   reason was never recorded, though the specification required it, so every
+   writer had to explain a number that had no recorded explanation.
 
 **Recommendation: build these four changes**, as one item each under
 `prose-quality`, once the owner agrees.
@@ -290,7 +314,8 @@ no record supports.
    methods, software terms or e-notation such as "4e-4", and wants to know
    whether to trust a displayed value. The second is a developer, or someone
    who forked the project, who wants to change a value for a goal of their
-   own. A docstring's reader is a Python developer who knows the anesthesia
+   own. That reader knows Python and the anesthesia basics, and also does not
+   know numerical-methods terms such as "first-order method". A docstring's reader is a Python developer who knows the anesthesia
    basics. `tools/new_prose.py` prints the reader line beside each unit, read
    from the table, so the writer and the reviewer use the same reader. This
    replaces "knows anesthesia or Python".
@@ -300,7 +325,11 @@ no record supports.
    value, the part for developers answers three questions: what the value
    does, why it is this number, and what changing it would do. Each answer
    is read from the code or test that uses the value, or from a cited
-   record. Where no record says why, the text says so. A fact that serves
+   record. Where the reason is not at hand, the writer traces the value's
+   history first, with `git log -S` and the items. Where the trace finds no
+   reason, that is a missing record, not a gap to write around: the writer
+   files an item for it, and the text says what the trace found. A fact that
+   serves
    none of this goes where its reader is: decision history to the item, and
    numerical detail to a marked note for developers in the same section.
    `docs/MODEL.md` must still hold the numerical method (`CLAUDE.md` §
@@ -348,6 +377,10 @@ no record supports.
 **What it costs.** A table in the rule, a longer review prompt and reply, a
 comparison step for the writer, and one model run on the set whenever the
 prompt changes. None of it is a new plain-writing pattern.
+
+**What it cannot do.** The reviewer stays a model. Only the owner's reads test
+a real reader, and change 4 makes each of them count beyond the paragraph it
+was about.
 
 **Sources.**
 
