@@ -99,3 +99,5 @@ fails to collect when `MAXIMUM_INPUT_FRACTION` moves, because its import reads
 the limit, so it is listed as not judged instead of as a restatement. The
 `restated-constants` job of the next manual `drift.yml` run confirms the result
 in CI.
+`bin/docket verify --self` returned ACCEPT for all four drift items, with
+`make check` passing.
