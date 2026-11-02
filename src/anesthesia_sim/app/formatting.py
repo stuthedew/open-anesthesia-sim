@@ -212,10 +212,10 @@ class AgentAmountUnit(Enum):
     A member identifies a unit but does not say how the unit is written.
     `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
     and share bar assert" sets the spellings "mL vapour" and
-    "mL of liquid". The first View to print a spelling adds it to
-    `DisplayUnit`. Every member names whether it measures vapour or liquid.
-    About 183 mL of sevoflurane vapour come from 1 mL of liquid, so a bare
-    "mL" cannot say which is meant.
+    "mL of liquid". A spelling is added to `DisplayUnit` by the first View
+    that prints it. Each member's name says whether it measures vapour or
+    liquid. About 183 mL of sevoflurane vapour come from 1 mL of liquid, so a
+    bare "mL" cannot say which is meant.
 
     Attributes:
         LITRES_OF_VAPOUR: Litres of pure agent vapour at the model's reference
@@ -1434,16 +1434,17 @@ AGENT_AMOUNT_UNIT_DISPLAY: Final[Mapping[AgentAmountUnit, DisplayUnit]] = Mappin
 
 
 def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
-    """Render the agent a run has delivered, in `unit`, with the unit named on the value.
+    """Render the amount of agent that a run has delivered, in `unit`, followed by the unit.
 
     The agent cost View shows this text (`PL-B396`). `amount` must already be
-    in `unit`. The precision is the one `docs/MODEL.md` § "Displayed
-    precision" derives for the delivered agent in that unit. That is a tenth of
-    a millilitre of liquid, or a tenth of a litre of vapour, which is also the
-    accounting panel's precision. The text follows `format_agent_volume`'s
-    rounding rules. A positive amount that rounds to zero is shown as less than
-    the resolution, as `<0.1 mL of liquid`, and exactly zero is shown as
-    zero. The unit always says vapour or liquid, as `DisplayUnit` spells it.
+    in `unit`. The precision is the one that `docs/MODEL.md` § "Displayed
+    precision" derives for the delivered agent in that unit. It is a tenth of a
+    millilitre of liquid, or a tenth of a litre of vapour. The accounting panel
+    uses the same precision. The text follows `format_agent_volume`'s rounding
+    rules. A positive amount that rounds to zero is shown as less than the
+    resolution, such as `<0.1 mL of liquid`. An amount of exactly zero is shown
+    as zero. The unit always says whether it is vapour or liquid, spelled as
+    `DisplayUnit` spells it.
 
     Args:
         amount: The delivered agent, in `unit`.
@@ -1455,9 +1456,9 @@ def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     Raises:
         TypeError: If `amount` is not a number, or is a `bool`, or if `unit`
             is not an `AgentAmountUnit`.
-        ValueError: If `amount` is negative or not finite, which the model's
-            delivered total never is, or if no precision is derived for the
-            delivered agent in `unit`.
+        ValueError: If `amount` is negative or not finite, or if no precision
+            is derived for the delivered agent in `unit`. The model's delivered
+            total is never negative or non-finite.
     """
 
     if isinstance(amount, bool) or not isinstance(amount, int | float):

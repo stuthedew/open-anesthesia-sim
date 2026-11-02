@@ -72,8 +72,8 @@ WITHHELD_AGENT_NAME: Final = "Agent"
 #: amount means nothing without it. The wording is a placeholder.
 DELIVERED_LABEL_TEMPLATE: Final = "{agent} delivered"
 
-#: The caption that says what the liquid figure is: the liquid the vaporizer
-#: used, which is where the figure comes from. The wording is a placeholder, but
+#: The caption that says what the liquid figure measures. The figure comes from the liquid
+#: agent that the vaporizer used, and the caption says so. The wording is a placeholder, but
 #: what the caption must say is not (`PL-B396`).
 LIQUID_CAPTION_TEMPLATE: Final = "Liquid used by the vaporizer, at 20 degrees C."
 
