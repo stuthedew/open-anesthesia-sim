@@ -341,12 +341,9 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
 
     assert expected_usd == pytest.approx(2.17, abs=0.005)
     assert cost.cost == f"USD {expected_usd:.2f}"
-    assert cost.label == "Cost of the delivered isoflurane, at your price"
-    assert cost.working == (f"{liquid_ml:.1f} mL of liquid delivered x USD 0.2047 per mL of liquid")
-    assert cost.price == (
-        "Your price, not one the project supplies: USD 20.47 per bottle of 100 mL of liquid, "
-        "as of 2008-03-05."
-    )
+    assert cost.label == "Cost of the isoflurane, at your price"
+    assert cost.working == (f"{liquid_ml:.1f} mL of liquid x USD 0.2047 per mL of liquid")
+    assert cost.price == ("Your price: USD 20.47 for 100 mL of liquid, as of 2008-03-05.")
     assert cost.rounded == COST_ROUNDED_TEXT
 
 
@@ -365,7 +362,7 @@ def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() ->
 
     assert f"{liquid_ml * 115.13 / 240.0:.2f}" == "8.23"
     assert cost.cost == "USD 8.23"
-    assert cost.working == "17.2 mL of liquid delivered x USD 0.4797 per mL of liquid"
+    assert cost.working == "17.2 mL of liquid x USD 0.4797 per mL of liquid"
     assert f"{17.2 * 0.4797:.2f}" == "8.25"
     assert cost.rounded == COST_ROUNDED_TEXT
 
@@ -400,7 +397,7 @@ def test_a_run_that_has_delivered_nothing_costs_zero_at_a_set_price() -> None:
     cost = cost_shown(delivered_shown(snapshot), _priced(_GAS_MAN_ISOFLURANE))
 
     assert cost.cost == "USD 0"
-    assert cost.working.startswith("0.0 mL of liquid delivered")
+    assert cost.working.startswith("0.0 mL of liquid x")
 
 
 def test_no_cost_is_shown_until_the_reader_sets_a_price() -> None:

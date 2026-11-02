@@ -85,7 +85,7 @@ says what a stored price carries, the six things shown beside a cost, and when
 no cost is shown. It takes the price per bottle, with the bottle's volume, and
 derives the price per millilitre. It names both millilitre figures as liquid
 and shows the currency as its ISO 4217 code. So part 2's example reads
-"39.4 mL of liquid delivered x USD 0.2047 per mL of liquid" rather than
+"39.4 mL of liquid x USD 0.2047 per mL of liquid" rather than
 "39.4 mL x US$0.2047/mL". Two parts of that section are this item's work:
 
 - Derive two displayed precisions in § "Displayed precision": the cost's and
@@ -126,7 +126,11 @@ and the form. The cost is written after its currency code, "USD 8.07". The
 form takes digits with at most one decimal point, and refuses a sign, an
 exponent, a thousands separator or a decimal comma rather than guessing. The
 date field starts at the day of entry and writes ISO 8601. The agent selector
-starts on the first displayed run's agent.
+starts on the first displayed run's agent. After the project owner found the agent
+cost View's first wording over-explained (`PL-B396`, 2026-11-01), every line here
+was cut to its facts: "Cost of the isoflurane, at your price", "39.4 mL of liquid x
+USD 0.2047 per mL of liquid", "Your price: USD 20.47 for 100 mL of liquid, as of
+2008-03-05." and "Rounded, so the figures may not multiply exactly."
 
 **Tests.** `tests/unit/test_agent_cost.py` (the cost against a worked
 product, the unrounded-cost case, each agent's own price, every no-cost case,

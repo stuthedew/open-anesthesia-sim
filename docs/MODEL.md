@@ -12360,7 +12360,7 @@ millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1), and Gas Man prices
 "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
 about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
 factor. For Gas Man's Exercise 14-1 at 60 min, the readout could read
-"39.4 mL of liquid delivered x USD 0.2047 per mL of liquid = USD 8.07, at your
+"39.4 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
 price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The wording and the
 layout are placeholders, and the six facts are the requirement. The book
 prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to

@@ -265,49 +265,36 @@ WITHHELD_DELIVERED: Final = DeliveredShown(
 #: not only through a colour or a style, so that no reader misses the statement
 #: (`docs/MODEL.md` § "A cost at the reader's price", item 6). The wording is a
 #: placeholder, but what it must say is not.
-COST_LABEL_TEMPLATE: Final = "Cost of the delivered {agent}, at your price"
+COST_LABEL_TEMPLATE: Final = "Cost of the {agent}, at your price"
 
 #: The calculation shown beside the cost, which is the liquid volume times the
 #: price per millilitre. The volume is always shown in liquid equivalent, even
 #: when the reader has chosen litres of vapour for the View's amounts, because
 #: the cost is computed from that figure (item 1). The wording is a placeholder.
-COST_WORKING_TEMPLATE: Final = "{volume} delivered x {price_per_ml}"
+COST_WORKING_TEMPLATE: Final = "{volume} x {price_per_ml}"
 
 #: Where the price per millilitre came from. The wording is a placeholder.
 COST_PRICE_TEMPLATE: Final = (
-    "Your price, not one the project supplies: {currency} {bottle_price} per bottle of "
-    "{bottle_volume} {unit}, as of {applies_on}."
+    "Your price: {currency} {bottle_price} for {bottle_volume} {unit}, as of {applies_on}."
 )
 
 #: Why the figures beside a cost may not multiply to it. The cost is computed
 #: from the unrounded volume and price, so the product of the rounded figures
 #: can differ from it (`docs/MODEL.md` § "Displayed precision" says by how much).
 #: The wording is a placeholder.
-COST_ROUNDED_TEXT: Final = (
-    "The figures are rounded. The cost is computed before rounding, so they may not multiply "
-    "to it exactly."
-)
+COST_ROUNDED_TEXT: Final = "Rounded, so the figures may not multiply exactly."
 
 #: Why no cost is shown, in each case that `docs/MODEL.md` § "A cost at the
 #: reader's price" lists. The wording is a placeholder.
-NO_PRICE_TEXT: Final = (
-    "No cost is shown: you have not set a price for {agent}. The project supplies no price."
-)
-REFUSED_PRICE_TEXT: Final = (
-    "No cost is shown: your price for {agent} was refused when the preferences file was "
-    "read. Set it again below."
-)
+NO_PRICE_TEXT: Final = "No cost: set your price for {agent} below."
+REFUSED_PRICE_TEXT: Final = "No cost: your saved price for {agent} was refused. Set it again below."
 PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
-    "No cost is shown: your bottle price and bottle volume for {agent} do not give a price "
-    "per millilitre that is a positive finite number."
+    "No cost: your bottle price and volume for {agent} do not give a usable price per mL."
 )
 COST_NOT_COMPUTED_TEXT: Final = (
-    "No cost is shown: the cost of the delivered {agent} at your price is too large or too "
-    "small to compute."
+    "No cost: the cost of the {agent} is too large or too small to compute."
 )
-COST_NOT_CONVERTED_TEXT: Final = (
-    "No cost is shown: the delivered {agent} could not be converted to liquid."
-)
+COST_NOT_CONVERTED_TEXT: Final = "No cost: the {agent} could not be converted to liquid."
 
 
 @dataclass(frozen=True, slots=True)

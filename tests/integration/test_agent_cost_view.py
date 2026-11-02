@@ -650,12 +650,11 @@ def test_the_displayed_cost_reproduces_gas_man_s_printed_costs(
     assert abs(drawn_usd() - printed_at_60_min) <= allowed(printed_at_60_min)
     assert _cost_line(cost_view) == f"USD {liquid_ml * usd_per_ml:.2f}"
     assert panel.working_text.text() == (
-        f"{liquid_ml:.1f} mL of liquid delivered x USD 0.2047 per mL of liquid"
+        f"{liquid_ml:.1f} mL of liquid x USD 0.2047 per mL of liquid"
     )
-    assert panel.price_text.text().endswith(
-        "USD 20.47 per bottle of 100 mL of liquid, as of 2008-03-05."
+    assert (
+        panel.price_text.text() == "Your price: USD 20.47 for 100 mL of liquid, as of 2008-03-05."
     )
-    assert "not one the project supplies" in panel.price_text.text()
     assert not panel.rounded_text.isHidden()
 
 
@@ -712,7 +711,7 @@ def test_a_refused_entry_changes_nothing_and_says_why(
     assert _cost_line(cost_view) == before
     assert before.startswith("USD ")
     assert not cost_view.price_entry.refusal.isHidden()
-    assert "nothing changed" in cost_view.price_entry.refusal.text()
+    assert cost_view.price_entry.refusal.text().startswith("Price not set: ")
     assert "20,47" in cost_view.price_entry.refusal.text()
     assert PreferencesStore(tmp_path).load().preferences.price_for("isoflurane") == AgentPrice(
         "isoflurane", 20.47, 100.0, "USD", date(2008, 3, 5)
@@ -756,7 +755,7 @@ def test_the_cost_s_working_stays_in_liquid_when_the_amounts_are_shown_in_vapour
     (panel,) = cost_view.panels
     assert panel.amount_text.text() == "2.1 L vapour"
     assert panel.working_text.text().startswith(
-        f"{_liquid_ml('isoflurane', 2.08):.1f} mL of liquid delivered x"
+        f"{_liquid_ml('isoflurane', 2.08):.1f} mL of liquid x"
     )
 
 

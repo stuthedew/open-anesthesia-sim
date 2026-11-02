@@ -59,14 +59,12 @@ __all__ = ["PRICE_ENTRY_HEADING", "PriceEntry"]
 #: a placeholder. The bottle volume's label names its unit, so the reader is less
 #: likely to type a volume in litres or as a count of bottles (`docs/MODEL.md`
 #: § "A cost at the reader's price").
-PRICE_ENTRY_HEADING: Final = "Your price for an agent. The project supplies none."
+PRICE_ENTRY_HEADING: Final = "Your price per agent"
 AGENT_FIELD_LABEL: Final = "Agent"
-BOTTLE_PRICE_FIELD_LABEL: Final = "Price of one bottle"
-BOTTLE_VOLUME_FIELD_LABEL: Final = (
-    f"Volume of that bottle, in {DisplayUnit.AGENT_LIQUID_MILLILITRES.label}"
-)
-CURRENCY_FIELD_LABEL: Final = "Currency, as its ISO 4217 code, such as USD"
-APPLIES_ON_FIELD_LABEL: Final = "Date the price applied"
+BOTTLE_PRICE_FIELD_LABEL: Final = "Bottle price"
+BOTTLE_VOLUME_FIELD_LABEL: Final = f"Bottle volume ({DisplayUnit.AGENT_LIQUID_MILLILITRES.label})"
+CURRENCY_FIELD_LABEL: Final = "Currency code, such as USD"
+APPLIES_ON_FIELD_LABEL: Final = "Price date"
 SET_PRICE_LABEL: Final = "Set price"
 REMOVE_PRICE_LABEL: Final = "Remove price"
 
@@ -242,7 +240,7 @@ class PriceEntry(QWidget):
                 date(entered.year(), entered.month(), entered.day()),
             )
         except SimulationConfigurationError as error:
-            self._show_refusal(f"Your price was not set, so nothing changed: {error}.")
+            self._show_refusal(f"Price not set: {error}.")
             return
 
         self._show_refusal(None)
