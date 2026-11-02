@@ -14,8 +14,9 @@ the control that shows it.
 
 import inspect
 import math
+import re
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 from typing import Any, get_type_hints
 
@@ -2024,6 +2025,8 @@ def test_a_cost_is_shown_to_three_figures_and_never_finer_than_a_hundredth(
         pytest.param(115.13 / 240.0, "USD 0.4797 per mL of liquid", id="desflurane"),
         pytest.param(30_000.0 / 250.0, "USD 120.0 per mL of liquid", id="a large unit of money"),
         pytest.param(1.23456e-5, "USD 0.00001235 per mL of liquid", id="no limit on decimals"),
+        pytest.param(2345.6, "USD 2346 per mL of liquid", id="no decimals above a thousand"),
+        pytest.param(0.99996, "USD 1.000 per mL of liquid", id="rounds up to one"),
     ],
 )
 def test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid(
@@ -2064,8 +2067,49 @@ def test_a_cost_or_price_that_is_negative_or_not_finite_is_refused(amount: float
 
 
 def test_a_price_per_millilitre_of_zero_is_refused() -> None:
-    with pytest.raises(ValueError, match="positive"):
+    with pytest.raises(ValueError, match="^a price per millilitre must be positive, not 0.0$"):
         format_price_per_liquid_ml(0.0, "USD")
+
+
+@pytest.mark.parametrize(
+    ("render", "what"),
+    [
+        pytest.param(lambda amount: format_agent_cost(amount, "USD"), "a cost", id="cost"),
+        pytest.param(
+            lambda amount: format_price_per_liquid_ml(amount, "USD"),
+            "a price per millilitre",
+            id="price per mL",
+        ),
+        pytest.param(format_entered_figure, "an entered figure", id="entered figure"),
+    ],
+)
+def test_a_refused_amount_of_money_is_named_in_the_error(render: Any, what: str) -> None:
+    """Each refusal names the figure it refused, so a defect upstream can be traced."""
+
+    with pytest.raises(TypeError, match=f"^{re.escape(what)} is a number, not True$"):
+        render(True)
+
+    with pytest.raises(
+        ValueError, match=f"^{re.escape(what)} must be finite and not negative, not -1.0$"
+    ):
+        render(-1.0)
+
+
+@pytest.mark.parametrize("rounding", [ROUND_HALF_UP, ROUND_DOWN, ROUND_CEILING])
+def test_a_cost_and_a_price_round_halves_to_even_whatever_the_decimal_context(
+    rounding: str,
+) -> None:
+    """The rounding is fixed in the formatter, so the shown cost never depends on the caller.
+
+    0.125 and 1.0625 are exact in binary, so each is a true half at the
+    figure being rounded. Rounding halves to even gives 0.12 and 1.062.
+    """
+
+    with localcontext() as context:
+        context.rounding = rounding
+
+        assert format_agent_cost(0.125, "USD") == "USD 0.12"
+        assert format_price_per_liquid_ml(1.0625, "USD") == "USD 1.062 per mL of liquid"
 
 
 @pytest.mark.parametrize("currency", ["usd", "$", "US", "USDX", "U$D"])
@@ -2078,7 +2122,7 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
     with pytest.raises(TypeError):
         format_agent_cost(True, "USD")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="^a currency is an ISO 4217 code, not 840$"):
         format_agent_cost(1.0, 840)  # type: ignore[arg-type]
 
 

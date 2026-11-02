@@ -12,7 +12,7 @@ added: 2026-10-25
 closed: 2026-11-02
 pr: 1939
 payoff: a learner sees what the delivered agent cost at their own institution's price, labelled with its currency and the price's date
-verify: grep -rq 'def test_the_cost_is_the_delivered_liquid_volume_times_the_price' tests
+verify: grep -rq 'def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume' tests
 ---
 
 **Where this came from.** `PL-LF0P` scoped v0.7.0 on 2026-10-25, and the

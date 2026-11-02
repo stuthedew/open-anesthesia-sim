@@ -1815,11 +1815,13 @@ def _round_to_figures(
     """Round a positive `value` to `figures` significant figures, and to at most `finest_decimals`.
 
     `finest_decimals` of None sets no limit on the decimals. The rounding is
-    to the nearest figure, with halves rounded to even. A value can round up
-    into the next power of ten, as 9.96 does to 10.0 at three figures. The
-    value is then rounded again with the number of decimals for that power of
-    ten. So at two figures, 9.96 becomes 10 and not 10.0, which would claim
-    three figures.
+    to the nearest figure, with halves rounded to even, whatever rounding the
+    caller's decimal context sets. A value can round up into the next power
+    of ten, as 9.96 does to 10.0 at three figures. So the value is always
+    rounded a second time, with the number of decimals for the power of ten
+    of the first result. At two figures, 9.96 then becomes 10 and not 10.0,
+    which would claim three figures. When the first result keeps the value's
+    power of ten, or is zero, the second rounding gives the same result.
 
     Returns:
         The rounded value and the number of decimals it has. The number of
@@ -1833,11 +1835,8 @@ def _round_to_figures(
         if finest_decimals is not None:
             decimals = min(finest_decimals, decimals)
 
-        return value.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_EVEN), decimals
+        return value.quantize(Decimal(f"1e{-decimals}"), rounding=ROUND_HALF_EVEN), decimals
 
-    rounded, decimals = at_decade(value.adjusted())
+    first, _ = at_decade(value.adjusted())
 
-    if rounded != 0 and rounded.adjusted() > value.adjusted():
-        rounded, decimals = at_decade(rounded.adjusted())
-
-    return rounded, decimals
+    return at_decade(first.adjusted())
