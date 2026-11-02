@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: preferences-store
+milestone: v0.6.13
 touches: src/anesthesia_sim, tests/unit, docs/ARCHITECTURE.md, docs/MODEL.md, ROADMAP.md
 added: 2026-10-25
 closed: 2026-11-01

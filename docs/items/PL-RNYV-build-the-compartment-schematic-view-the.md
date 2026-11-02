@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: safety, anticipated
 feature: schematic
+milestone: v0.6.13
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md
 blocked-by: PL-2881, PL-KFTM
 added: 2026-10-25
