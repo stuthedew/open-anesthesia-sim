@@ -72,7 +72,9 @@ prints. Workflow items need no merge confirmation (project owner, 2026-10-12,
   push that brings the hold, or green CI merges half the work. While the hold
   is a claim, keep the pull request a draft. Once no claim holds it, record the
   judgment or ask the owner, as `arm` says. A pull request held for the owner
-  merges on their word alone.
+  merges on their word alone. The ask quotes the text the owner is to judge,
+  before and after, in the reply itself, and never sends them into a file to
+  find it (project owner, 2026-11-02, `PL-77QB`).
 - **`behind N`**: bring `origin/main` in and ask again.
 
 `subprojects/docket/src/docket/arming.py` carries the rules and the decisions

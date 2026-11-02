@@ -494,10 +494,12 @@ at least two options and a recommendation. Each option says what it changes
 for you or for a learner. The decision is worded in clinical or learner terms.
 A choice between approaches to the interface comes with one annotated
 screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A risk review
-says what could go wrong and for whom, what was checked, and the one thing to
-look at. Until a record made after the newest change covers the pull request,
-`arm` tells the session to send you nothing. It says so on the first line of
-its output and with an exit status of its own. A thread cannot send the ask
+says what could go wrong and for whom, what was checked, and the text to
+review. Either way, the reply quotes the text you are to judge, before and
+after, so that you never have to open a file to find it (project owner,
+2026-11-02, `PL-77QB`). Until a record made after the newest change covers
+the pull request, `arm` tells the session to send you nothing. It says so
+on the first line of its output and with an exit status of its own. A thread cannot send the ask
 anyway. `.claude/hooks/owner_ask_guard.py` checks every Projects message that
 asks you to read or merge: a post, an edit, a decision card, and any Projects
 tool it has not been told to skip (`PL-YN60`). Where `arm` has a recorded ask

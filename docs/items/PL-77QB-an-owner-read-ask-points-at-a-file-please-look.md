@@ -3,13 +3,15 @@ id: PL-77QB
 title: An owner read ask points at a file ("Please look at: the hazard table's 21 rows") instead of quoting the text to review, so the owner has to dig through the file to find it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, tests/unit/test_owner_ask_guard.py, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1946
 payoff: every read ask the owner gets shows the text to judge in the reply itself, so they can decide in the thread without opening a file
-verify: grep -q 'quote' subprojects/docket/src/docket/arming.py && ! grep -q 'Please look at' subprojects/docket/src/docket/arming.py
+verify: grep -q 'def test_arm_ask_quotes_the_text_to_judge_rather_than_pointing_at_a_file' subprojects/docket/tests/test_cli.py && ! grep -q 'Please look at: {look}' subprojects/docket/src/docket/arming.py
 ---
 
 **Problem.** When a pull request waits on the owner's read, the reply that
@@ -26,6 +28,17 @@ owner then had to open `docs/MODEL.md` and find the rows themselves.
 > I thought we had talked about this before
 
 > I don't want to ask every time. I just want this to be default behavior
+
+**Why it matters.** Every pull request held for the owner's read reaches them
+through this ask. A pointer turns each one into a search through a file that
+the session has already read, and the owner has said they should not have to
+ask for the text each time.
+
+**Done when.** The line `bin/docket arm` prints before an ask tells the
+session to quote the text to judge, before and after, in the reply. A risk
+review's last field renders as text quoted below the line, never as "Please
+look at". The `pull-request` skill, `docs/maintainer.md` and the coordinator
+mode say the same, and a test pins the instruction.
 
 **Cause.** The wording comes from `bin/docket arm` itself. The risk-review
 form of an `Owner-ask:` record renders as `Risk to review: ... Checked: ...

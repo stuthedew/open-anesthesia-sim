@@ -292,7 +292,9 @@ READ_NOT_NEEDED = "not needed"
 #:   it changes> | recommend <option> - <why>`, with at least two options;
 #: - a risk review, for a high-risk change with no choice in it: `risk -
 #:   <what could go wrong, for whom> | checked - <what was checked to rule it
-#:   out> | look - <the one thing the owner should look at>`.
+#:   out> | look - <the text the owner should review>`. The reply quotes
+#:   that text under the line, because a pointer into a file sent the
+#:   owner to dig for it (project owner, 2026-11-02, `PL-77QB`).
 OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
@@ -305,7 +307,7 @@ ASK_RISK = ("risk", "checked", "look")
 #: review is one template. A decision is `ASK_DECISION_SHOWN`, whose
 #: `options` are two or more `ASK_OPTION_SHOWN` joined by
 #: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
-ASK_RISK_SHOWN = "Risk to review: {risk}. Checked: {checked}. Please look at: {look}."
+ASK_RISK_SHOWN = "Risk to review: {risk}. Checked: {checked}. Quoted below for review: {look}."
 ASK_DECISION_SHOWN = "{question} {options} {recommend}"
 ASK_OPTION_SHOWN = 'Option "{label}": {change}.'
 ASK_OPTIONS_JOIN = " "
@@ -337,8 +339,9 @@ READ_ASK = (
     "(.claude/skills/run-the-app/SKILL.md). "
     f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
     f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
-    f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
-    f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
+    f"{ASK_RISK[2]} - <the text to review, which the reply quotes>`. If neither form can be "
+    f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
+    "<why>` instead, and "
     "the change merges on green. A change to a test pinning the gate's answers holds whatever "
     "that record says, so for one of those use the risk form."
 )
@@ -346,10 +349,18 @@ READ_ASK = (
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
 #: record renders. The line goes in the closing block, because a wording
 #: that said only what the ask opens with was followed to the letter
-#: (`PL-9KHK`).
+#: (`PL-9KHK`). The text to judge goes in the reply too. On 2026-11-02 an
+#: ask said "Please look at: the hazard table's 21 rows", and the owner had
+#: to open the file to find them. Their rule: "I want it to just show me the
+#: relevant text rather than me trying to dig through", as the default, unasked
+#: (project owner, 2026-11-02, `PL-77QB`).
 ASK_LINE = (
     "  Open the ask with this line, word for word, as the closing block's own line, never "
-    "as 'read #N', and repeat it whole in every later reply that still waits on it:"
+    "as 'read #N', and repeat it whole in every later reply that still waits on it. Under "
+    "it, quote the text the owner is to judge in the reply itself: the changed sentences, "
+    "rows or values, before and after. Never send the owner into a file to find it. Attach "
+    "a generated file only for the full set of changes, and still quote the ones that "
+    "change meaning:"
 )
 
 #: What a `hold` without a claim tells a session about a repair push. A

@@ -11755,6 +11755,24 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
     assert "every later reply that still waits on it" in arming.ASK_LINE
 
 
+def test_arm_ask_quotes_the_text_to_judge_rather_than_pointing_at_a_file() -> None:
+    """A read ask shows the owner the text, before and after, in the reply itself (`PL-77QB`).
+
+    On 2026-11-02 a risk ask rendered as "Please look at: the hazard table's 21
+    rows", and the owner had to open the file to find them. The line `arm`
+    prints before the ask says to quote the text, and a risk review's last
+    field renders as the text quoted below the line.
+    """
+    assert "quote the text the owner is to judge in the reply itself" in arming.ASK_LINE
+    assert "before and after" in arming.ASK_LINE
+    assert "Never send the owner into a file" in arming.ASK_LINE
+    assert "Please look at" not in arming.ASK_RISK_SHOWN
+    line, why = arming.parse_owner_ask("risk - r | checked - c | look - the hazard table rows")
+    assert line == "Risk to review: r. Checked: c. Quoted below for review: the hazard table rows."
+    assert why == ""
+    assert "<the text to review, which the reply quotes>" in arming.READ_ASK
+
+
 def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
     """The ask text asks for what the owner judges in plain terms, and for screenshots.
 
@@ -12027,7 +12045,7 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
             "Risk - a dose label could read mg for mcg | checked - the formatter tests pin "
             "the unit. | look - the infusion panel's label",
             "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests "
-            "pin the unit. Please look at: the infusion panel's label.",
+            "pin the unit. Quoted below for review: the infusion panel's label.",
             "",
         ),
         (

@@ -273,7 +273,7 @@ POST = "mcp__hearthbot__post_message"
 #: The risk-review form of the line `arm --owner-ask` prints.
 RISK_LINE = (
     "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests pin "
-    "the unit. Please look at: the infusion panel's label."
+    "the unit. Quoted below for review: the infusion panel's label."
 )
 
 

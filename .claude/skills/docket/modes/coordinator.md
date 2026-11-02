@@ -111,7 +111,10 @@ put to the owner at once, with a recommendation.
 - **A held pull request reaches the owner only through the `Owner-ask:` line
   that `bin/docket arm` prints**, in its decision or risk-review form, never
   as a bare "read #N". The coordinator sends a bare read ask back to its
-  thread. When a hold has nothing to judge, ask for "Merge it" alone.
+  thread. When a hold has nothing to judge, ask for "Merge it" alone. The
+  ask quotes the text to judge, before and after, and never only points into a
+  file. When a thread's ask does not, the coordinator adds the quote or sends
+  the ask back (project owner, 2026-11-02, `PL-77QB`).
 - **A thread that finishes** reports one line: the item id and what it is, the
   pull request number, what it needs from the owner, and any items filed.
 - **A question from the owner that only a thread can answer** goes to that
