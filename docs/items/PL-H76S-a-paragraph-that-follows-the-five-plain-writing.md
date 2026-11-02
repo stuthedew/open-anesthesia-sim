@@ -148,6 +148,8 @@ the reader is, whether any step reads as that reader rather than checking
 patterns and facts, and whether keeping every figure in the text works against
 a clinician's understanding. Propose the fix once the cause is known.
 
+[superseded 2026-11-02: the owner judged the 20:10Z rewrite, which is as long
+as this one, "Way too verbose". The design round below gives a shorter target.]
 A paragraph rewritten for a clinician, from the declined proposal, shows the
 target the process should reach:
 
@@ -160,6 +162,143 @@ target the process should reach:
 > the limit is now a loose safety net. When a concentration is almost zero, a
 > percentage means little, so any difference smaller than 1 part in 100
 > million (1e-8) also passes.
+
+**Design round, 2026-11-02.**
+
+**The cause.** Three faults combine. Both of today's failures, the jargon and
+the length, come from them.
+
+1. **Every step checks the text, and no step tests a reader.** The drafting
+   rule lists patterns. The close-out prose review asks a model to hold the
+   text to that rule. The blind review is told to leave documentation alone.
+   The measurement that kept the prose review (`PL-J6CK`) had two model raters
+   score defect codes such as "dropped small words". Studies of document
+   evaluation sort methods into three kinds: text-focused, expert judgment and
+   reader-focused (Schriver 1989). Every step here is one of the first two. In
+   a direct comparison, technical writers who judged a text "only predicted a
+   small proportion of the reader feedback" (de Jong and Lentz 1996). Each of
+   the eight member items added another check of the same kind, which is why
+   the failure kept coming back.
+2. **The reviewer cannot play the reader it is told to be.** Every reviewer is
+   a language model that knows numerical methods, so "operator split" and
+   "4e-4" are clear to it. Telling it to read "as a careful newcomer" is the
+   instruction that fails for human experts too: experts were "resistant to
+   debiasing techniques intended to reduce underestimation" of what novices
+   find hard (Hinds 1999). For language models, Balog and Bakken (2026) found
+   that a model told to act as a student answered reading questions with
+   0.97 accuracy, against 0.66 for real students. Limiting what the model
+   could use from the text closed most of that gap.
+3. **No step asks what the reader needs, and three steps require keeping
+   every figure.** The reader is "someone who knows anesthesia or Python", so
+   a term that a Python reader knows passes, and no document says which of
+   the two reads it. The plain-language standard's first principle is that
+   readers get what they need (ISO 24495-1:2023). The plain-writing rule has
+   no step for it. Instead, its point 7, the prose review's "keep each number
+   ... exactly as written", `PL-ZT47`'s step 3 and `tools/model_rewrite.py
+   lost` all push each figure to stay in the paragraph. So the clinician
+   rewrite at 20:10Z lost its jargon and kept all its history: 268 words.
+
+**Recommendation: build these four changes**, as one item each under
+`prose-quality`, once the owner agrees.
+
+1. **Name each document's reader in one place.** A table in
+   `.claude/rules/plain-writing.md` gives each kind of text its reader, what
+   that reader knows, and what they do not. For `docs/MODEL.md`: a clinician
+   or educator who knows anesthesia pharmacology and physiology, and does not
+   know numerical methods, software terms or e-notation such as "4e-4". For a
+   docstring: a Python developer who knows the anesthesia basics.
+   `tools/new_prose.py` prints the reader line beside each unit, read from the
+   table, so the writer and the reviewer use the same reader. This replaces
+   "knows anesthesia or Python".
+2. **Decide what the reader needs before choosing words.** Before writing a
+   paragraph, the writer states in one sentence what its reader should take
+   from it. A fact that does not serve that sentence goes where its reader
+   is: decision history to the item, and numerical-check detail to a marked
+   technical note in the same section. `docs/MODEL.md` must still hold the
+   numerical method (`CLAUDE.md` § "Safety-critical clinical-output
+   standard"), so that detail stays in the document. `lost` gains "moved to
+   the technical note" beside "moved to an item". The prose review may then
+   propose moving a fact, saying where, and may restate a number in the
+   reader's form, such as 4e-4 as 0.04%. The writer still rejects any change
+   to a value.
+3. **Replace "read as a newcomer" with a takeaway test against the named
+   reader.** The reviewer gets each unit and its reader line. It returns
+   three things: each word or number the reader would not know, judged
+   against the table's "does not know" list; what this reader would take
+   from the unit, in at most two sentences; and each sentence that takeaway
+   does not need. The writer compares the takeaway with the sentence from
+   step 2. A listed term or a mismatch means a rewrite, and each unneeded
+   sentence moves or goes. This is paraphrase testing, the standard way of
+   testing plain language with readers (digital.gov). An explicit list of
+   what the reader does not know stands in for the persona, because a model
+   cannot pretend not to know.
+4. **Test the review against the real reader.** The owner is the only
+   clinician who reads this text. Each paragraph he rejects is kept in a
+   small set beside the review prompt, with his words and the accepted
+   rewrite. Whenever the prompt changes, the review is run on the set, and
+   it must flag every rejected paragraph. Today's two paragraphs start the
+   set. This turns his reads into a regression test for the review, so it
+   cannot pass again a kind of text he has already rejected.
+
+**Decided in the round.** Three calls have one clearly correct option.
+
+- The blind review brief is unchanged. Readability has one owner, the prose
+  review, and two reviewers judging it would disagree with no way to settle
+  it.
+- `docs/MODEL.md`'s reader is a clinician or educator. The owner decided on
+  2026-11-02 that it should be a document clinicians can read.
+- Numerical detail moves to a technical note in `docs/MODEL.md`, not to the
+  items, because the specification must hold the numerical method.
+
+**What it costs.** A table in the rule, a longer review prompt and reply, a
+comparison step for the writer, and one model run on the set whenever the
+prompt changes. None of it is a new plain-writing pattern.
+
+**What the process would produce for the release check.** This is an example
+for `PL-70B2`'s section, not a change this item makes. The clinician text:
+
+> **The release check.** Before each release, a test checks that the
+> simulator's time step is short enough. It runs the first minute of the
+> default sevoflurane induction with steps of 0.1 s, 0.05 s and 0.025 s. Each
+> run's alveolar, vessel-rich and mixed-venous concentrations must agree
+> within 0.5% with the run at the next shorter step. The current method agrees
+> far more closely, so this is a coarse safety net. The tighter test above is
+> the one that would catch a real error.
+
+The technical note:
+
+> *Technical note.* The limits are 5e-3 relative or 1e-8 absolute in
+> fraction, and either one passes. The absolute limit covers a fraction near
+> zero. 5e-3 is about ten times the 4e-4 alveolar gap that the earlier
+> operator split showed between 0.1 s and 0.025 s. The exact step now gives
+> gaps of about 1.4e-13 (measured 2026-10-03).
+
+The direct 0.1 s against 0.025 s comparison, which failed in the mixed-venous
+fraction under the operator split, is history and moves to the item.
+
+**Sources.**
+
+- Schriver KA. Evaluating text quality: the continuum from text-focused to
+  reader-focused methods. IEEE Trans Prof Commun. 1989;32(4):238-255.
+  https://ieeexplore.ieee.org/abstract/document/44536
+- de Jong MDT, Lentz LR. Expert judgements versus reader feedback: a
+  comparison of text evaluation techniques. J Tech Writ Commun.
+  1996;26(4):507-519. https://doi.org/10.2190/66YB-NJEW-JX8W-YDPR
+- de Jong M, Schellens PJ. Reader-focused text evaluation: an overview of
+  goals and methods. J Bus Tech Commun. 1997;11(4):402-432.
+  https://doi.org/10.1177/1050651997011004003
+- Hinds PJ. The curse of expertise: the effects of expertise and debiasing
+  methods on predictions of novice performance. J Exp Psychol Appl.
+  1999;5(2):205-221. https://doi.org/10.1037/1076-898X.5.2.205
+- Balog K, Bakken AM. "Act like a 5th grader" is not enough: bounding
+  knowledge in LLM-based user simulators. arXiv:2608.30033, 2026. The author
+  list was read from the extracted text and may be incomplete.
+  https://arxiv.org/abs/2608.30033
+- ISO 24495-1:2023, Plain language, Part 1: Governing principles and
+  guidelines. Principles as listed by the International Plain Language
+  Federation: https://www.iplfederation.org/the-iso-plain-language-standard-part1
+- Paraphrase testing. Digital.gov plain language guide.
+  https://digital.gov/guides/plain-language/test/paraphrase-testing
 
 **Done when.** The cause in the writing process is named, and a fix to the
 process, not a new pattern in the rule, is proposed to the owner.
