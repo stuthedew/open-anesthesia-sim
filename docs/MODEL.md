@@ -484,17 +484,18 @@ $$
 \dot V_{\mathrm{s}} = \frac{\dot V_{\mathrm{min}}}{60}
 $$
 
-**The liters per minute is the record, and the per-second value is derived
-from it.** A run stores each flow as it was set, in liters per minute. The
-governing equations read a per-second value. That value is computed from the
-stored setting at the point where the equations read it, and it is not stored
+**The setting in liters per minute is the record, and the per-second value is
+derived from it.** A run stores each flow as it was set, in liters per minute.
+The governing equations use a per-second value. That value is computed from the
+stored setting at the point where the equations use it, and it is not stored
 beside the setting. The conversion does not run backwards. Multiplying a
-per-second flow by 60 does not return the setting for 7 of the 101 cardiac
-outputs on a 0.1 L/min grid across the supported 0 to 10 L/min range
-(1.9, 3.8, 3.9 and 7.6 to 7.9 L/min). The tissue flows formed from cardiac
-output inherit the difference. So settings rebuilt from a per-second record would
-describe a run that nobody set up. `UptakeEquationSettings` in
-`core/governing_equations.py` stores the flows this way.
+per-second flow by 60 does not always return the setting. On a 0.1 L/min grid
+across the supported 0 to 10 L/min range, it fails for 7 of the 101 cardiac
+outputs (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min). The tissue flows formed from
+cardiac output inherit the same difference. So settings rebuilt from a
+per-second record would describe a run that nobody set up.
+`UptakeEquationSettings` in `core/governing_equations.py` stores the flows this
+way.
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
@@ -514,10 +515,10 @@ At the supported 24-hour run length, a clock in seconds would read
 `86400.0 s`, which is false precision on a boundary that this document states
 in hours.
 
-The width of time that the chart draws is still spelled out in words:
+The time span that the chart draws is still written out in words:
 `15 minutes` above an axis whose last tick reads `15m`. The reader picks that
 phrase from a selector and sees it again in a caption, so it does not compete
-with the ticks for width. § "The chart's time base" decides that choice, and
+with the ticks for width. § "The chart's time base" explains that choice, and
 § "Displayed precision" sets the precision at which each form is shown.
 
 #### Simulated time is a count of steps, not a running total
@@ -582,17 +583,18 @@ from, at every instant they share.
 comparison built on this property may and may not claim.
 
 **A state computed from the run definition has a guarantee of its own.** The
-guarantee above covers the stepped system. It holds because every caller takes
-the same step width, so only one sequence of arithmetic reaches step *n*. A
-run held as its definition records no samples and fixes no width. A state is
-computed when it is asked for, and more than one sequence of arithmetic can
-reach the same instant. There, "The canonical evaluation rule" under
-§ "Runtime controls" provides the guarantee. That rule is stronger in one
-respect: two evaluations of one run definition at one instant are
-bit-identical, not merely reproducible across runs. It is narrower in another:
-only values from the canonical path may be stored, exported or branched from.
-So the step count covers the stepped system that the snapshot is read from,
-and the canonical rule covers every state derived from the run definition.
+guarantee above covers the stepped system. It holds because every caller uses
+the same step width, so only one sequence of arithmetic reaches step *n*. A run
+held only as its definition stores no samples and has no fixed step width. A
+state is computed when it is requested, and more than one sequence of
+arithmetic can reach the same instant. For such a state, "The canonical
+evaluation rule" under § "Runtime controls" provides the guarantee. That rule
+is stronger in one respect. Two evaluations of one run definition at one
+instant are bit-identical, not merely reproducible across runs. The rule is
+narrower in another respect. Only values from the canonical path may be
+stored, exported or branched from. So the step-count guarantee covers the
+stepped system that the snapshot is read from. The canonical rule covers every
+state derived from the run definition.
 
 **Playing a run faster does not make it a different run.** The interface
 offers a playback rate, which is how much simulated time advances per second
@@ -610,13 +612,13 @@ label repairs.
 The guarantee does not cover four things, and none of them is a defect:
 
 - **A different step size.** Between setting changes, two runs at different
-  steps are two roundings of the same solution, not two solutions. The step
-  is exact, so what separates them there is floating-point accumulation.
-  "Step-refinement test" is what bounds that difference. A setting change is
-  different. It takes effect at the next step boundary, and the boundaries
-  fall at different times on each step grid. So a change's timing moves with
-  the step, and two runs with any setting change follow different
-  trajectories by more than rounding after it.
+  steps are two roundings of the same solution. Each step solves the equations
+  exactly, so what separates the two runs there is floating-point accumulation.
+  The "Step-refinement test" bounds that difference. A setting change behaves
+  differently. It takes effect at the next step boundary, and the boundaries
+  fall at different times on each step grid. So the time at which a change
+  takes effect moves with the step size. After any setting change, two such
+  runs follow trajectories that differ by more than rounding.
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
 - **A different platform.** Addition, multiplication and division are
@@ -640,11 +642,11 @@ described below.
 
 The gas-phase cascade uses the inhaled-anesthetic literature's symbols,
 $`F_D \rightarrow F_I \rightarrow F_A`$. The middle state is $`F_I`$, the
-inspired gas, even though the breathing circuit holds it. The container keeps
-the apparatus subscript: $`V_C`$ is its volume and $`M_C`$ is the agent in it.
-So a capital $`C`$ names the rig, and $`F_I`$ names the gas. § "Model
-boundary" above states the assumption that makes the circuit gas and the
-inspired gas one quantity, and what would break that assumption.
+inspired gas, even though the breathing circuit holds it. The circuit itself
+keeps the apparatus subscript $`C`$: $`V_C`$ is its volume and $`M_C`$ is the
+agent in it. So a capital $`C`$ names the apparatus, and $`F_I`$ names the gas.
+§ "Model boundary" above states the assumption that makes the circuit gas and
+the inspired gas one quantity, and what would break that assumption.
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
 <!-- not-restated: 2 % -->
@@ -662,26 +664,26 @@ arithmetic is written, in both directions. The two forms are distinct types
 there, so a type checker rejects a percent where a fraction is wanted. The
 code also rejects that mix-up at run time wherever a concentration is stored
 (see below). The conversion rejects a value that is already in the form it
-returns, instead of converting it again. It also rejects a value that was
-never built as the form it takes, a bare number included, because such a
-value carries no form to convert it by. The conversion is used in two places
+returns, instead of converting it a second time. It also rejects a value that
+was not built as the form it expects, including a bare number, because such a
+value does not say which form it is in. The conversion is used in two places
 and no others. The circuit and the recorded settings derive $`F_D`$ from the
-dial's percent where the governing equations use it. The interface converts
-for display.
+dial's percent at the point where the governing equations use it. The
+interface converts for display.
 
 **The percent dialled is the record, and $`F_D`$ is derived from it.** The
 circuit, the settings that a run records for each stretch, and the control
 timeline all store the vaporizer setting as the percent that was dialled.
-`AgentUptakeSystem.for_agent()` opens the dial at the published percent from
+`AgentUptakeSystem.for_agent()` starts the dial at the published percent from
 the agent data file, without converting it. The conversion does not run
 backwards. Multiplying a fraction by 100 does not always return the percent
 it came from. It fails for 126 of the 801 settings that a 0 to 8% dial makes
 at 0.01% steps. The first failure is at 0.23%, and 0.9% comes back as
 0.9000000000000001. So a record kept as a fraction could not give back what a
-learner dialled. § "Time" states the same rule for the flows. A rejected
-setting is quoted back in the percent it was set in, beside the vaporizer
-maximum. That maximum is stored in the same
-unit, so the message gives both values in percent.
+learner dialled. § "Time" states the same rule for the flows. When a setting
+is rejected, the error message gives it in the percent it was set in, beside
+the vaporizer maximum. That maximum is stored in the same unit, so the message
+gives both values in percent.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 The interface also converts to the second display unit, a multiple of the
@@ -767,16 +769,16 @@ compartment $`x`$.
 The unit used in code is liters of equivalent pure agent gas, unless the
 implementation document explicitly selects another consistent unit.
 
-**Nothing the model computes depends on the condition. Only a conversion out
-of the unit does.** Every governing equation moves dimensionless fractions and
-physical volumes, and every partition coefficient is a ratio. So the
-trajectories, the mass-balance identity and every displayed concentration do
-not depend on which condition the unit names. If the condition changed, no
-number under § "Governing equations", "Conservation of agent mass" or
-"Minimum displayed outputs" would move. Only one kind of operation uses the
-condition: a conversion *out* of the unit, into moles, mass, or the
-millilitres of liquid that a vaporizer is filled from. For that conversion,
-the two candidate conditions differ by a factor of 1.058. The reason is that
+**Nothing the model computes depends on the reference condition. Only a
+conversion out of the unit does.** Every governing equation works with
+dimensionless fractions and physical volumes, and every partition coefficient
+is a ratio. So the trajectories, the mass-balance identity and every displayed
+concentration do not depend on which condition the unit names. If the
+condition changed, no number under § "Governing equations", "Conservation of
+agent mass" or "Minimum displayed outputs" would move. Only one kind of
+operation uses the condition: a conversion *out* of the unit, into moles,
+mass, or the millilitres of liquid that a vaporizer is filled from. For that
+conversion, the two candidate conditions differ by a factor of 1.058, because
 the ideal-gas molar volume is 24.055 L/mol at 20 °C and 25.450 L/mol at 37 °C.
 
 **Why 20 °C.** Three grounds support it, and the first can be checked by
@@ -843,10 +845,10 @@ arithmetic.
    model carries, because Laster, Fang and Eger measured their densities in
    the same experiment. This project's partition coefficients, MAC divisors
    and reference patient are the Gas Man set ("Source hierarchy"). So the
-   trajectories that these amounts come out of are that program's arithmetic.
-   Adopting a different reference for the same volumes would make this model's
-   litre and Gas Man's litre different quantities, even though every parameter
-   feeding these volumes is shared with Gas Man.
+   trajectories that produce these amounts follow that program's arithmetic.
+   Adopting a different reference condition for the same volumes would make
+   this model's litre and Gas Man's litre different quantities, even though
+   every parameter feeding these volumes is shared with Gas Man.
 
 <!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
 <!-- provenance: data/agents/isoflurane.json liquid_density.g_ml = 1.5019 -->
@@ -858,45 +860,44 @@ arithmetic.
 <!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
 
-**37 °C was the alternative.** This model's
-partition coefficients were measured at 37 °C. The alveolar, venous and
-tissue compartments are physically at 37 °C. So 37 °C is the condition at
-which the *stored* amounts are natively exact. It was not chosen, for two
-reasons. The amounts that leave the unit are the fresh-gas terms rather than
-the stores. And the published constants that any figure will be compared
-against are 20 °C constants. What choosing 20 °C costs is recorded under
-§ "Known limitations".
+**37 °C was the alternative.** This model's partition coefficients were
+measured at 37 °C. The alveolar, venous and tissue compartments are physically
+at 37 °C. So 37 °C is the condition at which the *stored* amounts are natively
+exact. It was not chosen, for two reasons. The amounts that are converted out
+of the unit are the fresh-gas terms, not the stored amounts. And the published
+constants that any figure will be compared against are 20 °C constants.
+§ "Known limitations" gives what choosing 20 °C costs.
 
 **The conversion's inputs are stored, and one module does the conversion.**
-Each agent file stores the liquid's density as
-`liquid_density`, with its spread and the temperature at which it was
-measured. It stores the molar mass as `molar_mass_g_mol`. Each has its own
-`sources` entry. `core/liquid_agent.py` derives the millilitres of vapour per
-millilitre of liquid from them, as the table above does. It works out the
-molar volume from the gas constant, 20 °C and one standard atmosphere, rather
-than storing it. A density measured at any temperature other than 20 °C is
-refused when the file loads, because no correction for temperature is stored.
-The conversion is exact for the delivered and exhausted agent and the
-circuit's amount, which are at room temperature. It reads an alveolar, venous
-or tissue amount 5.8 % high, for the reason that § "Known limitations" gives
-under § "One reference condition, where the model physically has two". A cost is
-computed from the delivered amount, so it is exact.
+Each agent file stores the liquid's density as `liquid_density`, with its
+spread and the temperature at which it was measured. It stores the molar mass
+as `molar_mass_g_mol`. Each has its own `sources` entry. `core/liquid_agent.py`
+derives the millilitres of vapour per millilitre of liquid from them, as the
+table above does. It computes the molar volume from the gas constant, 20 °C
+and one standard atmosphere, instead of storing it. A density measured at any
+temperature other than 20 °C is rejected when the file loads, because no
+correction for temperature is stored. The conversion is exact for the
+delivered and exhausted agent and the circuit's amount, which are at room
+temperature. It overstates an alveolar, venous or tissue amount by 5.8 %.
+§ "Known limitations" gives the reason, under § "One reference condition,
+where the model physically has two". A cost is computed from the delivered
+amount, so it is exact.
 
 The published ratios are not stored. `tests/reference/test_published_vapour_to_liquid.py`
 checks the derived ratios against Biro's within 1 % and against Gas Man's
 within 0.5 %. It also prices the isoflurane delivered in the Gas Man
 Workbook's Exercises 14-1 and 14-2 with the derived ratio. The prices must
-match the costs the book prints, allowing for the cent and for Gas Man's
-ratio being rounded to a whole millilitre. The agent cost View is the one
-reader of the conversion. It shows the delivered agent as liquid, and it
-converts nothing else, so no figure it shows carries the 5.8 % error.
-It reads the amount and the ratio from one snapshot, which carries the
-running agent's ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`).
-So it cannot pair one agent's vapour with another agent's ratio, which would
-misread sevoflurane by about 13 % against desflurane's ratio. A unit test
-refuses any second caller of `liquid_volume_ml` under `src/`. The cost on the
-same View multiplies this liquid figure by the reader's price (§ "A cost at the
-reader's price").
+match the costs the book prints, allowing for rounding to the cent and for Gas
+Man's ratio being rounded to a whole millilitre. The agent cost View is the
+only code that uses the conversion. It shows the delivered agent as liquid,
+and it converts nothing else, so no figure it shows carries the 5.8 % error.
+It reads the amount and the ratio from one snapshot, which carries the running
+agent's ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`).
+So it cannot pair one agent's vapour with another agent's ratio. That mistake
+would misstate sevoflurane by about 13 % if desflurane's ratio were used. A
+unit test fails if any other code under `src/` calls `liquid_volume_ml`. The
+cost on the same View multiplies this liquid figure by the reader's price
+(§ "A cost at the reader's price").
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -929,12 +930,12 @@ was read.
 - Philip JH. *Workbook for Gas Man*. Appendix C's `GASMAN.INI` listing is the
   source for the `Volatility` parameter. Chapter 10's closed-circuit
   liquid-injection section (printed pp. 103-105) is the source for the five
-  expansion constants. In that section the constants are the unit of an
-  *input*, the volume injected, rather than of a readout. Both were read from
-  the private reference corpus on 2026-09-16.
+  expansion constants. In that section the constants apply to an *input*, the
+  volume injected, rather than to a readout. Both were read from the private
+  reference corpus on 2026-09-16.
   `docs/references/README.md` § "Philip — *Workbook for Gas Man*" has the
-  extraction note. The workbook is Tier 3 under § "Source hierarchy":
-  it fixes what the reference implementation does, and it measures nothing.
+  extraction note. The workbook is Tier 3 under § "Source hierarchy": it
+  defines what the reference implementation does, and it measures nothing.
 
 ## Symbols
 
@@ -1029,10 +1030,10 @@ once, into the venous pool. The lung's uptake term and every tissue group's
 tissue:blood coefficient read that one value, through
 `PatientCompartments.blood_gas_partition_coefficient`. The tissue groups store
 none. The pool refuses a second write of its coefficient, and the patient
-refuses a replacement pool whose coefficient differs. Copies kept by each
-group could disagree with no check firing. A pool at 0.1 beside groups at
-sevoflurane's 0.65 still conserves agent, and the run gives uptake curves that
-look plausible and are wrong.
+refuses a replacement pool whose coefficient differs. If each group kept its
+own copy, the copies could disagree and no check would fire. A pool at 0.1
+beside groups at sevoflurane's 0.65 would still conserve agent, and the run
+would give uptake curves that look plausible and are wrong.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
 Arterial blood is flow-limited (see § "Model boundary"). It has no capacity
@@ -1189,12 +1190,16 @@ the assembled total of the apparatus plus the patient circuit.
   case.
 
 A profile author who has an apparatus figure therefore adds a patient-circuit
-volume before storing it. That volume is 1.2 L, the internal volume of the
-Hudson RCI circuit that Shin et al. added to each machine's figure, unless the
-profile assumes a circuit whose own volume is stated (*BMC Anesthesiol*
+volume before storing it. Unless the profile assumes a circuit whose own volume
+is stated, that volume is 1.2 L. That is the internal volume of the Hudson RCI
+circuit that Shin et al. added to each machine's figure (*BMC Anesthesiol*
 2017;17(1):10, PMID 28103806; read at full text 2026-10-04 from PubMed
-Central, PMC5248460). Shin et al.'s sums leave out the circuit's 3 L
-reservoir bag, so a total built from them leaves it out too.
+Central, PMC5248460).
+
+The stored total leaves out the circuit's reservoir bag, whatever the source of
+the figure. Shin et al.'s sums leave out the 3 L bag of their set-up, so a
+total built from them already does. Adding the bag would nearly double a
+Perseus A500's assembled 3.3 L.
 
 If the apparatus figure is stored alone, $`\tau_C`$ is shortened by the
 circuit's share. A Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min, where its
@@ -1316,8 +1321,8 @@ sufficient. An oxygen-consuming patient is the other half, and this model has
 no such patient.
 
 **Setting the removal rate to zero and leaving the rest alone would be
-wrong.** Such an implementation integrates, and it produces a plausible
-trajectory. The circuit settles at
+wrong.** Such an implementation integrates without error, and it produces a
+plausible trajectory. The circuit settles at
 $`F_I = F_A + \dot V_FF_D/\dot V_A`$. Take the shipped 4.0 L/min fresh gas
 flow, the reference adult's 4 L/min alveolar ventilation and a 2% dial. The
 circuit then settles two percentage points above alveolar. In the steady
@@ -1326,9 +1331,10 @@ closed circuit does. But the result is not a closed circuit, because the
 fresh gas still arrives at a flow that nobody has tied to uptake. At
 4.0 L/min, for the same dial, the vaporizer adds agent about thirteen times
 faster than it would at the 0.3 L/min that this patient's uptake would set.
-A conditional coefficient is the wrong shape for this machine property.
-`docs/machine-abstraction.md` names the slot that such a mode would occupy: a
-`closed_circuit` removal strategy, recorded there as not implemented.
+A coefficient that switches on a condition is the wrong way to model this
+property of the machine. `docs/machine-abstraction.md` names the slot that
+such a mode would occupy: a `closed_circuit` removal strategy, recorded there
+as not implemented.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 <!-- not-restated: 2 % -->
@@ -1519,12 +1525,12 @@ $`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$. The second formulation is the
 less invasive change here, and it is the form the classical treatment uses.
 
 Either way, the second-gas effect follows from the alveolus containing more
-than one gas. It needs no machinery of its own. That is why `ROADMAP.md`'s
-planned items 6 and 7 are not additive over these equations. Item 7 is nearly
+than one gas. It needs no machinery of its own. So the work for `ROADMAP.md`'s
+planned items 6 and 7 is not the sum of two separate pieces. Item 7 is nearly
 free if item 6 is built this way. Item 7 is unreachable if nitrous oxide is
 bolted on beside a volatile agent. Item 6 already says to model the patient as
-a set of substances instead of the bolt-on, and the alveolar-volume coupling
-is the reason.
+a set of substances instead of bolting nitrous oxide on. The alveolar-volume
+coupling is the reason.
 
 ### Arterial blood
 
@@ -1688,10 +1694,10 @@ replacement part could fail in two ways:
 - An empty part built for another agent would pass the identity, and no check
   would find it.
 
-The refusal covers the parts themselves. Agent written straight into a part's
-own store is not refused at the write. Neither is agent held by a tissue group
-or venous pool written onto the patient. This identity finds either at the
-next step or read.
+The refusal applies to the parts themselves. Agent written directly into a
+part's own store is not refused when it is written. Nor is a tissue group or
+venous pool that already holds agent when it is written onto the patient. This
+identity detects either case at the next step or read.
 
 `tests/unit/test_record_writes.py` walks every class in `core/`. It fails on a
 field of a mutable record that neither refuses a later write nor is checked
@@ -1709,8 +1715,9 @@ AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 MINIMUM_RELATIVE_SCALE_L = 1e-15
 ```
 
-The absolute bound and the minimum scale carry their unit in the name. The relative bound is dimensionless. A
-step passes if either tolerance is satisfied. The relative error uses
+The absolute bound and the minimum scale carry their unit in the name. The
+relative bound is dimensionless. A step passes if either tolerance is
+satisfied. The relative error uses
 `max(initial + delivered, MINIMUM_RELATIVE_SCALE_L)` as its denominator. This
 avoids division by zero when no agent has yet been delivered. A step that
 exceeds both tolerances stops the run. These thresholds mark the point past
