@@ -3,16 +3,18 @@ id: PL-B6YV
 title: docs/MODEL.md states what the model computes in prose that no test computes, so a claim that was never true, or that lost its condition, is found only when a reviewer happens to read it: decide how such a claim names the test that holds it
 priority: P1
 effort: M
-status: ready
+status: done
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 deferred-from: v0.7.0 - recorded as a generator head on 2026-11-02 from PL-R4Y2's defect review; each member was placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1927
 payoff: a specification sentence about what the model computes names the test that computes it, so a false claim, or one missing its condition, fails a check or a test instead of waiting for a reader
 verify: grep -q 'def _numeric_paragraph_members' tools/doc_check.py && grep -q '_numeric_paragraph_members' tests/unit/test_doc_check.py
 root-cause-of: PL-8YBS, PL-39KH, PL-5RPD, PL-M8F6, PL-MLPT, PL-GJYL, PL-SR8F
-generator: live - PL-4FBP's fix holds enumerated families and restated data values but leaves free prose about computed behaviour to review; five such sentences were found weeks late by one blind review on 2026-10-25 and PL-8YBS is still open, so the stock is still being found
+generator: spent - the rule is in docs/MODEL.md and check_bound_families now fails an unheld numeric paragraph in each section it holds; the remaining stock is filed as the model-claims-held-by-tests passes, led by PL-19W8
 misread: Whether a docs/MODEL.md sentence about what the model computes matches what it computes
 ---
 
@@ -179,3 +181,56 @@ prose.
    `model-claims-held-by-tests`, grouped by section, starting with "Known
    limitations". The first pass records how many of its computed claims were
    wrong or missing a condition, and applies the stop condition above.
+
+**Built 2026-11-02, as decided.** `tools/doc_check.py` gained
+`_numeric_paragraph_members`, a fourth member shape for `BOUND_FAMILIES`,
+and `FIGURE_ENTITY`, the kind its members are held to. A member is each
+paragraph in the section that states a figure in a unit. A figure is read as
+`_untied_figures` reads one, so the units are the ones `PROSE_UNITS` lists and
+"a number with a unit" has one meaning in the file. A paragraph passes on any
+of these, each a syntax the writer adds on purpose, as
+`.claude/rules/apparatus-standard.md` requires of a hard check:
+
+- a `provenance:`, `derived:` or `not-restated:` marker that speaks for it,
+  read with `_marked_scope`, so a marker under a list holds each entry;
+- a test named in a code span, read by `_names_a_test`, the predicate the
+  other families use;
+- the declared-none form, resolved against the queue by
+  `check_bound_families` as before;
+- an ISO date, which makes it a record under clause 4;
+- a published source in a form `PUBLISHED_SOURCE_RE` reads: a DOI, a PubMed
+  id, an ISBN, or a journal locator such as "Anesth Analg 1991;72:316-324".
+
+**How a cited source is recognised, decided in the build.** Only by an
+identifier or a locator. An author and a year alone, such as "Mapleson 1963",
+is refused, because "Until 2026" and "The 2019" have the same shape and no
+pattern can tell them apart. A paragraph that cites a source that way adds
+the locator or the identifier, which `docs/MODEL.md` already writes for most
+of its sources. A date or a source inside a code span does not count. This
+was a choice with one clearly correct option under the apparatus standard,
+so it was taken rather than offered.
+
+"Displayed precision" joined the table and conforms. Of its 22 numeric
+paragraphs, 9 carried no form. Three now name the test that holds them, and
+the rest declare ``no test yet (`PL-19W8`)``. The two blind review passes
+found three computed claims in the section wrong or missing a condition, and
+this session reran their measurement: sevoflurane's and isoflurane's fat
+first nonzero times (780 s and 1474 s, where the model gives 781.4 s and
+1477.2 s), and the alveoli said to read below 0.1 L for the hour, which
+desflurane's do not. All three were corrected here, and `PL-19W8` lists
+them. A status claim had also gone stale, "which `PL-2881` writes", after
+`PL-2881` closed, and it was corrected too.
+
+The passes also showed a gap in the decided forms. A marker holds the whole
+paragraph whatever figure it ties, and a `not-restated:` marker says its
+figure is tied to nothing. So three paragraphs with computed shifts passed on
+a marker about another figure. They now also declare the test they owe.
+`PL-TCD3` puts the question to the owner, because the forms were ratified.
+
+Counted with the reader over the whole document: 383 numeric paragraphs, 96
+of them carrying no form. The passes are filed under
+`model-claims-held-by-tests`: `PL-19W8` first ("Known limitations", and the
+tests "Displayed precision" owes), then `PL-JP7P`, `PL-MCQ5`, `PL-5C1H` and
+`PL-H94Q`, each blocked on it under the stop condition. `PL-XQXK` records the
+unit vocabulary's limit: a figure in px, mL, mmHg or percentage points makes
+no member, and `PL-8YBS`'s own figure is in px.

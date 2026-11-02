@@ -3982,12 +3982,131 @@ def _subsection_members(text: str, family: BoundFamily) -> Iterator[tuple[int, s
         yield heading.line + 1, "\n".join(lines[heading.line : end])
 
 
+#: A published source, cited by an identifier the writer typed on purpose.
+#: There are four forms. One is a DOI, bare, after `doi:` or in a `doi.org`
+#: link. One is a PubMed id after `PMID`. One is an ISBN. The last is a journal
+#: locator in the Vancouver form `year;volume(issue):page`, as in
+#: "Anesth Analg 1991;72:316-324". An author and a year alone, such as
+#: "Mapleson 1963", is not one of them: "Until 2026" and "The 2019" have the
+#: same shape, so no pattern can tell the citation from the sentence
+#: (`PL-B6YV`). A paragraph that cites a source that way adds the locator or
+#: the identifier.
+PUBLISHED_SOURCE_RE = re.compile(
+    r"\b10\.\d{4,9}/[^\s<>`)\]]+"
+    r"|\bPMID:?[  ]?\d{1,9}\b"
+    r"|\bISBN(?:-1[03])?:?[  ]?\d[\d -]{8,15}[\dX]\b"
+    r"|\b(?:1[89]|20)\d{2}\s?;\s?\d+(?:\([^)\s]{1,9}\))?\s?:\s?[eE]?\d+"
+)
+
+
+def _holds_its_figures(member: str) -> bool:
+    """Whether a numeric paragraph carries a form that ties its figures to something.
+
+    `member` is the paragraph and, after it, each marker that speaks for it,
+    as `_numeric_paragraph_members` gives them. Five forms pass, and each is
+    a syntax the writer adds on purpose. The first is a `provenance:`,
+    `derived:` or `not-restated:` marker. The second is a test named in a
+    code span, read by `_names_a_test` exactly as the other families read it.
+    The third is a published source in a form `PUBLISHED_SOURCE_RE` reads.
+    The fourth is an ISO date, which makes the paragraph a record under
+    clause 4. The fifth, the declared-none form, is `check_bound_families`'
+    own. A date or a source inside a code span does not count, because a code
+    span quotes text rather than citing it.
+
+    As for every family, the check asks only whether a form is present.
+    Whether the test computes the figure, or the source states it, stays a
+    reviewer's question. So does whether the paragraph holds a second figure
+    that its one marker does not cover.
+    """
+    lines = split_lines(member)
+    if any(PROSE_MARKER_RE.match(line.strip()) for line in lines):
+        return True
+    prose = "\n".join(line for line in _without_code(member) if not _is_marker(line))
+    return bool(
+        _names_a_test(member) or ISO_DATE_RE.search(prose) or PUBLISHED_SOURCE_RE.search(prose)
+    )
+
+
+#: A numeric paragraph's kind. Its declared-none form is a test's, so the one
+#: absence it may declare is a test still owed.
+FIGURE_ENTITY = _entity_kind("test", _holds_its_figures)
+
+
+def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each paragraph under the family's heading that states a number with a unit.
+
+    The fourth member shape (`PL-B6YV`). The other three read members the
+    heading promises. This one reads free prose, and it reads only the
+    paragraphs a syntax can pick out: one that states a figure with a unit.
+    A figure is read as `_untied_figures` reads one, over the paragraph's lines
+    joined into one, so a unit that wraps onto the next line is still read. Its
+    unit is one `PROSE_UNITS`
+    lists, so "a number with a unit" has one meaning in this file. Widening
+    that list widens `check_untied_restatements` too, and both should move
+    together. A number in a code span, a math span's exponent or an HTML
+    comment states nothing here. A bare number, such as a count or a
+    coefficient, makes no member. A heading or a table row makes none either,
+    because a table is `_table_members`' shape.
+
+    The section runs from its heading to the next heading at its own depth or
+    shallower, so a deeper heading's paragraphs are part of it. A paragraph
+    inside a list item or a block quote is a member of its own.
+
+    Each member comes back with each marker that speaks for it appended, as
+    `_marked_scope` reads a marker's reach. A marker stands under its
+    paragraph, or under the whole list for a paragraph inside one, and
+    `_holds_its_figures` then finds it in the member.
+
+    The heading is one `markdown` reads, so a `#` line inside a fence opens no
+    section, as for `_list_members` (`PL-0Y7J`).
+    """
+    lines = split_lines(text)
+    found = read_headings(lines)
+    opening = next(
+        (
+            heading
+            for heading in found
+            if heading.level == family.level and heading.title == family.heading
+        ),
+        None,
+    )
+    if opening is None:
+        return
+    end = next(
+        (h.line for h in found if h.line > opening.line and h.level <= family.level), len(lines)
+    )
+    prose = _prose_lines(text, lines)
+    scopes = [
+        (_marked_scope(lines, index), lines[index].strip())
+        for index in sorted(_marker_lines(lines))
+        if opening.end <= index < end and PROSE_MARKER_RE.match(lines[index].strip())
+    ]
+    for block in read_blocks(lines).blocks:
+        if block.kind != PARAGRAPH or not opening.end <= block.start < end:
+            continue
+        # The lines are joined with a space, so a figure whose unit wraps onto
+        # the next line, as in "2.0 to 2.7" and then "minutes", is still read.
+        joined = " ".join(prose[block.start : block.end])
+        raw = " ".join(INLINE_COMMENT_RE.sub("", line) for line in lines[block.start : block.end])
+        if not any(unit is not None for _, unit in _untied_figures(joined, raw)):
+            continue
+        held = [
+            marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
+        ]
+        yield block.start + 1, "\n".join([*lines[block.start : block.end], *held])
+
+
 # Every family bound by clause 2 today. **An entry arrives with the annotation
 # pass that makes its family conform, never in anticipation of one**, so the
 # check never holds `make check` red for work nobody has done yet. The check was
 # introduced over the hazard table, which conformed already, so it landed green;
 # `PL-036` added the minimum displayed outputs, `PL-2M9N` added the required
 # tests, and `PL-8LDF` (required invariants) is the pass still due.
+#
+# `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
+# precision", whose numbers a learner reads directly. The other sections join
+# with the passes the `model-claims-held-by-tests` feature files, first
+# `PL-19W8`, which decides whether the rest run.
 #
 # Every entry names `TEST_ENTITY`, and for the displayed outputs that was a
 # decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
@@ -4025,6 +4144,18 @@ BOUND_FAMILIES = (
         members=_subsection_members,
         promise="every subsection names the test that holds it",
     ),
+    BoundFamily(
+        document=MODEL,
+        heading="Displayed precision",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=(
+            "every paragraph stating a number with a unit names the test that computes it, "
+            "carries a provenance:, derived: or not-restated: marker, cites its published "
+            "source, or is dated"
+        ),
+    ),
 )
 
 
@@ -4040,12 +4171,15 @@ def check_bound_families(root: Path, report: Report) -> None:
     and required tests against the suite by hand on 2026-09-19 found two held
     only in part; nothing that runs had surfaced either (`PL-4FBP`).
 
-    **Only where the heading promises one assertion per member.** Free prose is
-    not read, by decision rather than by reach: the ratified convention leaves
-    an unmarked claim outside a family to the close-out sweep, so that a rule
-    with an escape nobody declares does not become a rule nobody follows. A
-    family is therefore added to `BOUND_FAMILIES` by the annotation pass that
-    makes it conform, never in anticipation of one.
+    **Only where the heading promises one assertion per member, or a section
+    is held by its numeric paragraphs.** Other free prose is not read, by
+    decision rather than by reach: the ratified convention leaves an unmarked
+    claim outside a family to the close-out sweep, so that a rule with an
+    escape nobody declares does not become a rule nobody follows. `PL-B6YV`
+    reopened that for computed claims on 2026-11-02, and
+    `_numeric_paragraph_members` reads them one section at a time. A family is
+    added to `BOUND_FAMILIES` by the annotation pass that makes it conform,
+    never in anticipation of one.
 
     **A family with no members is an error, not a pass.** A renamed heading or
     a deleted table would otherwise retire the family silently while the entry

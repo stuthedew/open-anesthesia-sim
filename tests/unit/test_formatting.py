@@ -1694,16 +1694,19 @@ def test_a_precision_finer_than_its_derived_band_is_refused() -> None:
 def test_a_unit_with_no_derived_precision_is_refused() -> None:
     """Formatting an amount in a unit with no derived precision fails loudly.
 
-    The amount is never formatted at a default precision (`PL-0S0V`). A
-    compartment's amount has no entry in any unit. `PL-2881` derived a
-    precision of two significant figures for it. A count of decimals cannot
-    express that precision, so `format_compartment_amount` applies it instead.
-    The table must not lend the compartment's amount the litre precision of the
-    run totals. At a resolution of 0.1 L, the amounts in venous blood and the
-    alveoli would stay below one display step for a whole hour. The stored total
-    has no liquid entry, because converting the stored total to liquid gives a
-    figure 5.8% too high (`docs/MODEL.md` § "Known limitations"). At 17 mL of
-    liquid, that error is already one whole step of 1 mL.
+    The amount is never formatted at a default precision (`PL-0S0V`). The
+    precision table has no entry for a compartment's amount in any unit. That
+    amount's precision was derived as two significant figures (`PL-2881`). A
+    precision stored as a count of decimals cannot express significant figures,
+    so `format_compartment_amount` applies the two significant figures itself.
+    The table must not give a compartment's amount the precision in litres that
+    the run totals use. At a resolution of 0.1 L, the amount of agent in venous
+    blood would stay less than one display step for a whole hour at 1 MAC. So
+    would the amount of agent in the alveoli, for sevoflurane and isoflurane.
+    The table has no entry for the stored total in millilitres of liquid,
+    because converting the stored total to liquid gives a figure 5.8% too high
+    (`docs/MODEL.md` § "Known limitations"). When the stored total is 17 mL of
+    liquid, that error is already one whole display step of 1 mL.
     """
 
     refused = [(AgentAmount.COMPARTMENT, unit) for unit in AgentAmountUnit] + [
