@@ -75,3 +75,61 @@ part fits one session, since the whole file is about 140,800 words.
 **Constraint.** As in `PL-BZR4`: no equation, unit, assumption, limitation or
 provenance note may be lost. A citation stays; narration about the citation
 may go.
+
+**Worked example for part 1 (drafted 2026-11-02, not yet checked against the
+code).** The hazard-table row in `docs/MODEL.md` § "Reasonably foreseeable
+misuse, and the hazards the presentation carries" for "reading one run's displayed value, or the record of
+what was changed on it, as the other's while two are compared" has a
+mitigation cell of 459 words (line 200 on 2026-11-02). The cell walks through
+six places in prose ordinals, "First" to "Sixth", and cites six item ids:
+`PL-L59K`, `PL-25DD`, `PL-C3GS`, `PL-TSZM`, `PL-T91K` and `PL-RNYV`. Prose
+ordinals inside a table cell show that the content wanted to be a section.
+
+The draft below keeps all six places, the condition on each, why visual cues
+are not enough, and the three misreadings the names prevent. It drops the item
+ids and the account of how each place was added, since those items already
+hold it. The row's 13 tests stay in its last cell. Before adopting the draft,
+check each numbered place against those tests, and decide whether "travels
+with the panel rather than with its position in the column" is a design
+reason the specification should keep.
+
+The mitigation cell becomes:
+
+> Every place that shows a value, or the record of what was changed, names
+> its run in text while more than one run is drawn. § "Naming the run in a
+> comparison" lists the six places.
+
+The new section:
+
+> ### Naming the run in a comparison
+>
+> While two or more runs are drawn, each of these names its run in text:
+>
+> 1. Each run's readout panel (§ "Minimum displayed outputs").
+> 2. The chart's hover readout. With one run under the pointer, the name is
+>    on the first line. With several, it is on each value line. Every run
+>    inside the hover radius is reported, so a small pointer movement cannot
+>    swap which run is read (§ "Where more than one trace answers").
+> 3. The three advisory lines inside a chart: the wash-in state, the
+>    off-scale notice, and the count of control changes the chart could not
+>    mark. They stack one line per run.
+> 4. The headings of the two record panels: the agent-accounting validation
+>    in the sidebar, and the control-change record.
+> 5. The notice banner between the transport controls and the readouts. Both
+>    runs use the same place, and a banner with nothing to say is hidden, so
+>    its position does not show whose it is.
+> 6. The heading over each run's compartment schematic.
+>
+> Colour, line width and stacking order cannot do this job. The hover is
+> separate from the legend, line width has no text equivalent, and no
+> stacking order is shown on screen. Without the names, a learner could
+> misread the comparison in three ways:
+>
+> - The control-change record, read as the other run's, says a run received
+>   an intervention it never got.
+> - A halt banner, read as covering the whole dashboard, says both runs are
+>   frozen when one is still running.
+> - One run's F_A/F_I could be read as the other's.
+>
+> With only one run drawn, the hover, the chart's advisory lines, the sidebar
+> panel headings and the banner show no run name.
