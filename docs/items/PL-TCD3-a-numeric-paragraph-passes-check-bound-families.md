@@ -3,12 +3,14 @@ id: PL-TCD3
 title: A numeric paragraph passes check_bound_families on any marker in its scope, even a not-restated: marker, which says its figure is tied to nothing, or a marker that ties a different figure: decide whether a marker should hold only the figures it names
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items
 deferred-from: v0.7.0 - filed 2026-11-02 from PL-B6YV's blind review; a question about the check's rule that the schematic does not wait on
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1934
 payoff: a computed figure in a section the check holds cannot pass on a marker written for a different figure
 verify: grep -q 'def _marker_held_figures' tools/doc_check.py && grep -q '_marker_held_figures' tests/unit/test_doc_check.py
 ---
