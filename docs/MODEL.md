@@ -1943,9 +1943,10 @@ separate names.
 wakes, in *real* seconds. It equals the step because real-time playback here
 means one step per tick. The two have separate names because the playback
 rate is the ratio between them: a tick takes
-`multiplier × tick interval ÷ step` whole steps. Written that way, "60× real time" is a claim that a test
-can check. With one name for both, someone could re-tune the wakeup for a
-different host without re-deriving the rates. Every rate on screen would then
+`multiplier × tick interval ÷ step` whole steps. Written that way,
+"60× real time" is a claim that a test can check. With one name for both,
+someone could re-tune the wakeup for a different host without re-deriving the
+rates. Every rate on screen would then
 be false, and nothing would fail.
 
 ### Selected method (as implemented)
@@ -2082,7 +2083,7 @@ step sees every mode the model has.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The ceiling is a declared tolerance, not a derived limit.** A search for a
-numerical limit found none. The step was swept from $`10^{-3}`$ s to
+numerical limit, measured on 2026-09-06, found none. The step was swept from $`10^{-3}`$ s to
 $`10^{300}`$ s across the settings envelope. Over that sweep, the disagreement
 with an independent solution stays between about $`10^{-14}`$ and
 $`2\times10^{-12}`$ in fraction. The disagreement does not grow with the step.
@@ -2269,8 +2270,8 @@ What a finer step costs is rounding, which the sweep above already shows as "a
 finer step is slightly worse". Each step adds the amount it changed to what
 was already stored. The finer the step, the smaller that change is beside the
 stored amount it is added to, so the same rounding is a larger share of the
-change. The table below was measured over 10 000 steps from 60 s into the
-default sevoflurane wash-in. It was compared against the same span taken in
+change. The table below was measured on 2026-10-03 over 10 000 steps from 60 s
+into the default sevoflurane wash-in. It was compared against the same span taken in
 0.1 s steps or as one exact step. Each row gives the largest relative error in
 the amount by which any of the alveolar, vessel-rich, muscle and fat fractions
 changed:
@@ -2303,7 +2304,7 @@ at which the solution has been shown to be the shipped one. It is the bottom
 of the step sweep above. A test beside the step-refinement gate
 (§ "Step-refinement test") drives the model at that step and pins the constant
 there. Apart from the tests of the floor itself, no test runs finer than
-0.02304 s. The table is a measurement and not a gate, because the steps below
+0.02304 s. The table is a dated measurement and not a gate, because the steps below
 its first row are outside the domain and no test can take them. So lowering
 the floor needs a new measurement, starting with that test at the new floor.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
@@ -2323,7 +2324,7 @@ does not.** Only `AgentUptakeSystem.advance()` steps a compartment at a run's
 step, and it takes a `SimulationStep`. So no step below the floor can reach a
 compartment through a run. But each compartment is public, and rounding costs
 a compartment stepped alone as much as it costs the run. The table below was
-measured over 10 000 steps. Each compartment was held at a fraction of 0.01
+measured on 2026-10-19 over 10 000 steps. Each compartment was held at a fraction of 0.01
 and stepped toward 0.02. The compartments were a tissue group with a time
 constant of 480 s, the venous pool at 7.8 s and the breathing circuit at 60 s:
 
@@ -2610,9 +2611,9 @@ of this size instead of bounding it.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 **Neither shorter propagators nor a method with fewer squarings would shrink
-it, so the display path keeps its method.** Two remedies were measured at that
-corner over the window's 1464.4 s column spacing, against the same 50-digit
-reference, with no fresh gas:
+it, so the display path keeps its method.** Two remedies were measured on
+2026-11-01 at that corner over the window's 1464.4 s column spacing, against
+the same 50-digit reference, with no fresh gas:
 
 - **Capping the interval does not help.** One propagator over 1464.4 s needs
   32 squarings, and its worst entry was off by 6.0e-7. Building the same
@@ -2683,7 +2684,7 @@ error" is the worst relative error of any entry of the 0.1 s propagator. "After
 | One tissue 0.01 L, its tissue:blood 0.001 | 1.27e4 | 15 | 7.3e-12 | 3.1e-6 |
 | Circuit 0.01 L | 36.7 | 6 | 1.4e-14 | 3.1e-9 |
 | Venous pool 0.01 L | 16.7 | 5 | 8.0e-15 | 2.9e-9 |
-| Alveolar gas 0.001 L, blood:gas 10 000, tissue:blood as shipped (a floor of 0.001 L) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
+| Alveolar gas 0.001 L, blood:gas 10 000, tissue:blood as shipped (below the 0.01 L floor) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
