@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, test
 feature: drift-2026-11-01
+milestone: v0.6.14
 touches: tests/integration/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
