@@ -3855,19 +3855,20 @@ is the wider one. The two values describe the apparatus in front of the patient
 rather than the patient. So they live in
 `data/machines/reference_circle_system.json`, a third kind of parameter file.
 
-- **Circuit volume, 6.0 L.** The Workbook's own page-168 table publishes 8.0 L.
-  The Methods of De Wolf et al. 2012 print the same 8 L for the simulations to
-  which their Table 1 supplied the coefficients. The 6.0 L arrived with the
-  first circuit model on 2026-08-22, and no record gives a reason for choosing
-  it. It was kept, rather than moved to 8.0 L, because the project owner ruled
-  on 2026-09-01 that the exact value is not critical. The departure changes the machine's own share of the early
-  rise. $`\tau_C = V_C/\dot V_F`$ is 90 s here, against 120 s at 8.0 L and the
-  same flow, which makes the apparatus lag 25% shorter. That lag is the part
-  of the inspired curve that a learner is most likely to attribute to uptake.
-  So a run that reproduces a published Gas Man trajectory has to set 8.0 L
-  rather than assume it. Like every `circuit_volume_l`, the 6.0 L is an
-  assembled total of apparatus plus patient circuit (§ "Breathing circuit").
-  No source apportions it between the two.
+- **Circuit volume, 6.0 L.** The Workbook's own table on page 168 gives 8.0 L.
+  De Wolf et al. 2012 give the same 8 L in their Methods, for the simulations that
+  used the coefficients in their Table 1. The 6.0 L value came in with the first
+  circuit model on 2026-08-22, and no record gives a reason for choosing it. The
+  project owner ruled on 2026-09-01 that the exact value is not critical, so 6.0 L
+  was kept and not changed to 8.0 L. The smaller volume changes how much of the
+  early rise in inspired concentration comes from the machine itself. At the same
+  flow, $`\tau_C = V_C/\dot V_F`$ is 90 s here and 120 s at 8.0 L, so the
+  apparatus lag is 25% shorter. That lag is the part of the inspired curve that a
+  learner is most likely to attribute to uptake. So a run that reproduces a
+  published Gas Man trajectory has to set the circuit volume to 8.0 L explicitly,
+  and cannot assume that value. Like every `circuit_volume_l`, the 6.0 L is one
+  total for the apparatus and the patient circuit together (§ "Breathing circuit").
+  No source says how it divides between the two.
   <!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
 - **Default fresh gas flow, 4.0 L/min.** No published counterpart for this
   value exists in any source this project has reached. The Workbook's
