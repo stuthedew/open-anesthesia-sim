@@ -4596,8 +4596,17 @@ mixed-venous fractions after 60 s of the default sevoflurane wash-in. Under
 the operator split, comparing 0.1 s directly with 0.025 s exceeded the
 tolerance in the mixed-venous fraction alone. That compartment has barely
 begun to fill at 60 s, so the split's gap of 1.4e-6 in fraction between those
-two steps was 0.55% of the mixed-venous fraction. Under the exact step, the two runs land about
-4e-17 apart there (measured 2026-10-03).
+two steps was 0.55% of the mixed-venous fraction. Under the exact step, the
+two runs land about 4e-17 apart there (measured 2026-10-03).
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+The 5e-3 relative tolerance was chosen when the simulator used the operator
+split. At that time, the split showed a relative gap of 4e-4 in the alveolar
+fraction between steps of 0.1 s and 0.025 s, and 5e-3 is about ten times that
+gap. The tolerance is kept as a coarse check, because with the exact step the
+same comparison gives gaps of about 1.4e-13 relative (measured 2026-10-03).
+The 1e-8 absolute tolerance covers a fraction so close to zero that a relative
+gap means little. For such a fraction, a negligible difference still passes.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 This gate tests self-consistency across the supported steps, not
