@@ -2099,10 +2099,10 @@ def test_a_refused_amount_of_money_is_named_in_the_error(render: Any, what: str)
 def test_a_cost_and_a_price_round_halves_to_even_whatever_the_decimal_context(
     rounding: str,
 ) -> None:
-    """The rounding is fixed in the formatter, so the shown cost never depends on the caller.
+    """The formatter sets its own rounding, so the shown cost never depends on the decimal context.
 
-    0.125 and 1.0625 are exact in binary, so each is a true half at the
-    figure being rounded. Rounding halves to even gives 0.12 and 1.062.
+    0.125 and 1.0625 are exact in binary, so each lies exactly halfway between its two
+    nearest rounded values. Rounding halves to even gives 0.12 and 1.062.
     """
 
     with localcontext() as context:

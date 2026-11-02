@@ -1812,16 +1812,18 @@ def format_entered_figure(figure: float) -> str:
 def _round_to_figures(
     value: Decimal, figures: int, finest_decimals: int | None
 ) -> tuple[Decimal, int]:
-    """Round a positive `value` to `figures` significant figures, and to at most `finest_decimals`.
+    """Round a positive `value` to `figures` significant figures.
 
-    `finest_decimals` of None sets no limit on the decimals. The rounding is
-    to the nearest figure, with halves rounded to even, whatever rounding the
-    caller's decimal context sets. A value can round up into the next power
-    of ten, as 9.96 does to 10.0 at three figures. So the value is always
-    rounded a second time, with the number of decimals for the power of ten
-    of the first result. At two figures, 9.96 then becomes 10 and not 10.0,
-    which would claim three figures. When the first result keeps the value's
-    power of ten, or is zero, the second rounding gives the same result.
+    The result also has at most `finest_decimals` decimal places. When
+    `finest_decimals` is None, the number of decimal places has no limit.
+    The value is rounded to the nearest figure, with halves rounded to even.
+    The rounding mode set in the caller's decimal context has no effect.
+    A value can round up into the next power of ten. At two figures, the
+    first rounding turns 9.96 into 10.0, which shows three figures. So the
+    function always rounds the value a second time, using the number of
+    decimals that suits the power of ten of the first result, and 9.96
+    becomes 10. When the first result keeps the value's power of ten, or is
+    zero, the second rounding gives the same result.
 
     Returns:
         The rounded value and the number of decimals it has. The number of
