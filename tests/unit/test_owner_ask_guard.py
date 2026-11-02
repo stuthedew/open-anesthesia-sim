@@ -289,10 +289,10 @@ def test_the_hook_is_wired_on_every_projects_tool() -> None:
 
 POST = "mcp__hearthbot__post_message"
 
-#: The risk-review form of the line `arm --owner-ask` prints.
+#: The review form of the line `arm --owner-ask` prints.
 RISK_LINE = (
-    "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests pin "
-    "the unit. Please look at: the infusion panel's label."
+    "What changed: the dose label reads mcg. Question for you: should it show mcg/kg/min? "
+    "Already checked: the label matches the unit stored. What to reply: Merge it."
 )
 
 

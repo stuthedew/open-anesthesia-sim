@@ -8,9 +8,13 @@ each point.
 
 Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
-titles and bodies, and replies. Write for a careful newcomer, someone who knows
-anesthesia or Python but has not read this repository. They should understand each
-sentence the first time they read it.
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for a careful newcomer, someone who knows anesthesia or Python but has
+not read this repository. They should understand each sentence the first time
+they read it.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
