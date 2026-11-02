@@ -106,3 +106,32 @@ refusing the empty one), `docs/MODEL.md`
 § "Parameter provenance" (the Mapleson paragraph replaced with the read
 lineage and the seven-of-eleven correction). The provenance table's eleven rows
 are unchanged: no value and no key changed, and `make doc-check` confirms it.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+**Where 1.0 L came from is answerable, and the answer changed on 2026-09-15.**
+The value entered the repository on 2026-08-22 in `875ba08`, "Build v0.1.0 sevo
+patient simulation", the tenth commit. It was written into the data file with
+the rest of the reference patient. It carried the citation "Gas Man Workbook
+and Laboratory Manual. Default Options: Patient Defaults", whose note read "The
+default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L, alveolar
+ventilation 4 L/min, cardiac output 5 L/min, tissue volumes 6/33/14.5 L, and
+flow percentages 76/18/6". `PL-XTMB` read that section at the source. It is
+Appendix E, page 183, and it describes the interface controls without giving
+any number. The table that does give numbers, Appendix B page 168, has a
+`Blood` row of 5.00 L and nothing at 1.0. On that evidence, this section said
+until 2026-09-15 that none of the four sources ever cited for the value
+contained it.
+<!-- not-restated: 70 kg, 2.5 L, 4 L/min, 5 L/min, 6 L, 33 L, 14.5 L -->
+
+**It is in the Workbook, one appendix further on.** Appendix C's `GASMAN.INI`
+listing, on page 172, reads `[Volumes] … VEN=1.0`. The v0.1.0 note's sentence
+matches that listing's three blocks item for item. It has the volumes. It has
+the flow fractions as the *percentages* `76`/`18`/`6` that the INI writes,
+rather than the table's 0.76/0.18/0.06. And it has `VA=4` with `CO=5` from
+`[Defaults]`. So the original citation was **mis-sectioned rather than
+borrowed**. It named Appendix E, but the numbers were read off Appendix C, and
+every value in that sentence, including 1.0 L, is on that page. `PL-XTMB` and
+`PL-3YZW` quote Appendix B and Appendix E and never Appendix C. Whether that
+page was among those supplied on 2026-09-06 and went unread is not recorded.
+<!-- not-restated: 0.76, 0.18, 0.06 -->
