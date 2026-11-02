@@ -10918,7 +10918,7 @@ Desflurane's fat fraction stays at `0.0%` for its first 19.3 minutes and
 reaches 0.2%. Muscle reads `0.0%` for its first 2.9 minutes with desflurane,
 8.5 minutes with sevoflurane and 14.8 minutes with isoflurane. At two decimals
 the same compartments show a nonzero value at 57, 125 and 190 seconds (muscle)
-and 236, 780 and 1474 seconds (fat). What one decimal erases is the
+and 237, 781 and 1477 seconds (fat). What one decimal erases is the
 slow-compartment wash-in, which is the reason for displaying those
 compartments at all. These times have no test yet (`PL-19W8`).
 
@@ -11215,7 +11215,7 @@ two are measured entirely independently. The muscle times have no test yet
 at 0.01 percentage points the slow compartments start below the last digit.
 At 1 MAC with default flows, muscle first rounds to a nonzero value at 57 s
 (desflurane), 125 s (sevoflurane), and 190 s (isoflurane). Fat first does so at
-237 s, 780 s, and 1474 s respectively. These times have no test yet
+237 s, 781 s, and 1477 s respectively. These times have no test yet
 (`PL-19W8`). Displaying `0.00%` across those
 intervals would state that the compartment holds no agent, which the model
 does not say. The model says that the compartment is filling, below what the
@@ -11319,7 +11319,7 @@ here moves the exhaust total by 0.016 to 0.042 L at 3600 s, and by 0.18 to
 0.23 L at the 24 h supported limit. By agent, the shifts are sevoflurane 0.024
 and 0.19 L, isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L. The
 blood:gas coefficient dominates throughout. These shifts were measured at
-1 MAC with the reference adult's flows. One count of 0.1 L therefore lies
+1 MAC with the reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L therefore lies
 between a quarter of an SD and six SDs across the whole supported span. That is
 inside the band the readouts' derivation admits. A count of 0.01 L, by
 contrast, falls to a fiftieth of an SD by 24 h. Until `PL-TG60`, the panel
@@ -11427,8 +11427,10 @@ vapour, as the accounting panel shows it.
 **What this section does not yet derive.** A cost in money depends on a price
 that the reader sets, so its resolution is not a constant, and `PL-1P15`
 derives it. A compartment's amount was the other gap. At the totals' 0.1 L,
-venous blood and the alveoli read below resolution for a whole hour at 1 MAC,
-which has no test yet (`PL-19W8`). `PL-2881` derived the amount's own
+venous blood reads below resolution for a whole hour at 1 MAC with every
+shipped agent, and so do the alveoli with sevoflurane and isoflurane.
+Desflurane's alveoli read 0.1 L from about two minutes. These figures have no
+test yet (`PL-19W8`). `PL-2881` derived the amount's own
 precision, in the paragraph on two significant figures below. Concentration, flow, MAC multiples and the F_A/F_I
 ratio are each shown in one unit, so each keeps one count. If a reader is ever
 given a choice of unit for one of them, its count moves into a table of the same
@@ -11504,7 +11506,8 @@ tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
 it is below 3%, because the dial sets them and a coefficient barely moves
 them. Two significant figures put the last digit at 1% to 10% of the amount.
 Measured, one count lies between a tenth of one SD, in desflurane's venous
-blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. The coarse
+blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. These
+figures have no test yet (`PL-19W8`). The coarse
 end loses detail and claims nothing false, which the one-sided bound above
 allows. The fine end is finer than the readouts' seventh of an SD, but only
 in the first two minutes, while venous blood fills. Three significant figures
@@ -11529,7 +11532,7 @@ direction.
 
 **A compartment's share is shown in whole percent.** One SD of a coefficient
 moves a compartment's share by at most 1.2 percentage points, in isoflurane's
-muscle at 24 h. So one count of 1 percentage point lies between 0.8 SD and
+muscle at 24 h, which has no test yet (`PL-19W8`). So one count of 1 percentage point lies between 0.8 SD and
 more than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
 A positive share below 0.5% reads `<1%`, so a compartment that holds agent
 never reads as holding none. A share of 99.5% or more that is not the whole

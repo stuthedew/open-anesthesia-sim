@@ -153,6 +153,14 @@ MODEL = "\n".join(
         "- the time the demo value was read at",
         f"  (`{LIST_FAMILY_TEST}`).",
         "",
+        # The fourth shape, for the same reason: a section held by its numeric
+        # paragraphs errors on a heading it cannot find. It sits under the list
+        # rather than under "## Required tests", where it would be read as one
+        # of that family's subsections.
+        "### Displayed precision",
+        "",
+        f"The demo value is shown to 0.1 L, as `{FAMILY_TEST}` computes.",
+        "",
         # The third shape, for the same reason again: each requirement under
         # "## Required tests" is a subsection, and the family errors on a
         # heading it cannot find.
@@ -7684,25 +7692,28 @@ NUMERIC_FAMILY_DOCUMENT = "\n".join(
         "",
         "There are three agents and two decimals, so nothing here has a unit.",
         "",
-        "The circuit holds 6 L.",  # line 10
+        "Desflurane's muscle clears it after 2.9",  # line 10
+        "minutes, the unit wrapping onto this line.",
+        "",
+        "The circuit holds 6 L.",  # line 13
         "<!-- provenance: data/machines/circle.json volume_l = 6 -->",
         "",
-        "- A list entry stating 4 L/min,",  # line 13
-        "- and a second one stating 2 L.",  # line 14
+        "- A list entry stating 4 L/min,",  # line 16
+        "- and a second one stating 2 L.",  # line 17
         "",
         "<!-- not-restated: 4 L/min, 2 L -->",
         "",
-        "Measured 2026-10-18, the window opened at 1366 px and 8 s.",  # line 18
+        "Measured 2026-10-18, the window opened at 1366 px and 8 s.",  # line 21
         "",
-        "Eger's blood:gas SD is 5.7% (Anesth Analg 1987;66:971-973).",  # line 20
+        "Eger's blood:gas SD is 5.7% (Anesth Analg 1987;66:971-973).",  # line 23
         "",
-        "Mapleson 1963 gives 4 L/min, which is an author and a year alone.",  # line 22
+        "Mapleson 1963 gives 4 L/min, which is an author and a year alone.",  # line 25
         "",
-        "A date quoted as code, `2026-10-18`, cites nothing at 2 L.",  # line 24
+        "A date quoted as code, `2026-10-18`, cites nothing at 2 L.",  # line 27
         "",
         "#### A deeper heading",
         "",
-        "Its paragraph at 0.1 L belongs to the section.",  # line 28
+        "Its paragraph at 0.1 L belongs to the section.",  # line 31
         "",
         "### The next section",
         "",
@@ -7728,13 +7739,14 @@ def _numeric_family(heading: str = "Displayed precision") -> doc_check.BoundFami
 def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit() -> None:
     """A member is a paragraph with a figure in a unit, to the next section.
 
-    The paragraph whose numbers carry no unit is not a member. A list entry is
+    The paragraph whose numbers carry no unit is not a member, and one whose
+    unit wraps onto its next line is. A list entry is
     a member of its own. A deeper heading's paragraph belongs to the section,
     and the next section's paragraph does not.
     """
     members = list(doc_check._numeric_paragraph_members(NUMERIC_FAMILY_DOCUMENT, _numeric_family()))
 
-    assert [line for line, _ in members] == [3, 5, 10, 13, 14, 18, 20, 22, 24, 28]
+    assert [line for line, _ in members] == [3, 5, 10, 13, 16, 17, 21, 23, 25, 27, 31]
 
 
 def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpose() -> None:
@@ -7747,7 +7759,7 @@ def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpos
     members = dict(doc_check._numeric_paragraph_members(NUMERIC_FAMILY_DOCUMENT, _numeric_family()))
     held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
 
-    assert held == {5, 10, 13, 14, 18, 20}
+    assert held == {5, 13, 16, 17, 21, 23}
 
 
 @pytest.mark.parametrize(

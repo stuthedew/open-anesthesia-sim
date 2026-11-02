@@ -49,17 +49,32 @@ the section and runs the model, as
   `0.0%` for 2.9, 8.5 and 14.8 minutes. "Why not the 0.1 percentage points"
   repeats the muscle times.
 - The first nonzero two-decimal readings: muscle at 57, 125 and 190 s, and fat
-  at 236 or 237, 780 and 1474 s.
-- Under "What this section does not yet derive": venous blood and the alveoli
-  read below 0.1 L for a whole hour at 1 MAC.
+  at 237, 781 and 1477 s.
+- Under "What this section does not yet derive": venous blood below 0.1 L for
+  the hour with every agent, the alveoli below it with sevoflurane and
+  isoflurane, and desflurane's alveoli at 0.1 L from about two minutes.
+- The one-SD shifts of the exhaust total (0.016 to 0.042 L at 3600 s, 0.18 to
+  0.23 L at 24 h), of a compartment's amount (1.4% to 12%, and desflurane's
+  venous blood at 79 s holding 0.99 mL), and of a compartment's share (at most
+  1.2 percentage points). These paragraphs pass the check on a marker that
+  ties a different figure, so they also declare the test they owe.
 
-**One claim is already wrong or missing a condition.** "The lower limit"
-gives desflurane's fat 236 s and "Why a below-resolution value is marked"
-gives it 237 s, for what reads as the same event. At most one is right, or
-the two describe different readings and say so nowhere. Found 2026-11-02 by
-`PL-B6YV`'s pass over the section. The test decides which, and the pass
-corrects the page. So the stop condition below is not met unless this
-turns out to be two correct statements of two different things.
+**Wrong claims found so far: three, in "Displayed precision".** Measured
+2026-11-02 at 1 MAC with the default flows and a 0.1 s step, by both blind
+review passes on `#1927` and rerun by `PL-B6YV`'s session on the project
+interpreter. The page gave sevoflurane's fat first nonzero reading as 780 s
+and isoflurane's as 1474 s, where the model gives 781.4 s and 1477.2 s.
+Desflurane's fat was 236 s in one paragraph and 237 s in another, and the
+model gives 236.9 s. The page said the alveoli read below 0.1 L for the
+whole hour, but desflurane's hold 0.05 L by 110.5 s and 0.129 L at 3600 s.
+All three were corrected in `#1927`. So the stop condition below is already
+not met, and this pass's count decides only how the other passes are sized.
+
+**Also left for this pass.** The residual paragraph ("Every residual was below
+2.1 × 10⁻¹¹ L") passes only on a `not-restated:` marker. It reports a replay
+on two tagged trees, so it wants the replay's date or a test. `PL-KXW1`'s own
+brief gives 5.4e-11 L as the largest residual difference, which may be a
+different quantity; the pass says which.
 
 **Done when.**
 

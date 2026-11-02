@@ -211,12 +211,21 @@ was a choice with one clearly correct option under the apparatus standard,
 so it was taken rather than offered.
 
 "Displayed precision" joined the table and conforms. Of its 22 numeric
-paragraphs, 9 carried no form. Three now name the test that holds them. Seven
-declare ``no test yet (`PL-19W8`)``, and `PL-19W8` owes those tests. The pass
-found one computed claim that is wrong or missing a condition: the section
-gives desflurane's fat 236 s in one paragraph and 237 s in another. It also
-found one status claim gone stale, "which `PL-2881` writes", after `PL-2881`
-closed. That one was corrected here.
+paragraphs, 9 carried no form. Three now name the test that holds them, and
+the rest declare ``no test yet (`PL-19W8`)``. The two blind review passes
+found three computed claims in the section wrong or missing a condition, and
+this session reran their measurement: sevoflurane's and isoflurane's fat
+first nonzero times (780 s and 1474 s, where the model gives 781.4 s and
+1477.2 s), and the alveoli said to read below 0.1 L for the hour, which
+desflurane's do not. All three were corrected here, and `PL-19W8` lists
+them. A status claim had also gone stale, "which `PL-2881` writes", after
+`PL-2881` closed, and it was corrected too.
+
+The passes also showed a gap in the decided forms. A marker holds the whole
+paragraph whatever figure it ties, and a `not-restated:` marker says its
+figure is tied to nothing. So three paragraphs with computed shifts passed on
+a marker about another figure. They now also declare the test they owe.
+`PL-TCD3` puts the question to the owner, because the forms were ratified.
 
 Counted with the reader over the whole document: 383 numeric paragraphs, 96
 of them carrying no form. The passes are filed under

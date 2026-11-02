@@ -4038,7 +4038,9 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     The fourth member shape (`PL-B6YV`). The other three read members the
     heading promises. This one reads free prose, and it reads only the
     paragraphs a syntax can pick out: one that states a figure with a unit.
-    A figure is read as `_untied_figures` reads one, in a unit `PROSE_UNITS`
+    A figure is read as `_untied_figures` reads one, over the paragraph's lines
+    joined into one, so a unit that wraps onto the next line is still read. Its
+    unit is one `PROSE_UNITS`
     lists, so "a number with a unit" has one meaning in this file. Widening
     that list widens `check_untied_restatements` too, and both should move
     together. A number in a code span, a math span's exponent or an HTML
@@ -4082,11 +4084,11 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     for block in read_blocks(lines).blocks:
         if block.kind != PARAGRAPH or not opening.end <= block.start < end:
             continue
-        if not any(
-            unit is not None
-            for index in range(block.start, block.end)
-            for _, unit in _untied_figures(prose[index], INLINE_COMMENT_RE.sub("", lines[index]))
-        ):
+        # The lines are joined with a space, so a figure whose unit wraps onto
+        # the next line, as in "2.0 to 2.7" and then "minutes", is still read.
+        joined = " ".join(prose[block.start : block.end])
+        raw = " ".join(INLINE_COMMENT_RE.sub("", line) for line in lines[block.start : block.end])
+        if not any(unit is not None for _, unit in _untied_figures(joined, raw)):
             continue
         held = [
             marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
