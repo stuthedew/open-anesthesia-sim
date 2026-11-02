@@ -119,8 +119,10 @@ intended-use boundary above is drawn at a specific patient's data.
 ISO 14971:2019 is the other half of the frame. The 2007 edition mentioned
 **reasonably foreseeable misuse** only in passing. The 2019 edition made it a
 defined term, and its clause 5.2 requires documenting that misuse. Using this
-simulator outside the intended use above is such misuse, so the next section
-lists it as hazards with mitigations, not as a stronger disclaimer.
+simulator outside the intended use above is such misuse. So far, the
+intended-use boundary is the only safeguard this document states against it.
+The hazard table in the next section covers ways a reader could misread the
+display, and it has no row for this misuse yet.
 
 **Sources for this section.** IEC 62304 and ISO 14971 are published standards
 and are not open access. The clause structure, the three class definitions,
@@ -392,8 +394,9 @@ The modeled system contains:
 5. one muscle tissue group; and
 6. one fat tissue group.
 
-Arterial blood is not a separate mixing compartment. Pulmonary exchange is
-flow-limited: blood leaving the lungs equilibrates instantly with alveolar gas.
+Arterial blood is not a separate mixing compartment. The model treats
+pulmonary exchange as flow-limited: it assumes that blood leaving the lungs
+equilibrates instantly with alveolar gas. This is a deliberate simplification.
 So the arterial partial-pressure-equivalent fraction is defined as
 $`F_a \equiv F_A`$, with no arterial volume, mixing delay, or independent
 state. This matches the flow-limited mammillary structure of the Gas Man
