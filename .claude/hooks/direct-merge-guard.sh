@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse hook on the GitHub server's merge tool: let a session's merge
-# through only while GitHub itself holds it to its base branch's checks
-# (`PL-NXRJ`).
+# PreToolUse hook on every MCP tool: let a session's merge through only while
+# GitHub itself holds it to its base branch's checks (`PL-NXRJ`).
 #
 # **When a session merges at all.** A session merges by arming auto-merge, and
 # GitHub will not arm a pull request that is already green and current: it
@@ -40,18 +39,30 @@
 # so the route arrives at the one moment it is needed, in a subagent as in the
 # main session.
 #
-# **The matcher is a whole-name regex**, `^mcp__.+__merge_pull_request$`, so the
-# merge tool is matched whatever its server is called. A matcher of letters and
-# underscores alone is compared as an exact name, so a bare `merge_pull_request`
-# would match no tool and refuse nothing; `tests/unit/test_direct_merge_guard.py`
-# pins the wiring against that.
+# **Every MCP tool reaches it, and the script picks out the merges** (`PL-NZJG`).
+# The GitHub server owns its tool names and changes them without notice. It has
+# already folded its issue and review tools into `issue_write` and
+# `pull_request_review_write`, each of which takes a `method`. A matcher naming
+# `merge_pull_request` would stop this guard silently after such a change. So
+# `.claude/settings.json` wires it on `^mcp__.*$`, whatever the server is
+# called. The script treats a call as a merge when its tool's own name contains
+# "merge", or when its `method` is `merge`. It names the two tools it skips,
+# `enable_pr_auto_merge` and `disable_pr_auto_merge`, which arm and disarm
+# auto-merge rather than merge. A renamed merge tool is still checked. A tool
+# wrongly taken for a merge is asked about at GitHub like a merge, which lets it
+# through while the base binds admins. What goes unchecked after a rename is a
+# merge tool whose name lacks "merge" and whose call carries no `method` of
+# `merge`. `.claude/rules/apparatus-standard.md` § "The floor" has the rule, in
+# its paragraph on a guard keyed on names that another system owns.
 #
-# **Fails closed, unlike its siblings.** They read a command and fail open,
-# because a false refusal there blocks correct work. Here the matcher has
-# already chosen a merge call, so only a payload naming another tool is let
-# through unread - a hook wired to the wrong matcher then refuses nothing rather
-# than everything - and an unreadable payload, a record GitHub does not answer,
-# and a python3 that is missing or fails are each refused.
+# **Fails closed on a merge, unlike its siblings.** They read a command and fail
+# open, because a false refusal there blocks correct work. Here a call taken for
+# a merge is refused when it names no pull request or GitHub does not answer.
+# Where the script cannot judge a call at all, because python3 is missing or
+# fails or the payload names no tool, the call is refused only if its text
+# contains "merge" in any case. Every call the script would take for a merge
+# contains it, so no merge gets through unjudged, and the other MCP calls, such
+# as a Projects thread's posts, are not blocked with it.
 #
 # **Known gap**: a merge made another way - `gh pr merge`, or a REST call from
 # Bash - meets no hook. While the base binds admins GitHub holds it to the same
@@ -61,7 +72,8 @@ set -uo pipefail
 payload=$(cat)
 
 # Exits 0 having printed a refusal, or having printed nothing to let the call
-# through to the ordinary permission flow.
+# through to the ordinary permission flow. Exits 3 where the payload names no
+# tool, and the shell after it then decides.
 PAYLOAD="$payload" HOOKS="$(dirname "${BASH_SOURCE[0]}")" python3 -c '
 import json, os, sys, urllib.parse, urllib.request
 
@@ -76,6 +88,9 @@ ROUTE = (
     "not merge it another way (`docs/maintainer.md` § \"Bring a stale base in when you merge, "
     "with Update branch\"; `PL-NXRJ`)."
 )
+# The tools whose names contain "merge" but which arm or disarm auto-merge
+# rather than merge (`PL-NZJG`).
+NOT_A_MERGE = frozenset({"enable_pr_auto_merge", "disable_pr_auto_merge"})
 
 
 def refuse(rule, why):
@@ -102,7 +117,16 @@ except ValueError:
 # line after its key is still the name, where a sed run a line at a time read
 # none and refused the call of another tool (`PL-CXK6`).
 tool = payload.get("tool_name") if isinstance(payload, dict) else None
-if isinstance(tool, str) and tool and not tool.endswith("__merge_pull_request"):
+if not isinstance(tool, str) or not tool:
+    # No tool to judge. Exit non-zero, so the shell below decides from the text.
+    sys.exit(3)
+name = tool.rsplit("__", 1)[-1]
+arguments = payload.get("tool_input")
+method = arguments.get("method") if isinstance(arguments, dict) else None
+merges = name not in NOT_A_MERGE and (
+    "merge" in name.lower() or (isinstance(method, str) and method.lower() == "merge")
+)
+if not merges:
     sys.exit(0)
 
 try:
@@ -139,7 +163,13 @@ if level != "everyone":
     )
 ' && exit 0
 
-# python3 is missing or failed before deciding, so nothing was read: refuse.
+# Nothing judged the call: python3 is missing or failed, or the payload names no
+# tool. Every call the script takes for a merge contains "merge", so refuse only
+# a call whose text contains it.
+shopt -s nocasematch
+if [[ $payload != *merge* ]]; then
+    exit 0
+fi
 cat <<'JSON'
-{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Refused: this hook could not run its python3 step to ask GitHub whether the base branch holds the merge to its required checks.\n\nA session merges by arming auto-merge (`enable_pr_auto_merge`) while a check is pending. Where GitHub will not arm a pull request because it is already in clean status, tell the owner it cannot be armed and that the Squash and merge is theirs, in the browser, and do not merge it another way (`docs/maintainer.md`; `PL-NXRJ`)."}}
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Refused: this hook could not judge whether this call merges a pull request, because its python3 step is missing or failed or the call names no tool, and the call mentions a merge.\n\nA session merges by arming auto-merge (`enable_pr_auto_merge`) while a check is pending. Where GitHub will not arm a pull request because it is already in clean status, tell the owner it cannot be armed and that the Squash and merge is theirs, in the browser, and do not merge it another way (`docs/maintainer.md`; `PL-NXRJ`)."}}
 JSON
