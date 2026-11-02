@@ -683,9 +683,12 @@ applies to admins. A session's GitHub calls are made as you. If admins were
 exempt, a session's merge would pass the up-to-date check that `main` applies
 to everyone else. It would then land a stale branch whenever another pull
 request merged between the session's check of the branch and its merge call.
-So `.claude/hooks/direct-merge-guard.sh` asks GitHub at each merge call. It
-rejects the merge while **Do not allow bypassing the above settings** is off
-(`PL-S17R`, `PL-NXRJ`). The session then tells you that it cannot arm the
+So `.claude/hooks/direct-merge-guard.sh` asks GitHub at each merge call into
+this repository. It rejects the merge while **Do not allow bypassing the above
+settings** is off (`PL-S17R`, `PL-NXRJ`). A merge in another repository, such
+as the references corpus, cannot leave this repository's `main` stale, so the
+hook lets it through without asking (project owner, 2026-11-02, ratified,
+`PL-L08H`). The session then tells you that it cannot arm the
 pull request and that the Squash and merge is yours. Merge it on the Mac, as
 step 1 says for a branch that is already current.
 

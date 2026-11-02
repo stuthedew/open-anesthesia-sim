@@ -5,12 +5,15 @@ will not arm because it is already green and current only while the base
 branch's protection binds an admin, so that GitHub itself refuses a stale or
 red merge (`PL-NXRJ`, reopening `PL-V2X5`). What is pinned is that every MCP
 tool reaches the hook, that the script picks out a merge whatever its tool is
-called and lets every other call through unread (`PL-NZJG`), that the record
+called and lets every other call through unread (`PL-NZJG`), that only a merge
+into this repository is judged, which the hook reads from `origin` (`PL-L08H`),
+that the record
 read at the call decides in both
 directions, that the base is read from the pull request rather than assumed,
 and which way each unreadable payload, unanswered read and failed python3 step
 fails. GitHub is served from files through the hook's `DIRECT_MERGE_GUARD_API`,
-so no test reaches the network.
+so no test reaches the network. `origin` is served by a git directory of its own
+through `GIT_DIR`, so no test depends on how this checkout was cloned.
 """
 
 from __future__ import annotations
@@ -33,11 +36,30 @@ MERGE = "mcp__github__merge_pull_request"
 OWNER, NAME, NUMBER = "stuthedew", "open-anesthesia-sim", 1224
 MERGE_INPUT = {"owner": OWNER, "repo": NAME, "pullNumber": NUMBER}
 MERGE_CALL = json.dumps({"tool_name": MERGE, "tool_input": MERGE_INPUT})
+ORIGIN = f"https://github.com/{OWNER}/{NAME}.git"
+# The private references corpus: no branch protection and no CI (`PL-L08H`).
+CORPUS = "open-anesthesia-sim-references"
 
 
-def _github(root: Path, levels: dict[str, str], base: str = "main") -> Path:
+def _git_dir(root: Path, origin: str) -> Path:
+    """A git directory whose `origin` is `origin`, for the hook to read through `GIT_DIR`."""
+    root.mkdir(parents=True)
+    # Without the `GIT_DIR` another test's fixture set, which git would write to instead.
+    env = {key: value for key, value in os.environ.items() if key != "GIT_DIR"}
+    for args in (["init", "-q"], ["remote", "add", "origin", origin]):
+        subprocess.run(["git", *args], cwd=root, env=env, check=True, capture_output=True)
+    return root / ".git"
+
+
+@pytest.fixture(autouse=True)
+def _origin(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test's hook reads this repository's GitHub URL as `origin`, unless it sets another."""
+    monkeypatch.setenv("GIT_DIR", str(_git_dir(tmp_path_factory.mktemp("origin") / "c", ORIGIN)))
+
+
+def _github(root: Path, levels: dict[str, str], base: str = "main", name: str = NAME) -> Path:
     """A file tree the hook reads as the GitHub API: the pull's base, and each branch's level."""
-    repository = root / "repos" / OWNER / NAME
+    repository = root / "repos" / OWNER / name
     (repository / "pulls").mkdir(parents=True)
     (repository / "pulls" / str(NUMBER)).write_text(json.dumps({"base": {"ref": base}}))
     (repository / "branches").mkdir()
@@ -195,6 +217,44 @@ def test_the_base_is_read_from_the_pull_request(tmp_path: Path) -> None:
     """A pull request into a branch that exempts admins is refused while `main` binds them."""
     api = _github(tmp_path, {"main": "everyone", "release": "non_admins"}, base="release")
     assert "`release`" in _refusal(_decision(MERGE_CALL, api))
+
+
+def test_a_merge_in_another_repository_is_let_through_unread(tmp_path: Path) -> None:
+    """A merge elsewhere cannot leave this repository's `main` stale, so it is not asked about.
+
+    The corpus is served exempting admins, and this repository's `main` is too.
+    The corpus merge passes, and this repository's merge is still refused.
+    """
+    api = _github(tmp_path, {"main": "non_admins"})
+    _github(tmp_path, {"main": "non_admins"}, name=CORPUS)
+    corpus = json.dumps({"tool_name": MERGE, "tool_input": {**MERGE_INPUT, "repo": CORPUS}})
+    assert _decision(corpus, api) is None
+    assert "`enforcement_level: non_admins`" in _refusal(_decision(MERGE_CALL, api))
+
+
+@pytest.mark.parametrize(
+    ("origin", "judged"),
+    [
+        (f"git@github.com:{OWNER.upper()}/{NAME}.git", NAME),
+        (f"https://github.com/{OWNER}/{CORPUS}", CORPUS),
+        ("/srv/mirrors/open-anesthesia-sim.git", CORPUS),
+    ],
+    ids=["same-repository-other-spelling", "corpus-checkout", "origin-not-on-github"],
+)
+def test_a_merge_in_this_repository_is_judged_by_its_own_origin(
+    origin: str, judged: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Which repository is this one is read from `origin`, and an unreadable one judges every merge.
+
+    GitHub ignores case in owner and repository names, so another spelling of
+    this repository is still this repository. A checkout of the corpus would
+    judge the corpus's merges. An `origin` that names no GitHub repository
+    leaves the hook unable to tell, and it judges the corpus merge too.
+    """
+    monkeypatch.setenv("GIT_DIR", str(_git_dir(tmp_path / "checkout", origin)))
+    api = _github(tmp_path / "api", {"main": "non_admins"}, name=judged)
+    call = json.dumps({"tool_name": MERGE, "tool_input": {**MERGE_INPUT, "repo": judged}})
+    assert "`enforcement_level: non_admins`" in _refusal(_decision(call, api))
 
 
 def test_a_merge_is_refused_where_github_does_not_answer(tmp_path: Path) -> None:
