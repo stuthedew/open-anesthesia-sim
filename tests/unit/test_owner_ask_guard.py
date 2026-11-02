@@ -105,6 +105,13 @@ ASKS = (
     "Your call on whether #1688 is applied.",
     "Your choice on #1700 is applied when you merge it.",
     "Recorded your choice; #1700 is your call.",
+    # A hold put in the future is still an ask when its sentence names a pull
+    # request, or its subject is "it", "this" or "that" (`PL-VHMS`).
+    "#1945 will wait for your read.",
+    "The pull request will wait for your read.",
+    "It will wait for your read.",
+    "This'll need your review before it merges.",
+    "Each part is drafted. Each will wait for your read, starting with #1945.",
 )
 
 
@@ -141,6 +148,11 @@ PROGRESS = (
     'It refuses twenty ask phrasings including "over to you" and "your call" beside a '
     "pull request.",
     "The hand-offs are “over to you” and ‘your call’ when a sentence names a PR.",
+    # A hold put in the future, for pull requests not yet opened, which the hook
+    # refused on 2026-11-02 (`PL-VHMS`).
+    "Because each one changes MODEL.md, each will wait for your read.",
+    "Both would need your review once they are open.",
+    "#1944 merged. The next parts are going to be ready for your read later today.",
 )
 
 
