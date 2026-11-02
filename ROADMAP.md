@@ -8726,6 +8726,14 @@ and each must be assigned when its milestone is fully specified.
     derived from. That requirement predates this item. It used to sit as an
     unattached sentence at the end of this section, with nothing to own it.
 
+    *It removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).* The fixed
+    reference adult is one of the two safeguards in `docs/MODEL.md` § "What
+    keeps a real patient's data out of a run". Once age, sex and weight are
+    inputs, a run can be built from a real patient's data. So this item
+    rewrites that section and its hazard row.
+    `test_every_run_simulates_the_shipped_reference_adult` fails when the
+    inputs land, which makes the rewrite hard to miss.
+
     *Body composition defaults, and is editable per case (project owner,
     2026-09-02).* A case opens with a body composition already set, rather
     than asking the learner to supply one. The case settings let the learner
