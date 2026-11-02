@@ -4,13 +4,13 @@
 
 This document specifies the scientific model that the simulator has implemented
 since v0.1.0. The governing equations and the compartment structure have not
-changed since then, and every supported agent shares them, so the title names
-no version.
+changed since then. Every supported agent shares them, so the title names no
+version.
 
-**It names no current released baseline.** The version table in `ROADMAP.md`
-records that. A copy here would go stale at every release and still read as
+**This document names no current release.** The version table in `ROADMAP.md`
+records that. A copy here would go stale at every release and would still look
 correct. A statement that needs a version says what has been true *since* that
-version, which cannot go stale.
+version, and that cannot go stale.
 
 The milestone before, v0.0.2, delivered an ideal breathing-circuit wash-in and
 washout model without a patient, validated analytically. Its reference tests
@@ -88,9 +88,10 @@ included, for three reasons:
   carries several safety features: the distinction between a halted and a
   paused run, the displayed-precision rule, the ISO 5360 agent colours, and
   the extreme-preserving decimation.
-- A class boundary would not stay put. `app/chart_frame.py` looks like chrome,
-  but it decides what a trace asserts about a run. `app/theme.py` looks like
-  styling, but it carries agent identification.
+- A class boundary would not stay in place. `app/chart_frame.py` looks like
+  decoration around the chart, but it decides what a trace claims about a run.
+  `app/theme.py` looks like styling, but it holds the colours that identify each
+  agent.
 
 A split would pay off only where the exempted part is large, genuinely
 non-clinical, and costly to verify. None of those holds now.
@@ -116,13 +117,14 @@ physiologic parameters the software accepts: the software must not support a
 health professional's assessment of a *specific patient*. That is why the
 intended-use boundary above is drawn at a specific patient's data.
 
-ISO 14971:2019 is the other half of the frame. The 2007 edition mentioned
-**reasonably foreseeable misuse** only in passing. The 2019 edition made it a
-defined term, and its clause 5.2 requires documenting that misuse. Using this
-simulator outside the intended use above is such misuse. So far, the
-intended-use boundary is the only safeguard this document states against it.
-The hazard table in the next section covers ways a reader could misread the
-display, and it has no row for this misuse yet.
+ISO 14971:2019, the risk-management standard for medical devices, is the second
+standard this section relies on. The 2007 edition mentioned **reasonably
+foreseeable misuse** only in passing. The 2019 edition made it a defined term,
+and its clause 5.2 requires documenting that misuse. Using this simulator
+outside the intended use above is such misuse. So far, the intended-use
+boundary is the only safeguard this document states against it. The hazard
+table in the next section covers ways a reader could misread the display, and
+it has no row for this misuse yet.
 
 **Sources for this section.** IEC 62304 and ISO 14971 are published standards
 and are not open access. The clause structure, the three class definitions,
@@ -142,32 +144,33 @@ the others.
 
 **Every row names the test that enforces it, or says plainly that it has
 none.** `tools/doc_check.py` fails when a test named anywhere in this document
-does not resolve to a test that exists, so the right-hand column cannot decay
-into decoration. Whether the test is any good remains a reviewer's question.
+does not match a test that exists. So the right-hand column cannot fill up with
+the names of tests that are gone. A reviewer still has to judge whether each
+test is any good.
 
 | A reader could be misled into | What stops it | Held by |
 | --- | --- | --- |
-| reading a correct concentration as belonging to a different agent | agent colour is a redundant cue and never the only one. The agent name is always visible, in the invariant tier that every top-level window shows, within the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's"). `tools/agent_identity_check.py` audits the ISO 5360 colours and their accessible foregrounds in `src/anesthesia_sim/app/theme.py` together | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
-| reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport and the banner are stated from the run's status alone, never from a compartment value. So a run whose own snapshot refuses a value still shows as stopped and does not offer Pause. A banner written before any frame of the stopped run was drawn says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
-| reading a run that a mark stopped as one the learner paused, while two runs are compared | a run that a mark stopped reads "Paused — stopped on your mark". While two runs are compared, the branch control's own "stopped on your mark" is withdrawn, so this status word is the only cue. A MAC target's row reads "reached" from its first crossing, so later crossings do not change it. A failure and the supported run length take precedence over this word. A branch at its fork carries its parent's halt record and still reads "Paused", because no step of its own stopped it. The words are a placeholder while the interface is built | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
-| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record for the fresh run definition before it clears anything, so a refusal leaves the run exactly as it was. The core refuses when the tissue flows no longer sum to the cardiac output, which only a perfusion fraction set by bypassing its guard can cause. The interface then halts the run through the failed-step path and records the refusal as the failure. If the run had already failed for another reason, that failure stays the reason, and the banner's way out states the refusal. The status word, the transport and the banner state the halt. The banner says that no setting can repair the refusal, and that closing and reopening the application starts a new run. It names neither the Reset just refused nor a dial. The refusal names the two flows as they were set, in L/min, the unit every readout shows | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
-| comparing readouts with a chart that was drawn from different settings | the readouts come from the steps and the chart from the run definition. Before each step, `SimulationController.advance()` compares `AgentUptakeSystem.settings_key()` with the key it noted when the definition last recorded settings. A setting written onto the core without going through the controller halts the run on the last step on which both agree, and a banner says why. Nothing in `app/` writes a setting that way. Reset then starts a new run from the settings the core holds. A setting changed through the controller afterwards records the whole settings record, which brings the definition back into line without halting the run | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
-| reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot inside slots that pass `app/halt_gate.py`'s `halt_gate`. On a refusal, the gate halts the run and states the halt from the run's record, so the exception cannot escape the slot unseen. The halt sets the selector back to the agent the record names, because the snapshot that would name it is what refused. Reset stays the way out the banner names, unless a refused Reset has left its own. The controls stay live on a halted run, because locking them would render the agent selector disabled. A slider moved on a run that has already stopped is refused, as the row on values from different steps says | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
-| reading the value printed beside a dial dragged into a halt as the value the run holds | after writing its banner, the halt writes every dial from `SimulationController.record()`. That record gives the agent and the four settings in force, read from the settings the compartments hold and from no compartment value. So the label beside a dial dragged into the halt shows the value that the dial and the run hold. Only a frame would have rewritten the label, and a run whose snapshot refuses draws no frame | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
+| reading a correct concentration as belonging to a different agent | agent colour is a redundant cue and never the only one. The agent name is always visible. It sits in the invariant tier, the outputs that every top-level window shows, within the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's"). `tools/agent_identity_check.py` audits the ISO 5360 colours in `src/anesthesia_sim/app/theme.py` together with the text colour that stays readable on each | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
+| reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. So a run still shows as stopped, and does not offer Pause, even when its own snapshot refuses a value. A banner written before any frame of the stopped run was drawn says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
+| reading a run that a mark stopped as one the learner paused, while two runs are compared | a run that a mark stopped reads "Paused — stopped on your mark". While two runs are compared, the branch control's own "stopped on your mark" is withdrawn, so this status word is the only cue. A MAC target's row reads "reached" from its first crossing, so later crossings do not change it. A failure, or reaching the supported run length, takes precedence over this word. A new branch, at the instant where it forks from its parent, carries the parent's halt record but still reads "Paused", because no step of the branch stopped it. The wording is a placeholder while the interface is being built | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
+| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record for the fresh run definition before it clears anything, so a refusal leaves the run exactly as it was. The core refuses when the tissue flows no longer sum to the cardiac output. Only a perfusion fraction set by bypassing its guard can cause that. The interface then halts the run through the failed-step path and records the refusal as the failure. If the run had already failed for another reason, that failure stays the reason, and the banner's advice on how to recover mentions the refusal. The status word, the transport controls and the banner state the halt. The banner says that no setting can repair the refusal, and that closing and reopening the application starts a new run. It names neither the Reset that was just refused nor a dial. The refusal message names the two flows as they were set, in L/min, the unit every readout shows | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| comparing readouts with a chart that was drawn from different settings | the readouts come from the steps, and the chart comes from the run definition. Before each step, `SimulationController.advance()` compares `AgentUptakeSystem.settings_key()` with the key it noted when the definition last recorded settings. If a setting is written onto the core without going through the controller, the run halts on the last step on which the two keys agree, and a banner says why. Nothing in `app/` writes a setting that way. Reset then starts a new run from the settings the core holds. If a setting is changed through the controller after such a write, the definition records the whole settings record. That brings the definition back into line with the core without halting the run | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
+| reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot inside slots guarded by `app/halt_gate.py`'s `halt_gate`. On a refusal, the gate halts the run and states the halt from the run's record, so the exception cannot leave the slot unseen. The halt sets the selector back to the agent that the record names, because the snapshot that would name it is what refused. The banner still names Reset as the way to recover, unless a refused Reset has left its own instructions. The controls stay live on a halted run, because locking them would show the agent selector as disabled. A slider moved on a run that has already stopped is refused, as the row on values from different steps says | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
+| reading the value printed beside a dial dragged into a halt as the value the run holds | after writing its banner, the halt sets every dial from `SimulationController.record()`. That record gives the agent and the four settings in force. It reads them from the settings that the compartments hold, not from any compartment value. So the label beside a dial whose drag caused the halt shows the value that both the dial and the run hold. Only a new frame would have rewritten the label, and a run whose snapshot refuses draws no frame | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
 | reading a value under a label, a divisor or a verdict that describes a different step of the run | each value and what qualifies it are written from one step, and the values a halt leaves stale are withheld. § "Every value and what qualifies it come from one step" lists the groups and the cases | `test_every_value_and_its_qualifiers_on_screen_come_from_one_state`, `test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent_s_1_mac`, `test_the_accounting_panel_reports_the_failure_after_an_accounting_halt`, `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under`, `test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while_one_can_be_taken`, `test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts_are_withheld`, `test_a_stopped_run_refuses_every_setting_and_records_nothing` |
-| believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run continues on a value the user did not choose. The maximum itself is accepted, by the circuit and by the settings record a run is built from, which carries the maximum beside the dial | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
-| reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band. Only the display rounds: the model keeps the precision the display discards | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
+| believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run continues on a value the user did not choose. The maximum itself is accepted by the circuit and by the settings record that a run is built from. That record carries the maximum beside the dial setting | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
+| reading a displayed value as resolved to its last digit | the number of decimals shown is a recorded choice within a justified range. Only the display rounds. The model keeps the precision that the display discards | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states, beside its values, that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`; § "The statement that the readouts are model outputs"). The chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
-| reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line. Every compartment whose drawn point at the pointer's instant is inside the hover radius is reported under its own name, and the hover does not pick the nearest trace for the reader (§ "Where more than one trace answers"). This matters because the percent axis is fixed at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`). On that axis, fat's whole first hour spans less than 4 px, so the slow compartments are drawn within a pixel or two of one another and no aim can separate them | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
+| reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line. The hover reports every compartment whose drawn point at the pointer's instant is inside the hover radius, each under its own name. It does not pick the nearest trace for the reader (§ "Where more than one trace answers"). This matters because the top of the percent axis is fixed at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`). On that axis, the fat trace moves less than 4 px over its whole first hour. So the slow compartments are drawn within a pixel or two of one another, and no pointer position can pick one out from the others | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
 | comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run is reported at the run's drawn instant nearest the pointer in time. So the instant that labels a value depends only on the pointer's position along the time axis, and the pointer's height decides only which traces are in reach (§ "Where more than one trace answers") | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
-| reading the hover's value as a live readout after the pointer has left the plot | the box responds only while the pointer is over the plot (§ "When it answers"). Leaving the plot takes the box down at once, with any pointer move still waiting for a response, so no later frame responds for a pointer that has gone. A box left up would update on every frame and, while a run plays, climb with the run for an instant the reader is not looking at | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
+| reading the hover's value as a live readout after the pointer has left the plot | the hover box responds only while the pointer is over the plot (§ "When it answers"). When the pointer leaves the plot, the box is taken down at once, and any pointer move still waiting for a response is dropped. So no later frame responds for a pointer that has gone. A box left up would update on every frame. While a run plays, its values would climb with the run, at an instant the reader is not looking at | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | while more than one run is drawn, every place that shows a value, or the record of what was changed, names its run in text. § "Naming the run in a comparison" lists the seven places | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison`, `test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison` |
-| reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot naming the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never reports from them. The run keeps its setting until the thumb is released (§ "A preview of an unapplied setting") | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
-| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre it multiplied, the bottle price, currency and date the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
-| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is entered as a bottle price and a bottle volume, and the volume field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely: at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
-| reading a container's fill height, or its filled area, as the amount of agent it holds | a container's height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale, each share named in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
-| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid", and `DisplayUnit` holds each spelling so that no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost View writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
+| reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held. It is drawn inside a tinted region that starts at the point the run has reached. A label in the plot names the control and the value tried, and says that the value is not applied. Each of its curves is one pixel thinner than the run's, and never thinner than 2 px, and the hover never reports from them. The run keeps its setting until the thumb is released (§ "A preview of an unapplied setting") | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
+| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the two numbers it multiplied, the liquid volume and the price per millilitre. Beside them are the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
+| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is entered as a bottle price and a bottle volume, and the volume field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that the two give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap is noticeable only where the price and the volume differ widely. At Gas Man's sevoflurane default, a swap changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
+| reading a container's fill height, or its filled area, as the amount of agent it holds | a container's height shows the compartment's tension on the concentration chart's own scale. Every container is drawn at the same width. So no length or area on a container stands for an amount. Each container prints its amount beside its tension. The share bar shows the amounts on one scale and names each share in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
+| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, depending on the agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid". `DisplayUnit` holds each spelling, so that no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost View writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 8 % -->
@@ -181,38 +184,39 @@ from a single step:
 - the dials, with the delivered line;
 - the accounting verdict, with the totals it judges.
 
-A guard requires every member of each group to describe the step that each of
-its scenarios names, and every other widget to be listed with the reason it is
-in no group.
+A guard checks every group. Each member of a group must describe the step that
+each of the group's scenarios names. Every widget outside the groups must be
+listed with the reason it belongs to none.
 
-**After a halt that no frame has drawn since the run started over**, by an
-agent change or a Reset, the last frame belongs to the run that was discarded.
-So each card withholds its percent and its ×MAC number ("—%", "— ×MAC") under
-the heading and 1 MAC line of the run that replaced it, and the clock withholds
-its instant ("—"). The accounting panel withholds its verdict and amounts too.
-The banner says that the readouts are withheld and that the chart still shows
-the run before it started over. All of these are withheld before the dials are
-written, because writing a dial can raise.
+**After a halt that comes before any frame has been drawn since the run started
+over**, by an agent change or a Reset, the last frame drawn belongs to the run
+that was discarded. So each card withholds its percent and its ×MAC number
+("—%", "— ×MAC") under the heading and 1 MAC line of the run that replaced it,
+and the clock withholds its instant ("—"). The accounting panel withholds its
+verdict and amounts too. The banner says that the readouts are withheld and
+that the chart still shows the run before it started over. All of these are
+withheld before the dials are written, because writing a dial can raise an
+exception.
 
 **After a step fails its accounting check**, the core rolls the step back, and
 the run's own accounting passes again. So the panel shows the rejected step's
-own check, "Validation failed" with that step's totals, and the banner names
-the panel as the one exception to "the values shown are the last completed
-step". On a halt that no frame draws, the panel shows the same check, read from
-the run's record.
+own check: "Validation failed", with that step's totals. The banner names the
+panel as the one exception to "the values shown are the last completed step".
+When no frame is drawn after the halt, the panel shows the same check, read
+from the run's record.
 
 **A dial moved on a stopped run**, failed or at the supported run length, is
 refused before anything is applied, and springs back to the setting the run
-holds. No step runs after a stop, so the new setting would sit beside values it
+holds. No step runs after a stop. So the new setting would sit beside values it
 never produced, and the record would claim a change that never acted on the
-patient. That is the refusal's only reason. A run can also fail on the first
-step after a setting was accepted, and then none of its values was computed
+patient. That is the only reason for the refusal. A run can also fail on the
+first step after a setting was accepted. Then none of its values was computed
 under that setting either. The banner states the refusal and the stopped run's
-way out: Reset, which keeps every setting, and at the supported run length also
-a branch at an earlier instant, where each dial starts at what it was set to
-then. The branch is named only while one can be taken. So a run compared with
-another, whose branch control is locked, and a run on a dashboard with no
-branch control name Reset alone.
+way out. The way out is Reset, which keeps every setting. At the supported run
+length, it is also a branch at an earlier instant, where each dial starts at
+what it was set to then. The banner names the branch only while one can be
+taken. So it names Reset alone for a run compared with another, whose branch
+control is locked, and for a run on a dashboard with no branch control.
 
 ### Naming the run in a comparison
 
@@ -229,8 +233,9 @@ While two or more runs are drawn, each of these places names its run in text:
    stack one line per run.
 4. The headings of the two record panels: the agent-accounting validation in
    the sidebar, and the control-change record in the right column of the
-   unconditional region. Each stacks whole panels, one per run, so the name is
-   in each panel's own heading and moves with the panel.
+   unconditional region, the part of the window that is always shown. Each of
+   the two stacks whole panels, one per run. So the name is in each panel's own
+   heading and moves with the panel.
 5. The notice banner, between the runs' transport rows and their readouts. Both
    runs use this one place, and a banner with nothing to say is hidden and
    takes no room, so its position does not show whose banner it is.
@@ -238,11 +243,11 @@ While two or more runs are drawn, each of these places names its run in text:
    the run's own panel.
 7. The heading over each run's agent cost panel, in the same way.
 
-Colour, line width and stacking order cannot do this job. The hover is separate
-from the legend, line width has no text equivalent, and no stacking order is
-shown on screen. The run names themselves sit in the unconditional region above
-the charts. Without the names, a learner could misread a comparison in three
-ways:
+Colour, line width and stacking order cannot do this job. The hover box is
+separate from the legend. Line width has no text equivalent. No stacking order
+is shown on screen. The run names themselves sit in the unconditional region
+above the charts. Without a name in each of these places, a learner could
+misread a comparison in three ways:
 
 - One run's F_A/F_I could be read as the other's, or its off-scale notice
   attributed to a run whose traces are all inside the axis.
@@ -263,23 +268,23 @@ The readout section's heading row carries **"Model outputs — not
 measurements."**, beside "Modelled concentrations: {agent}". It sits beside
 the values it qualifies and says what they are, as the timeline's "Settings
 only — not a measurement." does for control marks. The compartments this
-simulator exists to show are the ones no monitor displays, so a reader has no
+simulator exists to show are the ones no monitor displays. So a reader has no
 measured value to check them against, and a polished display invites reading
 them as measurements. The statement is not repeated on the chart. A repeated
 disclaimer stops being read, and the chart's hover already names every value
 it reports as modelled. The wording is a placeholder that the project owner
-may revise. The requirement is the hazard row for reading a modelled
+may revise. The requirement behind it is the hazard row for reading a modelled
 compartment value as a measured one.
 
 ## How this document is held to the tree
 
-The hazard table holds each of its rows to a rule: *every row names the test
-that holds it, or says plainly that it has none*. This section applies the same
-rule to the whole document, in four clauses.
+The hazard table applies one rule to each of its rows: *every row names the test
+that enforces it, or says plainly that it has none*. This section applies the
+same rule to the whole document, in four clauses.
 
-Without them, a sentence's link to the code exists only in the reader's head.
-A sentence reads exactly as it did when it was true, even after the test it
-names has been renamed away, the field it describes removed, or the number it
+Without these clauses, a sentence's link to the code exists only in the reader's
+head. A sentence reads exactly as it did when it was true, even after the test
+it names has been renamed, the field it describes removed, or the number it
 states changed. Requirements traceability is the established practice for
 software of this class. IEC 62304 § 5.1.1 requires the software development
 plan to carry traceability between system requirements, software requirements,
@@ -288,45 +293,46 @@ of Software Validation* (2002) § 5.2.2 names traceability analysis among the
 validation tasks. Gotel and Finkelstein set out the problem in *An analysis of
 the requirements traceability problem*, ICRE 1994, pp. 94–101.
 
-**Bound: this document and `README.md`**. These are the two documents held to
-the specialist standard, and the two that a reader of a displayed value
-trusts. `ROADMAP.md`'s frozen lists are already families under clause 2, and
-its prose falls under clause 4. `docs/ARCHITECTURE.md`'s package map is
-already a family. Every thread in `docs/WORKING_NOTES.md` is dated, so only
-clause 4 governs it. Apparatus prose is not bound. That covers `.claude/`,
-`CONTRIBUTING.md` and `docs/resident-instructions.md`, where the counts rule
-below is advice.
+**The four clauses bind this document and `README.md`.** These are the two
+documents that must meet the specialist standard, and the two that a reader of
+a displayed value trusts. `ROADMAP.md`'s frozen lists are already families
+under clause 2, and its prose falls under clause 4. `docs/ARCHITECTURE.md`'s
+package map is already a family. Every thread in `docs/WORKING_NOTES.md` is
+dated, so only clause 4 governs it. Prose about the project's workflow tooling,
+called the apparatus, is not bound. That covers `.claude/`, `CONTRIBUTING.md`
+and `docs/resident-instructions.md`, where the counts rule below is only advice.
 
-1. **A live assertion names what it asserts.** A sentence that asserts a fact
-   about the tree names the entity in a form the tree resolves. Such facts
-   include that a test enforces an invariant, that a field exists, that a value
-   is *N*, or that a job runs something. The forms are a code-spanned test,
-   path, symbol or field, or a `<!-- provenance: -->` marker over a restated
-   number. This is the author's obligation, whether or not the checker reaches
-   the sentence. `check_named_tests`, `check_citations`,
+1. **A live assertion names what it asserts.** Some sentences assert a fact
+   about the tree: that a test enforces an invariant, that a field exists, that
+   a value is *N*, or that a job runs something. Such a sentence names the
+   entity in a form that can be looked up in the tree. The forms are a
+   code-spanned test, path, symbol or field, or a `<!-- provenance: -->` marker
+   over a restated number. The author owes this, whether or not the checker
+   reads the sentence. `check_named_tests`, `check_citations`,
    `check_prose_provenance` and `check_make_targets` in `tools/doc_check.py`
    resolve every one of those forms.
-2. **An enumerated family is held complete.** Some headings promise one
+2. **An enumerated family is kept complete.** Some headings promise one
    assertion per member: the invariants list, the required-tests subsections,
    the displayed-outputs list, the hazard table, a frozen gate list and a
    marked enumeration. Every member of such a family names its entity or
    carries the declared-none form of clause 3. `check_bound_families` fails a
-   member that does neither. A family joins that check's table when the pass
-   that annotates it lands, so the check never keeps `make check` red for work
-   not yet done.
+   member that does neither. A family joins that check's table only when the
+   change that annotates its members is merged. So the check never keeps
+   `make check` failing for work not yet done.
 3. **The declared-none form names the item that owes the link.** An absence is
    written ``no test yet (`PL-XXXX`)``, and the parenthesis names an item still
    open in the queue. The words before it belong to the sentence, and the form
-   itself is fixed. A script can then tell a forgotten link from a declared
-   absence, an exemption becomes a forward reference to work, and closing the
-   named item without adding the link fails the check.
-4. **A dated statement is a record, held to its date and never to the tree.** A
-   sentence that carries a date, sits under a dated heading, or sits inside a
-   shipped release's section asserts what was true at that date. It is not
-   linked, not checked, and **not edited to carry a later fact**. A later fact
-   is appended with its own date. `check_gate_counts` draws the same line from
-   the checker's side, calling a frozen count "a dated fact that must never
-   change".
+   itself is fixed. With a fixed form, a script can tell a forgotten link from a
+   declared absence. Each exemption also points forward to the work that owes
+   the link. And closing the named item without adding the link fails the
+   check.
+4. **A dated statement is a record of what was true on its date, and is never
+   checked against the tree.** A sentence that carries a date, sits under a
+   dated heading, or sits inside a shipped release's section asserts what was
+   true at that date. It is not linked, not checked, and **not edited to carry a
+   later fact**. A later fact is appended with its own date. `check_gate_counts`
+   applies the same rule in code: it calls a frozen count "a dated fact that
+   must never change".
 
 **A computed claim names the test that computes it.** This is clause 1 applied
 to what the model computes and what the interface displays. A sentence that
@@ -338,32 +344,33 @@ output, as `tests/reference/test_mac_awake_washout_figures.py` does. Then the
 page cannot drift from the model without a test failing. Naming a test is the
 minimum.
 
-`check_bound_families` enforces this one section at a time. In a section in
-its table, each paragraph that states a number with a unit must carry one of
-these forms: a code-spanned test, the declared-none form, a
+`check_bound_families` enforces this rule one section at a time. In each
+section listed in its table, each paragraph that states a number with a unit
+must carry one of these forms: a code-spanned test, the declared-none form, a
 `provenance:`, `derived:` or `not-restated:` marker, a published source cited
 by a DOI, a PubMed id, an ISBN or a journal locator such as
 "Anesth Analg 1991;72:316-324", or a date. An author and a year alone, such
 as "Mapleson 1963", does not count, because no pattern can tell it from a
-sentence such as "Until 2026". A section joins the table when the pass that
-makes it conform lands, as clause 2's families do. The check cannot read a
+sentence such as "Until 2026". A section joins the table when the change that
+makes it conform is merged, as clause 2's families do. The check cannot read a
 qualitative claim, such as which value a readout shows beside a halt. Such a
 claim is still the author's duty under clause 1, and review enforces it.
 
-**Counts, which both halves meet.** A count in prose is stated only where a
+**Counts.** A count in prose is stated only where a
 check ties it to what it counts, such as a group heading over its entries or a
 marker over a data value. Otherwise the count is dated, the rule is stated
 without the number, or the number is read from the tool that prints it. That is
 why this document states the sizes of its own families nowhere.
 
 **What an assertion that names nothing looks like.** Inside a bound family, it
-uses the declared-none form, or the check fails. In a section held by its
-numeric paragraphs, the same is true of a paragraph that states a number with
-a unit. Elsewhere in a bound document, it is a number without a marker or a
-claim without a code span. The close-out sweep catches it there:
-`tools/doc_check.py candidates` prints it when its subject changes. Computed
-claims are the exception, and their sections join the check one at a time.
-Anywhere, an assertion that is dated is a record.
+must use the declared-none form, or the check fails. The same is true of a
+paragraph that states a number with a unit, in a section that the check covers
+paragraph by paragraph. Elsewhere in a bound document, such an assertion is a
+number without a marker or a claim without a code span. There, the documentation
+sweep before an item closes catches it: `tools/doc_check.py candidates` prints
+it when its subject changes. Computed claims are the exception, and their
+sections join the check one at a time. Anywhere, an assertion that is dated is a
+record.
 
 ## Purpose
 
@@ -396,13 +403,13 @@ The modeled system contains:
 
 Arterial blood is not a separate mixing compartment. The model treats
 pulmonary exchange as flow-limited: it assumes that blood leaving the lungs
-equilibrates instantly with alveolar gas. This is a deliberate simplification.
-So the arterial partial-pressure-equivalent fraction is defined as
-$`F_a \equiv F_A`$, with no arterial volume, mixing delay, or independent
-state. This matches the flow-limited mammillary structure of the Gas Man
+equilibrates instantly with alveolar gas. So the arterial
+partial-pressure-equivalent fraction is defined as $`F_a \equiv F_A`$, with no
+arterial volume, mixing delay, or independent state. This is a deliberate
+simplification. It matches the flow-limited mammillary structure of the Gas Man
 reference simulator, from which this project's sevoflurane and patient
-parameters are drawn. Gas Man computes four compartments, alveolar gas and the
-vessel-rich, muscle, and fat groups, and it displays arterial tension without
+parameters are drawn. Gas Man computes four compartments: alveolar gas and the
+vessel-rich, muscle, and fat groups. It displays arterial tension without
 tracking it as a compartment. See:
 
 - Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
@@ -417,12 +424,12 @@ Inspired gas is not a separate compartment either. The circuit is one ideal,
 perfectly mixed volume, with no dead space and no separate inspiratory and
 expiratory limbs. So the gas the patient inspires *is* the circuit gas, and
 there is no transport delay between the two. The model therefore keeps one
-gas-phase state between the vaporizer and the alveoli. It is named for the
-clinical quantity: the **inspired fraction** $`F_I`$, the middle term of the
-literature's $`F_D \rightarrow F_I \rightarrow F_A`$ cascade. The container
-keeps its own names. $`V_C`$ is the circuit's volume, and $`M_C`$ is the agent
-stored in it, so $`M_C = V_CF_I`$ is a volume of apparatus holding gas at the
-inspired fraction.
+gas-phase state between the vaporizer and the alveoli. That state is named for
+the clinical quantity it represents: the **inspired fraction** $`F_I`$, the
+middle term of the literature's $`F_D \rightarrow F_I \rightarrow F_A`$
+cascade. The circuit as a container keeps its own symbols. $`V_C`$ is the
+circuit's volume, and $`M_C`$ is the agent stored in it. So $`M_C = V_CF_I`$:
+the circuit is a volume of apparatus that holds gas at the inspired fraction.
 
 This is an assumption of the circuit model, not a property of breathing
 systems in general. It makes the displayed $`F_A/F_I`$ ratio the textbook one,
@@ -430,7 +437,8 @@ the canonical teaching curve of inhaled-anesthetic uptake (§ "F_A/F_I as a
 displayed ratio"). A multi-limb system, such as Lerou and Booij's three-part
 model, separates inspired gas from mean circuit gas. There the two would be
 distinct states, and this model's single $`F_I`$ would no longer describe both.
-Extending the model that way would first need the change recorded here.
+Extending the model that way would first require recording that change in this
+document.
 
 Symbols and the gas-phase cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx
 and De Wolf (pp. 161-162). They attribute the $`F_D - F_I`$ gradient to
@@ -442,8 +450,8 @@ Pharmacology 182. Springer, 2008:159-186).
 
 **One symbol to read carefully.** $`F_I`$ is the inspired fraction, and
 $`F_i`$ is tissue group $`i`$'s fraction. The two differ only in case. Both
-conventions are standard in the literature, and renaming either symbol would
-leave this model's symbols disagreeing with every source a reader arrives
+conventions are standard in the literature. Renaming either symbol would make
+this model's symbols disagree with every source a reader is likely to come
 from. Where both appear in one expression, the tissue index is written out.
 
 The external inputs and outputs are:
@@ -456,13 +464,13 @@ The external inputs and outputs are:
 The circuit and patient form a closed recirculating exchange path, apart from
 fresh-gas inflow and circuit exhaust.
 
-**That circle is semi-closed.** The exhaust above is unconditional: it runs
-whenever fresh gas runs, at exactly the fresh-gas rate. Closed-circuit
-operation, with a fresh gas flow titrated down to the patient's uptake or a
-machine mode that shuts the surplus gas valve outright, is a different
-conservation statement and outside what these equations describe. The section
-"Breathing circuit" argues and sizes that boundary, and the section "Known
-limitations" lists it.
+**That circle is semi-closed.** The exhaust described above always runs: it
+runs whenever fresh gas flows, at exactly the fresh-gas rate. Closed-circuit
+operation is different. It uses a fresh gas flow titrated down to the patient's
+uptake, or a machine mode that shuts the surplus gas valve outright. It needs a
+different conservation statement, which these equations do not describe. The
+section "Breathing circuit" argues for that limit and sizes it, and the section
+"Known limitations" lists it.
 
 ## Conventions
 
