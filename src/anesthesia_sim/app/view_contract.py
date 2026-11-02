@@ -39,14 +39,23 @@ from its own control and saves it. It asks for a frame at once through
 `ViewRequests.frame` when the reader changes it. `PL-1RFZ` is the later,
 opt-in sync of windows between charts.
 
+**The reader's preferences are shared state too** (`PL-B396`). The agent cost
+View shows the delivered agent in the unit that the reader's preferences hold.
+A preference belongs to the reader, not to a View or a layout (`PL-MQHN`), so
+two agent cost Views always show the same unit. The dashboard holds the
+preferences and saves them (`app/preferences.py`). Each tick shows them to
+every View in `ViewTick.preferences`, and a View asks for a change through
+`ViewRequests.agent_cost_unit`.
+
 **What a View is drawn from** (Q3). Each View says which frame it draws
 through `View.frame_request`: the window, and the plot width the frame must
 be sampled for. The dashboard assembles one `ChartFrame` per distinct window
 on each tick, sampled for the widest plot that asks for that window. So no
-plot draws a chord wider than a pixel (`PL-GS3R`), and two charts at the same
-window draw the same instants (`PL-9LNF`). The adapter hands each View the
-frame for its own window in its `ViewTick`. A View that draws no frame
-returns None from `frame_request`, and its tick carries no frame.
+plot draws a chord, the straight line between two samples, wider than a pixel
+(`PL-GS3R`), and two charts at the same window draw the same instants
+(`PL-9LNF`). The adapter hands each View the frame for its own window in its
+`ViewTick`. A View that draws no frame returns None from `frame_request`, and
+its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -97,6 +106,9 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
+from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.preferences import Preferences
+from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
@@ -105,6 +117,7 @@ __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
     "FrameRequest",
+    "PreferencesInForce",
     "RunSurfaces",
     "SavedState",
     "View",
@@ -144,6 +157,8 @@ class RunSurfaces(Protocol):
 
     def build_compartment_schematic(self) -> RunSchematic: ...
 
+    def build_agent_cost(self) -> RunAgentCost: ...
+
 
 @dataclass(frozen=True, slots=True)
 class ViewRequests:
@@ -156,10 +171,13 @@ class ViewRequests:
         frame: Asks for a frame at once, after the View changed a drawing
             setting of its own, such as its time window.
         compartment: Asks for one compartment's trace to be shown or hidden.
+        agent_cost_unit: Asks for the agent cost View's unit to become the
+            given one, in the reader's preferences.
     """
 
     frame: Callable[[], None]
     compartment: Callable[[RecordedQuantity, bool], None]
+    agent_cost_unit: Callable[[AgentAmountUnit], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +208,20 @@ class ViewContext:
 
 
 @dataclass(frozen=True, slots=True)
+class PreferencesInForce:
+    """The reader's preferences in force this session, and what the reader is told about them.
+
+    Attributes:
+        preferences: The preferences every View is drawn with.
+        notice: Why a preference was refused, could not be read or will not
+            be saved, or None when there is nothing to tell the reader.
+    """
+
+    preferences: Preferences
+    notice: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ViewTick:
     """What one View is shown on one frame.
 
@@ -198,15 +230,17 @@ class ViewTick:
             through `View.frame_request`, over every displayed run. None for
             a View that asked for none.
         snapshots: Each displayed run's snapshot, in drawing order. Every
-            frame of the tick was assembled from these same reads.
+            frame of the tick was assembled from these same snapshots.
         runs: Each displayed run's surfaces, in the same order.
         selection: The compartment selection every frame was assembled from.
+        preferences: The reader's preferences, and any notice about them.
     """
 
     frame: ChartFrame | None
     snapshots: tuple[SimulationSnapshot, ...]
     runs: tuple[RunSurfaces, ...]
     selection: CompartmentSelection
+    preferences: PreferencesInForce
 
 
 @runtime_checkable

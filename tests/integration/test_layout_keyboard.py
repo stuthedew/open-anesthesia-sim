@@ -76,7 +76,9 @@ from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, V
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
 
 _VIEW = ViewKind("test_view")
-_REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
+_REQUESTS = ViewRequests(
+    lambda _time_base: None, lambda _quantity, _shown: None, lambda _unit: None
+)
 
 # A container of this size leaves 800 px for the two children of a split, once
 # the handle's width is taken out. So a step can be read directly as pixels.
