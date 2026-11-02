@@ -11766,6 +11766,7 @@ def test_arm_ask_quotes_the_text_to_judge_rather_than_pointing_at_a_file() -> No
     assert "quote the text the owner is to judge in the reply itself" in arming.ASK_LINE
     assert "before and after" in arming.ASK_LINE
     assert "Never send the owner into a file" in arming.ASK_LINE
+    assert "enough of its surroundings, such as the whole paragraph" in arming.ASK_LINE
     assert "Please look at" not in arming.ASK_REVIEW_SHOWN
     assert "the reply quotes the text to judge, before and after" in arming.READ_ASK
 
@@ -11795,7 +11796,7 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     assert "old risk, checked and look form" in why
     assert "Write every field in plain words for a clinician" in arming.READ_ASK
     assert "never name a test, check, file or tool by its internal name" in arming.READ_ASK
-    assert "can decide as the owner or as a clinician" in arming.READ_ASK
+    assert "can decide as the owner or as a clinician, saying why it is theirs" in (arming.READ_ASK)
     assert "Never ask the owner to re-check what the tests or reviews already checked" in (
         arming.READ_ASK
     )

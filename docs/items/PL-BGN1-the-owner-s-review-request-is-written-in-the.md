@@ -36,6 +36,10 @@ at reworded paragraphs and judge whether they kept their meaning.
 
 > How am I supposed to judge that? (on `#1947`, relayed by the coordinator)
 
+> Why are you asking me? Also, it's hard to judge an isolated sentence change
+> with now surrounding context (20:01Z, on a fact-accuracy ask in another
+> thread)
+
 **Why it matters.** Every pull request held for the owner's read reaches them
 through this ask, and the project's guard makes a session copy the recorded
 line word for word. Whatever vocabulary the record holds therefore reaches the
@@ -62,8 +66,11 @@ already checked, and what to reply. The owner approved it for every session:
    <what to reply>`. `arm` renders it as "What changed: ... Question for you:
    ...? Already checked: ... What to reply: ...".
 2. The question is one the owner can decide as the owner or as a clinician.
-   It never asks for a re-check of what the tests or reviews covered. Where
-   no such question exists, the question says so and recommends merging.
+   It says why the question is theirs, and it never asks for a re-check of
+   what the tests or reviews covered. Where no such question exists, the
+   question says so and recommends merging. The quoted text carries enough of
+   its surroundings, such as the whole paragraph, for the change to make
+   sense.
 3. `arm` refuses a record in the old `risk`, `checked` and `look` form, so a
    branch that still carries one asks the owner nothing until it records the
    new form.

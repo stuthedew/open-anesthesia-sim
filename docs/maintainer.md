@@ -501,7 +501,8 @@ tests or reviews already covered, such as whether a rewording kept its
 meaning. Where there is no such question, it says so and recommends merging.
 No part of the ask names a tool, file, command or item id, and `arm` refuses a
 record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
-quotes the text you are to judge, before and after, so that you never have to
+quotes the text you are to judge, before and after, with enough of the
+surrounding paragraph for the change to make sense, so that you never have to
 open a file to find it (project owner, 2026-11-02, `PL-77QB`). Until a record
 made after the newest change covers the pull request, `arm` tells the session
 to send you nothing. It says so on the first line of its output and with an

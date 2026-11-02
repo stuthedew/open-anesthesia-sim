@@ -112,8 +112,8 @@ put to the owner at once, with a recommendation.
   that `bin/docket arm` prints**, in its decision or review form, never
   as a bare "read #N". The coordinator sends a bare read ask back to its
   thread. When a hold has nothing to judge, ask for "Merge it" alone. The
-  ask quotes the text to judge, before and after, and never only points into a
-  file. When a thread's ask does not, the coordinator adds the quote or sends
+  ask quotes the text to judge, before and after with its surrounding
+  paragraph, and never only points into a file. When a thread's ask does not, the coordinator adds the quote or sends
   the ask back (project owner, 2026-11-02, `PL-77QB`).
 - **A thread that finishes** reports one line: the item id and what it is, the
   pull request number, what it needs from the owner, and any items filed.

@@ -378,7 +378,8 @@ READ_ASK = (
     "(.claude/skills/run-the-app/SKILL.md). "
     f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_REVIEW[0]} - <what "
     f"changed, in one plain sentence> | {ASK_REVIEW[1]} - <one yes-or-no question the owner "
-    f"can decide as the owner or as a clinician>? | {ASK_REVIEW[2]} - <what was already "
+    f"can decide as the owner or as a clinician, saying why it is theirs>? | "
+    f"{ASK_REVIEW[2]} - <what was already "
     f"checked> | {ASK_REVIEW[3]} - <what to reply, such as Merge it, or what to change>`. "
     "Never ask the owner to re-check what the tests or reviews already checked, such as "
     "whether a rewording kept its meaning: they cannot judge that from a reply. If no such "
@@ -399,12 +400,16 @@ READ_ASK = (
 #: ask said "Please look at: the hazard table's 21 rows", and the owner had
 #: to open the file to find them. Their rule: "I want it to just show me the
 #: relevant text rather than me trying to dig through", as the default, unasked
-#: (project owner, 2026-11-02, `PL-77QB`).
+#: (project owner, 2026-11-02, `PL-77QB`). A changed sentence quoted alone
+#: was still hard to judge: "it's hard to judge an isolated sentence change"
+#: without the surrounding context (project owner, 2026-11-02, `PL-BGN1`).
 ASK_LINE = (
     "  Open the ask with this line, word for word, as the closing block's own line, never "
     "as 'read #N', and repeat it whole in every later reply that still waits on it. Under "
     "it, quote the text the owner is to judge in the reply itself: the changed sentences, "
-    "rows or values, before and after. Never send the owner into a file to find it. Attach "
+    "rows or values, before and after, each with enough of its surroundings, such as the "
+    "whole paragraph, for the change to make sense. Never send the owner into a file to "
+    "find it. Attach "
     "a generated file only for the full set of changes, and still quote the ones that "
     "change meaning:"
 )
