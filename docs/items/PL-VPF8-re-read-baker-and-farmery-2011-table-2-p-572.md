@@ -53,3 +53,8 @@ brain and fat values and may be a prediction. This brief's claim that the public
 repository never held the review was wrong. `docs/references/README.md`
 records a copy removed on 2026-09-06, which the 2026-10-25 search of the
 history did not find.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+reference corpus on 2026-10-25 (`PL-VPF8`). Every figure matched the ones the
+session that filed `PL-H536` had recorded from an earlier copy on 2026-09-03.
