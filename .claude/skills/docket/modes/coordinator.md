@@ -109,7 +109,7 @@ put to the owner at once, with a recommendation.
 - **Review summaries** are posted in the project chat in full, not as a
   pointer to the thread.
 - **A held pull request reaches the owner only through the `Owner-ask:` line
-  that `bin/docket arm` prints**, in its decision or risk-review form, never
+  that `bin/docket arm` prints**, in its decision or review form, never
   as a bare "read #N". The coordinator sends a bare read ask back to its
   thread. When a hold has nothing to judge, ask for "Merge it" alone. The
   ask quotes the text to judge, before and after, and never only points into a

@@ -3,11 +3,13 @@ id: PL-BGN1
 title: The owner's review request is written in the repository's shorthand ("a pinned test of the owner-ask guard changes, so a relayed ask could be refused"), because the plain-writing rule names replies but not review requests or the Risk to review / Checked template bin/docket arm prints
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_arming.py, tests/unit/test_owner_ask_guard.py, .claude/rules/plain-writing.md, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1946
 payoff: a review request tells the owner in plain words what changed, asks one question they can decide, and says what to reply, so they can answer it without decoding the repository's vocabulary
 verify: grep -q 'def test_arm_ask_is_written_in_plain_words_for_the_owner' subprojects/docket/tests/test_cli.py && ! grep -q 'Risk to review: {risk}' subprojects/docket/src/docket/arming.py
 ---
@@ -49,8 +51,11 @@ re-check a rewording asks for a judgment the tests and reviews already made.
 3. Nothing limited the question to one the owner can decide. The `look` field
    handed them a re-check of work the reviews had done.
 
-**Fix.** Chosen by the coordinator and built here (the shape the coordinator
-proposed to the owner on 2026-11-02; ratified when the owner merges it):
+**Fix.** The coordinator proposed a five-part shape for every review request:
+what changed, one yes-or-no question, the text before and after, what was
+already checked, and what to reply. The owner approved it for every session:
+"Tell all active sessions to use this format" (project owner, 2026-11-02,
+19:51Z, ratified, over the three-part risk form). This builds it:
 
 1. The review form becomes `changed - <one plain sentence> | question - <one
    yes-or-no question>? | checked - <what was already checked> | reply -
