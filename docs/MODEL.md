@@ -122,8 +122,8 @@ standard this section relies on. The 2007 edition mentioned **reasonably
 foreseeable misuse** only in passing. The 2019 edition made it a defined term,
 and its clause 5.2 requires documenting that misuse. Using this simulator
 outside the intended use above is such misuse. The hazard table in the next
-section has a row for it, and § "What keeps a real patient's data out of a
-run" names its two safeguards and the tests that hold them.
+section has a row for it. § "What keeps a real patient's data out of a run"
+names the two safeguards against it and the tests that enforce them.
 
 **Sources for this section.** IEC 62304 and ISO 14971 are published standards
 and are not open access. The clause structure, the three class definitions,
@@ -149,7 +149,7 @@ test is any good.
 
 | A reader could be misled into | What stops it | Held by |
 | --- | --- | --- |
-| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view, and the simulated patient is always the shipped reference adult. A cardiac output or ventilation set to a patient's measured value is covered by the use statement alone (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
+| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view, and the simulated patient is always the shipped reference adult. Only the use statement guards against a cardiac output or ventilation set to a patient's measured value (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue and never the only one. The agent name is always visible. It sits in the invariant tier, the outputs that every top-level window shows, within the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's"). `tools/agent_identity_check.py` audits the ISO 5360 colours in `src/anesthesia_sim/app/theme.py` together with the text colour that stays readable on each | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. So a run still shows as stopped, and does not offer Pause, even when its own snapshot refuses a value. A banner written before any frame of the stopped run was drawn says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run that a mark stopped as one the learner paused, while two runs are compared | a run that a mark stopped reads "Paused — stopped on your mark". While two runs are compared, the branch control's own "stopped on your mark" is withdrawn, so this status word is the only cue. A MAC target's row reads "reached" from its first crossing, so later crossings do not change it. A failure, or reaching the supported run length, takes precedence over this word. A new branch, at the instant where it forks from its parent, carries the parent's halt record but still reads "Paused", because no step of the branch stopped it. The wording is a placeholder while the interface is being built | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
@@ -299,10 +299,11 @@ prediction.
 
 The patient factors planned in `ROADMAP.md` (planned-milestone item 30) remove
 the second safeguard. `test_every_run_simulates_the_shipped_reference_adult`
-pins the ways a patient could get into a run today: one shipped patient file,
-an uptake system built from the agent alone, and no patient argument or
-control. Patient factors have to change one of those, so the test fails and
-that work has to rewrite this section and its hazard row.
+checks each way a patient could get into a run today. There is one shipped
+patient file, the uptake system is built from the agent alone, and there is no
+patient argument or control. Adding patient factors must change one of those,
+so the test will fail. The work that adds them must then rewrite this section
+and the hazard table's row for this misuse.
 
 ## How this document is held to the tree
 
