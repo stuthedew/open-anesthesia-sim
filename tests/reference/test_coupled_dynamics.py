@@ -767,8 +767,8 @@ ORACLE_STEP_S = 0.0125
 # The subdivision spread, not the residual, is what sets this bound. The spread is larger
 # than the residual it accompanies, which is why this bound is not set tighter. The bound,
 # 4e-13, is 6.8 times the worst observed residual and 3.7 times the subdivision spread.
-# `HELD_RUN_ROUNDING_BOUND` is 3.2 times its own spread, so the two bounds are now sized by
-# the same rule. The split that the exact step replaced had a worst error of 2.29e-4 over
+# `HELD_RUN_ROUNDING_BOUND` is 4.6 times its own spread, 2.1696e-13 over the held hour, so
+# the two bounds are sized by the same rule. The split that the exact step replaced had a worst error of 2.29e-4 over
 # the same domain at this step. The exact step is nine orders of magnitude closer to the
 # independent solution than that. This bound is nine orders of magnitude smaller than the
 # error of any method that is not exact. So the test still fails as soon as method error

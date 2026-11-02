@@ -214,7 +214,10 @@ Four limits decide what a citation may claim:
   Together they cover inhalational and intravenous agents, uptake and
   distribution, depth of anesthesia and the parameter set the simulator runs
   on, so a science question with no obvious paper behind it starts there rather
-  than from memory or from a search. Both remain tier 3 — a textbook chapter is
+  than from memory or from a search. Neither is a measurement. *Modern
+  Anesthetics* is tier 2, a textbook, which `docs/MODEL.md` § "Source
+  hierarchy" calls a secondary synthesis. The Workbook is tier 3, because it
+  documents a reference implementation's parameter set. A textbook chapter is
   a route to a measurement, not the measurement.
 
   **Answer "is it in there, and where" without opening a PDF.** The corpus root

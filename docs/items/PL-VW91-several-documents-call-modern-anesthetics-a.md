@@ -38,3 +38,13 @@ Holdings paragraph is corrected in its own repository.
 **Generator check.** The misread fact is the tier that `docs/MODEL.md` §
 "Source hierarchy" gives a textbook. No head's `misread:` line names source
 tiers, so it is a one-off.
+
+**The corpus half, 2026-11-02.** The references repository's README called two
+secondary syntheses tier 3: the Holdings paragraph's "a book chapter is a
+review, tier 3", and the Eger and Saidman 2005 entry. Both now say tier 2, and
+the Holdings paragraph adds that the Gas Man Workbook is tier 3. The change is
+`stuthedew/open-anesthesia-sim-references` pull request 1, commit `a582658`,
+which touches `README.md` alone. A session cannot merge it: that repository's
+`main` has no protection that binds an admin, so the merge hook leaves the
+Squash and merge to the owner. The entry on Gas Man's parameter set, which
+calls that set tier 3, is correct and unchanged.
