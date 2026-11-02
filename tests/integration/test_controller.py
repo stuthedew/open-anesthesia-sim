@@ -258,23 +258,24 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
 
 
 def test_every_run_simulates_the_shipped_reference_adult() -> None:
-    """No input reaches the patient's body, so every run is the reference adult (`PL-DXJR`).
+    """Every run simulates the reference adult, because no input changes its body (`PL-DXJR`).
 
     `docs/MODEL.md`'s hazard row for entering an identifiable patient's data
     lists the fixed reference adult as one of its two safeguards. This test
     enforces that safeguard. A learner can set four settings and the agent, but
     nothing that would describe a particular patient: no weight, age, sex,
-    height or body composition. So every stretch of every run keeps the
+    height or body composition. A stretch is a `RunSegment`, a span of a run
+    during which no setting changes. Every stretch of every run keeps the
     compartment volumes and perfusion fractions of
-    `data/patients/reference_adult.json`, whatever the learner sets. A stretch
-    is a `RunSegment`, a span of the run during which no setting changes.
+    `data/patients/reference_adult.json`, whatever the learner sets.
 
     The first five assertions check each way a patient could get into a run
-    today. The package ships one patient file, the uptake system is built from
-    an agent alone, and the controller and its four controls take no patient
-    argument. Patient factors (`ROADMAP.md` planned-milestone item 30) have to
-    change at least one of them, so this test fails when they land. The failure
-    is intended, because the same work must rewrite the hazard row.
+    today. They check that the package ships one patient file, that the uptake
+    system is built from an agent alone, and that the controller and its four
+    controls take no patient argument. Patient factors (`ROADMAP.md`
+    planned-milestone item 30) must change at least one of these facts, so this
+    test fails when they are added. The failure is intended, because the same
+    work must rewrite the hazard row.
 
     An agent change and a Reset each start a new run definition, so the test
     collects each run's stretches before the next run definition replaces them.
