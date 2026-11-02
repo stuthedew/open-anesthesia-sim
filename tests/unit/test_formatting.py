@@ -14,7 +14,9 @@ the control that shows it.
 
 import inspect
 import math
-from decimal import Decimal
+import re
+from datetime import date
+from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 from typing import Any, get_type_hints
 
@@ -23,9 +25,12 @@ from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from anesthesia_sim.app import formatting as formatting_module
+from anesthesia_sim.app.agent_cost import price_from_entry
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_DISPLAY_PRECISION,
+    AGENT_COST_FINEST_DECIMALS,
+    AGENT_COST_SIGNIFICANT_FIGURES,
     CHART_AXIS_TOP_MAC,
     CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -35,12 +40,14 @@ from anesthesia_sim.app.formatting import (
     MAC_DISPLAY_RESOLUTION_MAC,
     MAC_UNIT_SUFFIX,
     MAX_MAC_AXIS_INTERVALS,
+    PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES,
     AgentAmount,
     AgentAmountPrecision,
     AgentAmountUnit,
     agent_amount_display_precision,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    format_agent_cost,
     format_agent_residual,
     format_agent_volume,
     format_branch_discard_warning,
@@ -50,11 +57,13 @@ from anesthesia_sim.app.formatting import (
     format_compartment_share,
     format_delivered_label,
     format_elapsed,
+    format_entered_figure,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
     format_percent,
     format_playback_rate,
+    format_price_per_liquid_ml,
     format_subtitle,
     format_supported_run_length,
     format_time_base,
@@ -1988,3 +1997,174 @@ def test_a_share_outside_0_through_1_is_refused(share: float) -> None:
 def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
     with pytest.raises(TypeError, match="is a number from 0 through 1"):
         format_compartment_share(share)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("cost", "expected"),
+    [
+        pytest.param(8.0703, "USD 8.07", id="Exercise 14-1 at 60 min"),
+        pytest.param(0.6812, "USD 0.68", id="no finer than a cent"),
+        pytest.param(50.04, "USD 50.0", id="three figures"),
+        pytest.param(1234.5, "USD 1230", id="three figures above a thousand"),
+        pytest.param(9.996, "USD 10.0", id="rounds up into the next decade"),
+        pytest.param(0.004, "USD <0.01", id="below a cent"),
+        pytest.param(0.0, "USD 0", id="nothing delivered"),
+    ],
+)
+def test_a_cost_is_shown_to_three_figures_and_never_finer_than_a_hundredth(
+    cost: float, expected: str
+) -> None:
+    assert format_agent_cost(cost, "USD") == expected
+
+
+@pytest.mark.parametrize(
+    ("price_per_ml", "expected"),
+    [
+        pytest.param(20.47 / 100.0, "USD 0.2047 per mL of liquid", id="Gas Man's isoflurane"),
+        pytest.param(240.34 / 250.0, "USD 0.9614 per mL of liquid", id="Gas Man's sevoflurane"),
+        pytest.param(115.13 / 240.0, "USD 0.4797 per mL of liquid", id="desflurane"),
+        pytest.param(30_000.0 / 250.0, "USD 120.0 per mL of liquid", id="a large unit of money"),
+        pytest.param(1.23456e-5, "USD 0.00001235 per mL of liquid", id="no limit on decimals"),
+        pytest.param(2345.6, "USD 2346 per mL of liquid", id="no decimals above a thousand"),
+        pytest.param(0.99996, "USD 1.000 per mL of liquid", id="rounds up to one"),
+    ],
+)
+def test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid(
+    price_per_ml: float, expected: str
+) -> None:
+    assert format_price_per_liquid_ml(price_per_ml, "USD") == expected
+
+
+@pytest.mark.parametrize(
+    ("figure", "expected"),
+    [
+        (20.47, "20.47"),
+        (100.0, "100"),
+        (240.34, "240.34"),
+        (0.25, "0.25"),
+        (0.00005, "0.00005"),
+        (1.5e15, "1500000000000000"),
+    ],
+)
+def test_a_figure_the_reader_entered_is_shown_as_typed(figure: float, expected: str) -> None:
+    """A figure is shown in plain digits, so the price form can read back the text it holds.
+
+    Blind review pass 1 of `PL-1P15` found 0.00005 shown as `5e-05`, which
+    the form then refused when the reader pressed Set price again.
+    """
+
+    assert format_entered_figure(figure) == expected
+    assert price_from_entry("isoflurane", expected, "100", "USD", date(2026, 1, 2))
+
+
+@pytest.mark.parametrize("amount", [-0.01, math.inf, math.nan])
+def test_a_cost_or_price_that_is_negative_or_not_finite_is_refused(amount: float) -> None:
+    with pytest.raises(ValueError, match="finite and not negative"):
+        format_agent_cost(amount, "USD")
+
+    with pytest.raises(ValueError, match="finite and not negative"):
+        format_price_per_liquid_ml(amount, "USD")
+
+
+def test_a_price_per_millilitre_of_zero_is_refused() -> None:
+    with pytest.raises(ValueError, match="^a price per millilitre must be positive, not 0.0$"):
+        format_price_per_liquid_ml(0.0, "USD")
+
+
+@pytest.mark.parametrize(
+    ("render", "what"),
+    [
+        pytest.param(lambda amount: format_agent_cost(amount, "USD"), "a cost", id="cost"),
+        pytest.param(
+            lambda amount: format_price_per_liquid_ml(amount, "USD"),
+            "a price per millilitre",
+            id="price per mL",
+        ),
+        pytest.param(format_entered_figure, "an entered figure", id="entered figure"),
+    ],
+)
+def test_a_refused_amount_of_money_is_named_in_the_error(render: Any, what: str) -> None:
+    """Each refusal names the figure it refused, so a defect upstream can be traced."""
+
+    with pytest.raises(TypeError, match=f"^{re.escape(what)} is a number, not True$"):
+        render(True)
+
+    with pytest.raises(
+        ValueError, match=f"^{re.escape(what)} must be finite and not negative, not -1.0$"
+    ):
+        render(-1.0)
+
+
+@pytest.mark.parametrize("rounding", [ROUND_HALF_UP, ROUND_DOWN, ROUND_CEILING])
+def test_a_cost_and_a_price_round_halves_to_even_whatever_the_decimal_context(
+    rounding: str,
+) -> None:
+    """The formatter sets its own rounding, so the shown cost never depends on the decimal context.
+
+    0.125 and 1.0625 are exact in binary, so each lies exactly halfway between its two
+    nearest rounded values. Rounding halves to even gives 0.12 and 1.062.
+    """
+
+    with localcontext() as context:
+        context.rounding = rounding
+
+        assert format_agent_cost(0.125, "USD") == "USD 0.12"
+        assert format_price_per_liquid_ml(1.0625, "USD") == "USD 1.062 per mL of liquid"
+
+
+@pytest.mark.parametrize("currency", ["usd", "$", "US", "USDX", "U$D"])
+def test_a_currency_that_is_not_three_capital_letters_is_refused(currency: str) -> None:
+    with pytest.raises(ValueError, match="three capital letters"):
+        format_agent_cost(1.0, currency)
+
+
+def test_a_cost_that_is_not_a_number_is_refused() -> None:
+    with pytest.raises(TypeError):
+        format_agent_cost(True, "USD")
+
+    with pytest.raises(TypeError, match="^a currency is an ISO 4217 code, not 840$"):
+        format_agent_cost(1.0, 840)  # type: ignore[arg-type]
+
+
+def test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost() -> None:
+    """Derive both precisions from the stored densities, independently of the formatter.
+
+    `docs/MODEL.md` § "Displayed precision" gives the derivation (`PL-1P15`).
+    The price is the reader's own figure, so the cost's only modelled
+    uncertainty is the liquid figure's, which comes from the measured density
+    alone. The largest relative SD of a stored density is sevoflurane's,
+    0.0008 / 1.5203, or 0.053 %. A cost shown to n significant figures has a
+    smallest relative step of 1 in (10^n - 1), at a value such as 999. At
+    three figures that is 0.10 %, coarser than one SD of the density, as the
+    one-sided bound requires. At four figures it would be 0.010 %, finer than
+    one SD.
+
+    The price per millilitre carries no model uncertainty. Four figures is the
+    fewest at which rounding the price moves the product of the figures shown
+    by at most half of the cost's smallest step. Half a step at four figures is
+    at most 0.5 in 1000, or 0.050 %, against 0.5 in 999 for the cost.
+    """
+
+    largest_relative_sd = max(
+        load_agent_parameters(agent_id).liquid_density.standard_deviation_g_ml
+        / load_agent_parameters(agent_id).liquid_density.g_ml
+        for agent_id in AGENT_DATA_FILENAMES
+    )
+
+    def smallest_relative_step(figures: int) -> float:
+        return 1.0 / (10**figures - 1)
+
+    def largest_relative_half_step(figures: int) -> float:
+        return 0.5 / 10 ** (figures - 1)
+
+    assert largest_relative_sd == pytest.approx(0.0008 / 1.5203)
+    assert AGENT_COST_SIGNIFICANT_FIGURES == 3
+    assert smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES) > largest_relative_sd
+    assert smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES + 1) < largest_relative_sd
+    assert AGENT_COST_FINEST_DECIMALS == 2
+    assert PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES == 4
+
+    half_cost_step = smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES) / 2.0
+    price = PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES
+    assert largest_relative_half_step(price) <= half_cost_step
+    assert largest_relative_half_step(price - 1) > half_cost_step

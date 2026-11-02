@@ -77,7 +77,10 @@ from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, W
 
 _VIEW = ViewKind("test_view")
 _REQUESTS = ViewRequests(
-    lambda _time_base: None, lambda _quantity, _shown: None, lambda _unit: None
+    lambda _time_base: None,
+    lambda _quantity, _shown: None,
+    lambda _unit: None,
+    lambda _agent, _price: None,
 )
 
 # A container of this size leaves 800 px for the two children of a split, once
