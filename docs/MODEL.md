@@ -4742,18 +4742,22 @@ over every state $`k`$ and every trajectory below.
 
 **The held runs to the pinned horizons have a bound of their own.**
 `test_the_shipped_step_reaches_the_pinned_reference_horizons` runs each agent
-at the reference operating point to 60, 600 and 3600 s and compares the
-endpoint with the pinned reference states. It allows
-`HELD_RUN_ROUNDING_BOUND`, an absolute $`10^{-12}`$, rather than the
-$`4\times10^{-13}`$ above. Rounding is added once per step, and the hour takes
-36 000 steps against the 6 000 or 9 000 of a trajectory below. So the held
-hour reaches a larger residual than any trajectory: **7.16e-14**, for
-desflurane in muscle (re-measured 2026-11-02, `PL-4R21`). The 600 s figures are
-at most 1.34e-14 and the 60 s figures at most 5.69e-16. The bound is set, like
-the one above, from how far the shipped solution moves when the same interval
-is divided into different steps. For the hour that spread is 2.17e-13, and
-the bound is 4.6 times it. `tests/reference/test_coupled_dynamics.py` records
-the full table.
+at the reference operating point to 60, 600 and 3600 s at the shipped 0.1 s
+step. It compares the endpoint with the independent solution at that horizon,
+and a separate test ties that solution to the pinned reference states. It
+allows `HELD_RUN_ROUNDING_BOUND`, an absolute $`10^{-12}`$, rather than the
+$`4\times10^{-13}`$ above. The held hour reaches a larger residual than any
+trajectory below: **7.16e-14**, for desflurane in muscle (measured 2026-09-07,
+and unchanged when re-measured on 2026-11-02, `PL-4R21`). Rounding is added
+once per step, but step count alone does not explain the difference. The hour
+takes 36 000 steps, and so does the 900 s unperfused load at 0.025 s, whose
+worst residual is smaller. The 600 s figures are at most 1.34e-14 and the 60 s
+figures at most 5.69e-16. The bound is set, like the one above, from how far
+the shipped solution moves when the same interval is divided into different
+steps. For the hour that spread is 2.17e-13, and the bound is 4.6 times it.
+`tests/reference/test_coupled_dynamics.py` records the full table.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 900 s -->
 
 **Why absolute, where the split's bound was a coefficient.** The split's error
 was $`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step size.
@@ -4767,24 +4771,25 @@ state the reverse of what is true.
 
 **Derived from the exact step's own error, not inherited.** The residual was
 re-measured on 2026-09-07 across all three agents and every trajectory below.
-The maximum was taken over the whole trajectory rather than at the endpoints. At the shipped 0.1 s step, the worst figures are
-1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope corner*, 1.39e-14 for
-the *ventilator start*, 1.34e-14 for the *reference point* and 8.80e-15 for the
-*unperfused load, then dial off*. Desflurane gives the worst figure on every
-trajectory. Re-measured on 2026-10-25, all five were unchanged to every digit
-that `tests/reference/test_coupled_dynamics.py` records (`PL-S86L`). They lie
-within a factor of 1.8 of one another, because what is measured is
-accumulated rounding, and rounding does not grow with how far the settings
-move. The unperfused load gives the smallest figure although it runs longest,
-900 s against the others' 600 s. Its worst falls in the loading phase, while
-the blood and tissue states are still exactly zero and only the circuit and
+The maximum was taken over the whole trajectory rather than at the endpoints.
+At the shipped 0.1 s step, the worst figures are 1.58e-14 for *ordinary use*,
+1.54e-14 for the *envelope corner*, 1.39e-14 for the *ventilator start*,
+1.34e-14 for the *reference point* and 8.80e-15 for the *unperfused load, then
+dial off*. Desflurane gives the worst figure on every trajectory. Re-measured
+on 2026-10-25, all five were unchanged to every digit that
+`tests/reference/test_coupled_dynamics.py` records (`PL-S86L`). They lie
+within a factor of 1.8 of one another, because what is measured is accumulated
+rounding, and rounding does not grow with how far the settings move. The
+unperfused load gives the smallest figure although it runs longest, 900 s
+against the others' 600 s. Its worst falls in the loading phase, while the
+blood and tissue states are still exactly zero and only the circuit and
 alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
 That gives the worst figure measured on any trajectory: **5.89e-14**, for
-desflurane on a *ventilator start* at the finest step. The next largest is 5.46e-14, for
-desflurane on the held *envelope corner* at the same step (measured
-2026-10-25, `PL-F67Q`). The operator split's worst over the
-same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the
-independent solution.
+desflurane on a *ventilator start* at the finest step. The next largest is
+5.46e-14, for desflurane on the held *envelope corner* at the same step
+(measured 2026-10-25, `PL-F67Q`). The operator split's worst over the same
+domain was 2.29e-4 at this step. Against it, the exact step is nine orders of
+magnitude closer to the independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 900 s -->
 
@@ -13182,9 +13187,10 @@ value:
   **Full text**, read from the private reference corpus 2026-09-27: the brain
   drawn apart on p. 1022, Table 3 on p. 1024, the lean-tissue losses, the
   evidence and the 30% share on p. 1025, and recovery on p. 1032. It is
-  a review, which is how PubMed classifies it. It is ranked tier 3 because its
-  figures "illustrate concepts but are not necessarily precise (quantitative)
-  reflections of the kinetics" (p. 1020).
+  a review, which is how PubMed classifies it, so it is tier 2 under § "Source
+  hierarchy". Its figures need more caution than most reviews' do, because the
+  paper says they "illustrate concepts but are not necessarily precise
+  (quantitative) reflections of the kinetics" (p. 1020).
 - Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
   dog: comparison of theory and measurement in individuals.* Br J Anaesth
   1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,

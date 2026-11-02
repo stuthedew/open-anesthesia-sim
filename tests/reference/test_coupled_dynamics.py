@@ -748,8 +748,9 @@ ORACLE_STEP_S = 0.0125
 # 0.025 s step, in the circuit fraction. That is the figure this bound is set against. The
 # next largest is 5.4623e-14, for desflurane on the held envelope corner at the same step
 # (measured 2026-10-25, `PL-F67Q`). The one-hour run at held settings, which
-# `HELD_RUN_ROUNDING_BOUND` covers, reaches a larger residual, 7.1637e-14, because it takes
-# 36 000 steps rather than 24 000.
+# `HELD_RUN_ROUNDING_BOUND` covers, reaches a larger residual, 7.1637e-14. Step count alone
+# does not explain that: the 900 s unperfused load at 0.025 s also takes 36 000 steps, and
+# its worst residual is smaller.
 #
 # **The margin is set by platform variation, not by that figure.** This bound constrains
 # accumulated rounding, which is not reproducible between machines. A different libm `exp`,
@@ -768,11 +769,11 @@ ORACLE_STEP_S = 0.0125
 # than the residual it accompanies, which is why this bound is not set tighter. The bound,
 # 4e-13, is 6.8 times the worst observed residual and 3.7 times the subdivision spread.
 # `HELD_RUN_ROUNDING_BOUND` is 4.6 times its own spread, 2.1696e-13 over the held hour, so
-# the two bounds are sized by the same rule. The split that the exact step replaced had a worst error of 2.29e-4 over
-# the same domain at this step. The exact step is nine orders of magnitude closer to the
-# independent solution than that. This bound is nine orders of magnitude smaller than the
-# error of any method that is not exact. So the test still fails as soon as method error
-# returns, and catching that is the bound's only job.
+# the two bounds are sized by the same rule. The split that the exact step replaced had a
+# worst error of 2.29e-4 over the same domain at this step. The exact step is nine orders
+# of magnitude closer to the independent solution than that. This bound is nine orders of
+# magnitude smaller than the error of any method that is not exact. So the test still fails
+# as soon as method error returns, and catching that is the bound's only job.
 #
 # **Until `PL-B1WW` refined the oracle, this bound was too loose to catch a large
 # regression.** It was 5e-12, set at 6.5 times the worst residual then measured, 7.7e-13.
@@ -821,14 +822,15 @@ EXACT_STEP_ORACLE_TOLERANCE = 4e-13
 # refined `ORACLE_STEP_S`, the oracle is converged everywhere. Both constants now
 # bound the same thing, the shipped step's own accumulated rounding, and what
 # separates them is the run length. Rounding is added once per step. An hour at
-# 0.1 s is 36 000 steps, against 6 000 or 9 000 for a gate trajectory.
+# 0.1 s is 36 000 steps, against 6 000 or 9 000 for a gate trajectory at that step.
 # Accordingly, on the subdivision spread that sets both margins, the measurements
 # below come out about twice the trajectory gates' figures. Folding the two into
 # one constant would give the 600 s gates the hour's headroom and throw away the
 # sensitivity that this separation buys.
 #
 # **The derivation.** These figures were re-measured on 2026-09-07 at the
-# reference operating point. Each is taken at the endpoint of a horizon in
+# reference operating point. Desflurane's 3600 s figure was unchanged when
+# re-measured on 2026-11-02 (`PL-4R21`). Each is taken at the endpoint of a horizon in
 # `HORIZONS_S`, as the worst over the six fractions. (`PL-D3XX`: the v0.4.7
 # venous-pool change moved every figure in the table this replaces, and none of
 # them had been re-derived.)

@@ -5,11 +5,11 @@ the two places they are displayed: the marks on the chart and the list
 beside it. Nothing here reads simulation state, stores a setting, or
 performs a physiological calculation. The delivered dial is the one control
 whose units change on the way to the screen. Its recorded value is a percent
-(`PL-NJPB`). `format_control_value` converts that percent to a fraction,
-because `format_percent` in `formatting.py` takes the model's fraction, and
-`format_percent` converts the fraction back to the percent that is displayed
-(`PL-TPXR`). So a caller passes `format_control_value` the recorded percent,
-never a fraction.
+(`PL-NJPB`). `format_percent` in `formatting.py` takes the model's fraction,
+so `format_control_value` converts the percent to a fraction first.
+`format_percent` then converts the fraction back to the percent that is
+displayed (`PL-TPXR`). So a caller passes `format_control_value` the recorded
+percent, never a fraction.
 
 This module is separate from the view for the same reason that
 `chart_frame.py` and `formatting.py` are: what the timeline *means* is a
