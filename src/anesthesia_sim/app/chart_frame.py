@@ -1,46 +1,60 @@
 """What one frame of the concentration chart and the wash-in plot draws.
 
 This module is the chart's model. It describes everything a frame puts on
-either plot as plain values, evaluated from the run and independent of the
-toolkit that paints them. `app/qt_chart.py` reads a `ChartFrame` and moves
-pyqtgraph items to match. Nothing here imports Qt, Flet or numpy, and nothing
-here keeps a widget. The split is the same one that `app/formatting.py` makes
-for a displayed string. What the chart *claims* is a presentation-correctness
-question: which compartment a curve shows, where the 1 MAC line sits, which
-instants are drawn, and what a hover says. Kept here, those claims can be read
-and tested without a display, and `tests/unit/test_chart_frame.py` tests them
-that way.
+either plot as plain values. It computes those values from the run,
+independent of the toolkit that paints them. `app/qt_chart.py` reads a
+`ChartFrame` and moves pyqtgraph items to match. Nothing here imports Qt, Flet
+or numpy, and nothing here keeps a widget. The split is the same one that
+`app/formatting.py` makes for a displayed string. The chart's claims are
+questions of presentation correctness: which compartment a curve shows, where
+the 1 MAC line sits, which instants are drawn, and what a hover says. Because
+those claims are decided here, they can be read and tested without a display.
+`tests/unit/test_chart_frame.py` tests them that way.
 
 **Every drawn point is a state of the run at the instant where it is drawn.**
-`SimulationController.drawn_window` evaluates the run's definition at the
-columns the axis is divided into. It adds one column per control event in the
-window and one column at each end of the drawn range (`PL-2FM6`). So nothing
-here interpolates, extrapolates or synthesizes a value. The plot itself draws
-the straight segment between two points, and that segment is honest for two
-reasons. A control event always gets its own column. And the columns are one
-per pixel of the plot they are drawn on (`chart_columns`, `PL-GS3R`), so no
-segment spans more than a pixel of time.
+`SimulationController.drawn_window` evaluates the run's definition at a set of
+columns. A column is one instant on the time axis. The axis is divided into
+columns, and the window adds one column per control event in the window and
+one column at each end of the drawn range (`PL-2FM6`). So nothing here
+interpolates, extrapolates or synthesizes a value. The plot itself draws the
+straight segment between two points. That segment does not misrepresent the
+run, for two reasons. First, a control event always gets its own column.
+Second, the columns are one per pixel of the plot they are drawn on
+(`chart_columns`, `PL-GS3R`), so no segment spans more than a pixel of time.
 
 **One evaluation serves every trace of a run.** A state carries every
 compartment at once, so a frame reads the window once per run, and every trace
 of that run draws the same instants. Two traces of one run therefore cannot
-come from different instants. The wash-in stretches are built from the same
-columns that the compartment chart drew, so the two plots cannot differ even
-by a step that the run took in between.
+come from different instants. The wash-in plot's stretches are built from the
+same columns that the compartment chart drew. So the two plots cannot differ,
+even if the run advances a step between drawing one and drawing the other.
 
 **Six compartment traces, and the table that ties each one to what it draws.**
 `COMPARTMENT_TRACES` is the one place where a compartment is paired with its
-colour, its dash pattern, its legend words and the gloss its hover shows.
-Plotting one compartment's values on another's line misstates the run as
-surely as a wrong number does. So the pairing is one record per trace rather
-than parallel lists. `app/qt_chart.py` draws its curves and its legend from
-this table rather than keeping a second copy (`PL-2CS8`).
+colour, its dash pattern, its legend words and the explanatory text its hover
+shows. Plotting one compartment's values on another's line misstates the run
+as surely as a wrong number does. So the pairing is one record per trace
+rather than parallel lists. `app/qt_chart.py` draws its curves and its legend
+from this table rather than keeping a second copy (`PL-2CS8`).
 
-**The window is a viewport, and the run fills it.** This module decides the
-axis a frame draws from the selected time base and from the newest instant
-that any run on the chart has reached. Under "Fit run" the axis is fitted to
-that instant. Otherwise the axis keeps the chosen width and follows that
-instant. Every run draws into that one window. `app/chart_time_base.py`
+**Every coordinate a frame draws is finite, and it is checked where it is
+built.** `app/qt_chart.py` hands each curve its points as numpy arrays with
+pyqtgraph's own finiteness check switched off (`skipFiniteCheck`). pyqtgraph's
+documentation allows that only for data known to be finite, and leaves the
+result undefined otherwise (`PL-TCNT`). A curve draws three kinds of value, and
+each is checked once, when it is built. A compartment's value is a `Fraction`,
+which rejects NaN and infinity with an error that names the compartment
+(`_run_frame`). An instant comes from a `DrawnWindow`, which rejects a
+non-finite instant. A wash-in ratio is held by a `WashInStretch`, which rejects
+a non-finite ratio. So a non-finite value raises an error before any
+`ChartFrame` exists. The view then halts the run and names the value, rather
+than drawing a broken trace.
+
+**The window is a viewport, and the run fills it.** This module chooses the
+time axis for each frame. It uses the selected time base and the newest
+instant that any run on the chart has reached. Under "Fit run", the axis is
+fitted to that instant. Otherwise, the axis keeps the chosen width and follows
+that instant. Every run draws into that one window. `app/chart_time_base.py`
 describes both rules and explains why they are not one rule.
 """
 
@@ -94,6 +108,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
@@ -677,11 +692,28 @@ class WashInStretch:
             reference line. Only a stretch that *stopped* carries the
             terminus marker, because the growing right-hand end of a run is
             not an ending.
+
+    Raises:
+        SimulationConfigurationError: If a ratio is NaN or infinite. No
+            supported run produces such a ratio. Each ratio is formed from two
+            compartment values that the frame has already built as
+            `Fraction`s, and its denominator is at least the smallest
+            concentration the display resolves. The check is here anyway, so
+            that every stretch keeps the guarantee the module docstring states
+            by construction. The guarantee then does not depend on the order
+            in which a frame is assembled.
     """
 
     times_s: tuple[float, ...]
     ratios: tuple[float, ...]
     ends_above_equilibrium: bool
+
+    def __post_init__(self) -> None:
+        for time_s, ratio in zip(self.times_s, self.ratios, strict=True):
+            if not isfinite(ratio):
+                raise SimulationConfigurationError(
+                    f"the wash-in ratio F_A/F_I at {time_s} s is {ratio}, which is not finite"
+                )
 
 
 @dataclass(frozen=True, slots=True)

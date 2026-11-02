@@ -11,6 +11,7 @@ name = "anesthesia-sim"
 version = "0.6.12"
 source = { editable = "." }
 dependencies = [
+    { name = "numpy" },
     { name = "pydantic" },
     { name = "pyqtgraph" },
     { name = "pyside6-essentials" },
@@ -21,7 +22,6 @@ dev = [
     { name = "hypothesis" },
     { name = "markdown-it-py" },
     { name = "mypy" },
-    { name = "numpy" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -37,6 +37,7 @@ mutation = [
 
 [package.metadata]
 requires-dist = [
+    { name = "numpy", specifier = ">=2.5.3" },
     { name = "pydantic", specifier = ">=2.12.4,<3.0" },
     { name = "pyqtgraph", specifier = ">=0.13.7,<0.15" },
     { name = "pyside6-essentials", specifier = ">=6.9,<7.0" },
@@ -47,7 +48,6 @@ dev = [
     { name = "hypothesis", specifier = ">=6.168.3" },
     { name = "markdown-it-py", specifier = ">=4.2.0" },
     { name = "mypy", specifier = ">=2.3.1" },
-    { name = "numpy", specifier = ">=2.5.3" },
     { name = "pylint", specifier = ">=4.1.3" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },

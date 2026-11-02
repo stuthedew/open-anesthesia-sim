@@ -10,12 +10,16 @@ that `pixel_sizes` documents, and none is read back from the function under
 test.
 """
 
+import inspect
+from collections.abc import Mapping
+
 import pytest
 
 from anesthesia_sim.layout.exceptions import InvalidLayout
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import shipped_workspace
 from anesthesia_sim.layout.sizing import (
+    Floor,
     PixelSize,
     TooSmall,
     apportion,
@@ -45,6 +49,12 @@ def _column(sizes: tuple[float, ...], *children: Area | Split) -> Split:
 
 def _area(number: int, view: ViewKind = _CHART) -> Area:
     return Area(AreaId(number), view)
+
+
+def _fixed(floors: Mapping[AreaId, PixelSize]) -> dict[AreaId, Floor]:
+    """Return a floor for each Area that is its size in `floors` at every width."""
+
+    return {area_id: Floor.fixed(size) for area_id, size in floors.items()}
 
 
 def _each(tree: Area | Split, size: PixelSize) -> dict[AreaId, PixelSize]:
@@ -119,7 +129,7 @@ def test_settle_draws_every_area_the_extent_can_give_its_need() -> None:
     tree = _row((0.82, 0.18), _area(1), _area(2, _PANEL))
     needs = {AreaId(1): PixelSize(400, 100), AreaId(2): PixelSize(260, 100)}
     floors = _each(tree, PixelSize(40, 30))
-    fit = settle(tree, PixelSize(1200, 500), _HANDLE_PX, needs, floors, kept=frozenset())
+    fit = settle(tree, PixelSize(1200, 500), _HANDLE_PX, needs, _fixed(floors), kept=frozenset())
 
     assert fit.drawn == {AreaId(1), AreaId(2)}
     assert fit.too_small == ()
@@ -133,7 +143,7 @@ def test_a_split_whose_halves_the_extent_cannot_hold_leaves_a_half_too_small() -
     tree = _row((0.5, 0.25, 0.25), _area(1), _area(2), _area(4))
     needs = _each(tree, PixelSize(400, 100))
     floors = _each(tree, PixelSize(40, 30))
-    fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
+    fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, _fixed(floors), kept={AreaId(1)})
 
     # One of the split's new halves drops to its floor before Area 1 does,
     # because the split did not touch Area 1. Dropping one half is enough,
@@ -156,7 +166,7 @@ def test_a_split_whose_halves_the_extent_can_hold_takes_their_room_from_the_neig
     tree = _row((0.5, 0.25, 0.25), _area(1), _area(2), _area(4))
     needs = _each(tree, PixelSize(300, 100))
     floors = _each(tree, PixelSize(40, 30))
-    fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
+    fit = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, _fixed(floors), kept={AreaId(1)})
 
     # 248 is less than 300, so both halves are held at 300. Area 1 takes the
     # other 992 - 600 = 392, which is still more than its own 300.
@@ -168,7 +178,7 @@ def test_kept_areas_are_let_go_only_once_the_others_are_at_their_floors() -> Non
     tree = _row((0.5, 0.5), _area(1), _area(2))
     needs = _each(tree, PixelSize(300, 100))
     floors = _each(tree, PixelSize(40, 30))
-    fit = settle(tree, PixelSize(408, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
+    fit = settle(tree, PixelSize(408, 300), _HANDLE_PX, needs, _fixed(floors), kept={AreaId(1)})
 
     # Two 300 px needs are more than the 400 px that the row has. The change
     # did not leave Area 2 in place, so Area 2 is let go to its 40 px floor.
@@ -177,7 +187,9 @@ def test_kept_areas_are_let_go_only_once_the_others_are_at_their_floors() -> Non
     assert fit.apportionment.splits[()] == (300, 100)
     assert fit.drawn == {AreaId(1)}
 
-    narrower = settle(tree, PixelSize(208, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
+    narrower = settle(
+        tree, PixelSize(208, 300), _HANDLE_PX, needs, _fixed(floors), kept={AreaId(1)}
+    )
 
     # At 200 px no Area can be held at a 300 px need. So Area 1 is let go too,
     # and the fractions give each Area 100.
@@ -190,8 +202,8 @@ def test_a_too_small_area_is_drawn_again_once_the_extent_can_give_it_its_need() 
     tree = _row((0.5, 0.25, 0.25), _area(1), _area(2), _area(4))
     needs = _each(tree, PixelSize(400, 100))
     floors = _each(tree, PixelSize(40, 30))
-    small = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, floors, kept={AreaId(1)})
-    wider = settle(tree, PixelSize(1616, 300), _HANDLE_PX, needs, floors, kept=small.drawn)
+    small = settle(tree, PixelSize(1008, 300), _HANDLE_PX, needs, _fixed(floors), kept={AreaId(1)})
+    wider = settle(tree, PixelSize(1616, 300), _HANDLE_PX, needs, _fixed(floors), kept=small.drawn)
 
     # 1616 - 16 = 1600 px is room for three 400 px needs, because 0.25 of 1600 is exactly 400.
     assert wider.apportionment.splits[()] == (800, 400, 400)
@@ -208,7 +220,7 @@ def test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_non
     # column(0.6, 0.4) of Areas 1 and 2, and Area 3. Each Area needs 300 by 300.
     needs = _each(tree, PixelSize(300, 300))
     floors = _each(tree, PixelSize(60, 40))
-    fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, floors, kept=frozenset())
+    fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, _fixed(floors), kept=frozenset())
 
     # The Areas need 300 + 8 + 300 = 608 px of width and 608 px of height. The
     # window has only 508 by 408 px, so it is 100 px short across and 200 px
@@ -250,7 +262,7 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
         PixelSize(400, 700),
         _HANDLE_PX,
         _each(column, PixelSize(100, 300)),
-        _each(column, floors_60),
+        _fixed(_each(column, floors_60)),
         kept=every,
     )
 
@@ -271,7 +283,7 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
         PixelSize(500, 400),
         _HANDLE_PX,
         _each(row, PixelSize(300, 100)),
-        _each(row, PixelSize(177, 60)),
+        _fixed(_each(row, PixelSize(177, 60))),
         kept=frozenset({AreaId(1), AreaId(2)}),
     )
 
@@ -290,7 +302,7 @@ def test_settle_releases_only_the_areas_that_must_give_way() -> None:
     floors = _each(stacked, floors_60)
 
     for kept in (frozenset(), frozenset(area.id for area in areas_in(stacked))):
-        fit = settle(stacked, PixelSize(600, 590), _HANDLE_PX, needs, floors, kept=kept)
+        fit = settle(stacked, PixelSize(600, 590), _HANDLE_PX, needs, _fixed(floors), kept=kept)
 
         assert fit.apportionment.splits[()] == (282, 300)
         assert fit.drawn == {AreaId(2), AreaId(3)}
@@ -311,7 +323,7 @@ def test_a_new_area_whose_drop_gains_nothing_keeps_its_view() -> None:
         PixelSize(600, 590),
         _HANDLE_PX,
         _each(stacked, PixelSize(200, 300)),
-        _each(stacked, PixelSize(40, 60)),
+        _fixed(_each(stacked, PixelSize(40, 60))),
         kept=frozenset({AreaId(2), AreaId(3)}),
     )
 
@@ -334,7 +346,7 @@ def test_where_even_the_floors_do_not_fit_only_the_areas_that_cause_it_give_way(
         PixelSize(1000, 100),
         _HANDLE_PX,
         {**_each(tree, PixelSize(300, 80)), AreaId(1): PixelSize(200, 80)},
-        _each(tree, PixelSize(60, 60)),
+        _fixed(_each(tree, PixelSize(60, 60))),
         kept=frozenset(),
     )
 
@@ -355,7 +367,7 @@ def test_a_tree_too_large_to_weigh_every_subset_drops_one_area_at_a_time() -> No
         PixelSize(1174, 100),
         _HANDLE_PX,
         _each(tree, PixelSize(100, 50)),
-        _each(tree, PixelSize(40, 30)),
+        _fixed(_each(tree, PixelSize(40, 30))),
         kept=frozenset(),
     )
 
@@ -367,9 +379,97 @@ def test_drawn_bounds_take_the_larger_of_the_need_and_the_floor_on_each_axis() -
     needs = {AreaId(1): PixelSize(160, 300), AreaId(2): PixelSize(400, 50)}
     floors = {AreaId(1): PixelSize(177, 60), AreaId(2): PixelSize(177, 60)}
 
-    assert drawn_bounds(needs, floors) == {
+    assert drawn_bounds(needs, _fixed(floors)) == {
         AreaId(1): PixelSize(177, 300),
         AreaId(2): PixelSize(400, 60),
+    }
+
+
+def _notice_floor(width_px: int) -> int:
+    """Return a floor's height: 150 px below 300 px wide, and 80 px from 300 px."""
+
+    return 150 if width_px < 300 else 80
+
+
+def test_a_floor_is_computed_only_at_a_width() -> None:
+    """`PL-16BG`: no caller can compute a floor without naming the Area's drawn width.
+
+    `AreaLayout._floor` used to default the width to 0, and the check that refuses a split
+    relied on that default (`PL-7DXG`). `Floor.at` takes the width as a required argument.
+    So a caller that leaves out the width fails mypy, and the call raises an error in this
+    test. This test fails if `Floor.at` is given a default width again.
+    """
+
+    floor = Floor(100, lambda width_px: _notice_floor(width_px))
+    width = inspect.signature(Floor.at).parameters["drawn_width_px"]
+
+    assert width.default is inspect.Parameter.empty
+
+    with pytest.raises(TypeError):
+        floor.at()  # type: ignore[call-arg]
+
+
+def test_a_floor_is_measured_at_the_width_it_is_drawn_at() -> None:
+    """A floor's height follows its drawn width, and a width below its own is its own."""
+
+    floor = Floor(100, lambda width_px: _notice_floor(width_px))
+
+    assert floor.at(0) == PixelSize(100, 150)
+    assert floor.at(299) == PixelSize(100, 150)
+    assert floor.at(300) == PixelSize(100, 80)
+    assert Floor.fixed(PixelSize(40, 30)).at(500) == PixelSize(40, 30)
+    # A part 400 px wide and 80 px tall holds the floor measured at 400 px. A part
+    # 200 px wide and 80 px tall does not, because at 200 px the floor is 150 px.
+    assert floor.fits_in(PixelSize(400, 80))
+    assert not floor.fits_in(PixelSize(200, 80))
+    assert not floor.fits_in(PixelSize(99, 500))
+
+
+def test_settle_measures_a_too_small_areas_floor_at_the_width_it_draws_the_area() -> None:
+    """`PL-9Z74`: a wide too-small Area is held at its lower floor, so a neighbour keeps its View.
+
+    Two Areas are stacked in a window 400 px wide and 308 px tall. The handle between them
+    takes 8 px, so the two Areas share 308 - 8 = 300 px of height. Each View needs 300 px of
+    width and 200 px of height. Each floor is 100 px wide. Its height is 150 px for an Area
+    drawn less than 300 px wide, and 80 px for one drawn 300 px wide or more.
+
+    At the floors' own width, 100 px, both floors are 150 px tall. One Area at its need and
+    one at its floor would need 200 + 150 = 350 px, so both drop and both are too small. But
+    both are drawn 400 px wide, where each floor is 80 px tall. Then 200 + 80 = 280 px fits
+    in the 300 px. The later Area drops to its floor, and the earlier keeps its View. The
+    earlier Area is held at its need of 200 px, and the later Area gets the other 100 px.
+    """
+
+    tree = _column((0.5, 0.5), _area(1), _area(2))
+    needs = _each(tree, PixelSize(300, 200))
+    floors = {area_id: Floor(100, lambda width_px: _notice_floor(width_px)) for area_id in needs}
+    fit = settle(tree, PixelSize(400, 308), _HANDLE_PX, needs, floors, kept=frozenset())
+
+    assert fit.drawn == {AreaId(1)}
+    assert fit.apportionment.splits[()] == (200, 100)
+    assert fit.bounds == {AreaId(1): PixelSize(300, 200), AreaId(2): PixelSize(100, 80)}
+    assert fit.too_small == (TooSmall(AreaId(2), PixelSize(300, 200), PixelSize(400, 100)),)
+
+    # With each floor fixed at its height at 100 px wide, neither Area keeps its View.
+    tallest = _fixed(_each(tree, PixelSize(100, 150)))
+    blanked = settle(tree, PixelSize(400, 308), _HANDLE_PX, needs, tallest, kept=frozenset())
+
+    assert blanked.drawn == frozenset()
+
+
+def test_drawn_bounds_measure_each_floor_at_the_width_of_its_need() -> None:
+    """A drawn Area is at least as wide as its need, so its floor is measured at that width.
+
+    Area 1 needs 300 by 60 px. At 300 px wide its floor is 80 px tall, so Area 1 is held
+    80 px tall. Area 2 needs 200 by 60 px. At 200 px wide its floor is 150 px tall.
+    """
+
+    needs = {AreaId(1): PixelSize(300, 60), AreaId(2): PixelSize(200, 60)}
+    floors = {area_id: Floor(100, lambda width_px: _notice_floor(width_px)) for area_id in needs}
+
+    assert drawn_bounds(needs, floors) == {
+        AreaId(1): PixelSize(300, 80),
+        AreaId(2): PixelSize(200, 150),
     }
 
 
@@ -461,7 +561,7 @@ def test_settle_holds_a_floor_above_a_need() -> None:
         PixelSize(500, 500),
         _HANDLE_PX,
         {AreaId(1): PixelSize(0, 0)},
-        {AreaId(1): PixelSize(60, 40)},
+        {AreaId(1): Floor.fixed(PixelSize(60, 40))},
         kept=frozenset(),
     )
 
