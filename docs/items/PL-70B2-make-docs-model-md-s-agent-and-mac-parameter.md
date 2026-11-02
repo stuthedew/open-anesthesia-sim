@@ -3,12 +3,14 @@ id: PL-70B2
 title: Make docs/MODEL.md's agent and MAC parameter sections, § "Required invariants", and § "Required tests" up to the published wash-in validation subsections readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1950
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Parameter provenance" "Required invariants" "Preserved circuit reference tests" "Zero-agent test" "Zero-ventilation test" "Zero-cardiac-output test" "Zero-tissue-flow test" "Equilibrium test" "Directional ventilation test" "Directional solubility test" "Directional tissue-capacity test" "Washout test" "Step-refinement test" "Independent-solution test"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
