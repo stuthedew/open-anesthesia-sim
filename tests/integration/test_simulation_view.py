@@ -9510,10 +9510,18 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
 #: fails, and so does an entry that no longer differs (`PL-WM5P`).
 SURFACE_FRAME_WIDGETS: dict[str, str] = {
     "QScrollBar": (
-        "the page's scroll bar follows the height the frame lays the page out at, "
-        "which is layout and states nothing about a run."
+        "a scroll bar follows the height the frame lays its scroll area out at, the page's "
+        "or the control-change record's. Whether the bar is shown at all follows the same "
+        "height. That is layout, and it states nothing about a run."
     )
 }
+
+#: The names Qt gives the private widgets that hold a `QScrollArea`'s two scroll
+#: bars. Qt shows or hides a bar by showing or hiding its container, so the
+#: walk below reads a container as part of its bar rather than as a widget of
+#: its own. Read on its own, a container is a plain `QWidget`, and an exemption
+#: for that type would exempt every plain panel on the dashboard (`PL-CSK0`).
+_SCROLL_BAR_CONTAINERS = frozenset({"qt_scrollarea_hcontainer", "qt_scrollarea_vcontainer"})
 
 
 def _run_widget_ids(view: SimulationView) -> set[int]:
@@ -9536,13 +9544,28 @@ def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
     surfaces: dict[str, list[QWidget]] = {}
 
     for widget in view.window().findChildren(QWidget):
-        if id(widget) in held:
+        if id(widget) in held or widget.objectName() in _SCROLL_BAR_CONTAINERS:
             continue
 
         chain = " < ".join(type(w).__name__ for w in _ancestry(widget)[:6])
         surfaces.setdefault(chain, []).append(widget)
 
     return surfaces
+
+
+def _surface_state(widget: QWidget) -> tuple[object, ...]:
+    """What a reader sees of one widget outside the runs.
+
+    A scroll bar's state also says whether the bar is shown within the window.
+    Its own hidden flag stays false while Qt hides it through its container, so
+    without this a bar that appears only once a frame lays the page out would
+    not be read at all.
+    """
+
+    if isinstance(widget, QScrollBar):
+        return (*_widget_state(widget), widget.isVisibleTo(widget.window()))
+
+    return _widget_state(widget)
 
 
 def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]:
@@ -9554,7 +9577,7 @@ def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]
     """
 
     return {
-        chain: [_widget_state(widget) for widget in widgets]
+        chain: [_surface_state(widget) for widget in widgets]
         for chain, widgets in _surface_widgets(view).items()
     }
 
@@ -9664,6 +9687,46 @@ def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
     }
 
     assert any("MarkListingLabel" in chain for chain in differing)
+
+
+def test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_the_bar(
+    application: QApplication,
+) -> None:
+    """A record column whose bar appears is read as a scroll bar difference, not a plain panel.
+
+    The drift run of 2026-11-02 under PySide6 6.12 laid the band of
+    unconditional values out shorter once a frame drew it, so the
+    control-change record overflowed and its vertical bar appeared. Qt shows
+    the bar by showing its private container, a plain `QWidget`, so the guard
+    above reported a `QWidget` that read differently (`PL-CSK0`). This test
+    makes the record overflow on purpose and checks that the difference is
+    read on the bar, which `SURFACE_FRAME_WIDGETS` exempts as layout, and on no
+    plain `QWidget`.
+    """
+
+    view = _case_view(application, _branched_case())
+    view.present(False)
+    _settle(application)
+    record_scroll = next(
+        area
+        for area in view.unconditional_region.findChildren(QScrollArea)
+        if area.widget() is not None
+        and area.widget().objectName() == simulation_view_module._RECORD_COLUMN_NAME
+    )
+    fitting = _surface_states(view)
+
+    record_scroll.widget().setMinimumHeight(record_scroll.viewport().height() + 400)
+    _settle(application)
+    overflowing = _surface_states(view)
+
+    differing = {
+        chain.partition(" < ")[0]
+        for chain in set(fitting) | set(overflowing)
+        if fitting.get(chain) != overflowing.get(chain)
+    }
+
+    assert record_scroll.verticalScrollBar().isVisibleTo(view.window())
+    assert differing == {"QScrollBar"}
 
 
 def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
