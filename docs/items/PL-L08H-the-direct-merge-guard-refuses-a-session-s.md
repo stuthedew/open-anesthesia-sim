@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-touches: .claude/hooks/direct-merge-guard.sh, tests/unit/test_direct_merge_guard.py
+touches: .claude/hooks/direct-merge-guard.sh, tests/unit/test_direct_merge_guard.py, docs/maintainer.md
 deferred-from: v0.7.0 - captured after the freeze (2026-11-02), a workflow defect and not safety or science
 added: 2026-11-02
 closed: 2026-11-02
