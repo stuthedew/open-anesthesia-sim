@@ -4507,17 +4507,17 @@ means re-measuring these figures, not just editing a constant.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 **The release check, and why it allows 0.5%.** The model advances in fixed
-steps of 0.1 s, and a shorter step should give almost the same result. Before
-each release, a test reruns the first minute of the default sevoflurane
-induction with steps of 0.1 s, 0.05 s and 0.025 s. Each run's alveolar,
-vessel-rich and mixed-venous concentrations must be within 0.5% of the run with
-the next shorter step. The 0.5% was set for the simulator's earlier calculation
-method, at about ten times the 0.04% alveolar difference that method showed.
-The current method's runs agree to better than one part in a trillion
-(measured 2026-10-03), so the much tighter limits above are the ones that would
-catch a real error. A compartment that holds almost no agent also passes if its
-two values differ by less than 0.000001 vol%, because there a tiny difference
-is a large percentage.
+steps of 0.1 s, and a shorter step should give almost the same result. Every
+change must pass a test that reruns the first minute of the default
+sevoflurane induction with steps of 0.1 s, 0.05 s and 0.025 s. Each run's
+alveolar, vessel-rich and mixed-venous concentrations must be within 0.5% of
+the run with the next shorter step. The 0.5% dates from the simulator's
+earlier calculation method, whose runs differed by about 0.04% in alveolar
+concentration. The current method's runs agree to better than one part in a
+trillion (measured 2026-10-03), so the much tighter limits above are the ones
+that would catch a real error. A compartment that holds almost no agent also
+passes if its two values differ by less than 0.000001 vol%. There, a tiny
+difference is a large percentage.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 This gate tests self-consistency across the supported steps, not
