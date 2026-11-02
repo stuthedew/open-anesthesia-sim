@@ -1867,10 +1867,10 @@ The implementation must:
 The method in § "Selected method (as implemented)" advances the whole system
 in one step, so requirements 2 and 3 are properties of the system matrix. No
 transfer is applied before another, and nothing is held fixed while another
-value moves. Requirement 2 holds because every rate reads the same state
-vector. Requirement 3 holds because each internal exchange appears as a pair
-of off-diagonal entries whose contributions to the total stored amount cancel.
-`tests/unit/test_governing_equations.py` checks that cancellation as a
+value moves. Requirement 2 is met because every rate is computed from the same
+state vector. Requirement 3 is met because each internal exchange appears as a
+pair of off-diagonal entries whose contributions to the total stored amount
+cancel. `tests/unit/test_governing_equations.py` checks that cancellation as a
 property of the matrix. Requirement 4 is why delivered and exhausted agent are
 also states of that system.
 
@@ -1897,7 +1897,7 @@ may display and a reader may reason about. The message of the raised
 at which it failed, so the reader does not have to infer the diagnosis from
 the numbers.
 
-The dynamic values are the eight that carry the trajectory, plus the
+The dynamic values are the eight values that make up the trajectory, plus the
 accounting period's initial amount. The eight are the circuit's inspired
 fraction, the alveolar amount, each of the three tissue amounts, the venous
 amount, and the cumulative delivered and exhausted amounts. Each cumulative
@@ -1905,12 +1905,12 @@ amount is captured with its compensation term (§ "Mass-balance identity"), so
 a step retried after a rollback gives the same result as the step that was
 undone. Settings and parameters are not restored. Restoring cardiac output,
 for example, would undo a change that the run had accepted. The circuit's
-record holds its volume beside the inspired fraction. So after a volume
-change, a restore puts back the captured amount of agent rather than the
+record stores its volume beside the inspired fraction. So if the volume has
+changed, a restore puts back the captured amount of agent rather than the
 captured fraction, and the volume stays at its setting. Each compartment
-captures its own values. If a dynamic field is added later without a matching
-capture, the omission stays local to that compartment, and the restore cannot
-look complete while it is partial.
+captures its own values. If a dynamic field is added to a compartment later
+without a matching capture, the omission affects only that compartment. The
+restore then cannot look complete while it is partial.
 
 Rolling back does not make the run resumable. The model reached a state that
 it could not step from, so the same step would fail again, and the caller must
@@ -1926,16 +1926,16 @@ SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
 SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
 ```
 
-`MAXIMUM_SIMULATION_STEP_S` is the top of the model's supported domain, and
-`MINIMUM_SIMULATION_STEP_S`, 1 ms, is the bottom. Both endpoints are included,
+`MAXIMUM_SIMULATION_STEP_S` is the largest step that the model supports, and
+`MINIMUM_SIMULATION_STEP_S`, 1 ms, is the smallest. Both endpoints are included,
 so any step from 1 ms to 0.1 s is supported. A `SimulationStep` cannot be
 built outside that range, and both `AgentUptakeSystem.advance()` and
 `SimulationState.advance()` accept only a `SimulationStep`.
 `SIMULATION_STEP_S` is the step that the interface takes, and it is set at the
-upper limit on purpose. § "Supported simulation step" states what the limit
-tolerates and why the two values are equal. Neither value is derived from the
-other. They are equal in this configuration only, which is why they have
-separate names.
+upper limit on purpose. § "Supported simulation step" states the timing error
+that the limit accepts and why the two values are equal. Neither value is
+derived from the other. They are equal in this configuration only, which is
+why they have separate names.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
@@ -1945,18 +1945,19 @@ means one step per tick. The two have separate names because the playback
 rate is the ratio between them: a tick takes
 `multiplier × tick interval ÷ step` whole steps. Written that way,
 "60× real time" is a claim that a test can check. With one name for both,
-someone could re-tune the wakeup for a different host without re-deriving the
-rates. Every rate on screen would then
-be false, and nothing would fail.
+someone could change how often the loop wakes, to suit a different host,
+without re-deriving the rates. Every rate on screen would then be false, and
+nothing would fail.
 
 ### Selected method (as implemented)
 
 Each simulation step is advanced by **one exact propagation of the whole
 coupled system**. Every setting is held constant during a step. So within that
 step, the six modelled fractions obey a linear, time-invariant system
-$`dy/dt = Ay + b`$. The constant $`b`$ is carried against a ninth state whose
-value is always 1, which turns the system into $`dy/dt = Ay`$. Its exact
-solution is
+$`dy/dt = Ay + b`$. The constant $`b`$ is moved into the matrix by adding a
+ninth state whose value is always 1. The seventh and eighth states are
+described below. Adding the ninth state turns the system into
+$`dy/dt = Ay`$. Its exact solution is
 
 $$
 y(t+\Delta t) = \exp(A\,\Delta t)\,y(t)
@@ -1977,9 +1978,9 @@ crosses the system boundary, at the rates given in § "External delivery" and
 § "Circuit exhaust": $`\dot M_{\mathrm{delivered}} = \dot V_FF_D`$ and
 $`\dot M_{\mathrm{exhausted}} = \dot V_FF_I`$. Delivered agent has a closed
 form of its own. Exhausted agent does not, because it is
-$`\dot V_F\int F_I\,dt`$ along a coupled trajectory. Carried as a state, it is
-integrated by the same propagator over the same trajectory, as requirement 4
-of § "Numerical method" asks.
+$`\dot V_F\int F_I\,dt`$ along a coupled trajectory. Because exhausted agent is
+a state of the system, the same propagator integrates it over the same
+trajectory, as requirement 4 of § "Numerical method" asks.
 
 **The residual that this method leaves is rounding.** Measured on 2026-09-06
 over a 3600 s run at 1 MAC, the worst residual at any step is 1.0e-12 L for
@@ -1994,10 +1995,10 @@ The relative residual is three orders of magnitude less than the check's own
 relative tolerance, so it is not a loss of accuracy. The absolute residual
 grows with how much agent the run has handled. As a result,
 `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (1e-12 L) is routinely exceeded on a
-long run, and the relative branch alone does the check. Measured on
-2026-09-06, the absolute tolerance was first exceeded at t = 3452 s at the
-reference runs' own settings, and at t = 538 s at the sevoflurane corner of
-the envelope.
+long run, and from then on the check passes on its relative branch alone.
+Measured on 2026-09-06, the absolute tolerance was first exceeded at
+t = 3452 s at the reference runs' own settings, and at t = 538 s at the
+sevoflurane corner of the envelope.
 
 That result sets the shape of the guard. `check_agent_accounting` accepts a
 residual that passes either branch. The absolute branch catches a gross error
@@ -2019,17 +2020,17 @@ a compartment negative at any step size. This follows from the construction of
 $`A`$, whatever the parameters are.
 
 The argument proves the lower bound only. In exact arithmetic, no fraction
-passes the larger of the delivered fraction and the largest fraction the run
+exceeds the larger of the delivered fraction and the largest fraction the run
 opened with. Rounding can still carry a fraction just above 1 from a state
 already at 1. No supported setting reaches that state, because every shipped
 vaporizer maximum keeps each fraction far below 1. The coupled model also
-refuses that state as an input. The delivered concentration and each fraction
-that the stepped system is built with stop at 0.99 of the ambient pressure.
-Runs started at that ceiling computed fractions at most 3.3e-5 above it
-(§ "The numerical envelope"). The capacity guard and the rollback therefore
-cover two cases. One is a state at the top of the range that a caller places
-through `resume_at`, or opens a `RunDefinition` from. Both of those check a
-state only from 0 through 1. The other is a model extension whose matrix is
+refuses that state as an input. The delivered concentration, and each fraction
+that the stepped system is built with, are limited to 0.99 of the ambient
+pressure. Runs started at that ceiling computed fractions at most 3.3e-5 above
+it (§ "The numerical envelope"). The capacity guard and the rollback therefore
+cover two cases. The first is a state at the top of the range that a caller
+passes to `resume_at` or opens a `RunDefinition` from. Those two routes check
+a state only from 0 through 1. The second is a model extension whose matrix is
 not a pure transfer system.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
@@ -2072,20 +2073,20 @@ never reach the model at all.
 
 **The physical timescale beside the step.** The fastest mode of the coupled
 system anywhere in the supported settings has a time constant of 5.83 s. That
-is for isoflurane at the widest fresh gas flow and ventilation and a cardiac
+is for isoflurane at the highest fresh gas flow and ventilation and a cardiac
 output of 9.32 L/min. At the default flows it is 13.7 to 16.6 s
-(§ "Alveolar gas"). The 0.1 s step is about a sixtieth of the fastest. This
-ratio is not an accuracy condition, because the exact step has none. It is why
-a control change that lands one step late moves the states so little. In one
-step, the fastest mode closes about 1.7% of its remaining gap, because
-$`1 - e^{-0.1/5.83} = 0.0170`$. It also means that a chart sampled once per
-step sees every mode the model has.
+(§ "Alveolar gas"). The 0.1 s step is about a sixtieth of that fastest time
+constant. This ratio is not an accuracy condition, because the exact step has
+none. It is why a control change that lands one step late moves the states so
+little. In one step, the fastest mode closes about 1.7% of its remaining gap,
+because $`1 - e^{-0.1/5.83} = 0.0170`$. It also means that a chart sampled
+once per step sees every mode the model has.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The ceiling is a declared tolerance, not a derived limit.** A search for a
-numerical limit, measured on 2026-09-06, found none. The step was swept from $`10^{-3}`$ s to
-$`10^{300}`$ s across the settings envelope. Over that sweep, the disagreement
-with an independent solution stays between about $`10^{-14}`$ and
+numerical limit on 2026-09-06 found none. The step was swept from $`10^{-3}`$ s
+to $`10^{300}`$ s across the settings envelope. Over that sweep, the
+disagreement with an independent solution stays between about $`10^{-14}`$ and
 $`2\times10^{-12}`$ in fraction. The disagreement does not grow with the step.
 It is U-shaped in the step instead, with a minimum around 1 to 60 s, because
 the only error left is rounding. Rounding accumulates once per *step*, so a
@@ -2098,12 +2099,12 @@ ceiling.
 
 Control resolution does not supply a threshold either, and this decides the
 form of the constant. A control change takes effect at the next step boundary.
-So the change is delayed by up to one whole step, and the displacement it
-causes is **exactly proportional to the step**. This was measured over three
-manoeuvres and all three agents. Halving the step halves the displacement, and
-there is no knee anywhere. So no step size is the one at which control timing
-becomes invisible. The constant can only be a declared tolerance, and it owes
-a reader the measurement of what it tolerates.
+So the change is delayed by up to one whole step, and the displacement of the
+states that the delay causes is **exactly proportional to the step**. This was
+measured over three manoeuvres and all three agents. Halving the step halves
+the displacement, and there is no knee anywhere. So no step size is the one at
+which control timing becomes invisible. The constant can only be a declared
+tolerance, so the error that it tolerates has to be measured and stated.
 
 **The tolerance, in percentage points of one atmosphere.** These figures are
 absolute concentrations. They are not counts of the readout's last digit,
@@ -2123,56 +2124,59 @@ These figures are judged against the model's own parameter uncertainty, which
 comes before both the step and the display. One standard deviation of a single
 measured partition coefficient displaces a displayed compartment by
 $`9\times10^{-4}`$ to $`6.8\times10^{-2}`$ pp (Yasuda et al. 1989, with the
-measurement in § "Displayed precision"). So at 0.1 s, an ordinary control
-action is timed to about a tenth of one parameter SD. In that sense the step
-is fine enough.
+measurement in § "Displayed precision"). So at 0.1 s, the timing error of an
+ordinary control action is about a tenth of one parameter SD. In that
+sense the step is fine enough.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**A test enforces both control-resolution tables.** These figures are the
-whole content of `MAXIMUM_SIMULATION_STEP_S`.
-`tests/reference/test_control_resolution.py` re-measures every one of them from
-the parameter files on each run. It drives each manoeuvre twice, once on time
-and once one grid step late, and takes the worst difference over all six
-displayed compartments. A change to the governing equations, a partition
-coefficient, the reference adult's volumes, the supported input envelope or
-the step itself moves the test's result before it can change what this section
-tells a reader. The same test pins the step at which the figures were
-measured, because the table and the constant are one decision.
+**A test enforces both control-resolution tables.** `MAXIMUM_SIMULATION_STEP_S`
+rests on these figures alone. `tests/reference/test_control_resolution.py`
+re-measures every one of them from the parameter files on each run. It drives
+each manoeuvre twice, once on time and once one grid step late, and takes the
+worst difference over all six displayed compartments. A change to the
+governing equations, a partition coefficient, the reference adult's volumes,
+the supported input envelope or the step itself changes the test's result
+before it can change what this section tells a reader. The same test pins the
+step at which the figures were measured, because the table and the constant
+are one decision.
 
-**What 0.1 s does not buy.** An abrupt manoeuvre is not kept within that
-criterion. At this step, a ventilator start displaces the alveolar reading by
-up to $`1.4\times10^{-1}`$ pp, which is about twice one parameter SD. The
+**What 0.1 s does not buy.** An abrupt manoeuvre is not kept within one
+parameter SD. At this step, a ventilator start displaces the alveolar reading
+by up to $`1.4\times10^{-1}`$ pp, which is about twice one parameter SD. The
 displacement lasts as long as the transient that the ventilator start causes.
 Keeping it within one SD would need a step near 0.05 s.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The step stays at 0.1 s, and that timing is accepted, for three reasons.**
-First, halving the step doubles the propagations per simulated second. It also
-changes the interface's tick structure, because `SIMULATION_TICK_INTERVAL_S`
-is assigned from the step and the playback rates are derived from their ratio.
-Second, the benefit applies only at 1× playback. Above 1×, the control grid
-described below is `multiplier × 0.1` s wide and outweighs the step, so a
-reader at 60× would see no change at all. Third, frames are two grid steps
-apart even at 1×. So a 0.05 s step would resolve control timing to half of
-what the display can show.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-At the shipped step, then, an abrupt ventilation change is timed to about
-twice one parameter SD. That is the one case where the step contributes more
-error than the parameters do. The error is small in absolute terms: 1.4×10⁻¹
-pp against a 1 MAC of 6.0% for desflurane. A reader comparing an abrupt
-ventilation change against a measurement should know that its *timing* is
-resolved to a tenth of a second and no better.
+1. Halving the step doubles the propagations per simulated second. It also
+   changes the interface's tick structure, because `SIMULATION_TICK_INTERVAL_S`
+   is assigned from the step and the playback rates are derived from their
+   ratio.
+2. The benefit applies only at 1× playback. Above 1×, the control grid
+   described below is `multiplier × 0.1` s wide and is coarser than the step,
+   so a reader at 60× would see no change at all.
+3. Frames are two grid steps apart even at 1×. So a 0.05 s step would resolve
+   control timing to half of what the display can show.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+At the shipped step, then, the timing error of an abrupt ventilation change is
+about twice one parameter SD. That is the one case where the step
+contributes more error than the parameters do. The error is small in absolute
+terms: 1.4×10⁻¹ pp against a 1 MAC of 6.0% for desflurane. A reader comparing
+an abrupt ventilation change against a measurement should know that its
+*timing* is resolved to a tenth of a second and no better.
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
 **The figures above are per step of delay, and the interface waits only one
 step for a control change at 1× playback.** The table above is the tolerance
-that this constant declares. Above 1×, the application resolves control
-timing more coarsely. The run loop advances a whole tick's worth of steps with
-nothing between them. So simulated time stays still for one real tick interval
-and then jumps by `multiplier × 0.1` s. A setting changed while the run is
-playing therefore first acts at a tick boundary. The simulated instants that a
-reader can reach are that far apart:
+that `MAXIMUM_SIMULATION_STEP_S` declares. Above 1×, the application resolves
+control timing more coarsely. The run loop advances a whole tick's worth of
+steps with no pause between them. So simulated time stays still for one real
+tick interval and then jumps by `multiplier × 0.1` s. A setting changed while
+the run is playing therefore first acts at a tick boundary. The simulated
+instants that a reader can reach are `multiplier × 0.1` s apart:
 
 | Playback rate | Control grid | Frames are | Worst displacement per grid step | Second worst | Margin |
 | --- | --- | --- | --- | --- | --- |
@@ -2196,24 +2200,26 @@ the measurements rather than from the rounded columns beside it.
 the worst is the ventilator start with desflurane, and the second worst is the
 unperfused load then dial off. That ordering is measured, not structural, so
 `test_the_ventilator_start_binds_the_per_rate_table_at_every_rate` re-checks
-it on every run. The margin column shows why the column is a bound. The lead
-is 2.84× at 1× and 1.03× at 300×, which is three per cent. At the coarsest
-grid, the two manoeuvres are the same number to the two significant figures
-that this table publishes. A parameter revision that reversed them would leave
-the bound correct and make the name of the worst manoeuvre wrong.
+it on every run. The margin column shows why the worst column is best read as
+a bound. The ventilator start's lead is 2.84× at 1× and 1.03× at 300×, which
+is three per cent. At the coarsest grid, the two manoeuvres are the same
+number to the two significant figures that this table publishes. A parameter
+revision that reversed them would leave the bound correct and make the name of
+the worst manoeuvre wrong.
 
-**They converge because they saturate at different rates.** The ventilator
-start's transient has largely run its course by the time a 30 s grid step has
-passed. So **its displacement saturates rather than scaling with the delay**.
-A linear extrapolation of its 1× figure overstates the 300× figure about four
-times. The unperfused load's transient is still going at 30 s, so its
-displacement is still nearly linear in the delay and keeps growing. Neither
-the figures nor the margin can be extrapolated, so use the measured values.
+**The two manoeuvres converge because they saturate at different rates.** The
+ventilator start's transient has largely run its course by the time a 30 s
+grid step has passed. So **its displacement saturates rather than scaling with
+the delay**. A linear extrapolation of its 1× figure overstates the 300× figure
+by about four times. The unperfused load's transient is still going at 30 s, so
+its displacement is still nearly linear in the delay and keeps growing.
+Neither the figures nor the margin can be extrapolated, so use the measured
+values.
 
-**An ordinary dial change sits well below both.** It is the case opening, a
-third manoeuvre. The case opening is about 21× milder than the bound at 1×.
+**An ordinary dial change is well below both columns.** It is the case opening,
+a third manoeuvre. The case opening is about 21× milder than the bound at 1×.
 The ratio narrows to 19× at 20×, 16× at 60× and about 7× at 300×, where the
-case opening reaches 1.5 pp. Use this comparison to size what a learner's own
+case opening reaches 1.5 pp. Use this comparison to judge what a learner's own
 actions cost. To see how much room the bound has, use the second-worst column.
 The tens of percentage points at 300× come from abrupt manoeuvres, and the
 second-worst column is the nearest of those.
@@ -2229,34 +2235,33 @@ Three things follow.
   takes no steps while the run is paused. So a setting changed during the
   pause acts from the step on which the run resumes. Use this route to time a
   manoeuvre, and the rate ladder to watch one.
-- **The grid is already finer than the display, by exactly two.** Frames are
-  one render interval apart, which is two tick intervals. So at every rate, a
-  reader sees the run at half the resolution at which they can act on it.
-  Servicing control events inside the burst, or waking the loop more often,
-  would tighten the grid. Either way would resolve control timing that the
-  display cannot show.
+- **The grid is already finer than the display, by a factor of exactly two.**
+  Frames are one render interval apart, which is two tick intervals. So at
+  every rate, a reader sees the run at half the resolution at which they can
+  act on it. Applying control events between the steps of a tick, or waking
+  the loop more often, would make the grid finer. Either change would resolve
+  control timing that the display cannot show.
 
 The largest supported step and the shipped step are the same number, and the
 interface runs at it.
 
-**A caller that wants a duration rather than a step asks the run's
+**A caller that wants a duration rather than a step uses the run's
 definition.** A step longer than the ceiling cannot be built:
 `SimulationStep(30.0)` raises a `SimulationConfigurationError`, so no call to
 `advance()` can ask for 30 s. Accuracy is not the reason, because the exact
 step is exact over any interval. The refusal protects the control timeline. A
 run taken in steps is one the interface could have produced, with each setting
-held for whole steps. A
-caller that wants the state after 30 s, or after an hour, of settings it does
-not change needs no steps at all. It builds a `RunDefinition` from the
-system's `equation_settings()` and `state_vector()`, with `opened_at_s` set to
-the instant the system has reached. For a run already under way, that instant
-is `SimulationState.elapsed_s`. The caller then moves the definition with
-`advance_to` and reads `state_at`. The opening instant has no default, so a
-run partway through a case cannot be opened at zero by mistake. `state_at`
-forms one matrix exponential over the whole interval (§ "The canonical
-evaluation rule"), in place of 300 or 36 000 steps.
+held for whole steps. A caller that wants the state after 30 s, or after an
+hour, with settings that do not change, needs no steps at all. It builds a
+`RunDefinition` from the system's `equation_settings()` and `state_vector()`,
+with `opened_at_s` set to the instant the system has reached. For a run
+already under way, that instant is `SimulationState.elapsed_s`. The caller
+then moves the definition with `advance_to` and reads `state_at`. The opening
+instant has no default, so a run partway through a case cannot be opened at
+zero by mistake. `state_at` forms one matrix exponential over the whole
+interval (§ "The canonical evaluation rule"), in place of 300 or 36 000 steps.
 `test_state_at_matches_a_stepped_run` in `tests/unit/test_run_definition.py`
-holds the two routes to the same answer. The application builds its
+checks that the two routes give the same answer. The application builds its
 predictions this way. No method on `SimulationState` takes steps in a loop for
 a caller, because no caller in `src/` needs one. The run loop takes a whole
 number of steps per tick. The loops over `advance` that remain are helpers in
@@ -2300,20 +2305,21 @@ has no knee. So, as with the ceiling, no step is the one at which the result
 becomes wrong, and the floor is declared rather than derived.
 
 **Where the floor is declared, and what enforces it.** 1 ms is the finest step
-at which the solution has been shown to be the shipped one. It is the bottom
-of the step sweep above. A test beside the step-refinement gate
+at which the solution has been shown to match the shipped step's solution. It
+is the bottom of the step sweep above. A test beside the step-refinement gate
 (§ "Step-refinement test") drives the model at that step and pins the constant
 there. Apart from the tests of the floor itself, no test runs finer than
-0.02304 s. The table is a dated measurement and not a gate, because the steps below
-its first row are outside the domain and no test can take them. So lowering
-the floor needs a new measurement, starting with that test at the new floor.
+0.02304 s. The table is a dated measurement and not a gate, because the steps
+below its first row are outside the domain and no test can take them. So
+lowering the floor needs a new measurement, starting with that test at the new
+floor.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-**It also bounds the run's own arithmetic.** At the floor, the supported run
-length is 86 400 000 steps. A float represents every whole count up to
+**The floor also bounds the run's own arithmetic.** At the floor, the supported
+run length is 86 400 000 steps. A float represents every whole count up to
 $`2^{53}\approx9.0\times10^{15}`$ exactly. Below about $`9.6\times10^{-12}`$ s,
-a day is more steps than that. Then `elapsed_s` would round the count before
-multiplying it by the step (§ "Simulated time is a count of steps, not a
+a day would take more steps than that, and `elapsed_s` would round the count
+before multiplying it by the step (§ "Simulated time is a count of steps, not a
 running total").
 <!-- derived: 86 400 000 steps from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- derived: 86 400 000 steps from core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
@@ -2355,28 +2361,29 @@ and a compartment stepped alone at 1 s is correct.
 **A compartment stepped on its own has a ceiling of its own: the supported
 run length.** One step cannot stand for more simulated time than the span over
 which the model is claimed to represent a patient (§ "Supported run length").
-Without a ceiling, a breathing circuit stepped by about 1e308 s would form its
-count of time constants elapsed, the admitted gas divided by the circuit
-volume, as `inf`. `BreathingCircuit.advance_fresh_gas` would then return an
-exhaust of `inf` during wash-in, and `nan` (zero times `inf`) when the dial
-was at or below the circuit's fraction. At the ceiling, the largest supported
-fresh gas flow in the smallest circuit volume that the numerical envelope
-admits (§ "The numerical envelope") elapses about 1.4e6 time constants. That
-is about 300 decades inside the range of a `float`. The tissue groups and the
-venous pool already return a finite amount at any finite step, because
-`exponential_approach` saturates at equilibrium. They take the same ceiling,
-so that one rule says which steps a compartment accepts.
+Without a ceiling, a breathing circuit stepped by about 1e308 s would compute
+the number of time constants elapsed as `inf`. That number is the admitted gas
+divided by the circuit volume. `BreathingCircuit.advance_fresh_gas` would then
+return an exhaust of `inf` during wash-in, and `nan` (zero times `inf`) when
+the dial was at or below the circuit's fraction. At the ceiling, a step covers
+about 1.4e6 time constants at the largest supported fresh gas flow in the
+smallest circuit volume that the numerical envelope admits
+(§ "The numerical envelope"). That is about 300 decades inside the range of a
+`float`. The tissue groups and the venous pool already return a finite amount
+at any finite step, because `exponential_approach` saturates at equilibrium.
+They take the same ceiling, so that one rule says which steps a compartment
+accepts.
 <!-- derived: 1.4e6 time constants from core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- derived: 1.4e6 time constants from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- derived: 1.4e6 time constants from core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
-A playback tick counts in the run's own step. So
+A playback tick is a whole number of the run's own steps. So
 `PlaybackRate.steps_per_tick` takes a `SimulationStep`, as the run does.
 The chart's grid is not subject to the floor. `RunDefinition` chains a column
 spacing at most once per column, so the rounding cannot accumulate beyond what
 the columns asked for. A grid at a tenth of the floor still lands on the run's
-own state to within 5e-14. A floor under the grid would reject narrow axes
-that the controller draws correctly.
+own state to within 5e-14. A floor on the grid spacing would reject narrow
+axes that the controller draws correctly.
 
 **The capacity guard reports a state the model cannot enter.** Where a step
 drives an amount out of range, `AgentUptakeSystem.advance()` reports
@@ -2491,14 +2498,14 @@ function or type that refuses a value outside it.
 
 **The state a run opens from has an interval too.**
 `require_canonical_state` in `core/governing_equations.py` is the guard that a
-`RunDefinition` and the live system's `resume_at` share. It checks a state's
-length, that its values are finite, and its unit entry. It builds each of the
-six fractions as a `Fraction`. It also refuses a cumulative amount of agent
-below zero or above 14 400 L, which is the fresh gas of a whole 24-hour case at
-10 L/min. Neither the delivered nor the exhausted fraction exceeds 1, so no
-case can move more agent than that. `tests/unit/test_governing_equations.py`
-drives each fraction and each amount one representable value past each bound
-and expects a refusal.
+`RunDefinition` and the live system's `resume_at` share. It checks the state's
+length, that its values are finite, and its unit entry, the state that is
+always 1. It builds each of the six fractions as a `Fraction`. It also refuses
+a cumulative amount of agent below zero or above 14 400 L, which is the fresh
+gas of a whole 24-hour case at 10 L/min. Neither the delivered nor the
+exhausted fraction exceeds 1, so no case can move more agent than that.
+`tests/unit/test_governing_equations.py` drives each fraction and each amount
+one representable value past each bound and expects a refusal.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 The blood flow that a tissue group or the venous pool is handed when it is
@@ -2567,13 +2574,13 @@ state that a run passed through. The display path builds each fraction it
 computes as a `Fraction` before it wraps the state in a `DisplayState`. So a
 window that a caller opened from a state at 1 is refused with
 `SimulationNumericalError` rather than drawn. The refusal names the
-compartment, such as the muscle group, because it reaches a learner as the
+compartment, such as the muscle group, because a learner sees it as the
 banner that says why the run halted.
 
-The ceiling has to sit below 1 by more than the largest excess over it that a
-run started from it computes. That excess was measured on 2026-10-31 at all 96
-corners, each at the 27 flow corners, from a wash-in to the ceiling, a washout
-from it and an equilibrium at it:
+The gap between the ceiling and 1 has to be larger than the largest excess over
+the ceiling that a run started from the ceiling computes. That excess was
+measured on 2026-10-31 at all 96 corners, each at the 27 flow corners, from a
+wash-in to the ceiling, a washout from it and an equilibrium at it:
 
 | Path | Largest fraction computed from the ceiling | Excess over 0.99 |
 | --- | --- | --- |
@@ -2599,14 +2606,15 @@ volume at 0.01 L, blood:gas at 1e4 and tissue:blood at 1e-3. There, the
 60-column window over 86 400 s advances each column by a propagator over
 1464.4 s. That propagator needs 32 squarings, the most that
 `core/matrix_exponential.py` performs. Its worst entry differed from a
-50-digit reference by 5.65e-7, about 2^32 times the unit roundoff, which is
-4.8e-7. The window applies it 59 times, and 59 times 5.65e-7 is 3.3e-5, the
-excess measured (2026-10-31). The same corner's 0.1 s step needs 19 squarings
-and differs from the reference by 1.6e-11. No shipped agent needs more than 19
-squarings over the 24-hour horizon, so a shipped run's propagators carry the
-smaller bound. The input ceiling keeps the envelope's worst case inside the
-ambient pressure. Projecting a computed fraction back to 1 would hide an error
-of this size instead of bounding it.
+50-digit reference by 5.65e-7. That is about 2^32 times the unit roundoff,
+and 2^32 times the unit roundoff is 4.8e-7. The window applies the propagator
+59 times, and 59 times 5.65e-7 is 3.3e-5, the excess measured (2026-10-31).
+The same corner's 0.1 s step needs 19 squarings and differs from the reference
+by 1.6e-11. No shipped agent needs more than 19 squarings over the 24-hour
+horizon, so a shipped run's propagators carry the smaller bound. The input
+ceiling keeps the envelope's worst case inside the ambient pressure.
+Projecting a computed fraction back to 1 would hide an error of this size
+instead of bounding it.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
@@ -2643,19 +2651,19 @@ count, which is 1e-4 at two decimals of a percent.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **How the bounds were measured.** The products and quotients alone would allow
-far wider bounds. The bound that binds is the accuracy of the step's
-propagator. `core/matrix_exponential.py` halves the interval until the scaled
-matrix is small, then squares the result back up. Each squaring can double the
-rounding error, so the number of squarings sets the accuracy ("What it costs"
-in that module). The fastest rate in the system matrix sets the number of
-squarings. The criterion is this: **at every corner of the envelope, the
-0.1 s step needs no more squarings than the shipped parameters already need
-over the 24-hour horizon.** That number is 19, for sevoflurane at the widest
-supported flows. So no step inside the envelope carries a larger error bound
-than a propagator that a shipped run already forms. The criterion concerns the
-bound, and the measured errors differ. The shipped run's 24-hour propagator
-measured 3.3e-11 in its worst entry, and the corners' steps measured up to
-1.3e-10.
+far wider bounds. The bound that actually applies comes from the accuracy of
+the step's propagator. `core/matrix_exponential.py` halves the interval until
+the scaled matrix is small, then squares the result back up. Each squaring can
+double the rounding error, so the number of squarings sets the accuracy
+("What it costs" in that module). The fastest rate in the system matrix sets
+the number of squarings. The criterion is this: **at every corner of the
+envelope, the 0.1 s step needs no more squarings than the shipped parameters
+already need over the 24-hour horizon.** That number is 19, for sevoflurane at
+the widest supported flows. So no step inside the envelope carries a larger
+error bound than a propagator that a shipped run already forms. The criterion
+is about the error bound, and the measured errors are different. The shipped
+run's 24-hour propagator measured 3.3e-11 in its worst entry, and the corners'
+steps measured up to 1.3e-10.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 The corners were measured on 2026-10-25, with every flow at zero or at the top
@@ -2691,9 +2699,9 @@ error" is the worst relative error of any entry of the 0.1 s propagator. "After
 
 Two rows hold the tissue groups at their shipped tissue:blood coefficients
 while the blood:gas coefficient is 10 000. That makes each tissue:gas
-coefficient larger than 10 000, so no parameter file can build those
-settings, though a settings record can. The two rows compare the two floors on
-the same reading.
+coefficient larger than 10 000. No parameter file can build those settings,
+although a settings record can. The two rows compare the two floors on the
+same reading.
 
 The last row is why the volume floor is 0.01 L and not 0.001 L. At 0.001 L the
 stiffest corner needed 22 squarings, and its step error was 1.7e-9, against
@@ -2705,9 +2713,11 @@ The bound on the error after 24 h barely depends on the step. A shorter step
 needs fewer squarings, so each step's bound is smaller, but there are
 proportionally more steps. The measured error does vary with the step. At the
 alveolar corner it was 1.8e-5 at a 0.01 s step and 3.0e-5 at 0.001 s. At the
-corner with every volume at 0.01 L it fell from 2.6e-5 to 7.0e-7 and 3.2e-7.
-The shipped run needs no squarings at any step, so its error grows with the
-number of steps: 9.6e-11, 9.6e-10 and 4.8e-9 (measured 2026-10-25).
+corner with every volume at 0.01 L, it fell from 2.6e-5 at the 0.1 s step to
+7.0e-7 at 0.01 s and 3.2e-7 at 0.001 s. The shipped run needs no squarings at
+any step, so its error grows with the number of steps: 9.6e-11 at 0.1 s,
+9.6e-10 at 0.01 s and 4.8e-9 at 0.001 s (measured 2026-10-25).
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
@@ -2758,13 +2768,13 @@ without a halt even in a 0.01 L lung.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **The tolerance stays a fixed $`10^{-9}`$, and a test says when to revisit it.**
-Each squaring can double a propagator's rounding, so a tolerance that followed
-the bound would end the halts above. It would also loosen the check where
-learners run, and no supported setting needs a squaring. Each shipped agent
+Each squaring can double a propagator's rounding. A tolerance that grew with
+that bound would end the halts above, but it would also loosen the check where
+learners run. No supported setting needs a squaring. Each shipped agent
 was stepped on 2026-10-31 with fresh gas at 0, 0.5, 1, 4 and 10 L/min,
 alveolar ventilation at 0, 1, 4 and 12 L/min and cardiac output at 0, 0.5,
-2.5, 5 and 10 L/min, at steps of 0.1 s, 0.01 s and 0.001 s. All 900
-propagators needed none. A correct run's residual stays far below
+2.5, 5 and 10 L/min, at steps of 0.1 s, 0.01 s and 0.001 s. None of the 900
+propagators needed a squaring. A correct run's residual stays far below
 $`10^{-9}`$. Over 24 h at the 0.1 s step, the worst relative residual was
 3.08e-12, for sevoflurane at 2% with 4 L/min of fresh gas, 4 L/min of
 ventilation and 5 L/min of cardiac output. The worst case in § "Mass-balance
@@ -2779,26 +2789,27 @@ identity", desflurane at 18% at the 1 ms step for 24 h, reached 3.73e-11.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- not-restated: 4 L/min, 5 L/min -->
 
-A rigorous tolerance summed from the bound would be loose there. The bound is
-about $`3 \cdot 2^{s} \cdot 2^{-52}`$ per step, with the margin of 3 that the
-sweep uses. The check compares the whole run's residual, so the bound is
-summed over every step. Even at $`s = 0`$, that gives 5.8e-10 for 24 h at the
-0.1 s step, 5.8e-9 at 0.01 s and 5.8e-8 at the 1 ms step. The last is 58 times
-looser than $`10^{-9}`$, and an accounting error of a few parts in $`10^{8}`$
-would then pass on a long run that a learner can reach. A tolerance widened
-only by what the squarings add, about $`3 (2^{s} - 1) 2^{-52}`$ per step
-summed, is exactly $`10^{-9}`$ wherever $`s = 0`$. That shape fits a profile
-that needs squarings, but no shipped profile does, so it was not built.
+A rigorous tolerance, made by summing the bound over the run, would be loose
+where learners run. The bound is about $`3 \cdot 2^{s} \cdot 2^{-52}`$ per
+step, where $`s`$ is the number of squarings the step needs, with the margin
+of 3 that the sweep uses. The check compares the whole run's residual, so the
+bound is summed over every step. Even at $`s = 0`$, that gives 5.8e-10 for
+24 h at the 0.1 s step, 5.8e-9 at 0.01 s and 5.8e-8 at the 1 ms step. The last
+is 58 times looser than $`10^{-9}`$, and an accounting error of a few parts in
+$`10^{8}`$ would then pass on a long run that a learner can reach. A tolerance
+widened only by what the squarings add, about $`3 (2^{s} - 1) 2^{-52}`$ per
+step summed, is exactly $`10^{-9}`$ wherever $`s = 0`$. That shape fits a
+profile that needs squarings, but no shipped profile does, so it was not built.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 `test_every_shipped_agent_steps_without_squarings_at_any_supported_setting` in
-`tests/unit/test_numerical_envelope_sweep.py` steps each shipped agent, with
-the patient and machine that the application runs, with each flow at either end
-of its supported range, at the smallest and the largest supported step. It
-requires every propagator to need no squarings. A stiffer profile, such as a
-small patient, fails it on the day it ships. Its failure message says to
+`tests/unit/test_numerical_envelope_sweep.py` steps each shipped agent with the
+patient and machine that the application runs. It sets each flow at either end
+of its supported range and uses the smallest and the largest supported step.
+It requires every propagator to need no squarings. A stiffer profile, such as
+a small patient, fails it on the day it ships. Its failure message says to
 choose a tolerance that widens only by what the squarings add.
 
 **What would reopen the bounds.** The volume floor was measured at the adult
