@@ -672,7 +672,11 @@ BLIND_UNCOUNTED = (
 #: test for a real decision is the design round's, so it is pointed at rather
 #: than restated, and the high-risk cases are the ones the owner's rule names
 #: in this repository's terms. What a learner can be misled by is the first,
-#: because the safety-critical standard in `CLAUDE.md` makes it so.
+#: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
+#: of docs/MODEL.md that keeps every value, equation, code span and citation is
+#: housekeeping, and only a sentence whose meaning needs a clinician's judgment
+#: reaches the owner (project owner, 2026-11-02, ratified, over holding every
+#: section part of `PL-ZT47` for the owner's read, `PL-ZTZF`).
 JUDGE_ASK = (
     "  Decide whether the owner needs to read it, and record the answer as a trailer in "
     "the last paragraph of a commit made after the change, beside its Co-authored-by "
@@ -685,7 +689,12 @@ JUDGE_ASK = (
     "under that the owner did not ask for in their own words; or one whose breakage CI "
     "would not show or a revert would not undo. Anything else is housekeeping and not "
     "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
-    "a measurement. Then ask again."
+    "a measurement. A docs/MODEL.md rewrite is not needed when `python3 "
+    "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
+    "line it prints as dropped is history or a duplicate the document still holds, and no "
+    "sentence changes what a value means or what a hazard row or limitation promises. "
+    "Where one does, it is needed, and the ask quotes that sentence before and after. "
+    "Then ask again."
 )
 
 #: This module, which decides the answer. Since 2026-10-19 a change to it

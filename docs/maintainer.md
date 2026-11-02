@@ -461,6 +461,17 @@ the case for the change, its risks, and what was checked. `#1516` set this
 rule. The path list held that pull request for you, although nothing in it
 needed a decision.
 
+**A rewrite of `docs/MODEL.md` that changes no value, equation, code span or
+citation merges on green** (project owner, 2026-11-02, ratified, over holding
+each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
+`python3 tools/model_rewrite.py lost`. It lists every equation, code span,
+citation and number that the rewrite dropped or added. The rewrite is
+housekeeping when it added none, and when each one it dropped is history moved
+to an item or a duplicate that the document still holds. The blind review
+passes and the prose review still run. A sentence whose meaning needs a
+clinician's judgment, such as what a hazard row or a limitation promises,
+still comes to you, and the ask quotes it before and after.
+
 The session decides which kind a change is. It records that decision on a
 commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`.
 `bin/docket arm` reads that record. Some changes wait until a record made
