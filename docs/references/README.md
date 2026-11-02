@@ -219,10 +219,11 @@ abstract-only.
 > 2005;100(4):1020-33. PMID [15781517](https://pubmed.ncbi.nlm.nih.gov/15781517/),
 > DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
 
-A review, tier 3: PubMed types it so, and it says its figures "illustrate
-concepts but are not necessarily precise (quantitative) reflections of the
-kinetics" (p. 1020). Its numbers come from elsewhere, Table 3's time constants
-from the two Yasuda et al. 1991 papers below.
+A review, so tier 2 under `docs/MODEL.md` § "Source hierarchy", which counts a
+review as a secondary synthesis. PubMed types it as a review. It says its
+figures "illustrate concepts but are not necessarily precise (quantitative)
+reflections of the kinetics" (p. 1020). Its numbers come from elsewhere, Table
+3's time constants from the two Yasuda et al. 1991 papers below.
 
 **What has been taken from it, and where it is recorded.** For `PL-FBY3`,
 `docs/MODEL.md` § "Known limitations" takes Table 3's intertissue-diffusion

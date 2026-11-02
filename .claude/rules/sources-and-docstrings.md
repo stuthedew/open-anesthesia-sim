@@ -34,8 +34,9 @@ blood:gas coefficients are De Wolf et al.'s table, kept in preference to the
 primary measurements cited beside them on the project owner's decision of
 2026-09-03 (`PL-D6LX`). The tissue:gas coefficients print in the same table,
 but their adopted authority has been Yasuda, Targ and Eger since 2026-09-13.
-That changed once the stored values were found to be that paper's
-measurements as Gas Man rounded them; the paper's own figures were not
+That changed once the stored values were found to be
+Gas Man's figures for Yasuda, Targ and Eger's measurements, each within one
+standard deviation of the paper's mean. The paper's own figures were not
 substituted (`PL-FN5F`). All of the reference patient's parameters but its
 venous pool are the Gas Man Workbook's, for want of a primary source any
 session can reach.
