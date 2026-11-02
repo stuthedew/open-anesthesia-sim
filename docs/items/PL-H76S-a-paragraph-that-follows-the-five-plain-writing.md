@@ -3,10 +3,11 @@ id: PL-H76S
 title: A paragraph that follows the five plain-writing patterns and passes both reviews is still unintelligible to a clinician when it uses numerical-methods vocabulary ("operator split", "relative gap", "4e-4"), because no step in drafting, review or audit asks whether the intended reader understands it
 priority: P1
 effort: L
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
-touches: .claude/skills/docket/modes/close-out.md, .claude/rules/plain-writing.md
+touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md
+blocked-by: PL-R7Q6, PL-TZ7R, PL-1XC7, PL-FYGJ
 added: 2026-11-02
 payoff: the project's writing and review process produces paragraphs a clinician can follow, so the owner stops finding unreadable text after every review has passed it
 not-delegable: finding why the writing process failed is a judgment about how reviews are briefed, which no command can confirm
@@ -304,7 +305,9 @@ no record supports.
    writer had to explain a number that had no recorded explanation.
 
 **Recommendation: build these four changes**, as one item each under
-`prose-quality`, once the owner agrees.
+`prose-quality`, once the owner agrees. [superseded 2026-11-02: filed under a
+feature of their own, `reader-tested-prose`, so that `bin/docket feature
+reader-tested-prose` says when the fix is complete.]
 
 1. **Name each document's reader in one place.** A table in
    `.claude/rules/plain-writing.md` gives each kind of text its reader, what
@@ -379,6 +382,23 @@ no record supports.
    2026-11-02, 22:14Z: "Where do the rejected paragraphs go? Seems like that
    could add up over time?").
 
+**Answer.** "Yes" (project owner, 2026-11-02, 23:41Z, ratified, over a sixth
+plain-writing pattern, which the owner declined at 20:07Z). Before answering,
+the owner asked where the rejected paragraphs go (22:14Z), which change 4 now
+answers, and widened the clinician reader to one who wants to understand how
+the simulation works (22:15Z). The four changes are filed as one item each,
+ranked `P1` because the owner made this fix the project's highest priority at
+20:42Z, in the order they are built:
+
+1. `PL-R7Q6`, the reader table, and the reader printed beside each unit.
+2. `PL-TZ7R`, the point and use stated before writing, and a chosen value's
+   reason traced to a record.
+3. `PL-1XC7`, the takeaway test in place of "read as a newcomer".
+4. `PL-FYGJ`, the owner's rejected paragraphs kept as a set the review must
+   catch.
+
+This item stays open, blocked by the four, and closes with the last of them.
+
 **Decided in the round.** Three calls have one clearly correct option.
 
 - The blind review brief is unchanged. Readability has one owner, the prose
@@ -422,5 +442,7 @@ was about.
 - Paraphrase testing. Digital.gov plain language guide.
   https://digital.gov/guides/plain-language/test/paraphrase-testing
 
-**Done when.** The cause in the writing process is named, and a fix to the
+**Done when.** [superseded 2026-11-02: the design round named the cause and
+the owner approved the fix.] `PL-R7Q6`, `PL-TZ7R`, `PL-1XC7` and `PL-FYGJ` are
+closed. The earlier form: The cause in the writing process is named, and a fix to the
 process, not a new pattern in the rule, is proposed to the owner.
