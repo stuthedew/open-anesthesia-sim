@@ -28,6 +28,17 @@
 # `DIRECT_MERGE_GUARD_API` replaces the API root for the tests and is set
 # nowhere else.
 #
+# **Only a merge into this repository is judged** (`PL-L08H`). The skew the
+# hook prevents is a stale branch on this repository's `main`. A session also
+# merges in other repositories, such as the private references corpus, which
+# has no branch protection and no CI. Its merges have no checks to skip, and the
+# hook refused them for nothing, leaving each one to the owner. So the hook
+# reads which GitHub repository its own checkout is from
+# `tools/open_pull_requests.repo_slug`, the one reading of that fact
+# (`PL-LGDV`), and lets a merge naming any other repository through unread.
+# Where `origin` names no GitHub repository, or the read fails, the hook cannot
+# tell its own merges from others, so it judges every merge, as it did before.
+#
 # **The merge method is not checked**: the repository allows squash merges
 # alone (`allow_merge_commit` and `allow_rebase_merge` false, read 2026-10-03),
 # so GitHub refuses any other.
@@ -107,6 +118,23 @@ def record(path):
         return json.load(response)
 
 
+def own_repository():
+    """`owner/name` of the GitHub repository this hook is checked into, or None.
+
+    It is read by `open_pull_requests.repo_slug`, from the `origin` of the
+    checkout that holds this hook (`PL-L08H`). None means the hook cannot tell
+    which merges are its own: `origin` names no GitHub repository, or the read
+    failed. The caller then judges every merge.
+    """
+    try:
+        sys.path.insert(0, os.path.join(os.environ["HOOKS"], os.pardir, os.pardir, "tools"))
+        import open_pull_requests
+
+        return open_pull_requests.repo_slug()
+    except Exception:
+        return None
+
+
 try:
     payload = json.loads(os.environ["PAYLOAD"])
 except ValueError:
@@ -138,6 +166,12 @@ except (KeyError, TypeError, ValueError):
         "the call names no pull request this hook can read, so it cannot ask GitHub "
         "whether the base branch holds the merge to its required checks."
     )
+
+# A merge in another repository cannot leave a stale branch on the `main` of
+# this one. GitHub treats owner and repository names without regard to case.
+own = own_repository()
+if own is not None and (owner + "/" + repo).lower() != own.lower():
+    sys.exit(0)
 
 repository = "/repos/" + urllib.parse.quote(owner, safe="") + "/" + urllib.parse.quote(repo, safe="")
 named = "`" + owner + "/" + repo + "#" + str(number) + "`"
