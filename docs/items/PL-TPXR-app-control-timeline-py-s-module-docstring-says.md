@@ -3,11 +3,13 @@ id: PL-TPXR
 title: app/control_timeline.py's module docstring says its one unit conversion is from a fraction to the percent the delivered dial is displayed in, but since PL-NJPB format_control_value also converts the recorded percent to a fraction before format_percent, so the docstring misstates where the delivered value's units change (found closing PL-KSLX)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: src/anesthesia_sim/app/control_timeline.py
 added: 2026-11-01
+closed: 2026-11-02
+pr: 1940
 payoff: a reader of control_timeline.py learns that the module itself turns the dial's percent into a fraction, so nobody passes it a fraction and displays a hundredth of the setting
 verify: ! grep -qF 'The one unit conversion is from a' src/anesthesia_sim/app/control_timeline.py
 ---
@@ -39,3 +41,9 @@ restates where the code converts units, and it went stale when `PL-NJPB` changed
 the recorded unit to percent. That is `PL-4FBP`'s fact at family altitude, but
 in a code docstring, which `PL-FM15` placed outside the documents that
 `PL-4FBP`'s convention binds. So it is not recorded as a re-entry.
+
+**Closed 2026-11-02.** The module docstring now says that the delivered dial's
+recorded value is a percent, that `format_control_value` converts it to a
+fraction because `format_percent` takes the model's fraction, and that
+`format_percent` converts it back to the displayed percent. Checked against
+`format_control_value`'s own body and docstring.
