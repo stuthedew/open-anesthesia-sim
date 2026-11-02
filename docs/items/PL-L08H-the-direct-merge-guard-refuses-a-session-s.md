@@ -3,11 +3,13 @@ id: PL-L08H
 title: The direct-merge guard refuses a session's merge in any repository whose base branch does not bind admins, though it exists to guard only this repository's main; it refused stuthedew/open-anesthesia-sim-references PR 1, which has no branch protection and no CI, so the merge fell to the owner for nothing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/direct-merge-guard.sh, tests/unit/test_direct_merge_guard.py
 deferred-from: v0.7.0 - captured after the freeze (2026-11-02), a workflow defect and not safety or science
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1942
 payoff: a session merges a pull request in the references corpus itself, while the guard still holds this repository's main to its required checks
 verify: grep -q 'def test_a_merge_in_another_repository_is_let_through_unread' tests/unit/test_direct_merge_guard.py && grep -q 'def test_a_merge_in_this_repository_is_judged_by_its_own_origin' tests/unit/test_direct_merge_guard.py
 ---
@@ -36,6 +38,10 @@ written into the hook. A merge naming another repository passes to the ordinary
 permission flow, unread. Where the checkout's `origin` names no GitHub
 repository, the hook cannot tell which merges are its own, so it judges every
 merge as before. That is the safe direction.
+
+**Decision.** Narrow the guard to this repository (project owner, 2026-11-02,
+ratified, over keeping every merge in another repository his to click). He
+chose it on a decision card in the thread that built this.
 
 **Generator check.** A one-off. The fact misread is which repository the guard
 protects. The hook was written when this was the only repository a session
