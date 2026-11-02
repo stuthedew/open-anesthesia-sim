@@ -88,3 +88,35 @@ the alveolar gas volume was right, `SimulationController.set_circuit_volume`
 has the same gap, and both need a decision about whether either is a control
 at all before a range can be declared for them. `docs/MODEL.md` § "Supported
 input ranges" states the gap rather than leaving it silent.
+
+## Moved from docs/MODEL.md (PL-QHR2, 2026-11-02)
+
+The rewrite of § "Supported input ranges" removed this history from the specification. It is kept here verbatim, as it stood on `main`.
+
+answer to a question that physiology does not ask. For exactly that case, the
+required behavior is to prefer an obvious failure to a plausible-looking
+number. That requirement does not depend on the arithmetic being imprecise.
+
+The numerical figures below are kept as history. They describe the method
+that shipped through v0.4.2. They were measured on desflurane over the
+*unperfused load, then dial off* trajectory of § "Independent-solution test"
+above. They used the shipped 0.1 s step and were compared against the
+0.01-percentage-point displayed resolution.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+| Setting | $`C`$ (s⁻¹) | Multiple of the bound | Last displayed digit uncertain by |
+| --- | --- | --- | --- |
+| The documented maxima | $`2.29\times10^{-3}`$ | 1.0 | 2.3 counts |
+| Alveolar ventilation 200 L/min | $`3.37\times10^{-3}`$ | 1.5 | 3.4 counts |
+| Fresh gas flow 500 L/min | $`5.82\times10^{-3}`$ | 2.5 | 5.8 counts |
+| All three flows at twice their maxima | $`4.57\times10^{-3}`$ | 2.0 | 4.6 counts |
+| All three at ten times their maxima | $`2.28\times10^{-2}`$ | 10.0 | 23 counts |
+| Cardiac output 1000 L/min | $`9.12\times10^{-2}`$ | 40 | 91 counts |
+
+The last row is the setting that PL-0MLQ found the simulator accepting. Under
+the split, ninety-one counts meant an alveolar readout that was wrong in its
+*first* decimal, while it presented itself as a settled two-decimal value.
+Under the exact step, that readout is right to the last digit. It is a precise
+concentration for a patient whose cardiac output is twenty times any human's.
+That is the worse of the two failures, not the better one, because nothing
+about the display invites doubt.

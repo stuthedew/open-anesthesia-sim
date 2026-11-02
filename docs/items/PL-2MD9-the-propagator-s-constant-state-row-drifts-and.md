@@ -186,3 +186,42 @@ carries it - and the constant row is the one whose exact answer is known.
   carry the drift), and `state_at` moves at the last bits, worst 6.8e-13
   relative and 9.8e-13 L absolute, on 48 of 135 elements. A release cut after
   this cannot claim bit-identity for the canonical path against v0.5.21.
+
+## Moved from docs/MODEL.md (PL-QHR2, 2026-11-02)
+
+The rewrite of § "Supported input ranges" removed this history from the specification. It is kept here verbatim, as it stood on `main`.
+
+refused after. The difference is made up exactly by the 116 that had returned
+a zero propagator silently and the one that had raised `OverflowError`.
+Nothing that had advanced was refused. Since `PL-2MD9`, the same sweep at the
+0.1 s step returns a propagator at 11 decades, $`10^{0}`$ to $`10^{-10}`$ L,
+each with the constant state row exact. It refuses the other 313 before any
+arithmetic. Of the 119 decades that returned a propagator before and are
+refused now, the mass-balance guard had halted the run at 117. At one more,
+the run had stopped on a fraction outside zero to one. The last,
+$`10^{-18}`$ L, advanced with every value wrong (described below). A single
+mode decaying below the smallest subnormal is still propagated as 0.0, which
+is correct. `exp(-0.5 * 3600)` is a real number that no double can hold. A
+single zero entry of this kind is what separates a decayed entry from an
+
+**The last failure in this family is closed by a cap on the squarings**
+(`PL-2MD9`). Between $`10^{-8}`$ and $`10^{-19}`$ L the propagator stayed
+finite and nonzero, but the constant state row drifted. No interval may move
+that row, and its row in $`A`$ is empty for exactly that reason. It drifted to
+1.0000610 at $`10^{-12}`$ L, then 2.718, then $`2.28\times10^{+222}`$ at
+$`10^{-19}`$ L. The shift lets the error in, and the squarings amplify it. The
+
+at the 24-hour horizon and the widest supported flows. The first change alone
+would have been worse than nothing. It let 114 decades between $`10^{-25}`$
+and $`10^{-306}`$ L that had been refused advance again, with every entry but
+the constant's destroyed. That happened because the zero-propagator refusal
+above relied on the constant row being annihilated with the rest.
+
+**That band was not covered the way this section used to say.** The section
+said that the mass-balance guard caught the drift from $`10^{-9}`$ L down. At
+$`10^{-18}`$ L it did not. The run advanced three steps with every entry of
+the propagator wrong by about 100%. It showed 6.4e-32 L delivered where the
+vaporizer had delivered 0.0004 L, and the accounting check passed.
+It passed because the same failure had reached every term of the identity,
+which is the pattern from `PL-3PRZ` again. The cap refuses this case, and
+`tests/unit/test_agent_simulation_validation.py` contains the regression test.

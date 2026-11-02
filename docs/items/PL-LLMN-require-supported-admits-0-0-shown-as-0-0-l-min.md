@@ -72,3 +72,13 @@ a `ValueError` - each reproduced on that branch. None is reachable from the
 interface, for the reason given above. The concentrations' half belongs in
 this item's fix, `core/concentration.py` and `tests/unit/test_concentration.py`
 beside the flows' files.
+
+## Moved from docs/MODEL.md (PL-QHR2, 2026-11-02)
+
+The rewrite of § "Supported input ranges" removed this history from the specification. It is kept here verbatim, as it stood on `main`.
+
+(`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made
+the two comparisons, so it admitted whatever those admit. `True` was a flow of
+1 L/min. A `Decimal` was converted and stored. A string was refused in the
+words of `isfinite` rather than the simulator's. And `-0.0`, which is inside
+every interval, was stored with its sign and displayed as `-0.0 L/min`.
