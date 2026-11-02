@@ -498,11 +498,13 @@ says what could go wrong and for whom, what was checked, and the one thing to
 look at. Until a record made after the newest change covers the pull request,
 `arm` tells the session to send you nothing. It says so on the first line of
 its output and with an exit status of its own. A thread cannot send the ask
-anyway. `.claude/hooks/owner_ask_guard.py` rejects a thread's reply that asks
-you to read or merge, unless `arm` has a recorded ask and the reply carries
-that ask's line (`PL-TLPH`). The coordinator's post that relays such an ask is
-rejected unless it carries a line in the recorded form. The hook cannot check
-that the line is the recorded line itself (`PL-YV90`). A question whose answer
+anyway. `.claude/hooks/owner_ask_guard.py` checks every Projects message that
+asks you to read or merge: a post, an edit, a decision card, and any Projects
+tool it has not been told to skip (`PL-YN60`). Where `arm` has a recorded ask
+for the checkout's branch, the message must carry that ask's line
+(`PL-TLPH`). Otherwise, as for the coordinator relaying a thread's ask, it must
+carry a line in the recorded form. The hook cannot check that such a line is
+the recorded line itself (`PL-YV90`). A question whose answer
 is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges
 on green without asking you. A change to a test that pins `arm`'s results

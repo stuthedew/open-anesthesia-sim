@@ -3,12 +3,14 @@ id: PL-PR1W
 title: Place the compartment schematic beside the concentration chart in one shipped Workspace
 priority: P2
 effort: S
-status: ready
+status: done
 classes: feature
 feature: schematic
 touches: src/anesthesia_sim/data/workspaces, tests/unit
 blocked-by: PL-RNYV
 added: 2026-10-25
+closed: 2026-11-02
+pr: 1929
 payoff: a learner meets the schematic beside the concentration chart without building that layout first
 verify: grep -rq 'compartment_schematic' src/anesthesia_sim/data/workspaces
 ---

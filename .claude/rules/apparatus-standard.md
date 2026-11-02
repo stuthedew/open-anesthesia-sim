@@ -112,6 +112,18 @@ Writing the floor down costs nothing because the code already holds to it:
 instead of being rounded off. The floor is the rule those three are instances
 of.
 
+**A guard keyed on names that another system owns fails toward checking.**
+The harness and its MCP servers own tool names, and they rename tools without
+notice. A hook wired on a list of those names stops checking anything when
+one changes, and it reports nothing. Its tests still pass, because they pin
+the hook's own copy of the list. `owner_ask_guard.py` checked no thread edit
+or decision card for that reason after `reply`, `update_message` and
+`ask_decision` were renamed (`PL-YN60`). So wire such a hook on the whole
+namespace, such as `^mcp__hearthbot__.*$`, and name only the tools it skips.
+A renamed tool is then checked until someone names it, and a wrong refusal
+says so at once. Where checking every call would refuse real work, say in the
+hook's header what goes unchecked when a name changes.
+
 **It is not the specialist standard arriving by another door.** It asks for no
 polish, no coverage target, no abstraction, no prose. A five-line script that
 prints the right answer clears it; a well-factored, well-tested mechanism that
