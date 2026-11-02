@@ -9609,11 +9609,24 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
         if halted.get(chain) != drawn.get(chain)
     }
 
+    unexplained = {
+        chain: (halted.get(chain), drawn.get(chain))
+        for chain in set(halted) | set(drawn)
+        if halted.get(chain) != drawn.get(chain)
+        and chain.partition(" < ")[0] not in SURFACE_FRAME_WIDGETS
+    }
+
     assert len(halted) > 20, "the walk found too few widgets to be reading the window"
     assert sorted(differing - set(SURFACE_FRAME_WIDGETS)) == [], (
         "these widgets outside every run read differently on a halted dashboard and on the "
         "same dashboard drawn: restate them from SimulationView.halt_restatements, or name "
-        "their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them"
+        "their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them. "
+        "Each chain below is followed by its widgets as the halt left them, then as a frame "
+        "drew them, each as (type, hidden, enabled, style sheet, text or value):\n"
+        + "\n".join(
+            f"{chain}\n  halted: {pair[0]}\n  drawn:  {pair[1]}"
+            for chain, pair in sorted(unexplained.items())
+        )
     )
     assert sorted(set(SURFACE_FRAME_WIDGETS) - differing) == [], (
         "these widgets read alike on a halted dashboard and a drawn one now, so their "
