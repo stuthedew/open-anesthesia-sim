@@ -36,6 +36,22 @@ one-SD displacement table under "The upper limit" may both rest on the wrong
 SDs. If the table perturbed each coefficient by 3.9% to 6.4%, its fat and
 muscle rows understate the displacement.
 
+**Checked 2026-11-02: muscle's SDs are larger still.** The same sources
+notes quote the paper's muscle tissue:gas values as 0.94 ± 0.35
+(desflurane), 2.38 ± 1.03 (sevoflurane) and 4.40 ± 1.97 (isoflurane). That
+is 37% to 45% of the mean, about twice fat's and about eight times the
+figures the section gives. The brain tissue:gas SDs are 0.54 ± 0.02,
+1.15 ± 0.07 and 2.09 ± 0.10, or 3.7% to 6.1%, close to the brain:blood ones.
+So the vessel-rich row may be near right, while the muscle and fat rows are
+the ones to re-measure. The values are in the note beside the Yasuda
+citation (PMID 2774233) in each of
+`src/anesthesia_sim/data/agents/desflurane.json`, `sevoflurane.json` and
+`isoflurane.json`, the note that starts "ADOPTED 2026-09-13". Those notes say
+the muscle and fat figures come from the paper's full text, which is not in
+PubMed Central, so this item reads the table before citing it. The two
+sentences that `PL-TCD3` added say only that fat's SDs are larger. This
+item's rewrite says muscle's too.
+
 **Done when.** Each SD the section states is the SD of the coefficient it
 names, read from the source with its table cited. The displacement table says
 which SD it perturbed each coefficient by, and is re-measured where that SD
