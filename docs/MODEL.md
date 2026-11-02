@@ -3004,10 +3004,10 @@ every such value carries all three today:
   file's `provenance_gap` where the whole file is in that state.
 - **The date and whose decision it was**, where a lower tier is adopted in
   preference to an available primary source rather than for want of one.
-  `venous_pool_volume_l` is the worked example. Davis and Mapleson 1981 is
-  tier 2, and it was adopted on the project owner's decision of 2026-09-07,
-  in preference to Gas Man's default of 1.0 L (the Workbook's Appendix C,
-  `VEN=1.0`). The file's Workbook entry records that default.
+  The three blood:gas coefficients are the worked example. Measured
+  primaries exist for all three, and the project owner decided on 2026-09-03
+  to keep the Gas Man values and label them. The paragraph below on the
+  agent files gives each difference.
 
 That bar is higher than the one a tier-1 citation clears. Only two reasons are
 admissible. The work of finding a primary source is not one of them:
@@ -3023,7 +3023,7 @@ admissible. The work of finding a primary source is not one of them:
 2. **The value belongs to a set whose internal consistency is part of what is
    being modelled**, and replacing it would mean mixing the reachable
    primaries across laboratories and cohorts. This is tier 3's own argument
-   above. The twelve partition coefficients are the worked example. Eger,
+   above. The three blood:gas coefficients are the worked example. Eger,
    Strum and Eger, Lerman et al., and Esper et al. 2015 did measure these
    quantities in this population, so the first reason does not cover them.
    But a single laboratory's blood:gas figure dropped into a Gas Man tissue
@@ -3037,7 +3037,7 @@ from the stored one, so the reader can see what the choice costs. For the
 three blood:gas coefficients the stored values sit 0.9% to 26.3% below the
 measured ones. The paragraph below on the agent files gives each difference,
 the date of the decision, and the planned route to a primary coefficient set,
-which would retire this reason for these twelve.
+which would retire this reason for these three.
 
 Where a primary measurement *is* available and simply has not been adopted,
 the entry says so in those words, and the value **carries no adopted
@@ -3126,9 +3126,10 @@ never what tier its source carries. The command prints the counts but does not
 compare them with this paragraph. Whoever changes a count must check that the
 sentence around it is still true.
 
-`mac_percent` is the one of these values that a reader divides by. It is the
-divisor of the second display unit, so its tier governs a displayed clinical
-value as well as a starting dial position. § "Delivery-limit and MAC
+Of all the stored values, `mac_percent` is the one that a reader divides by.
+It is tier 3, from De Wolf et al.'s Gas Man set. It is the divisor of the
+second display unit, so its tier governs a displayed clinical value as well as
+a starting dial position. § "Delivery-limit and MAC
 parameters" states what that costs, and § "Known limitations" records it.
 
 Every `sources` entry in every data file names its tier. The three agent files
@@ -3202,8 +3203,8 @@ Wilkins. The Workbook attributes nothing to Mapleson.
 no numbers. Alveolar volume, the
 three tissue volumes and the three flow fractions are in the table and equal
 what is stored. Cardiac output is there only as the sum of the flow column.
-Reference weight and alveolar ventilation are interface defaults for which the
-supplied chapters state no number. **The venous pool's 1.0 L is not in the
+Reference weight and alveolar ventilation are not in the table either. **The
+venous pool's 1.0 L is not in the
 table at all**: its `Blood` row reads 5.00 L. Lowe and Ernst is the link that
 decides whether this chain ends in a measurement or in another compilation.
 The paragraphs below show that it ends in neither.
@@ -3213,12 +3214,14 @@ three of those four.** Its Appendix C, "Gas Man
 System Defaults", pages 171–72, prints the program's `GASMAN.INI` verbatim. Its
 `[Volumes]` block gives `CKT=8.0`, `ALV=2.5`, `VRG=6.0`, `MUS=33.0`, `FAT=14.5`
 and `VEN=1.0`. `[Ratio]` gives `76`, `18`, `6`. `[Defaults]` gives `VA=4` and
-`CO=5`. So alveolar ventilation is stated as a number rather than described,
-and cardiac output no longer rests on a column sum. The venous pool's 1.0 L is
-in the document after all. Only `weight_kg` is in neither appendix. **Nothing
-is promoted by any of it.** These are one program's defaults written down
-twice, tier 3 both times, and the venous pool has since moved off Gas Man
-entirely.
+`CO=5`. So alveolar ventilation is stated as a number, and cardiac output does
+not rest on a column sum. The venous pool's 1.0 L is in the document after
+all. Only `weight_kg` is in neither appendix. The Workbook's prose states it,
+together with the 4 L/min alveolar ventilation, in Chapter 13, page 127.
+**Nothing is promoted by any of it.** These are one program's defaults written
+down more than once, tier 3 each time, and the venous pool has since moved off
+Gas Man entirely.
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Lowe and Ernst has been read at the source, and the chain does not end
 there.** Pages 55–60 and 82–84 were read on 2026-09-08 from an
@@ -3572,8 +3575,7 @@ Gas Man as having taken anything from this paper.
 Appendix C's `GASMAN.INI` listing, on page 172, reads `[Volumes] … VEN=1.0`.
 That is a program default, tier 3. Davis and Mapleson's 1222 ml is tier 2 and
 is the same object this model has, so the stored venous pool is a considered
-replacement for Gas Man's default. The Workbook gives `weight_kg` only in its
-prose (Chapter 13, page 127), and no equation reads it.
+replacement for Gas Man's default.
 
 **So, three rules for a `sources` entry.**
 
@@ -3868,12 +3870,13 @@ kind of parameter file.
   defaults are described without numbers. The two Gas Man simulation studies
   read here chose flows for their own purposes (De Wolf et al. used 1 L/min,
   and Weber et al. used 10 L/min for washout). The value is a **teaching
-  default, not a clinical recommendation**, decided by the project owner on
-  2026-09-20. It is a flow well inside the supported interval. It was chosen
-  because it puts the circuit time constant at 90 s. That is long enough for
-  the machine lag to show as a distinct phase of the early rise, and short
-  enough to resolve within the first minutes of a teaching run. The data file
-  labels this as a design rationale, not a measurement.
+  default, not a clinical recommendation** (project owner, 2026-09-20,
+  ratified, over lowering it to match contemporary low-flow practice). It is a
+  flow well inside the supported interval. It was chosen because it puts the
+  circuit time constant at 90 s. That is long enough for the machine lag to
+  show as a distinct phase of the early rise, and short enough to resolve
+  within the first minutes of a teaching run. The data file labels this as a
+  design rationale, not a measurement.
   **It is also the flow a run starts at when a machine profile states none.**
   `default_fresh_gas_flow_l_min` is optional in a profile, because no surveyed
   machine publishes a startup flow. A run built from a
