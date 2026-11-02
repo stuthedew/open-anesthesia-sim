@@ -3,12 +3,14 @@ id: PL-1P15
 title: Show what the delivered agent cost in money, at a price per agent the reader sets, on the agent cost View
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md
 blocked-by: PL-B396, PL-VJZK, PL-93B3
 added: 2026-10-25
+closed: 2026-11-02
+pr: 1939
 payoff: a learner sees what the delivered agent cost at their own institution's price, labelled with its currency and the price's date
 verify: grep -rq 'def test_the_cost_is_the_delivered_liquid_volume_times_the_price' tests
 ---
