@@ -82,9 +82,29 @@ def test_facts_reads_each_kind_once() -> None:
     assert ("date", "2026-10-03") in found
     assert ("citation", "10.1213/00000539-199103000-00007") in found
     assert ("citation", "pp. 161-162") in found
-    assert ("number", "6") in found
     numbers = {text for kind, text in found if kind == "number"}
-    assert numbers == {"6"}
+    assert numbers == {"6 L/min"}
+
+
+def test_a_number_keeps_its_sign_exponent_and_unit_and_a_list_ordinal_is_not_one() -> None:
+    """Each change below alters a value, so each must read as a lost fact."""
+    before = (
+        "A residual of 9.262e-14 L and 1.67e5 steps.\n"
+        "A shift of −2.29 SD in 1.32 L, at 6L.\n"
+        "1. Fat spans 4 px.\n"
+        "2. It reaches 3 MAC.\n"
+    )
+    after = (
+        "A residual of 9.999e-14 L and 1.92e5 steps.\n"
+        "A shift of 2.29 SD in 1.32 mL, at 6 mL.\n"
+        "1. Fat spans 4 px.\n"
+        "2. It reaches 3.\n"
+        "3. A third point.\n"
+    )
+
+    gone = {item.text for item in gone_facts(before, after, "")}
+
+    assert gone == {"9.262e-14 L", "1.67e5", "−2.29", "1.32 L", "6L", "3 MAC"}
 
 
 def test_gone_facts_counts_what_the_rewrite_holds_fewer_times_and_marks_the_moved() -> None:
@@ -126,4 +146,4 @@ def test_lost_reads_the_fork_and_a_new_item_file(
     assert "2 equations, code spans, citations and numbers" in out
     assert "1 of them were added to an item file" in out
     assert "  gone  pp. 161-162  (fork line 21:" in out
-    assert "  moved 6  (fork line 15:" in out
+    assert "  moved 6 L/min  (fork line 15:" in out
