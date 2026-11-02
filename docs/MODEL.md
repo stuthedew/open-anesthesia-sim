@@ -201,6 +201,8 @@ remains a question for a reviewer.
 | reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot that names the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never answers from them. The run keeps its setting until the release (§ "A preview of an unapplied setting", `PL-5B1N`) | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
+| reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale (§ "The compartment schematic: what its heights, amounts and share bar assert") | no test yet (`PL-RNYV`) |
+| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid-equivalent amount "mL liquid equiv.", and `DisplayUnit` holds both spellings, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert") | no test yet (`PL-RNYV`) |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 8 % -->
@@ -11329,7 +11331,8 @@ refused, rather than shown at a default.
 | The delivered total | Millilitres of liquid | 1 | 0.1 mL | One SD of the measured liquid density |
 | The exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
 | The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
-| One compartment's amount | Millilitres of vapour | None yet | - | `PL-2881` derives it |
+| One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | One SD of a partition coefficient, as a share of the amount, below (`PL-2881`) |
+| One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | One SD of a partition coefficient, below (`PL-2881`) |
 
 **The exhausted total in millilitres of liquid is shown in whole
 millilitres.** The exhausted total carries the partition coefficients'
@@ -11440,6 +11443,65 @@ checks it against `app/formatting.py`. It does so because the ordering claim
 above is a property of the rounded values. Adding a decimal would change what
 that claim proves without changing anything the test reads. A change to the
 resolution is a change to this section.
+
+**A compartment's amount is shown to two significant figures, because its
+uncertainty is a share of the amount rather than a fixed volume** (`PL-2881`,
+2026-11-01). The derivation above was repeated on each compartment's amount
+in millilitres of vapour. Each of the four stored coefficients was perturbed
+by one published SD, one at a time, at 1 MAC with the reference adult's
+flows. The amounts were read every second for the first 20 minutes, and at
+60 min, 180 min and 24 h. The shift runs from almost nothing, in the circuit
+in the first seconds, to 216 mL, in desflurane's fat at 24 h, because the
+amounts themselves span as many orders of magnitude. So no single count of
+decimals lies inside the band that the readouts' derivation admits. One count
+of 1 mL is a two-hundredth of one SD in desflurane's fat at 24 h, the kind of
+false precision that stopped the run totals at 0.1 L. One count of 10 mL is
+still a twenty-second of an SD there. It would also print sevoflurane's and
+isoflurane's venous blood as "<10 mL" for almost the whole first hour. That
+blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and 9.7
+to 10.0 mL at 60 min. That is the flat reading that the readouts' lower limit
+refuses.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 0.18 -->
+
+Relative to the amount, the shift is narrow. In venous blood and the three
+tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
+it is below 3%, because the dial sets them and a coefficient barely moves
+them. Two significant figures put the last digit at 1% to 10% of the amount.
+Measured, one count lies between a tenth of one SD, in desflurane's venous
+blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. The coarse
+end loses detail and claims nothing false, which the one-sided bound above
+allows. The fine end is finer than the readouts' seventh of an SD, but only
+in the first two minutes, while venous blood fills. Three significant figures
+would put one count at a hundredth of an SD. That is the order the readouts'
+third decimal and the totals' second decimal were refused at, a seventieth
+and a fiftieth. One figure would print fat's amount in steps of 1000 mL by
+24 h. So two is the finest count the parameters support, and it is the count
+chosen.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+The uniform resolution of the readouts does not carry over, for two reasons.
+"Why the resolution is uniform rather than per-compartment" rests first on the
+parameters' uncertainty being absolute across the row. For the amounts it is
+relative, as above. It rests second on a row of values scanned by glyph
+position. The schematic's amounts are labels on separate containers, each
+followed by its unit, and the comparison of amounts that the schematic
+invites is made on the share bar, along one scale. An amount below 0.01 mL
+reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`. A finer floor
+would print four or more decimals for a moment's worth of agent. The floor is
+a legibility choice and a placeholder, and it is coarse in the allowed
+direction.
+
+**A compartment's share is shown in whole percent.** One SD of a coefficient
+moves a compartment's share by at most 1.2 percentage points, in isoflurane's
+muscle at 24 h. So one count of 1 percentage point lies between 0.8 SD and
+more than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
+A positive share below 0.5% reads `<1%`, so a compartment that holds agent
+never reads as holding none. A share of 99.5% or more that is not the whole
+reads `>99%`, so no compartment reads as holding all of the agent while
+another holds some. In a desflurane run, the circuit holds more than 99.5% of
+the agent for about its first second.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### The chart's hover readout: what the tooltip may show
 
@@ -12280,6 +12342,106 @@ are rounded.
 **Tests.** No test enforces this section yet. Its two rows in the hazard table
 (§ "Reasonably foreseeable misuse, and the hazards the presentation carries")
 name `PL-1P15` as the item that owes them.
+
+### The compartment schematic: what its heights, amounts and share bar assert
+
+The compartment schematic draws the circuit, the alveoli, venous blood, the
+vessel-rich group, muscle and fat as containers, in the order in which agent
+reaches them (`PL-RNYV`). This subsection says what each mark on it asserts,
+before any of it is drawn (`PL-2881`, 2026-11-01). It also governs every
+other View that shows an agent amount: the schematic's share bar (`PL-S79P`)
+and the agent cost View (`PL-B396`). Gas Man's Picture draws the same
+containers to show where the tension is. This schematic adds the amounts and
+the share bar to show where the agent is, which the readouts and the chart do
+not show. `ROADMAP.md` § "v0.7.0 - the schematic" records that design and
+what it was chosen over.
+
+**A container's fill height is the compartment's modelled tension, and it is
+not an amount.** Every container of one run fills against one scale. That
+scale is the concentration chart's percent axis, from zero at the bottom to
+`chart_axis_top_percent` at the top, which is 3 MAC of the running agent for
+every agent (`CHART_AXIS_TOP_MAC`). So a height on the schematic and a height
+on the chart are the same tension, and a learner who moves between the two
+Views reads one ruler. The schematic reads the top from that function and
+does not choose a second one. A container that holds more agent can stand
+lower than one that holds less. With sevoflurane at a 1 MAC dial, fat stands
+at 0.03% atm at 60 min, under 1% of its container's height, while it holds a
+fifth of the stored agent (`ROADMAP.md` § "v0.7.0 - the schematic").
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+Every container is drawn at one width, so its filled area is not an amount
+either. Drawn to scale, fat's container would take about 500 px of a View
+600 px wide, and four of the others between 1 and 7 px each, which is why
+`ROADMAP.md` records that drawing to scale was refused. A tension above the
+top of the scale fills its container to the top and is marked as off the
+scale, as the chart names a clipped trace in its off-scale notice. The
+container's label still prints the tension, so no value is lost. A
+sevoflurane dial at its 8% maximum puts the circuit at 4 MAC, so this case is
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+reachable.
+
+**A container's amount is the compartment's modelled agent, and its label says
+it is vapour.** The amount is $`M_x`$ of § "Agent amount": the equivalent
+volume of pure agent vapour at 20 °C and 760 mmHg, dry, shown in millilitres.
+It is a statement about the model's store, not about gas in the body. The
+agent in blood and fat is dissolved, and the reference condition names the
+unit, not where any of the gas is. Each amount is read from the snapshot's
+record for its compartment (`PL-KFTM`), which reads that compartment's
+`agent_amount_l` in `core/`. The schematic does not compute an amount of its
+own. Its precision is derived in § "Displayed precision".
+
+**How the interface names the unit of an agent amount, once for every View.**
+Two units count agent in millilitres, and they differ by a factor of about
+180 to 210, by agent. At the reference condition, 1 mL of liquid gives about
+183 mL of sevoflurane vapour and about 210 mL of desflurane vapour
+(§ "Agent amount"). So no View prints a bare "mL" beside an
+agent amount. A vapour amount is written "mL vapour", as in "38 mL vapour". A
+liquid-equivalent amount is written "mL liquid equiv.", as in "4.2 mL liquid
+equiv.". The second spelling says "equivalent" because the agent it counts was
+never liquid in the model. It is the volume of liquid that would give that
+much vapour. `DisplayUnit` in `app/display_units.py` will hold both spellings,
+so every View reads them there and none writes its own. The wording is a
+placeholder while the interface is being built. The rule is not: every
+spelling of an agent amount's unit names vapour or liquid. The accounting
+View's litres keep their caption, "Litres of equivalent pure agent gas", which
+names the vapour in other words.
+
+**What the share bar shows.** The schematic has one bar, divided into six
+segments in the containers' order. Each segment's length is that
+compartment's amount as a share of all the agent the run holds, circuit
+included:
+
+```math
+s_x = \frac{M_x}{\sum_y M_y}
+```
+
+The sum runs over the six compartments, and it is the snapshot's
+`stored_agent_l`. So the six shares fill the whole bar. Each segment is named
+in text, never by colour alone. A share printed in text is shown in whole
+percent, derived in § "Displayed precision". When a run starts, it holds no
+agent, so no share exists. The bar is then drawn empty and prints no share,
+rather than dividing by zero or showing six zeros as if they were shares. The
+bar is used instead of the containers' areas because a position along a
+common scale is judged more accurately than an area (Cleveland WS, McGill R,
+"Graphical perception: theory, experimentation, and application to the
+development of graphical methods", *J Am Stat Assoc* 1984;79(387):531-554,
+https://doi.org/10.1080/01621459.1984.10478080). Only the first segment
+starts at the bar's baseline. Each of the others is judged by its length,
+which their ranking still places above area.
+
+**Why no container is drawn for arterial blood.** This model gives arterial
+blood no volume, capacity or amount of its own, because
+$`F_a \equiv F_A`$ at every instant (§ "Blood compartments"). Gas Man's
+Picture draws an arterial container. Here it would show agent that the model
+does not hold, and its segment on the share bar would be a share of nothing.
+Arterial tension equals alveolar tension, which the alveolar container
+already shows.
+
+**What the schematic does not assert.** Every height, amount and share on it
+is a model output, so the schematic carries the interpretation statement,
+"Model outputs — not measurements.", once, in its own heading, as the readout
+section does. No amount is a prediction about a patient to its last digit,
+for the reason § "Displayed precision" gives for the readouts.
 
 ## Assumptions
 

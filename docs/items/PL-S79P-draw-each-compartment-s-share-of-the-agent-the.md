@@ -40,3 +40,5 @@ above.
 colours are added, and that produces no findings of its own.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** The named test does not exist, the fat shares quoted match `PL-H5DV`'s table, and its blocker, `PL-RNYV`, is open.
+
+**What `PL-2881` settled for this build, 2026-11-01.** `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and share bar assert" defines the share as the compartment's amount over `stored_agent_l`, circuit included. A share printed in text is a whole percent, a positive share below 0.5% reads `<1%`, and a run that holds no agent draws an empty bar with no shares (§ "Displayed precision").

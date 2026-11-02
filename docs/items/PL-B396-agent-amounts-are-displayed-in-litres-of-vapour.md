@@ -3,7 +3,7 @@ id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: ux, docs, safety, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md, docs/ARCHITECTURE.md
@@ -325,3 +325,5 @@ here. Recommended: take that record, refuse an agent mismatch, and refuse or
 label a store.
 
 **Checked 2026-10-27 (`PL-0S0V`): the liquid precision is derived.** The delivered total in millilitres of liquid is to be shown to a tenth (project owner, 2026-10-27, ratified, over whole millilitres). It carries no partition-coefficient uncertainty, and one SD of the measured density moves it by 0.1 mL only above about 190 mL of liquid sevoflurane. The exhausted total stays in whole millilitres. Read it with `agent_amount_display_precision(AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID)`. The agent cost View's litre figure should read `(AgentAmount.DELIVERED, AgentAmountUnit.LITRES_OF_VAPOUR)`, the entry the accounting panel uses, so the two match. The stored total is refused in liquid, because a store converted to liquid reads 5.8% high. `docs/MODEL.md` § "Displayed precision" has the derivation.
+
+**What `PL-2881` settled for this build, 2026-11-01.** `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and share bar assert" sets the spelling of a liquid-equivalent amount for every View: "mL liquid equiv.", held in `DisplayUnit`. The hazard row on a vapour amount read as liquid names `PL-RNYV`, and this View's test belongs beside it.

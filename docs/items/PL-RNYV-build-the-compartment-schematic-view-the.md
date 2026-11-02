@@ -3,7 +3,7 @@ id: PL-RNYV
 title: Build the compartment schematic View: the circuit, the alveoli, venous blood and the three tissue groups as containers filled to tension, each labelled with its tension and its amount of agent vapour
 priority: P1
 effort: L
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: schematic
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md
@@ -45,3 +45,5 @@ View chooser, and the tests above pass.
 colours are added, and that produces no findings of its own.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `app/view_registry.py` registers no schematic View, the six compartment colours are in `app/theme.py`, and both blockers, `PL-2881` and `PL-KFTM`, are open.
+
+**What `PL-2881` settled for this build, 2026-11-01.** `docs/MODEL.md` § "The compartment schematic: what its heights, amounts and share bar assert" is the specification. Three parts of it need code here. First, each container fills against `chart_axis_top_percent`, the chart's own axis top, and a tension above it fills the container and is marked off the scale while its label keeps the value. Second, an amount is shown to two significant figures and never finer than 0.01 mL, with `<0.01 mL vapour` below that and `0 mL vapour` at zero (§ "Displayed precision"). `AgentAmountPrecision` holds a count of decimals, so it needs a significant-figure form for `AgentAmount.COMPARTMENT`, and `test_a_unit_with_no_derived_precision_is_refused` changes with it. Third, the unit is written "mL vapour", and that spelling goes into `DisplayUnit` so no View writes its own. The schematic's heading carries "Model outputs — not measurements." The two hazard rows that name this item need their tests.
