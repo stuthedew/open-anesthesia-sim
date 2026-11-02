@@ -7814,6 +7814,12 @@ def test_a_marker_holds_a_numeric_paragraph_only_through_the_figures_it_ties() -
             "<!-- derived: 37.5 s from data/patients/adult.json alveolar_volume_l = 2.5 -->",
             {("37.5", "s")},
         ),
+        # A derived figure ties only in the unit the marker writes, so "6 L"
+        # does not tie "6 %" (both blind review passes on #1934).
+        (
+            "<!-- derived: 6 L from data/patients/adult.json alveolar_ventilation_l_min = 4 -->",
+            {("6", "L")},
+        ),
         ("<!-- not-restated: 6 L, 6 %, 37.5 s -->", set()),
     ],
 )
@@ -7826,6 +7832,23 @@ def test_marker_held_figures_names_what_each_marker_kind_ties(
 
     assert set(figures) == {("6", "L"), ("6", "%"), ("37.5", "s")}
     assert doc_check._marker_held_figures([paragraph, marker], figures) == tied
+
+
+def test_a_grouped_figure_is_read_whole_and_an_e_notation_one_as_no_figure() -> None:
+    """Regression for `PL-TCD3`'s review: "86 400 s" read as "400 s", "9.6e-12 s" as "12 s".
+
+    Read whole, the grouped figure is tied by a marker for 86400 s, as
+    `check_prose_provenance` reads the same marker. A figure in e-notation is
+    read as no figure, as a math span's exponent is not one.
+    """
+    paragraph = "The run is 86 400 s long, and the residual is 9.6e-12 s."
+    marker = (
+        "<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->"
+    )
+    figures = doc_check._unit_figures([paragraph], [paragraph])
+
+    assert figures == [("86400", "s")]
+    assert doc_check._marker_held_figures([paragraph, marker], figures) == {("86400", "s")}
 
 
 @pytest.mark.parametrize(

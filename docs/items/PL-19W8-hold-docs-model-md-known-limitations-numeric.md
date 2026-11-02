@@ -62,8 +62,10 @@ the section and runs the model, as
   different figure, so it also declares the test it owes. Since `PL-TCD3`
   the check requires that declaration.
 
-**Wrong claims found so far: three, in "Displayed precision".** Measured
-2026-11-02 at 1 MAC with the default flows and a 0.1 s step, by both blind
+**Wrong claims found so far: four, in "Displayed precision".** The fourth
+is `PL-TDX0`: the section gives brain:blood SDs as the tissue coefficients'
+SDs, found by both blind review passes on `#1934`. The first three were
+measured 2026-11-02 at 1 MAC with the default flows and a 0.1 s step, by both blind
 review passes on `#1927` and rerun by `PL-B6YV`'s session on the project
 interpreter. The page gave sevoflurane's fat first nonzero reading as 780 s
 and isoflurane's as 1474 s, where the model gives 781.4 s and 1477.2 s.
@@ -75,14 +77,17 @@ not met, and this pass's count decides only how the other passes are sized.
 
 **Also left for this pass.** `PL-TCD3` dated the residual paragraph ("Every
 residual was below 2.1 × 10⁻¹¹ L") to its replay on 2026-10-03, and named the
-test that pins the residual's form. `PL-KXW1`'s own brief gives 5.4e-11 L as
-the largest residual difference, which may be a different quantity. The pass
-says which.
+tests that pin the residual's form. The paragraph says every residual was
+below 2.1 × 10⁻¹¹ L, but `PL-3PJZ` records the largest as 2.13e-11 L, which
+is not below it (found by `PL-TCD3`'s first blind review pass). `PL-KXW1`'s
+own brief gives 5.4e-11 L as the largest residual difference, which may be a
+different quantity. The pass says which figure is right, and corrects the
+sentence.
 
 **Checked 2026-11-02, after `PL-TCD3`, for sizing the other passes.** Across
-the whole document, 201 of 386 numeric paragraphs are held by nothing. Before
-`PL-TCD3` the count was 89. The other 112 passed only on a marker for another
-figure, or on a `not-restated:` marker. In a sample of 13 of the 112, every
+the whole document, 200 of 385 numeric paragraphs are held by nothing. Before
+`PL-TCD3` the count was 87. The other 113 passed only on a marker for another
+figure, or on a `not-restated:` marker. In a sample of 13 of them, every
 ninth, 9 had an untied figure that is a claim: a model output, a measurement
 with no date, or a published value with no locator. In the other 4, the
 untied figure read as a setting, a condition or a tolerance, such as "at

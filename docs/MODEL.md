@@ -328,7 +328,7 @@ only where a marker ties each of its numbers with a unit (`PL-TCD3`, project
 owner, 2026-11-02, ratified, over letting any marker pass the whole
 paragraph). A `provenance:` marker ties a number that states a value it
 asserts, in that value's unit. A `derived:` marker ties the figure it states
-it computed, and each input it asserts. A `not-restated:` marker ties
+it computed, in the unit it writes, and each input it asserts. A `not-restated:` marker ties
 nothing, because it says its numbers are no stored value. So a computed
 figure cannot pass on a marker written for another figure beside it. A section joins the table when the pass that
 makes it conform lands, as clause 2's families do. The check cannot read a
@@ -2324,6 +2324,7 @@ arithmetic failed at about $`4.8\times10^{-304}`$ s. At that step, the 86 400 s
 run length divided by the step overflows. `SimulationState` then raised a bare
 `OverflowError` from outside the simulator's own exceptions.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 What a finer step costs is rounding. The sweep above already shows the start
 of this cost in "a finer step is slightly worse". Each step adds the amount it
@@ -2716,6 +2717,7 @@ fraction back to 1 instead would hide an error of this size rather than
 bound it.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Neither shorter propagators nor a method with fewer squarings would shrink
 it, so the display path keeps its method** (`PL-81Q2`, 2026-11-01). Two
@@ -7806,6 +7808,7 @@ derived instant or count is never treated as checked. The control record's
 instants are `ControlChange.elapsed_s` and an adjustment's start and end. They
 are still annotated `float`, though each is taken from a `CaseInstant`
 (`PL-RCYZ`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting. It is refused when a caller
@@ -8001,6 +8004,7 @@ envelope, of 0.01 to 10 000 L, and that is a different claim.
 arithmetic has been checked against a high-precision evaluation. It says
 nothing about which volumes describe a patient, so it does not contradict the
 argument below, which is about physiology.
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 The two volumes do not have the same provenance, and the difference is worth
 stating rather than smoothing over. The alveolar gas volume is a patient
@@ -8077,6 +8081,7 @@ patient only near the shipped values. Until v0.4.x this section stated the
 opposite justification, which was that a small alveolar volume inflated the
 operator split's error. That argument was retired with the split.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 10000 L -->
 
 **The 0.005 L alveolar compartment above, every volume below 0.01 L in the
 paragraphs that follow, and every circuit volume above 10 000 L can no longer be
@@ -8085,6 +8090,7 @@ show what the propagator's own refusals do when a matrix reaches them by
 another route. `tests/unit/test_matrix_exponential.py` still drives those
 refusals, with a matrix built to match.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 **The numerics do eventually object, and that is a backstop rather than a
 bound.** The same measurement was continued downward at the shipped 0.1 s step.
@@ -10893,7 +10899,9 @@ largest displacement. The SDs are the measured ones that
 Eger's human tissue coefficients, which are 3.9% of the mean for desflurane,
 5.3% for sevoflurane and 6.4% for isoflurane. For desflurane's blood:gas coefficient
 the value is Eger's $`0.424 \pm 0.024`$, an SD of 5.7%. Which agent gives the
-largest displacement has no test yet (`PL-19W8`).
+largest displacement has no test yet (`PL-19W8`). The three tissue SDs are the
+source's brain:blood ones, and fat's are larger. Which SD each row perturbed
+is being checked, with no test yet (`PL-TDX0`).
 
 Against that, the last digit of a two-decimal readout lies between about a
 seventh of one parameter SD and seven times it. A third decimal would put the
@@ -11194,14 +11202,14 @@ where this model supports the least. The evidence for that is no longer the
 solver. Under the exact step the sparsely filled compartments carry at most
 $`2\times10^{-4}`$ relative error anywhere in the first ten seconds of a run,
 and $`8\times10^{-11}`$ at ten seconds itself. The evidence is the parameters.
-Their SDs, as Yasuda, Targ and Eger measured them in human tissues
-(Anesth Analg 1989;69:370-373), are 3.9% to 6.4% of the mean. They are
-*relative*, so they
+Their measured SDs are 3.9% to 6.4% of the mean and are *relative*, so they
 apply undiminished to a compartment holding a thousandth of a percent. Three
 significant figures on the fat fraction would imply a relative resolution of
 0.1% on a number whose parameters are known to about 5%. That over-claims by a
 factor of fifty, and it does so most severely in the readouts where a reader is
-least able to notice.
+least able to notice. Those SDs are the source's brain:blood ones, and fat's
+are larger, so this paragraph is being corrected, and its figures have no
+test yet (`PL-TDX0`).
 <!-- not-restated: 5 % -->
 
 **Why not the 0.1 percentage points clinical monitors report.** Agent
@@ -11317,10 +11325,13 @@ that the magnitude lies strictly below, computed from the float's exact value.
 Here `<` means what it means on the amounts. The sign is dropped along with the
 mantissa, so both lines read alike. The sign means something only in a check that fails.
 Then the run halts, and the failure notice prints the signed values to six
-figures. Exactly zero reads `0 L`. `format_agent_residual` defines the form,
-and `test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws`
-pins it. The test includes the pair of
-strings `5.601e-14 L` and `5.609e-14 L`, which the two trees printed for one
+figures. Exactly zero reads `0 L`. `format_agent_residual` defines the form.
+`test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
+`test_format_agent_residual_drops_the_sign_the_rounding_chose`,
+`test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten`
+and `test_format_agent_residual_reads_zero_as_zero` pin it.
+`test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws` uses
+the pair `5.601e-14 L` and `5.609e-14 L`, which the two trees printed for one
 sample.
 <!-- not-restated: 2.1 -->
 

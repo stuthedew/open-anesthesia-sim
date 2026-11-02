@@ -2494,7 +2494,8 @@ PROSE_UNITS = "|".join(
 #: "seconds", is one of `UNIT_WORDS`, and one written in lower case, such as
 #: "l/min", is one of `UNIT_CASES`.
 PROSE_FIGURE_RE = re.compile(
-    r"(?<![\w.,])(?<!\d/)(?<!\d[ ]/)(?<!\d/[ ])(?<!\d[ ]/[ ])(?P<number>\d+(?:\.\d+)?)"
+    r"(?<![\w.,])(?<![eE][-+])(?<!\d/)(?<!\d[ ]/)(?<!\d/[ ])(?<!\d[ ]/[ ])"
+    r"(?P<number>\d+(?:\.\d+)?)"
     r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
     r"(?!\w|[ ]?/[ ]?\d|[.,]\d)"
 )
@@ -2554,7 +2555,16 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
     `prose` is the line with code and math blanked, and `raw` is the line as
     written, from which only a math span's figure is read (`MATH_FIGURE_RE`).
     A list joined by slashes gives each of its numbers with the list's unit.
+
+    A number written with its thousands set apart by spaces, such as
+    "86 400 s", is read whole, as `GROUPED_NUMBER_RE` reads it for
+    `check_prose_provenance`. Read in parts it gave "400 s", which no marker
+    for the real value could tie, and a restatement of 86 400 s went
+    unasked (`PL-TCD3`). A number in e-notation, such as "9.6e-12 s", is read
+    as no figure, as a math span's exponent is not one. Read digit by digit,
+    it gave "12 s".
     """
+    prose = GROUPED_NUMBER_RE.sub(lambda found: found.group().replace(" ", ""), prose)
     for found in PROSE_FIGURE_RE.finditer(prose):
         yield found.group("number"), found.group("unit")
     for found in LISTED_FIGURES_RE.finditer(prose):
@@ -2719,8 +2729,9 @@ class _MarkerScope:
 
     `asserted` holds each value that a `provenance:` marker asserts, or that a
     `derived:` marker asserts as an input, with the unit its key declares.
-    `derived` holds each figure a `derived:` marker states it computed,
-    written as the marker writes it. `listed` holds the figures a
+    `derived` holds each number in the figure a `derived:` marker states it
+    computed, written as the marker writes it. `computed` holds that figure
+    as `_prose_figure` reads it, with its unit. `listed` holds the figures a
     `not-restated:` marker lists. `at` is the line of the scope's last marker.
     """
 
@@ -2729,6 +2740,7 @@ class _MarkerScope:
     at: int
     asserted: set[StoredValue] = field(default_factory=set)
     derived: set[str] = field(default_factory=set)
+    computed: set[tuple[float, str | None]] = field(default_factory=set)
     listed: set[tuple[float, str | None]] = field(default_factory=set)
 
     @property
@@ -2788,7 +2800,11 @@ def _marker_ties(
         elif kind == "derived":
             derived = DERIVED_FROM_RE.match(body)
             if derived is not None:
-                scope.derived.update(NUMBER_RE.findall(derived.group("figure")))
+                figure = derived.group("figure")
+                scope.derived.update(NUMBER_RE.findall(figure))
+                scope.computed.update(
+                    _prose_figure(number, unit) for number, unit in _untied_figures(figure, figure)
+                )
                 scope.asserted.update(_asserted_values(derived.group("rest")))
         else:
             scope.asserted.update(_asserted_values(body))
@@ -2807,9 +2823,9 @@ def _marker_held_figures(
     `_marker_ties` records. A `provenance:` marker ties each figure that
     states a value it asserts, in that value's unit (`_matches`), so a marker
     for a 6 L volume does not tie "6 %". A `derived:` marker ties the figure
-    it states it computed, and each input value it asserts. A
-    `not-restated:` marker ties nothing, because it says its figures are no
-    stored value.
+    it states it computed, in the unit it writes, and each input value it
+    asserts. So a marker for "6 L" does not tie "6 s". A `not-restated:`
+    marker ties nothing, because it says its figures are no stored value.
 
     Every marker in `lines` counts, whatever block `_marker_ties` finds above
     it, because `_numeric_paragraph_members` has already read which markers
@@ -2819,11 +2835,11 @@ def _marker_held_figures(
     """
     scopes = _marker_ties(lines, (), Report(), MODEL)
     asserted = {value for scope in scopes for value in scope.asserted}
-    derived = {figure for scope in scopes for figure in scope.derived}
+    computed = {figure for scope in scopes for figure in scope.computed}
     return {
         (written, unit)
         for written, unit in figures
-        if written in derived
+        if _prose_figure(written, unit) in computed
         or any(_matches(_prose_figure(written, unit), value, written) for value in asserted)
     }
 
