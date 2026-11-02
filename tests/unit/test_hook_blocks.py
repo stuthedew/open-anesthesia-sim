@@ -57,7 +57,12 @@ def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
         {
             "session_id": "cse_abc",
             "tool_name": "mcp__github__create_pull_request",
-            "tool_input": {"title": "t", "body": "Asked by a.person@example.org."},
+            "tool_input": {
+                "owner": "o",
+                "repo": "r",
+                "title": "t",
+                "body": "Asked by a.person@example.org.",
+            },
         }
     )
     result = subprocess.run(
