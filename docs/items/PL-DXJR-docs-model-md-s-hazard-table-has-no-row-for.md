@@ -83,3 +83,10 @@ The three disclaimer tests the row names already existed:
 `test_the_educational_disclaimer_says_what_the_tool_is_not`,
 `test_the_dashboard_carries_the_educational_disclaimer` and
 `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`.
+
+**Decision, 2026-11-02.** The hazard row relies on the disclaimer alone when a
+learner sets the cardiac output or ventilation dial to a real patient's value
+(project owner, 2026-11-02, ratified, over a caption beside those two dials).
+His words: "rely on disclaimer. I don't want to make it too busy with excess
+text". He also said that changing cardiac output and ventilation is a core
+feature, so the dials stay as they are.
