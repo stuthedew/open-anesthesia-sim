@@ -108,7 +108,9 @@ IMPORT = f"from anesthesia_sim.core.supported_ranges import {NAME}\n"
         (f"@pytest.mark.parametrize('s', [{NAME}])\ndef test_x(s): ...\n", True),
         # So is a class body, with its methods' decorators, and a default value.
         (
-            f"class TestX:\n    @pytest.mark.parametrize('s', [{NAME}])\n    def test_x(self, s): ...\n",
+            f"class TestX:\n"
+            f"    @pytest.mark.parametrize('s', [{NAME}])\n"
+            "    def test_x(self, s): ...\n",
             True,
         ),
         (f"class TestX:\n    LIMIT = {NAME}\n", True),
