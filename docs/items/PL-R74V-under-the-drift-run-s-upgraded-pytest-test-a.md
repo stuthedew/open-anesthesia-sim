@@ -3,12 +3,14 @@ id: PL-R74V
 title: Under the drift run's upgraded pytest, test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does raises TypeError: pytest.approx() does not support nested data structures, because it compares a list of (instant, ratio) tuples in one approx call (drift run 41279184121, 2026-11-01)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: drift-2026-11-01
 touches: tests/integration/test_qt_chart.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
+closed: 2026-11-02
+pr: 1930
 payoff: the monthly dependency check stops failing on a test that a newer pytest refuses, so its next red result names a real break
 verify: ! grep -qF 'preview_terminus_points(0) == pytest.approx(ended)' tests/integration/test_qt_chart.py
 ---
@@ -36,3 +38,6 @@ stays red for a known reason hides the next upgrade that breaks something real.
 tolerance as before, and the test passes under pytest 9.2.0 and 9.1.1.
 
 **Generator check.** One-off: a test helper call that a newer pytest refuses.
+
+**Closed 2026-11-02 in #1930.** Under pytest 9.2.0 the unfixed test raised the
+`TypeError` and the fixed test passed (`uv run --with pytest==9.2.0`).

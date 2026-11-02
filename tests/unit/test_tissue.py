@@ -9,7 +9,7 @@ import pytest
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.supported_ranges import CardiacOutput
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CardiacOutput
 from anesthesia_sim.core.tissue import TissueGroup
 
 BLOOD_FLOW_L_MIN = 1.0
@@ -663,18 +663,21 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
 
 
 @pytest.mark.parametrize(
-    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1.7976931348623157e308]
+    "simulation_step_s",
+    [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), 1e6, 1.7976931348623157e308],
 )
 def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
     simulation_step_s: float,
 ) -> None:
-    """`PL-YT3T`: the tissue group stepped on its own refuses a step longer than 24 h.
+    """The tissue group, stepped on its own, refuses a step longer than 24 h (`PL-YT3T`).
 
-    Every compartment stepped alone has the same ceiling, the supported run length, so one
-    function states which steps a compartment accepts. The step is refused and the amount held
-    does not change. A step of exactly 86 400 s is accepted, and it brings the tissue group to
-    its equilibrium, 0.02 of its capacity. The expected ceiling is written out here rather than
-    read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    Every compartment stepped on its own has the same ceiling, which is the supported run
+    length. So one function defines which steps any compartment accepts. The tissue group
+    refuses the step, and the amount it holds does not change. The group accepts a step of
+    exactly 86 400 s, which brings it to its equilibrium amount, 0.02 of its capacity. The test
+    builds the step just past the ceiling from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. It writes
+    out the expected ceiling and the refusal message as literal expected values, so a change to
+    the run length fails this test on purpose (`PL-DPDG`).
     """
 
     tissue = _build_tissue()

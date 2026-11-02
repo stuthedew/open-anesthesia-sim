@@ -3,12 +3,14 @@ id: PL-ZH36
 title: The drift run's interpreter job rewrites requires-python and .python-version before it runs the suite, and three test_config_home_check tests added by #1765 on 2026-10-24 read the live tree, so they fail on the job's own rewrite rather than on a configuration copy anyone changed (drift run 41279184121, 2026-11-01)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: drift-2026-11-01
 touches: .github/workflows/drift.yml, tests/unit/test_config_home_check.py, tools/config_home_check.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
+closed: 2026-11-02
+pr: 1930
 payoff: the monthly interpreter check fails only when a new CPython breaks something, not on the pin it rewrites itself
 not-delegable: the proof is the next run of drift.yml's interpreter job, which rewrites the pin itself; no admitted verify shape runs it
 ---
@@ -41,3 +43,11 @@ that really disagrees with its home. The next run of the job shows it.
 **Generator check.** One-off. A check of the live tree and a job that edits the
 tree before the suite each work alone, and they met for the first time in this
 run.
+
+**Closed 2026-11-02 in #1930.** The interpreter job now restores
+`pyproject.toml` and `.python-version` after it rewrites them, and runs the
+suite with `UV_NO_SYNC` set, so the suite uses the 3.15 environment already
+built but reads the committed configuration.
+`tests/unit/test_config_home_check.py::test_the_interpreter_job_puts_the_pins_back_before_its_suite`
+holds that order. The proof that the job is green is the next `drift.yml` run of
+the `interpreter` job, which only CI can make.

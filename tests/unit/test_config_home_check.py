@@ -158,3 +158,24 @@ def test_each_reading_turns_a_place_s_spelling_into_the_compared_form(
 ) -> None:
     assert callable(read)
     assert read(text) == expected
+
+
+def test_the_interpreter_job_puts_the_pins_back_before_its_suite() -> None:
+    """The drift run's `interpreter` job restores both pins before its suite (`PL-ZH36`).
+
+    The job rewrites `requires-python` and `.python-version` so that uv builds
+    the environment on the newest CPython. The tests above read the live tree,
+    so on 2026-11-01 three of them failed on that rewrite. The job now restores
+    both files after the build and before the suite. `UV_NO_SYNC` keeps
+    `uv run` on the environment already built, rather than rebuilding it on the
+    pinned interpreter.
+    """
+
+    workflow = (REPO_ROOT / ".github/workflows/drift.yml").read_text(encoding="utf-8")
+    job = workflow[workflow.index("\n  interpreter:\n") : workflow.index("\n  order:\n")]
+    rewrite = job.index("relax the interpreter pin for this run only")
+    restore = job.index("run: git checkout -- pyproject.toml .python-version")
+    suite = job.index("- run: uv run pytest")
+
+    assert rewrite < restore < suite
+    assert 'UV_NO_SYNC: "1"' in job[suite:]

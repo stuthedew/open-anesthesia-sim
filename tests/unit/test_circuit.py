@@ -29,6 +29,7 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     FreshGasFlow,
@@ -1117,18 +1118,21 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
 
 
 @pytest.mark.parametrize(
-    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1e308, 1.7976931348623157e308]
+    "simulation_step_s",
+    [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), 1e6, 1e308, 1.7976931348623157e308],
 )
 def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone(
     simulation_step_s: float,
 ) -> None:
-    """`PL-YT3T`: the circuit stepped on its own refuses a step longer than 24 h.
+    """The circuit, stepped on its own, refuses a step longer than 24 h (`PL-YT3T`).
 
-    Before the ceiling existed, a step near 1e308 s made the count of elapsed time constants
-    overflow to `inf`, and the exhaust came back as `inf` or `nan`. Both `advance_fresh_gas` and
-    `advance` refuse the step, and the inspired fraction does not change. The ceiling itself is
-    accepted. The expected ceiling, 86 400 s, is written out here rather than read from
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    Before the ceiling existed, a step near 1e308 s made the number of elapsed time constants
+    overflow to `inf`. The exhaust then came back as `inf` or `nan`. Both `advance_fresh_gas`
+    and `advance` refuse such a step, and the inspired fraction does not change. A step equal
+    to the ceiling is accepted. The test builds the step just past the ceiling from
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. It writes out the expected ceiling, 86 400 s, and the
+    refusal message as literal expected values, so a change to the run length fails this test
+    on purpose (`PL-DPDG`).
     """
 
     circuit = BreathingCircuit(

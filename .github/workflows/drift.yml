@@ -272,9 +272,26 @@ jobs:
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
+      # Put the two pins back before the suite runs. The environment is built,
+      # so the rewrite above has done its job. Some tests read the tree itself:
+      # `tests/unit/test_config_home_check.py` compares each copy of the
+      # interpreter pin with its home, and on 2026-11-01 three of its tests
+      # failed on this job's own rewrite rather than on anything committed
+      # (`PL-ZH36`). With the pins restored, those tests check the committed
+      # configuration, as they do everywhere else. `uv.lock` stays as
+      # `--upgrade` left it, as it does in the `dependencies` job.
+      - name: restore the interpreter pins before the suite
+        run: git checkout -- pyproject.toml .python-version
+
       # Same flags and the same reasoning as the `dependencies` job's pytest
-      # line above, which carries it in full. `PL-55JM`.
+      # line above, which carries it in full. `PL-55JM`. `UV_NO_SYNC` keeps
+      # `uv run` on the environment built above. Without it, `uv run` would
+      # read the restored pins and rebuild the environment on the pinned
+      # interpreter, and the job would no longer test the newer one. uv warns
+      # that the environment does not match the pin, which is expected here.
       - run: uv run pytest -n auto --dist worksteal
+        env:
+          UV_NO_SYNC: "1"
 
   # Does any test pass only because of the tests that ran before it?
   #
@@ -353,19 +370,20 @@ jobs:
   # Monthly, on the first cron line, rather than weekly. A copied value does
   # no harm until a limit moves, and moving one is a deliberate safety-critical
   # change, made rarely and with `docs/MODEL.md` revised beside it. So finding
-  # a new copy within a month is soon enough, and each run costs four runs of
-  # the suite, one for each limit that is not a floor at zero. The tool's
-  # docstring says why those floors are left alone. Before moving a limit, run
-  # this job by hand.
+  # a new copy within a month is soon enough, and each run costs one run of
+  # the suite for each limit in `core/supported_ranges.py` that is not a floor
+  # at zero. There were five on 2026-11-01, and run 41279184121 took 31
+  # minutes (`PL-2T6B`). The tool's docstring says why those floors are left
+  # alone. Before moving a limit, run this job by hand.
   restated-constants:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
-    # Four runs of the suite, one after another, plus a short rerun of any
-    # test it reports. On 2026-10-25, on a 4-core container, seven runs took
-    # 53 minutes, about 7.5 minutes each. The jobs above put the suite at 9.5
-    # to 14 minutes on a hosted runner, so an honest run here is about 40 to
-    # 60 minutes. 240 minutes leaves four times the slowest of those, as the
-    # jobs above do, so the limit bounds a hang rather than a slow run.
+    # One run of the suite for each limit that is not a floor at zero, one
+    # after another, plus a short rerun of any test it reports. On 2026-11-01
+    # the five limits took 31 minutes on a hosted runner, about 6 minutes each
+    # (run 41279184121). On 2026-10-25, on a 4-core container, seven runs took
+    # 53 minutes, about 7.5 minutes each. 240 minutes leaves several times the
+    # slowest of those, so the limit bounds a hang rather than a slow run.
     timeout-minutes: 240
 
     steps:
