@@ -287,7 +287,9 @@ page and decides which file a session reads.
    and `make check` read. Run `uv run python tools/new_prose.py`. It prints each
    docstring and comment of 30 words or more that the branch added or changed
    in `src/` or in a file under `tests/` that imports the simulator, with its
-   rows and the code around it. Where it prints none, this step is done.
+   rows and the code around it. It also prints each changed paragraph and table
+   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Where it
+   prints none, this step is done.
    Otherwise start one subagent, `general-purpose` at the session's own
    effort level (`docs/maintainer.md`, 2026-10-19), with the
    prompt below followed by the tool's whole output. The prompt tells it to
@@ -304,8 +306,9 @@ page and decides which file a session reads.
    newcomer would understand every sentence on the first reading. Otherwise
    write "[N] rewrite" and then, in a fenced block, the new text for the rows
    marked ">", exactly as they would stand in the file: the same indentation,
-   the same comment markers or quotes, and lines no longer than 100
-   characters. Rewrite only the sentences that need it.
+   the same comment markers, quotes or Markdown, and lines no longer than 100
+   characters. A table row stays on one line, however long. Rewrite only the
+   sentences that need it.
 
    Keep every fact. Keep each number, unit, value, condition, exception,
    identifier in backticks, item id and citation exactly as written. Change

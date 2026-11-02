@@ -493,6 +493,7 @@ workflow_paths = [
   "tests/unit/test_main_ci_status.py",
   "tests/unit/test_model_doc_review.py",
   "tests/unit/test_model_home_check.py",
+  "tests/unit/test_model_rewrite.py",
   "tests/unit/test_new_prose.py",
   "tests/unit/test_blind_review.py",
   "tests/unit/test_blind_review_report.py",

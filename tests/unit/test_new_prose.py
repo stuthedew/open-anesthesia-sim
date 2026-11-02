@@ -13,7 +13,16 @@ from pathlib import Path
 
 import pytest
 from docket.config import load
-from new_prose import MIN_WORDS, ROOT, Unit, branch_prose, excerpt, main, prose_units
+from new_prose import (
+    MIN_WORDS,
+    ROOT,
+    Unit,
+    branch_prose,
+    document_units,
+    excerpt,
+    main,
+    prose_units,
+)
 
 LONG = " ".join(["word"] * MIN_WORDS)
 SHORT = " ".join(["word"] * (MIN_WORDS - 1))
@@ -136,7 +145,9 @@ def test_main_says_so_when_nothing_long_changed(
     (repo / "src/pkg/model.py").write_text(SOURCE.replace("LIMIT = 3", "LIMIT = 4"), "utf-8")
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
-    assert capsys.readouterr().out.startswith("No docstring or comment of 30 words or more")
+    assert capsys.readouterr().out.startswith(
+        "No docstring, comment or document paragraph of 30 words or more"
+    )
 
 
 def test_main_numbers_each_unit_with_its_rows(
@@ -146,7 +157,9 @@ def test_main_numbers_each_unit_with_its_rows(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert out.startswith("3 docstrings and comments of 30 words or more changed")
+    assert out.startswith(
+        "3 docstrings, comments and document paragraphs of 30 words or more changed"
+    )
     assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words" in out
     assert "[3] src/pkg/fresh.py, rows 13-13, comment" in out
 
@@ -226,3 +239,79 @@ def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
     command = load(ROOT).prose_count_command.split()
     assert command[:3] == ["uv", "run", "python"]
     assert "tools/new_prose.py" in command
+
+
+DOCUMENT = f"""\
+# Model
+
+{LONG}
+
+- {LONG}
+
+{SHORT}
+
+```text
+{LONG}
+```
+
+<!-- {LONG} -->
+
+| Hazard | Mitigation |
+| --- | --- |
+| short | {LONG} |
+"""
+
+
+def test_document_units_reads_paragraphs_list_paragraphs_and_table_rows() -> None:
+    """A heading, a fence and an HTML comment hold no prose to review, and a table row does."""
+    found = document_units("docs/MODEL.md", DOCUMENT)
+
+    assert [(unit.kind, unit.first, unit.last) for unit in found] == [
+        ("paragraph", 3, 3),
+        ("paragraph", 5, 5),
+        ("paragraph", 7, 7),
+        ("table row", 15, 15),
+        ("table row", 17, 17),
+    ]
+    assert found[1].text == f"- {LONG}"
+    assert found[4].text == f"| short | {LONG} |"
+
+
+@pytest.fixture
+def documented(repo: Path) -> Path:
+    """`repo` with `DOCUMENT` committed as `docs/MODEL.md` on `main`, and `work` checked out."""
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "docs/MODEL.md", DOCUMENT)
+    _write(repo, "docs/other.md", DOCUMENT)
+    _commit(repo, "add the model document")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "main")
+    return repo
+
+
+def test_a_changed_long_paragraph_of_the_model_document_is_printed(documented: Path) -> None:
+    """Only the changed paragraph is printed, and a document outside the two is not read."""
+    model = documented / "docs/MODEL.md"
+    model.write_text(DOCUMENT.replace(f"- {LONG}", f"- {LONG} more"), encoding="utf-8")
+    other = documented / "docs/other.md"
+    other.write_text(DOCUMENT.replace(f"- {LONG}", f"- {LONG} more"), encoding="utf-8")
+
+    found = branch_prose(documented, "main")
+
+    assert [(unit.path, unit.kind, unit.first) for unit in found.units] == [
+        ("docs/MODEL.md", "paragraph", 5)
+    ]
+
+
+def test_count_counts_a_new_model_paragraph_and_leaves_out_a_reviewed_one(
+    documented: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    model = documented / "docs/MODEL.md"
+    model.write_text(DOCUMENT + f"\n{LONG} added\n", encoding="utf-8")
+    reviewed = _commit(documented, "a new long paragraph, then its review")
+    assert _count(documented, capsys) == (0, "1")
+    assert _count(documented, capsys, reviewed) == (0, "0")
+
+    model.write_text(DOCUMENT + f"\n{LONG} added\n\n| a | {LONG} b |\n", encoding="utf-8")
+    _commit(documented, "a table row the review did not see")
+    assert _count(documented, capsys, reviewed) == (0, "1")

@@ -127,6 +127,7 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import AgentAmountUnit, mac_multiple
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.preferences import (
+    AgentPrice,
     LoadedPreferences,
     Preferences,
     PreferencesFileError,
@@ -610,6 +611,7 @@ class SimulationView(QWidget):
             self._handle_frame_request,
             self._handle_compartment_request,
             self._handle_agent_cost_unit_request,
+            self._handle_agent_price_request,
         )
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
@@ -1952,10 +1954,8 @@ class SimulationView(QWidget):
 
         The unit is a preference rather than a View's own setting, so every
         agent cost View shows the new unit on the frame drawn here (`PL-B396`).
-        The preferences are saved when there is a store. If the save fails, or
-        saving is off for the session, the new unit still applies until the
-        application closes, and the View says why it will not be kept. A unit
-        the View does not offer is refused by `Preferences.with_agent_cost_unit`.
+        A unit the View does not offer is refused by
+        `Preferences.with_agent_cost_unit`.
 
         Raises:
             SimulationConfigurationError: If `unit` is not one the agent cost
@@ -1963,7 +1963,46 @@ class SimulationView(QWidget):
                 asks for such a unit disagrees with the preferences store.
         """
 
-        self._preferences = self._preferences.with_agent_cost_unit(unit)
+        self._change_preferences(self._preferences.with_agent_cost_unit(unit))
+
+    @halt_gate
+    def _handle_agent_price_request(self, agent_id: str, price: AgentPrice | None) -> None:
+        """Set or remove the reader's price for one agent, save it, and draw at once.
+
+        Every cost at that agent's price is redrawn on the frame drawn here,
+        whether or not the run is advancing (`docs/MODEL.md` § "A cost at the
+        reader's price", `PL-1P15`). Setting a price drops any refused entry
+        for the agent. Removing a price drops both the price and any refused
+        entry.
+
+        Raises:
+            SimulationConfigurationError: If `price` is for an agent other
+                than `agent_id`. The halt gate halts every run, because a View
+                that asks for that disagrees with itself.
+            TypeError: If `price` is neither an `AgentPrice` nor None.
+        """
+
+        if price is None:
+            self._change_preferences(self._preferences.without_price(agent_id))
+            return
+
+        if price.agent_id != agent_id:
+            raise SimulationConfigurationError(
+                f"a price for {price.agent_id!r} was asked for under {agent_id!r}"
+            )
+
+        self._change_preferences(self._preferences.with_price(price))
+
+    def _change_preferences(self, preferences: Preferences) -> None:
+        """Put `preferences` in force, save them, and draw at once.
+
+        The preferences are saved when there is a store. If the save fails, or
+        saving is off for the session, the change still applies until the
+        application closes, and the View says why it will not be kept. The
+        notice also names any refused entry that is still in the file.
+        """
+
+        self._preferences = preferences
 
         if self._preferences_store is not None:
             try:

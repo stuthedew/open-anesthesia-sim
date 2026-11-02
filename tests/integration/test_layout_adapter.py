@@ -92,7 +92,9 @@ _BUILT: list[_TestView] = []
 _REFRESHED: list[_TestView] = []
 
 # A View asks the dashboard for nothing here.
-_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None, lambda _unit: None)
+_REQUESTS = ViewRequests(
+    lambda: None, lambda _quantity, _shown: None, lambda _unit: None, lambda _agent, _price: None
+)
 _PREFERENCES = PreferencesInForce(Preferences(), None)
 
 
