@@ -102,3 +102,11 @@ evidence than it had.
 **Done when.** The owner has answered (a) and (b); the agent files and
 `docs/MODEL.md` record the answer and its reasoning; no reference state needed
 recomputing because (b) was declined. All done.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+That count moved on 2026-09-13, and the *values* did not. Nine rows crossed
+from tier 3 to tier 1 because the project read the paper Gas Man had always
+named and found the stored numbers in it. Nothing was recalculated. That
+distinction is the whole point of separating `tier` from `adopted`: what
+changed was the record of where a number came from.
