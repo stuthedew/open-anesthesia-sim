@@ -312,7 +312,10 @@ no record supports.
    `docs/MODEL.md` has two readers. The first is a clinician or educator who
    knows anesthesia pharmacology and physiology, does not know numerical
    methods, software terms or e-notation such as "4e-4", and wants to know
-   whether to trust a displayed value. The second is a developer, or someone
+   whether to trust a displayed value, or to understand how the simulation
+   works (project owner, 2026-11-02, 22:15Z: "Clinician trying to know
+   whether to trust a value or just even understand how the simulation
+   works"). The second is a developer, or someone
    who forked the project, who wants to change a value for a goal of their
    own. That reader knows Python and the anesthesia basics, and also does not
    know numerical-methods terms such as "first-order method". A docstring's reader is a Python developer who knows the anesthesia
