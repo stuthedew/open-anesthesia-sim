@@ -335,9 +335,11 @@ label a store.
 displayed run it shows the agent delivered, in millilitres of liquid
 equivalent by default, or in litres of vapour if the reader picks that unit in
 the View's selector. The unit is printed on the value itself, as
-"mL liquid equiv." or "L vapour", from two new `DisplayUnit` members. A caption
-under the value says what the unit measures and that the figure is the
-vaporizer's output. The heading carries "Model outputs — not measurements."
+"mL of liquid" or "L vapour", from two new `DisplayUnit` members. A one-line
+caption under the value says that the figure is the liquid the vaporizer used,
+or the vapour it put out. The project owner found the first wording awkward
+and over-explained on 2026-11-01, so the unit lost "equiv." and each caption
+became one line. The heading carries "Model outputs — not measurements."
 Both units are shown to a tenth, as `PL-0S0V` derived, through one new
 formatter, `format_delivered_agent`, which shares its rounding rule with the
 accounting panel's `format_agent_volume`.

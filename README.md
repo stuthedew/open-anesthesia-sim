@@ -85,9 +85,8 @@ While a case runs, the interface shows:
   vapour, and one bar of each compartment's share of all the agent the run
   holds, so fat's growing share shows while its tension stays near zero;
 - the agent delivered, in the agent cost View, which every Area's View
-  chooser offers: in mL of liquid equivalent, the volume of liquid agent that
-  the delivered vapour came from, or in litres of vapour if the reader
-  chooses, with the unit named on the value; the choice is kept in the
+  chooser offers: in mL of liquid, the liquid agent that the vaporizer turned
+  into vapour, or in litres of vapour if the reader chooses, with the unit named on the value; the choice is kept in the
   reader's preferences file and survives a restart;
 - every setting changed during the run, marked on the chart at the simulated
   time it took effect;

@@ -63,7 +63,7 @@ __all__ = [
 ]
 
 #: The View's heading. The wording is a placeholder.
-AGENT_COST_HEADING: Final = "Agent delivered: what left the vaporizer"
+AGENT_COST_HEADING: Final = "Vaporizer output"
 
 #: How the label and the captions name the agent while the values are withheld.
 WITHHELD_AGENT_NAME: Final = "Agent"
@@ -72,32 +72,26 @@ WITHHELD_AGENT_NAME: Final = "Agent"
 #: amount means nothing without it. The wording is a placeholder.
 DELIVERED_LABEL_TEMPLATE: Final = "{agent} delivered"
 
-#: The caption that says what the liquid figure is. It says that the run holds
-#: no liquid, and where the figure comes from. The wording is a placeholder, but
+#: The caption that says what the liquid figure is: the liquid the vaporizer
+#: used, which is where the figure comes from. The wording is a placeholder, but
 #: what the caption must say is not (`PL-B396`).
-LIQUID_CAPTION_TEMPLATE: Final = (
-    "{unit}: the volume of liquid {agent} that the delivered vapour came from, at 20 degrees C.\n"
-    "Delivered is the vaporizer's output: its setting times the fresh gas flow, over the run."
-)
+LIQUID_CAPTION_TEMPLATE: Final = "Liquid used by the vaporizer, at 20 degrees C."
 
 #: What the vapour figure is. The wording is a placeholder.
-VAPOUR_CAPTION_TEMPLATE: Final = (
-    "{unit}: pure {agent} vapour at 20 degrees C and 1 atm, as the vaporizer delivered it.\n"
-    "Delivered is the vaporizer's output: its setting times the fresh gas flow, over the run."
-)
+VAPOUR_CAPTION_TEMPLATE: Final = "Vapour put out by the vaporizer, at 20 degrees C and 1 atm."
 
 #: What the View shows in place of a liquid figure that cannot be computed.
 #: The conversion fails only on a ratio or an amount that is not finite, which
 #: no supported run produces. The wording is a placeholder.
-NOT_CONVERTED_TEXT: Final = "Cannot be shown as liquid: the conversion did not give a finite value"
+NOT_CONVERTED_TEXT: Final = "Cannot show this as liquid: the conversion did not give a finite value"
 
 #: The label of the View's unit selector, and the name of each unit in it, in
 #: the order `AGENT_COST_VIEW_UNITS` lists them. The wording is a placeholder.
-UNIT_CHOICE_LABEL: Final = "Show the delivered agent in"
+UNIT_CHOICE_LABEL: Final = "Show as"
 UNIT_CHOICES: Final[tuple[tuple[AgentAmountUnit, str], ...]] = tuple(
     (unit, name)
     for unit, name in zip(
-        AGENT_COST_VIEW_UNITS, ("millilitres of liquid equivalent", "litres of vapour"), strict=True
+        AGENT_COST_VIEW_UNITS, ("millilitres of liquid", "litres of vapour"), strict=True
     )
 )
 

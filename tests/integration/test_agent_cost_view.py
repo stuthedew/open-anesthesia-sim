@@ -205,10 +205,10 @@ def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
     (panel,) = cost_view.panels
 
     assert vapour_l == pytest.approx(1.2)
-    assert panel.amount_text.text() == f"{_liquid_ml('isoflurane', vapour_l):.1f} mL liquid equiv."
-    assert panel.amount_text.text() == "6.1 mL liquid equiv."
+    assert panel.amount_text.text() == f"{_liquid_ml('isoflurane', vapour_l):.1f} mL of liquid"
+    assert panel.amount_text.text() == "6.1 mL of liquid"
     assert panel.label_text.text() == "Isoflurane delivered"
-    assert panel.caption_text.text().startswith("mL liquid equiv.: the volume of liquid")
+    assert panel.caption_text.text().startswith("Liquid used by the vaporizer")
     assert panel.name_text.text() == "At 40m of simulated time"
     assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
     assert INTERPRETATION_DISCLAIMER_TEXT in {
@@ -237,7 +237,7 @@ def test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart(
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.LITRES_OF_VAPOUR
         assert cost_view.panels[0].amount_text.text() == f"{vapour_l:.1f} L vapour"
-        assert cost_view.panels[0].caption_text.text().startswith("L vapour: pure sevoflurane")
+        assert cost_view.panels[0].caption_text.text().startswith("Vapour put out by the vaporizer")
 
     saved = json.loads((tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
     assert saved["agent_cost_unit"] == AgentAmountUnit.LITRES_OF_VAPOUR.value
@@ -382,7 +382,7 @@ def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
 
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
-        assert cost_view.panels[0].amount_text.text() == "2.2 mL liquid equiv."
+        assert cost_view.panels[0].amount_text.text() == "2.2 mL of liquid"
 
     monkeypatch.undo()
     view.present(False)
@@ -414,7 +414,7 @@ def test_a_mouse_wheel_over_the_selector_changes_nothing_until_it_has_focus(
 
     assert selector.focusPolicy() == Qt.FocusPolicy.StrongFocus
     assert selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
-    assert cost_view.panels[0].amount_text.text() == "0.0 mL liquid equiv."
+    assert cost_view.panels[0].amount_text.text() == "0.0 mL of liquid"
 
 
 def test_a_session_with_no_data_directory_keeps_no_choice_and_says_so() -> None:
@@ -443,7 +443,7 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
     view = _dashboard(application, shown, controller)
     (cost_view,) = _cost_views(view)
 
-    assert cost_view.panels[0].amount_text.text() == "2.2 mL liquid equiv."
+    assert cost_view.panels[0].amount_text.text() == "2.2 mL of liquid"
 
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     run = view.runs[0]
@@ -458,7 +458,7 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
 
     panel = cost_view.panels[0]
     assert run.controller.has_failed is True
-    assert panel.amount_text.text() == "— mL liquid equiv."
+    assert panel.amount_text.text() == "— mL of liquid"
     assert panel.label_text.text() == "Agent delivered"
     assert panel.name_text.text() == "At — of simulated time"
 
@@ -497,8 +497,8 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     branch_ml = _liquid_ml("sevoflurane", 0.02 * 4.0 * 1.0 + 0.08 * 4.0 * 3.0)
     assert first.name_text.text().startswith("Run 1, at ")
     assert second.name_text.text().startswith("Run 2, at ")
-    assert first.amount_text.text() == f"{trunk_ml:.1f} mL liquid equiv."
-    assert second.amount_text.text() == f"{branch_ml:.1f} mL liquid equiv."
+    assert first.amount_text.text() == f"{trunk_ml:.1f} mL of liquid"
+    assert second.amount_text.text() == f"{branch_ml:.1f} mL of liquid"
 
     # The trunk's Reset ends the comparison, then an agent change and a run of
     # 5 min convert with desflurane's own factor.
@@ -522,5 +522,5 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     flow_l_min = float(run.controller.snapshot().fresh_gas_flow_l_min)
     desflurane_ml = _liquid_ml("desflurane", dial_percent / 100.0 * flow_l_min * 5.0)
     assert alone.label_text.text() == "Desflurane delivered"
-    assert alone.amount_text.text() == f"{desflurane_ml:.1f} mL liquid equiv."
+    assert alone.amount_text.text() == f"{desflurane_ml:.1f} mL of liquid"
     assert alone.name_text.text() == "At 5m of simulated time"

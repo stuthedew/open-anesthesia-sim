@@ -112,7 +112,7 @@ def test_the_delivered_agent_is_the_dial_times_the_flow_times_the_time_in_liquid
 
     assert delivered_liquid_ml(snapshot) == pytest.approx(liquid_ml, rel=1e-9)
     assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == (
-        f"{liquid_ml:.1f} mL liquid equiv."
+        f"{liquid_ml:.1f} mL of liquid"
     )
     assert shown.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == f"{vapour_l:.1f} L vapour"
 
@@ -123,21 +123,18 @@ def test_sevoflurane_at_2_percent_and_4_l_min_for_an_hour_is_26_3_ml_of_liquid()
     shown = delivered_shown(_run("sevoflurane", 2.0, 4.0, 60.0))
 
     assert shown.label == "Sevoflurane delivered"
-    assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "26.3 mL liquid equiv."
+    assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "26.3 mL of liquid"
     assert shown.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "4.8 L vapour"
     assert shown.instant == "1h"
 
 
-def test_each_caption_names_its_unit_and_says_what_it_measures() -> None:
+def test_each_caption_says_what_its_unit_measures() -> None:
     shown = delivered_shown(_run("isoflurane", 1.2, 2.0, 1.0))
     liquid = shown.caption_in(AgentAmountUnit.MILLILITRES_OF_LIQUID)
     vapour = shown.caption_in(AgentAmountUnit.LITRES_OF_VAPOUR)
 
-    assert liquid.startswith("mL liquid equiv.: the volume of liquid isoflurane")
-    assert "20 degrees C" in liquid
-    assert vapour.startswith("L vapour: pure isoflurane vapour at 20 degrees C and 1 atm")
-    assert "the vaporizer's output" in liquid
-    assert "the vaporizer's output" in vapour
+    assert liquid == "Liquid used by the vaporizer, at 20 degrees C."
+    assert vapour == "Vapour put out by the vaporizer, at 20 degrees C and 1 atm."
 
 
 def test_a_run_that_has_delivered_nothing_shows_zero_and_a_trace_shows_below_resolution() -> None:
@@ -147,9 +144,9 @@ def test_a_run_that_has_delivered_nothing_shows_zero_and_a_trace_shows_below_res
     controller.advance(SIMULATION_STEP_S)
     trace = delivered_shown(controller.snapshot())
 
-    assert start.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "0.0 mL liquid equiv."
+    assert start.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "0.0 mL of liquid"
     assert start.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "0.0 L vapour"
-    assert trace.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "<0.1 mL liquid equiv."
+    assert trace.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "<0.1 mL of liquid"
     assert trace.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "<0.1 L vapour"
 
 
@@ -184,7 +181,7 @@ def test_the_withheld_panel_names_no_agent_and_no_amount_but_keeps_each_unit() -
         assert WITHHELD_DELIVERED.amount_in(unit).startswith("— ")
 
     assert WITHHELD_DELIVERED.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID).endswith(
-        "mL liquid equiv."
+        "mL of liquid"
     )
     assert WITHHELD_DELIVERED.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR).endswith("L vapour")
     assert WITHHELD_DELIVERED.label == "Agent delivered"
@@ -195,10 +192,7 @@ def test_the_withheld_panel_names_no_agent_and_no_amount_but_keeps_each_unit() -
 
 def test_the_selector_offers_the_units_the_preferences_accept_the_default_first() -> None:
     assert tuple(unit for unit, _ in UNIT_CHOICES) == AGENT_COST_VIEW_UNITS
-    assert UNIT_CHOICES[0] == (
-        AgentAmountUnit.MILLILITRES_OF_LIQUID,
-        "millilitres of liquid equivalent",
-    )
+    assert UNIT_CHOICES[0] == (AgentAmountUnit.MILLILITRES_OF_LIQUID, "millilitres of liquid")
 
 
 def test_a_unit_the_view_does_not_offer_is_refused() -> None:
@@ -250,11 +244,11 @@ def test_only_the_agent_cost_module_converts_vapour_to_liquid() -> None:
 @pytest.mark.parametrize(
     ("amount", "unit", "expected"),
     [
-        (0.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.0 mL liquid equiv."),
-        (0.04, AgentAmountUnit.MILLILITRES_OF_LIQUID, "<0.1 mL liquid equiv."),
-        (0.06, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.1 mL liquid equiv."),
-        (26.26, AgentAmountUnit.MILLILITRES_OF_LIQUID, "26.3 mL liquid equiv."),
-        (240.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "240.0 mL liquid equiv."),
+        (0.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.0 mL of liquid"),
+        (0.04, AgentAmountUnit.MILLILITRES_OF_LIQUID, "<0.1 mL of liquid"),
+        (0.06, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.1 mL of liquid"),
+        (26.26, AgentAmountUnit.MILLILITRES_OF_LIQUID, "26.3 mL of liquid"),
+        (240.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "240.0 mL of liquid"),
         (0.0, AgentAmountUnit.LITRES_OF_VAPOUR, "0.0 L vapour"),
         (0.04, AgentAmountUnit.LITRES_OF_VAPOUR, "<0.1 L vapour"),
         (4.8, AgentAmountUnit.LITRES_OF_VAPOUR, "4.8 L vapour"),

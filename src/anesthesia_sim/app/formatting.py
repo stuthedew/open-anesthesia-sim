@@ -212,7 +212,7 @@ class AgentAmountUnit(Enum):
     A member identifies a unit but does not say how the unit is written.
     `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
     and share bar assert" sets the spellings "mL vapour" and
-    "mL liquid equiv.". The first View to print a spelling adds it to
+    "mL of liquid". The first View to print a spelling adds it to
     `DisplayUnit`. Every member names whether it measures vapour or liquid.
     About 183 mL of sevoflurane vapour come from 1 mL of liquid, so a bare
     "mL" cannot say which is meant.
@@ -1442,7 +1442,7 @@ def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     a millilitre of liquid, or a tenth of a litre of vapour, which is also the
     accounting panel's precision. The text follows `format_agent_volume`'s
     rounding rules. A positive amount that rounds to zero is shown as less than
-    the resolution, as `<0.1 mL liquid equiv.`, and exactly zero is shown as
+    the resolution, as `<0.1 mL of liquid`, and exactly zero is shown as
     zero. The unit always says vapour or liquid, as `DisplayUnit` spells it.
 
     Args:

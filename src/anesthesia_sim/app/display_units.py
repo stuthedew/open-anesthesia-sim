@@ -56,14 +56,10 @@ class DisplayUnit(Enum):
     # assert" sets the spelling. The wording is a placeholder, but the rule is not.
     AGENT_VAPOUR_MILLILITRES = ("millilitres of vapour", "mL vapour", "mL vapour")
     # The agent cost View shows the delivered agent in one of the next two units
-    # (`PL-B396`). The liquid unit says "equiv." because no liquid is in the run.
-    # The figure is the volume of liquid that the delivered vapour came from.
+    # (`PL-B396`). The liquid figure is the volume of liquid agent that the
+    # vaporizer turned into the delivered vapour.
     AGENT_VAPOUR_LITRES = ("litres of vapour", "L vapour", "L vapour")
-    AGENT_LIQUID_MILLILITRES = (
-        "millilitres of liquid equivalent",
-        "mL liquid equiv.",
-        "mL liquid equiv.",
-    )
+    AGENT_LIQUID_MILLILITRES = ("millilitres of liquid", "mL of liquid", "mL of liquid")
 
     recorded: str
     label: str
