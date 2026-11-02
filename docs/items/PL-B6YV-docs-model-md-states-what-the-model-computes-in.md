@@ -3,13 +3,14 @@ id: PL-B6YV
 title: docs/MODEL.md states what the model computes in prose that no test computes, so a claim that was never true, or that lost its condition, is found only when a reviewer happens to read it: decide how such a claim names the test that holds it
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 deferred-from: v0.7.0 - recorded as a generator head on 2026-11-02 from PL-R4Y2's defect review; each member was placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-11-02
 payoff: a specification sentence about what the model computes names the test that computes it, so a false claim, or one missing its condition, fails a check or a test instead of waiting for a reader
+verify: grep -q 'def _numeric_paragraph_members' tools/doc_check.py && grep -q '_numeric_paragraph_members' tests/unit/test_doc_check.py
 root-cause-of: PL-8YBS, PL-39KH, PL-5RPD, PL-M8F6, PL-MLPT, PL-GJYL, PL-SR8F
 generator: live - PL-4FBP's fix holds enumerated families and restated data values but leaves free prose about computed behaviour to review; five such sentences were found weeks late by one blind review on 2026-10-25 and PL-8YBS is still open, so the stock is still being found
 misread: Whether a docs/MODEL.md sentence about what the model computes matches what it computes
@@ -148,8 +149,33 @@ or missing a condition. If it finds none in "Known limitations" and
 "Displayed precision" together, the remaining passes are dropped and the
 check stays on those sections alone.
 
-**Done when.** The decision is recorded beneath the question. If it is
-adopted: the rule is written into `docs/MODEL.md` § "How this document is held
-to the tree"; `check_bound_families` reads numeric paragraphs, with unit tests
-in `tests/unit/test_doc_check.py`, over one section that conforms when it
-lands; and the annotation passes are filed under `model-claims-held-by-tests`.
+**Decided 2026-11-02 (project owner, 2026-11-02, ratified).** Adopted as
+recommended above: the rule, the numeric-paragraph trigger enforced section by
+section through `check_bound_families`, the limit for qualitative claims, and
+the annotation passes with the stop condition in "What would make this wrong".
+It was chosen over keeping such sentences held by review alone. The answer was
+"agree", so the decision reopens on ordinary evidence. It also reopens, for
+computed claims only, `PL-4FBP`'s 2026-09-19 decision to leave free prose to
+review at close-out. That decision still applies to every other kind of free
+prose.
+
+**Done when.** The build lands these, in order:
+
+1. `docs/MODEL.md` § "How this document is held to the tree" states the rule
+   for computed claims beside clause 1, with the preferred form for figures
+   and the limit for qualitative claims.
+2. `tools/doc_check.py` gains `_numeric_paragraph_members`, a member reader
+   for `BOUND_FAMILIES` that yields each prose paragraph stating a number with
+   a unit. Each must carry a `provenance:`, `derived:` or `not-restated:`
+   marker, a code-spanned test, the declared-none form, a cited published
+   source, or a date. Unit tests in `tests/unit/test_doc_check.py` cover each
+   accepted form, a paragraph that carries none, and a number with no unit,
+   which is not a member. If the reader lands under another name, update this
+   item's `verify:` in the same commit.
+3. One section joins the table and conforms when it lands: "Displayed
+   precision" is the first choice, because a learner reads its values
+   directly.
+4. The remaining annotation passes are filed under
+   `model-claims-held-by-tests`, grouped by section, starting with "Known
+   limitations". The first pass records how many of its computed claims were
+   wrong or missing a condition, and applies the stop condition above.
