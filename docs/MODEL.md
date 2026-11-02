@@ -2974,19 +2974,20 @@ below the three tiers.
    strength, because the rounding, and the choice between measurements that
    disagree, happened somewhere the reader cannot see. It can be adopted only
    on the recorded decision described below.
-3. **Reference implementation.** Another simulator's parameter set: the
+3. **Reference implementation.** Another simulator's parameter set, meaning the
    numbers that a working program was built to run on. Gas Man is this
    project's reference implementation. The tier is useful in two ways. It
-   fixes the behavior of a widely taught teaching tool, so this
+   defines the behavior of a widely used teaching tool, so this
    implementation can be compared against it. It also supplies a complete,
    internally consistent set, where the primary literature supplies
    scattered measurements made in different laboratories on different
-   cohorts. **It is still not a source.** A parameter set is assembled to make
-   a program behave. Nobody can recover from the program which measurement
-   each number descends from, or what was adjusted to make the set cohere.
-   **The behavior it fixes has itself been measured against patients**, and
-   the agreement is materially worse during wash-in than during maintenance.
-   § "Known limitations" gives the figures and what they bound.
+   cohorts. **It is still not a source of measurements.** A parameter set is
+   assembled to make a program behave. Nobody can recover from the program
+   which measurement each number descends from, or what was adjusted to make
+   the set consistent. **The program's behavior has itself been compared with
+   measurements in patients**, and the agreement is materially worse during
+   wash-in than during maintenance. § "Known limitations" gives the figures
+   and the limits they set.
 
 **A lower tier may be adopted, but never silently.** The ranking above says
 which tier a reader may trust without examining it. It does not forbid storing
@@ -2998,16 +2999,16 @@ every such value carries all three today:
 
 - **The tier, on the entry itself, with the values it covers.** The `tier`
   field in the data file records the tier, and `make check` checks it against
-  the closed vocabulary. The entry's `authority_for` names the stored values
-  that the entry is the authority for.
+  the fixed list of allowed tiers. The entry's `authority_for` field names the
+  stored values for which the entry is the authority.
 - **Why no tier-1 source was adopted.** This goes on the entry, or in the
   file's `provenance_gap` where the whole file is in that state.
 - **The date and whose decision it was**, where a lower tier is adopted in
   preference to an available primary source rather than for want of one.
-  The three blood:gas coefficients are the worked example. Measured
-  primaries exist for all three, and the project owner decided on 2026-09-03
-  to keep the Gas Man values and label them. The paragraph below on the
-  agent files gives each difference.
+  The three blood:gas coefficients are the worked example. Primary
+  measurements exist for all three, and the project owner decided on
+  2026-09-03 to keep the Gas Man values and label them. The paragraph below on
+  the agent files gives each value's difference from its measurement.
 
 That bar is higher than the one a tier-1 citation clears. Only two reasons are
 admissible. The work of finding a primary source is not one of them:
@@ -3015,29 +3016,30 @@ admissible. The work of finding a primary source is not one of them:
 1. **No primary measurement of *this quantity, in this population* exists or
    is reachable.** The whole reference patient is in this state. That
    includes the parameters that carry a primary citation beside them. Hudgel
-   and Devadatta measured awake functional residual capacity, where the
-   stored volume is an anaesthetised lung. Cattermole et al. measured a
-   different population. Janssen et al. report a muscle mass, where this
-   model stores a volume. Each note says which of these cases applies, so the
-   citation serves as a comparison and not as a source.
+   and Devadatta measured awake functional residual capacity, whereas the
+   stored volume describes an anaesthetised lung. Cattermole et al. measured a
+   different population. Janssen et al. report a muscle mass, whereas this
+   model stores a volume. Each parameter's note says which of these cases
+   applies, so the citation serves as a comparison and not as a source.
 2. **The value belongs to a set whose internal consistency is part of what is
-   being modelled**, and replacing it would mean mixing the reachable
-   primaries across laboratories and cohorts. This is tier 3's own argument
-   above. The three blood:gas coefficients are the worked example. Eger,
+   being modelled**, and replacing it would mean mixing primary measurements
+   from different laboratories and cohorts. This is the argument for tier 3
+   given above. The three blood:gas coefficients are the worked example. Eger,
    Strum and Eger, Lerman et al., and Esper et al. 2015 did measure these
    quantities in this population, so the first reason does not cover them.
-   But a single laboratory's blood:gas figure dropped into a Gas Man tissue
-   set makes the trajectory a hybrid of two parameter lineages. This document
-   makes the same objection below against dividing a Gas Man trajectory by a
-   Mapleson MAC. Here it applies one level down, to the parameters.
+   But one laboratory's blood:gas figure, placed in a Gas Man tissue set,
+   makes the trajectory a hybrid of two parameter sets with different origins.
+   This document makes the same objection below against dividing a Gas Man
+   trajectory by a Mapleson MAC. Here the objection applies one level down, to
+   the parameters.
 
 The second reason is the narrower of the two. It is available only where the
-entry cites the primaries with the measured value and records the difference
-from the stored one, so the reader can see what the choice costs. For the
-three blood:gas coefficients the stored values sit 0.9% to 26.3% below the
-measured ones. The paragraph below on the agent files gives each difference,
-the date of the decision, and the planned route to a primary coefficient set,
-which would retire this reason for these three.
+entry cites the primary measurements with their measured values and records
+the difference from the stored value, so the reader can see what the choice
+costs. For the three blood:gas coefficients the stored values sit 0.9% to
+26.3% below the measured ones. The paragraph below on the agent files gives
+each difference, the date of the decision, and the planned route to a primary
+coefficient set. That route would remove this reason for these three.
 
 Where a primary measurement *is* available and simply has not been adopted,
 the entry says so in those words, and the value **carries no adopted
@@ -3071,23 +3073,23 @@ the value had been measured is the error this section guards against.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- not-restated: 70 kg -->
 
-**Where this project stands.** Of the 49 rows in
-the provenance table below, 16 are tier 3, four are tier 2, 27 are tier 1, and
-two adopt no source of any tier. **Nine of the twelve partition coefficients,
-which are every tissue:gas value, are Yasuda, Targ and Eger's human
-measurements.** They were adopted on 2026-09-13, after the stored
-values were checked against that paper's Table 1. The other three, the
-blood:gas coefficients, are the Gas Man set as published by De Wolf et al.,
-and they remain tier 3. Ten of the eleven physiologic parameters in
-`src/anesthesia_sim/data/patients/reference_adult.json` are the Gas Man default
-patient. The three `mac_percent` values are the MAC values that De Wolf et al.
-state they used in their Gas Man simulations. Two tier-2 sources are cited
-alongside them but not adopted: Mapleson's 1996 meta-analysis and the
-age-related iso-MAC charts built on it. The two unadopted rows are the machine
-parameters in `src/anesthesia_sim/data/machines/reference_circle_system.json`.
-One is a circuit volume that departs deliberately from the published Gas Man
-figure. The other is a default fresh gas flow with no published counterpart at
-all.
+**Where this project stands.** Of the 49 rows in the provenance table below,
+16 are tier 3, four are tier 2, 27 are tier 1, and two adopt no source of any
+tier. **Nine of the twelve partition coefficients are Yasuda, Targ and Eger's
+human measurements.** These nine are all of the tissue:gas values. They were
+adopted on 2026-09-13, after the stored values were checked against that
+paper's Table 1. The other three, the blood:gas coefficients, are the Gas Man
+set as published by De Wolf et al., and they remain tier 3. Ten of the eleven
+physiologic parameters in
+`src/anesthesia_sim/data/patients/reference_adult.json` come from the Gas Man
+default patient. The three `mac_percent` values are the MAC values that De Wolf
+et al. state they used in their Gas Man simulations. Two tier-2 sources are
+cited alongside them but not adopted: Mapleson's 1996 meta-analysis and the
+age-related iso-MAC charts built on it. The two rows that adopt no source are
+the machine parameters in
+`src/anesthesia_sim/data/machines/reference_circle_system.json`. One is a
+circuit volume that departs deliberately from the published Gas Man figure.
+The other is a default fresh gas flow with no published counterpart at all.
 
 **The thirty-one rows that adopt a source other than Gas Man are of six kinds.**
 
@@ -3126,11 +3128,11 @@ never what tier its source carries. The command prints the counts but does not
 compare them with this paragraph. Whoever changes a count must check that the
 sentence around it is still true.
 
-Of all the stored values, `mac_percent` is the one that a reader divides by.
-It is tier 3, from De Wolf et al.'s Gas Man set. It is the divisor of the
-second display unit, so its tier governs a displayed clinical value as well as
-a starting dial position. § "Delivery-limit and MAC
-parameters" states what that costs, and § "Known limitations" records it.
+Of all the stored values, `mac_percent` is the only one used as a divisor for
+a displayed value. It is tier 3, from De Wolf et al.'s Gas Man set. It is the
+divisor of the second display unit, so its tier affects a displayed clinical value as
+well as a starting dial position. § "Delivery-limit and MAC parameters" states
+what that costs, and § "Known limitations" records it.
 
 Every `sources` entry in every data file names its tier. The three agent files
 cite the primary blood:gas measurements alongside their tier-3 blood:gas
@@ -3146,14 +3148,14 @@ sevoflurane −12.2%, isoflurane −10.3% and desflurane −26.3%. That makes
 desflurane the widest gap in the project, at about 3.8 of Esper's SDs. The
 paper was read from its abstract only.
 
-The Gas Man study that prints this parameter set says so in its own footnote:
-its blood/gas coefficients "differ from them observed by Esper et al." (Weber
-et al. 2021, Table 1). § "The early wash-in curve against the published
-figures" records what Esper's desflurane value would do in this model. The
-decision to keep the Gas Man values and label them, rather than move to the
-textbook 1.4 or to Lerman's measured 1.46 for isoflurane, was taken on
-2026-09-03. The route to primary values for all three agents is `ROADMAP.md`'s
-planned-milestone item 31.
+The Gas Man study that prints this parameter set notes the gap in its own
+footnote: its blood/gas coefficients "differ from them observed by Esper et
+al." (Weber et al. 2021, Table 1). § "The early wash-in curve against the
+published figures" records what Esper's desflurane value would do in this
+model. The decision to keep the Gas Man values and label them, rather than
+move to the textbook 1.4 or to Lerman's measured 1.46 for isoflurane, was
+taken on 2026-09-03. The route to primary values for all three agents is
+`ROADMAP.md`'s planned-milestone item 31.
 
 `src/anesthesia_sim/data/patients/reference_adult.json` still adopts no
 primary source for any of its eleven parameters, and it records that in those
@@ -3180,10 +3182,11 @@ silence is not taken for an oversight. Two are not measurements at all. The
 reference weight is a label that no equation reads. The venous pool is a
 well-stirred mixing volume that sets the 14.7-second mixed-venous time
 constant. It is not the physiologic venous blood volume, which is several
-times larger. One is a
-derived convention. The remaining three are lumped-compartment aggregates: the
-vessel-rich volume and flow fraction, and the fat volume. No single
-measurement exists of the quantity this model means by any of them.
+times larger. One, the default alveolar ventilation, is a convention: Gas
+Man's program default. The remaining three are
+lumped-compartment aggregates: the vessel-rich volume and flow fraction, and
+the fat volume. For each of them, no single measurement exists of the quantity
+that this model means.
 
 **None of these comparisons changes or promotes a stored value.** A measurement
 cited beside a tier-3 number does not source it, which is the second of the
@@ -3200,41 +3203,41 @@ Wilkins. The Workbook attributes nothing to Mapleson.
 
 **The table supplies seven of the eleven values, not all eleven.** Page
 183's "Patient default options" describes the interface controls and carries
-no numbers. Alveolar volume, the
-three tissue volumes and the three flow fractions are in the table and equal
-what is stored. Cardiac output is there only as the sum of the flow column.
-Reference weight and alveolar ventilation are not in the table either. **The
-venous pool's 1.0 L is not in the
-table at all**: its `Blood` row reads 5.00 L. Lowe and Ernst is the link that
-decides whether this chain ends in a measurement or in another compilation.
-The paragraphs below show that it ends in neither.
+no numbers. Alveolar volume, the three tissue volumes and the three flow
+fractions are in the table and equal what is stored. Cardiac output appears
+only as the sum of the flow column. Reference weight and alveolar ventilation
+are not in the table. **The venous pool's 1.0 L is not in the table at all**:
+its `Blood` row reads 5.00 L. Lowe and Ernst is the link that decides whether
+this chain ends in a measurement or in another compilation. The paragraphs
+below show that Lowe and Ernst is itself a compilation, and that the chain
+behind it never reaches a measurement.
 
 **A second Workbook page, read 2026-09-15 from the private corpus, carries
-three of those four.** Its Appendix C, "Gas Man
-System Defaults", pages 171–72, prints the program's `GASMAN.INI` verbatim. Its
-`[Volumes]` block gives `CKT=8.0`, `ALV=2.5`, `VRG=6.0`, `MUS=33.0`, `FAT=14.5`
-and `VEN=1.0`. `[Ratio]` gives `76`, `18`, `6`. `[Defaults]` gives `VA=4` and
-`CO=5`. So alveolar ventilation is stated as a number, and cardiac output does
-not rest on a column sum. The venous pool's 1.0 L is in the document after
-all. Only `weight_kg` is in neither appendix. The Workbook's prose states it,
-together with the 4 L/min alveolar ventilation, in Chapter 13, page 127.
-**Nothing is promoted by any of it.** These are one program's defaults written
-down more than once, tier 3 each time, and the venous pool has since moved off
-Gas Man entirely.
+three of those four.** Its Appendix C, "Gas Man System Defaults", pages 171–72,
+prints the program's `GASMAN.INI` verbatim. Its `[Volumes]` block gives
+`CKT=8.0`, `ALV=2.5`, `VRG=6.0`, `MUS=33.0`, `FAT=14.5` and `VEN=1.0`. `[Ratio]`
+gives `76`, `18`, `6`. `[Defaults]` gives `VA=4` and `CO=5`. So alveolar
+ventilation is stated as a number, and cardiac output does not rest on a column
+sum. The venous pool's 1.0 L is in the document after all. Only `weight_kg` is
+in neither appendix. The Workbook's prose states it, together with the 4 L/min
+alveolar ventilation, in Chapter 13, page 127. **None of this promotes a value
+to a higher tier.** These are one program's defaults written down more than
+once, tier 3 each time. The stored venous pool no longer uses Gas Man's value
+at all.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Lowe and Ernst has been read at the source, and the chain does not end
 there.** Pages 55–60 and 82–84 were read on 2026-09-08 from an
-interlibrary-loan scan. Two papers that use the book had narrowed the pages to
+interlibrary-loan scan. Two papers that use the book had cited it at pages
 57 and 83: Lerou and Booij's system model (*Br J Anaesth* 2001;86:12–28) and
 Couto da Silva, Mapleson and Vickers' study of Lowe's method (*Br J Anaesth*
 1997;79:103–12). Both were read at full text on 2026-09-06. This repository
 does not hold the scan, because it is publisher-copyright material and the
-repository is public. The author's initials are `HJ`, because the scan's own
-record prints the author as Lowe, Harry J. The Workbook's `HF` is therefore a
-misprint. Interlibrary loan is a third route to a source. It is neither the
-route `.claude/rules/citing-sources.md` describes nor the personal access by
-which the Workbook arrived.
+repository is public. The scan's own record prints the author as Lowe, Harry
+J., so his initials are `HJ`. The Workbook's `HF` is therefore a misprint.
+Interlibrary loan is a third way of reaching a source. It is neither the route
+that `.claude/rules/citing-sources.md` describes nor the personal access
+through which the Workbook arrived.
 
 **Page 56 settles the tier question for the book, in one sentence.** Of
 figure 4.1b, the table in which the volumes and flows are printed, it says:
@@ -3286,15 +3289,16 @@ single page, and that page ends the chain.
 **The chain terminates at tier 2, and never reaches tier 1.** Page 151 of the
 ICRP report was read on 2026-09-10. It carries **Table 8, "Organs of standard
 man — Mass and effective radius of organs of the adult human body"**,
-tabulated for a total body of 70,000 g. A "standard man" is a reference specification agreed by a committee.
-The document's own title is *Report of Committee II*. The table gives no
-citation, sample count or dispersion for any row. Table 7, on the facing page
-150, is different: each of its tissue rows carries a count in parentheses.
-Under the hierarchy at the head of this section, a consensus document that
-collects primary measurements without making one is **tier 2**. So the longest
-provenance chain behind the reference patient runs Gas Man (tier 3) → Lowe and
-Ernst (tier 2) → ICRP Committee II (tier 2). **Nothing on that chain was
-measured by anybody this document can name.**
+tabulated for a total body of 70,000 g. A "standard man" is a reference
+specification agreed by a committee. The document's own title is *Report of
+Committee II*. The table gives no citation, sample count or dispersion for any
+row. Table 7, on the facing page 150, is different: each of its tissue rows
+carries a count in parentheses. Under the hierarchy at the head of this
+section, a consensus document that collects primary measurements without
+making one is **tier 2**. So the longest provenance chain behind the reference
+patient runs Gas Man (tier 3) → Lowe and Ernst (tier 2) → ICRP Committee II
+(tier 2). **Nothing on that chain was measured by anybody this document can
+name.**
 
 **Table 8 has no blood flows.** It gives mass and effective radius, and
 nothing else. Yet Lowe and Ernst cite all four references together for "organ
@@ -3340,8 +3344,8 @@ to ICRP.
 **References 19 and 20 measured nothing either.** Both were read in full text
 on 2026-09-10. They share one parameter set. Reference 20's Appendix says its
 tables "are the same as used by N. Ty Smith in his article … where he gives the
-rationals for our choice". So the provenance lies in reference 19. Of the table
-this chain would need, reference 19 says that it "lists the **assumed** blood
+rationals for our choice". So the provenance lies in reference 19. Reference 19
+says that the table this chain would need "lists the **assumed** blood
 volumes, tissue volumes, and partition coefficients". "Assumed" is the paper's
 own word, and it gives no source for any of these values. Its *flows* are
 compiled from "several sources, most of which can be found in a recent review".
@@ -3351,8 +3355,8 @@ edition. The compiled flows did not balance, and the authors made them balance.
 Total cardiac output was 3,480 ml/min, against regional flows summing to 3,290
 ml/min, and "the discrepancy was compensated for by adjusting the values for
 skin and skeletal muscle flows". **A stated assumption is not a source, and an
-adjusted sum is not a measurement.** So neither paper can be promoted, and
-neither is a candidate for adoption.
+adjusted sum is not a measurement.** So neither paper can be promoted to a
+higher tier, and neither is a candidate for adoption.
 
 **They are not the origin of figure 4.1b either.** Reference 19 models a 75 kg
 man in twelve compartments: arterial, brain grey, brain white, heart,
@@ -3366,17 +3370,16 @@ identified origin.** Reference 26 gives masses and no flows. References 19 and
 1963, is the last of the four still unread, and reference 20 names him only as
 the source of the model *concept*.
 
-**Reference 9 closes the chain, and it makes two of the four references one
-document.** Mapleson 1963 was read on 2026-09-10. His
-Appendix 1 opens: "*Tissue volumes and blood supplies.* With the following
-exceptions the volumes in Table 1 are those for the 'standard man' of the
-International Commission on Radiological Protection (I.C.R.P.) (23)…". His
-reference 23 is that report at **page 151**, which is Lowe and Ernst's
-reference 26. So Lowe and Ernst very likely took the ICRP citation from
-Mapleson's own reference list. References 19 and 20 are Mapleson's Table 1,
-lumped and relabelled. Lumped as Smith's own footnotes describe, Table 1
-reproduces all **nine of their nine rows**, and those nine rows sum to
-58.04 litres against Mapleson's own 58.04.
+**Reference 9 closes the chain. Most of its volumes are reference 26's, and
+references 19 and 20 are its table relumped.** Mapleson 1963 was read on 2026-09-10. His Appendix 1 opens:
+"*Tissue volumes and blood supplies.* With the following exceptions the volumes
+in Table 1 are those for the 'standard man' of the International Commission on
+Radiological Protection (I.C.R.P.) (23)…". His reference 23 is that report at
+**page 151**, which is Lowe and Ernst's reference 26. So Lowe and Ernst very
+likely took the ICRP citation from Mapleson's own reference list. References
+19 and 20 are Mapleson's Table 1, lumped and relabelled. When Table 1 is lumped
+as Smith's own footnotes describe, it reproduces all **nine of their nine
+rows**, and those nine rows sum to 58.04 litres against Mapleson's own 58.04.
 
 **Mapleson's Table 1 is the most honestly sourced document in this chain, and
 it still measures nothing.** Its volumes are ICRP's, except for six that he
@@ -3411,27 +3414,27 @@ read.** An origin may still exist: the book prints more than one table, and
 Gas Man may lump differently.
 <!-- not-restated: 5 % -->
 
-**Three of the stored values also appear in those tables.** The next
-paragraph settles where each one came from. The three are alveolar ventilation
-of 4 l/min, a functional residual capacity of 2.5 l in reference 20's table
-only, and a skeletal muscle tissue volume of 33 litres. **No stored value
-changes because of any of it.**
+**Three of the stored values also appear in those tables.** They are alveolar
+ventilation of 4 l/min, a functional residual capacity of 2.5 l in reference
+20's table only, and a skeletal muscle tissue volume of 33 litres. The next
+paragraph settles where each one came from. **No stored value changes because
+of any of it.**
 <!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
-**Two of the three are lineage after all, and one is a coincidence.**
-The 2.5 L is Mapleson's functional residual capacity. It is a mean
-of published human measurements, cited to Dittmer and Grebe's *Handbook of
-Respiration*, and not a round number somebody chose. It is still not the
+**Two of the three figures in those tables descend from Mapleson, and one is a
+coincidence.** The 2.5 L is Mapleson's functional residual capacity. It is a
+mean of published human measurements, cited to Dittmer and Grebe's *Handbook
+of Respiration*, and not a round number somebody chose. It is still not the
 stored value's source. Mapleson's row is FRC plus half the tidal volume,
-whereas this model stores an alveolar gas volume. The value also arrives here through Gas
-Man, whose upstream source is Lowe and Ernst, and they lump the quantity away.
-The 33 is Mapleson's muscle 30 plus skin nutritive 3, which is exactly how
-Smith prints it. It is *not* the stored 33.0, because Lowe's muscle row is
-29.8 L at 70 kg and reproduces the stored value under no grouping. Alveolar
-ventilation of 4 l/min stays a coincidence, because Mapleson gives a formula,
-not a figure.
+whereas this model stores an alveolar gas volume. The stored value also reaches
+this project through Gas Man, whose upstream source is Lowe and Ernst, and
+Lowe and Ernst state no alveolar gas volume at all. The 33 is Mapleson's muscle 30 plus skin
+nutritive 3, which is exactly how Smith prints it. It is *not* the stored
+33.0, because Lowe's muscle row is 29.8 L at 70 kg and reproduces the stored
+value under no grouping. Alveolar ventilation of 4 l/min stays a coincidence,
+because Mapleson gives a formula, not a figure.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
@@ -3480,8 +3483,8 @@ So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference that is assumed constant across mammals. **4.84 L/min
 at 70 kg is therefore a derived interspecies extrapolation and must not be
 treated as a measured human cardiac output.** This matters in § "Known
-limitations" below, the one place this document sets the figure beside
-Cattermole et al.'s measured median, and that section says so.
+limitations" below. That section is the one place where this document sets the
+figure beside Cattermole et al.'s measured median, and it says so there.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Checked against the book itself, the Workbook's attribution survives for
@@ -3529,34 +3532,34 @@ for the next link in the chain.
 
 **The venous pool has a published counterpart, and it replaced Gas Man's
 1.0 L.** Davis and Mapleson's paper (*Br J Anaesth* 1981;53:399–405) was read
-at the source on 2026-09-07. It describes a standard man of 70 kg with a total blood volume of 5189 ml and a
-cardiac output of 6480 ml/min. Page 400 states that **for models of inhaled
-anaesthetics** the two venous pools may be combined, "in which case it would be
-marginally more accurate to make the arterial pool 799 ml (15.4% of the total
-blood volume) and the combined venous pool 1222 ml (23.6%)". That combined pool
-is the same object as $`V_v`$ here: one well-stirred venous pool that carries
-tissue return. Their Appendix derives it from the ICRP (1975) blood
-distribution rather than measuring it, and that is what keeps it at tier 2.
-**It was adopted on 2026-09-07, on the project owner's decision.**
-`venous_pool_volume_l` is 1.222 L. The key says "pool" because "venous blood
-volume" would suggest the physiologic venous blood volume, which this is not.
-At the stored 5.0 L/min cardiac output, the mixed-venous time constant is
-14.7 s, against 12.0 s at Gas Man's 1.0 L.
+at the source on 2026-09-07. It describes a standard man of 70 kg with a total
+blood volume of 5189 ml and a cardiac output of 6480 ml/min. Page 400 states
+that **for models of inhaled anaesthetics** the two venous pools may be
+combined, "in which case it would be marginally more accurate to make the
+arterial pool 799 ml (15.4% of the total blood volume) and the combined venous
+pool 1222 ml (23.6%)". That combined pool is the same object as $`V_v`$ here:
+one well-stirred venous pool that carries tissue return. Their Appendix
+derives it from the ICRP (1975) blood distribution rather than measuring it,
+and that is what keeps it at tier 2. **It was adopted on 2026-09-07, on the
+project owner's decision.** `venous_pool_volume_l` is 1.222 L. The key says
+"pool" because "venous blood volume" would suggest the physiologic venous
+blood volume, which this is not. At the stored 5.0 L/min cardiac output, the
+mixed-venous time constant is 14.7 s, against 12.0 s at Gas Man's 1.0 L.
 <!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 <!-- not-restated: 70 kg -->
 
-**What the larger pool costs.** The 30-minute $`F_A/F_I`$
-wash-in distances are unchanged to two decimal places (+0.16, +0.31, +0.79,
-+0.38 SD). The pool has long since equilibrated by then. So the published
-wash-in comparison cannot discriminate between the two values, and it is no
-evidence either way. The 5-minute $`F_A/F_{A0}`$ elimination ratios move
-**0.11 to 0.13 published SD further from** their cohort means: sevoflurane
-+3.67 to +3.79, isoflurane +4.02 to +4.15, and desflurane +1.02 to +1.13. They
-move because a larger pool returns more agent to the lungs. § "Published
-wash-in and elimination validation test" already attributes a shift in the
-same direction to this model's rebreathing circuit rather than to tissue
-return. This shift is a tenth of the gap it adds to.
+**What the larger pool costs.** The 30-minute $`F_A/F_I`$ wash-in distances
+from the published cohort means are unchanged to two decimal places (+0.16,
++0.31, +0.79, +0.38 SD). The pool has long since equilibrated by then. So the
+published wash-in comparison cannot discriminate between the two values, and
+it is no evidence either way. The 5-minute $`F_A/F_{A0}`$ elimination ratios
+move **0.11 to 0.13 published SD further from** their cohort means:
+sevoflurane +3.67 to +3.79, isoflurane +4.02 to +4.15, and desflurane +1.02 to
++1.13. They move because a larger pool returns more agent to the lungs.
+§ "Published wash-in and elimination validation test" already attributes a
+shift in the same direction to this model's rebreathing circuit rather than to
+tissue return. This shift is a tenth of the gap it adds to.
 <!-- not-restated: 0.31 -->
 
 **Gas Man's 1.0 L is not an arterial compartment under a venous name.** Lerou
@@ -3597,17 +3600,17 @@ this constant come from?" with Gas Man, or with a paper that reports Gas Man's
 table, states a tier-3 provenance as though it were a measurement.
 
 **The first and third of those rules are part of the schema, and
-`make check` enforces them.** Each family of data file, agent, patient and
-machine, has its own `schema_version`. Each is checked against its own
+`make check` enforces them.** Each family of data file (agent, patient and
+machine) has its own `schema_version`. Each is checked against its own
 supported window of versions in `src/anesthesia_sim/core/parameters.py`, so a
-schema change moves only the family it applies to. Version 2 gave every
+schema change affects only the family it applies to. Version 2 gave every
 `sources` entry two required fields, and let a data file carry one optional
 top-level string. Version 3 added a third required field to each entry.
 Version 4, for agent files alone, added each agent's `molar_mass_g_mol` and
 `liquid_density` (§ "Agent amount"). The agent window accepts version 4 alone,
 and the patient and machine windows accept version 3 alone. The fields are
-listed rather than tabulated, because the checker finds the provenance table
-below as the first table in this section:
+given as a list rather than a table, because the checker treats the first
+table in this section as the provenance table below:
 
 - `tier`, on each `sources` entry: `primary`, `secondary` or
   `reference-implementation`. It says which of the three tiers above the
@@ -3676,18 +3679,18 @@ The tissue:blood coefficients are computed at load time from the tissue:gas
 and blood:gas values, so their rows name the stored tissue:gas key and show
 the division.
 
-Both directions start from a data file. So a constant that never entered a
-data file is invisible to that check, such as a field default on a `core/`
+Both directions start from a data file. So that check cannot see a constant
+that never entered a data file, such as a field default on a `core/`
 dataclass.
 `test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
-screens for such a constant. It reads every numeric field
-default on a `core/` dataclass through `dataclasses.fields()`, so it also
-reads a default spelled as a named constant. It requires each default to
-appear in this table's Selected-value column. Zero, and the whole of the
-field's own scale (1, or 100 for a percent), carry no science and are not
-screened. The test is a screen and not a proof, because it matches values
+screens for such a constant. It reads every numeric field default on a `core/`
+dataclass through `dataclasses.fields()`, so it also reads a default spelled as
+a named constant. It requires each default to appear in this table's
+Selected-value column. It does not screen zero or the whole of a field's own
+scale (1, or 100 for a percent), because those values carry no scientific
+content. The test is a screen and not a proof, because it matches values
 rather than names. A new constant equal to one the table already selects
-passes. And 6.0 is selected for the circuit and the vessel-rich tissue alike.
+passes. And 6.0 is selected for both the circuit and the vessel-rich tissue.
 
 The table is not the only place these values appear. Some prose restates one
 of them: the reference adult's alveolar volume and ventilation, and each
@@ -3832,8 +3835,9 @@ cent of a 100 kg body, with cardiac output an allometric function of mass.
 **The vessel-rich flow fraction is 0.76 here and 75.8% in the one reachable
 publication of the same parameter set.** The stored value comes from the
 Workbook's own page-168 table, which gives the vessel-rich relative flow as
-0.76 (read at the source on 2026-09-06). Table 1 of De Wolf et al. 2012 prints 75.8. That is the same
-paper the twelve partition coefficients come from, and 75.8 + 18 + 6 = 99.8.
+0.76 (read at the source on 2026-09-06). Table 1 of De Wolf et al. 2012 prints
+75.8. That is the same paper the twelve partition coefficients come from, and
+75.8 + 18 + 6 = 99.8.
 `_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one` and
 `PatientCompartments.__post_init__` each reject a set whose sum lies outside
 `FLOW_FRACTION_TOLERANCE = 1e-12` of 1.0. So the published triple could not be
@@ -3846,10 +3850,10 @@ difference in full.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
 
 **The two machine rows adopt no source of any tier.** The reference patient
-adopts no primary source but does adopt tier-3 ones, so this gap is the wider.
-The two values describe the apparatus in front of the patient rather than the
-patient. So they live in `data/machines/reference_circle_system.json`, a third
-kind of parameter file.
+adopts no primary source but does adopt tier-3 ones, so the machine rows' gap
+is the wider one. The two values describe the apparatus in front of the patient
+rather than the patient. So they live in
+`data/machines/reference_circle_system.json`, a third kind of parameter file.
 
 - **Circuit volume, 6.0 L.** The Workbook's own page-168 table publishes 8.0 L.
   The Methods of De Wolf et al. 2012 print the same 8 L for the simulations to
@@ -3929,52 +3933,54 @@ up agent.
 <!-- derived: 8.5 L from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
 <!-- derived: 8.5 L from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
-**What real workstations hold, and why that does not settle this row either.** `docs/machine-survey.md` surveys the machines in current clinical
-use for the variables that affect a number this model computes. The assembled
-volumes it collects sit below both figures above. Shin et al. print apparatus
-volumes of 4.7 L for a Dräger Primus, 2.1 L for a Perseus A500 and 2.0 L for a
-Zeus IE. Each includes the absorber and excludes the disposable patient
-circuit. Adding the 1.2 L circuit that they computed their totals with gives
-5.9, 3.3 and 3.2 L. So at this file's flow, the circuit time constant runs
-from 89 s on the oldest of the three machines to about 50 s on the newest.
-That is a factor of about 1.8 across machines that a learner would meet in the
-same department. The stored 6.0 L lands within 2% of the Primus's assembled
-5.9 L. That match is a coincidence rather than a sourcing. The stored value
-predates the survey and was kept on the ruling above.
+**What real workstations hold, and why that does not settle this row either.**
+`docs/machine-survey.md` surveys the machines in current clinical use for the
+variables that affect a number this model computes. The assembled volumes it
+collects sit below both figures above. Shin et al. print apparatus volumes of
+4.7 L for a Dräger Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE.
+Each includes the absorber and excludes the disposable patient circuit. Adding
+the 1.2 L circuit that they computed their totals with gives 5.9, 3.3 and
+3.2 L. So at this file's flow, the circuit time constant runs from 89 s on the
+oldest of the three machines to about 50 s on the newest. That is a factor of
+about 1.8 across machines that a learner would meet in the same department.
+The stored 6.0 L lands within 2% of the Primus's assembled 5.9 L. That match
+is a coincidence, because the stored value was not taken from the survey. It
+predates the survey and was kept under the decision above.
 <!-- derived: 89 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 <!-- not-restated: 2 % -->
 
 **Volume is not the whole of the difference between machines**, as the survey
-found. Fukuda et al. moved only the fresh gas inlet, with the machine and the volume held fixed. The inspired/delivered
-ratio of both isoflurane and sevoflurane rose significantly at low flow
-(*J Anesth* 2006;20(4):268–73). $`F_I/F_D`$ is what the circuit equation above
-computes. So a real machine changed it through a property that this model
-does not represent. The survey sets out the consequence for the planned
-machine abstraction. What it means here is that a future per-machine
-`circuit_volume_l` reproduces part of an inter-machine difference, and must
-not be described as reproducing all of it. `docs/machine-abstraction.md` is
-where that consequence was decided. Internal topology is not
-represented. Folding it into an effective volume is refused, because that
-would attribute to volume a difference that volume did not cause.
-`ROADMAP.md`'s planned-milestone item 39 states the condition under which the
-decision not to represent internal topology is revisited.
+found. Fukuda et al. moved only the fresh gas inlet, with the machine and the
+volume held fixed. The inspired/delivered ratio of both isoflurane and
+sevoflurane rose significantly at low flow (*J Anesth* 2006;20(4):268–73).
+$`F_I/F_D`$ is what the circuit equation above computes. So a real machine
+changed it through a property that this model does not represent. The survey
+sets out the consequence for the planned machine abstraction. What it means
+here is that a future per-machine `circuit_volume_l` reproduces part of an
+inter-machine difference, and must not be described as reproducing all of it.
+`docs/machine-abstraction.md` records the decision that follows. The model does
+not represent internal topology. It also refuses to fold topology into an
+effective volume, because that would attribute to volume a difference that
+volume did not cause. `ROADMAP.md`'s planned-milestone item 39 states the
+condition under which the decision not to represent internal topology is
+revisited.
 
 **A search for the flow row's source found a recommendation, not a
 convention.** `docs/machine-survey.md` § "(a2)" looked for a startup fresh gas
 flow published by any machine in current clinical use, and found none. So the
 row above still adopts no source. What is missing is a published startup
 convention, and such a convention does not appear to exist. What the
-literature carries instead is normative. Kalmar et al. conclude that
-*"routine clinical practice using what historically is called 'low flow
-anaesthesia' (e.g. 2 L/min FGF) should be abandoned"* in favour of automated
-minimal-flow delivery (*J Clin Monit Comput* 2022;36(6):1601–1610, PMID
-34978655). The paper was read at full text on 2026-09-20 from PubMed Central,
-PMC9637609, where the quoted sentence closes the abstract. That is the
-recommendation of a single-centre retrospective study, not a measurement of
-what flows are used. But its own comparator is a fixed 2 L/min group that it
-calls conventional low flow, and that flow already sits below this model's
-4.0.
+literature offers instead is a recommendation about what practice should be.
+Kalmar et al. conclude that *"routine clinical practice using what
+historically is called 'low flow anaesthesia' (e.g. 2 L/min FGF) should be
+abandoned"* in favour of automated minimal-flow delivery (*J Clin Monit
+Comput* 2022;36(6):1601–1610, PMID 34978655). The paper was read at full text
+on 2026-09-20 from PubMed Central, PMC9637609, where the quoted sentence closes
+the abstract. That is the recommendation of a single-centre retrospective
+study, not a measurement of what flows are used. But its own comparator is a
+fixed 2 L/min group that it calls conventional low flow, and that flow already
+sits below this model's 4.0.
 
 **The 4.0 L/min default makes no claim about clinical practice**, because
 no source this project holds supports one. Under the safety-critical standard,
@@ -4004,14 +4010,14 @@ not store them a second time. The tissue-blood partition-coefficient tests in
 `tests/unit/test_parameters.py` guard this derivation.
 
 **The division is the literature's own operation, and one published table
-reproduces its results.** Eger and Saidman state the operation in
-these words: "a tissue/blood partition coefficient for a given anesthetic is
-calculated by dividing a tissue/gas partition coefficient by the blood/gas
-partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
-computed their own tissue:blood table the same way, as the next subsection
-records. Both papers were read in full text from the private reference corpus,
-Eger and Saidman's p. 1023 on 2026-10-25. The
-full citation of Eger and Saidman is in § "Known limitations".
+reproduces its results.** Eger and Saidman state the operation in these words:
+"a tissue/blood partition coefficient for a given anesthetic is calculated by
+dividing a tissue/gas partition coefficient by the blood/gas partition
+coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger computed
+their own tissue:blood table the same way, as the next subsection records.
+Both papers were read in full text from the private reference corpus. Eger and
+Saidman's p. 1023 was read on 2026-10-25. The full citation of Eger and Saidman
+is in § "Known limitations".
 
 Baker and Farmery's 2011 review publishes the results as well as the
 operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
