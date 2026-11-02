@@ -199,8 +199,8 @@ remains a question for a reviewer.
 | reading the hover's value as a live readout after the pointer has left the plot | the box responds only while the pointer is over the plot (§ "When it answers"). Leaving the plot takes the box down at once, along with any pointer move still waiting for a response, so no later frame responds for a pointer that has gone. If the box were left up, it would update again on every frame. While a run plays, it would climb with the run, for an instant the reader is not looking at (`PL-LTKL`) | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown. First, it is named on each run's own readout panel (§ "Minimum displayed outputs"). Second, while more than one run is drawn, it is named in the chart's hover readout: on its first line where one run answers (§ "The hover and the run it belongs to"), and on each value line where several do. Every run inside the hover radius is reported, so no hand movement can swap which run is read (§ "Where more than one trace answers"). This is needed because the hover floats free of the legend, and line width has no textual equivalent. Third, it is named on the three advisories that sit in a chart rather than on either run's panel: the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`). These stack one line per run, so they are named for the same reason as the hover. Stacking order is declared nowhere on screen, and the run names sit in the unconditional region above the charts. Without names, the branch's F_A/F_I would be readable as the trunk's, and its off-scale notice could be attributed to a run whose traces are all inside the axis (`PL-25DD`). Fourth, it is named in the headings of the two record panels: the agent-accounting validation in the sidebar, and the control-change record in the right column of the unconditional region. Each of these stacks whole panels rather than lines, one per run. So the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column. This matters because "What was changed during this run" over a list of settings, read as the other run's, says the trunk received an intervention it never got (`PL-C3GS`). Fifth, it is named on the notice banner. The runs share one place for this banner, between their transport rows and their readouts. The banner qualifies the values rather than showing one. "The values shown are the last completed step", read as applying to the whole dashboard, says both runs' readouts are frozen at a failed step when one is still going. "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these banners at all, because a banner with nothing to say is hidden and takes no room. With one run halted, its banner appears in the same place whichever run it belongs to, and the words are identical (`PL-TSZM`, `PL-T91K`). Sixth, it is named over each run's compartment schematic, which stacks one schematic per run in its View, from the name the run's own panel shows (`PL-RNYV`). Seventh, it is named over each run's agent cost panel in the same way (`PL-B396`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison`, `test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison` |
 | reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot that names the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never answers from them. The run keeps its setting until the release (§ "A preview of an unapplied setting", `PL-5B1N`) | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
-| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
-| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
+| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
+| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
 | reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale, each share named in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
 | reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid". `DisplayUnit` holds each spelling, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost View writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures (`PL-B396`) | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
 
@@ -886,8 +886,9 @@ It reads the amount and the ratio from one snapshot, which carries the
 running agent's ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`).
 So it cannot pair one agent's vapour with another agent's ratio, which would
 misread sevoflurane by about 13 % against desflurane's ratio. A unit test
-refuses any second caller of `liquid_volume_ml` in `app/`. `PL-1P15` builds
-the cost on the same View.
+refuses any second caller of `liquid_volume_ml` under `src/`. The cost on the
+same View multiplies this liquid figure by the reader's price (§ "A cost at the
+reader's price", `PL-1P15`).
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -11444,6 +11445,32 @@ computes the three volumes from the stored densities.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- not-restated: 2 % -->
 
+**A cost and a price per millilitre** (`PL-1P15`). A cost is the delivered
+agent in liquid times the reader's price per millilitre (§ "A cost at the
+reader's price"). The price is the reader's own figure, so it carries no
+modelled uncertainty. The cost's only modelled uncertainty is the liquid
+figure's, which comes from the measured density alone, as the paragraph above
+says. The largest relative SD of a stored density is sevoflurane's,
+0.0008 / 1.5203, or 0.053 %. That is relative, so the cost's precision is a
+count of significant figures, not of decimals. A count of n figures has a
+smallest relative step of 1 in (10^n - 1), at a value such as 999. At three
+figures that is 0.10 %, coarser than one SD of the density, which the
+one-sided bound allows. At four it would be 0.010 %, finer than one SD. So a
+cost is shown to **three significant figures**. It is never shown finer than
+**a hundredth** of its currency, which is the smallest unit of most
+currencies: 0.68 reads `USD 0.68`, not `USD 0.680`. A positive cost below a
+hundredth reads `USD <0.01`, and a run that has delivered nothing reads
+`USD 0`. The price per millilitre is shown to **four significant figures**.
+Four is the fewest at which its rounding moves the product of the figures
+shown by at most half of the cost's smallest step: half a step at four figures
+is at most 0.5 in 1000, against 0.5 in 999 for the cost. The liquid volume's
+0.1 mL is then the only rounding a reader multiplies by that is coarse enough
+to matter, and the readout says so (§ "A cost at the reader's price").
+`test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`
+computes both from the stored densities.
+<!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
+<!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
+
 **The stored total has no liquid precision, and is refused in liquid.** A store
 converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
 with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
@@ -11453,8 +11480,8 @@ vapour, as the accounting panel shows it.
 `test_a_unit_with_no_derived_precision_is_refused` holds the refusal.
 
 **What this section does not yet derive.** A cost in money depends on a price
-that the reader sets, so its resolution is not a constant, and `PL-1P15`
-derives it. A compartment's amount was the other gap. At the totals' 0.1 L,
+that the reader sets, so its resolution is not a count of decimals, and the
+paragraph on a cost and a price per millilitre below derives it. A compartment's amount was the other gap. At the totals' 0.1 L,
 venous blood reads below resolution for a whole hour at 1 MAC with every
 shipped agent, and so do the alveoli with sevoflurane and isoflurane.
 Desflurane's alveoli read 0.1 L from about two minutes. These figures have no
@@ -12232,8 +12259,8 @@ label names the run the preview belongs to.
 
 This section specifies what a stored agent price carries, and what a readout
 that shows a cost must show beside it (`PL-VJZK`). `app/preferences.py`
-stores a price (`PL-93B3`). Nothing in `src/` shows a cost yet: `PL-1P15`
-builds the cost on the agent cost View.
+stores a price (`PL-93B3`). The agent cost View shows the cost, and its form
+sets the price (`PL-1P15`, `app/agent_cost.py`).
 
 **A price is neither modelled nor measured.** This document separates
 modelled values from measured ones, and every value the interface shows today
@@ -12355,7 +12382,7 @@ millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1), and Gas Man prices
 "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
 about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
 factor. For Gas Man's Exercise 14-1 at 60 min, the readout could read
-"39.4 mL of liquid delivered x USD 0.2047 per mL of liquid = USD 8.07, at your
+"39.4 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
 price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The wording and the
 layout are placeholders, and the six facts are the requirement. The book
 prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to
@@ -12398,16 +12425,27 @@ are compared, each run's cost uses the price of its own agent. A cost is
 never added to, or subtracted from, a cost in another currency.
 
 **Displayed precision.** How many decimals a cost can justify depends on the
-price, so it is not a constant that can be derived before a price is known
-(`PL-0S0V`). Before it shows a cost, `PL-1P15` derives two precisions in
-§ "Displayed precision": the cost's, and the price per millilitre's. Either
-the product of the figures shown agrees with the cost to within one unit of
-the cost's last digit, or the readout says that the figures beside the cost
-are rounded.
+price, so it is not a count of decimals (`PL-0S0V`). § "Displayed precision"
+derives two precisions, in its paragraph on a cost and a price per millilitre: the cost
+is shown to three significant figures and never finer than a hundredth, and
+the price per millilitre to four significant figures. The product of the
+figures shown can still differ from the cost by more than one unit of its
+last digit, because the liquid volume is shown to 0.1 mL. So the readout
+always says that the figures beside the cost are rounded, and that the cost
+is computed before rounding (`PL-1P15`).
 
-**Tests.** No test enforces this section yet. Its two rows in the hazard table
-(§ "Reasonably foreseeable misuse, and the hazards the presentation carries")
-name `PL-1P15` as the item that owes them.
+**What the form takes.** The reader types the bottle price and the bottle
+volume as digits with at most one decimal point. A sign, an exponent, a
+thousands separator or a decimal comma is refused rather than guessed at,
+because "1,250" could mean 1250 or 1.25. A refused entry changes nothing, and
+the form says why. The date field writes the date as ISO 8601 does, and starts
+at the day of entry.
+
+**Tests.** The two rows in the hazard table (§ "Reasonably foreseeable misuse,
+and the hazards the presentation carries") name the tests that enforce this
+section. `test_the_displayed_cost_reproduces_gas_man_s_printed_costs` runs both
+of Gas Man's isoflurane exercises from the patient inputs to the drawn cost,
+at the book's price, and checks the four printed costs.
 
 ### The compartment schematic: what its heights, amounts and share bar assert
 

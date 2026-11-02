@@ -83,6 +83,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 
+from anesthesia_sim.app.currency_code import is_currency_code
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
@@ -132,9 +133,6 @@ _PRICE_KEYS: Final = frozenset(
     {_AGENT_KEY, _BOTTLE_PRICE_KEY, _BOTTLE_VOLUME_KEY, _CURRENCY_KEY, _APPLIES_ON_KEY}
 )
 
-# Three capital letters, the form of an ISO 4217 alphabetic code. `[A-Z]` in
-# Python's `re` matches only the 26 ASCII capitals.
-_CURRENCY_PATTERN: Final = re.compile(r"[A-Z]{3}")
 # A date must be an ISO 8601 calendar date in its extended form, such as 2008-03-05.
 # `date.fromisoformat` also accepts the basic form, 20080305, which a reader could take
 # for another number. So the pattern is checked before `date.fromisoformat` runs.
@@ -211,7 +209,7 @@ class AgentPrice:
                 f"the {self.agent_id} price's currency is a str, not {type(self.currency).__name__}"
             )
 
-        if _CURRENCY_PATTERN.fullmatch(self.currency) is None:
+        if not is_currency_code(self.currency):
             raise SimulationConfigurationError(
                 f"the {self.agent_id} price's currency must be an ISO 4217 code of three capital "
                 f"letters, such as USD, and {self.currency!r} is not"
@@ -224,6 +222,21 @@ class AgentPrice:
 
         object.__setattr__(self, "bottle_price", float(self.bottle_price))
         object.__setattr__(self, "bottle_volume_ml", float(self.bottle_volume_ml))
+
+    @property
+    def price_per_liquid_ml(self) -> float:
+        """Return the price of one millilitre of liquid agent, in `currency`.
+
+        This property is the only place that computes the price per
+        millilitre. The store never holds the price per millilitre, so it
+        cannot disagree with the bottle price and volume that it comes from
+        (`docs/MODEL.md` § "A cost at the reader's price"). Both figures are
+        positive and finite, but the quotient of two such floats can still be
+        infinite or zero, such as 1e308 over 0.5. The cost readout shows no
+        cost in that case (`app/agent_cost.py`).
+        """
+
+        return self.bottle_price / self.bottle_volume_ml
 
 
 @dataclass(frozen=True, slots=True)

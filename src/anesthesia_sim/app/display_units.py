@@ -59,6 +59,11 @@ class DisplayUnit(Enum):
     # (`PL-B396`). In millilitres of liquid, the figure is the volume of liquid agent
     # that the vaporizer turned into the delivered vapour.
     AGENT_VAPOUR_LITRES = ("litres of vapour", "L vapour", "L vapour")
+    # A bottle of agent holds real liquid. So the reader's bottle volume, and
+    # the price per millilitre worked out from it, are in this unit too
+    # (`PL-1P15`). The field for the bottle volume names this unit, so the reader
+    # is less likely to type a volume in litres or as a count of bottles
+    # (`docs/MODEL.md` § "A cost at the reader's price").
     AGENT_LIQUID_MILLILITRES = ("millilitres of liquid", "mL of liquid", "mL of liquid")
 
     recorded: str

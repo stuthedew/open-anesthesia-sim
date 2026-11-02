@@ -1423,3 +1423,23 @@ Retiring prose builds no mechanism, so the generator pause did not apply.
 characters, 392 fewer. Nothing was added to another resident file. The cut is
 small because most of `CLAUDE.md` governs a reply, a design choice or an
 action taken before any file is read, and no check sees those moments.
+
+## Five machine-writing patterns, added 2026-11-02
+
+`PL-ZT47` added five patterns and one before-and-after example to the resident
+`.claude/rules/plain-writing.md`: a tautological aside, a contrast nobody
+claimed, narration about the text itself, a defensive scope statement, and a
+table cell or paragraph that has grown into an essay. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02, and
+asked for the fifth pattern in the same day's thread.
+
+**The carrier test.** It stays under the test the rule already passed: the
+moment is any write of prose, and an item brief, a commit message and a reply
+follow no read. No check can carry it, for the same reason as the rest of the
+rule. A count of "rather than" or ", not " cannot tell a needed contrast from
+a reflexive one. `tools/new_prose.py` now prints changed paragraphs of
+`docs/MODEL.md` and `README.md`, so the close-out reviewer, which loads the
+resident rules, applies the patterns there too.
+
+**Why nothing is cut.** The existing points name compressed wording only, so
+no sentence said any of this. The addition is text the owner asked for.

@@ -1,9 +1,18 @@
 ---
 id: PL-ZT47
 title: docs/MODEL.md still reads as machine-written after PL-BZR4's rewrite: tautological asides, 'X, not Y' and 'rather than' contrasts, and narration about its own provenance; the plain-writing rule names none of these patterns, and the close-out prose review reads only .py files, so MODEL.md's 2,348 lines added since were never reviewed
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: docs, infra
 feature: prose-quality
+touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md, docs/resident-instructions.md, docs/apparatus.md, docket.toml, tools/new_prose.py, tools/model_rewrite.py, tests/unit/test_new_prose.py, tests/unit/test_model_rewrite.py
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1943
+payoff: every later change to the model specification gets the same plain-prose review as a docstring, and each section rewrite can show the reader what it removed
+verify: grep -qF 'A table cell or paragraph that has grown into an essay' .claude/rules/plain-writing.md && uv run pytest -q -p no:cacheprovider tests/unit/test_model_rewrite.py tests/unit/test_new_prose.py
+reenters: PL-PRCS
 ---
 
 **Problem.** docs/MODEL.md still reads as machine-written after PL-BZR4's rewrite: tautological asides, 'X, not Y' and 'rather than' contrasts, and narration about its own provenance; the plain-writing rule names none of these patterns, and the close-out prose review reads only .py files, so MODEL.md's 2,348 lines added since were never reviewed
@@ -39,6 +48,12 @@ them:
 3. Narration about the document itself: "is recorded at that depth", "the
    pages above are what the citation is being used for".
 4. Defensive scope statements that say what a passage does not rely on.
+5. A table cell or paragraph that has grown into an essay. Prose ordinals
+   ("First" to "Sixth") inside one table cell show that the content wanted to
+   be a numbered list or a section of its own. The session that filed this
+   item named it on 2026-11-02 as a structural problem rather than a phrasing
+   one. The project owner then asked for it as the fifth pattern: "It should
+   be five patterns" (project owner, 2026-11-02, in this item's thread).
 
 **Example rewrite of line 395's paragraph.** "Symbols and the gas-phase
 cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (pp.
@@ -59,18 +74,100 @@ choice was reached. It goes to the item that already holds it. Rewriting the
 phrasing first would be undone by the next change that adds history in the
 same style.
 
-**Proposed split, for the session that triages this.** Each section-sized
-part fits one session, since the whole file is about 140,800 words.
+**Why it matters.** `docs/MODEL.md` is the document a clinician opens to
+decide whether to trust a displayed number. Padding and decision history bury
+the equation, the unit and the limitation that the reader came for. A reader
+who has to skim past history to find the assumption may miss the assumption.
 
-1. Move the decision history out, one group of sections per item. Each moved
-   passage lands in its item file, or in a new one where no item holds it.
-2. Rewrite the remaining prose of the same sections, against the four
-   patterns above as well as `.claude/rules/plain-writing.md`.
-3. Add the four patterns to `.claude/rules/plain-writing.md`, with this item's
+**The split, decided at triage on 2026-11-02.** The proposal that stood here
+had four parts. Parts 3 and 4 stay in this item, together with the tool the
+section parts need. Parts 1 and 2 are done together, one group of sections per
+item, in the order the sections appear. Within each part the history comes out
+first and the phrasing is rewritten after, in two commits. Doing both in one
+pull request per group halves the number of reads of the same text.
+
+This item builds four things, before any section part starts:
+
+1. The five patterns in `.claude/rules/plain-writing.md`, with this item's
    line-395 paragraph as the before-and-after example.
-4. Make `tools/new_prose.py` return changed paragraphs of `docs/MODEL.md`, so
-   the close-out prose review reads them. Parts 3 and 4 are workflow changes,
-   so check the generator pause in `CLAUDE.md` before building them.
+2. `tools/new_prose.py` prints each changed paragraph, list-item paragraph
+   and table row of `docs/MODEL.md` and `README.md` with 30 words or more. So
+   the close-out prose review reads them, and `bin/docket arm` holds a branch
+   until that review is recorded.
+3. `tools/model_rewrite.py`, which a section part runs twice. `ids HEADING...`
+   lists every item id that the named sections still cite outside the
+   declared-none form ``no test yet (`PL-XXXX`)``. `lost` lists each equation,
+   code span, number and citation that `docs/MODEL.md` held at the fork and no
+   longer holds, and marks the ones the branch added to an item file. A
+   section part's pull request body accounts for every line `lost` prints.
+4. Step 8 of `.claude/skills/docket/modes/close-out.md` names the document
+   paragraphs it now reviews.
+
+The fourteen section parts, in document order (`bin/docket feature
+prose-quality` lists them):
+
+1. `PL-J8CG`: § "Status" through § "Model boundary", with the hazard table.
+2. `PL-XTZW`: § "Conventions" through § "Conservation of agent mass".
+3. `PL-TZ47`: § "Numerical method".
+4. `PL-HJDK`: § "Source hierarchy: what may be cited as the authority for a
+   value".
+5. `PL-70B2`: the agent and MAC parameter sections, § "Required invariants",
+   and § "Required tests" up to the published wash-in validation.
+6. `PL-WBR3`: the published wash-in and elimination validation and the rest of
+   § "Required tests".
+7. `PL-QL0X`: § "Runtime controls" up to § "Supported input ranges".
+8. `PL-QHR2`: § "Supported input ranges" and its subsections.
+9. `PL-YVL0`: § "Reset behavior" through § "Interface boundary".
+10. `PL-PS5H`: § "Minimum displayed outputs" up to § "The control-input
+    timeline".
+11. `PL-XT53`: § "The control-input timeline" through § "The six compartment
+    traces: what separates them".
+12. `PL-J37P`: § "Displayed precision".
+13. `PL-XBJ3`: § "The chart's hover readout: what the tooltip may show"
+    through § "The compartment schematic: what its heights, amounts and share
+    bar assert".
+14. `PL-9331`: § "Assumptions", § "Known limitations" and § "Release gate".
+
+Each is blocked by this item, and moves to `ready` in the commit that closes
+it, with its `verify:` written against `tools/model_rewrite.py ids`.
+
+**How each section part is done.**
+
+1. Run `python3 tools/model_rewrite.py ids` with the part's headings. It lists
+   each item id the sections cite outside the declared-none form.
+2. Take out the decision history: item ids, re-measurement narratives, notes on
+   who supplied a source, ratification records, and accounts of how a choice
+   was reached. Where the cited item already holds the passage, delete it.
+   Where it does not, append the passage to that item's file under a dated
+   paragraph, `**Moved from docs/MODEL.md on DATE.**`, naming the section it
+   left. Where no item holds it, file one. Commit this step on its own.
+3. Keep every equation, unit, value, assumption, limitation, citation with its
+   locator, `provenance:`, `derived:` and `not-restated:` marker, named test,
+   and declared-none form. `tools/doc_check.py` requires the last four. Keep
+   each heading's text, because `src/`, `tests/` and the item files cite
+   sections by heading. Where a heading must change, update every citation of
+   it in the same commit.
+4. Rewrite the remaining prose against `.claude/rules/plain-writing.md`,
+   including its five patterns, and commit that separately.
+5. Run `python3 tools/model_rewrite.py lost` and account for each line it
+   prints in the pull request body: moved to an item, history the item already
+   held, or restored.
+6. Close out as usual. Step 8's prose review now reads the changed paragraphs.
+   The pull request waits on the owner's read, since it changes
+   `docs/MODEL.md`. The read can start from `lost`'s accounting rather than the
+   whole diff.
+
+Other open items change the same sections, so expect to resolve against
+them. `PL-8YBS` changes a hazard-table row, `PL-19W8` and `PL-H94Q` hold
+numeric paragraphs to tests, `PL-5C1H` does the same for the parameter
+sections, and `PL-TCD3` changes how a marker holds a figure.
+
+**Generator check.** A re-entry of `PL-PRCS`, closed 2026-10-18. The fact
+misread is which prose the close-out review reads: `PL-PRCS` built the review
+over `tools/new_prose.py`, which keeps only `.py` files, so every long
+paragraph added to `docs/MODEL.md` since then reached `main` unreviewed. Part 2
+of this item extends the same review to the document, which fixes the
+mechanism rather than one instance of it.
 
 **Constraint.** As in `PL-BZR4`: no equation, unit, assumption, limitation or
 provenance note may be lost. A citation stays; narration about the citation
@@ -133,3 +230,12 @@ The new section:
 >
 > With only one run drawn, the hover, the chart's advisory lines, the sidebar
 > panel headings and the banner show no run name.
+
+**Done when.** `.claude/rules/plain-writing.md` names the five patterns with
+the line-395 example. `tools/new_prose.py` prints the changed long paragraphs
+and table rows of `docs/MODEL.md` and `README.md`, and `--count` counts them,
+so `bin/docket arm` holds a branch that changed one until its prose review is
+recorded. `tools/model_rewrite.py ids` and `lost` work as described above, with
+tests. Close-out step 8 says it reviews those paragraphs. The fourteen section
+parts are `ready`, each with its `verify:`. The section parts themselves are
+not this item's work.

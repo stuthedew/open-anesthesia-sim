@@ -88,6 +88,11 @@ While a case runs, the interface shows:
   chooser offers: in mL of liquid, the liquid agent that the vaporizer turned
   into vapour, or in litres of vapour if the reader chooses, with the unit named on the value; the choice is kept in the
   reader's preferences file and survives a restart;
+- what the delivered agent cost, on the same View, at a price per bottle that
+  the reader sets for each agent, with its currency code and the date the
+  price applied; the project ships no price, so until one is set the View
+  says why no cost is shown, and beside each cost it shows the liquid volume
+  and the price per millilitre that it multiplied;
 - every setting changed during the run, marked on the chart at the simulated
   time it took effect;
 - the wash-in curve the literature is taught from, $`F_A/F_I`$, on a
