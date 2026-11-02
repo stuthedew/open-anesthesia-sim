@@ -1,9 +1,9 @@
 ---
 id: PL-1P15
 title: Show what the delivered agent cost in money, at a price per agent the reader sets, on the agent cost View
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md
