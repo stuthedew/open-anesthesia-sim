@@ -88,6 +88,36 @@ unreadable paragraph into a long one. Any fix has to hold against both
 failures: plain words alone produce length when nothing decides which facts a
 clinician needs here and which belong in the item.
 
+**The third failure: shorter, and still no reason a developer could use.**
+At 20:20Z the session posted a version cut from 21 lines to 12:
+
+> **The release check, and why it allows 0.5%.** The model advances in fixed
+> steps of 0.1 s, and a shorter step should give almost the same result.
+> Before each release, a test reruns the first minute of the default
+> sevoflurane induction with steps of 0.1 s, 0.05 s and 0.025 s. Each run's
+> alveolar, vessel-rich and mixed-venous concentrations must be within 0.5% of
+> the run with the next shorter step. The 0.5% was set for the simulator's
+> earlier calculation method, at about ten times the 0.04% alveolar
+> difference that method showed. The current method's runs agree to better
+> than one part in a trillion (measured 2026-10-03), so the much tighter
+> limits above are the ones that would catch a real error. A compartment that
+> holds almost no agent also passes if its two values differ by less than
+> 0.000001 vol%, because there a tiny difference is a large percentage.
+
+The owner's words: "I guess it's overly verbose and I still struggle to
+understand the why behind it or if I am a dev or someone who forked the
+project, how I would use this info to modify these values for a particular
+goal" (project owner, 2026-11-02, 20:30Z, on #1950's thread). This names a
+second reader of `docs/MODEL.md`, a developer or someone who forked the
+project. That reader needs to know why a value is what it is and what changing
+it would do, and no step in the process names them.
+
+**Every rewrite quoted in this item is evidence, not a model to copy** (project
+owner, 2026-11-02, 20:33Z: "The new text shouldn't be used as an exact model
+to follow without thought, just as another example of where we have
+shortcomings with our current set up"). That includes the declined proposal's
+paragraph below.
+
 **Why it matters.** `docs/MODEL.md` is read by clinicians and educators. A
 paragraph they cannot follow hides the model's limits from exactly the reader
 the safety-critical standard is written for.
@@ -165,8 +195,8 @@ target the process should reach:
 
 **Design round, 2026-11-02.**
 
-**The cause.** Three faults combine. Both of today's failures, the jargon and
-the length, come from them.
+**The cause.** Three faults combine. All three of today's failures come from
+them: the jargon, the length, and a reason that a developer cannot use.
 
 1. **Every step checks the text, and no step tests a reader.** The drafting
    rule lists patterns. The close-out prose review asks a model to hold the
@@ -188,36 +218,46 @@ the length, come from them.
    that a model told to act as a student answered reading questions with
    0.97 accuracy, against 0.66 for real students. Limiting what the model
    could use from the text closed most of that gap.
-3. **No step asks what the reader needs, and three steps require keeping
-   every figure.** The reader is "someone who knows anesthesia or Python", so
+3. **No step asks what the reader needs or what they will do with the text,
+   and three steps require keeping every figure.** The reader is "someone who knows anesthesia or Python", so
    a term that a Python reader knows passes, and no document says which of
    the two reads it. The plain-language standard's first principle is that
-   readers get what they need (ISO 24495-1:2023). The plain-writing rule has
-   no step for it. Instead, its point 7, the prose review's "keep each number
+   readers get what they need, and its fourth is that they can use it (ISO
+   24495-1:2023). The plain-writing rule has a step for neither. Nothing
+   names the developer who wants to change a value, so no paragraph says what
+   the value guards against or what changing it would do. Instead, its point 7, the prose review's "keep each number
    ... exactly as written", `PL-ZT47`'s step 3 and `tools/model_rewrite.py
    lost` all push each figure to stay in the paragraph. So the clinician
    rewrite at 20:10Z lost its jargon and kept all its history: 268 words.
+   The 20:20Z cut kept the history of the old method and still gave no
+   reason a developer could act on.
 
 **Recommendation: build these four changes**, as one item each under
 `prose-quality`, once the owner agrees.
 
 1. **Name each document's reader in one place.** A table in
    `.claude/rules/plain-writing.md` gives each kind of text its reader, what
-   that reader knows, and what they do not. For `docs/MODEL.md`: a clinician
-   or educator who knows anesthesia pharmacology and physiology, and does not
-   know numerical methods, software terms or e-notation such as "4e-4". For a
-   docstring: a Python developer who knows the anesthesia basics.
+   that reader knows, what they do not, and what they will do with the text.
+   `docs/MODEL.md` has two readers. The first is a clinician or educator who
+   knows anesthesia pharmacology and physiology, does not know numerical
+   methods, software terms or e-notation such as "4e-4", and wants to know
+   whether to trust a displayed value. The second is a developer, or someone
+   who forked the project, who wants to change a value for a goal of their
+   own. A docstring's reader is a Python developer who knows the anesthesia
+   basics.
    `tools/new_prose.py` prints the reader line beside each unit, read from the
    table, so the writer and the reviewer use the same reader. This replaces
    "knows anesthesia or Python".
 2. **Decide what the reader needs before choosing words.** Before writing a
    paragraph, the writer states in one sentence what its reader should take
-   from it. A fact that does not serve that sentence goes where its reader
-   is: decision history to the item, and numerical-check detail to a marked
-   technical note in the same section. `docs/MODEL.md` must still hold the
+   from it and what they will do with it. Where the text gives a chosen
+   value, the developer's part answers three questions: what the value
+   guards against, why it is this number, and what changing it would do. A
+   fact that serves none of this goes where its reader is: decision history to the item, and numerical-check detail to a marked
+   note for developers in the same section. `docs/MODEL.md` must still hold the
    numerical method (`CLAUDE.md` § "Safety-critical clinical-output
    standard"), so that detail stays in the document. `lost` gains "moved to
-   the technical note" beside "moved to an item". The prose review may then
+   the note for developers" beside "moved to an item". The prose review may then
    propose moving a fact, saying where, and may restate a number in the
    reader's form, such as 4e-4 as 0.04%. The writer still rejects any change
    to a value.
@@ -225,18 +265,22 @@ the length, come from them.
    reader.** The reviewer gets each unit and its reader line. It returns
    three things: each word or number the reader would not know, judged
    against the table's "does not know" list; what this reader would take
-   from the unit, in at most two sentences; and each sentence that takeaway
-   does not need. The writer compares the takeaway with the sentence from
-   step 2. A listed term or a mismatch means a rewrite, and each unneeded
+   from the unit, in at most two sentences; whether the unit lets this reader
+   do what the table says they will do, such as change a value for a goal of
+   their own; and each sentence that the takeaway does not need. The writer compares the takeaway with the sentence from
+   step 2. A listed term, a mismatch or a reader who cannot act means a
+   rewrite, and each unneeded
    sentence moves or goes. This is paraphrase testing, the standard way of
-   testing plain language with readers (digital.gov). An explicit list of
+   testing plain language with readers (digital.gov), with the question of
+   use that task-based evaluation adds (de Jong and Schellens 1997). An
+   explicit list of
    what the reader does not know stands in for the persona, because a model
    cannot pretend not to know.
 4. **Test the review against the real reader.** The owner is the only
    clinician who reads this text. Each paragraph he rejects is kept in a
    small set beside the review prompt, with his words and the accepted
    rewrite. Whenever the prompt changes, the review is run on the set, and
-   it must flag every rejected paragraph. Today's two paragraphs start the
+   it must flag every rejected paragraph. Today's four paragraphs start the
    set. This turns his reads into a regression test for the review, so it
    cannot pass again a kind of text he has already rejected.
 
@@ -247,34 +291,12 @@ the length, come from them.
   it.
 - `docs/MODEL.md`'s reader is a clinician or educator. The owner decided on
   2026-11-02 that it should be a document clinicians can read.
-- Numerical detail moves to a technical note in `docs/MODEL.md`, not to the
-  items, because the specification must hold the numerical method.
+- Numerical detail moves to a note for developers in `docs/MODEL.md`, not to
+  the items, because the specification must hold the numerical method.
 
 **What it costs.** A table in the rule, a longer review prompt and reply, a
 comparison step for the writer, and one model run on the set whenever the
 prompt changes. None of it is a new plain-writing pattern.
-
-**What the process would produce for the release check.** This is an example
-for `PL-70B2`'s section, not a change this item makes. The clinician text:
-
-> **The release check.** Before each release, a test checks that the
-> simulator's time step is short enough. It runs the first minute of the
-> default sevoflurane induction with steps of 0.1 s, 0.05 s and 0.025 s. Each
-> run's alveolar, vessel-rich and mixed-venous concentrations must agree
-> within 0.5% with the run at the next shorter step. The current method agrees
-> far more closely, so this is a coarse safety net. The tighter test above is
-> the one that would catch a real error.
-
-The technical note:
-
-> *Technical note.* The limits are 5e-3 relative or 1e-8 absolute in
-> fraction, and either one passes. The absolute limit covers a fraction near
-> zero. 5e-3 is about ten times the 4e-4 alveolar gap that the earlier
-> operator split showed between 0.1 s and 0.025 s. The exact step now gives
-> gaps of about 1.4e-13 (measured 2026-10-03).
-
-The direct 0.1 s against 0.025 s comparison, which failed in the mixed-venous
-fraction under the operator split, is history and moves to the item.
 
 **Sources.**
 
