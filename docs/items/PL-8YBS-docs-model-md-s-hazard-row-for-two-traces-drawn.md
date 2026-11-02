@@ -66,3 +66,11 @@ interface's maximum dial". It is fixed here so that the `verify:` can pin it.
 **Generator check.** A one-off: one clause lost its condition when a paragraph's
 figure was summarised into a table row. `PL-CBDX`'s read of `#959` found no
 second instance.
+
+**Checked 2026-11-02:** still open, and the sentence is still on the page
+without its dial. Its generator check above called it a one-off. It is now a
+member of `PL-B6YV`, the head for `docs/MODEL.md` sentences about what the
+model computes that no test computes. Six other such sentences were filed
+since 2026-09-06, five of them by one blind review on 2026-10-25. The repair
+here is unchanged. If `PL-B6YV`'s rule is adopted, the corrected row should
+also name a test that computes the pixel figure at the dial it states.
