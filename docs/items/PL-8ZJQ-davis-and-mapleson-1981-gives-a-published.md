@@ -161,3 +161,8 @@ beside each.
 No command can prove a person read the paper. The adoption half *is* checkable
 and is pinned by `PL-BD94`'s `verify:`, which was run against `HEAD` before the
 work (exit 1) and against the finished tree (exit 0).
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Source hierarchy: what may be cited as the authority for a value", when `PL-HJDK` took the decision history out of that section:
+
+1981. It is tier 2, adopted on 2026-09-07 on the project owner's decision
+(`PL-8ZJQ`), and it was the first tier-2 source adopted in this project.
