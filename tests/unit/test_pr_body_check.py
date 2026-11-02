@@ -833,8 +833,10 @@ def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
 #
 # A body is public as soon as GitHub has it, so the screen runs before the call.
 # What is pinned is that a personal address is refused and named, that the one
-# trailer address and a version pin are not, that the wiring reaches both tools
-# and no other, and that the hook script refuses when Claude Code starts it.
+# trailer address and a version pin are not, that every MCP tool reaches the
+# hook and the screen reads each GitHub call with a title or body whatever its
+# tool is called (`PL-NZJG`), and that the hook script refuses when Claude Code
+# starts it.
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -877,12 +879,76 @@ def test_a_payload_the_screen_does_not_govern_is_let_through(payload: str) -> No
     assert pr_body_check.screen(payload) is None
 
 
-def test_the_hook_is_wired_to_both_pull_request_tools_and_refuses_from_its_script() -> None:
+@pytest.mark.parametrize(
+    ("tool", "extra"),
+    [
+        ("mcp__github__pull_request_write", {"method": "create", "title": "t"}),
+        ("mcp__github__create_pr", {}),
+        ("mcp__github__issue_write", {"method": "create", "title": "t"}),
+        ("mcp__github__add_issue_comment", {"issue_number": "1931"}),
+        ("mcp__github__pull_request_review_write", {"method": "create"}),
+    ],
+    ids=["folded-into-a-write-tool", "renamed", "issue", "comment", "review"],
+)
+def test_an_email_address_sent_to_github_under_any_tool_name_is_refused(
+    tool: str, extra: dict[str, str]
+) -> None:
+    """The screen reads a call by its fields, not its tool's name, which GitHub owns (`PL-NZJG`).
+
+    Before, only `create_pull_request` and `update_pull_request` were read, so
+    a renamed tool, or a comment on the same pull request, published the
+    address unread.
+    """
+    refusal = pr_body_check.screen(_call(tool, body="Asked by a.person@example.org.", **extra))
+
+    assert refusal is not None
+    assert (
+        "`a.person@example.org`"
+        in json.loads(refusal)["hookSpecificOutput"]["permissionDecisionReason"]
+    )
+
+
+@pytest.mark.parametrize(
+    "tool", ["mcp__hearthbot__post_message", "mcp__Gmail__send_message", "mcp__github__get_me"]
+)
+def test_a_call_that_names_no_repository_is_not_read(tool: str) -> None:
+    """Every MCP call reaches the hook, and a thread's post or an email is not GitHub text."""
+    payload = json.dumps({"tool_name": tool, "tool_input": {"body": "Write to me@example.com."}})
+
+    assert pr_body_check.screen(payload) is None
+    assert pr_body_check.read_back(payload) is None
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments", "noted"),
+    [
+        ("mcp__github__create_pull_request", {"title": "t", "body": "b"}, True),
+        ("mcp__github__update_pull_request", {"body": "b"}, True),
+        ("mcp__github__pull_request_write", {"method": "update", "title": "t"}, True),
+        ("mcp__github__update_pull_request", {"state": "closed"}, False),
+        ("mcp__github__pull_request_review_write", {"method": "create", "body": "b"}, False),
+        ("mcp__github__add_issue_comment", {"body": "b"}, False),
+        ("mcp__github__pull_request_read", {"method": "get"}, False),
+    ],
+    ids=["create", "update", "folded", "no-text", "review", "comment", "read"],
+)
+def test_the_read_back_note_goes_on_a_pull_request_description_call_only(
+    tool: str, arguments: dict[str, str], noted: bool
+) -> None:
+    """Every MCP call reaches the hook, so the note must not follow every call it lets through."""
+    note = pr_body_check.read_back(_call(tool, **arguments))
+
+    assert (note is not None) is noted
+
+
+def test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script() -> None:
     """The matcher is a regex over the whole tool name, as Claude Code reads one.
 
-    https://code.claude.com/docs/en/hooks, read 2026-09-30 for the merge guard:
-    a matcher holding a character other than letters, digits, `_` and `|` is a
-    regular expression.
+    https://code.claude.com/docs/en/hooks, read 2026-11-02: a matcher holding
+    a character other than letters, digits, `_`, `-`, spaces, `,` and `|` is a
+    JavaScript regular expression, tested unanchored. A matcher naming the two
+    pull request tools stopped the guard silently once GitHub renamed one, so
+    a renamed tool must reach it (`PL-NZJG`).
     """
     settings = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))
     commands = {
@@ -892,10 +958,14 @@ def test_the_hook_is_wired_to_both_pull_request_tools_and_refuses_from_its_scrip
     }
     command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh"'
     matcher = re.compile(commands[command])
-    for tool in ("mcp__github__create_pull_request", "mcp__github__update_pull_request"):
-        assert matcher.fullmatch(tool)
-    for tool in ("mcp__github__update_pull_request_branch", "mcp__github__merge_pull_request"):
-        assert not matcher.fullmatch(tool)
+    for tool in (
+        "mcp__github__create_pull_request",
+        "mcp__github__update_pull_request",
+        "mcp__github__pull_request_write",
+        "mcp__github__add_issue_comment",
+    ):
+        assert matcher.search(tool), tool
+    assert not matcher.search("Bash")
 
     ran = subprocess.run(
         ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],

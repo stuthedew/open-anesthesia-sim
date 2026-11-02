@@ -3,8 +3,10 @@
 A session merges by arming auto-merge, and squash-merges a pull request GitHub
 will not arm because it is already green and current only while the base
 branch's protection binds an admin, so that GitHub itself refuses a stale or
-red merge (`PL-NXRJ`, reopening `PL-V2X5`). What is pinned is that the matcher
-reaches the tool at all, that the record read at the call decides in both
+red merge (`PL-NXRJ`, reopening `PL-V2X5`). What is pinned is that every MCP
+tool reaches the hook, that the script picks out a merge whatever its tool is
+called and lets every other call through unread (`PL-NZJG`), that the record
+read at the call decides in both
 directions, that the base is read from the pull request rather than assumed,
 and which way each unreadable payload, unanswered read and failed python3 step
 fails. GitHub is served from files through the hook's `DIRECT_MERGE_GUARD_API`,
@@ -90,8 +92,14 @@ def _matches(matcher: str, tool: str) -> bool:
     return re.search(matcher, tool) is not None
 
 
-def test_the_matcher_reaches_the_merge_tool_and_nothing_else() -> None:
-    """A matcher naming no tool passes every other test here and refuses nothing in practice."""
+def test_the_hook_is_wired_on_every_mcp_tool() -> None:
+    """A matcher naming the merge tool stops the guard silently when GitHub renames it.
+
+    The GitHub server has already folded its issue and review tools into
+    `issue_write` and `pull_request_review_write`, so a renamed or folded merge
+    tool must still reach the hook, on any server (`PL-NZJG`). A matcher naming
+    no tool at all passes every other test here and refuses nothing in practice.
+    """
     matchers = [
         entry.get("matcher", "")
         for entry in json.loads(SETTINGS.read_text())["hooks"]["PreToolUse"]
@@ -99,14 +107,59 @@ def test_the_matcher_reaches_the_merge_tool_and_nothing_else() -> None:
     ]
     assert len(matchers) == 1
     (matcher,) = matchers
-    assert _matches(matcher, MERGE)
-    for other in (
-        "mcp__github__enable_pr_auto_merge",
-        "mcp__github__update_pull_request_branch",
-        "mcp__github__pull_request_read",
-        "Bash",
+    for tool in (
+        MERGE,
+        "mcp__github__merge_pr",
+        "mcp__github__pull_request_write",
+        "mcp__plugin_engineering_github__merge_pull_request",
     ):
-        assert not _matches(matcher, other), other
+        assert _matches(matcher, tool), tool
+    assert not _matches(matcher, "Bash")
+
+
+@pytest.mark.parametrize(
+    ("tool", "extra"),
+    [
+        ("mcp__github__merge_pr", {}),
+        ("mcp__github__pull_request_merge", {}),
+        ("mcp__github__pull_request_write", {"method": "merge"}),
+    ],
+    ids=["renamed", "reordered", "folded-into-a-write-tool"],
+)
+def test_a_merge_under_another_name_is_judged(
+    tool: str, extra: dict[str, str], tmp_path: Path
+) -> None:
+    """A renamed merge tool is refused while admins are exempt, and passes once they are bound."""
+    payload = json.dumps({"tool_name": tool, "tool_input": {**MERGE_INPUT, **extra}})
+    reason = _refusal(_decision(payload, _github(tmp_path / "unbound", {"main": "non_admins"})))
+    assert "`enforcement_level: non_admins`" in reason
+    assert _decision(payload, _github(tmp_path / "bound", {"main": "everyone"})) is None
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        ("mcp__github__enable_pr_auto_merge", {**MERGE_INPUT, "mergeMethod": "MERGE"}),
+        ("mcp__github__disable_pr_auto_merge", MERGE_INPUT),
+        ("mcp__github__update_pull_request_branch", MERGE_INPUT),
+        ("mcp__github__pull_request_read", {**MERGE_INPUT, "method": "get"}),
+        ("mcp__github__pull_request_review_write", {**MERGE_INPUT, "method": "create"}),
+        ("mcp__github__list_commits", {"owner": OWNER, "repo": NAME}),
+        ("mcp__hearthbot__post_message", {"text": "Reply Merge it if you agree."}),
+    ],
+    ids=["arm", "disarm", "update-branch", "read", "review", "no-pull-number", "thread-post"],
+)
+def test_a_call_that_is_not_a_merge_is_let_through_unread(
+    tool: str, arguments: dict[str, object], tmp_path: Path
+) -> None:
+    """Every MCP call reaches the hook, so only a merge may be asked about or refused.
+
+    No GitHub records are served here, so a call taken for a merge would be
+    refused for want of an answer. Arming carries "merge" in its name and may
+    ask for a merge commit, and still is not a merge.
+    """
+    payload = json.dumps({"tool_name": tool, "tool_input": arguments})
+    assert _decision(payload, tmp_path) is None
 
 
 @pytest.mark.parametrize(
@@ -161,6 +214,9 @@ def test_a_failed_python3_step_is_refused(tmp_path: Path) -> None:
     (tools / "python3").chmod(0o755)
     api = _github(tmp_path / "api", {"main": "everyone"})
     assert "python3" in _refusal(_decision(MERGE_CALL, api, path=str(tools)))
+    # Every MCP call reaches the hook, so a failed step must not block the rest.
+    read = json.dumps({"tool_name": "mcp__github__pull_request_read", "tool_input": MERGE_INPUT})
+    assert _decision(read, api, path=str(tools)) is None
 
 
 def test_another_tool_is_let_through(tmp_path: Path) -> None:
@@ -182,7 +238,19 @@ def test_a_payload_laid_out_across_lines_is_read_as_json(tmp_path: Path) -> None
     assert _decision(laid_out, tmp_path) is None
 
 
-@pytest.mark.parametrize("payload", ["", "not json", "{}"], ids=["empty", "not-json", "no-name"])
-def test_a_payload_naming_no_tool_is_refused(payload: str, tmp_path: Path) -> None:
-    """The matcher has already chosen a merge call, so an unreadable one fails closed."""
+@pytest.mark.parametrize(
+    "payload",
+    ['{"tool_input": {"pullNumber": 1224}, "note": "MERGE"}', "merge_pull_request, not json"],
+    ids=["no-name", "not-json"],
+)
+def test_a_payload_naming_no_tool_that_mentions_a_merge_is_refused(
+    payload: str, tmp_path: Path
+) -> None:
+    """Every call the script takes for a merge contains "merge", so an unjudged one fails closed."""
     _refusal(_decision(payload, _github(tmp_path, {"main": "everyone"})))
+
+
+@pytest.mark.parametrize("payload", ["", "not json", "{}"], ids=["empty", "not-json", "no-name"])
+def test_a_payload_naming_no_tool_and_no_merge_is_let_through(payload: str, tmp_path: Path) -> None:
+    """Every MCP call reaches the hook, so it refuses an unjudged call only if it names a merge."""
+    assert _decision(payload, _github(tmp_path, {"main": "everyone"})) is None

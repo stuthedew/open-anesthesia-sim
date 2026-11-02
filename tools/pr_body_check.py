@@ -27,8 +27,9 @@ it wrote stay, with their `recorded:` header.
 
 **`--screen` keeps an email address out of a body before GitHub has it**
 (`PL-7K31`). `.claude/hooks/pr-body-email-guard.sh` runs it as the
-PreToolUse hook on `create_pull_request` and `update_pull_request`, and
-`screen` says why it refuses. It lives here because the body it guards is the one this file
+PreToolUse hook on every MCP call. It reads each GitHub call that carries a
+title or a body, whatever the tool is called (`PL-NZJG`), and `screen` says why
+it refuses. It lives here because the body it guards is the one this file
 recovers.
 
 **What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,
@@ -742,8 +743,27 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-
 #: `CLAUDE.md` requires on every commit names it, and it is no person's.
 ALLOWED_EMAILS = frozenset({"noreply@anthropic.com"})
 
-#: The GitHub tools whose `title` and `body` GitHub publishes at once.
-SCREENED_TOOLS = ("__create_pull_request", "__update_pull_request")
+#: The fields of a GitHub call whose text GitHub publishes at once: a pull
+#: request's or an issue's title, and the body of either, of a comment or of a
+#: review.
+PUBLISHED_FIELDS = ("title", "body")
+
+#: The fields by which a GitHub call names its repository. Every GitHub tool
+#: that publishes text takes both, and a Projects thread's post or an email
+#: takes neither.
+REPOSITORY_FIELDS = ("owner", "repo")
+
+#: The pull request tools whose body is not the pull request's description, so
+#: there is nothing for the read-back note to send a session to compare.
+NO_READ_BACK = frozenset({"pull_request_review_write", "add_reply_to_pull_request_comment"})
+
+#: The note the hook adds beside a pull request call it lets through (`PL-S2NL`).
+READ_BACK_NOTE = (
+    "Read the published title and body back with pull_request_read and compare them with "
+    "what was sent: the server can rewrite a body and still return success. "
+    ".claude/skills/pull-request/SKILL.md, the pull-request skill, has the cases, and says "
+    "when to ask `bin/docket arm` (`PL-S2NL`)."
+)
 
 #: The hook `screen` refuses for, as the guards' refusal log names it. The
 #: refusal is built by `hook_input.deny`, so it is logged like every other
@@ -751,19 +771,14 @@ SCREENED_TOOLS = ("__create_pull_request", "__update_pull_request")
 GUARD = "pr-body-email-guard"
 
 
-def screen(payload: str) -> str | None:
-    """The PreToolUse refusal for a pull request call that would publish an email address.
+def _published_call(payload: str) -> tuple[str, dict[str, object]] | None:
+    """The tool name and arguments of a call that would publish text on GitHub.
 
-    `payload` is the JSON a hook receives on stdin. A body is public as soon
-    as it is sent, it stays in the description's edit history after it is
-    removed, and the squash merge copies it into `main`'s history. So the only
-    point at which an address can be kept out is before the call (`PL-7K31`,
-    found when `#1480` opened with the owner's address). The result is the
-    JSON for the hook to print, which names each address found, or `None` to
-    let the call through. A refusal is logged to the guards' refusal log, as
-    every guard's is. A payload that cannot be read, or one for another
-    tool, is let through: the matcher in `.claude/settings.json` has already
-    chosen these calls, and a false refusal blocks correct work.
+    That is a call that names a repository by `REPOSITORY_FIELDS` and carries
+    a string in one of `PUBLISHED_FIELDS`. The tool's name is not read,
+    because the GitHub server owns it and changes it without notice
+    (`PL-NZJG`). Anything else, including a payload that cannot be read, is
+    `None`.
     """
     try:
         call = json.loads(payload)
@@ -772,13 +787,37 @@ def screen(payload: str) -> str | None:
     if not isinstance(call, dict):
         return None
     tool = call.get("tool_name")
-    if not isinstance(tool, str) or not tool.endswith(SCREENED_TOOLS):
-        return None
     arguments = call.get("tool_input")
     if not isinstance(arguments, dict):
         return None
+    if not all(isinstance(arguments.get(field), str) for field in REPOSITORY_FIELDS):
+        return None
+    if not any(isinstance(arguments.get(field), str) for field in PUBLISHED_FIELDS):
+        return None
+    return (tool if isinstance(tool, str) else ""), arguments
+
+
+def screen(payload: str) -> str | None:
+    """The PreToolUse refusal for a GitHub call that would publish an email address.
+
+    `payload` is the JSON a hook receives on stdin. A body is public as soon
+    as it is sent, it stays in the description's edit history after it is
+    removed, and the squash merge copies a pull request's body into `main`'s
+    history. So the only point at which an address can be kept out is before
+    the call (`PL-7K31`, found when `#1480` opened with the owner's address).
+    Every MCP call reaches this screen, and it reads the ones
+    `_published_call` picks out, whatever the tool is called (`PL-NZJG`). The
+    result is the JSON for the hook to print, which names each address found,
+    or `None` to let the call through. A refusal is logged to the guards'
+    refusal log, as every guard's is. A payload that cannot be read is let
+    through, because a false refusal blocks correct work.
+    """
+    published = _published_call(payload)
+    if published is None:
+        return None
+    _, arguments = published
     found: list[str] = []
-    for field in ("title", "body"):
+    for field in PUBLISHED_FIELDS:
         text = arguments.get(field)
         if isinstance(text, str):
             for address in EMAIL_RE.findall(text):
@@ -787,14 +826,35 @@ def screen(payload: str) -> str | None:
     if not found:
         return None
     reason = (
-        "Refused: this pull request's title or body holds the email address(es) "
+        "Refused: this call's title or body holds the email address(es) "
         + ", ".join(f"`{address}`" for address in found)
         + ". GitHub publishes a body as soon as it is sent and keeps it in the edit "
-        "history after it is removed, and the squash merge copies it into `main`'s "
-        "history. Remove the address, or name the person by their GitHub login, and "
-        "send the call again (`PL-7K31`)."
+        "history after it is removed, and the squash merge copies a pull request's body "
+        "into `main`'s history. Remove the address, or name the person by their GitHub "
+        "login, and send the call again (`PL-7K31`)."
     )
     return deny(GUARD, "email-address", reason, payload)
+
+
+def read_back(payload: str) -> str | None:
+    """The note for a pull request call that `screen` let through, or `None` (`PL-S2NL`).
+
+    The server can rewrite a pull request's title or body and still return
+    success, so a session reads it back. The note goes on a call that
+    `_published_call` picks out and whose tool name contains `pull_request`,
+    except the tools in `NO_READ_BACK`. A pull request tool renamed without
+    `pull_request` in its name gets no note. That loses a reminder and refuses
+    nothing, so the name is read here and not in `screen`.
+    """
+    published = _published_call(payload)
+    if published is None:
+        return None
+    tool, _ = published
+    name = tool.rsplit("__", 1)[-1]
+    if "pull_request" not in name or name in NO_READ_BACK:
+        return None
+    note = {"hookEventName": "PreToolUse", "additionalContext": READ_BACK_NOTE}
+    return json.dumps({"hookSpecificOutput": note})
 
 
 def main(argv: list[str]) -> int:
@@ -803,14 +863,16 @@ def main(argv: list[str]) -> int:
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
     `--anchors` exits 1 where it fails, because `make check` rests on it.
-    `--screen` is the PreToolUse hook on a pull request call: it reads the
-    call from stdin, prints a refusal where `screen` finds one, and exits 0
-    either way, as a hook that decides must.
+    `--screen` is the PreToolUse hook on every MCP call: it reads the call
+    from stdin and prints a refusal where `screen` finds one, or else the
+    note `read_back` gives, and exits 0 either way, as a hook that decides
+    must.
     """
     if "--screen" in argv:
-        refusal = screen(sys.stdin.read())
-        if refusal is not None:
-            print(refusal)
+        payload = sys.stdin.read()
+        output = screen(payload) or read_back(payload)
+        if output is not None:
+            print(output)
         return 0
     ref = default_branch_ref()
     if "--anchors" in argv:

@@ -78,11 +78,15 @@
         ]
       },
       {
-        "matcher": "^mcp__.+__merge_pull_request$",
+        "matcher": "^mcp__.*$",
         "hooks": [
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/direct-merge-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh\""
           }
         ]
       },
@@ -93,15 +97,6 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/owner_ask_guard.py\"",
             "timeout": 60
-          }
-        ]
-      },
-      {
-        "matcher": "^mcp__.+__(create|update)_pull_request$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh\""
           }
         ]
       }
