@@ -314,10 +314,7 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
         assert settings.alveolar_volume_l == reference.alveolar_gas_volume_l
         assert settings.venous_volume_l == reference.venous_pool_volume_l
         held = {
-            tissue.name: (
-                tissue.volume_l,
-                tissue.blood_flow_l_min / settings.cardiac_output_l_min,
-            )
+            tissue.name: (tissue.volume_l, tissue.blood_flow_l_min / settings.cardiac_output_l_min)
             for tissue in settings.tissues
         }
         assert held.keys() == expected_tissues.keys()

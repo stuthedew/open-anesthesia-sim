@@ -165,8 +165,7 @@ HOLD_FOR_YOUR_READ = (
 #: The hook refused "each will wait for your read" in a reply that planned
 #: pull requests not yet opened, on 2026-11-02 (`PL-VHMS`).
 _FUTURE = re.compile(
-    r"(?:\b(?:will|would|(?:is|are)[ \t]+going[ \t]+to)|\w'll)(?:[ \t]+\w+)?[ \t]+$",
-    re.IGNORECASE,
+    r"(?:\b(?:will|would|(?:is|are)[ \t]+going[ \t]+to)|\w'll)(?:[ \t]+\w+)?[ \t]+$", re.IGNORECASE
 )
 
 #: A future hold whose subject points at one thing already there: "it will
