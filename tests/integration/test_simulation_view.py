@@ -9516,11 +9516,11 @@ SURFACE_FRAME_WIDGETS: dict[str, str] = {
     )
 }
 
-#: The names Qt gives the private widgets that hold a `QScrollArea`'s two scroll
-#: bars. Qt shows or hides a bar by showing or hiding its container, so the
-#: walk below reads a container as part of its bar rather than as a widget of
-#: its own. Read on its own, a container is a plain `QWidget`, and an exemption
-#: for that type would exempt every plain panel on the dashboard (`PL-CSK0`).
+#: The names that Qt gives the private widgets holding a `QScrollArea`'s two
+#: scroll bars. Qt shows or hides a bar by showing or hiding its container. So
+#: the walk below reads each container as part of its bar, not as a widget of
+#: its own. A container is a plain `QWidget`, and an exemption for that type
+#: would exempt every plain panel on the dashboard (`PL-CSK0`).
 _SCROLL_BAR_CONTAINERS = frozenset({"qt_scrollarea_hcontainer", "qt_scrollarea_vcontainer"})
 
 
@@ -9554,12 +9554,12 @@ def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
 
 
 def _surface_state(widget: QWidget) -> tuple[object, ...]:
-    """What a reader sees of one widget outside the runs.
+    """Return what a reader sees of one widget outside the runs.
 
-    A scroll bar's state also says whether the bar is shown within the window.
-    Its own hidden flag stays false while Qt hides it through its container, so
-    without this a bar that appears only once a frame lays the page out would
-    not be read at all.
+    For a scroll bar, the state also says whether the bar is shown within the
+    window. Qt hides a bar by hiding its container, and the bar's own hidden
+    flag stays false. Without this, a bar that appears only once a frame lays
+    the page out would read the same in both states.
     """
 
     if isinstance(widget, QScrollBar):
@@ -9692,16 +9692,16 @@ def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
 def test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_the_bar(
     application: QApplication,
 ) -> None:
-    """A record column whose bar appears is read as a scroll bar difference, not a plain panel.
+    """A record column whose scroll bar appears is read as a scroll bar difference.
 
-    The drift run of 2026-11-02 under PySide6 6.12 laid the band of
-    unconditional values out shorter once a frame drew it, so the
-    control-change record overflowed and its vertical bar appeared. Qt shows
-    the bar by showing its private container, a plain `QWidget`, so the guard
-    above reported a `QWidget` that read differently (`PL-CSK0`). This test
-    makes the record overflow on purpose and checks that the difference is
-    read on the bar, which `SURFACE_FRAME_WIDGETS` exempts as layout, and on no
-    plain `QWidget`.
+    In the drift run of 2026-11-02, under PySide6 6.12, the control-change
+    record overflowed its column on the drawn dashboard and not on the halted
+    one. So its vertical bar appeared only once a frame drew the dashboard. Qt
+    shows the bar by showing its private container, a plain `QWidget`. The
+    guard above therefore reported a `QWidget` that read differently
+    (`PL-CSK0`). This test makes the record overflow on purpose. It checks
+    that the difference is read on the bar, which `SURFACE_FRAME_WIDGETS`
+    exempts as layout, and on no plain `QWidget`.
     """
 
     view = _case_view(application, _branched_case())
@@ -9713,8 +9713,15 @@ def test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_
         if area.widget() is not None
         and area.widget().objectName() == simulation_view_module._RECORD_COLUMN_NAME
     )
+    # The bar starts hidden whatever the platform's fonts make of the record's
+    # height. Turning the bar off hides its container, which is how Qt hides
+    # a bar that is not needed.
+    record_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    _settle(application)
+    assert not record_scroll.verticalScrollBar().isVisibleTo(view.window())
     fitting = _surface_states(view)
 
+    record_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     record_scroll.widget().setMinimumHeight(record_scroll.viewport().height() + 400)
     _settle(application)
     overflowing = _surface_states(view)
