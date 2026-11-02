@@ -1,30 +1,31 @@
-"""The Workspaces shipped with the application, one JSON file each. No executable code.
+"""This package holds the Workspaces shipped with the application, one JSON file each.
 
-Each file is a Workspace set document that holds one Workspace. It has the
-same form as a reader's own `workspaces.json`, so `layout/shipped.py` reads it
-with the same function that `layout/store.py` uses (`PL-KXTL`). A file's stem
+It contains no executable code. Each file is a Workspace set document that holds one
+Workspace. It has the same form as a reader's own `workspaces.json`, so `layout/shipped.py`
+reads it with the same function that `layout/store.py` uses (`PL-KXTL`). A file's stem
 is the shipped Workspace's id, and the Workspace in it names that id as its
 origin.
 
 - `default.json` - the concentration chart across the left three quarters of
   the window at full height, with the parameter controls in a column on the
-  right. This is the composition the pixel budget was set for: on a 1366 by
-  768 display the chart keeps its 360 px minimum with the parameter controls
+  right. The pixel budget was set for this arrangement. On a 1366 by 768
+  display, the chart keeps its 360 px minimum while the parameter controls stay
   visible (`ROADMAP.md` v0.6.0 Required scope entry 20, `PL-84QX`).
 - `induction.json` - the concentration chart over the wash-in chart, with
-  the parameter controls on the right. The wash-in curve, alveolar as a
-  fraction of the circuit, changes fastest in the first minutes.
+  the parameter controls on the right. The wash-in curve shows the alveolar
+  concentration as a fraction of the circuit concentration. It changes fastest
+  in the first minutes.
 - `maintenance.json` - the concentration chart on the left half of the
   window at full height, with the compartment schematic beside it and the
-  parameter controls under the schematic. During maintenance, agent moves
-  into muscle and fat while their tensions stay low, and the schematic's
-  share bar is where a learner sees that (`PL-PR1W`). The wash-in chart,
-  whose lesson is the first minutes, stays in Induction. Which Workspace
-  holds the schematic is a placeholder.
+  parameter controls under the schematic. During maintenance, the agent moves
+  into muscle and fat while the tensions in those tissues stay low. The
+  schematic's share bar is where a learner sees that (`PL-PR1W`). The wash-in
+  chart, whose lesson is the first minutes, stays in Induction. The choice of
+  which Workspace holds the schematic is a placeholder.
 
 None of the three contains the agent accounting View (project owner,
-2026-09-16). `docs/MODEL.md` puts the accounting in the tier that a layout may
-leave out, and the View chooser (`PL-50PZ`) is how a reader brings it back.
+2026-09-16). `docs/MODEL.md` puts the accounting in the tier of displays that a
+layout may leave out. A reader brings it back with the View chooser (`PL-50PZ`).
 
 **Provenance.** Shipping a set of named, task-oriented Workspaces beside the
 reader's own is Blender's practice: Blender ships eleven default Workspaces,

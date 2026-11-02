@@ -119,12 +119,13 @@ def test_induction_shows_the_wash_in_chart() -> None:
 
 
 def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_chart() -> None:
-    """Maintenance puts where the agent is now beside its tensions over time (`PL-PR1W`).
+    """Maintenance puts the compartment schematic beside the concentration chart (`PL-PR1W`).
 
-    During maintenance, agent moves into muscle and fat while their tensions
-    stay low, and the schematic's share bar is where that shows. So the
-    schematic takes the place the wash-in chart had, and the wash-in chart,
-    whose lesson is the first minutes, stays in Induction.
+    The schematic shows where the agent is now, and the chart shows its tensions
+    over time. During maintenance, the agent moves into muscle and fat while the
+    tensions in those tissues stay low, and the schematic's share bar is where
+    that shows. So the schematic takes the place that the wash-in chart had. The
+    wash-in chart, whose lesson is the first minutes, stays in Induction.
     """
 
     tree = shipped_workspace(ShippedWorkspaceId("maintenance")).layout.windows[0].tree
