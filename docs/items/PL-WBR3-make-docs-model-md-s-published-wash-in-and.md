@@ -3,12 +3,14 @@ id: PL-WBR3
 title: Make docs/MODEL.md's published wash-in and elimination validation subsections and the rest of § "Required tests" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1952
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Required tests"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
