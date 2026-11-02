@@ -1886,6 +1886,43 @@ that cannot be completed must therefore leave every dynamic value exactly as
 it was before the step. § "Step atomicity" explains why, and what state a
 caller is left with.
 
+**How each limit in this section was chosen.** Each limit below has a reason,
+and the subsection named after it gives the measurements.
+
+- **The largest step, 0.1 s.** Accuracy does not set it, because each step is
+  solved exactly at any length. It sets how late a change to a dial can reach
+  the model. At 0.1 s, an ordinary dial change lands late by an error of about
+  a tenth of one parameter SD, and an abrupt ventilation change by about
+  twice one parameter SD. A shorter step would not show on screen,
+  because frames are drawn 0.2 s apart. See § "Supported simulation step".
+- **The smallest step, 1 ms.** It is the finest step at which the results have
+  been tested and shown to match the results at 0.1 s. Nothing finer has been
+  checked, so nothing finer is allowed. See § "Supported simulation step".
+- **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from
+  0.001 to 10 000.** These limits sit far outside any real patient or agent.
+  The arithmetic has been checked against a high-precision calculation across
+  the whole range. The volume floor is 0.01 L because at 0.001 L the error in
+  the most difficult settings grew to 4.9e-4 of the state over 24 hours. See
+  § "The numerical envelope".
+- **Delivered and stored fractions up to 0.99.** A gas cannot exceed the
+  ambient pressure, so no fraction can pass 1. The model stops at 0.99 so that
+  rounding near the top cannot carry a fraction above 1. See § "The numerical
+  envelope".
+- **The accounting check's tolerance, one part in 10⁹.** In the measured
+  runs, a correct 24-hour run's error stayed below 4e-11, at least 25 times
+  inside the tolerance. A looser tolerance would let a real accounting error pass. See
+  § "The numerical envelope".
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_PARTITION_COEFFICIENT = 10000 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
+<!-- not-restated: 24 hours -->
+
 ### Step atomicity
 
 A partially applied step is not a solution of the model at any time. It leaves
