@@ -20,12 +20,18 @@ citation. This tool answers the two questions that part asks of the tree.
   lost value, and the ordinal of a numbered list is not read. Facts are
   counted and not placed, so two values swapped within a sentence print
   nothing, which the diff still shows. Item ids and dates are counted
-  apart, because they are the history the part removes on purpose. Exits 0
+  apart, because they are the history the part removes on purpose. It then
+  prints each equation, code span, citation and number that the working tree
+  holds more often than the fork, with the line where it now stands, so a
+  value the rewrite added or restated in a new place is shown too. Exits 0
   whenever it read both versions, since whether a dropped number was history
-  or a value is a judgment for the session and the owner. Exits 1 when git
-  could not answer.
+  or a value is a judgment for the session. Exits 1 when git could not answer.
 
 The pull request of each section part accounts for every line `lost` prints.
+When each line is history or a kept duplicate and nothing was added, no value,
+equation, code span or citation of the specification changed, and the change
+merges on green unless a sentence's meaning needs the owner's judgment
+(project owner, 2026-11-02, ratified, `PL-ZTZF`).
 """
 
 from __future__ import annotations
@@ -228,6 +234,42 @@ def gone_facts(before: str, after: str, added: str) -> list[Gone]:
     ]
 
 
+@dataclass(frozen=True)
+class Added:
+    """A fact the working tree's document holds more often than the fork's."""
+
+    kind: str
+    text: str
+    #: How many more times the working tree holds it.
+    times: int
+    #: The working tree's line where it first stands, and that line's text.
+    line: int
+    context: str
+
+
+def added_facts(before: str, after: str) -> list[Added]:
+    """The equations, code spans, citations and numbers that `after` holds more often than `before`.
+
+    A rewrite that adds a value, or restates one in a new place, changes what
+    the specification says as surely as one that drops a value. `gone_facts`
+    shows only the second, so this is its mirror.
+    """
+    first: dict[tuple[str, str], int] = {}
+    counted: Counter[tuple[str, str]] = Counter()
+    for kind, fact, line in facts(after):
+        if kind not in FACT_KINDS:
+            continue
+        counted[(kind, fact)] += 1
+        first.setdefault((kind, fact), line)
+    counted.subtract((kind, fact) for kind, fact, _ in facts(before) if kind in FACT_KINDS)
+    lines = split_lines(after)
+    return [
+        Added(kind, fact, times, first[(kind, fact)], lines[first[(kind, fact)] - 1].strip())
+        for (kind, fact), times in counted.items()
+        if times > 0
+    ]
+
+
 def added_to_items(root: Path, fork: str) -> str:
     """The lines the branch added to the item store, from the fork to the working tree.
 
@@ -289,6 +331,24 @@ def report_gone(gone: Sequence[Gone], against: str) -> list[str]:
     return out
 
 
+def report_added(added: Sequence[Added]) -> list[str]:
+    """The lines `lost` prints after the dropped facts: each fact the working tree added."""
+    out = [
+        "",
+        f"{len(added)} equations, code spans, citations and numbers are held more times than "
+        "at the fork.",
+    ]
+    for kind in FACT_KINDS:
+        rows = sorted((item for item in added if item.kind == kind), key=lambda a: a.line)
+        if not rows:
+            continue
+        out += ["", f"added {kind} ({len(rows)})"]
+        for item in rows:
+            times = f" x{item.times}" if item.times > 1 else ""
+            out.append(f"  added {item.text}{times}  (line {item.line}: {item.context[:90]})")
+    return out
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to run in")
@@ -323,7 +383,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"model_rewrite: no answer: {error!r}", file=sys.stderr)
         return 1
     after = (root / MODEL_DOC).read_text(encoding="utf-8")
-    print("\n".join(report_gone(gone_facts(before, after, added), against)))
+    report = report_gone(gone_facts(before, after, added), against)
+    print("\n".join(report + report_added(added_facts(before, after))))
     return 0
 
 
