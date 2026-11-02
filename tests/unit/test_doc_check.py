@@ -7673,6 +7673,135 @@ def test_a_required_test_subsection_naming_nothing_is_an_error(tmp_path: Path) -
     assert "this member names no test" in errors[0]
 
 
+NUMERIC_FAMILY_DOCUMENT = "\n".join(
+    [
+        "### Displayed precision",
+        "",
+        "Fat reads `0.0%` for 19.3 minutes and names nothing.",  # line 3
+        "",
+        "Muscle clears the last digit at 57 s, which",  # line 5
+        "`test_muscle_clears_the_last_digit` computes.",
+        "",
+        "There are three agents and two decimals, so nothing here has a unit.",
+        "",
+        "The circuit holds 6 L.",  # line 10
+        "<!-- provenance: data/machines/circle.json volume_l = 6 -->",
+        "",
+        "- A list entry stating 4 L/min,",  # line 13
+        "- and a second one stating 2 L.",  # line 14
+        "",
+        "<!-- not-restated: 4 L/min, 2 L -->",
+        "",
+        "Measured 2026-10-18, the window opened at 1366 px and 8 s.",  # line 18
+        "",
+        "Eger's blood:gas SD is 5.7% (Anesth Analg 1987;66:971-973).",  # line 20
+        "",
+        "Mapleson 1963 gives 4 L/min, which is an author and a year alone.",  # line 22
+        "",
+        "A date quoted as code, `2026-10-18`, cites nothing at 2 L.",  # line 24
+        "",
+        "#### A deeper heading",
+        "",
+        "Its paragraph at 0.1 L belongs to the section.",  # line 28
+        "",
+        "### The next section",
+        "",
+        "A paragraph at 9 L that belongs to another section.",
+        "",
+    ]
+)
+
+
+def _numeric_family(heading: str = "Displayed precision") -> doc_check.BoundFamily:
+    """A numeric-paragraph family over `NUMERIC_FAMILY_DOCUMENT`, built here
+    for the reason `_list_family` gives."""
+    return doc_check.BoundFamily(
+        document=doc_check.MODEL,
+        heading=heading,
+        level=3,
+        kind=doc_check.FIGURE_ENTITY,
+        members=doc_check._numeric_paragraph_members,
+        promise="every paragraph stating a number with a unit is held",
+    )
+
+
+def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit() -> None:
+    """A member is a paragraph with a figure in a unit, to the next section.
+
+    The paragraph whose numbers carry no unit is not a member. A list entry is
+    a member of its own. A deeper heading's paragraph belongs to the section,
+    and the next section's paragraph does not.
+    """
+    members = list(doc_check._numeric_paragraph_members(NUMERIC_FAMILY_DOCUMENT, _numeric_family()))
+
+    assert [line for line, _ in members] == [3, 5, 10, 13, 14, 18, 20, 22, 24, 28]
+
+
+def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpose() -> None:
+    """A test, a marker, a published source and a date each hold a paragraph.
+
+    A marker under a list holds each entry above it, as `_marked_scope` reads
+    a marker's reach. A paragraph with none of them is not held. An author and
+    a year alone is not a source, and a date inside a code span is not a date.
+    """
+    members = dict(doc_check._numeric_paragraph_members(NUMERIC_FAMILY_DOCUMENT, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert held == {5, 10, 13, 14, 18, 20}
+
+
+@pytest.mark.parametrize(
+    "citation",
+    [
+        "doi:10.1213/00000539-199406000-00022",
+        "https://doi.org/10.1097/00000542-197207000-00008",
+        "PMID 8198275",
+        "ISBN 978-0-19-852566-7",
+        "Anesth Analg 1994;78(6):1152-3",
+        "Br J Anaesth 1981;53:399–405",
+    ],
+)
+def test_a_published_source_is_read_in_each_identifier_form(citation: str) -> None:
+    """Each form `PUBLISHED_SOURCE_RE` names, written as `docs/MODEL.md` writes it."""
+    assert doc_check._holds_its_figures(f"The coefficient is 0.42 at 37 s ({citation}).")
+
+
+@pytest.mark.parametrize("text", ["Until 2026 it read 4 L.", "The 2019 run reached 4 L."])
+def test_a_capitalised_word_and_a_year_is_not_a_source(text: str) -> None:
+    """The shape an author-year citation shares with a sentence holds nothing."""
+    assert not doc_check._holds_its_figures(text)
+
+
+def test_a_numeric_paragraph_declaring_no_test_yet_is_resolved_against_the_queue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The declared-none form is `check_bound_families`' own, for this shape too.
+
+    So a paragraph with no other form passes on an open item, and fails on a
+    closed one, exactly as a table row or a subsection does.
+    """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_numeric_family(),))
+    document = (
+        "### Displayed precision\n\nFat reads 0.0% for 19.3 minutes, no test yet (`PL-8888`).\n"
+    )
+    for status, expected in (("ready", 0), ("done", 1)):
+        root = tmp_path / status
+        (root / "docs" / "items").mkdir(parents=True)
+        (root / doc_check.MODEL).write_text(document, encoding="utf-8")
+        (root / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
+        (root / "docs" / "items" / "PL-8888-demo.md").write_text(
+            f"---\nid: PL-8888\ntitle: Demo\npriority: P2\neffort: S\n"
+            f"status: {status}\nadded: 2026-09-06\n---\n\n"
+            "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
+            encoding="utf-8",
+        )
+        report = doc_check.Report()
+        doc_check.check_bound_families(root, report)
+
+        assert len(report.errors) == expected, report.errors
+        assert report.declined == []
+
+
 @pytest.mark.reads_item_store
 def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.

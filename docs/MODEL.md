@@ -306,6 +306,29 @@ files, the counts rule below is advice rather than a requirement.
    "a dated fact that must never change", and this clause makes that the
    author's rule as well.
 
+**A computed claim names the test that computes it** (`PL-B6YV`, project
+owner, 2026-11-02, ratified, over leaving such sentences to review alone).
+This is clause 1 applied to what the model computes and what the interface
+displays. A sentence that says when a compartment first shows a nonzero
+reading is a claim about the model's output. It names in a code span the test
+that computes the figure, or it carries ``no test yet (`PL-XXXX`)``. The strongest
+form for a figure is a test that reads the figure from this document and
+compares it with the model's output, as
+`tests/reference/test_mac_awake_washout_figures.py` does. Then the page cannot
+drift from the model without a test failing. Naming a test is the minimum.
+
+`check_bound_families` enforces this one section at a time. In a section in
+its table, each paragraph that states a number with a unit must carry one of
+these forms: a code-spanned test, the declared-none form, a
+`provenance:`, `derived:` or `not-restated:` marker, a published source cited
+by a DOI, a PubMed id, an ISBN or a journal locator such as
+"Anesth Analg 1991;72:316-324", or a date. An author and a year alone, such
+as "Mapleson 1963", does not count, because no pattern can tell it from a
+sentence such as "Until 2026". A section joins the table when the pass that
+makes it conform lands, as clause 2's families do. The check cannot read a
+qualitative claim, such as which value a readout shows beside a halt. Such a
+claim is still the author's duty under clause 1, and it is held by review.
+
 **Counts, which both halves meet.** A count in prose is stated only where a
 check ties it to what it counts, or else the count is dated. Two examples of
 a checked count are a group heading over its entries and a marker over a data
@@ -315,11 +338,14 @@ read from the tool that prints it. This extends the project owner's
 also why this document states the sizes of its own families nowhere.
 
 **What an assertion that names nothing looks like.** Inside a bound family, it
-uses the declared-none form, or the check fails. Outside a bound family but in
-a bound document, it is a number without a marker or a claim without a code
-span. Such an assertion is left to the close-out sweep by decision, not by
-oversight, and `tools/doc_check.py candidates` prints it when its subject
-changes. Anywhere, an assertion that is dated is a record.
+uses the declared-none form, or the check fails. In a section held by its
+numeric paragraphs, the same is true of a paragraph that states a number with
+a unit. Elsewhere in a bound document, it is a number without a marker or a
+claim without a code span. Such an assertion is left to the close-out sweep,
+and `tools/doc_check.py candidates` prints it when its subject changes. That
+was a decision on 2026-09-19 (`PL-4FBP`). On 2026-11-02 it was reopened for
+computed claims, and their sections join the check one at a time. Anywhere,
+an assertion that is dated is a record.
 
 ## Purpose
 
@@ -10843,7 +10869,8 @@ it can no longer do that.
 **The upper limit: one measured standard deviation of a partition coefficient
 is worth about one to seven counts of the last displayed digit.** Perturbing a
 single stored coefficient by one published SD, and re-running at 1 MAC with the
-reference adult's flows, displaces a displayed compartment by these amounts:
+reference adult's flows, displaces a displayed compartment by these amounts,
+which have no test yet (`PL-19W8`):
 
 | Coefficient perturbed by one SD | Displacement, worst over 3600 s |
 | --- | --- |
@@ -10859,7 +10886,8 @@ largest displacement. The SDs are the measured ones that
 "Parameter provenance" already records. They are the SDs of Yasuda, Targ and
 Eger's human tissue coefficients, which are 3.9% of the mean for desflurane,
 5.3% for sevoflurane and 6.4% for isoflurane. For desflurane's blood:gas coefficient
-the value is Eger's $`0.424 \pm 0.024`$, an SD of 5.7%.
+the value is Eger's $`0.424 \pm 0.024`$, an SD of 5.7%. Which agent gives the
+largest displacement has no test yet (`PL-19W8`).
 
 Against that, the last digit of a two-decimal readout lies between about a
 seventh of one parameter SD and seven times it. A third decimal would put the
@@ -10892,7 +10920,7 @@ reaches 0.2%. Muscle reads `0.0%` for its first 2.9 minutes with desflurane,
 the same compartments show a nonzero value at 57, 125 and 190 seconds (muscle)
 and 236, 780 and 1474 seconds (fat). What one decimal erases is the
 slow-compartment wash-in, which is the reason for displaying those
-compartments at all.
+compartments at all. These times have no test yet (`PL-19W8`).
 
 **That lower limit is a teaching judgment, and it is the project owner's
 rather than the model's** (decided 2026-09-03, `PL-88GQ`). The accuracy
@@ -10926,6 +10954,8 @@ conversion is agent-specific. Converted, 0.01 percentage points is 0.005 MAC
 for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane. So the
 binding agent is isoflurane at 0.0083 MAC, and **0.01 MAC** is the finest power
 of ten at or above it.
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
+arithmetic for every shipped agent.
 
 One count of the MAC line is therefore 0.02 percentage points of sevoflurane,
 0.012 of isoflurane and 0.06 of desflurane. That is coarser than the percent
@@ -10945,9 +10975,10 @@ applies to the percent line, and it matters more there, not less. A
 compartment clears 0.01 MAC later than it clears 0.01 percentage points. So
 `0.00 ×MAC` beneath a percent line that already shows the compartment filling
 would make the two readouts contradict each other. `<0.01 ×MAC` states what is
-known. `tests/unit/test_formatting.py` re-runs the derivation against every
-shipped agent. So adding an agent or changing the percent resolution fails
-there rather than silently over-claiming.
+known, and `test_format_mac_multiple_marks_a_value_below_the_resolution` holds
+that form. The derivation test named above re-runs the derivation against
+every shipped agent. So adding an agent or changing the percent resolution
+fails there rather than silently over-claiming.
 
 **The resolution is a property of the display alone.** Everything upstream of
 the formatter carries full binary64 precision. That includes the compartment
@@ -11177,13 +11208,15 @@ reason for displaying those compartments at all. A resolution of 0.01
 percentage points is the coarsest that keeps every displayed compartment
 legible. It is also close to what the parameters support. That closeness is a
 coincidence worth naming, not a second constraint meeting the first, since the
-two are measured entirely independently.
+two are measured entirely independently. The muscle times have no test yet
+(`PL-19W8`).
 
 **Why a below-resolution value is marked rather than shown as zero.** Even
 at 0.01 percentage points the slow compartments start below the last digit.
 At 1 MAC with default flows, muscle first rounds to a nonzero value at 57 s
 (desflurane), 125 s (sevoflurane), and 190 s (isoflurane). Fat first does so at
-237 s, 780 s, and 1474 s respectively. Displaying `0.00%` across those
+237 s, 780 s, and 1474 s respectively. These times have no test yet
+(`PL-19W8`). Displaying `0.00%` across those
 intervals would state that the compartment holds no agent, which the model
 does not say. The model says that the compartment is filling, below what the
 display resolves. `<0.01%` states exactly that. It also keeps `0.00%` meaning
@@ -11389,12 +11422,14 @@ with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
 a long run it is several. No count of decimals can make a figure with a known
 bias of several counts read correctly. So the stored total keeps litres of
 vapour, as the accounting panel shows it.
+`test_a_unit_with_no_derived_precision_is_refused` holds the refusal.
 
-**What this section does not yet derive.** A compartment's amount needs its
-own derivation, which `PL-2881` writes. At the totals' 0.1 L, venous blood and
-the alveoli read below resolution for a whole hour at 1 MAC. A cost in money
-depends on a price that the reader sets, so its resolution is not a constant,
-and `PL-1P15` derives it. Concentration, flow, MAC multiples and the F_A/F_I
+**What this section does not yet derive.** A cost in money depends on a price
+that the reader sets, so its resolution is not a constant, and `PL-1P15`
+derives it. A compartment's amount was the other gap. At the totals' 0.1 L,
+venous blood and the alveoli read below resolution for a whole hour at 1 MAC,
+which has no test yet (`PL-19W8`). `PL-2881` derived the amount's own
+precision, in the paragraph on two significant figures below. Concentration, flow, MAC multiples and the F_A/F_I
 ratio are each shown in one unit, so each keeps one count. If a reader is ever
 given a choice of unit for one of them, its count moves into a table of the same
 shape.
