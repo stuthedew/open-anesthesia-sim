@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -54,7 +55,7 @@ def _decision(
     *,
     code: int = 3,
     said: str = NOTHING,
-    tool: str = "mcp__hearthbot__reply",
+    tool: str = "mcp__hearthbot__post_message",
     tool_input: dict[str, object] | None = None,
 ) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one call, or `None` if it let the call through."""
@@ -115,7 +116,7 @@ def test_a_reply_asking_for_a_read_without_a_recorded_ask_is_refused(
     assert decision is not None
     assert decision["permissionDecision"] == "deny"
     reason = decision["permissionDecisionReason"]
-    assert "says nothing may be sent to the owner" in reason
+    assert "It carries no Owner-ask line" in reason
     assert NOTHING in reason
     assert MISTAKEN in reason
 
@@ -197,7 +198,18 @@ def test_a_refusal_says_how_to_record_that_it_was_wrong(tmp_path: Path) -> None:
     )
 
 
-def test_a_card_and_an_edit_are_read_as_a_reply_is(tmp_path: Path) -> None:
+#: The Projects tools that carry a thread's messages, read from a thread's tool
+#: list on 2026-11-02. They replaced `reply`, `update_message` and
+#: `ask_decision`, which the hook named until `PL-YN60`.
+MESSAGE_TOOLS = (
+    "mcp__hearthbot__post_message",
+    "mcp__hearthbot__edit_message",
+    "mcp__hearthbot__request_decision",
+)
+
+
+def test_a_card_and_an_edit_are_read_as_a_post_is(tmp_path: Path) -> None:
+    """The hook let both through while it named the tools by their old names (`PL-YN60`)."""
     card = {
         "question": "Merge #1688 now?",
         "options": [
@@ -206,23 +218,43 @@ def test_a_card_and_an_edit_are_read_as_a_reply_is(tmp_path: Path) -> None:
         ],
         "recommended": 0,
     }
-    assert _decision(tmp_path, "", tool="mcp__hearthbot__ask_decision", tool_input=card)
+    assert _decision(tmp_path, "", tool="mcp__hearthbot__request_decision", tool_input=card)
     edit = {"message_id": "m", "text": "Read #1688 and merge it."}
-    assert _decision(tmp_path, "", tool="mcp__hearthbot__update_message", tool_input=edit)
+    assert _decision(tmp_path, "", tool="mcp__hearthbot__edit_message", tool_input=edit)
 
 
-def test_another_tool_is_never_read(tmp_path: Path) -> None:
+def test_a_projects_tool_the_hook_has_never_seen_is_read(tmp_path: Path) -> None:
+    """A renamed or new tool is checked until it is named as one that does not reach the owner."""
     text = "Read #1688 and merge it."
-    assert _decision(tmp_path, text, tool="mcp__hearthbot__update_status") is None
+    assert _decision(tmp_path, text, tool="mcp__hearthbot__send_card") is not None
+
+
+@pytest.mark.parametrize(
+    "tool",
+    [
+        "mcp__hearthbot__message_coordinator",
+        "mcp__hearthbot__message_thread",
+        "mcp__hearthbot__rename_thread",
+        "mcp__github__add_issue_comment",
+    ],
+)
+def test_a_tool_whose_text_does_not_reach_the_owner_is_never_read(
+    tmp_path: Path, tool: str
+) -> None:
+    assert _decision(tmp_path, "Read #1688 and merge it.", tool=tool) is None
 
 
 @pytest.mark.parametrize("code", [1, 2, 127])
-def test_an_arm_that_cannot_answer_lets_the_reply_through(tmp_path: Path, code: int) -> None:
-    """A guard that breaks a thread's replies costs more than the round it saves."""
-    assert _decision(tmp_path, "Read #1688 and merge it.", code=code) is None
+def test_an_arm_that_cannot_answer_falls_back_to_the_rendered_line_check(
+    tmp_path: Path, code: int
+) -> None:
+    """A broken `arm` no longer lets a bare ask through, and blocks nothing else."""
+    assert _decision(tmp_path, "Read #1688 and merge it.", code=code, said="") is not None
+    assert _decision(tmp_path, f"The thread asks: {ASK_LINE}", code=code, said="") is None
+    assert _decision(tmp_path, "#1688 merged.", code=code, said="") is None
 
 
-def test_the_hook_is_wired_on_a_threads_reply_tools() -> None:
+def test_the_hook_is_wired_on_every_projects_tool() -> None:
     settings = json.loads(SETTINGS.read_text(encoding="utf-8"))
     wired = [
         entry["matcher"]
@@ -230,7 +262,10 @@ def test_the_hook_is_wired_on_a_threads_reply_tools() -> None:
         for hook in entry["hooks"]
         if "owner_ask_guard.py" in hook["command"]
     ]
-    assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision|post_message)$"]
+    assert len(wired) == 1
+    for tool in (*MESSAGE_TOOLS, "mcp__hearthbot__send_card"):
+        assert re.search(wired[0], tool), tool
+    assert not re.search(wired[0], "mcp__github__add_issue_comment")
 
 
 POST = "mcp__hearthbot__post_message"
@@ -242,19 +277,26 @@ RISK_LINE = (
 )
 
 
-def test_a_bare_ask_from_the_coordinator_is_refused_without_running_arm(tmp_path: Path) -> None:
-    """The coordinator's checkout is on no pull request's branch, so `arm` is not asked.
+#: What `arm --owner-ask` prints in the coordinator's checkout, on no branch.
+NO_BRANCH = (
+    "send the owner nothing: unknown - HEAD is on no branch, so there is no pull request "
+    "to answer for"
+)
 
-    The stand-in for `arm` exits 0 with the recorded line, which would let a
-    thread's message through only if it carried that line. The post is refused
-    all the same, and the refusal does not quote that line, so `arm` was not run.
+
+def test_a_bare_ask_where_arm_cannot_answer_for_the_branch_is_refused(tmp_path: Path) -> None:
+    """The coordinator's checkout is on no pull request's branch, so `arm` cannot answer there.
+
+    The coordinator and a thread both post with `post_message`, so the hook
+    asks `arm` about every ask. Where `arm` has no recorded line, the post
+    needs a line in the rendered `Owner-ask` form (`PL-YV90`, `PL-YN60`).
     """
-    decision = _decision(tmp_path, "Read #1700 and merge it.", code=0, said=ASK_LINE, tool=POST)
+    decision = _decision(tmp_path, "Read #1700 and merge it.", code=3, said=NO_BRANCH, tool=POST)
     assert decision is not None
     reason = decision["permissionDecisionReason"]
     assert "carries no Owner-ask line" in reason
-    assert "Forward the thread's Owner-ask line word for word" in reason
-    assert ASK_LINE not in reason
+    assert "forward the thread's Owner-ask line word for word" in reason
+    assert NO_BRANCH in reason
     assert MISTAKEN in reason
 
 
@@ -262,10 +304,18 @@ def test_a_bare_ask_from_the_coordinator_is_refused_without_running_arm(tmp_path
 def test_a_coordinator_post_carrying_a_rendered_owner_ask_line_is_let_through(
     tmp_path: Path, line: str
 ) -> None:
-    """Either form passes, with emphasis and a line break inside it, and whatever `arm` says."""
+    """Either form passes, with emphasis and a line break inside it, when `arm` records no ask."""
     wrapped = line.replace(". ", ".\n", 1)
     text = f"The thread on #1700 asks:\n\n**{wrapped}**\n\nReply Merge it if you agree."
-    assert _decision(tmp_path, text, tool=POST) is None
+    assert _decision(tmp_path, text, code=3, said=NO_BRANCH, tool=POST) is None
+
+
+def test_a_post_carrying_another_branchs_line_is_refused_where_arm_records_one(
+    tmp_path: Path,
+) -> None:
+    """A thread's own recorded ask outranks the rendered form, so a thread cannot send another."""
+    text = f"The thread on #1700 asks: {RISK_LINE} Reply Merge it if you agree."
+    assert _decision(tmp_path, text, code=0, said=ASK_LINE, tool=POST) is not None
 
 
 def test_a_coordinator_post_asking_for_nothing_is_let_through(tmp_path: Path) -> None:
