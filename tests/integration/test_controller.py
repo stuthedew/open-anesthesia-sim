@@ -1,5 +1,7 @@
 import dataclasses
+import inspect
 from collections.abc import Callable
+from importlib import resources
 from itertools import permutations
 
 import pytest
@@ -18,6 +20,7 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import (
+    PARAMETER_CONTROLS,
     RESET_EXIT_TEXT,
     SUPPORTED_LIMIT_NOTICE_TEMPLATE,
     notice,
@@ -252,6 +255,95 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
 
     assert snapshot.alveolar_ventilation_l_min == pytest.approx(3.0)
     assert snapshot.cardiac_output_l_min == pytest.approx(7.0)
+
+
+def test_every_run_simulates_the_shipped_reference_adult() -> None:
+    """Every run simulates the reference adult, because no input changes its body (`PL-DXJR`).
+
+    `docs/MODEL.md`'s hazard row for entering an identifiable patient's data
+    lists the fixed reference adult as one of its two safeguards. This test
+    enforces that safeguard. A learner can set four settings and the agent, but
+    nothing that would describe a particular patient: no weight, age, sex,
+    height or body composition. A stretch is a `RunSegment`, a span of a run
+    during which no setting changes. Every stretch of every run keeps the
+    compartment volumes and perfusion fractions of
+    `data/patients/reference_adult.json`, whatever the learner sets.
+
+    The first five assertions check each way a patient could get into a run
+    today. They check that the package ships one patient file, that the uptake
+    system is built from an agent alone, and that the controller and its four
+    controls take no patient argument. Patient factors (`ROADMAP.md`
+    planned-milestone item 30) must change at least one of these facts, so this
+    test fails when they are added. The failure is intended, because the same
+    work must rewrite the hazard row.
+
+    An agent change and a Reset each start a new run definition, so the test
+    collects each run's stretches before the next run definition replaces them.
+    """
+
+    shipped_patients = {
+        entry.name
+        for entry in resources.files("anesthesia_sim.data.patients").iterdir()
+        if entry.name.endswith(".json")
+    }
+    assert shipped_patients == {"reference_adult.json"}
+    assert set(inspect.signature(uptake_system.AgentUptakeSystem.for_agent).parameters) == {
+        "agent_id"
+    }
+    learner_controls = {
+        ControlInput.FRESH_GAS_FLOW,
+        ControlInput.DELIVERED,
+        ControlInput.ALVEOLAR_VENTILATION,
+        ControlInput.CARDIAC_OUTPUT,
+    }
+    assert set(ControlInput) == learner_controls
+    assert {control.control for control in PARAMETER_CONTROLS} == learner_controls
+    assert set(inspect.signature(SimulationController).parameters) == {
+        "agent_id",
+        "circuit_volume_l",
+        "fresh_gas_flow_l_min",
+        "delivered_concentration_percent",
+        "alveolar_ventilation_l_min",
+        "cardiac_output_l_min",
+    }
+
+    stretches: list[RunSegment] = []
+    controller = SimulationController(agent_id="isoflurane")
+    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(3.0))
+    controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
+    controller.set_cardiac_output(CardiacOutput(3.0))
+    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
+    controller.set_agent("desflurane")
+    controller.set_cardiac_output(CardiacOutput(8.0))
+    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
+    controller.reset()
+    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    stretches.extend(controller.run_segments)
+
+    reference = load_reference_adult_parameters()
+    expected_tissues = {
+        "vessel_rich": (reference.vessel_rich_volume_l, reference.vessel_rich_perfusion_fraction),
+        "muscle": (reference.muscle_volume_l, reference.muscle_perfusion_fraction),
+        "fat": (reference.fat_volume_l, reference.fat_perfusion_fraction),
+    }
+    cardiac_outputs = {stretch.settings.cardiac_output_l_min for stretch in stretches}
+    assert {3.0, 8.0} <= cardiac_outputs
+    for stretch in stretches:
+        settings = stretch.settings
+        assert settings.alveolar_volume_l == reference.alveolar_gas_volume_l
+        assert settings.venous_volume_l == reference.venous_pool_volume_l
+        held = {
+            tissue.name: (tissue.volume_l, tissue.blood_flow_l_min / settings.cardiac_output_l_min)
+            for tissue in settings.tissues
+        }
+        assert held.keys() == expected_tissues.keys()
+        for name, (volume_l, fraction) in expected_tissues.items():
+            assert held[name][0] == volume_l
+            assert held[name][1] == pytest.approx(fraction, rel=1e-12)
 
 
 def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> None:
