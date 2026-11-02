@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.14
 touches: src/anesthesia_sim/app/control_timeline.py
 added: 2026-11-01
 closed: 2026-11-02

@@ -154,7 +154,8 @@ rule above applies.
 | v0.6.10 | Completed | **The release where each value on the run screen is written from the same step as the label, divisor and verdict beside it, where a dial moved on a stopped run is refused, where the accounting panel of a run that an accounting failure halted shows the rejected step's own verdict and totals, where a run that a mark stopped says so in its status word, and where a test holds `docs/MODEL.md`'s MAC-awake washout figures to the model.** 12 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`dbba1c0` to `26931f6`) only in the accounting error, which now carries the failing check and says the step was rolled back, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.9 tag found every state vector, canonical state, drawn window, hover string, readout string and halt identical over 81 cases and three 24-hour runs. A snapshot gains one field, the rejected step's check, which no case in the comparison fills. **It finishes two features**, `mac-awake-reference-text` and `one-source-of-truth`, and closes one generator head, spent (`PL-J5GC`). **Nine are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 73 of 88 cleared, from 64 of 87 at the v0.6.9 tag. `PL-8BDX`, the cut, ships in no release under `PL-KRS6`. | 12 items |
 | v0.6.11 | Completed | **The release where the coupled model refuses an input fraction above 0.99 of the ambient pressure and the chart refuses to draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9 tolerance with the reason recorded, where holding a slider's thumb previews the trajectory that the held value would give, where every run holds while a Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states the coupled system's modal time constants.** 14 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`26931f6` to `8186a8c`) only for `PL-9B1M`'s input ceiling and the new check on every drawn column, which no shipped vaporizer's maximum reaches, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.10 tag found every state vector, canonical state, drawn window, hover string, readout string, halt and snapshot field identical over 81 cases and three 24-hour runs. **It finishes two features**, `floating-point-domain` and `numerical-domain`, and closes no generator head. **Five are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 78 of 89 cleared, from 73 of 88 at the v0.6.10 tag. `PL-KDDS`, the cut, ships in no release under `PL-KRS6`. | 14 items |
 | v0.6.12 | Completed | **The release where a press on an Area border in a window too small for the Areas no longer rewrites the saved arrangement, where a drag pushed into an Area held at its View's need turns the border WARNING as a keyboard step already did, where a too-small Area's notice is wrapped at the width the Area is drawn at, where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, and where the model review keeps counting a failed pull request title as a red CI run, because a measurement found that none of its 102 failures was by design.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` (`8186a8c`) and `data/` (`2f84dbb`) resolve to the same trees at the v0.6.11 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/area_layout.py` and `layout/sizing.py`, for the Area borders and floors. **It finishes two features**, `invariant-test-gaps` and `model-review`, and closes no generator head. **None is a Gate 3 entry**, though three were deferred from it, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 6 items |
-| v0.6.13 | Completed / current baseline | **The release where the compartment schematic ships, drawing the circuit, the alveoli, venous blood and the three tissue groups as containers filled to their modelled tension, each labelled with its tension and its amount in millilitres of vapour, with one bar of each compartment's share of the agent the run holds, placed beside the concentration chart in the Maintenance Workspace; where the agent cost View shows the delivered agent in millilitres of liquid equivalent; where a reader's agent price and cost unit get a preferences file of their own; where a MAC target that a step lands on exactly reads the same on a branch as on the trunk; where an Area's floor is measured only at the width the Area is drawn at; and where the charts hand pyqtgraph numpy arrays.** 22 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, seven of them here, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No equation or model parameter changed**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.12 tag and here, and `data/` moved (`2f84dbb` to `7cc6b59`) only in the Maintenance Workspace's arrangement and a docstring. **Every modelled state is bit-identical, and 19 of 271 halts, each at a MAC target, come one or two 0.1 s steps earlier**: the trajectory comparison against the v0.6.12 tag found every state vector, canonical state, drawn window, hover string and readout string identical over 81 cases and three 24-hour runs. The 19 halts moved because `PL-QVBR` gives a MAC target's height a band of one part in a hundred thousand, and a run now halts at the first step whose reading enters it. Each snapshot gains two fields, the compartment amounts and the vapour-per-liquid factor. **It finishes four features**, `generator-heads`, `guard-tool-names`, `review-hold` and `schematic`, and closes two generator heads, `PL-16BG` and `PL-B6YV`, both spent. **Seven are Gate 3 entries**, five of them in v0.7.0's Required scope, and with `PL-0KPD` dropped the gate stands at 86 of 89 cleared, from 78 of 89 at the v0.6.12 tag. `PL-PZGY`, the cut, ships in no release under `PL-KRS6`. | 22 items |
+| v0.6.13 | Completed | **The release where the compartment schematic ships, drawing the circuit, the alveoli, venous blood and the three tissue groups as containers filled to their modelled tension, each labelled with its tension and its amount in millilitres of vapour, with one bar of each compartment's share of the agent the run holds, placed beside the concentration chart in the Maintenance Workspace; where the agent cost View shows the delivered agent in millilitres of liquid equivalent; where a reader's agent price and cost unit get a preferences file of their own; where a MAC target that a step lands on exactly reads the same on a branch as on the trunk; where an Area's floor is measured only at the width the Area is drawn at; and where the charts hand pyqtgraph numpy arrays.** 22 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, seven of them here, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No equation or model parameter changed**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.12 tag and here, and `data/` moved (`2f84dbb` to `7cc6b59`) only in the Maintenance Workspace's arrangement and a docstring. **Every modelled state is bit-identical, and 19 of 271 halts, each at a MAC target, come one or two 0.1 s steps earlier**: the trajectory comparison against the v0.6.12 tag found every state vector, canonical state, drawn window, hover string and readout string identical over 81 cases and three 24-hour runs. The 19 halts moved because `PL-QVBR` gives a MAC target's height a band of one part in a hundred thousand, and a run now halts at the first step whose reading enters it. Each snapshot gains two fields, the compartment amounts and the vapour-per-liquid factor. **It finishes four features**, `generator-heads`, `guard-tool-names`, `review-hold` and `schematic`, and closes two generator heads, `PL-16BG` and `PL-B6YV`, both spent. **Seven are Gate 3 entries**, five of them in v0.7.0's Required scope, and with `PL-0KPD` dropped the gate stands at 86 of 89 cleared, from 78 of 89 at the v0.6.12 tag. `PL-PZGY`, the cut, ships in no release under `PL-KRS6`. | 22 items |
+| v0.6.14 | Completed / current baseline | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares, and where four documents stop claiming more than their sources or the code support: the stored tissue:gas coefficients are Gas Man's figures for Yasuda, Targ and Eger's measurements rather than roundings of them, `docs/MODEL.md` names the held runs' own rounding bound, `control_timeline.py` says where the delivered dial's units change, and a textbook is tier 2 everywhere.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No code, stored value or displayed value changed, and no run can differ**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.13 tag and here. `data/` moved (`7cc6b59` to `c3fbdbc`) only in the three agent files' `sources` notes and `provenance_gap` text, and `tools/ast_identity.py` finds no code moved in `app/control_timeline.py` or `tests/reference/test_coupled_dynamics.py`, so the trajectories were not re-measured. **It finishes two features**, `drift-2026-11-01` and `stale-source-claims`, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 86 of 89 cleared, as at the v0.6.13 tag. `PL-T343`, the cut, ships in no release under `PL-KRS6`. | 5 items |
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -270,155 +271,98 @@ checkout will produce it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.6.13
+## Current baseline: v0.6.14
 
-v0.6.13 is the release where the compartment schematic and the agent cost View
-ship. The schematic
-draws the circuit, the alveoli, venous blood and the three tissue groups
-as containers filled to their modelled tension. Each container is labelled
-with its tension and its amount of agent in millilitres of vapour, and one bar
-shows each compartment's share of all the agent the run holds. The Maintenance
-Workspace places it beside the concentration chart. The agent cost View shows
-the delivered agent in millilitres of liquid equivalent, or in litres of vapour
-if the reader chooses. It is also the release
-where a reader's agent price and cost unit get a preferences file of their
-own, where a MAC target that a step lands on exactly reads the same on a
-branch as on the trunk, where an Area's floor is measured only at the width
-the Area is drawn at, and where the charts hand pyqtgraph numpy arrays. The
-release has 22 items, and it is a patch on both halves of § "Versioning
-decision"'s test. No capability boundary is crossed, because the schematic
-milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are
-closed, seven of them here. The one still open is `PL-1P15`, the cost in
-money on the agent cost View.
-v0.7.0 and v0.8.0 are given to milestone sections.
+v0.6.14 is the release where the halted-dashboard guard reads a scroll bar's
+Qt container as part of the bar, and where four documents stop claiming more
+than their sources or the code support. The release has five items, and it is
+a patch on both halves of § "Versioning decision"'s test. No capability
+boundary is crossed, because the schematic milestone is not finished: 10 of the
+11 ids in v0.7.0's Required scope are closed. The one still open is
+`PL-1P15`, the cost in money on the agent cost View. v0.7.0 and v0.8.0 are
+given to milestone sections.
 
-Seven of the 22 items are on Gate 3's frozen list: `PL-2881`, `PL-KFTM`,
-`PL-RNYV`, `PL-S79P` and `PL-B396`, which v0.7.0's Required scope also names,
-and `PL-QVBR` and `PL-D1LR`. `PL-0KPD`, a chart paint measurement on the owner's
-hardware, was dropped from the list on 2026-11-01 and ships in no release. So
-the gate stands at 86 of 89 cleared, from 78 of 89 at the v0.6.12 tag. The
-three entries still open are `PL-1P15`, which the milestone clears itself, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it. Seven
-more of the 22 were deferred from the list with `deferred-from: v0.7.0`.
+None of the five is on Gate 3's frozen list. `PL-CSK0` was captured after the
+freeze and deferred from the list with `deferred-from: v0.7.0`, and the four
+`stale-source-claims` items were never placed on it. So the gate stands at 86
+of 89 cleared, as at the v0.6.13 tag. The three entries still open are
+`PL-1P15`, which the milestone clears itself, and `PL-B4P7` and `PL-WZVZ`,
+which were deferred from it.
 
-**No equation or model parameter changed:**
+**No code, stored value or displayed value changed, and no run can differ:**
 
-| Tree | v0.6.12 tag | This cut | What moved |
+| Tree | v0.6.13 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `3ecaeee` | `b0f619e` | `app/`, `layout/`, `data/workspaces/` and the new `user_files.py` |
+| `src/` | `b0f619e` | `afd7347` | the module docstring of `app/control_timeline.py`, and `data/` |
 | `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
-| `src/anesthesia_sim/data/` | `2f84dbb` | `7cc6b59` | the Maintenance Workspace's arrangement, and the package docstring that describes it |
-| `tests/reference/` | `696db73` | `7110ca8` | a new test of each compartment's amount against an oracle independent of `core/` |
-| `docs/MODEL.md` | `3af29e8` | `8115e17` | the schematic's specification, the reader's price, the agent cost View, the MAC target's crossing band, two corrected statements, and the rule that a numeric paragraph names its test |
-| `README.md` | `7db4f10` | `d25636f` | the schematic, the agent cost View, and which Workspace shows the wash-in chart |
-| `.github/` | `3f5e7c1` | `cceaa91` | `drift.yml` |
+| `src/anesthesia_sim/data/` | `7cc6b59` | `c3fbdbc` | the `sources` notes and `provenance_gap` text of the three agent files |
+| `tests/reference/` | `7110ca8` | `dd8aeab` | comments in `test_coupled_dynamics.py` |
+| `docs/MODEL.md` | `8115e17` | `acaa24f` | the held runs' rounding bound, the tissue:gas coefficients' provenance, and a review's tier |
+| `README.md` | `d25636f` | `d25636f` | nothing |
+| `.github/` | `cceaa91` | `cceaa91` | nothing |
 
-`tools/ast_identity.py` finds that `data/` moved only in
-`src/anesthesia_sim/data/workspaces/maintenance.json` and in a docstring. No agent, machine or patient
-file changed, so no stored parameter changed.
+`tools/ast_identity.py` finds no code moved in `app/control_timeline.py` or in
+`tests/reference/test_coupled_dynamics.py`, only docstrings and comments. The
+three agent files are identical once each `sources` entry's `note` and the
+`provenance_gap` text are set aside, so no stored parameter changed. Because
+`core/` is the same tree and no stored value moved, the trajectories were not
+re-measured. The one test that changed in code is
+`tests/integration/test_simulation_view.py`.
 
-The trajectory comparison against the v0.6.12 tag found every state vector,
-canonical state, drawn window, hover string and readout string identical over
-81 cases and three 24-hour runs, so every modelled run is the run v0.6.12
-gave. What moved is where a run halts at a MAC target. `PL-QVBR` gives a
-target's height a band of one part in a hundred thousand on either side, and a
-run now halts at the first step whose reading enters the band. So 19 of the
-271 halts, each at a MAC target, come one or two 0.1 s steps earlier than
-before, four of them on branches. Every other halt is identical. Each
-snapshot gains two fields: the compartment amounts (`PL-KFTM`) and the factor
-that converts vapour to liquid (`PL-B396`).
+**The halted-dashboard guard.** A test checks that after a halt, every panel
+outside the runs reads as the same dashboard reads once a frame draws it, so
+that a halted run shows no stale state. Under the drift run's upgraded
+dependencies (PySide6 6.12.0, pytest 9.2.0 and Python 3.15.2), that test
+failed on a plain `QWidget` (`PL-CSK0`, `#1937`). The widget is the container
+of the vertical scroll bar in the control-change record column. Qt shows or
+hides a scroll bar by showing or hiding that private container, so the bar's
+own hidden flag never changes. On the CI runner the record overflowed its
+column on the drawn dashboard but not on the halted one, so the bar appeared on
+only one of them. That is a difference in layout, not stale state. No run value
+changes, and Qt shows the bar whenever the record is taller than its column, so
+a halted record is never cut off without a bar. The guard now reads a scroll
+bar's container as part of the bar, under the existing exemption for scroll
+bars. An exemption for the container's own type, `QWidget`, would have
+exempted every plain panel on the dashboard. A new test makes the record
+overflow on purpose, and it fails without the fix. Drift run 41392804086, on
+the fix's branch, passed the `dependencies`, `interpreter`, `order` and
+`doc-quotes` jobs. `uv.lock` still holds PySide6 6.11.2, and this guard no
+longer stands in the way of 6.12.0.
 
-**The compartment schematic.** `docs/MODEL.md` specified the schematic before
-it was drawn (`PL-2881`, `#1918`). A fill height is the compartment's modelled
-tension, on one scale for every container of a run. An amount is the
-compartment's modelled agent, named as vapour so that nobody reads it as
-liquid. The specification sets the displayed precision of a per-compartment
-amount, adds two rows to the hazard table, and says why no container is drawn
-for arterial blood: the model gives arterial blood no amount of its own.
-`SimulationSnapshot` now carries each compartment's amount as one record per
-compartment (`PL-KFTM`, `#1919`). `stored_agent_l` stays `core/`'s one sum,
-and a test holds the records equal to it to the last bit. A new reference
-test compares each amount at stated instants with an oracle that does not use
-`core/`. The View itself (`PL-RNYV`) and its share bar (`PL-S79P`) are
-`#1921`. Fat holds about a fifth of the stored agent at one hour while its
-container is nearly empty, and the bar is where a learner sees that. The
-Maintenance Workspace now places the schematic beside the concentration chart,
-and the wash-in chart stays in the Induction Workspace (`PL-PR1W`, `#1929`).
-Which Workspace holds it is a placeholder decision.
+**Source and bound claims.** Four documents said something about a source or a
+bound that the source or the code does not support, and `#1940` corrects each
+one. The provenance notes called the stored tissue:gas coefficients Yasuda,
+Targ and Eger's 1989 measurements "as Gas Man rounded them". Against that
+paper's Table 1, two of the nine match the mean exactly and two more are the
+mean rounded. The other five are not roundings, from -4.3% for sevoflurane's
+vessel-rich group to +9.0% for isoflurane's fat. The three agent files,
+`docs/MODEL.md` and the sourcing rule now call them Gas Man's figures for those
+measurements, each within one standard deviation of the paper's mean
+(`PL-476M`). `docs/MODEL.md` § "Independent-solution test" said its 4e-13
+bound applies at every horizon. The held runs to 60, 600 and 3600 s are held to
+`HELD_RUN_ROUNDING_BOUND`, 1e-12, which the section now names, with the held
+hour's worst residual, 7.16e-14 for desflurane in muscle (`PL-4R21`).
+`app/control_timeline.py`'s module docstring now says that the delivered dial's
+recorded value is a percent, which `format_control_value` converts to a
+fraction before `format_percent` converts it back (`PL-TPXR`). And a review or
+textbook is tier 2 under `docs/MODEL.md` § "Source hierarchy", so *Modern
+Anesthetics* and the Eger and Saidman 2005 review are now tier 2 wherever they
+are ranked (`PL-VW91`). The private reference corpus's README carries the same
+correction in that repository's own pull request.
 
-**The reader's price.** `app/preferences.py` keeps a reader's agent prices and
-the cost View's unit in a versioned preferences file, separate from the
-Workspaces (`PL-93B3`, `#1920`). A price is stored per bottle, as a bottle
-price and a bottle volume in millilitres of liquid, so a price per millilitre
-is never stored beside it. The currency is checked only for the form of three
-capital letters, and the code is printed beside every cost.
-
-**The agent cost View.** The agent cost View shows the delivered agent in
-millilitres of liquid equivalent by default, and in litres of vapour if the
-reader chooses, with the unit named on the value (`PL-B396`, `#1932`). The
-basis is the delivered agent, because that is what left the bottle. The unit
-is kept in the preferences file, so two agent cost Views always show one unit,
-and the choice survives a restart. A test checks the liquid figure for three
-agents against dial times flow times time, divided by a factor worked out from
-the densities and molar masses that `docs/MODEL.md` § "Agent amount"
-tabulates. The cost in money is `PL-1P15`, still open.
-
-**A MAC target on a branch.** A MAC target that a step's reading landed on
-exactly halted the trunk and read reached. A branch opened on that step asked
-the canonical reading, which can lie about 1e-14 short, so the branch read the
-target as still running (`PL-QVBR`, `#1917`). A crossing is now decided from
-the canonical readings, with a narrow band at the target's height. The band is
-about five hundred times finer than a two-decimal readout near 1 MAC of
-sevoflurane. `docs/MODEL.md` § "The canonical evaluation rule" states the band.
-
-**Area floors.** An Area's floor depends on the width at which the Area is
-drawn, but each reader of a floor worked that width out for itself, and that
-produced six defects in eight days. A floor is now a `layout.sizing.Floor`
-whose `at()` requires the drawn width (`PL-16BG`). A stacked split is now
-checked against its halves' floors at the width they will be drawn at, so a
-wide Area's split is no longer refused where each half could hold its notice
-(`PL-7DXG`). Both are `#1922`.
-
-**The chart.** The charts hand pyqtgraph `float64` numpy arrays and skip its
-per-frame NaN scan, as pyqtgraph's performance guidance asks (`PL-TCNT`,
-`#1924`). That is safe because every drawn value is now checked finite where
-it is built. numpy is a declared runtime dependency, and `core/` still does
-not import it.
-
-**Statements in `docs/MODEL.md`.** Two statements were corrected (`#1915`).
-The display resolution of the gas accumulators is now 0.1 L, as the panel
-shows, where two margins had been sized against 1e-6 L (`PL-D1LR`). A recorded
-dial change carries the unit "percent of 1 atm", not "fraction of 1 atm"
-(`PL-KSLX`). A numeric paragraph that states what the model computes must now
-name the test that holds it, starting with § "Displayed precision"
-(`PL-B6YV`, `#1926` and `#1927`). Its review corrected three computed figures,
-and the remaining passes are filed under `model-claims-held-by-tests`.
-
-**The workflow.** The 2026-11-01 drift run's failures that came from the
-tests and the workflow are fixed in `#1930`. Of the 17 tests that the
-restated-constants job found copying a supported-range limit, the step tests
-now build their step from the limit, and the tests whose literal values are
-deliberate oracles are listed as tripwires with the reason (`PL-DPDG`). The
-interpreter job restores the configuration files it rewrites before it runs
-the suite, so three configuration tests check the committed files (`PL-ZH36`). A nested `pytest.approx` comparison is split (`PL-R74V`), and
-`drift.yml`'s comments count five moved limits (`PL-2T6B`). The owner-ask hook
-checks every Projects tool rather than three renamed ones (`PL-YN60`,
-`#1931`), and the merge and email guards are wired on every MCP tool
-(`PL-NZJG`, `#1933`). `PL-5HQY` and `PL-MQ50` record why no successor head is
-owed for two re-entered lines of `bin/docket inflow` (`#1928`).
-
-The release finishes four features: `generator-heads`, `guard-tool-names`,
-`review-hold` and `schematic`. It closes two generator heads, `PL-16BG` and
-`PL-B6YV`, both spent. The release item is `PL-PZGY`, whose `resource:
-release-train` keeps it out of every later release. Every closure carried its
-`pr:` number before the cut, so every bullet cites its pull request.
-`bin/docket release` reported two missed apparatus-inflow predictions for
-2026-10-26 to 2026-11-01: 0.58 new apparatus paths a filing against a ceiling
-of 0.13, and one P1 apparatus filing outside the generator tier. `bin/docket
-inflow` has the table.
+The release finishes two features, `drift-2026-11-01` and
+`stale-source-claims`, and closes no generator head. The release item is
+`PL-T343`, whose `resource: release-train` keeps it out of every later
+release. Every closure carried its `pr:` number before the cut, so every
+bullet cites its pull request. `bin/docket release` reported the same two
+missed apparatus-inflow predictions for 2026-10-26 to 2026-11-01 that v0.6.13
+reported: 0.58 new apparatus paths a filing against a ceiling of 0.13, and one
+P1 apparatus filing outside the generator tier. `bin/docket inflow` has the
+table.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.13 tag. It is described in the
-next release, and v0.6.13's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.14 tag. It is described in the
+next release, and v0.6.14's notes take a pointer to it at that release's cut.
 
 ## The plan
 
