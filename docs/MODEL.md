@@ -4965,11 +4965,9 @@ separately, rather than assuming it.
 **The elimination comparison does not agree, and the model states the
 disagreement rather than a tolerance around it.** At the shipped defaults, and
 at the same 10 L/min that the wash-in comparison uses, the model has more
-alveolar agent at five minutes than every cohort did. This was measured on
-2026-09-06 and re-measured on 2026-09-07. The re-measurement followed
-`PL-8ZJQ` raising `venous_pool_volume_l` to 1.222 L, which moved the rows 0.11
-to 0.13 SD further above their means:
-<!-- not-restated: 10 L/min, 1.222 L -->
+alveolar agent at five minutes than every cohort did, as measured on
+2026-09-07:
+<!-- not-restated: 10 L/min -->
 
 | Agent | Cohort | Model | Published | Distance |
 | --- | --- | --- | --- | --- |
@@ -4982,12 +4980,10 @@ So the assertion on these values is a **regression** pin. It pins the model's
 own measured ratio to $`1\times10^{-4}`$ absolute. It claims nothing about
 agreement. It exists so that any change to washout fails the test and has to
 be explained. Its failure message still states the distance from each
-published mean. Until `PL-RXW0`, the pin was one published SD wide, which is a
-band of 6% to 12% relative. The test does make three claims about
+published mean. The test does make three claims about
 elimination, and the model meets all three. They are the published ordering by
 solubility (desflurane leaves fastest, then sevoflurane, then isoflurane),
 independence from the delivered fraction, and the sign of the departure.
-<!-- not-restated: 6 % -->
 
 **Most of that departure is the breathing system, not the tissue return**,
 and the difference is a property of the two ratios rather than of the model's
@@ -5023,11 +5019,10 @@ remaining $`F_I`$ is at most $`\dot V_A \Delta t / V_C`$ of $`F_A`$ at the
 start of the step, or 1.1 × 10⁻³ at the shipped ventilation, step and circuit
 volume. The same run settles at 0.30 to 0.32 with rebreathing. **It is a
 test-only driver. No fresh gas flow, dial position or patient setting of the
-shipped simulator produces the condition it creates.** `PL-W21J` weighed a
-supported non-rebreathing mode against the driver. The project owner chose the
-driver on 2026-09-06, because a mode would change the model boundary rather
-than a fixture, and it would add one more thing that the interface would have
-to make visible. Nobody running the application sees the numbers below. A restatement
+shipped simulator produces the condition it creates.** A supported
+non-rebreathing mode was not built, because it would change the model boundary
+and add one more mode for the interface to make visible (project owner,
+2026-09-06). Nobody running the application sees the numbers below. A restatement
 of them that drops this warning says something about the shipped model that is
 not true of it. The numbers were measured on 2026-09-07:
 <!-- not-restated: 1.1 -->
@@ -5139,8 +5134,8 @@ way. Rows one to six were measured on 2026-09-08. Rows four to six were
 measured on an independent forward-Euler integration of these equations. That
 integration reproduces the shipped driver to within 0.8%. Its own zero-shunt
 baseline for desflurane is −2.29 SD rather than −2.33. The seventh row was
-measured on 2026-09-13 on the shipped driver, after the methods sections
-supplied the apparatus's real volume (`PL-RFLN`). The paragraphs below it
+measured on 2026-09-13 on the shipped driver, using the apparatus's real
+volume from the methods sections. The paragraphs below it
 explain why it is a row of its own rather than a correction to the sixth. The
 eighth and ninth rows were not measured here at all. A primary measurement
 that the project has on file rules out each of them outright. A block below
@@ -5228,7 +5223,7 @@ with no primary source behind it, and it is neither quantity.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Both papers have since been read at full text, and the study publishes no
-ventilation at all** (`PL-ZDWL`, supplied by the project owner and read
+ventilation at all** (full texts supplied by the project owner, read
 2026-09-13). Ventilation was titrated for each subject to normocapnia, an
 end-tidal carbon dioxide of 5.5–6.5%, rather than set to a fixed figure.
 Minute ventilation was measured and used in the mass balance. Even so, **no
@@ -5282,9 +5277,8 @@ project cannot test it:**
    wider spread of the two, and it is centred above complete recovery.
 
 **End-tidal sampling was the second candidate, and it is struck** (project
-owner, 2026-09-13). It is recorded here rather than deleted because it was the
-leading explanation for a week. A reader who meets the eighth table row
-deserves to know why it was struck.
+owner, 2026-09-13). It is the eighth table row, and the paragraphs below say
+what it proposed and what struck it.
 
 *What it proposed.* The published $`F_A`$ is end-tidal gas from an
 anaesthetized volunteer. This model's $`F_A`$ is the fraction in one perfectly
@@ -5355,7 +5349,7 @@ this section that treats the model as washing desflurane out too fast is
 conservative rather than optimistic.
 
 **Circuit-wall absorption was never on this list, and the paper behind the
-circuit volume decides it** (`PL-XWCY`). Targ, Yasuda and Eger measured washin
+circuit volume decides it.** Targ, Yasuda and Eger measured washin
 at 0.5–2 L/min and washout at 1–5 L/min in a real conventional circle system.
 They compared both against the ideal exponential (*Anesth Analg* 1989
 Aug;69(2):218–25, PMID 2764290, read at full text 2026-09-13). The same study
@@ -5370,7 +5364,7 @@ supports. The candidate is struck on evidence rather than on argument.
 <!-- not-restated: 5 L/min -->
 
 **The direction does not rule it out, because a store that this model leaves
-out would move the comparison toward the published value** (`PL-X9K0`). A wall
+out would move the comparison toward the published value.** A wall
 that dissolves agent during a 30-minute administration gives the agent back
 during the washout. That keeps the circuit fraction high, and therefore the
 inspired fraction too, which *slows* the alveolar fall. Desflurane's residual
@@ -5384,7 +5378,7 @@ published apparatus, which had no circle system (the bullet on sevoflurane and
 isoflurane below). This model has no wall term, so a test cannot vary one. The circuit volume is the one
 circuit-side store it has, and
 `test_a_larger_circuit_can_only_slow_the_elimination` pins the direction on
-it (`PL-P1P6`). For every agent, the five-minute $`F_A/F_{A0}`$ rises at each
+it. For every agent, the five-minute $`F_A/F_{A0}`$ rises at each
 step from half to twice the stored circuit volume. That direction is what
 rules the candidate out for sevoflurane and isoflurane, below.
 
@@ -5399,7 +5393,7 @@ But the finding does not bear on the residual.
 - **It is already recorded, in the right place.** "Known limitations" contains
   the coefficient table and the ranking. It also states that the inert circuit
   is most nearly true for desflurane and least true for halothane, and it
-  records the decision not to add a wall term (`PL-LS3H`). Repeating it here
+  records the decision not to add a wall term. Repeating it here
   would suggest to a reader of this section that the residual is partly
   explained, which is the opposite of the truth.
 - **The departure it would be offered to explain is in the elimination rows,
@@ -5446,8 +5440,8 @@ outstanding. The breathing system and the end-tidal sampling are recorded
 above, and they settled the apparatus question. The published circuit is
 non-rebreathing, and the potent agents' inspired fraction in it is zero by
 construction. Its 50 ml of series dead space cannot account for the residual.
-The third has now been looked up, and the answer is negative. `PL-ZDWL` read
-both papers in full text on 2026-09-13, and **neither publishes a ventilation
+The third has now been looked up, and the answer is negative. Both papers were
+read in full text on 2026-09-13, and **neither publishes a ventilation
 at all**, as the paragraphs above record. Ventilation was titrated in each
 subject to normocapnia rather than set to a figure, and neither paper reports
 a $`\dot V_E`$ or an $`f_A`$. So there is no published value at which to run
@@ -5456,7 +5450,7 @@ the comparison, and that avenue is closed rather than outstanding.
 So one candidate is left, and this project cannot test it. That candidate is
 the published value itself, and no measurement available here will settle it.
 The end-tidal-weighted bias that was listed beside it was struck on the same
-day (`PL-03ZG`, dropped for that reason). Circuit-wall absorption was struck
+day. Circuit-wall absorption was struck
 with it, as recorded above. **Neither the remaining candidate nor any struck
 one is a claim this specification makes.** The cause of the residual is not
 identified. What this section records is its sign, its size, and the nine
@@ -5476,10 +5470,7 @@ claimed something that no test here has tested.
 
 **Four caveats limit how strongly a pass may be stated.** The first two apply
 to both directions. The last two apply only to the elimination comparison. All
-four belong beside any statement of this result, wherever it is restated. The
-root README used to carry such a statement, and the README no longer exists
-(`PL-WB5K`). So the obligation passes to whatever `PL-N092` writes in its
-place.
+four belong beside any statement of this result, wherever it is restated.
 
 1. *The published subjects were breathing nitrous oxide.* Both protocols ran
    65–70% N₂O at the same time as the potent agents. So the measured curves
@@ -5516,12 +5507,12 @@ place.
    agent. Both papers also report elimination curves over several days, and
    those must not be added to this comparison. Over days the missing
    metabolism is no longer negligible. Neither is the fat group's flow, which
-   acts on the slow tail of washout either way (`PL-HBH2`). § "Known
+   acts on the slow tail of washout either way. § "Known
    limitations" weighs that flow against two human sources that disagree about
    its direction. The flow is about twice a resting depot measurement, and at
    or a little below what the same papers' washout fits imply. The measured
    tail leaves what this model can follow long before days, though, and within
-   the 24 hours for which a run is supported (`PL-YD2V`). Every washout these
+   the 24 hours for which a run is supported. Every washout these
    papers fitted needed a fourth compartment between muscle and fat, and this
    model has no counterpart for it. On the published mean coefficients, that
    compartment's term becomes the largest in the measured curve at about 1.8
@@ -5532,8 +5523,8 @@ place.
    comparison carried into those hours would measure an omission rather than a
    parameter. So the gap over those hours is measured beside this gate rather
    than gated by it. § "The first 24 hours of elimination against the
-   published mean curves" records its size and direction hour by hour
-   (`PL-KK1Q`), and asserts no agreement.
+   published mean curves" records its size and direction hour by hour,
+   and asserts no agreement.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -5541,9 +5532,8 @@ place.
 
 #### The early wash-in curve against the published figures
 
-**The first 25 minutes are compared too, point by point** (`PL-R0NL`,
-2026-10-18). Until then the 30-minute ratio was the only wash-in comparison,
-and that ratio barely registers the lung's gas volume or the circuit. Both
+**The first 25 minutes are compared too, point by point** (2026-10-18). The
+30-minute ratio alone barely registers the lung's gas volume or the circuit. Both
 papers plot the whole $`F_A/F_I`$ curve during administration as Figure 2.
 They plot it as mean ± SD, with each SD drawn on one side of the marker.
 Neither paper tabulates it. So the values were read from the page scans, and
@@ -5592,7 +5582,7 @@ is something only desflurane has, such as its blood:gas or a tissue:gas
 coefficient.
 
 **No single stored coefficient, moved within what was measured, closes the
-gap** (`PL-CM1B`, measured 2026-10-18). Each desflurane coefficient was moved
+gap** (measured 2026-10-18). Each desflurane coefficient was moved
 alone through the reference test's own harness, with every other value left as
 shipped:
 
@@ -5618,7 +5608,7 @@ shipped:
 <!-- not-restated: 0.54 -->
 
 Raising desflurane's blood:gas coefficient also closes little of its washout
-residual (`PL-RFLN`). At 0.57 the open-circuit 5-minute ratio moves from
+residual. At 0.57 the open-circuit 5-minute ratio moves from
 −2.33 SD to −1.97 SD. So the two findings do not share this cause in any
 useful sense. Nothing stored changes, and the disagreement is a known
 limitation. The five desflurane points and the isoflurane point at 12.5
@@ -5639,8 +5629,8 @@ the note says.
 #### What the published-data gate can and cannot resolve
 
 **A green gate shows only that no stored value is wrong by more than the gate
-can detect, and for most stored values that is a lot** (`PL-9YHR`,
-2026-10-17, and re-measured for `PL-R0NL` on 2026-10-18). The published-data
+can detect, and for most stored values that is a lot** (measured 2026-10-17,
+and re-measured on 2026-10-18). The published-data
 gate is the set of assertions whose expected value is a published human
 measurement rather than this model's own output. The gate contains the early
 wash-in points from 1 to 25 minutes, which are run with F_I held at the
@@ -5688,12 +5678,7 @@ The first row is relative to the stored blood:gas coefficients. These are
 or at four times the stored value. A tissue's volume and its tissue:gas
 coefficient give the same edges, because a run depends only on their
 product, which is the tissue's capacity. This was measured, not assumed. The
-search found the same edges for both. Before the early points joined the
-gate, the same search on 2026-10-17 put blood:gas at −14% / +5% for
-sevoflurane, −11% / +12% for isoflurane and −3% / +10% for desflurane. It
-put the vessel-rich group at −22% to −46% below and +24% to +55% above.
-`PL-9YHR` records that table.
-<!-- not-restated: 5 % -->
+search found the same edges for both.
 
 **What a reader may conclude from a pass:**
 
@@ -5722,7 +5707,7 @@ put the vessel-rich group at −22% to −46% below and +24% to +55% above.
   Its points from 1 to 10 minutes sit at +1.7 to +2.1 SD. They are checked
   only against the regression band, which ends at +2.5 SD. So its lower edge
   for alveolar gas volume, −8%, is the edge of that band rather than a
-  published SD (`PL-CM1B`).
+  published SD.
 - **The gate cannot see fat for sevoflurane or isoflurane at all.** That is
   what a 30-minute load and a 5-minute washout should look like. Fat
   solubility and fat volume set the hours-long tail of washout, from which a
@@ -5787,8 +5772,7 @@ spread, not the band.
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**A measurement recorded beside the gate above, not a second gate** (`PL-KK1Q`,
-2026-09-27). Caveat 4 refuses to carry the five-minute comparison into the
+**A measurement recorded beside the gate above, not a second gate** (2026-09-27). Caveat 4 refuses to carry the five-minute comparison into the
 papers' multi-day curves. The reason is that over those hours the measured
 washout is carried by a compartment that this model does not have. So a
 comparison there measures an omission rather than a parameter. That refusal
@@ -5820,9 +5804,7 @@ wash-in at the reference operating point, followed by closing the vaporizer.
 The model runs it at the shipped 0.1 s step, sampled once a minute. The
 elimination lasts 23.5 hours, so the 30 minutes of wash-in and the
 elimination together end at the supported run length of 24 hours
-(`test_the_run_ends_at_the_supported_run_length`). Until 2026-10-17 the
-elimination lasted 24 hours, and the run went 30 minutes past that length
-(`PL-RXW0`). The run's fifth minute must match the gate's pinned five-minute
+(`test_the_run_ends_at_the_supported_run_length`). The run's fifth minute must match the gate's pinned five-minute
 ratios to four decimal places
 (`test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio`).
 So the tables continue the gate's comparison rather than starting a second
@@ -5925,7 +5907,7 @@ the shipped condition, it is the tail's furthest excess over the curve. A
 fitted time constant is an apparent one, read off the whole curve. So the
 model's terms are read off its curve in the same way. They are the modes of
 its open-circuit system, decomposed from its state at discontinuation
-(`PL-921Y`, 2026-10-03). The open-circuit system is the five equations of
+(2026-10-03). The open-circuit system is the five equations of
 § "Governing equations" with nothing inspired. The table gives each term as
 its time constant in minutes and its amplitude in percent of $`F_{A0}`$, with
 the cohorts in the same order as the tables above.
@@ -5955,9 +5937,7 @@ about 2500, 2600 and 1500 minutes for fat. The arterial blood that reaches a
 group during the washout is not free of agent. The lungs do not exhale all
 of the agent in every group's return, and what they do not exhale goes round
 again. So a store empties more slowly than its own blood flow alone would
-empty it. Before `PL-921Y`, this subsection set the isolated muscle constant
-against the fitted constant. Compared that way, the isolated muscle constant
-reads 1.5 to 1.7 times as slow, which understates the difference.
+empty it, and the isolated constant understates how slow the model's term is.
 <!-- derived: 135 minutes from data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33.0, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
 <!-- derived: 135 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 127 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
@@ -5971,7 +5951,7 @@ reads 1.5 to 1.7 times as slow, which understates the difference.
 The claim that the muscle group's slow return places this peak in hours 2
 to 4 was tested by lowering the group's tissue:gas coefficient to 0.58 to
 0.67 of its stored value, with everything else as
-stored (`PL-95NW`, 2026-10-03). This change makes the group's isolated time
+stored (2026-10-03). This change makes the group's isolated time
 constant equal to the fitted one. It makes the group's apparent time constant
 1.09 to 1.28 times the fitted one, which is most of the way to it. Over a
 30-minute wash-in the group is far from equilibrium. It takes up agent about
@@ -6135,10 +6115,7 @@ the same comparison in two more cases. One is a system started at a keyframe
 and stepped from there. The other is a branch compared against its parent.
 Each test records its own figure and the headroom left above it.
 
-Until PL-2FM6, the run also kept one recorded sample per step, and the chart
-drew from those samples. This test was what showed that the two records
-described one run. The record of samples is gone. The comparison against the
-stepped system now carries the claim, because the stepped solver is the
+The comparison against the stepped system carries the claim, because the stepped solver is the
 independently written solution of the same equations that the closed form is
 checked against.
 
