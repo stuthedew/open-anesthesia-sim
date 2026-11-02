@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: stale-source-claims
+milestone: v0.6.13
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - captured after the gate froze; the wrong unit is in the specification's prose, and every displayed and recorded value already uses percent
 added: 2026-10-31

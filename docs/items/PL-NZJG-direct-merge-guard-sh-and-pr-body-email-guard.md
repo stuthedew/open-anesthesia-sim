@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guard-tool-names
+milestone: v0.6.13
 touches: .claude/hooks/direct-merge-guard.sh, .claude/hooks/pr-body-email-guard.sh, .claude/settings.json, tools/pr_body_check.py, tests/unit/test_direct_merge_guard.py, tests/unit/test_pr_body_check.py, tests/unit/test_hook_blocks.py, docs/apparatus.md, docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-02

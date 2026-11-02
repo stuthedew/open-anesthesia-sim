@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: drift-2026-11-01
+milestone: v0.6.13
 touches: .github/workflows/drift.yml, tests/unit/test_config_home_check.py, tools/config_home_check.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01

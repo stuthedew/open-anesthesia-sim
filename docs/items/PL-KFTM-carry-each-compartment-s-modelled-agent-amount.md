@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: schematic
+milestone: v0.6.13
 touches: src/anesthesia_sim/app/controller.py, tests/unit, tests/reference, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-10-25
 closed: 2026-11-01

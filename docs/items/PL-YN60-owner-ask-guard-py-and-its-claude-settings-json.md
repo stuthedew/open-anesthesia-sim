@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: review-hold
+milestone: v0.6.13
 touches: .claude/hooks/owner_ask_guard.py, .claude/settings.json, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, .claude/rules/apparatus-standard.md, docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-02

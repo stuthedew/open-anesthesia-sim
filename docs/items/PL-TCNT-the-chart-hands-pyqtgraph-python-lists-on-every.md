@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 feature: chart-readout
+milestone: v0.6.13
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/run_series.py, pyproject.toml, uv.lock, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md, tests/integration/test_qt_chart.py, tests/integration/test_simulation_view.py, tests/unit/test_chart_frame.py, tests/unit/test_run_series.py
 added: 2026-11-01
 closed: 2026-11-01
