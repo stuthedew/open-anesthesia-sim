@@ -65,3 +65,45 @@ unit tests for each marker kind. Every section in `BOUND_FAMILIES` still
 conforms, and any paragraph the change newly fails is annotated in the same
 change. If the reader lands under another name, update `verify:` in the same
 commit.
+
+**Built 2026-11-02.** `_holds_its_figures` now holds a paragraph in two ways.
+A test name, a published source, a date or the declared-none form holds the
+whole paragraph, as before. Without one of those, the paragraph passes only
+where `_marker_held_figures` says a marker ties every figure with a unit in
+it. That reader calls `_marker_ties`, so a marker ties a figure here exactly
+as `check_untied_restatements` reads a tie. Four choices were made inside the
+agreed approach:
+
+- A `provenance:` marker ties a figure through `_matches`, against the value
+  the marker asserts and the unit its key's ending declares. So a marker for
+  `volume_l = 6` ties "6 L" and not "6 %". `_MarkerScope` now records the
+  asserted values, and its `homes` are read from them, so the two checks read
+  one record.
+- A `derived:` marker ties its computed figure as the marker writes it, and
+  also each input value it asserts. The brief named only the computed figure.
+  The inputs are stored values held to their files, as a `provenance:`
+  marker's are, and `check_untied_restatements` already ties them.
+- A member's lines lose their shared indentation. Without that, a paragraph
+  indented four columns inside a list item reads alone as an indented code
+  block, which states no figure. A paragraph that yields no figure fails
+  rather than passes, so a disagreement between the two readers is loud.
+- The family's promise text in `BOUND_FAMILIES` and `docs/MODEL.md` § "How
+  this document is held to the tree" now state the rule.
+
+Three "Displayed precision" paragraphs failed under the new rule, and each is
+annotated. "Why not a significant-figures rule" cites Yasuda, Targ and Eger
+for its 3.9% to 6.4% (Anesth Analg 1989;69:370-373, PMID 2774233, checked in
+PubMed's metadata). "Precision elsewhere in the interface" names the three
+slider tests that read 0.1 L/min from each label, and the test that holds the
+slider steps. The residual paragraph is dated to its 2026-10-03 replay and
+names `test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws`.
+
+**Regression test.** `test_a_marker_holds_a_numeric_paragraph_only_through_the_figures_it_ties`,
+run against `origin/main`'s `tools/doc_check.py`, fails with
+`assert {3, 6, 9, 12, 15, 17} == {9, 15, 17}`.
+
+**What it costs the later passes, counted 2026-11-02.** Across the whole
+document, 201 of 386 numeric paragraphs are held by nothing, where 89 were
+before. In a sample of 13 of the other 112, 9 had an untied figure that is a
+claim. `PL-19W8` records the sample. The tightening was worth taking only if
+most of the paragraphs it adds hold a real claim, and on that sample they do.

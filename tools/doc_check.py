@@ -2717,36 +2717,45 @@ def _hidden_lines(text: str, lines: Sequence[str]) -> set[int]:
 class _MarkerScope:
     """What the markers under one paragraph, list or block quote say about its figures.
 
-    `homes` holds each `(home, key)` that a `provenance:` marker names, or that
-    a `derived:` marker names as an input. `derived` holds each figure a
-    `derived:` marker states it computed, written as the marker writes it.
-    `listed` holds the figures a `not-restated:` marker lists. `at` is the
-    line of the scope's last marker.
+    `asserted` holds each value that a `provenance:` marker asserts, or that a
+    `derived:` marker asserts as an input, with the unit its key declares.
+    `derived` holds each figure a `derived:` marker states it computed,
+    written as the marker writes it. `listed` holds the figures a
+    `not-restated:` marker lists. `at` is the line of the scope's last marker.
     """
 
     start: int
     end: int
     at: int
-    homes: set[tuple[str, str]] = field(default_factory=set)
+    asserted: set[StoredValue] = field(default_factory=set)
     derived: set[str] = field(default_factory=set)
     listed: set[tuple[float, str | None]] = field(default_factory=set)
 
+    @property
+    def homes(self) -> set[tuple[str, str]]:
+        """Each `(home, key)` that the scope's markers name."""
+        return {(value.home, value.name) for value in self.asserted}
 
-def _named_homes(body: str) -> set[tuple[str, str]]:
-    """Each `(home, key)` that a marker body of `<file> <key> = <value>, ...` names.
 
-    A body this cannot read names nothing here. `_check_prose_markers`
-    reports it as an error.
+def _asserted_values(body: str) -> set[StoredValue]:
+    """Each value that a marker body of `<file> <key> = <value>, ...` asserts.
+
+    Each value comes with the unit its key's ending declares, as
+    `stored_values` reads the unit of the value the key holds. A body this
+    cannot read asserts nothing here. `_check_prose_markers` reports it as an
+    error.
     """
     source = MARKER_SOURCE_RE.match(body)
     if source is None:
         return set()
-    named = set()
+    asserted = set()
     for clause in source.group("assertions").split(","):
         assertion = ASSERTION_RE.match(clause.strip())
         if assertion is not None:
-            named.add((source.group("relative"), assertion.group("key")))
-    return named
+            key = assertion.group("key")
+            value = float(assertion.group("value"))
+            asserted.add(StoredValue(source.group("relative"), key, value, _unit_of(key)))
+    return asserted
 
 
 def _marker_ties(
@@ -2780,10 +2789,43 @@ def _marker_ties(
             derived = DERIVED_FROM_RE.match(body)
             if derived is not None:
                 scope.derived.update(NUMBER_RE.findall(derived.group("figure")))
-                scope.homes.update(_named_homes(derived.group("rest")))
+                scope.asserted.update(_asserted_values(derived.group("rest")))
         else:
-            scope.homes.update(_named_homes(body))
+            scope.asserted.update(_asserted_values(body))
     return list(scopes.values())
+
+
+def _marker_held_figures(
+    lines: Sequence[str], figures: Iterable[tuple[str, str | None]]
+) -> set[tuple[str, str | None]]:
+    """Each of a paragraph's `figures` that a marker in `lines` ties (`PL-TCD3`).
+
+    `lines` is the paragraph and each marker that speaks for it, as
+    `_numeric_paragraph_members` gives them, and `figures` are the
+    paragraph's figures as `_untied_figures` gives them. A marker ties a
+    figure exactly as `check_untied_restatements` reads a tie, from what
+    `_marker_ties` records. A `provenance:` marker ties each figure that
+    states a value it asserts, in that value's unit (`_matches`), so a marker
+    for a 6 L volume does not tie "6 %". A `derived:` marker ties the figure
+    it states it computed, and each input value it asserts. A
+    `not-restated:` marker ties nothing, because it says its figures are no
+    stored value.
+
+    Every marker in `lines` counts, whatever block `_marker_ties` finds above
+    it, because `_numeric_paragraph_members` has already read which markers
+    speak for the paragraph. `_marker_ties` reports a `not-restated:` figure
+    it cannot read, and that error is discarded here: the same marker is read
+    over the whole document by `check_untied_restatements`, which reports it.
+    """
+    scopes = _marker_ties(lines, (), Report(), MODEL)
+    asserted = {value for scope in scopes for value in scope.asserted}
+    derived = {figure for scope in scopes for figure in scope.derived}
+    return {
+        (written, unit)
+        for written, unit in figures
+        if written in derived
+        or any(_matches(_prose_figure(written, unit), value, written) for value in asserted)
+    }
 
 
 def _named_values(matching: Sequence[StoredValue]) -> str:
@@ -3999,32 +4041,54 @@ PUBLISHED_SOURCE_RE = re.compile(
 )
 
 
+def _unit_figures(prose: Sequence[str], raw: Sequence[str]) -> list[tuple[str, str]]:
+    """Each figure with a unit that a paragraph states, as `(number, unit)` as written.
+
+    `prose` is the paragraph's lines as `_prose_lines` gives them, and `raw`
+    its lines as written. The lines are joined with a space and read as one,
+    so a figure whose unit wraps onto the next line, as in "2.0 to 2.7" and
+    then "minutes", is still read. A figure is read as `_untied_figures`
+    reads one, so its unit is one that `PROSE_UNITS` lists.
+    """
+    joined = " ".join(prose)
+    written = " ".join(INLINE_COMMENT_RE.sub("", line) for line in raw)
+    return [(number, unit) for number, unit in _untied_figures(joined, written) if unit is not None]
+
+
 def _holds_its_figures(member: str) -> bool:
     """Whether a numeric paragraph carries a form that ties its figures to something.
 
     `member` is the paragraph and, after it, each marker that speaks for it,
-    as `_numeric_paragraph_members` gives them. Five forms pass, and each is
-    a syntax the writer adds on purpose. The first is a `provenance:`,
-    `derived:` or `not-restated:` marker. The second is a test named in a
-    code span, read by `_names_a_test` exactly as the other families read it.
-    The third is a published source in a form `PUBLISHED_SOURCE_RE` reads.
-    The fourth is an ISO date, which makes the paragraph a record under
-    clause 4. The fifth, the declared-none form, is `check_bound_families`'
-    own. A date or a source inside a code span does not count, because a code
-    span quotes text rather than citing it.
+    as `_numeric_paragraph_members` gives them. Four forms hold the whole
+    paragraph, and each is a syntax the writer adds on purpose. The first is
+    a test named in a code span, read by `_names_a_test` exactly as the other
+    families read it. The second is a published source in a form
+    `PUBLISHED_SOURCE_RE` reads. The third is an ISO date, which makes the
+    paragraph a record under clause 4. The fourth, the declared-none form, is
+    `check_bound_families`' own. A date or a source inside a code span does
+    not count, because a code span quotes text rather than citing it.
+
+    A marker holds only the figures it ties (`PL-TCD3`, project owner,
+    2026-11-02, ratified, over letting any marker hold the whole paragraph).
+    So a paragraph that none of the four forms holds passes only where every
+    figure with a unit in it is one that `_marker_held_figures` says a marker
+    ties. A paragraph with a computed figure cannot then pass on a marker
+    written for another figure beside it, or on a `not-restated:` marker.
 
     As for every family, the check asks only whether a form is present.
     Whether the test computes the figure, or the source states it, stays a
-    reviewer's question. So does whether the paragraph holds a second figure
-    that its one marker does not cover.
+    reviewer's question.
     """
-    lines = split_lines(member)
-    if any(PROSE_MARKER_RE.match(line.strip()) for line in lines):
-        return True
     prose = "\n".join(line for line in _without_code(member) if not _is_marker(line))
-    return bool(
-        _names_a_test(member) or ISO_DATE_RE.search(prose) or PUBLISHED_SOURCE_RE.search(prose)
-    )
+    if _names_a_test(member) or ISO_DATE_RE.search(prose) or PUBLISHED_SOURCE_RE.search(prose):
+        return True
+    lines = split_lines(member)
+    paragraph = [line for line in lines if not _is_marker(line)]
+    figures = _unit_figures(_prose_lines("\n".join(paragraph), paragraph), paragraph)
+    # A member always states a figure with a unit, so finding none here means
+    # this reading of the paragraph disagrees with the member reader's. It
+    # fails rather than passing on figures it never read.
+    return bool(figures) and _marker_held_figures(lines, figures) >= set(figures)
 
 
 #: A numeric paragraph's kind. Its declared-none form is a test's, so the one
@@ -4038,12 +4102,11 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     The fourth member shape (`PL-B6YV`). The other three read members the
     heading promises. This one reads free prose, and it reads only the
     paragraphs a syntax can pick out: one that states a figure with a unit.
-    A figure is read as `_untied_figures` reads one, over the paragraph's lines
-    joined into one, so a unit that wraps onto the next line is still read. Its
-    unit is one `PROSE_UNITS`
-    lists, so "a number with a unit" has one meaning in this file. Widening
-    that list widens `check_untied_restatements` too, and both should move
-    together. A number in a code span, a math span's exponent or an HTML
+    A figure is read by `_unit_figures`, over the paragraph's lines joined
+    into one, so a unit that wraps onto the next line is still read. Its unit
+    is one `PROSE_UNITS` lists, so "a number with a unit" has one meaning in
+    this file. Widening that list widens `check_untied_restatements` too, and
+    both should move together. A number in a code span, a math span's exponent or an HTML
     comment states nothing here. A bare number, such as a count or a
     coefficient, makes no member. A heading or a table row makes none either,
     because a table is `_table_members`' shape.
@@ -4055,7 +4118,10 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     Each member comes back with each marker that speaks for it appended, as
     `_marked_scope` reads a marker's reach. A marker stands under its
     paragraph, or under the whole list for a paragraph inside one, and
-    `_holds_its_figures` then finds it in the member.
+    `_holds_its_figures` then finds it in the member. The paragraph's lines
+    lose the indentation they share, so a paragraph indented four columns
+    inside a list item is read as the paragraph it is, and not as an
+    indented code block whose figures state nothing.
 
     The heading is one `markdown` reads, so a `#` line inside a fence opens no
     section, as for `_list_members` (`PL-0Y7J`).
@@ -4084,16 +4150,13 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     for block in read_blocks(lines).blocks:
         if block.kind != PARAGRAPH or not opening.end <= block.start < end:
             continue
-        # The lines are joined with a space, so a figure whose unit wraps onto
-        # the next line, as in "2.0 to 2.7" and then "minutes", is still read.
-        joined = " ".join(prose[block.start : block.end])
-        raw = " ".join(INLINE_COMMENT_RE.sub("", line) for line in lines[block.start : block.end])
-        if not any(unit is not None for _, unit in _untied_figures(joined, raw)):
+        if not _unit_figures(prose[block.start : block.end], lines[block.start : block.end]):
             continue
         held = [
             marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
         ]
-        yield block.start + 1, "\n".join([*lines[block.start : block.end], *held])
+        paragraph = textwrap.dedent("\n".join(lines[block.start : block.end]))
+        yield block.start + 1, "\n".join([paragraph, *held])
 
 
 # Every family bound by clause 2 today. **An entry arrives with the annotation
@@ -4152,8 +4215,8 @@ BOUND_FAMILIES = (
         members=_numeric_paragraph_members,
         promise=(
             "every paragraph stating a number with a unit names the test that computes it, "
-            "carries a provenance:, derived: or not-restated: marker, cites its published "
-            "source, or is dated"
+            "cites its published source, or is dated, unless a provenance: or derived: "
+            "marker ties each of its numbers with a unit"
         ),
     ),
 )

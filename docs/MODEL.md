@@ -319,12 +319,18 @@ drift from the model without a test failing. Naming a test is the minimum.
 
 `check_bound_families` enforces this one section at a time. In a section in
 its table, each paragraph that states a number with a unit must carry one of
-these forms: a code-spanned test, the declared-none form, a
-`provenance:`, `derived:` or `not-restated:` marker, a published source cited
-by a DOI, a PubMed id, an ISBN or a journal locator such as
+these forms: a code-spanned test, the declared-none form, a published source
+cited by a DOI, a PubMed id, an ISBN or a journal locator such as
 "Anesth Analg 1991;72:316-324", or a date. An author and a year alone, such
 as "Mapleson 1963", does not count, because no pattern can tell it from a
-sentence such as "Until 2026". A section joins the table when the pass that
+sentence such as "Until 2026". Without one of those forms, a paragraph passes
+only where a marker ties each of its numbers with a unit (`PL-TCD3`, project
+owner, 2026-11-02, ratified, over letting any marker pass the whole
+paragraph). A `provenance:` marker ties a number that states a value it
+asserts, in that value's unit. A `derived:` marker ties the figure it states
+it computed, and each input it asserts. A `not-restated:` marker ties
+nothing, because it says its numbers are no stored value. So a computed
+figure cannot pass on a marker written for another figure beside it. A section joins the table when the pass that
 makes it conform lands, as clause 2's families do. The check cannot read a
 qualitative claim, such as which value a readout shows beside a halt. Such a
 claim is still the author's duty under clause 1, and it is held by review.
@@ -11188,7 +11194,9 @@ where this model supports the least. The evidence for that is no longer the
 solver. Under the exact step the sparsely filled compartments carry at most
 $`2\times10^{-4}`$ relative error anywhere in the first ten seconds of a run,
 and $`8\times10^{-11}`$ at ten seconds itself. The evidence is the parameters.
-Their measured SDs are 3.9% to 6.4% of the mean and are *relative*, so they
+Their SDs, as Yasuda, Targ and Eger measured them in human tissues
+(Anesth Analg 1989;69:370-373), are 3.9% to 6.4% of the mean. They are
+*relative*, so they
 apply undiminished to a compartment holding a thousandth of a percent. Three
 significant figures on the fat fraction would imply a relative resolution of
 0.1% on a number whose parameters are known to about 5%. That over-claims by a
@@ -11266,11 +11274,16 @@ axis labels a span that a reader scans, not an instant that they read off. A
 tenth of a second on every label would spend width on a digit that is zero at
 every width the ladder offers. "The chart's time base" gives the form and the
 reason it differs from the clock's. Fresh gas flow, alveolar ventilation and
-cardiac output are displayed to 0.1 L/min. This matches the resolution of the
+cardiac output are displayed to 0.1 L/min, as
+`test_fresh_gas_flow_slider_forwards_value_to_controller`,
+`test_alveolar_ventilation_slider_forwards_value_to_controller` and
+`test_cardiac_output_slider_forwards_value_to_controller` read from each
+control's label. This matches the resolution of the
 flow controls that set them. A slider and the readout beside it show one
 quantity. So the Qt sliders are integer-valued, with steps at the display
 resolution: 0.1 L/min for the three flows, and 0.01 percentage points for the
-delivered dial. The value applied to the model is exactly the value printed
+delivered dial. `test_the_slider_steps_at_the_display_resolution` holds those
+steps. The value applied to the model is exactly the value printed
 beside the control (`PL-25KS`). If a control could apply a value that its own
 label rounds away, a reader could not tell which value is the setting in
 force.
@@ -11292,7 +11305,7 @@ redraws them. `PL-2MD9`'s change to the propagator is the measurement.
 `PL-KXW1` records an 81-run protocol: three agents, three dial pairs, three
 cardiac outputs and three fresh gas flows. Each run is forked at minute 30
 with the dial set back, and its branch is played for 30 minutes. The protocol
-was replayed on the v0.5.21 tag and on v0.5.22. A branch's residual moved by up
+was replayed on the v0.5.21 tag and on v0.5.22 on 2026-10-03. A branch's residual moved by up
 to 5.9 times between the two trees. There were 2,511 branch samples. The two
 trees' residuals read differently at four significant digits on 1,975 of them,
 at two on 634, at one on 154, and at the decade on 22. Those 22 are the
@@ -11305,7 +11318,8 @@ Here `<` means what it means on the amounts. The sign is dropped along with the
 mantissa, so both lines read alike. The sign means something only in a check that fails.
 Then the run halts, and the failure notice prints the signed values to six
 figures. Exactly zero reads `0 L`. `format_agent_residual` defines the form,
-and `tests/unit/test_formatting.py` pins it. The test includes the pair of
+and `test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws`
+pins it. The test includes the pair of
 strings `5.601e-14 L` and `5.609e-14 L`, which the two trees printed for one
 sample.
 <!-- not-restated: 2.1 -->

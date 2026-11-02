@@ -7701,7 +7701,7 @@ NUMERIC_FAMILY_DOCUMENT = "\n".join(
         "- A list entry stating 4 L/min,",  # line 16
         "- and a second one stating 2 L.",  # line 17
         "",
-        "<!-- not-restated: 4 L/min, 2 L -->",
+        "<!-- provenance: data/machines/circle.json fresh_gas_flow_l_min = 4, volume_l = 2 -->",
         "",
         "Measured 2026-10-18, the window opened at 1366 px and 8 s.",  # line 21
         "",
@@ -7760,6 +7760,72 @@ def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpos
     held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
 
     assert held == {5, 13, 16, 17, 21, 23}
+
+
+TIED_FIGURES_DOCUMENT = "\n".join(
+    [
+        "### Displayed precision",
+        "",
+        "The circuit holds 6 L and the dial reads 6 %.",  # line 3
+        "<!-- provenance: data/machines/circle.json volume_l = 6 -->",
+        "",
+        "The flow is 4 L/min, which only coincides with a stored value.",  # line 6
+        "<!-- not-restated: 4 L/min -->",
+        "",
+        "From 2.5 L at 4 L/min, the time constant is 37.5 s.",  # line 9
+        "<!-- derived: 37.5 s from data/patients/adult.json alveolar_volume_l = 2.5, "
+        "alveolar_ventilation_l_min = 4 -->",
+        "",
+        "The time constant is 37.5 s, and fat first reads at 781 s.",  # line 12
+        "<!-- derived: 37.5 s from data/patients/adult.json alveolar_volume_l = 2.5 -->",
+        "",
+        "1.  A numbered entry at 2 L.",  # line 15
+        "",
+        "    Its second paragraph, indented four columns, states 3 L.",  # line 17
+        "",
+        "<!-- provenance: data/machines/circle.json volume_l = 2, reserve_l = 3 -->",
+        "",
+    ]
+)
+
+
+def test_a_marker_holds_a_numeric_paragraph_only_through_the_figures_it_ties() -> None:
+    """Regression for `PL-TCD3`: a marker for one figure does not hold another beside it.
+
+    A `provenance:` marker for 6 L does not hold "6 %", because it asserts a
+    volume. A `not-restated:` marker holds nothing. A `derived:` marker holds
+    the figure it computed and its inputs, but not a second figure it does not
+    name. Before `PL-TCD3`, any marker held the whole paragraph, so lines 3, 6
+    and 12 passed. The second paragraph of a list entry is indented four
+    columns, and it is still read as a paragraph rather than as code.
+    """
+    members = dict(doc_check._numeric_paragraph_members(TIED_FIGURES_DOCUMENT, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert sorted(members) == [3, 6, 9, 12, 15, 17]
+    assert held == {9, 15, 17}
+
+
+@pytest.mark.parametrize(
+    ("marker", "tied"),
+    [
+        ("<!-- provenance: data/machines/circle.json volume_l = 6 -->", {("6", "L")}),
+        (
+            "<!-- derived: 37.5 s from data/patients/adult.json alveolar_volume_l = 2.5 -->",
+            {("37.5", "s")},
+        ),
+        ("<!-- not-restated: 6 L, 6 %, 37.5 s -->", set()),
+    ],
+)
+def test_marker_held_figures_names_what_each_marker_kind_ties(
+    marker: str, tied: set[tuple[str, str]]
+) -> None:
+    """Each marker kind ties only the figures it names, in the unit it names them."""
+    paragraph = "The circuit holds 6 L, the dial reads 6 %, and the time constant is 37.5 s."
+    figures = doc_check._unit_figures([paragraph], [paragraph])
+
+    assert set(figures) == {("6", "L"), ("6", "%"), ("37.5", "s")}
+    assert doc_check._marker_held_figures([paragraph, marker], figures) == tied
 
 
 @pytest.mark.parametrize(

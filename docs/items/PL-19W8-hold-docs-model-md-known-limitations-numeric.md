@@ -16,7 +16,9 @@ verify: grep -q 'heading="Known limitations"' tools/doc_check.py
 **Problem.** `docs/MODEL.md` § "Known limitations" states figures about what
 the model computes, and 13 of its 41 numeric paragraphs carry no test,
 marker, source or date (counted 2026-11-02 with
-`_numeric_paragraph_members`). § "Displayed precision" now conforms, but
+`_numeric_paragraph_members`). Since `PL-TCD3`, a marker holds only the
+figures it ties, and 24 of the 41 paragraphs are then held by nothing
+(counted 2026-11-02). § "Displayed precision" now conforms, but
 seven of its paragraphs do so with ``no test yet (`PL-19W8`)``. They owe the
 tests listed below.
 
@@ -56,8 +58,9 @@ the section and runs the model, as
 - The one-SD shifts of the exhaust total (0.016 to 0.042 L at 3600 s, 0.18 to
   0.23 L at 24 h), of a compartment's amount (1.4% to 12%, and desflurane's
   venous blood at 79 s holding 0.99 mL), and of a compartment's share (at most
-  1.2 percentage points). These paragraphs pass the check on a marker that
-  ties a different figure, so they also declare the test they owe.
+  1.2 percentage points). Each of these paragraphs carries a marker for a
+  different figure, so it also declares the test it owes. Since `PL-TCD3`
+  the check requires that declaration.
 
 **Wrong claims found so far: three, in "Displayed precision".** Measured
 2026-11-02 at 1 MAC with the default flows and a 0.1 s step, by both blind
@@ -70,11 +73,21 @@ whole hour, but desflurane's hold 0.05 L by 110.5 s and 0.129 L at 3600 s.
 All three were corrected in `#1927`. So the stop condition below is already
 not met, and this pass's count decides only how the other passes are sized.
 
-**Also left for this pass.** The residual paragraph ("Every residual was below
-2.1 × 10⁻¹¹ L") passes only on a `not-restated:` marker. It reports a replay
-on two tagged trees, so it wants the replay's date or a test. `PL-KXW1`'s own
-brief gives 5.4e-11 L as the largest residual difference, which may be a
-different quantity; the pass says which.
+**Also left for this pass.** `PL-TCD3` dated the residual paragraph ("Every
+residual was below 2.1 × 10⁻¹¹ L") to its replay on 2026-10-03, and named the
+test that pins the residual's form. `PL-KXW1`'s own brief gives 5.4e-11 L as
+the largest residual difference, which may be a different quantity. The pass
+says which.
+
+**Checked 2026-11-02, after `PL-TCD3`, for sizing the other passes.** Across
+the whole document, 201 of 386 numeric paragraphs are held by nothing. Before
+`PL-TCD3` the count was 89. The other 112 passed only on a marker for another
+figure, or on a `not-restated:` marker. In a sample of 13 of the 112, every
+ninth, 9 had an untied figure that is a claim: a model output, a measurement
+with no date, or a published value with no locator. In the other 4, the
+untied figure read as a setting, a condition or a tolerance, such as "at
+100 kg". That is a judgment from each paragraph's opening, not a count a
+script made.
 
 **Done when.**
 
