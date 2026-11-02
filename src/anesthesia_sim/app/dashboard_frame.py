@@ -1144,7 +1144,7 @@ class Readout:
     secondary: str
 
 
-def _compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
+def compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
     """Return the snapshot field that one readout panel shows.
 
     Raises:
@@ -1196,7 +1196,7 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
             value = format_elapsed(snapshot.elapsed_s)
             secondary = format_playback_rate(playback_rate.multiplier)
         else:
-            fraction = _compartment_fraction(snapshot, panel.quantity)
+            fraction = compartment_fraction(snapshot, panel.quantity)
             value = format_percent(fraction)
             secondary = format_mac_multiple(fraction, mac_percent)
 
@@ -2991,13 +2991,25 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     return " ".join(sentences) or None
 
 
+def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
+    """Return whether a value exceeds the concentration axis's top by more than a display step.
+
+    A display step is the smallest change that the readouts print. This is the
+    one test of "off the scale", and both the chart's off-scale notice and the
+    compartment schematic's off-scale mark use it. So the two Views cannot
+    disagree about one tension (`PL-RNYV`). The margin of one display step is
+    needed because of binary rounding. For example, isoflurane's top of 3 x 1.2
+    is 3.5999999999999996 in binary. A value that the readouts print as the top
+    is not above it.
+    """
+
+    return percent - axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+
+
 def _above_the_axis(frame: ChartFrame, percents: Sequence[float]) -> bool:
     """Whether any drawn point exceeds the axis top by more than the readouts resolve."""
 
-    return any(
-        percent - frame.axis_top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-        for percent in percents
-    )
+    return any(above_the_axis_top(percent, frame.axis_top_percent) for percent in percents)
 
 
 def off_scale_lines(frame: ChartFrame) -> tuple[str | None, ...]:

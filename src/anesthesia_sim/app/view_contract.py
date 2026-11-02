@@ -97,6 +97,7 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
+from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 
@@ -140,6 +141,8 @@ class RunSurfaces(Protocol):
     def build_parameter_controls(self) -> ParameterControls: ...
 
     def build_accounting_panel(self) -> AccountingPanel: ...
+
+    def build_compartment_schematic(self) -> RunSchematic: ...
 
 
 @dataclass(frozen=True, slots=True)

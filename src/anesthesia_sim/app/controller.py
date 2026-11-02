@@ -314,14 +314,14 @@ class CompartmentAgentAmounts:
     that compartment's `agent_amount_l` in `core/`, so nothing here computes
     an amount (`PL-KFTM`).
 
-    **Keyed by compartment, not ordered.** A container on the planned
-    compartment schematic (`PL-RNYV`) will look up its amount by the
-    compartment it draws. If the lookup were by position, an edit to either
-    the record or the schematic could shift a container onto its
+    **Keyed by compartment, not ordered.** A container on the compartment
+    schematic (`app/compartment_schematic.py`, `PL-RNYV`) looks up its amount
+    by the compartment it draws. If the lookup were by position, an edit to
+    either the record or the schematic could shift a container onto its
     neighbour's amount. A correct amount under the wrong compartment's label
-    is a safety failure. The key protects only the lookup.
-    `SimulationController.snapshot()` pairs each key with its `core/`
-    compartment by hand, and
+    is a safety failure. The key protects only the lookup, not the pairing
+    behind it. `SimulationController.snapshot()` pairs each key with its
+    `core/` compartment by hand, and
     `tests/reference/test_compartment_amounts_against_oracles.py` is the test
     that catches a wrong pairing. The keys are
     `run_series.COMPARTMENT_QUANTITIES`, in that order, so a View that lists
@@ -329,11 +329,12 @@ class CompartmentAgentAmounts:
     model holds more than one substance, the same record will be keyed by
     substance as well, instead of gaining new fields.
 
-    The record holds the parts and not their total. The total is the
+    The record holds the six amounts and not their total. The total is the
     snapshot's `stored_agent_l`, which `core/` sums once
     (`AgentUptakeSystem.total_stored_agent_l`). A unit test checks that the
-    two are exactly equal, so the six shares on the planned share bar will
-    be fractions of the total that the accounting panel shows.
+    six amounts sum exactly to that total. So the six shares on the
+    share bar are fractions of the same total that the accounting panel
+    shows.
 
     Attributes:
         amounts_l: Each compartment's amount, in litres of vapour, keyed by
@@ -469,10 +470,10 @@ class SimulationSnapshot(RunRecord):
     compartment_agent_amounts: CompartmentAgentAmounts
     """The agent that each compartment holds, in litres of vapour.
 
-    No View shows them yet. They are carried for the compartment schematic,
-    which will label each container with its amount (`PL-RNYV`), and for its
-    share bar, which will divide each amount by `stored_agent_l`
-    (`PL-S79P`). They sum to `stored_agent_l` exactly.
+    The compartment schematic labels each container with its compartment's
+    amount (`app/compartment_schematic.py`, `PL-RNYV`). The schematic's
+    share bar divides each amount by `stored_agent_l` (`PL-S79P`). The
+    amounts sum to `stored_agent_l` exactly.
     """
     stored_agent_l: float
     """All the agent that the circuit and the patient hold, in litres of vapour.

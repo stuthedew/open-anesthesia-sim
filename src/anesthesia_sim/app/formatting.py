@@ -54,7 +54,7 @@ and the interface displays its provenance.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum
 from math import isfinite
 from types import MappingProxyType
@@ -63,6 +63,7 @@ from typing import Final
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import (
+    PERCENT_PER_UNIT_FRACTION,
     Fraction,
     MacMultiple,
     MacPercent,
@@ -71,10 +72,11 @@ from anesthesia_sim.core.concentration import (
 )
 from anesthesia_sim.core.parameters import mac_awake_band_fractions
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
-from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from anesthesia_sim.core.units import MILLILITRES_PER_LITRE, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
 __all__ = [
     "AGENT_AMOUNT_DISPLAY_PRECISION",
+    "COMPARTMENT_SHARE_DECIMALS",
     "CHART_AXIS_TOP_MAC",
     "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
@@ -97,6 +99,8 @@ __all__ = [
     "format_agent_volume",
     "format_branch_discard_warning",
     "format_case_discard_warning",
+    "format_compartment_amount",
+    "format_compartment_share",
     "format_chart_time_label",
     "format_delivered_label",
     "format_elapsed",
@@ -188,9 +192,10 @@ class AgentAmount(Enum):
         COMPARTMENT: One compartment's amount, which the compartment schematic
             labels. `docs/MODEL.md` § "Displayed precision" derives a precision
             of two significant figures for it (`PL-2881`). A count of decimals
-            cannot express that precision. `PL-RNYV` builds a form that can.
-            Until then, this amount has no entry in any unit, so formatting it
-            is refused.
+            cannot express that precision, so this amount has no entry in the
+            table of decimal counts. `format_compartment_amount` shows it in
+            millilitres of vapour, the only unit for which its precision was
+            derived (`PL-RNYV`).
     """
 
     DELIVERED = "delivered total"
@@ -239,7 +244,7 @@ class AgentAmountUnit(Enum):
 #   in the density moves the liquid figure by 0.1 mL only when the total is
 #   above about 190 mL of liquid. The litre display of this total is coarser
 #   than 0.1 mL of liquid. That is allowed, because the derived precision is a
-#   limit in one direction only: it limits how fine a display may be, not how
+#   limit in one direction only. It limits how fine a display may be, not how
 #   coarse.
 # - The exhausted total in millilitres of liquid has no decimals. One step of
 #   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
@@ -253,7 +258,7 @@ class AgentAmountUnit(Enum):
 # 5.8% too high. That error is more than 1 mL once the store holds about 17 mL
 # of liquid. A compartment's amount has no entry, because `PL-2881` derived a
 # precision of two significant figures for it, not a count of decimals.
-# `PL-RNYV` builds a form that can hold significant figures. Money has no entry
+# `format_compartment_amount` applies that precision instead. Money has no entry
 # here, because the resolution of a cost depends on the price that the reader
 # sets. `PL-1P15` derives that resolution.
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
@@ -1453,3 +1458,152 @@ def format_agent_residual(litres: float) -> str:
     exponent = Decimal(abs(litres)).adjusted() + 1
 
     return f"<1e{exponent:+03d} L"
+
+
+# A compartment's amount is shown to two significant figures, and never finer
+# than 0.01 mL of vapour. `docs/MODEL.md` § "Displayed precision" derives the
+# two figures and sets the floor (`PL-2881`). One SD of a partition coefficient
+# moves an amount by a fraction of the amount, not by a fixed volume. So the precision is a count of
+# significant figures rather than of decimals, and the amount has no entry in
+# `AGENT_AMOUNT_DISPLAY_PRECISION`. These two constants are the only place that
+# states its precision. The floor of two decimals is a legibility choice. It is
+# coarser than the derivation requires, which is the allowed direction.
+COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES: Final = 2
+COMPARTMENT_AMOUNT_FINEST_DECIMALS: Final = 2
+
+
+def format_compartment_amount(litres: float) -> str:
+    """Render one compartment's agent amount in millilitres of vapour, for the schematic.
+
+    The amount is rounded to `COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES`
+    significant figures, and never to more than
+    `COMPARTMENT_AMOUNT_FINEST_DECIMALS` decimals. So 38.4 mL is shown as
+    `38 mL vapour`, 0.183 mL as `0.18 mL vapour`, and 1234 mL as
+    `1200 mL vapour`. A trailing zero is kept where it is a significant
+    figure, so 0.5 mL is shown as `0.50 mL vapour`. The rounding is to the
+    nearest figure, with halves rounded to even, as in `format_percent`. A
+    value can round up into the next power of ten. It is then rounded again
+    with that power's number of decimals, so 9.96 mL is shown as
+    `10 mL vapour`. It is not shown as `10.0 mL vapour`, which would claim
+    three figures.
+
+    A positive amount that rounds to zero at the finest decimal is shown as
+    `<0.01 mL vapour`, so a compartment that holds agent never looks empty.
+    Exactly zero is shown as `0 mL vapour`, the amount before agent arrives.
+    The unit is `DisplayUnit.AGENT_VAPOUR_MILLILITRES`, never a bare "mL",
+    because a millilitre of liquid gives about 180 to 210 mL of vapour
+    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert").
+
+    Args:
+        litres: The amount, in litres of equivalent pure agent vapour, as the
+            snapshot's `compartment_agent_amounts` records it.
+
+    Returns:
+        The amount with its unit.
+
+    Raises:
+        ValueError: If `litres` is negative or not finite. The snapshot's
+            record rejects both, so such a value arriving here means a defect
+            upstream. It is rejected rather than printed as a plausible amount.
+        TypeError: If `litres` is not a number, or is a `bool`.
+    """
+
+    if isinstance(litres, bool) or not isinstance(litres, int | float):
+        raise TypeError(f"a compartment's amount is a number of litres, not {litres!r}")
+
+    if not isfinite(litres) or litres < 0.0:
+        raise ValueError(
+            f"a compartment's amount must be finite and not negative, not {litres!r} L"
+        )
+
+    unit = DisplayUnit.AGENT_VAPOUR_MILLILITRES.label
+
+    if litres == 0.0:
+        return f"0 {unit}"
+
+    millilitres = Decimal(litres * MILLILITRES_PER_LITRE)
+    rounded, decimals = _round_to_figures(millilitres, millilitres.adjusted())
+
+    if rounded.adjusted() > millilitres.adjusted():
+        rounded, decimals = _round_to_figures(millilitres, rounded.adjusted())
+
+    if rounded == 0:
+        floor = Decimal(1).scaleb(-COMPARTMENT_AMOUNT_FINEST_DECIMALS)
+        return f"<{floor:.{COMPARTMENT_AMOUNT_FINEST_DECIMALS}f} {unit}"
+
+    return f"{rounded:.{max(decimals, 0)}f} {unit}"
+
+
+# A compartment's share of the agent the run holds is shown in whole percent.
+# `docs/MODEL.md` § "Displayed precision" derives that precision (`PL-2881`). A change
+# of one standard deviation (SD) in a partition coefficient moves a share by at most
+# 1.2 percentage points. So one display step of 1 percentage point is at least 0.8 SD.
+# This constant is the only place that states the share's precision.
+COMPARTMENT_SHARE_DECIMALS: Final = 0
+
+
+def format_compartment_share(share: float) -> str:
+    """Render one compartment's share of the agent the run holds, for the schematic's share bar.
+
+    The share is shown in whole percent, with `COMPARTMENT_SHARE_DECIMALS`
+    decimal places. It is rounded to the nearest whole percent, and halves
+    round to even. The two exceptions below keep a printed share from
+    claiming what the model does not (`docs/MODEL.md` § "Displayed
+    precision"). A positive share that rounds
+    to 0% is shown as `<1%`, so a compartment that holds agent never appears
+    to hold none. A share that rounds to 100% but is less than the whole is
+    shown as `>99%`, so no compartment appears to hold all of the agent while
+    another holds some. Exactly 0 is shown as `0%`, and exactly 1 as `100%`.
+
+    Args:
+        share: The compartment's amount divided by all the agent the run
+            holds, from 0 through 1.
+
+    Returns:
+        The share in percent, followed by a percent sign.
+
+    Raises:
+        TypeError: If `share` is not a number, or is a `bool`.
+        ValueError: If `share` is not finite or is outside 0 through 1. A
+            share outside that range means that the amounts and their total
+            disagree. That is a defect upstream, so the function rejects the
+            share rather than printing it as a plausible share.
+    """
+
+    if isinstance(share, bool) or not isinstance(share, int | float):
+        raise TypeError(f"a compartment's share is a number from 0 through 1, not {share!r}")
+
+    if not isfinite(share) or not 0.0 <= share <= 1.0:
+        raise ValueError(f"a compartment's share must be from 0 through 1, not {share!r}")
+
+    whole = Decimal(PERCENT_PER_UNIT_FRACTION)
+    step = Decimal(1).scaleb(-COMPARTMENT_SHARE_DECIMALS)
+    percent = (Decimal(share) * whole).quantize(step, rounding=ROUND_HALF_EVEN)
+
+    if percent == 0 and share > 0.0:
+        return f"<{step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+
+    if percent == whole and share < 1.0:
+        return f">{whole - step:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+
+    return f"{percent:.{COMPARTMENT_SHARE_DECIMALS}f}%"
+
+
+def _round_to_figures(value: Decimal, exponent: int) -> tuple[Decimal, int]:
+    """Round `value` to the significant figures that the schematic shows.
+
+    `exponent` is the decade of `value`: its first significant digit is in the
+    place of 10 to the power `exponent`.
+
+    Returns:
+        The rounded value and the number of decimals it has. The number of
+        decimals is negative when the last figure is to the left of the units
+        place.
+    """
+
+    decimals = min(
+        COMPARTMENT_AMOUNT_FINEST_DECIMALS, COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES - 1 - exponent
+    )
+
+    return value.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_EVEN), decimals
