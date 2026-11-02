@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.14
 touches: docs/MODEL.md, src/anesthesia_sim/data/agents/, .claude/rules/sources-and-docstrings.md
 added: 2026-10-25
 closed: 2026-11-02

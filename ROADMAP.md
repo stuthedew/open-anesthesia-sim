@@ -155,7 +155,7 @@ rule above applies.
 | v0.6.11 | Completed | **The release where the coupled model refuses an input fraction above 0.99 of the ambient pressure and the chart refuses to draw a fraction above 1, where the mass-balance check keeps its fixed 1e-9 tolerance with the reason recorded, where holding a slider's thumb previews the trajectory that the held value would give, where every run holds while a Reset, new-case or Workspace question is open, and where `docs/MODEL.md` states the coupled system's modal time constants.** 14 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No stored value changed, and every modelled state and displayed string is bit-identical**: `core/` moved (`26931f6` to `8186a8c`) only for `PL-9B1M`'s input ceiling and the new check on every drawn column, which no shipped vaporizer's maximum reaches, and `data/` is unchanged (`2f84dbb`). The trajectory comparison against the v0.6.10 tag found every state vector, canonical state, drawn window, hover string, readout string, halt and snapshot field identical over 81 cases and three 24-hour runs. **It finishes two features**, `floating-point-domain` and `numerical-domain`, and closes no generator head. **Five are Gate 3 entries**, none in v0.7.0's Required scope, and the gate stands at 78 of 89 cleared, from 73 of 88 at the v0.6.10 tag. `PL-KDDS`, the cut, ships in no release under `PL-KRS6`. | 14 items |
 | v0.6.12 | Completed | **The release where a press on an Area border in a window too small for the Areas no longer rewrites the saved arrangement, where a drag pushed into an Area held at its View's need turns the border WARNING as a keyboard step already did, where a too-small Area's notice is wrapped at the width the Area is drawn at, where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, and where the model review keeps counting a failed pull request title as a red CI run, because a measurement found that none of its 102 failures was by design.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` (`8186a8c`) and `data/` (`2f84dbb`) resolve to the same trees at the v0.6.11 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/area_layout.py` and `layout/sizing.py`, for the Area borders and floors. **It finishes two features**, `invariant-test-gaps` and `model-review`, and closes no generator head. **None is a Gate 3 entry**, though three were deferred from it, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 6 items |
 | v0.6.13 | Completed | **The release where the compartment schematic ships, drawing the circuit, the alveoli, venous blood and the three tissue groups as containers filled to their modelled tension, each labelled with its tension and its amount in millilitres of vapour, with one bar of each compartment's share of the agent the run holds, placed beside the concentration chart in the Maintenance Workspace; where the agent cost View shows the delivered agent in millilitres of liquid equivalent; where a reader's agent price and cost unit get a preferences file of their own; where a MAC target that a step lands on exactly reads the same on a branch as on the trunk; where an Area's floor is measured only at the width the Area is drawn at; and where the charts hand pyqtgraph numpy arrays.** 22 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, seven of them here, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No equation or model parameter changed**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.12 tag and here, and `data/` moved (`2f84dbb` to `7cc6b59`) only in the Maintenance Workspace's arrangement and a docstring. **Every modelled state is bit-identical, and 19 of 271 halts, each at a MAC target, come one or two 0.1 s steps earlier**: the trajectory comparison against the v0.6.12 tag found every state vector, canonical state, drawn window, hover string and readout string identical over 81 cases and three 24-hour runs. The 19 halts moved because `PL-QVBR` gives a MAC target's height a band of one part in a hundred thousand, and a run now halts at the first step whose reading enters it. Each snapshot gains two fields, the compartment amounts and the vapour-per-liquid factor. **It finishes four features**, `generator-heads`, `guard-tool-names`, `review-hold` and `schematic`, and closes two generator heads, `PL-16BG` and `PL-B6YV`, both spent. **Seven are Gate 3 entries**, five of them in v0.7.0's Required scope, and with `PL-0KPD` dropped the gate stands at 86 of 89 cleared, from 78 of 89 at the v0.6.12 tag. `PL-PZGY`, the cut, ships in no release under `PL-KRS6`. | 22 items |
-| v0.6.14 | Completed / current baseline | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **Only a test changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md`, `README.md` and `.github/` resolve to the same trees at the v0.6.13 tag and here, so the trajectories were not re-measured. **It finishes one feature**, `drift-2026-11-01`, and closes no generator head. **It is not a Gate 3 entry**, because it was captured after the freeze and deferred from the list, and the gate stands at 86 of 89 cleared, as at the v0.6.13 tag. `PL-T343`, the cut, ships in no release under `PL-KRS6`. | 1 item |
+| v0.6.14 | Completed / current baseline | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares, and where four documents stop claiming more than their sources or the code support: the stored tissue:gas coefficients are Gas Man's figures for Yasuda, Targ and Eger's measurements rather than roundings of them, `docs/MODEL.md` names the held runs' own rounding bound, `control_timeline.py` says where the delivered dial's units change, and a textbook is tier 2 everywhere.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No code, stored value or displayed value changed, and no run can differ**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.13 tag and here. `data/` moved (`7cc6b59` to `c3fbdbc`) only in the three agent files' `sources` notes and `provenance_gap` text, and `tools/ast_identity.py` finds no code moved in `app/control_timeline.py` or `tests/reference/test_coupled_dynamics.py`, so the trajectories were not re-measured. **It finishes two features**, `drift-2026-11-01` and `stale-source-claims`, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 86 of 89 cleared, as at the v0.6.13 tag. `PL-T343`, the cut, ships in no release under `PL-KRS6`. | 5 items |
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -274,34 +274,40 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 ## Current baseline: v0.6.14
 
 v0.6.14 is the release where the halted-dashboard guard reads a scroll bar's
-Qt container as part of the bar. The release has one item, and it is a patch
-on both halves of § "Versioning decision"'s test. No capability boundary is
-crossed, because the schematic milestone is not finished: 10 of the 11 ids in
-v0.7.0's Required scope are closed. The one still open is `PL-1P15`, the cost
-in money on the agent cost View. v0.7.0 and v0.8.0 are given to milestone
-sections.
+Qt container as part of the bar, and where four documents stop claiming more
+than their sources or the code support. The release has five items, and it is
+a patch on both halves of § "Versioning decision"'s test. No capability
+boundary is crossed, because the schematic milestone is not finished: 10 of the
+11 ids in v0.7.0's Required scope are closed. The one still open is
+`PL-1P15`, the cost in money on the agent cost View. v0.7.0 and v0.8.0 are
+given to milestone sections.
 
-The one item, `PL-CSK0`, is not on Gate 3's frozen list. It was captured after
-the freeze and deferred from the list with `deferred-from: v0.7.0`. So the
-gate stands at 86 of 89 cleared, as at the v0.6.13 tag. The three entries
-still open are `PL-1P15`, which the milestone clears itself, and `PL-B4P7` and
-`PL-WZVZ`, which were deferred from it.
+None of the five is on Gate 3's frozen list. `PL-CSK0` was captured after the
+freeze and deferred from the list with `deferred-from: v0.7.0`, and the four
+`stale-source-claims` items were never placed on it. So the gate stands at 86
+of 89 cleared, as at the v0.6.13 tag. The three entries still open are
+`PL-1P15`, which the milestone clears itself, and `PL-B4P7` and `PL-WZVZ`,
+which were deferred from it.
 
-**Only a test changed, and no run can differ:**
+**No code, stored value or displayed value changed, and no run can differ:**
 
 | Tree | v0.6.13 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `b0f619e` | `b0f619e` | nothing |
+| `src/` | `b0f619e` | `afd7347` | the module docstring of `app/control_timeline.py`, and `data/` |
 | `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
-| `src/anesthesia_sim/data/` | `7cc6b59` | `7cc6b59` | nothing |
-| `tests/reference/` | `7110ca8` | `7110ca8` | nothing |
-| `docs/MODEL.md` | `8115e17` | `8115e17` | nothing |
+| `src/anesthesia_sim/data/` | `7cc6b59` | `c3fbdbc` | the `sources` notes and `provenance_gap` text of the three agent files |
+| `tests/reference/` | `7110ca8` | `dd8aeab` | comments in `test_coupled_dynamics.py` |
+| `docs/MODEL.md` | `8115e17` | `acaa24f` | the held runs' rounding bound, the tissue:gas coefficients' provenance, and a review's tier |
 | `README.md` | `d25636f` | `d25636f` | nothing |
 | `.github/` | `cceaa91` | `cceaa91` | nothing |
 
-Outside the item files, the one file that moved is
-`tests/integration/test_simulation_view.py`. Because `core/` and `data/` are
-the same trees, the trajectories were not re-measured.
+`tools/ast_identity.py` finds no code moved in `app/control_timeline.py` or in
+`tests/reference/test_coupled_dynamics.py`, only docstrings and comments. The
+three agent files are identical once each `sources` entry's `note` and the
+`provenance_gap` text are set aside, so no stored parameter changed. Because
+`core/` is the same tree and no stored value moved, the trajectories were not
+re-measured. The one test that changed in code is
+`tests/integration/test_simulation_view.py`.
 
 **The halted-dashboard guard.** A test checks that after a halt, every panel
 outside the runs reads as the same dashboard reads once a frame draws it, so
@@ -323,14 +329,36 @@ the fix's branch, passed the `dependencies`, `interpreter`, `order` and
 `doc-quotes` jobs. `uv.lock` still holds PySide6 6.11.2, and this guard no
 longer stands in the way of 6.12.0.
 
-The release finishes one feature, `drift-2026-11-01`, and closes no generator
-head. The release item is `PL-T343`, whose `resource: release-train` keeps it
-out of every later release. Every closure carried its `pr:` number before the
-cut, so every bullet cites its pull request. `bin/docket release` reported the
-same two missed apparatus-inflow predictions for 2026-10-26 to 2026-11-01 that
-v0.6.13 reported: 0.58 new apparatus paths a filing against a ceiling of 0.13,
-and one P1 apparatus filing outside the generator tier. `bin/docket inflow` has
-the table.
+**Source and bound claims.** Four documents said something about a source or a
+bound that the source or the code does not support, and `#1940` corrects each
+one. The provenance notes called the stored tissue:gas coefficients Yasuda,
+Targ and Eger's 1989 measurements "as Gas Man rounded them". Against that
+paper's Table 1, two of the nine match the mean exactly and two more are the
+mean rounded. The other five are not roundings, from -4.3% for sevoflurane's
+vessel-rich group to +9.0% for isoflurane's fat. The three agent files,
+`docs/MODEL.md` and the sourcing rule now call them Gas Man's figures for those
+measurements, each within one standard deviation of the paper's mean
+(`PL-476M`). `docs/MODEL.md` § "Independent-solution test" said its 4e-13
+bound applies at every horizon. The held runs to 60, 600 and 3600 s are held to
+`HELD_RUN_ROUNDING_BOUND`, 1e-12, which the section now names, with the held
+hour's worst residual, 7.16e-14 for desflurane in muscle (`PL-4R21`).
+`app/control_timeline.py`'s module docstring now says that the delivered dial's
+recorded value is a percent, which `format_control_value` converts to a
+fraction before `format_percent` converts it back (`PL-TPXR`). And a review or
+textbook is tier 2 under `docs/MODEL.md` § "Source hierarchy", so *Modern
+Anesthetics* and the Eger and Saidman 2005 review are now tier 2 wherever they
+are ranked (`PL-VW91`). The private reference corpus's README carries the same
+correction in that repository's own pull request.
+
+The release finishes two features, `drift-2026-11-01` and
+`stale-source-claims`, and closes no generator head. The release item is
+`PL-T343`, whose `resource: release-train` keeps it out of every later
+release. Every closure carried its `pr:` number before the cut, so every
+bullet cites its pull request. `bin/docket release` reported the same two
+missed apparatus-inflow predictions for 2026-10-26 to 2026-11-01 that v0.6.13
+reported: 0.58 new apparatus paths a filing against a ceiling of 0.13, and one
+P1 apparatus filing outside the generator tier. `bin/docket inflow` has the
+table.
 
 As before, anything that merges on `main` after this cut is written and before
 its pull request lands ships inside the v0.6.14 tag. It is described in the
