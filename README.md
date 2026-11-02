@@ -79,8 +79,8 @@ While a case runs, the interface shows:
 - agent delivered, exhausted and stored, with the mass-balance residual,
   in the agent accounting View, which no shipped Workspace shows but every
   Area's View chooser offers;
-- where the agent is, in the compartment schematic View, which every Area's
-  View chooser offers: each compartment as a container filled to its tension
+- where the agent is, in the compartment schematic View, which the
+  Maintenance Workspace shows: each compartment as a container filled to its tension
   on the chart's scale and labelled with its tension and its amount in mL of
   vapour, and one bar of each compartment's share of all the agent the run
   holds, so fat's growing share shows while its tension stays near zero;
@@ -89,7 +89,7 @@ While a case runs, the interface shows:
 - the wash-in curve the literature is taught from, $`F_A/F_I`$, on a
   dimensionless axis of its own, drawn against the *modeled* inspired
   concentration rather than the vaporizer dial, in the wash-in View that the
-  Induction and Maintenance Workspaces show;
+  Induction Workspace shows;
 - the running agent's population MAC-awake as a labelled band, and its nominal
   1 MAC as a line;
 - on hovering a drawn point of a compartment trace, which compartment and

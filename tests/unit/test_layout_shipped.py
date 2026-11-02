@@ -43,6 +43,7 @@ CHART = ViewKind("concentration_chart")
 WASH_IN = ViewKind("wash_in")
 PARAMETERS = ViewKind("parameter_controls")
 ACCOUNTING = ViewKind("agent_accounting")
+SCHEMATIC = ViewKind("compartment_schematic")
 DEFAULT = ShippedWorkspaceId("default")
 
 
@@ -109,11 +110,37 @@ def test_the_default_gives_the_chart_the_full_height_beside_the_parameter_contro
     assert [child.view for child in tree.children if isinstance(child, Area)] == [CHART, PARAMETERS]
 
 
-def test_induction_and_maintenance_show_the_wash_in_chart() -> None:
-    for shipped_id in (ShippedWorkspaceId("induction"), ShippedWorkspaceId("maintenance")):
-        kinds = [area.view for area in shipped_workspace(shipped_id).layout.areas()]
+def test_induction_shows_the_wash_in_chart() -> None:
+    kinds = [
+        area.view for area in shipped_workspace(ShippedWorkspaceId("induction")).layout.areas()
+    ]
 
-        assert kinds == [CHART, WASH_IN, PARAMETERS]
+    assert kinds == [CHART, WASH_IN, PARAMETERS]
+
+
+def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_chart() -> None:
+    """Maintenance puts the compartment schematic beside the concentration chart (`PL-PR1W`).
+
+    The schematic shows where the agent is now, and the chart shows its tensions
+    over time. During maintenance, the agent moves into muscle and fat while the
+    tensions in those tissues stay low, and the schematic's share bar is where
+    that shows. So the schematic takes the place that the wash-in chart had. The
+    wash-in chart, whose lesson is the first minutes, stays in Induction.
+    """
+
+    tree = shipped_workspace(ShippedWorkspaceId("maintenance")).layout.windows[0].tree
+
+    assert isinstance(tree, Split)
+    assert tree.orientation is Orientation.ROW
+    first, second = tree.children
+    assert isinstance(first, Area)
+    assert first.view == CHART
+    assert isinstance(second, Split)
+    assert second.orientation is Orientation.COLUMN
+    assert [child.view for child in second.children if isinstance(child, Area)] == [
+        SCHEMATIC,
+        PARAMETERS,
+    ]
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:
