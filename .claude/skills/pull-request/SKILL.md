@@ -61,7 +61,13 @@ arming and before every later push while a pull request is open.** **The owner
 reads only a real decision or a high-risk change, and housekeeping merges on
 green** (project owner, 2026-10-17, `PL-DKBG`). Which one a change is stays
 your call. Record it as an `Owner-read:` trailer, whose form and test `arm`
-prints. Workflow items need no merge confirmation (project owner, 2026-10-12,
+prints. **A rewrite of `docs/MODEL.md` is housekeeping when it changes no
+value, equation, code span or citation** (project owner, 2026-11-02, ratified,
+`PL-ZTZF`). `python3 tools/model_rewrite.py lost` decides that part. It must
+add nothing, and each fact it lists as dropped must be history or a duplicate
+the document still holds. The owner then reads only a sentence whose meaning
+needs a clinician's judgment, such as what a hazard row promises, and the ask
+quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
 `PL-KPM2`). `arm` gives one of three answers:
 
 - **`arm`**: mark the pull request ready and arm auto-merge. Name in the report
