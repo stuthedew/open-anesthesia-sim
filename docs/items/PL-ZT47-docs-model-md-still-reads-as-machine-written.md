@@ -157,6 +157,13 @@ it, with its `verify:` written against `tools/model_rewrite.py ids`.
    `docs/MODEL.md`. The read can start from `lost`'s accounting rather than the
    whole diff.
 
+**Revised 2026-11-02 (project owner, ratified, `PL-ZTZF`).** Step 6 no longer
+holds every part for the owner's read. A part merges on green when `lost` lists
+nothing added and each fact it lists as dropped is history or a duplicate the
+document still holds. Only a sentence whose meaning needs a clinician's
+judgment, such as what a hazard row promises, goes to the owner, quoted before
+and after.
+
 Other open items change the same sections, so expect to resolve against
 them. `PL-8YBS` changes a hazard-table row, `PL-19W8` and `PL-H94Q` hold
 numeric paragraphs to tests, `PL-5C1H` does the same for the parameter

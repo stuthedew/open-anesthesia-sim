@@ -2,9 +2,10 @@
 
 Each section part of `PL-ZT47` moves decision history out of `docs/MODEL.md`
 and rewrites the rest. `ids` is how a part knows the history is out, and its
-`verify:` runs it. `lost` is how the part, and the owner reading it, see every
-equation, code span, citation and number the rewrite no longer carries. A fact
-this tool fails to list is a fact nobody accounts for.
+`verify:` runs it. `lost` is how the part sees every equation, code span,
+citation and number the rewrite no longer carries or newly carries. A fact this
+tool fails to list is a fact nobody accounts for, and a section part with
+nothing left unaccounted merges without the owner's read (`PL-ZTZF`).
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from model_rewrite import cited_ids, facts, gone_facts, main, report_ids
+from model_rewrite import added_facts, cited_ids, facts, gone_facts, main, report_ids
 
 DOCUMENT = """\
 # Model
@@ -121,6 +122,26 @@ def test_gone_facts_counts_what_the_rewrite_holds_fewer_times_and_marks_the_move
     assert gone[("equation", "F_A = 1 - e^{-t/\\tau}")].line == 18
 
 
+def test_lost_lists_a_fact_the_rewrite_added() -> None:
+    """A value the rewrite adds, or restates once more, is listed with its new line.
+
+    Before `PL-ZTZF`, `lost` read only what the fork held more often, so a
+    rewrite that added "8 L/min" to a sentence printed nothing. A changed value
+    shows on both sides: the old one as dropped and the new one as added.
+    """
+    after = DOCUMENT.replace("of 6 L/min,", "of 7 L/min,").replace(
+        "## Hazards\n", "## Hazards\n\nFresh gas runs at 8 L/min and `F_A` is read twice.\n"
+    )
+
+    added = {(item.kind, item.text): item for item in added_facts(DOCUMENT, after)}
+
+    assert set(added) == {("number", "8 L/min"), ("number", "7 L/min"), ("code", "F_A")}
+    assert added[("number", "8 L/min")].line == 5
+    assert added[("number", "7 L/min")].context.startswith("Fresh gas enters at")
+    assert {item.text for item in gone_facts(DOCUMENT, after, "")} == {"6 L/min"}
+    assert added_facts(DOCUMENT, DOCUMENT) == []
+
+
 def _git(cwd: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
@@ -147,3 +168,4 @@ def test_lost_reads_the_fork_and_a_new_item_file(
     assert "1 of them were added to an item file" in out
     assert "  gone  pp. 161-162  (fork line 21:" in out
     assert "  moved 6 L/min  (fork line 15:" in out
+    assert "0 equations, code spans, citations and numbers are held more times" in out
