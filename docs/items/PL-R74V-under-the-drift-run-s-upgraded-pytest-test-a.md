@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: drift-2026-11-01
+milestone: v0.6.13
 touches: tests/integration/test_qt_chart.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01

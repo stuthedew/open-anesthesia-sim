@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: schematic
+milestone: v0.6.13
 touches: src/anesthesia_sim/data/workspaces, tests/unit
 blocked-by: PL-RNYV
 added: 2026-10-25

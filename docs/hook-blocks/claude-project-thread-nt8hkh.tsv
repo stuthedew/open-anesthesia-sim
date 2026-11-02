@@ -1,0 +1,4 @@
+time	session	guard	rule
+2026-11-02T06:10:24.725069+00:00	edb05a5a-5684-592b-b1c1-d80497c369f5	gate-status-guard	status-swallowed
+2026-11-02T06:11:40.311868+00:00	edb05a5a-5684-592b-b1c1-d80497c369f5	push-check-guard	checks-failed
+2026-11-02T06:35:04.559424+00:00	edb05a5a-5684-592b-b1c1-d80497c369f5	gate-status-guard	status-swallowed

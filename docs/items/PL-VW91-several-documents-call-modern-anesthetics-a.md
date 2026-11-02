@@ -3,11 +3,14 @@ id: PL-VW91
 title: Several documents call Modern Anesthetics, a textbook, tier 3, where docs/MODEL.md § Source hierarchy defines a review or textbook as tier 2: .claude/rules/citing-sources.md ('Both remain tier 3') and the private corpus README's Holdings paragraph
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
-touches: .claude/rules/citing-sources.md, docs/references/README.md
+milestone: v0.6.14
+touches: .claude/rules/citing-sources.md, docs/references/README.md, docs/MODEL.md
 added: 2026-10-25
+closed: 2026-11-02
+pr: 1940
 payoff: the citing rule gives a textbook the tier docs/MODEL.md gives it, so a session weighs Modern Anesthetics as a secondary synthesis
 verify: ! grep -qF 'Both remain tier 3' .claude/rules/citing-sources.md
 ---
@@ -38,3 +41,21 @@ Holdings paragraph is corrected in its own repository.
 **Generator check.** The misread fact is the tier that `docs/MODEL.md` §
 "Source hierarchy" gives a textbook. No head's `misread:` line names source
 tiers, so it is a one-off.
+
+**The corpus half, 2026-11-02.** The references repository's README called two
+secondary syntheses tier 3: the Holdings paragraph's "a book chapter is a
+review, tier 3", and the Eger and Saidman 2005 entry. Both now say tier 2, and
+the Holdings paragraph adds that the Gas Man Workbook is tier 3. The change is
+`stuthedew/open-anesthesia-sim-references` pull request 1, commit `a582658`,
+which touches `README.md` alone. A session cannot merge it: that repository's
+`main` has no protection that binds an admin, so the merge hook leaves the
+Squash and merge to the owner. The entry on Gas Man's parameter set, which
+calls that set tier 3, is correct and unchanged.
+
+**Closed 2026-11-02.** `.claude/rules/citing-sources.md` gives *Modern
+Anesthetics* tier 2 and the Gas Man Workbook tier 3. `docs/references/README.md`
+and `docs/MODEL.md`'s reference list both give the Eger and Saidman 2005 review
+tier 2. Blind review found that `docs/MODEL.md`'s entry had ranked it tier 3
+for its disclaimer that its figures are illustrative. That disclaimer is a
+reason for caution, not a tier, so the entry keeps it as a caution. The corpus
+half is the references pull request above, waiting on the owner's merge.

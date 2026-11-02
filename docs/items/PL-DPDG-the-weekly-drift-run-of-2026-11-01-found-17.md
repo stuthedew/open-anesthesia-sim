@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: drift-2026-11-01
+milestone: v0.6.13
 touches: tests/unit/test_circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_governing_equations.py, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_supported_ranges.py, tools/restated_constants.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01

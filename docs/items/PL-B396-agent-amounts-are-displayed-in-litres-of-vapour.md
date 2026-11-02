@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: ux, docs, safety, anticipated
 feature: liquid-agent-consumption
+milestone: v0.6.13
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md, docs/ARCHITECTURE.md
 blocked-by: PL-KZ99, PL-0S0V, PL-2881, PL-93B3
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list to hold the gate open): planned-milestone item 28's liquid-volume readout, waiting on PL-YRLM, which holds whether a release schedules item 28; none does before v0.6.0
