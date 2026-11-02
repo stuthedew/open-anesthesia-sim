@@ -4091,57 +4091,47 @@ Isoflurane and desflurane use the same governing equations and compartment
 structure as sevoflurane. They also use the same physiologic parameters, from
 `data/patients/reference_adult.json`. Only the partition coefficients in each
 agent's own `data/agents/*.json` file differ. All twelve values came to this
-project through one table: De Wolf et al. 2012, Table 1, which is the paper
-already cited for sevoflurane. The three data files are therefore directly
-comparable, rather than assembled from unrelated sources.
+project through one table, De Wolf et al. 2012, Table 1, which is the paper
+already cited for sevoflurane. So the three data files share one source and
+can be compared directly.
 
-**That comparability rests on something better than a shared publisher.**
-The nine tissue:gas values in that table are the human measurements of
-Yasuda, Targ and Eger 1989. They were checked against the paper and adopted.
-So the three agents are comparable because
-their tissue coefficients come from *one study, one laboratory, one technique
-and one cohort*. The values were measured side by side in the same specimens.
-That is the strongest form of the property that a MAC-normalized axis needs,
-not a weaker one. Whatever the systematic error of that technique is, every
-agent carries it identically. The three blood:gas values are still the Gas
-Man set, and they are still tier 3, so the shared-error argument applies to
-them only in its original, weaker form.
+**The nine tissue:gas values in that table are one study's measurements.**
+They are the human measurements of Yasuda, Targ and Eger 1989, checked against
+the paper and adopted as described below. So all three agents' tissue
+coefficients come from *one study, one laboratory, one technique and one
+cohort*, measured side by side in the same specimens. Whatever systematic
+error that technique has, every agent carries it identically. A MAC-normalized
+axis compares agents, and a shared error is the strongest form of the
+comparability it needs. The three blood:gas values are still the Gas Man set,
+at tier 3. For them the comparability rests only on their coming from one
+published table.
 
-Both halves of that argument are about the *coefficients*, which are the
-subject of this paragraph. The argument does **not** extend to the three
-`mac_percent` divisors. Their deviations from the primary literature run in
-opposite directions between sevoflurane and desflurane.
-"Delivery-limit and MAC parameters" measures that separately. Each agent file
-records the primary measurement alongside its stored number and states the
+This covers the *coefficients* only. It does **not** cover the three
+`mac_percent` divisors, whose deviations from the primary literature run in
+opposite directions for sevoflurane and desflurane.
+§ "Delivery-limit and MAC parameters" measures that separately. Each agent
+file records the primary measurement beside its stored number and states the
 difference.
 
-**Gas Man says those coefficients are Yasuda's, and that claim is recorded
-without being acted on.** The note under the Workbook's own page-168 parameter
+**Gas Man's Workbook attributes these coefficients to Yasuda, Targ and Eger,
+and the paper confirms it.** The note under the Workbook's page-168 parameter
 table reads "Values for isoflurane, halothane, desflurane and sevoflurane are
-taken from Yasuda, Targ and Eger". If that claim were true, the twelve
-coefficients would descend from a human tissue-solubility measurement rather
-than being a simulator's choices. Four things stop the claim from moving the
-tier, and the first is enough on its own:
+taken from Yasuda, Targ and Eger". The note alone could not move the
+coefficients' tier. A program's statement about its own provenance is the
+program talking about itself, which is
+§ "Republication does not promote a value between tiers" applied one link
+further back. The Workbook's reference 45 is also a different document: the
+abstract `Anesthesiology 69:A615`, from the 1988 ASA annual-meeting
+supplement, not Yasuda, Targ and Eger's 1989 *Anesthesia & Analgesia* paper.
+And the same Workbook paragraph credits sevoflurane's values to Yasuda and,
+one sentence later, to "the package insert and Abbott data".
 
-- A program's statement about its own provenance is the program talking about
-  itself. This is the same rule as
-  § "Republication does not promote a value between tiers" above, applied one
-  link further back.
-- The Workbook names a different document from the one that the agent files
-  cite. Its reference 45 is the abstract `Anesthesiology 69:A615`, from the
-  1988 ASA annual-meeting supplement. It is not Yasuda, Targ and Eger's 1989
-  *Anesthesia & Analgesia* paper.
-- The same paragraph contradicts itself for sevoflurane. It credits
-  sevoflurane's values to Yasuda and, one sentence later, to
-  "the package insert and Abbott data".
-
-**The check has since been run, and the claim is confirmed.** Yasuda, Targ
-and Eger was read at full text on 2026-09-13 and is in the private reference
-corpus.
-Its Table 1 reports tissue:**gas** coefficients, which is the quantity that
-the agent files store. The coefficients come from 14 autopsy specimens, 6 to
-10 per tissue, with a mean age of 65.8 ± 14.4 yr, equilibrated at 37 °C. The
-table below compares them with the nine stored values:
+So the 1989 paper itself was read in full text on 2026-09-13. It is in the
+private reference corpus. Its Table 1 reports tissue:**gas** coefficients,
+which is the quantity that the agent files store. The coefficients come from
+14 autopsy specimens, 6 to 10 per tissue, with a mean age of 65.8 ± 14.4 yr,
+equilibrated at 37 °C. The table below compares them with the nine stored
+values:
 
 | | vessel-rich (Yasuda's brain) | muscle | fat |
 | --- | ---: | ---: | ---: |
@@ -4161,17 +4151,17 @@ table below compares them with the nine stored values:
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 
-All nine stored values lie within 0.71 SD of the measured mean. Two of them
-match it exactly. Two more, isoflurane vessel-rich and sevoflurane muscle, are
-the mean rounded to the stored precision. The other five are not roundings:
-isoflurane fat is 9.0% above the mean. They are Gas Man's figures for these
-measurements. A parameter set assembled from
-somewhere else could not match that closely by coincidence. So the Workbook's
-attribution is confirmed by the arithmetic, not by the Workbook's own say-so.
-The Workbook's self-contradiction is resolved in Yasuda's favour.
-Sevoflurane's three stored values match this paper, not a package insert.
+All nine stored values lie within 0.71 SD of the measured mean. Two match it
+exactly. Two more, isoflurane vessel-rich and sevoflurane muscle, are the mean
+rounded to the stored precision. The other five are not roundings, and the
+largest gap is isoflurane fat, 9.0% above the mean. They are Gas Man's figures
+for these measurements. A parameter set assembled from another source could
+not match this closely by coincidence, so the comparison confirms the
+Workbook's attribution. It also settles the Workbook's contradiction for
+sevoflurane: sevoflurane's three stored values match this paper, not a package
+insert.
 
-Two things follow that are not about provenance:
+Two further points matter for the model:
 
 - **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 measures
   brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25,
@@ -4186,27 +4176,26 @@ Two things follow that are not about provenance:
   age-adjusted blood:gas of the 65.8-year-old cohort. Those recovered values
   are 4.9–9.4% above the three round figures stored here.
 
-**The tier moved and the values did not.** The project owner decided this on
-2026-09-13, as two separate questions.
+**The tier changed and the stored values did not** (project owner,
+2026-09-13). These were two separate decisions.
 
 *Adopted.* The nine tissue:gas coefficients descend from a primary human
 measurement. So Yasuda, Targ and Eger is now the adopted authority for them in
 all three agent files, and they are tier 1. De Wolf et al. stays the adopted
 authority for the three blood:gas values alone, which this study did not
-measure. No number changed with the adoption. What changed is the record of
-where the numbers came from. Separating `tier` from `adopted` exists to carry
-that record.
+measure. No number changed. The `tier` and `adopted` fields record where each
+number came from, separately from the number itself.
 
 *Declined.* Storing Yasuda's published figures in place of Gas Man's figures
 for them would move three displayed time constants. Sevoflurane vessel-rich
 would move +4.5% at 1.15 against 1.1, isoflurane fat −8.3% at 64.2 against
 70.0, and desflurane fat −7.7% at 12.0 against 13.0. The change would also
 require recomputing every pinned reference state under `tests/reference/`,
-because those states are this parameter set's solution. The accuracy it would
-buy is also within the error that the model's own lumping already carries. The
-vessel-rich group is one compartment standing for brain, heart, liver, kidney
-and viscera. So a difference of 0.05 on a brain measurement is not one that
-this structure can use. So the Gas Man values are kept.
+because those states are this parameter set's solution. And the accuracy
+gained would be smaller than the error that the model's lumping already
+carries. The vessel-rich group is one compartment standing for brain, heart,
+liver, kidney and viscera, so this structure cannot use a difference of 0.05
+on a brain measurement. The Gas Man values are therefore kept.
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
@@ -4215,33 +4204,31 @@ this structure can use. So the Gas Man values are kept.
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
 any equation. Lower solubility only means faster equilibration through the
-same closed-form solutions. `tests/reference/test_multi_agent.py` checks this
-directly by comparing simulated alveolar/circuit ratios, rather than only
-comparing the static coefficient values.
+same closed-form solutions. `tests/reference/test_multi_agent.py` checks the
+simulated alveolar/circuit ratios, not only the stored coefficients.
 
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 
-**Desflurane's tissue coefficients have been questioned against a published
-measurement and kept.** Its five-minute elimination is the one comparison in
-this repository that misses a human measurement in the direction of washing
-out too fast. The sensitivity of that ratio makes the vessel-rich coefficient
-the obvious suspect. The coefficient is not the cause. The reasoning is in
-"Desflurane's residual, and why the parameter file was not changed", not here,
-so that it sits beside the comparison that raised it. Read that section before
-changing any coefficient in `data/agents/desflurane.json`. The value that the
-disagreement demands is nineteen standard deviations above the human
-measurement. That value would also invert the measured solubility ordering of
-the three shipped agents.
+**Desflurane's tissue coefficients were checked against a published
+measurement and kept.** Desflurane's five-minute elimination is the one
+comparison in this repository that misses a human measurement by washing out
+too fast. That ratio is most sensitive to the vessel-rich coefficient, which
+makes it the obvious suspect, but the coefficient is not the cause. The value
+that would close the gap is nineteen standard deviations above the human
+measurement, and it would invert the measured solubility order of the three
+shipped agents. § "Desflurane's residual, and why the parameter file was not
+changed" gives the reasoning. Read it before changing any coefficient in
+`data/agents/desflurane.json`.
 
 ### Delivery-limit and MAC parameters
 
 Two per-agent parameters are stored in the agent data files but play no part
 in the governing equations. Each one exists to limit a control that the user
-sees, or to set its starting value. Both are recorded here because a value
-that a clinician could read or act on is safety-critical, whether or not the
-model integrates it.
+sees, or to set its starting value. A value that a clinician could read or
+act on is safety-critical whether or not the model integrates it, so both are
+specified here.
 
 `max_delivered_concentration_percent` is the highest concentration that the
 agent's real vaporizer can deliver (sevoflurane 8%, isoflurane 5%,
@@ -4261,9 +4248,8 @@ nothing about whether a given concentration is appropriate for a patient.
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**It is a device-capability default stored under the agent on purpose, and
-where it is stored is not a claim about the agent.** Each agent
-file's value is the calibrated dial maximum of the vaporizers that the file's
+**The maximum describes a vaporizer, although the agent file stores it.**
+Each agent file's value is the calibrated dial maximum of the vaporizers that the file's
 adopted source names. These are the Dräger Vapor 2000 and Datex-Ohmeda
 Sevotec 5 for sevoflurane, the Penlon Sigma Delta and Datex-Ohmeda Isotec 5
 for isoflurane, and the Tec 6 for desflurane. Each file's note calls the value
@@ -4273,15 +4259,16 @@ desflurane cannot be delivered above that figure. Another desflurane
 vaporizer, or an injector that delivers into the circle, is not bound by
 anything about the agent.
 
-The value stays under the agent for two reasons. First, the reference
-breathing system in `data/machines/reference_circle_system.json` is not a
-machine and names no vaporizer. A per-machine entry would today only repeat
-the agent file's number and add nothing to it. Second,
-`_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()` in
-`core/parameters.py` rejects an agent whose own vaporizer cannot deliver its
-1 MAC. The 1-MAC start in `AgentUptakeSystem.for_agent()` depends on that
-check. The check can be written only where the maximum and `mac_percent` are
-in the same file.
+The value is stored under the agent for two reasons:
+
+- The reference breathing system in
+  `data/machines/reference_circle_system.json` is not a machine and names no
+  vaporizer. A per-machine entry would only repeat the agent file's number.
+- `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()` in
+  `core/parameters.py` rejects an agent whose own vaporizer cannot deliver its
+  1 MAC, and the 1-MAC start in `AgentUptakeSystem.for_agent()` depends on
+  that check. The check can be written only where the maximum and
+  `mac_percent` are in the same file.
 
 **The value moves when a machine profile mounts a vaporizer whose maximum
 differs from the agent file's.** It then moves to the per-agent limit on the
@@ -4298,13 +4285,11 @@ Three things move with it at that point:
 
 Until then, the circuit and the dial read the same number from the same file.
 
-**The three maxima come from two different classes of vaporizer, and that
-distinction matters nowhere in this model except away from sea level.**
-Sevoflurane's 8% and isoflurane's 5% are the maxima of variable-bypass dials.
-Desflurane's 18% is the upper end of the Tec 6's range, and a Tec 6 is a
-heated gas–vapour blender rather than a variable-bypass vaporizer. This list
-is the one place in the document where both classes appear together, although
-it does not name them. At the 760 mmHg fixed under § "Assumptions", a dial
+**The three maxima come from two classes of vaporizer, which behave
+differently only away from sea level.** Sevoflurane's 8% and isoflurane's 5%
+are the maxima of variable-bypass dials. Desflurane's 18% is the upper end of
+the Tec 6's range, and a Tec 6 is a heated gas–vapour blender rather than a
+variable-bypass vaporizer. At the 760 mmHg fixed under § "Assumptions", a dial
 position on either class gives the same partial pressure. So nothing in the
 core has to know which kind of device a given limit came from. The two classes
 behave differently only at reduced ambient pressure, which is not modelled.
@@ -4338,21 +4323,20 @@ stimulus. It varies with age, and it is modified by other agents, opioids,
 temperature and patient factors, none of which are modeled here. Presenting a
 single-agent alveolar concentration as if it indexed anesthetic depth would
 be exactly the kind of plausible-but-wrong clinical inference that
-`CLAUDE.md` forbids. That is why the displayed unit is a *ratio to* 1 MAC,
-written `×MAC`, and never a depth. The display section named above gives the
-reasoning for that distinction. The rest of this section says how much the
-three stored numbers are worth.
+`CLAUDE.md` forbids. So the displayed unit is a *ratio to* 1 MAC, written
+`×MAC`, and never a depth. § "MAC multiples as a display unit" gives the
+reasoning.
 
-**The provenance tier now carries clinical weight, and it did not before.**
-While `mac_percent` only chose where the dial started, an error in it moved
-the starting point of a run and nothing else. It is now the divisor of every
-displayed compartment value and of the chart's second axis. In that role it
-is a clinically meaningful transformation under `CLAUDE.md`'s safety-critical
-standard. The stored values are **tier 3**. They are the flat adult MACs that
-De Wolf et al. state they used in their Gas Man simulations. They were adopted
-for two reasons. They belong to the same parameter set as every partition
-coefficient in this model. And the reference adult has no age parameter to
-which an age-related MAC could be applied.
+**As a divisor of displayed values, `mac_percent` carries clinical weight.**
+If it only chose where the dial started, an error in it would move only a
+run's starting point. It is also the divisor of every displayed compartment
+value and of the chart's second axis. In that role it is a clinically
+meaningful transformation under `CLAUDE.md`'s safety-critical standard. The
+stored values are **tier 3**. They are the flat adult MACs that De Wolf et al.
+state they used in their Gas Man simulations. They were adopted because they
+belong to the same parameter set as every partition coefficient in this model,
+and because the reference adult has no age parameter to which an age-related
+MAC could be applied.
 
 **The size of the gap, and which comparison it distorts.** Mapleson's
 meta-analysis of the published MAC literature gives these values for age 40:
@@ -4371,28 +4355,29 @@ values with them.
 
 The errors run in opposite directions for sevoflurane and desflurane. So a
 comparison of sevoflurane with desflurane in MAC multiples differs by about
-22% between the two MAC sources. This comparison is exactly the one that the
-second display unit exists to make honest. The difference is larger than either
-source's own confidence limits. It is a real limitation of the display, and
-it is recorded in "Known limitations" rather than left implicit.
+22% between the two MAC sources, and that comparison is the one the second
+display unit exists for. The difference is larger than either source's own
+confidence limits. It is a limitation of the display, and § "Known
+limitations" lists it.
 
-**Why the Mapleson values are nonetheless not adopted here** (project owner,
-2026-09-04, ratified, over adopting Mapleson's age-40 values). There are
-three reasons, and the first is this document's own rule. Mapleson 1996 is a
-meta-analysis. It fits a regression to a literature survey and measures nothing, which makes it
-**tier 2** under § "Source hierarchy". That does not forbid adopting it
-outright, because a lower tier may be adopted on a recorded decision. It does
-mean that adopting it would need such a decision, and the two reasons below
-are why this decision went the other way. Second, every other parameter in
-this model comes from the Gas Man set. A Mapleson divisor applied to a Gas Man
-trajectory would make each displayed multiple a ratio between two different
-parameter lineages. Dividing this model's output by this model's own MAC is
-at least internally consistent. Third, confidence limits of ±7-10% mean that
-no MAC source makes a cross-agent comparison exact. So the honest response is
-to display the divisor and disclose the limitation, which the interface and
-this section do. That is more honest than substituting a different
-non-primary number and presenting it as settled. The route to primary values for all three
-agents is `ROADMAP.md`'s planned-milestone item 31.
+**Why the Mapleson values are not adopted** (project owner, 2026-09-04,
+ratified, over adopting Mapleson's age-40 values). There are three reasons:
+
+1. Mapleson 1996 is a meta-analysis. It fits a regression to a literature
+   survey and measures nothing, which makes it **tier 2** under § "Source
+   hierarchy". A lower tier may still be adopted on a recorded decision, and
+   the next two reasons are why this decision went the other way.
+2. Every other parameter in this model comes from the Gas Man set. A Mapleson
+   divisor applied to a Gas Man trajectory would make each displayed multiple
+   a ratio between two different parameter lineages. Dividing this model's
+   output by this model's own MAC is at least internally consistent.
+3. With confidence limits of ±7-10%, no MAC source makes a cross-agent
+   comparison exact. So the interface and this section display the divisor
+   and disclose the limitation, instead of presenting another non-primary
+   number as settled.
+
+`ROADMAP.md`'s planned-milestone item 31 is the route to primary values for
+all three agents.
 
 Each agent's `sources` array carries the citation, the tier, the Mapleson
 value that the stored value was not taken from, and the difference between
@@ -4568,21 +4553,19 @@ step sizes can show only that a pair of runs agree. Three step sizes show that
 the step does not enter the result.
 <!-- not-restated: 0.05 -->
 
-**What the third step size asserts changed with the exact step, and the
-claim is now stronger.** Under the operator split, the gate required each gap
-to be *smaller* than the last. The split had a first-order error that halved
-with the step and converged to a limit that none of the three steps reached.
-Every supported step now lands on that limit. The gaps therefore sit at the
-smallest size that floating-point rounding allows, and they no longer shrink.
-Requiring them to shrink would fail correct arithmetic. The gate requires
-instead that the gaps stay at that rounding level. The gate compares three
-values: the alveolar, vessel-rich and mixed-venous fractions after 60 s.
-Measured on 2026-11-01, the worst successive-halving gap across the three is
-3.4e-16, in the alveolar fraction. A first-order method would show 1.4e-11 at
-these steps. The gate's bound, 1e-14, was sized on 2026-09-06 at about twelve
-times the worst gap measured then, 8.1e-16. That measurement reported four
-values, and no record names the fourth. The test has compared the same three
-since the exact step landed.
+**The gaps sit at rounding level, so the gate requires them to stay there.**
+The exact step lands every supported step on the same solution. So the gaps
+are as small as floating-point rounding allows, and they do not shrink with
+the step. The operator split had a first-order error that halved with the
+step, and under it the gate required each gap to be smaller than the last.
+Under the exact step that requirement would fail correct arithmetic. The gate
+compares three values: the alveolar, vessel-rich and mixed-venous fractions
+after 60 s. Measured on 2026-11-01, the worst successive-halving gap across
+the three is 3.4e-16, in the alveolar fraction. A first-order method would
+show 1.4e-11 at these steps. The gate's bound, 1e-14, was sized on 2026-09-06
+at about twelve times the worst gap measured then, 8.1e-16. That measurement
+reported four values, and no record names the fourth. The test has compared
+the same three since the exact step landed.
 
 **A second test beside the gate drives the bottom of the supported domain**,
 `MINIMUM_SIMULATION_STEP_S`. A minute simulated in 1 ms steps
@@ -4595,7 +4578,7 @@ times that gap, which is the margin at which the halvings' bound was sized. The 
 vary smoothly with the step. It depends on how the propagator happens to
 round at that particular step, and steps near 1 ms reach 1.2e-14. Against a
 machine that rounds differently, the margin is therefore nearer two and a half
-times. This test enforces the claim that the minimum step makes: the
+times. The test enforces what declaring the minimum step claims: the
 solution at the declared minimum step is the shipped solution. The test also
 pins the minimum step at 1 ms. Moving the minimum therefore means re-taking
 these figures, not just editing a constant.
@@ -4662,7 +4645,7 @@ steps. For the hour that spread is 2.17e-13, and the bound is 4.6 times it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 900 s -->
 
-**Why absolute, where the split's bound was a coefficient.** The split's error
+**Why the tolerance is absolute.** The split's error
 was $`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step size.
 The exact step has no such coefficient. It is the solution of these equations
 over the interval. What the comparison measures is the accumulated
@@ -4672,8 +4655,8 @@ steps rather than with their size. So it is slightly worse at a finer step,
 which is the opposite of the split. A per-step coefficient would therefore
 state the reverse of what is true.
 
-**Derived from the exact step's own error, not inherited.** The residual was
-re-measured on 2026-09-07 across all three agents and every trajectory below.
+**The residuals the bound is set from.** The residual was measured on
+2026-09-07 across all three agents and every trajectory below.
 The maximum was taken over the whole trajectory rather than at the endpoints.
 At the shipped 0.1 s step, the worst figures are 1.58e-14 for *ordinary use*,
 1.54e-14 for the *envelope corner*, 1.39e-14 for the *ventilator start*,
@@ -4699,26 +4682,27 @@ magnitude closer to the independent solution.
 The oracle runs at an eighth of the step under test. At that step, refining
 the oracle further stops changing the answer.
 
-**The residual is rounding, not truncation, and that is checked rather than
-asserted, by the absence of a direction.** Refining the oracle a further
+**The residual is rounding, not truncation, which its lack of a direction
+shows.** Refining the oracle a further
 eightfold, to 0.0015625 s, moves the five figures above by at most 11%. It also
 moves them both ways. RK4 is fourth order. So a residual that still carried
 the oracle's truncation would fall by a factor of about four thousand and
 would never rise. A residual that reshuffles by a few percent in either
 direction is the difference of two independently accumulated rounding paths.
 
-The margin is deliberately wider than the 1.22 that the splitting bound
-carried. A systematic coefficient reproduces between machines, but accumulated
-rounding does not. A different `exp` implementation or a contracted
-multiply-add moves the last bits of both solutions. So the margin is sized on
-how much accumulated rounding can vary, not on the residual. The identical
-trajectories were solved at 0.1, 0.05 and 0.025 s with no oracle involved. This is the same exact propagator, differently subdivided, so every
-difference is the shipped side's own accumulation. The answer moves by up to
-1.07e-13, which is larger than the residual itself. The bound clears that
-spread by 3.7 times and the worst residual by 6.8 times. It remains nearly
-nine orders of magnitude below the error of any method that is not exact. So
-the gate fails the moment method error returns, and catching that is the only
-thing the gate is there for.
+**The margin allows for rounding that differs between machines.** It is
+wider than the 1.22 that the splitting bound carried, because a systematic
+coefficient reproduces between machines and accumulated rounding does not. A
+different `exp` implementation or a contracted multiply-add moves the last
+bits of both solutions. So the margin is sized on how much accumulated
+rounding can vary, not on the residual. To measure that, the same trajectories
+were solved at 0.1, 0.05 and 0.025 s with no oracle involved. This is one
+exact propagator, differently subdivided, so every difference is the shipped
+side's own accumulation. The answer moves by up to 1.07e-13, which is larger
+than the residual itself. The bound clears that spread by 3.7 times and the
+worst residual by 6.8 times. It is still nearly nine orders of magnitude below
+the error of any method that is not exact. So the gate fails as soon as
+method error returns, which is what the gate is for.
 <!-- not-restated: 0.05 -->
 
 **The domain the bound covers.** The domain is *trajectories*, not operating
@@ -4821,30 +4805,35 @@ reaching new highs in the last 1.5 s on nine of the fifteen pairs. The pinned
 reference states follow that growth at held settings out to 3600 s.
 
 The corner and the two setting-change trajectories were chosen by measuring
-the operator split's error coefficient, not by assumption. Across held
-settings, each axis was swept separately. Fresh gas flow and alveolar
-ventilation raised the coefficient monotonically up to their slider maxima.
-Cardiac output had an interior *minimum* near 5 L/min and rose toward both
-ends, and the upper end was the larger. The governing equations are linear in
-the delivered fraction, so each agent's worst dial was its vaporizer maximum.
-Across trajectories, the corners of both phases were swept first, and then
-each axis around the winner. The worst point was always the first transition
-after the loading phase saturated. Repeating the cycle three or six times did
-not raise the peak at all, so the split's coefficient was bounded rather than
-accumulating over a run. A third phase inserted between the two never beat the
-pair. Every axis was monotone toward the corner used, except cardiac output
-during loading. That axis was worst at *zero*, which is the opposite end from
-the held-settings corner. Under the exact step, the two setting-change
-trajectories have swapped places, and the residual does accumulate over a run.
-So what the sweep still shows is where a method that is not exact has its
-largest error, which is the error the gate exists to catch. It does not bound
-the exact step's rounding residual, which a longer run raises. Three
-ventilator starts in a row give desflurane 2.46e-14, against 1.39e-14 for one
-(measured 2026-10-25). The monotonicity was
-measured, not proved. A change to the governing equations could move the
-maximum off these trajectories, so it is worth re-running the sweep rather
-than trusting it.
+the operator split's error coefficient:
+
+- At held settings, each axis was swept separately. Fresh gas flow and
+  alveolar ventilation raised the coefficient monotonically up to their slider
+  maxima. Cardiac output had an interior *minimum* near 5 L/min and rose
+  toward both ends, more toward the upper end. The governing equations are
+  linear in the delivered fraction, so each agent's worst dial was its
+  vaporizer maximum.
+- Across trajectories, the corners of both phases were swept first, and then
+  each axis around the winner. The worst point was always the first
+  transition after the loading phase saturated. Repeating the cycle three or
+  six times did not raise the peak, so the split's coefficient was bounded
+  rather than accumulating over a run. A third phase inserted between the two
+  never beat the pair.
+- Every axis was monotone toward the corner used, except cardiac output
+  during loading. That axis was worst at *zero*, the opposite end from the
+  held-settings corner.
+
 <!-- not-restated: 5 L/min -->
+
+Under the exact step, the two setting-change trajectories have swapped
+places, and the residual does accumulate over a run. Three ventilator starts
+in a row give desflurane 2.46e-14, against 1.39e-14 for one (measured
+2026-10-25). So the sweep still shows where a method that is not exact has its
+largest error, which is the error the gate exists to catch. It does not bound
+the exact step's rounding residual, which a longer run raises. The
+monotonicity was measured, not proved. A change to the governing equations
+could move the maximum off these trajectories, so re-run the sweep after such
+a change rather than trusting it.
 
 The exact step drives no compartment from a value that the same step has
 already moved, and it leaves no bias with a sign. So a gradient between two
