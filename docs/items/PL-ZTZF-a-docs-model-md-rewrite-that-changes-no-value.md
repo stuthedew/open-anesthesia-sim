@@ -11,7 +11,7 @@ added: 2026-11-02
 closed: 2026-11-02
 pr: 1951
 payoff: a docs/MODEL.md rewrite whose values, equations, code spans and citations are unchanged merges on green, and the owner reads only the sentences whose meaning needs a clinician
-verify: grep -q 'def test_lost_lists_a_fact_the_rewrite_added' tests/unit/test_model_rewrite.py && grep -qF 'tools/model_rewrite.py lost' subprojects/docket/src/docket/arming.py
+verify: grep -q 'def test_lost_lists_a_fact_the_rewrite_added' tests/unit/test_model_rewrite.py && grep -qF 'tools/model_rewrite.py lost' .claude/skills/pull-request/SKILL.md && grep -qF 'A docs/MODEL.md rewrite is not needed when' subprojects/docket/src/docket/arming.py
 ---
 
 **Problem.** A rewrite of `docs/MODEL.md` that keeps every value, equation,
