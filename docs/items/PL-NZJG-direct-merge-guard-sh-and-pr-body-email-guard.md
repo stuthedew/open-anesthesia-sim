@@ -3,13 +3,16 @@ id: PL-NZJG
 title: direct-merge-guard.sh and pr-body-email-guard.sh are wired on exact GitHub MCP tool names (merge_pull_request, create_pull_request, update_pull_request), so a rename by the GitHub server stops both guards with no sign; widen each to the namespace or say in its header what goes unchecked, as owner_ask_guard.py now does (found building PL-YN60)
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: guard-tool-names
 touches: .claude/hooks/direct-merge-guard.sh, .claude/hooks/pr-body-email-guard.sh, .claude/settings.json, tools/pr_body_check.py, tests/unit/test_direct_merge_guard.py, tests/unit/test_pr_body_check.py, tests/unit/test_hook_blocks.py, docs/apparatus.md, docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1933
 payoff: a merge or an email address sent to GitHub is still checked after the GitHub server renames or folds its tools, instead of passing both guards unseen
+verify: grep -qF '"matcher": "^mcp__.*$"' .claude/settings.json && grep -q 'NOT_A_MERGE' .claude/hooks/direct-merge-guard.sh && grep -q 'REPOSITORY_FIELDS' tools/pr_body_check.py
 ---
 
 **Problem.** direct-merge-guard.sh and pr-body-email-guard.sh are wired on exact GitHub MCP tool names (merge_pull_request, create_pull_request, update_pull_request), so a rename by the GitHub server stops both guards with no sign; widen each to the namespace or say in its header what goes unchecked, as owner_ask_guard.py now does (found building PL-YN60)
