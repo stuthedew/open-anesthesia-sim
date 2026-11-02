@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: area-layout-sizing
+milestone: v0.6.13
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 added: 2026-11-01
 closed: 2026-11-01

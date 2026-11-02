@@ -77,6 +77,19 @@ The cases of one parametrized test are judged together, so a case that
 copies the value beside a case that names the constant is not seen. Whether
 a reported test should change is left to the session that reads the report.
 
+A module that fails to collect is reported as its file, with no test in it
+to judge. A copied value cannot make a module fail to import, because a copy
+does not change when the constant does. So where the module reads the
+constant at import and the rerun collects it without the perturbation, it is
+listed as not judged and does not fail the run. Import runs the module-level
+statements, the decorators and default values of its functions, and the
+bodies of its classes. On 2026-11-01 `MAXIMUM_INPUT_FRACTION` widened from
+0.99 to 1.98, which is no fraction at all.
+`tests/unit/test_numerical_envelope_sweep.py` builds its dial ceiling from
+the constant at import, so it failed to collect and was named as restating
+it (`PL-DPDG`). A module that fails to collect without reading the constant
+at import is still named.
+
 The suite takes several minutes for each constant, so this runs in the
 `restated-constants` job of `.github/workflows/drift.yml` and not in
 `make check`. `--constant NAME` limits a run to the named constants. Standard
@@ -164,6 +177,39 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
         ): _PINNED_MESSAGE
         for name in ("MAXIMUM_ALVEOLAR_VENTILATION_L_MIN", "MAXIMUM_CARDIAC_OUTPUT_L_MIN")
     },
+    **{
+        (
+            name,
+            "tests/unit/test_governing_equations.py"
+            "::test_require_canonical_state_refuses_more_agent_than_a_case_can_move",
+        ): (
+            "it pins MAXIMUM_CUMULATIVE_AGENT_L at 14 400 L, worked by hand as 10 L/min over "
+            "24 h, and pins the refusal message whole, so a moved flow or run length means "
+            "working the bound out again"
+        )
+        for name in ("MAXIMUM_FRESH_GAS_FLOW_L_MIN", "MAXIMUM_ELAPSED_SIMULATION_TIME_S")
+    },
+    **{
+        (
+            name,
+            "tests/unit/test_numerical_envelope_sweep.py"
+            "::test_every_core_operation_refuses_inputs_outside_its_floating_point_domain",
+        ): (
+            "its EDGES table writes out each interval docs/MODEL.md records, as its docstring "
+            "says, so that a bound that moves fails it and is noticed"
+        )
+        for name in (
+            "MAXIMUM_FRESH_GAS_FLOW_L_MIN",
+            "MAXIMUM_ALVEOLAR_VENTILATION_L_MIN",
+            "MAXIMUM_CARDIAC_OUTPUT_L_MIN",
+            "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
+        )
+    },
+    (
+        "MAXIMUM_INPUT_FRACTION",
+        "tests/unit/test_supported_ranges.py"
+        "::test_a_dial_and_a_fraction_above_the_input_ceiling_are_refused_in_their_own_units",
+    ): _PINNED_MESSAGE,
 }
 
 
@@ -423,7 +469,9 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     class, fixture or constant defined in the same file that reads it. A test
     whose file imports the name for other tests and that copies the value is
     so still named. A test that is not found in its file is judged not to read
-    it, so it is named and a person looks at it.
+    it, so it is named and a person looks at it. A node id that names only a
+    file is a module that failed to collect. It is named here too, and
+    `judge` sets it apart once the rerun shows the failure is the perturbation's.
     """
 
     if not imports_name(source, name):
@@ -455,6 +503,55 @@ def uses_name(source: str, nodeid: str, name: str) -> bool:
     if not found:
         return False
     return name in references or bool(references & _module_readers(tree, name))
+
+
+def _run_at_import(statement: ast.stmt) -> set[str]:
+    """Every name that executing `statement` at import reads, leaving function bodies out.
+
+    A function's decorators and default values run when it is defined. A
+    class's decorators, bases and keywords run then too, and so does its body,
+    which holds its methods' decorators, such as a `pytest.mark.parametrize`
+    list on a method.
+    """
+
+    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        defaults = [*statement.args.defaults, *filter(None, statement.args.kw_defaults)]
+        return set().union(*map(_references, [*statement.decorator_list, *defaults]))
+    if isinstance(statement, ast.ClassDef):
+        header = [*statement.decorator_list, *statement.bases, *statement.keywords]
+        found = set().union(*map(_references, header))
+        return found.union(*map(_run_at_import, statement.body))
+    return _references(statement)
+
+
+def reads_at_import(tree: ast.Module, name: str) -> bool:
+    """Whether importing the module `tree` reads `name`, directly or through a module-level name.
+
+    Only a module that reads the constant at import can fail to collect when
+    the constant moves, because a copied value does not change.
+    """
+
+    readers = _module_readers(tree, name)
+    return any(
+        name in references or bool(references & readers)
+        for references in map(_run_at_import, tree.body)
+    )
+
+
+def uncollected(
+    failures: Sequence[Failure], name: str, read: Callable[[str], str]
+) -> list[Failure]:
+    """The failures that are whole modules which read `name` at import, read through `read(file)`.
+
+    A module that failed to collect is reported as its file, with no test in
+    it to judge, so these are listed as not judged rather than as restating.
+    """
+
+    return [
+        failure
+        for failure in failures
+        if "::" not in failure.nodeid and reads_at_import(ast.parse(read(failure.file)), name)
+    ]
 
 
 def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:
@@ -527,6 +624,9 @@ class Finding:
     unjudged: tuple[str, ...] = ()
     #: Tests in a file that imports `subprocess`, which were not judged.
     through_subprocess: tuple[str, ...] = ()
+    #: Modules that read the limit at import and failed to collect only with
+    #: the perturbation, so none of their tests was judged.
+    uncollected: tuple[str, ...] = ()
     #: Tests on `TRIPWIRES`, which fail on purpose when the limit moves.
     tripwires: tuple[str, ...] = ()
     #: Why the run gave no answer, or an empty string when it gave one.
@@ -572,7 +672,10 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         )
         return finding
     still = {failure.nodeid for failure in rerun.failures}
-    restated = [f.nodeid for f in candidates if f.nodeid not in still]
+    perturbed = [f for f in candidates if f.nodeid not in still]
+    modules = {f.nodeid for f in uncollected(perturbed, constant.name, read)}
+    finding.uncollected = tuple(sorted(modules))
+    restated = [f.nodeid for f in perturbed if f.nodeid not in modules]
     on_purpose = {nodeid for nodeid in restated if tripwire_reason(constant.name, nodeid)}
     finding.restating = tuple(nodeid for nodeid in restated if nodeid not in on_purpose)
     finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in on_purpose)
@@ -614,6 +717,11 @@ def report(
         lines.extend(
             f"  not judged, its file imports subprocess: {nodeid}"
             for nodeid in finding.through_subprocess
+        )
+        lines.extend(
+            f"  not judged, it reads the limit at import and could not be collected with "
+            f"the moved value: {nodeid}"
+            for nodeid in finding.uncollected
         )
         failing = failing or bool(finding.restating or finding.unjudged)
     lines.extend(

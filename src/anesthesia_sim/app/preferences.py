@@ -100,6 +100,8 @@ __all__ = [
     "PreferencesFileError",
     "PreferencesStore",
     "RefusedEntry",
+    "refusals_notice",
+    "unsaved_preferences_notice",
 ]
 
 PREFERENCES_FILE_NAME: Final = "preferences.json"
@@ -422,6 +424,14 @@ class PreferencesStore:
         pending = self._directory / _PENDING_FILE_NAME
 
         try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            raise PreferencesFileError(
+                f"the preferences could not be saved to {self.path}: they hold text that is "
+                "not valid Unicode"
+            ) from None
+
+        try:
             self._directory.mkdir(parents=True, exist_ok=True)
             write_synced(pending, text)
             os.replace(pending, self.path)
@@ -466,18 +476,9 @@ class PreferencesStore:
         except _InvalidDocument as invalid:
             return self._read_only(str(invalid))
 
-        refused = [entry.reason for entry in preferences.refused_prices]
-        if preferences.refused_unit is not None:
-            refused.append(preferences.refused_unit.reason)
-
-        notice = (
-            None
-            if not refused
-            else f"some preferences in {self.path} were refused and are not used: "
-            + "; ".join(refused)
+        return LoadedPreferences(
+            preferences, writable=True, notice=refusals_notice(self.path, preferences)
         )
-
-        return LoadedPreferences(preferences, writable=True, notice=notice)
 
     def _read_only(self, reason: str) -> LoadedPreferences:
         return LoadedPreferences(
@@ -489,6 +490,36 @@ class PreferencesStore:
                 "as it is"
             ),
         )
+
+
+def refusals_notice(path: Path, preferences: Preferences) -> str | None:
+    """Return the notice naming each refused entry that `preferences` still keeps, or None.
+
+    A launch shows this notice for the entries refused when the file at `path`
+    was read. After a save, the dashboard calls this again, because the reader
+    may have replaced a refused entry by then, and that entry's reason no
+    longer applies.
+    """
+
+    refused = [entry.reason for entry in preferences.refused_prices]
+
+    if preferences.refused_unit is not None:
+        refused.append(preferences.refused_unit.reason)
+
+    if not refused:
+        return None
+
+    return f"some preferences in {path} were refused and are not used: " + "; ".join(refused)
+
+
+def unsaved_preferences_notice(error: PreferencesFileError) -> str:
+    """Return what the reader is told when a change of preference could not be saved.
+
+    The change still applies until the application closes. The wording is a
+    placeholder.
+    """
+
+    return f"This change lasts only until the application closes, because {error}"
 
 
 class _NewerFile(Exception):
@@ -537,9 +568,56 @@ def _finite_float(literal: str) -> float:
     return value
 
 
+#: The deepest nesting of lists and objects that a document may hold. A price
+#: entry is one object of plain values, so its document nests three deep. A
+#: refused entry is written back exactly as it was read. So a deeply nested
+#: entry made a 30 KB file write 450 MB on its first save, and one in a 130 KB
+#: file ran the process out of memory (`PL-B396`'s adversarial review).
+_DEEPEST_NESTING: Final = 8
+
+
+def _refuse_what_cannot_be_written_back(document: object) -> None:
+    """Refuse a document that a save could not write back as it was read.
+
+    A save writes every refused entry back unchanged. So a document is refused
+    whole if it nests deeper than `_DEEPEST_NESTING`, or if any of its text is
+    not valid Unicode. JSON lets a file hold a lone surrogate such as
+    `"\\ud800"`, which cannot be written to a UTF-8 file. Refusing the whole
+    document turns saving off, so the file stays as it is.
+    """
+
+    pending: list[tuple[object, int]] = [(document, 1)]
+
+    while pending:
+        value, depth = pending.pop()
+
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise _InvalidDocument(
+                    "it holds text that is not valid Unicode, so it could not be written back"
+                ) from None
+            continue
+
+        if not isinstance(value, dict | list):
+            continue
+
+        if depth > _DEEPEST_NESTING:
+            raise _InvalidDocument(
+                f"it nests lists and objects more than {_DEEPEST_NESTING} deep, which no "
+                "preferences document does"
+            )
+
+        children = [*value.keys(), *value.values()] if isinstance(value, dict) else value
+        pending.extend((child, depth + 1) for child in children)
+
+
 def _from_document(document: object) -> Preferences:
     if not isinstance(document, dict):
         raise _InvalidDocument("its document is not a JSON object")
+
+    _refuse_what_cannot_be_written_back(document)
 
     version = document.get(_SCHEMA_VERSION_KEY)
 

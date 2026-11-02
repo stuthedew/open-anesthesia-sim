@@ -3,12 +3,15 @@ id: PL-DPDG
 title: The weekly drift run of 2026-11-01 found 17 tests restating two supported-range constants (15 MAXIMUM_ELAPSED_SIMULATION_TIME_S, 2 MAXIMUM_INPUT_FRACTION), added by #1861, #1862 and #1901 after the 2026-10-26 run passed; tools/restated_constants.py runs only in drift.yml, which does not gate, so nothing refused them at review
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: drift-2026-11-01
+milestone: v0.6.13
 touches: tests/unit/test_circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_governing_equations.py, tests/unit/test_numerical_envelope_sweep.py, tests/unit/test_supported_ranges.py, tools/restated_constants.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
+closed: 2026-11-02
+pr: 1930
 payoff: moving a supported-range limit fails only the tests that check it on purpose, so a session can trust the suite during a safety-critical change
 verify: ! grep -rqF 'nextafter(86_400.0, inf)' tests/unit
 not-delegable: only a run of tools/restated_constants.py proves the whole item, and it takes about 31 minutes in the drift workflow, which no admitted verify shape runs; the grep covers only the three step tests in test_circuit.py, test_tissue.py and test_blood.py
@@ -88,3 +91,14 @@ may copy a supported-range constant for up to a week with nothing refusing
 it. Whether that check should also run on pull requests is a separate
 question, and is for the triage of this item. Recorded as
 `reenters: PL-40SJ`, since the head's fix refuses a copy only under `src/`.
+
+**Closed 2026-11-02 in #1930.** A local run of `tools/restated_constants.py` on
+the fixed branch named no test as restating a limit, for all five limits it
+moves, and exited 0. Every test that still fails when a limit moves is listed
+with the reason it fails on purpose. `tests/unit/test_numerical_envelope_sweep.py`
+fails to collect when `MAXIMUM_INPUT_FRACTION` moves, because its import reads
+the limit, so it is listed as not judged instead of as a restatement. The
+`restated-constants` job of the next manual `drift.yml` run confirms the result
+in CI.
+`bin/docket verify --self` returned ACCEPT for all four drift items, with
+`make check` passing.

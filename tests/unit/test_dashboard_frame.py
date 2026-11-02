@@ -424,6 +424,7 @@ def _snapshot(
         muscle_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.MUSCLE]),
         fat_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.FAT]),
         delivered_agent_l=delivered_agent_l,
+        agent_vapour_per_liquid=load_agent_parameters(agent_id).vapour_volume_per_liquid_volume,
         exhausted_agent_l=exhausted_agent_l,
         # No frame here draws a compartment's amount, so this helper puts the
         # whole stored total in the circuit. That keeps the record and the total

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
+milestone: v0.6.13
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 deferred-from: v0.7.0 - recorded as a generator head on 2026-11-02 from PL-R4Y2's defect review; each member was placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-11-02

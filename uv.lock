@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "anesthesia-sim"
-version = "0.6.12"
+version = "0.6.14"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },

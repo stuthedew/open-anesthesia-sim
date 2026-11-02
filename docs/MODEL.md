@@ -197,12 +197,12 @@ remains a question for a reviewer.
 | reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line. Every compartment whose drawn point, at the instant the pointer names, is inside the hover radius is reported under its own name. The hover does not choose the nearest trace for the reader (§ "Where more than one trace answers"). This matters because the percent axis is fixed at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`). On that axis, fat's whole first hour spans less than 4 px. So the slow compartments are drawn within a pixel or two of one another, and no aim can separate them (`PL-0RZ0`, `PL-QYBW`) | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
 | comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run is reported at the run's drawn instant nearest the pointer in time. So the instant that labels a value depends only on the pointer's position along the time axis. The pointer's height decides only what is in reach. Before this, each trace's own nearest point had been taken in both dimensions. That labelled 70.1% of the single-run chart's multi-reading boxes with two instants, up to fifteen minutes apart on the 12-hour axis (§ "Where more than one trace answers", `PL-1K9G`) | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
 | reading the hover's value as a live readout after the pointer has left the plot | the box responds only while the pointer is over the plot (§ "When it answers"). Leaving the plot takes the box down at once, along with any pointer move still waiting for a response, so no later frame responds for a pointer that has gone. If the box were left up, it would update again on every frame. While a run plays, it would climb with the run, for an instant the reader is not looking at (`PL-LTKL`) | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
-| reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown. First, it is named on each run's own readout panel (§ "Minimum displayed outputs"). Second, while more than one run is drawn, it is named in the chart's hover readout: on its first line where one run answers (§ "The hover and the run it belongs to"), and on each value line where several do. Every run inside the hover radius is reported, so no hand movement can swap which run is read (§ "Where more than one trace answers"). This is needed because the hover floats free of the legend, and line width has no textual equivalent. Third, it is named on the three advisories that sit in a chart rather than on either run's panel: the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`). These stack one line per run, so they are named for the same reason as the hover. Stacking order is declared nowhere on screen, and the run names sit in the unconditional region above the charts. Without names, the branch's F_A/F_I would be readable as the trunk's, and its off-scale notice could be attributed to a run whose traces are all inside the axis (`PL-25DD`). Fourth, it is named in the headings of the two record panels: the agent-accounting validation in the sidebar, and the control-change record in the right column of the unconditional region. Each of these stacks whole panels rather than lines, one per run. So the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column. This matters because "What was changed during this run" over a list of settings, read as the other run's, says the trunk received an intervention it never got (`PL-C3GS`). Fifth, it is named on the notice banner. The runs share one place for this banner, between their transport rows and their readouts. The banner qualifies the values rather than showing one. "The values shown are the last completed step", read as applying to the whole dashboard, says both runs' readouts are frozen at a failed step when one is still going. "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these banners at all, because a banner with nothing to say is hidden and takes no room. With one run halted, its banner appears in the same place whichever run it belongs to, and the words are identical (`PL-TSZM`, `PL-T91K`). Sixth, it is named over each run's compartment schematic, which stacks one schematic per run in its View, from the name the run's own panel shows (`PL-RNYV`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison` |
+| reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown. First, it is named on each run's own readout panel (§ "Minimum displayed outputs"). Second, while more than one run is drawn, it is named in the chart's hover readout: on its first line where one run answers (§ "The hover and the run it belongs to"), and on each value line where several do. Every run inside the hover radius is reported, so no hand movement can swap which run is read (§ "Where more than one trace answers"). This is needed because the hover floats free of the legend, and line width has no textual equivalent. Third, it is named on the three advisories that sit in a chart rather than on either run's panel: the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`). These stack one line per run, so they are named for the same reason as the hover. Stacking order is declared nowhere on screen, and the run names sit in the unconditional region above the charts. Without names, the branch's F_A/F_I would be readable as the trunk's, and its off-scale notice could be attributed to a run whose traces are all inside the axis (`PL-25DD`). Fourth, it is named in the headings of the two record panels: the agent-accounting validation in the sidebar, and the control-change record in the right column of the unconditional region. Each of these stacks whole panels rather than lines, one per run. So the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column. This matters because "What was changed during this run" over a list of settings, read as the other run's, says the trunk received an intervention it never got (`PL-C3GS`). Fifth, it is named on the notice banner. The runs share one place for this banner, between their transport rows and their readouts. The banner qualifies the values rather than showing one. "The values shown are the last completed step", read as applying to the whole dashboard, says both runs' readouts are frozen at a failed step when one is still going. "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these banners at all, because a banner with nothing to say is hidden and takes no room. With one run halted, its banner appears in the same place whichever run it belongs to, and the words are identical (`PL-TSZM`, `PL-T91K`). Sixth, it is named over each run's compartment schematic, which stacks one schematic per run in its View, from the name the run's own panel shows (`PL-RNYV`). Seventh, it is named over each run's agent cost panel in the same way (`PL-B396`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison`, `test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison` |
 | reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the thumb is held, inside a tinted region that starts at the run's reach, with a label in the plot that names the control, the value tried and that it is not applied. Its curves are thinner than the run's, down to 2 px, and the hover never answers from them. The run keeps its setting until the release (§ "A preview of an unapplied setting", `PL-5B1N`) | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project ships no price. A cost is shown only beside the liquid volume and the price per millilitre that it multiplied, the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is taken as a bottle price and a bottle volume whose field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that they give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where the price and the volume differ widely, and at Gas Man's sevoflurane default it changes the cost by only 8 %. The currency is stored and shown as its ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | no test yet (`PL-1P15`) |
 | reading a container's fill height, or its filled area, as the amount of agent it holds | a height is the compartment's tension on the concentration chart's own scale, and every container is drawn at one width, so no length or area on a container stands for an amount. Each container prints its amount beside its tension, and the share bar shows the amounts on one scale, each share named in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
-| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid-equivalent amount "mL liquid equiv.". `DisplayUnit` holds each spelling once a View prints it, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit` |
+| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, by agent | no View prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid". `DisplayUnit` holds each spelling, so no View writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost View writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures (`PL-B396`) | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 8 % -->
@@ -885,9 +885,15 @@ checks the derived ratios against Biro's within 1 % and against Gas Man's
 within 0.5 %. It also prices the isoflurane delivered in the Gas Man
 Workbook's Exercises 14-1 and 14-2 with the derived ratio. The prices must
 match the costs the book prints, allowing for the cent and for Gas Man's
-ratio being rounded to a whole millilitre. Nothing on screen reads the
-conversion yet. `PL-B396` builds the liquid-equivalent readout, and `PL-1P15`
-builds the cost.
+ratio being rounded to a whole millilitre. The agent cost View is the one
+reader of the conversion (`PL-B396`). It shows the delivered agent as liquid,
+and it converts nothing else, so no figure it shows carries the 5.8 % error.
+It reads the amount and the ratio from one snapshot, which carries the
+running agent's ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`).
+So it cannot pair one agent's vapour with another agent's ratio, which would
+misread sevoflurane by about 13 % against desflurane's ratio. A unit test
+refuses any second caller of `liquid_volume_ml` in `app/`. `PL-1P15` builds
+the cost on the same View.
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -4249,8 +4255,11 @@ table below compares them with the nine stored values:
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 
-All nine stored values lie within 0.71 SD of the measured mean, and three of
-them reproduce it to the stored precision. A parameter set assembled from
+All nine stored values lie within 0.71 SD of the measured mean. Two of them
+match it exactly. Two more, isoflurane vessel-rich and sevoflurane muscle, are
+the mean rounded to the stored precision. The other five are not roundings:
+isoflurane fat is 9.0% above the mean. They are Gas Man's figures for these
+measurements (`PL-476M`). A parameter set assembled from
 somewhere else could not match that closely by coincidence. So the Workbook's
 attribution is confirmed by the arithmetic, not by the Workbook's own say-so.
 The Workbook's self-contradiction is resolved in Yasuda's favour.
@@ -4282,8 +4291,8 @@ measure. No number changed with the adoption. What changed is the record of
 where the numbers came from. Separating `tier` from `adopted` exists to carry
 that record.
 
-*Declined.* Storing Yasuda's published figures in place of Gas Man's rounding
-of them would move three displayed time constants. Sevoflurane vessel-rich
+*Declined.* Storing Yasuda's published figures in place of Gas Man's figures
+for them would move three displayed time constants. Sevoflurane vessel-rich
 would move +4.5% at 1.15 against 1.1, isoflurane fat −8.3% at 64.2 against
 70.0, and desflurane fat −7.7% at 12.0 against 13.0. The change would also
 require recomputing every pinned reference state under `tests/reference/`,
@@ -4737,7 +4746,26 @@ $$
 4\times10^{-13}
 $$
 
-over every state $`k`$, every horizon and every trajectory below.
+over every state $`k`$ and every trajectory below.
+
+**The held runs to the pinned horizons have a bound of their own.**
+`test_the_shipped_step_reaches_the_pinned_reference_horizons` runs each agent
+at the reference operating point to 60, 600 and 3600 s at the shipped 0.1 s
+step. It compares the endpoint with the independent solution at that horizon,
+and a separate test ties that solution to the pinned reference states. It
+allows `HELD_RUN_ROUNDING_BOUND`, an absolute $`10^{-12}`$, rather than the
+$`4\times10^{-13}`$ above. The held hour reaches a larger residual than any
+trajectory below: **7.16e-14**, for desflurane in muscle (measured 2026-09-07,
+and unchanged when re-measured on 2026-11-02, `PL-4R21`). Rounding is added
+once per step, but step count alone does not explain the difference. The hour
+takes 36 000 steps, and so does the 900 s unperfused load at 0.025 s, whose
+worst residual is smaller. The 600 s figures are at most 1.34e-14 and the 60 s
+figures at most 5.69e-16. The bound is set, like the one above, from how far
+the shipped solution moves when the same interval is divided into different
+steps. For the hour that spread is 2.17e-13, and the bound is 4.6 times it.
+`tests/reference/test_coupled_dynamics.py` records the full table.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 900 s -->
 
 **Why absolute, where the split's bound was a coefficient.** The split's error
 was $`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step size.
@@ -4750,26 +4778,26 @@ which is the opposite of the split. A per-step coefficient would therefore
 state the reverse of what is true.
 
 **Derived from the exact step's own error, not inherited.** The residual was
-re-measured on 2026-09-07 across all three agents, the horizons above and
-every trajectory below. The maximum was taken over the whole trajectory rather
-than at the endpoints. At the shipped 0.1 s step, the worst figures are
-1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope corner*, 1.39e-14 for
-the *ventilator start*, 1.34e-14 for the *reference point* and 8.80e-15 for the
-*unperfused load, then dial off*. Desflurane gives the worst figure on every
-trajectory. Re-measured on 2026-10-25, all five were unchanged to every digit
-that `tests/reference/test_coupled_dynamics.py` records (`PL-S86L`). They lie
-within a factor of 1.8 of one another, because what is measured is
-accumulated rounding, and rounding does not grow with how far the settings
-move. The unperfused load gives the smallest figure although it runs longest,
-900 s against the others' 600 s. Its worst falls in the loading phase, while
-the blood and tissue states are still exactly zero and only the circuit and
+re-measured on 2026-09-07 across all three agents and every trajectory below.
+The maximum was taken over the whole trajectory rather than at the endpoints.
+At the shipped 0.1 s step, the worst figures are 1.58e-14 for *ordinary use*,
+1.54e-14 for the *envelope corner*, 1.39e-14 for the *ventilator start*,
+1.34e-14 for the *reference point* and 8.80e-15 for the *unperfused load, then
+dial off*. Desflurane gives the worst figure on every trajectory. Re-measured
+on 2026-10-25, all five were unchanged to every digit that
+`tests/reference/test_coupled_dynamics.py` records (`PL-S86L`). They lie
+within a factor of 1.8 of one another, because what is measured is accumulated
+rounding, and rounding does not grow with how far the settings move. The
+unperfused load gives the smallest figure although it runs longest, 900 s
+against the others' 600 s. Its worst falls in the loading phase, while the
+blood and tissue states are still exactly zero and only the circuit and
 alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
 That gives the worst figure measured on any trajectory: **5.89e-14**, for
-desflurane on a *ventilator start* at the finest step. The next largest is 5.46e-14, for
-desflurane on the held *envelope corner* at the same step (measured
-2026-10-25, `PL-F67Q`). The operator split's worst over the
-same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the
-independent solution.
+desflurane on a *ventilator start* at the finest step. The next largest is
+5.46e-14, for desflurane on the held *envelope corner* at the same step
+(measured 2026-10-25, `PL-F67Q`). The operator split's worst over the same
+domain was 2.29e-4 at this step. Against it, the exact step is nine orders of
+magnitude closer to the independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 900 s -->
 
@@ -11371,7 +11399,7 @@ amount alone** (`PL-0S0V`, 2026-10-27). The derivation above is about the
 litre of vapour, and it does not carry over to another unit. v0.7.0 is
 scoped to show the delivered total in millilitres of liquid on the agent cost
 View (`PL-B396`), and each compartment's amount in millilitres of vapour on
-the compartment schematic (`PL-2881`). Neither is built yet. So
+the compartment schematic (`PL-2881`). Both are built now. So
 `app/formatting.py` keys each precision by the amount and the unit, in
 `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an `AgentAmountPrecision`,
 which holds the amount, the unit and the count shown. It reads the finest
@@ -12459,10 +12487,12 @@ Two units count agent in millilitres, and they differ by a factor of about
 183 mL of sevoflurane vapour and about 210 mL of desflurane vapour
 (§ "Agent amount"). So no View prints a bare "mL" beside an
 agent amount. A vapour amount is written "mL vapour", as in "38 mL vapour". A
-liquid-equivalent amount is written "mL liquid equiv.", as in "4.2 mL liquid
-equiv.". The second spelling says "equivalent" because the agent it counts was
-never liquid in the model. It is the volume of liquid that would give that
-much vapour. `DisplayUnit` in `app/display_units.py` holds each spelling,
+liquid amount is written "mL of liquid", as in "4.2 mL of liquid". The model
+holds no liquid, so this figure is worked out: it is the volume of liquid
+agent that would give that much vapour, which is what a vaporizer uses up.
+The spelling was "mL liquid equiv." until the project owner found it awkward
+on 2026-11-01. The caption under the figure says that the vaporizer used
+this liquid. `DisplayUnit` in `app/display_units.py` holds each spelling,
 from the first View that prints it, so every View reads it there and none
 writes its own. The schematic added "mL vapour" (`PL-RNYV`). The wording is a
 placeholder while the interface is being built. The rule is not: every
@@ -13182,9 +13212,10 @@ value:
   **Full text**, read from the private reference corpus 2026-09-27: the brain
   drawn apart on p. 1022, Table 3 on p. 1024, the lean-tissue losses, the
   evidence and the 30% share on p. 1025, and recovery on p. 1032. It is
-  a review, which is how PubMed classifies it. It is ranked tier 3 because its
-  figures "illustrate concepts but are not necessarily precise (quantitative)
-  reflections of the kinetics" (p. 1020).
+  a review, which is how PubMed classifies it, so it is tier 2 under § "Source
+  hierarchy". Its figures need more caution than most reviews' do, because the
+  paper says they "illustrate concepts but are not necessarily precise
+  (quantitative) reflections of the kinetics" (p. 1020).
 - Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
   dog: comparison of theory and measurement in individuals.* Br J Anaesth
   1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,

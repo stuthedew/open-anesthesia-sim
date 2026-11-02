@@ -29,6 +29,7 @@ from restated_constants import (
     restating,
     starts_a_subprocess,
     tripwire_reason,
+    uncollected,
     widened,
 )
 
@@ -91,6 +92,71 @@ def test_a_test_restating_a_constant_is_named_and_one_importing_it_is_not(tmp_pa
         f"{imports}::test_the_last_step_is_one_day",
         f"{imports}::test_not_in_the_file",
     ]
+
+
+#: How each module below reads the limit at import, if it does.
+IMPORT = f"from anesthesia_sim.core.supported_ranges import {NAME}\n"
+
+
+@pytest.mark.parametrize(
+    ("body", "reads"),
+    [
+        # A module-level name built from the limit, directly or through another.
+        (f"CEILING = {NAME}\n", True),
+        (f"CEILING = {NAME}\nHALF = CEILING / 2\n", True),
+        # A parametrize list is evaluated at import.
+        (f"@pytest.mark.parametrize('s', [{NAME}])\ndef test_x(s): ...\n", True),
+        # So is a class body, with its methods' decorators, and a default value.
+        (
+            f"class TestX:\n"
+            f"    @pytest.mark.parametrize('s', [{NAME}])\n"
+            "    def test_x(self, s): ...\n",
+            True,
+        ),
+        (f"class TestX:\n    LIMIT = {NAME}\n", True),
+        (f"def test_x(s={NAME}): ...\n", True),
+        # A module-level call of a function that reads it.
+        (f"def ceiling():\n    return {NAME}\nCEILING = ceiling()\n", True),
+        # Read only inside a test or method body, which import does not run.
+        (f"def test_x():\n    assert {NAME} > 0\n", False),
+        (f"class TestX:\n    def test_x(self):\n        assert {NAME} > 0\n", False),
+        # Imported and never read at all.
+        ("STEP = 0.1\n", False),
+    ],
+)
+def test_a_module_that_fails_to_collect_is_set_apart_only_when_its_import_reads_the_limit(
+    body: str, reads: bool
+) -> None:
+    """`PL-DPDG`: a module that fails to collect is not judged where its import reads the limit.
+
+    A copy does not change when the limit does, so it cannot make a module fail
+    to import. A module that reads the limit at import can, when the widened
+    value is out of range, as `MAXIMUM_INPUT_FRACTION` at 1.98 was on
+    2026-11-01. Such a module is listed as not judged. Any other module that
+    fails to collect is still named, and so is a test inside a reading module.
+    """
+
+    source = IMPORT + body
+    module = Failure("tests/test_module.py", "tests/test_module.py")
+    test = Failure("tests/test_module.py::test_y", "tests/test_module.py")
+
+    set_apart = uncollected([module, test], NAME, lambda file: source)
+
+    assert set_apart == ([module] if reads else [])
+    assert module in restating([module], NAME, lambda file: source)
+
+
+def test_a_module_set_apart_is_reported_as_not_judged_without_failing_the_run() -> None:
+    finding = Finding(Constant(NAME, 86_400.0), 172_800.0, failed=1)
+    finding.uncollected = ("tests/test_module.py",)
+
+    text, failing = report([finding], ())
+
+    assert (
+        "  not judged, it reads the limit at import and could not be collected with the "
+        "moved value: tests/test_module.py"
+    ) in text
+    assert failing is False
 
 
 @pytest.mark.parametrize(

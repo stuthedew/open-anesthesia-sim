@@ -172,6 +172,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.view_contract import (
+    PreferencesInForce,
     RunSurfaces,
     SavedState,
     View,
@@ -518,6 +519,7 @@ class AreaLayout(QWidget):
         snapshots: tuple[SimulationSnapshot, ...],
         runs: tuple[RunSurfaces, ...],
         selection: CompartmentSelection,
+        preferences: PreferencesInForce,
     ) -> None:
         """Draw every View, in the reading order of their Areas, each with the frame it asked for.
 
@@ -527,6 +529,7 @@ class AreaLayout(QWidget):
             snapshots: As `ViewTick` carries them.
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
+            preferences: As `ViewTick` carries them.
 
         Raises:
             KeyError: A View asks for a window that `frames` does not hold.
@@ -537,7 +540,7 @@ class AreaLayout(QWidget):
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
             frame = None if request is None else frames[request.time_base]
-            view.refresh(ViewTick(frame, snapshots, runs, selection))
+            view.refresh(ViewTick(frame, snapshots, runs, selection, preferences))
 
         self.follow_needs()
 
