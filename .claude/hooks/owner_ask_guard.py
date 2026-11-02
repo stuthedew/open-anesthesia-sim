@@ -1,9 +1,8 @@
-"""PreToolUse hook on the Projects reply and post tools: refuse an unrecorded read or merge ask.
+"""PreToolUse hook on the Projects tools: refuse an unrecorded read or merge ask.
 
-**What it refuses** (`PL-TLPH`). A `reply`, an `update_message` or an
-`ask_decision` card whose text asks the owner to read or merge a pull request,
-unless `bin/docket arm --owner-ask` prints a recorded ask for this branch and
-the text carries that line word for word. Everything else passes untouched:
+**What it refuses** (`PL-TLPH`). A Projects message whose text asks the owner
+to read or merge a pull request, unless it carries the `Owner-ask:` line that
+`bin/docket arm --owner-ask` prints. Everything else passes untouched:
 progress replies, merge reports, and any message that matches none of `ASKS`.
 
 **Why a hook and not more text.** Whether the owner may be asked was text for a
@@ -13,13 +12,6 @@ narrowed what holds, and `PL-9JHM` made the ask an `Owner-ask:` record that
 missed the line saying to send nothing, and sent the owner a bare "read #N and
 merge it". Text fails whenever it is read short, so this checks the message
 itself, at the one moment it goes out.
-
-**Which pull request.** The one this checkout's branch carries, since a thread
-drives the pull request of the branch it works on. `arm` answers for `HEAD`
-with `--no-fetch`, so the check costs about two seconds and no fetch (measured
-2026-10-19). A thread whose checkout is on another branch is refused, which is
-the safe direction: the coordinator forwards the owner's word, and a thread
-asks only about its own pull request.
 
 **What an ask is, is a list, not an inference.** `ASKS` names the phrasings
 sessions have used, the closing-block lines that carry them, and close
@@ -32,25 +24,44 @@ test row. A message that matches by accident is told to reword. A false
 refusal costs a rewording, while a missed ask costs the owner's attention, so
 the list leans toward refusing.
 
-**The coordinator's `post_message` gets a partial check** (`PL-YV90`). The
-coordinator relays a thread's ask to the owner in the project chat. Its
-checkout is on no pull request's branch, so `arm` cannot answer for it there,
-and this hook does not run `arm` for that tool. It refuses a post that matches
-`ASKS` and carries no line in the form `bin/docket arm --owner-ask` renders.
-`docket.arming.renders_owner_ask` recognizes that form from the templates the
-renderer uses, so the hook holds no copy of it. Nobody has read the tool's
-schema, so the hook reads every string in the post's input, at any depth
-(`PL-646J`). The check cannot tell the
-recorded line from a well-formed wrong one. Having `arm` answer for a named
-pull request would, at the cost of a fetch and a worktree per post (project
-owner, 2026-10-24, ratified, over building that now). Nobody has seen that
-failure, and this check would become that route's first stage.
+**Which tools: every Projects tool but a named few** (`PL-YN60`). The hook is
+wired on every `mcp__hearthbot__` tool and reads every string in the call's
+input, at any depth. It skips only the tools in `NOT_TO_THE_OWNER`, whose text
+goes to another session or names a thread. It first listed the tools it read,
+`reply`, `update_message` and `ask_decision`. The harness renamed them to
+`post_message`, `edit_message` and `request_decision`, so a thread's edits and
+decision cards went unchecked and nothing said so. Naming the skipped tools
+instead means a renamed or new tool is checked until someone says otherwise. A
+wrong refusal then costs a rewording and files an item, which is the direction
+this hook leans. Nobody has read these tools' schemas, so the hook does not
+guess which field holds the text (`PL-646J`).
 
-**Fails open where it cannot answer**: a payload it cannot read, a `bin/docket`
-that is missing, times out or exits with anything but 0 or 3. A guard that
-breaks a thread's replies costs more than the round it saves. `arm`'s own
-`unknown` exits 3 under `--owner-ask`, and is refused, because then nobody can
-say an ask is recorded. `OWNER_ASK_GUARD_ARM` names a Python script run in place of
+**Which check: the one `arm` can answer for.** The hook cannot tell a thread
+from the coordinator, because both post with `post_message`. So it asks `arm`
+about this checkout's branch, which costs about two seconds and no fetch
+(measured 2026-10-19), and only for a message that matches `ASKS`.
+
+- When `arm` prints a recorded ask, the message must carry that line word for
+  word. This is a thread driving its own pull request.
+- Otherwise the message must carry a line in the form `arm --owner-ask`
+  renders. This is the coordinator relaying a thread's ask from a checkout on
+  no pull request's branch, where `arm` cannot answer (`PL-YV90`). It is also a
+  thread whose `arm` says nothing may be sent, or cannot answer at all.
+  `docket.arming.renders_owner_ask` recognizes the form from the templates the
+  renderer uses, so the hook holds no copy of it.
+
+This check cannot tell the recorded line from a well-formed wrong one. Having
+`arm` answer for a named pull request would, at the cost of a fetch and a
+worktree per post (project owner, 2026-10-24, ratified, over building that
+now). Nobody has seen that failure. Until `PL-YN60` a thread on a pull request
+with no recorded ask was refused outright; it now gets this check too, because
+the hook can no longer tell it from the coordinator.
+
+**Fails open only where it cannot read the call**: a payload that is not
+JSON, or an error in the hook itself. A guard that breaks a thread's replies
+costs more than the round it saves. A `bin/docket` that is missing, times out
+or cannot answer falls back to the rendered-line check above, which refuses
+only an ask. `OWNER_ASK_GUARD_ARM` names a Python script run in place of
 `arm` for the tests, and is set nowhere else. `NO_ASK` is read from
 `docket.arming`, found through `shell_split.py` as the Bash guards find it,
 and so is `renders_owner_ask`.
@@ -75,20 +86,16 @@ import shell_split  # noqa: F401 - puts docket's src on sys.path
 from docket.arming import NO_ASK, renders_owner_ask
 from docket.lines import split_lines
 
-#: The coordinator's post to the project chat, which gets the partial check.
-COORDINATOR_POST = "mcp__hearthbot__post_message"
+#: The prefix of every Projects tool. The hook is wired on all of them.
+PROJECTS_TOOL = "mcp__hearthbot__"
 
-#: The tools whose text reaches the owner, with the fields that carry it.
-#: `None` reads every string in the call's input, at any depth of its
-#: dictionaries and lists. `post_message`'s schema could not be read from the
-#: session that wired it on 2026-10-24, so the hook does not guess which field
-#: holds the text, or how deep that field sits (`PL-646J`).
-TEXT_FIELDS: dict[str, tuple[str, ...] | None] = {
-    "mcp__hearthbot__reply": ("text",),
-    "mcp__hearthbot__update_message": ("text",),
-    "mcp__hearthbot__ask_decision": ("question", "context", "reason"),
-    COORDINATOR_POST: None,
-}
+#: The Projects tools whose text does not reach the owner as a message: a
+#: message to another session, or a thread's name. Every other Projects tool is
+#: read, so a tool the harness renames or adds is checked until it is named
+#: here (`PL-YN60`). Names read from a thread's tool list on 2026-11-02.
+NOT_TO_THE_OWNER = frozenset(
+    PROJECTS_TOOL + name for name in ("message_coordinator", "message_thread", "rename_thread")
+)
 
 #: Where an imperative starts: a line, a list item or a sentence.
 _START = r"(?:^[ \t]*(?:[-*+]|\d+[.)])?[ \t]*|[.!?:;][ \t]+)"
@@ -193,18 +200,11 @@ def every_string(value: object) -> list[str]:
 
 def message_text(tool_name: str, tool_input: object) -> str | None:
     """The text a call would show the owner, or None for a tool this hook does not read."""
-    if tool_name not in TEXT_FIELDS or not isinstance(tool_input, dict):
+    if not tool_name.startswith(PROJECTS_TOOL) or tool_name in NOT_TO_THE_OWNER:
         return None
-    fields = TEXT_FIELDS[tool_name]
-    if fields is None:
-        return "\n".join(every_string(tool_input))
-    parts = [tool_input.get(f) for f in fields]
-    options = tool_input.get("options")
-    if isinstance(options, list):
-        for option in options:
-            if isinstance(option, dict):
-                parts += [option.get("label"), option.get("consequence")]
-    return "\n".join(part for part in parts if isinstance(part, str))
+    if not isinstance(tool_input, dict):
+        return None
+    return "\n".join(every_string(tool_input))
 
 
 def plain(text: str) -> str:
@@ -277,38 +277,17 @@ def mistaken(phrase: str) -> str:
     )
 
 
-def coordinator_refusal(text: str) -> str | None:
-    """Why the coordinator's post may not go to the owner, or None to let it through.
-
-    It runs no `arm`, because the coordinator's checkout is on no pull
-    request's branch. It checks only that an ask carries a line in a rendered
-    `Owner-ask:` form (`PL-YV90`).
-    """
-    phrase = asked(text)
-    if phrase is None or renders_owner_ask(squeezed(text)):
-        return None
-    return (
-        f'This post asks the owner to read or merge a pull request ("{phrase}"), and it '
-        "carries no Owner-ask line. Forward the thread's Owner-ask line word for word, the "
-        "line `bin/docket arm --owner-ask` prints on the thread's branch, or send the owner "
-        "nothing about that pull request. A bare 'read #N' relayed from here costs the owner "
-        "as much attention as one sent from a thread (PL-YV90)." + mistaken(phrase)
-    )
-
-
 def refusal(text: str, root: Path) -> str | None:
     """Why this message may not go to the owner, or None to let it through."""
     phrase = asked(text)
     if phrase is None:
         return None
-    answer = owner_ask(root)
-    if answer is None:
-        return None
-    code, line = answer
-    if code == 0 and carries(text, line):
-        return None
     opening = f'This message asks the owner to read or merge a pull request ("{phrase}"). '
-    if code == 0:
+    answer = owner_ask(root)
+    if answer is not None and answer[0] == 0:
+        line = answer[1]
+        if carries(text, line):
+            return None
         return (
             opening + "This branch has a recorded Owner-ask, but the message does not carry it. "
             "Open the ask with this line, word for word, and keep the rest short:\n\n"
@@ -316,14 +295,21 @@ def refusal(text: str, root: Path) -> str | None:
             "That line is what the owner judges, so a bare 'read #N' or 'Merge it' without "
             "it is refused (PL-TLPH)." + mistaken(phrase)
         )
+    if renders_owner_ask(squeezed(text)):
+        return None
+    said = (
+        f"`bin/docket arm --owner-ask` says, for this checkout's branch:\n\n    {answer[1]}\n\n"
+        if answer is not None
+        else "`bin/docket arm --owner-ask` gave no answer for this checkout's branch.\n\n"
+    )
     return (
-        opening + "`bin/docket arm --owner-ask` says nothing may be sent to the owner about this "
-        f"branch's pull request:\n\n    {line}\n\n"
-        "So send no read or merge ask. Run `bin/docket arm` and read all of its output, "
-        "not through head or tail: it says what to do. Usually that is to record "
-        "`Owner-read: not needed - <why>` so the change merges on green, or, for a real "
-        "decision or a high-risk change, to record an `Owner-ask:` and then send the line "
-        "arm prints. On #1612 and #1676 a bare ask reached the owner this way (PL-TLPH)."
+        opening + "It carries no Owner-ask line. " + said + "On a thread's own branch, run "
+        "`bin/docket arm` and read all of its output, not through head or tail: it says what "
+        "to do. Usually that is to record `Owner-read: not needed - <why>` so the change "
+        "merges on green, or, for a real decision or a high-risk change, to record an "
+        "`Owner-ask:` and then send the line arm prints. When relaying a thread's ask, "
+        "forward the thread's Owner-ask line word for word, or send the owner nothing about "
+        "that pull request. On #1612 and #1676 a bare ask reached the owner (PL-TLPH)."
         + mistaken(phrase)
     )
 
@@ -339,13 +325,12 @@ def main() -> int:
     text = message_text(tool_name, payload.get("tool_input"))
     if not text:
         return 0
-    if tool_name == COORDINATOR_POST:
-        rule, reason = "coordinator-ask", coordinator_refusal(text)
-    else:
-        rule, reason = "bare-read-ask", refusal(text, hook_input.project_root())
+    reason = refusal(text, hook_input.project_root())
     if reason is None:
         return 0
-    sys.stdout.write(hook_input.deny("owner_ask_guard", rule, reason, json.dumps(payload)))
+    sys.stdout.write(
+        hook_input.deny("owner_ask_guard", "bare-read-ask", reason, json.dumps(payload))
+    )
     return 0
 
 
