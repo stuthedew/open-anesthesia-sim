@@ -3,16 +3,18 @@ id: PL-H76S
 title: A paragraph that follows the five plain-writing patterns and passes both reviews is still unintelligible to a clinician when it uses numerical-methods vocabulary ("operator split", "relative gap", "4e-4"), because no step in drafting, review or audit asks whether the intended reader understands it
 priority: P1
 effort: L
-status: blocked
+status: done
 classes: docs
 feature: prose-quality
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md
 blocked-by: PL-R7Q6, PL-TZ7R, PL-1XC7, PL-FYGJ, PL-CWRZ
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1962
 payoff: the project's writing and review process produces paragraphs a clinician can follow, so the owner stops finding unreadable text after every review has passed it
 not-delegable: finding why the writing process failed is a judgment about how reviews are briefed, which no command can confirm
 root-cause-of: PL-8ZTQ, PL-BZR4, PL-ZT47, PL-VGDX, PL-1K5X, PL-FDMJ, PL-TPS7, PL-K7N7, PL-CWRZ
-generator: live - the owner found unreadable prose on 2026-11-02 in a section rewrite that had passed the plain-writing rule and its reviews, after eight earlier writing items each added a rule or review step and closed; on 2026-11-03 the first run of the rejected-paragraph test flagged all five paragraphs while four of the review's five rewrites came out longer (PL-CWRZ)
+generator: spent - the four faults the design round named are each fixed, by the reader table (PL-R7Q6), the notes for developers (PL-TZ7R), the reader-tested review prompt (PL-1XC7) and the rejected-paragraph test (PL-FYGJ), and a review's rewrite can no longer grow the text (PL-CWRZ); each paragraph the owner rejects after the review passed it becomes a test that every later prompt must pass, so a repeat of a rejected kind fails make check before it reaches the owner, and what remains is the reviewer's judgment, which only the owner's reads test
 misread: Whether a paragraph can be understood by the reader it is written for
 ---
 
@@ -449,11 +451,21 @@ failure still happening. The review flagged all five rejected paragraphs, and
 four of its five rewrites came out longer than the paragraph the owner had
 rejected. The "Way too verbose" paragraph was cut only from 269 words to 225.
 `PL-CWRZ` holds the evidence and the options, and the owner decides whether
-it joins this fix. [The building session's call, put to the owner on
-2026-11-03: keep this open until `PL-CWRZ` is decided.]
+it joins this fix. [The building session's call on 2026-11-03, on the
+coordinator's go-ahead: keep this open until `PL-CWRZ` is built.]
+
+**Closed 2026-11-03.** `PL-CWRZ` is built: a run of the test set now fails
+when a review's rewrite has more words than the paragraph the owner rejected,
+or than the rewrite the owner accepted. Its fourth run passed with every
+rewrite within its entry's word count. The limit named in "What it cannot do"
+still holds. The paragraph the owner called "overly verbose" came back at the
+same 149 words in two of the last three runs, and only the owner's reads can
+say whether a rewrite of that length answers him. The paused rewrite of
+`docs/MODEL.md` that grew out of `PL-ZT47` (#1950 and #1952, still drafts) is
+where those reads come from.
 
 **Done when.** [superseded 2026-11-03: `PL-CWRZ` joins the four below.]
 [superseded 2026-11-02: the design round named the cause and
-the owner approved the fix.] `PL-R7Q6`, `PL-TZ7R`, `PL-1XC7` and `PL-FYGJ` are
-closed. The earlier form: The cause in the writing process is named, and a fix to the
+the owner approved the fix.] `PL-R7Q6`, `PL-TZ7R`, `PL-1XC7`, `PL-FYGJ` and
+`PL-CWRZ` are closed. The earlier form: The cause in the writing process is named, and a fix to the
 process, not a new pattern in the rule, is proposed to the owner.
