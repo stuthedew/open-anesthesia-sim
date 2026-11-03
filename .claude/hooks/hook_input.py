@@ -21,6 +21,7 @@ import os
 import stat
 import sys
 import tempfile
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -132,6 +133,19 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
         "permissionDecisionReason": reason,
     }
     return json.dumps({"hookSpecificOutput": decision})
+
+
+def run(decide: Callable[[str], str]) -> None:
+    """Hand a guard the payload Claude Code sent on standard input, and print what it decides.
+
+    Each guard written in Python is started through this, from the `.sh` that
+    `.claude/settings.json` runs (`PL-S3TF`). `decide` takes the payload and
+    returns the hook's output: a refusal from `deny`, a note, or "" to let the
+    call through. The payload comes on standard input, where the guards once
+    took it from an environment variable, which Linux refuses past 128 KiB, so
+    a long heredoc switched every Bash guard off (`PL-B5K1`).
+    """
+    sys.stdout.write(decide(sys.stdin.read()))
 
 
 #: The mode a file `write_atomically` creates is given: readable by all,

@@ -601,3 +601,18 @@ def test_the_hook_is_wired_under_the_bash_matcher() -> None:
         for hook in entry["hooks"]
     ]
     assert any("floor-interpreter-guard.sh" in command for command in commands)
+
+
+def test_a_call_longer_than_an_environment_variable_holds_is_still_judged() -> None:
+    """`PL-B5K1`: the payload once reached Python in an environment variable.
+
+    Linux refuses one longer than 128 KiB (`MAX_ARG_STRLEN`), so a call that
+    wrote a long file through a heredoc started no check at all, and the hook
+    let it through. The payload now arrives on standard input.
+    """
+    heredoc = "cat > /tmp/long.txt <<'EOF'\n" + "x" * 140_000 + "\nEOF\n"
+    command = heredoc + "python3 -m compileall src/"
+    assert len(json.dumps({"tool_input": {"command": command}})) > 128 * 1024
+    decision = _decision(command)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"

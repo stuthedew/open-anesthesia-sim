@@ -1158,3 +1158,18 @@ ARM_WHOLE = (
 @pytest.mark.parametrize("command", ARM_WHOLE)
 def test_bin_docket_arm_read_whole_or_named_in_text_is_allowed(command: str) -> None:
     assert _decision(command) is None
+
+
+def test_a_call_longer_than_an_environment_variable_holds_is_still_judged() -> None:
+    """`PL-B5K1`: a payload past Linux's 128 KiB limit on one environment variable is judged.
+
+    The payload once reached Python in an environment variable, so a call
+    that wrote a long file through a heredoc started no check, and its gate's
+    exit status was thrown away unseen. It now arrives on standard input.
+    """
+    heredoc = "cat > /tmp/long.txt <<'EOF'\n" + "x" * 140_000 + "\nEOF\n"
+    command = heredoc + "make check | tail -5"
+    assert len(json.dumps({"tool_input": {"command": command}})) > 128 * 1024
+    decision = _decision(command)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"

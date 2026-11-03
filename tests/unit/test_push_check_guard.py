@@ -477,3 +477,20 @@ def test_a_tree_without_the_project_interpreter_skips_only_those_checks(project:
     reason = decision["permissionDecisionReason"]
     assert "`doc_check` failed" in reason
     assert "type_ignore_check" not in reason
+
+
+def test_a_push_after_a_long_heredoc_is_still_judged(project: Path) -> None:
+    """`PL-B5K1`: a payload past Linux's 128 KiB limit on one environment variable is judged.
+
+    The payload once reached Python in an environment variable, which Linux
+    refuses past that length, so the push ran with no check at all. It now
+    arrives on standard input, and the push gets its refusal.
+    """
+    _stub(project, doc=DOC_FAILS)
+    heredoc = "cat > /tmp/long.txt <<'EOF'\n" + "x" * 140_000 + "\nEOF\n"
+    command = heredoc + "git push -u origin claude/x"
+    assert len(json.dumps({"tool_input": {"command": command}})) > 128 * 1024
+    decision = _decision(command, cwd=project, project=project)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"
+    assert DOC_ERROR in decision["permissionDecisionReason"]

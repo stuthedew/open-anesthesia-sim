@@ -111,6 +111,10 @@ TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
         ".claude/hooks/thread_hooks.py",
         "_run",
     ): "runs the repository's session-start hooks, whose output is printed as it comes",
+    (
+        ".claude/hooks/push_check_guard.py",
+        "decide",
+    ): "runs the checks a push must pass, whose reports are their own and not git's",
 }
 
 

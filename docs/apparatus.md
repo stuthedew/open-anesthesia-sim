@@ -716,16 +716,24 @@ guard, and a hook put anywhere else is silently left outside it.
 `stop_hook_patch.py` sat in `tools/` until `PL-W4H9`. That is exactly the gap
 the item names: a script that rewrites another hook, editable without review.
 `docket-digest.sh`, `docket-branch-guard.sh`, `item_read_log.py`,
-`no-prune-guard.sh`, `floor-interpreter-guard.sh`, `gate-status-guard.sh`,
-`push-check-guard.sh`, `direct-merge-guard.sh`, `pr-body-email-guard.sh`,
-`owner_ask_guard.py`, `regex-guard.sh` and `webfetch-quote-note.sh` are documented where their
-behavior is, in their own headers. `shell_split.py` is the one file in the
-directory that nothing wires as a hook. The four Bash guards import it to find
+`no-prune-guard.sh`, `owner_ask_guard.py` and `webfetch-quote-note.sh` are
+documented where their behavior is, in their own headers. Six scripts only
+start a Python module, whose docstring carries the rule.
+`floor-interpreter-guard.sh`, `gate-status-guard.sh`, `push-check-guard.sh` and
+`direct-merge-guard.sh` start `floor_interpreter_guard.py`,
+`gate_status_guard.py`, `push_check_guard.py` and `direct_merge_guard.py`
+beside them, where the linter, the type checker and the one-source-of-truth
+check read the code (`PL-S3TF`). `regex-guard.sh` and `pr-body-email-guard.sh`
+start `tools/regex_check.py` and `tools/pr_body_check.py`. Each module reads
+the call on standard input. An environment variable carried it before, and
+Linux refuses one past 128 KiB, so a long heredoc switched these guards off
+(`PL-B5K1`). Apart from those four modules, `shell_split.py` is the one file in
+the directory that nothing wires as a hook. The four Bash guards import it to find
 where one shell command ends (`PL-PVW2`). The parsing itself is done by
 docket's `subprojects/docket/src/docket/shell.py`, which `shell_split.py` finds
 from its own location. It is the one lexer that docket and the guards share
 (`PL-JNYL`). Docket also decides which word of a git call is its command.
-`no-prune-guard.sh` and `push-check-guard.sh` read
+`no-prune-guard.sh` and `push_check_guard.py` read
 `subprojects/docket/src/docket/gitargv.py`, the same table that `docket.vcs`
 reads. Once the push guard has found a push, it reads the default base and
 git's results through `docket.vcs` (`PL-ZXCN`). So the code that decides what

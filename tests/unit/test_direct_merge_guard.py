@@ -314,3 +314,16 @@ def test_a_payload_naming_no_tool_that_mentions_a_merge_is_refused(
 def test_a_payload_naming_no_tool_and_no_merge_is_let_through(payload: str, tmp_path: Path) -> None:
     """Every MCP call reaches the hook, so it refuses an unjudged call only if it names a merge."""
     assert _decision(payload, _github(tmp_path, {"main": "everyone"})) is None
+
+
+def test_a_merge_call_longer_than_an_environment_variable_holds_is_judged(tmp_path: Path) -> None:
+    """`PL-B5K1`: a payload past Linux's 128 KiB limit on one environment variable is judged.
+
+    The module reads the payload on standard input, so a merge whose commit
+    message is long still reaches the protection check.
+    """
+    arguments = {**MERGE_INPUT, "commit_message": "x" * 140_000}
+    payload = json.dumps({"tool_name": MERGE, "tool_input": arguments})
+    assert len(payload) > 128 * 1024
+    reason = _refusal(_decision(payload, _github(tmp_path, {"main": "non_admins"})))
+    assert "`enforcement_level: non_admins`" in reason

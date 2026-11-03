@@ -126,7 +126,7 @@ if _DOCKET not in sys.path:
 # docket's, so `verify`, `checks` and the guards read past a wrapper and into a
 # Python interpreter's arguments by one grammar (`PL-RHPK`). The guards ask for
 # `invocation`, `is_python` and `python_operand` here.
-from docket.shell import (  # noqa: E402, F401
+from docket.shell import (  # noqa: E402
     HEADS,
     REDIRECTIONS,
     WRAPPERS,
@@ -142,6 +142,39 @@ from docket.shell import (  # noqa: E402, F401
     python_operand,
     run_by,
 )
+
+#: What a guard reads from here: this module's own readers, and the parts of
+#: `docket.shell` it passes on, which the type checker counts as exported only
+#: when they are named (`PL-S3TF`).
+__all__ = [
+    "EXPANDS",
+    "HEADS",
+    "NEEDS_QUOTES",
+    "REDIRECTIONS",
+    "RUN_A_BUILTIN",
+    "SEPARATORS",
+    "WRAPPERS",
+    "Assignment",
+    "Command",
+    "Descriptor",
+    "Grammar",
+    "Operator",
+    "Reserved",
+    "basename",
+    "builtin_words",
+    "command_line",
+    "command_words",
+    "commands",
+    "flat_reading",
+    "invocation",
+    "is_python",
+    "program_words",
+    "python_operand",
+    "redirections",
+    "run_by",
+    "segments",
+    "words",
+]
 
 
 class Command(list[str]):
