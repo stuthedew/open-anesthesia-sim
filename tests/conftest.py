@@ -140,6 +140,30 @@ imports this file, so each builds its own perturbed module.
 The perturbation is printed in pytest's header, which is how the tool knows
 that it was applied. A subprocess that a test starts imports the unperturbed
 module, so a test that reads the constant only that way is not checked.
+
+**A tolerance too small to allow any difference** (`PL-NYFZ`). Floating-point
+numbers are spaced apart, and the spacing grows with the value. The nearest
+other numbers to 100.0 are 1.42e-14 away, so `pytest.approx(100.0, abs=1e-15)`
+passes only for 100.0 itself. It reads as a check that allows rounding error,
+and it allows none. Error Prone flags the same mistake in Java as
+`FloatingPointAssertionWithinEpsilon`
+(https://raw.githubusercontent.com/google/error-prone/master/core/src/main/java/com/google/errorprone/bugpatterns/FloatingPointAssertionWithinEpsilon.java).
+
+So `pytest_configure` wraps the two tolerance comparisons the tests use. The
+first is pytest's `ApproxScalar.__eq__`, which every `pytest.approx` reaches,
+element by element, for a number, a list, a mapping or an array. The second is
+`math.isclose`, checked only when a file under `tests/` calls it, because the
+simulator's own calls are not a test's limit. Each comparison whose tolerance
+is nonzero and smaller than the spacing at its expected value fails the test.
+The tolerance of a `pytest.approx` comparison is read from pytest's own
+`ApproxScalar.tolerance`, so pytest's rule for combining `rel` and `abs` is not
+written here a second time. `math.isclose` documents its own rule: the larger
+of `rel_tol` times the larger magnitude, and `abs_tol`
+(https://docs.python.org/3/library/math.html#math.isclose). A hand-written
+bound such as `abs(a - b) < limit` is not reached, because pytest offers no
+hook into it, and `.claude/rules/test-oracles.md` rule 7 covers it instead.
+The code lives here rather than under `tools/`, because it imports pytest and
+the tools import only the standard library.
 """
 
 from __future__ import annotations
@@ -149,6 +173,7 @@ import importlib
 import importlib.abc
 import importlib.machinery
 import importlib.util
+import math
 import os
 import pickle
 import sys
@@ -159,6 +184,7 @@ from types import CodeType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
+from _pytest.python_api import ApproxScalar
 from restated_constants import (
     PERTURBED_CONSTANT_VARIABLE,
     RANGES_MODULE,
@@ -253,6 +279,120 @@ def perturb_ranges(setting: str | None) -> str | None:
 
 
 _PERTURBATION = perturb_ranges(os.environ.get(PERTURBED_CONSTANT_VARIABLE))
+
+
+_TESTS_DIRECTORY = Path(__file__).resolve().parent
+
+_UNCHECKED: dict[str, Callable[..., Any]] = {}
+
+
+def float_spacing(value: float) -> float:
+    """Return the distance from `value` to the nearest other floating-point number.
+
+    It is the smaller of the two gaps to the neighbours, as in Error Prone. At
+    a power of two the gap below is half the gap above, so `math.ulp`, which
+    gives the gap above a positive value, would overstate it there.
+    """
+    above = math.nextafter(value, math.inf) - value
+    below = value - math.nextafter(value, -math.inf)
+    return min(above, below)
+
+
+def _admits_no_difference(expected: float, tolerance: float) -> bool:
+    """Return whether a nonzero tolerance is too small to admit any number but `expected`.
+
+    A comparison passes when the difference is at most the tolerance. A
+    tolerance equal to the spacing still admits a neighbour, so only one
+    strictly below it is refused. A tolerance of zero is an exact check written
+    on purpose. A negative or NaN tolerance is left for the comparison itself to
+    refuse, as pytest and `math.isclose` both do.
+    """
+    if not tolerance > 0 or not math.isfinite(expected):
+        return False
+    return tolerance < float_spacing(expected)
+
+
+def _explanation(how: str, expected: float, tolerance: float) -> str:
+    """Return the failure message for a comparison that admits no difference."""
+    gap = float_spacing(expected)
+    return (
+        f"{how} allows a difference of {tolerance:.3g}, which is smaller than the "
+        f"{gap:.3g} between {expected!r} and the nearest other floating-point number. "
+        "Only an exact match can pass, so this is an exact check written as an "
+        "approximate one. Write `==` if an exact match is meant, or allow at least "
+        f"{gap:.3g}, for example as a multiple of `math.ulp({expected!r})` (PL-NYFZ)."
+    )
+
+
+def _as_float(value: object) -> float | None:
+    """Return `value` as a float when it is an int or a float, which have a spacing to check.
+
+    A bool, a complex number, a `Decimal` and an int too large for a float
+    return None, and their comparison is left unchecked.
+    """
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except OverflowError:
+        return None
+
+
+def _checked_approx_eq(self: ApproxScalar, actual: object) -> bool:
+    """Refuse a `pytest.approx` element whose tolerance admits no difference, then compare."""
+    expected = _as_float(self.expected)
+    if expected is not None:
+        try:
+            tolerance = self.tolerance
+        except ValueError:
+            # pytest refuses a negative or NaN tolerance itself, in the comparison below.
+            tolerance = 0.0
+        if _admits_no_difference(expected, tolerance):
+            how = f"pytest.approx({self.expected!r}, rel={self.rel!r}, abs={self.abs!r})"
+            pytest.fail(_explanation(how, expected, tolerance), pytrace=True)
+    result: bool = _UNCHECKED["approx"](self, actual)
+    return result
+
+
+def _called_from_a_test() -> bool:
+    """Return whether the caller of `math.isclose` is a file under `tests/`."""
+    caller = Path(sys._getframe(2).f_code.co_filename)
+    return caller.is_relative_to(_TESTS_DIRECTORY)
+
+
+def _checked_isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+    """Refuse a test's `math.isclose` whose tolerance admits no difference, then compare.
+
+    `math.isclose` treats its two arguments alike, so the check uses the
+    larger in magnitude. If the tolerance is below the spacing there, no
+    other number lies within it.
+    """
+    first, second = _as_float(a), _as_float(b)
+    if first is not None and second is not None and _called_from_a_test():
+        larger = first if abs(first) >= abs(second) else second
+        tolerance = max(rel_tol * abs(larger), abs_tol)
+        if _admits_no_difference(larger, tolerance):
+            how = f"math.isclose(..., rel_tol={rel_tol!r}, abs_tol={abs_tol!r})"
+            pytest.fail(_explanation(how, larger, tolerance), pytrace=True)
+    result: bool = _UNCHECKED["isclose"](a, b, rel_tol=rel_tol, abs_tol=abs_tol)
+    return result
+
+
+def refuse_tolerances_below_spacing() -> None:
+    """Wrap `pytest.approx`'s comparison and `math.isclose`. A second call does nothing."""
+    if _UNCHECKED:
+        return
+    _UNCHECKED["approx"] = ApproxScalar.__eq__
+    _UNCHECKED["isclose"] = math.isclose
+    ApproxScalar.__eq__ = _checked_approx_eq  # type: ignore[method-assign]
+    # It takes only the ints and floats it checks, where `math.isclose` takes anything float-like.
+    math.isclose = _checked_isclose  # type: ignore[assignment]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Fail any test whose tolerance is below the floating-point spacing (`PL-NYFZ`)."""
+
+    refuse_tolerances_below_spacing()
 
 
 def pytest_report_header(config: pytest.Config) -> list[str]:

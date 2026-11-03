@@ -3,13 +3,15 @@ id: PL-NYFZ
 title: A test tolerance smaller than the gap between neighbouring floating-point numbers at the compared value turns an approximate check into an exact one without saying so (Error Prone's FloatingPointAssertionWithinEpsilon flags this in Java); nothing here checks for it in the simulator's tests (found while researching PL-TN0G)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test
 feature: dead-test-limits
-touches: tools/tolerance_spacing.py, tests/conftest.py, tests/unit/test_tolerance_spacing.py, .claude/rules/test-oracles.md, docket.toml
+touches: tests/conftest.py, tests/unit/test_tolerance_spacing.py, .claude/rules/test-oracles.md, docket.toml
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1974
 payoff: a test limit that silently demands an exact match fails at once with the two numbers and both fixes, so no reader is told a check tolerates rounding it never tolerates
-verify: grep -q 'def test_a_tolerance_below_the_spacing_fails' tests/unit/test_tolerance_spacing.py && grep -q 'tolerance_spacing' tests/conftest.py
+verify: grep -q 'def test_a_tolerance_below_the_spacing_fails' tests/unit/test_tolerance_spacing.py && grep -q 'def refuse_tolerances_below_spacing' tests/conftest.py
 ---
 
 **Problem.** A test tolerance smaller than the gap between neighbouring floating-point numbers at the compared value turns an approximate check into an exact one without saying so (Error Prone's FloatingPointAssertionWithinEpsilon flags this in Java); nothing here checks for it in the simulator's tests (found while researching PL-TN0G)
@@ -59,9 +61,9 @@ each kind, and it named all four.
 
 **Design** (session decision, 2026-11-03).
 
-1. **A check inside every test run.** `tools/tolerance_spacing.py` wraps the
+1. **A check inside every test run.** `tests/conftest.py` wraps the
    comparison inside `pytest.approx` (`_pytest.python_api.ApproxScalar`) and
-   `math.isclose`, and `tests/conftest.py` installs it at configure time. A
+   `math.isclose` when pytest configures. A
    comparison whose nonzero tolerance is smaller than the spacing at its
    expected value fails the test, with a message naming the tolerance, the
    spacing, and the two fixes: `==` for an exact check, or a limit of at
@@ -95,3 +97,7 @@ fails that test with a message naming both numbers, and
 a power of two, a zero tolerance, pytest's default tolerance, and an
 `isclose` called from outside `tests/`. Rule 7 of
 `.claude/rules/test-oracles.md` carries the sentence on hand-written limits.
+
+**Built 2026-11-03.** The check is in `tests/conftest.py` and runs in every
+test run. `make check` passed with it installed, 12,020 tests, which agrees
+with the measurement: no tolerance in the suite is below the spacing today.
