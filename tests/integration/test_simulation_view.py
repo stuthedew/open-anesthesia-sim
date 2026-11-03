@@ -8980,12 +8980,17 @@ def _callback_bypass(
 
 
 def _unwrapped_partial(node: ast.expr) -> ast.expr:
-    """Return the function that `node` wraps when it is a `partial` call, or `node` itself."""
+    """Return the function that `node` wraps when it is a `partial` call, or `node` itself.
+
+    Both `partial(...)` and `functools.partial(...)` count.
+    """
 
     if (
         isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "partial"
+        and (
+            (isinstance(node.func, ast.Name) and node.func.id == "partial")
+            or (isinstance(node.func, ast.Attribute) and node.func.attr == "partial")
+        )
         and node.args
     ):
         return node.args[0]
@@ -8993,15 +8998,18 @@ def _unwrapped_partial(node: ast.expr) -> ast.expr:
     return node
 
 
-def _assigned_names(function: ast.AST) -> dict[str, list[ast.expr]]:
-    """Return each name that `function` assigns a value to, with every value it assigns.
+def _assigned_names(function: ast.AST) -> dict[str, list[ast.expr | None]]:
+    """Return each name that `function` binds, with every value a plain assignment gives it.
 
-    Only a plain assignment to one name counts, as in `callback = self._apply` or
-    `callback: Slot = self._apply`. A name that a loop, a `with` or an unpacking assigns is
-    not followed.
+    A plain assignment to a name gives its value, as in `callback = self._apply` or
+    `callback: Slot = self._apply`. Any other binding of the name adds None, which says the
+    name may also hold something that no assignment shows. A parameter, a loop target, a
+    `with` or `except` target, an unpacking, `:=`, `+=` and an import are such bindings
+    (blind review of `PL-WV74`).
     """
 
-    assigned: dict[str, list[ast.expr]] = {}
+    assigned: dict[str, list[ast.expr | None]] = {}
+    plain_targets: set[int] = set()
 
     for node in ast.walk(function):
         if isinstance(node, ast.Assign):
@@ -9013,18 +9021,37 @@ def _assigned_names(function: ast.AST) -> dict[str, list[ast.expr]]:
 
         for target in targets:
             if isinstance(target, ast.Name):
+                plain_targets.add(id(target))
                 assigned.setdefault(target.id, []).append(value)
+
+    otherwise: set[str] = set()
+
+    for node in ast.walk(function):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            if id(node) not in plain_targets:
+                otherwise.add(node.id)
+        elif isinstance(node, ast.arg):
+            otherwise.add(node.arg)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            otherwise.add(node.name)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            otherwise.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+
+    for name in otherwise:
+        assigned.setdefault(name, []).append(None)
 
     return assigned
 
 
-def _followed(node: ast.expr, assigned: Mapping[str, list[ast.expr]]) -> list[ast.expr]:
+def _followed(node: ast.expr, assigned: Mapping[str, list[ast.expr | None]]) -> list[ast.expr]:
     """Return the callbacks that `node` stands for, following a local variable to its values.
 
     A name that the enclosing function assigns stands for each value assigned to it, so
     `callback = self._apply; button.clicked.connect(callback)` is judged as a connection of
-    `self._apply`. A `partial` stands for the function that it wraps. Any other node stands
-    for itself.
+    `self._apply`. A name that is also bound some other way, such as a parameter or a loop
+    target, stands for itself as well. A `partial` stands for the function that it wraps.
+    A conditional expression stands for both of its values, and a tuple, list or set
+    assigned to a name stands for each of its elements. Any other node stands for itself.
     """
 
     pending, seen, found = [node], set[str](), list[ast.expr]()
@@ -9035,7 +9062,14 @@ def _followed(node: ast.expr, assigned: Mapping[str, list[ast.expr]]) -> list[as
         if isinstance(current, ast.Name) and current.id in assigned:
             if current.id not in seen:
                 seen.add(current.id)
-                pending.extend(reversed(assigned[current.id]))
+
+                for value in reversed(assigned[current.id]):
+                    if value is None:
+                        found.append(current)
+                    else:
+                        pending.extend(reversed(list(_elements(value))))
+        elif isinstance(current, ast.IfExp):
+            pending.extend((current.orelse, current.body))
         else:
             found.append(current)
 
@@ -9043,7 +9077,7 @@ def _followed(node: ast.expr, assigned: Mapping[str, list[ast.expr]]) -> list[as
 
 
 def _passed_callbacks(
-    call: ast.Call, assigned: Mapping[str, list[ast.expr]]
+    call: ast.Call, assigned: Mapping[str, list[ast.expr | None]]
 ) -> list[tuple[ast.expr, str]] | None:
     """Return each callback that `call` passes on, with its position, or None for a disconnect.
 
@@ -9058,10 +9092,6 @@ def _passed_callbacks(
 
     if called == "disconnect":
         return None
-
-    if called == "partial":
-        # The call that passes the `partial` on judges the function it wraps.
-        return []
 
     if called == "connect":
         (slot,) = call.args
@@ -9087,7 +9117,7 @@ def _passed_callbacks(
 
 def _calls_with_their_assignments(
     body: list[ast.stmt],
-) -> Iterator[tuple[ast.Call, dict[str, list[ast.expr]]]]:
+) -> Iterator[tuple[ast.Call, dict[str, list[ast.expr | None]]]]:
     """Yield each call in `body` with the names its top-level function assigns.
 
     `body` is a class's or a module's statements, and each class in it is read the same
@@ -9243,9 +9273,10 @@ def _outside_bypasses(
     callback is matched to a view's method by its attribute name alone, as `view._apply` or
     `self.view._apply` is matched to `RunView._apply`, because the source does not say which
     object the name before the dot holds. A callback named `self.<name>` is the enclosing
-    class's own method and is not matched. A lambda that calls a view's method from outside
-    is not judged. Each key in `exemptions` pairs the module's dotted name with the
-    callback's source text.
+    class's own method and is not matched, so a callback that another class stores as
+    `self._callback = view._apply` and connects later is not seen. A lambda that calls a
+    view's method from outside is not judged either. Each key in `exemptions` pairs the
+    module's dotted name with the callback's source text.
     """
 
     methods = _view_methods(views)
@@ -9434,6 +9465,11 @@ class _ViewWiredAroundTheGate(QWidget):
         button.clicked.connect(held_gated)
         held_ungated = self._ungated
         timer.singleShot(0, held_ungated)
+        for looped in (self._ungated,):
+            button.clicked.connect(looped)
+        chosen = self._gated if key else self._ungated
+        timer.singleShot(0, chosen)
+        self._stored = partial(self._ungated, 1)
 
 
 def _bare_function() -> None:
@@ -9454,6 +9490,10 @@ def _wire_from_outside(view: _ViewWiredAroundTheGate, button: Any, timer: Any) -
     held_ungated = view._ungated
     timer.singleShot(0, held_ungated)
     timer.singleShot(0, partial(view._ungated))
+    chosen = view._gated if timer else view._ungated
+    button.clicked.connect(chosen)
+    slots = [view._gated, view._ungated]
+    timer.register(slots)
 
 
 def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
@@ -9487,10 +9527,13 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
         "self._run_now(*(self._ungated,))",
         "self._register((self._gated, self._ungated))",
         "timer.singleShot(0, held_ungated)",
+        "timer.singleShot(0, chosen)",
+        "partial(self._ungated, 1)",
+        "button.clicked.connect(looped)",
     ]
     assert reading.exempt_but_gated == []
     assert reading.exemptions_handed_out == set()
-    assert reading.connections == 9
+    assert reading.connections == 10
 
     exempt = ("_ViewWiredAroundTheGate", "run.controller.pause")
     gated = ("_ViewWiredAroundTheGate", "self._gated")
@@ -9502,7 +9545,7 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
 
     assert "button.clicked.connect(run.controller.pause)" not in reported
     assert "def keyPressEvent" not in reported
-    assert reading.exempt_but_gated == [gated] * 6
+    assert reading.exempt_but_gated == [gated] * 7
     assert reading.exemptions_handed_out == {exempt, gated, override}
 
 
@@ -9512,7 +9555,10 @@ def test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view() -> N
     Before `PL-WV74` the check read only the view's own class, so a slot connected from
     another module, or held in a variable first, passed unseen. The expected list was
     written by hand from that function's source. A gated method passes, whether it is named
-    at once or held in a variable first. An ungated method is reported in each shape.
+    at once or held in a variable first. An ungated method is reported in each shape: named
+    at once, held in a variable, wrapped in a `partial`, chosen by a conditional expression,
+    and held in a list. A `partial` is reported twice, once by the call that passes it on
+    and once by its own call, which also catches a `partial` that is stored and passed later.
     """
 
     modules = {"synthetic": ast.parse(inspect.getsource(_wire_from_outside))}
@@ -9522,8 +9568,11 @@ def test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view() -> N
         "synthetic: button.clicked.connect(view._ungated)",
         "synthetic: timer.singleShot(0, held_ungated)",
         "synthetic: timer.singleShot(0, partial(view._ungated))",
+        "synthetic: button.clicked.connect(chosen)",
+        "synthetic: timer.register(slots)",
+        "synthetic: partial(view._ungated)",
     ]
-    assert reading.connections == 3
+    assert reading.connections == 4
 
     exempt = ("synthetic", "view._ungated")
     gated = ("synthetic", "view._gated")
@@ -9532,7 +9581,7 @@ def test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view() -> N
     )
 
     assert reading.bypasses == []
-    assert reading.exempt_but_gated == [gated] * 2
+    assert reading.exempt_but_gated == [gated] * 4
     assert reading.exemptions_handed_out == {exempt, gated}
 
 
