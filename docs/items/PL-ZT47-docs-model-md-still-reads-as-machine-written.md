@@ -143,19 +143,37 @@ it, with its `verify:` written against `tools/model_rewrite.py ids`.
    left. Where no item holds it, file one. Commit this step on its own.
 3. Keep every equation, unit, value, assumption, limitation, citation with its
    locator, `provenance:`, `derived:` and `not-restated:` marker, named test,
-   and declared-none form. `tools/doc_check.py` requires the last four. Keep
-   each heading's text, because `src/`, `tests/` and the item files cite
+   and declared-none form. `tools/doc_check.py` requires the last four. A fact
+   may move to the section's note for developers, the paragraph at the
+   section's end that opens with "**For developers.**", and a number may be
+   restated in the reader's form with the same value, such as 4e-4 as 0.04%.
+   Keep each heading's text, because `src/`, `tests/` and the item files cite
    sections by heading. Where a heading must change, update every citation of
    it in the same commit.
 4. Rewrite the remaining prose against `.claude/rules/plain-writing.md`,
-   including its five patterns, and commit that separately.
+   including its five patterns. Before each paragraph, write down what its
+   reader should take from it and do with it, and give each chosen value its
+   reason from a record, as that rule says. Commit this step separately.
 5. Run `python3 tools/model_rewrite.py lost` and account for each line it
    prints in the pull request body: moved to an item, history the item already
-   held, or restored.
+   held, restated with the same value, or restored. A fact moved to the note
+   for developers prints nothing, because `lost` counts each fact across the
+   whole document. A number restated with the same value prints as
+   `restated`, beside the form that replaced it (`PL-TZ7R`).
 6. Close out as usual. Step 8's prose review now reads the changed paragraphs.
    The pull request waits on the owner's read, since it changes
    `docs/MODEL.md`. The read can start from `lost`'s accounting rather than the
    whole diff.
+
+**Revised 2026-11-02 (project owner, ratified, `PL-ZTZF`).** Step 6 no longer
+holds every part for the owner's read. A part merges on green when `lost` lists
+nothing added and each fact it lists as dropped is history or a duplicate the
+document still holds. Only a sentence whose meaning needs a clinician's
+judgment, such as what a hazard row promises, goes to the owner, quoted before
+and after. A number that `lost` marks as restated counts as kept, and its new
+form does not count as added, because the value is unchanged (`PL-TZ7R`,
+following `PL-H76S`'s design round, ratified 2026-11-02 23:41Z, which lets a
+reader's form replace e-notation).
 
 Other open items change the same sections, so expect to resolve against
 them. `PL-8YBS` changes a hazard-table row, `PL-19W8` and `PL-H94Q` hold

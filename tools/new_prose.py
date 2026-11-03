@@ -35,6 +35,21 @@ from the default branch to the working tree, and includes files that git does
 not track yet, as `tools/diff_mutation.py` reads it. A file that is new on the
 branch has every line changed.
 
+**Who reads each unit.** `.claude/rules/plain-writing.md` holds a table that
+names the readers of each kind of text: what each knows, what each does not
+know, and what each will do with the text. The table's first column names files
+in code spans, where a span ending in "/" is a directory. The report lists the
+readers of every file it prints a unit from, and each unit names its readers,
+so the reviewer judges a unit against the reader it is for (`PL-R7Q6`). A unit
+whose file no row names stops the report with exit 1, because a review with no
+reader is the failure `PL-H76S` found.
+
+**The reviewer's prompt is printed first.** `PROMPT` is the prompt's one
+home, so the session hands the reviewer this tool's whole output and copies
+nothing by hand. `tools/rejected_prose.py` prints the same prompt before the
+paragraphs the owner rejected, which is how a change to it is tested
+(`PL-FYGJ`). Where no unit changed, the prompt is not printed.
+
 Exits 0 when it read the diff, whether or not it printed a unit. A changed file
 that will not parse is named in a "Not read" line, so a partial answer is never
 given as a whole one. Exits 1 when the diff could not be read or the default
@@ -60,7 +75,7 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -69,9 +84,10 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import SOURCE, TESTS, imports_product  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import PARAGRAPH, TABLE  # noqa: E402
+from docket.markdown import PARAGRAPH, TABLE, tables  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
+from docket.release import code_spans  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
     changed_path_args,
@@ -89,6 +105,21 @@ from diff_mutation import changed_rows  # noqa: E402
 MIN_WORDS = 30
 #: The documents whose paragraphs are reviewed as well, as repository paths.
 DOCUMENTS = frozenset(path.as_posix() for path in doc_check.PROVENANCE_DOCUMENTS)
+
+#: The rule whose table names the readers of each kind of text.
+RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
+#: The prompt that the close-out's fresh reviewer is given before the units.
+#: This file is its one home, and `tools/rejected_prose.py` tests each change
+#: to it against the paragraphs the owner rejected (`PL-FYGJ`).
+PROMPT = ROOT / "docs" / "prose-review" / "prompt.md"
+#: The header of that table, which is how the tool finds it in the rule.
+READER_HEADER = (
+    "Kind of text",
+    "Reader",
+    "What they know",
+    "What they do not know",
+    "What they will do with it",
+)
 
 #: How many lines of code to print above and below each unit, so the reviewer
 #: can see what an "it" or a name points at without opening the file.
@@ -108,6 +139,50 @@ class Unit:
     @property
     def words(self) -> int:
         return len(self.text.split())
+
+
+@dataclass(frozen=True)
+class Reader:
+    """One row of the plain-writing rule's reader table."""
+
+    #: The files the row names, where one ending in "/" is a directory.
+    paths: tuple[str, ...]
+    who: str
+    knows: str
+    does_not_know: str
+    will_do: str
+
+    def reads(self, path: str) -> bool:
+        """Whether the row names the file at `path`, itself or by its directory."""
+        return any(
+            path == named or (named.endswith("/") and path.startswith(named))
+            for named in self.paths
+        )
+
+
+def reader_table(text: str) -> list[Reader]:
+    """Every row of the reader table in the rule's `text`, in order.
+
+    Raises `ValueError` where `text` holds no table with `READER_HEADER`, or a
+    row of that table has the wrong number of cells.
+    """
+    for table in tables(split_lines(text)):
+        if table.header != READER_HEADER:
+            continue
+        found = []
+        for index, row in table.rows:
+            if len(row) != len(READER_HEADER):
+                raise ValueError(f"row {index + 1} of the reader table has {len(row)} cells")
+            kind, who, knows, does_not_know, will_do = row
+            paths = tuple(span["content"].strip() for span in code_spans(kind))
+            found.append(Reader(paths, who, knows, does_not_know, will_do))
+        return found
+    raise ValueError(f"no table headed {' | '.join(READER_HEADER)}")
+
+
+def readers_of(table: Sequence[Reader], path: str) -> list[Reader]:
+    """The rows of `table` that name the file at `path`, in table order."""
+    return [reader for reader in table if reader.reads(path)]
 
 
 def is_simulator_file(path: str, tree: ast.Module) -> bool:
@@ -247,25 +322,58 @@ def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
         yield f"{row:>5} {mark} {lines[row - 1]}"
 
 
-def report(root: Path, found: Found) -> str:
-    """The units with their excerpts, then each file that was not read."""
+def unread_by_anyone(table: Sequence[Reader], found: Found) -> list[str]:
+    """Each file in `found` that holds a unit and that no row of `table` names."""
+    return sorted({unit.path for unit in found.units if not readers_of(table, unit.path)})
+
+
+def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
+    """For each file in `paths`, in order and once, the full row of each of its readers."""
+    out: list[str] = []
+    for path in dict.fromkeys(paths):
+        out += ["", f"Readers of {path}:"]
+        for reader in readers_of(table, path):
+            out += [
+                f"  - {reader.who}.",
+                f"    Knows: {reader.knows}",
+                f"    Does not know: {reader.does_not_know}",
+                f"    Will: {reader.will_do}",
+            ]
+    return out
+
+
+def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Reader]) -> list[str]:
+    """The unit's numbered header, naming its readers from `table`, then its `rows`."""
+    who = "; ".join(reader.who for reader in readers_of(table, unit.path))
+    return [
+        "",
+        f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
+        f"{unit.kind}, {unit.words} words, for: {who}",
+        *rows,
+    ]
+
+
+def report(root: Path, found: Found, table: Sequence[Reader]) -> str:
+    """The readers, the units with their excerpts, then each file that was not read.
+
+    Every file holding a unit must have a row in `table`; `unread_by_anyone`
+    names those that do not, and `main` refuses to print the report while any
+    does.
+    """
     out: list[str] = []
     if found.units:
         out.append(
             f"{len(found.units)} docstrings, comments and document paragraphs of {MIN_WORDS} "
             f"words or more changed in the simulator's files, against {found.against}. Rows "
-            "marked > are the unit; rows marked | are the lines around it."
+            "marked > are the unit; rows marked | are the lines around it. Judge each unit "
+            "for the readers its header names, as the list below describes them."
         )
+        out += reader_lines(table, (unit.path for unit in found.units))
         texts: dict[str, list[str]] = {}
         for number, unit in enumerate(found.units, start=1):
             if unit.path not in texts:
                 texts[unit.path] = split_lines((root / unit.path).read_text(encoding="utf-8"))
-            out += [
-                "",
-                f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
-                f"{unit.kind}, {unit.words} words",
-                *excerpt(texts[unit.path], unit),
-            ]
+            out += unit_lines(number, unit, excerpt(texts[unit.path], unit), table)
     else:
         out.append(
             f"No docstring, comment or document paragraph of {MIN_WORDS} words or more changed "
@@ -307,7 +415,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 2
             print(len(unreviewed(root, found, args.count or None)))
         else:
-            print(report(root, branch_prose(root, base)))
+            table = reader_table(RULE.read_text(encoding="utf-8"))
+            found = branch_prose(root, base)
+            missing = unread_by_anyone(table, found)
+            if missing:
+                for path in missing:
+                    print(
+                        f"new_prose: no answer: no row of the reader table in {RULE.name} "
+                        f"names {path}",
+                        file=sys.stderr,
+                    )
+                return 1
+            if found.units:
+                print(PROMPT.read_text(encoding="utf-8"))
+            print(report(root, found, table))
+    except ValueError as error:
+        print(f"new_prose: no answer: {RULE.name}: {error}", file=sys.stderr)
+        return 1
     except (GitUnanswered, OSError) as error:
         print(f"new_prose: no answer: {error!r}", file=sys.stderr)
         return 1

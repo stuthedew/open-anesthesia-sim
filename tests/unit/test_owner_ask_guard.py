@@ -105,6 +105,19 @@ ASKS = (
     "Your call on whether #1688 is applied.",
     "Your choice on #1700 is applied when you merge it.",
     "Recorded your choice; #1700 is your call.",
+    # A hold put in the future is still an ask when its sentence names a pull
+    # request, or its subject is anything but "each", "both" and their kin
+    # (`PL-VHMS`). The last four are the blind reviews' rows on `#1948`.
+    "#1945 will wait for your read.",
+    "The pull request will wait for your read.",
+    "It will wait for your read.",
+    "This'll need your review before it merges.",
+    "These will wait for your read.",
+    "#1944 is open. I will wait for your read.",
+    "The PR is green. Merging will wait for your go-ahead.",
+    "I have opened #1950. Both changes would need your review.",
+    "#1945 and #1946 both touch docs/MODEL.md, so each will wait for your read.",
+    "Each part is drafted. Each will wait for your read, starting with #1945.",
 )
 
 
@@ -141,6 +154,12 @@ PROGRESS = (
     'It refuses twenty ask phrasings including "over to you" and "your call" beside a '
     "pull request.",
     "The hand-offs are “over to you” and ‘your call’ when a sentence names a PR.",
+    # A hold put in the future, for pull requests not yet opened, which the hook
+    # refused on 2026-11-02 (`PL-VHMS`).
+    "Because each one changes MODEL.md, each will wait for your read.",
+    "Both would need your review once they are open.",
+    "#1944 merged. Each one is going to be ready for your read later today.",
+    "The parts after it touch MODEL.md too, so all of them will wait for your read.",
 )
 
 
@@ -270,10 +289,10 @@ def test_the_hook_is_wired_on_every_projects_tool() -> None:
 
 POST = "mcp__hearthbot__post_message"
 
-#: The risk-review form of the line `arm --owner-ask` prints.
+#: The review form of the line `arm --owner-ask` prints.
 RISK_LINE = (
-    "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests pin "
-    "the unit. Please look at: the infusion panel's label."
+    "What changed: the dose label reads mcg. Question for you: should it show mcg/kg/min? "
+    "Already checked: the label matches the unit stored. What to reply: Merge it."
 )
 
 

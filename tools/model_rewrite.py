@@ -20,22 +20,35 @@ citation. This tool answers the two questions that part asks of the tree.
   lost value, and the ordinal of a numbered list is not read. Facts are
   counted and not placed, so two values swapped within a sentence print
   nothing, which the diff still shows. Item ids and dates are counted
-  apart, because they are the history the part removes on purpose. Exits 0
-  whenever it read both versions, since whether a dropped number was history
-  or a value is a judgment for the session and the owner. Exits 1 when git
-  could not answer.
+  apart, because they are the history the part removes on purpose. It then
+  prints each equation, code span, citation and number that the working tree
+  holds more often than the fork, with the line where it now stands, so a
+  value the rewrite added or restated in a new place is shown too. A dropped
+  number and an added number with the same value and unit, in the same
+  section, are marked `restated`, so 4e-4 rewritten as 0.04% reads as one
+  value in a new form. A percent is read as a fraction of one for this, and a
+  unit as `tools/doc_check.py` reads it. A fact moved within the document, such
+  as to a section's note for developers, prints nothing, because each fact is
+  counted across the whole document. Exits 0 whenever it read both versions,
+  since whether a dropped number was history or a value is a judgment for the
+  session. Exits 1 when git could not answer.
 
 The pull request of each section part accounts for every line `lost` prints.
+When each line is history or a kept duplicate and nothing was added, no value,
+equation, code span or citation of the specification changed, and the change
+merges on green unless a sentence's meaning needs the owner's judgment
+(project owner, 2026-11-02, ratified, `PL-ZTZF`).
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,7 +56,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import headings  # noqa: E402
+from docket.markdown import Heading, headings  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 from docket.vcs import GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
@@ -76,6 +89,13 @@ PROSE_NUMBER_RE = re.compile(
     r"(?:[  ]?×?(?:" + doc_check.PROSE_UNITS + r")(?![\w/]))?"
     r"(?![\w])"
 )
+#: A number that `PROSE_NUMBER_RE` found, split into its numeral and its unit.
+NUMBER_PARTS_RE = re.compile(
+    r"(?P<numeral>[−+-]?\d+(?:[.,]\d+)*(?:[eE][−+-]?\d+)?)[ \u00a0]?×?(?P<unit>.*)"
+)
+#: The heading level of a section of `docs/MODEL.md`. A restated number is
+#: paired with the dropped one only inside the same section of this level.
+SECTION_LEVEL = 2
 #: The marker of a numbered list item, whose ordinal is not a value.
 LIST_ORDINAL_RE = re.compile(r"^[ \t]*\d+\.(?=[ \t])", re.M)
 
@@ -202,6 +222,8 @@ class Gone:
     line: int
     context: str
     moved: bool
+    #: The added number that states the same value in another form, if any.
+    restated_as: str = ""
 
 
 def gone_facts(before: str, after: str, added: str) -> list[Gone]:
@@ -226,6 +248,119 @@ def gone_facts(before: str, after: str, added: str) -> list[Gone]:
         for (kind, fact), times in counted.items()
         if times > 0
     ]
+
+
+@dataclass(frozen=True)
+class Added:
+    """A fact the working tree's document holds more often than the fork's."""
+
+    kind: str
+    text: str
+    #: How many more times the working tree holds it.
+    times: int
+    #: The working tree's line where it first stands, and that line's text.
+    line: int
+    context: str
+    #: The dropped number whose value this one states in another form, if any.
+    restates: str = ""
+
+
+def added_facts(before: str, after: str) -> list[Added]:
+    """The equations, code spans, citations and numbers that `after` holds more often than `before`.
+
+    A rewrite that adds a value, or restates one in a new place, changes what
+    the specification says as surely as one that drops a value. `gone_facts`
+    shows only the second, so this is its mirror.
+    """
+    first: dict[tuple[str, str], int] = {}
+    counted: Counter[tuple[str, str]] = Counter()
+    for kind, fact, line in facts(after):
+        if kind not in FACT_KINDS:
+            continue
+        counted[(kind, fact)] += 1
+        first.setdefault((kind, fact), line)
+    counted.subtract((kind, fact) for kind, fact, _ in facts(before) if kind in FACT_KINDS)
+    lines = split_lines(after)
+    return [
+        Added(kind, fact, times, first[(kind, fact)], lines[first[(kind, fact)] - 1].strip())
+        for (kind, fact), times in counted.items()
+        if times > 0
+    ]
+
+
+def number_value(number: str) -> tuple[float, str | None] | None:
+    """A number's value and unit, with a percent read as a fraction of one.
+
+    The unit is normalized by `doc_check._prose_figure`, so "10 percent" and
+    "10%" hold one value, and both hold the value of a bare "0.1". A comma is
+    read as a thousands separator. A numeral whose comma is not one, such as
+    "1,5", returns `None`, so it is never paired.
+    """
+    parts = NUMBER_PARTS_RE.fullmatch(number)
+    if parts is None:
+        return None
+    numeral = parts["numeral"].replace("−", "-")
+    whole = numeral.lstrip("+-").partition(".")[0]
+    if "," in numeral and any(len(group) != 3 for group in whole.split(",")[1:]):
+        return None
+    value, unit = doc_check._prose_figure(numeral.replace(",", ""), parts["unit"] or None)
+    if unit == "%":
+        return value / 100, None
+    return value, unit
+
+
+def section_at(found: Sequence[Heading], line: int) -> str:
+    """The title of the section that holds 1-based `line`, or "" before the first one.
+
+    `found` is the document's headings, in order, as `headings` returns them.
+    """
+    title = ""
+    for heading in found:
+        if heading.line >= line:
+            break
+        if heading.level <= SECTION_LEVEL:
+            title = heading.title
+    return title
+
+
+def pair_restated(
+    before: str, after: str, gone: Sequence[Gone], added: Sequence[Added]
+) -> tuple[list[Gone], list[Added]]:
+    """Mark each dropped number that an added number restates with the same value.
+
+    A pair needs the same value and unit, the same count, and the same section
+    in both versions. The section bound keeps a value dropped in one section
+    from being hidden by an equal value added to another. A number already
+    moved to an item file is not paired. Two values count as the same when
+    they differ by less than one part in 10^12. That allows for the rounding
+    error of dividing a percent by 100, such as 0.07% against 7e-4.
+    """
+    fork_heads, now_heads = headings(split_lines(before)), headings(split_lines(after))
+    gone_out, added_out = list(gone), list(added)
+    taken: set[int] = set()
+    for at, dropped in enumerate(gone_out):
+        if dropped.kind != "number" or dropped.moved:
+            continue
+        value = number_value(dropped.text)
+        if value is None:
+            continue
+        section = section_at(fork_heads, dropped.line)
+        for index, new in enumerate(added_out):
+            if index in taken or new.kind != "number" or new.times != dropped.times:
+                continue
+            other = number_value(new.text)
+            if (
+                other is None
+                or other[1] != value[1]
+                or not math.isclose(other[0], value[0], rel_tol=1e-12, abs_tol=0.0)
+                or section_at(now_heads, new.line) != section
+            ):
+                continue
+            taken.add(index)
+            gone_out[at] = replace(dropped, restated_as=new.text)
+            added_out[index] = replace(new, restates=dropped.text)
+            break
+    return gone_out, added_out
 
 
 def added_to_items(root: Path, fork: str) -> str:
@@ -268,10 +403,12 @@ def report_gone(gone: Sequence[Gone], against: str) -> list[str]:
     """The lines `lost` prints: the facts by kind, then the history it counts."""
     facts_gone = [item for item in gone if item.kind in FACT_KINDS]
     moved = sum(item.moved for item in facts_gone)
+    restated = sum(bool(item.restated_as) for item in facts_gone)
     out = [
         f"{MODEL_DOC} against {against}: {len(facts_gone)} equations, code spans, citations "
         f"and numbers are held fewer times than at the fork, and {moved} of them were added "
-        "to an item file."
+        f"to an item file. {restated} of them are restated in another form with the same "
+        "value."
     ]
     for kind in FACT_KINDS:
         rows = sorted((item for item in facts_gone if item.kind == kind), key=lambda g: g.line)
@@ -279,13 +416,38 @@ def report_gone(gone: Sequence[Gone], against: str) -> list[str]:
             continue
         out += ["", f"{kind} ({len(rows)})"]
         for item in rows:
-            mark = "moved" if item.moved else "gone "
             times = f" x{item.times}" if item.times > 1 else ""
-            out.append(f"  {mark} {item.text}{times}  (fork line {item.line}: {item.context[:90]})")
+            if item.restated_as:
+                fact = f"restated {item.text}{times} as {item.restated_as}"
+            else:
+                fact = f"{'moved' if item.moved else 'gone '} {item.text}{times}"
+            out.append(f"  {fact}  (fork line {item.line}: {item.context[:90]})")
     for kind in HISTORY_KINDS:
         texts = sorted({item.text for item in gone if item.kind == kind})
         if texts:
             out += ["", f"{kind}s no longer cited ({len(texts)}): {', '.join(texts)}"]
+    return out
+
+
+def report_added(added: Sequence[Added]) -> list[str]:
+    """The lines `lost` prints after the dropped facts: each fact the working tree added."""
+    restating = sum(bool(item.restates) for item in added)
+    out = [
+        "",
+        f"{len(added)} equations, code spans, citations and numbers are held more times than "
+        f"at the fork. {restating} of them restate a dropped number with the same value.",
+    ]
+    for kind in FACT_KINDS:
+        rows = sorted((item for item in added if item.kind == kind), key=lambda a: a.line)
+        if not rows:
+            continue
+        out += ["", f"added {kind} ({len(rows)})"]
+        for item in rows:
+            times = f" x{item.times}" if item.times > 1 else ""
+            restates = f" restating {item.restates}" if item.restates else ""
+            out.append(
+                f"  added {item.text}{times}{restates}  (line {item.line}: {item.context[:90]})"
+            )
     return out
 
 
@@ -323,7 +485,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"model_rewrite: no answer: {error!r}", file=sys.stderr)
         return 1
     after = (root / MODEL_DOC).read_text(encoding="utf-8")
-    print("\n".join(report_gone(gone_facts(before, after, added), against)))
+    gone, more = pair_restated(
+        before, after, gone_facts(before, after, added), added_facts(before, after)
+    )
+    print("\n".join(report_gone(gone, against) + report_added(more)))
     return 0
 
 
