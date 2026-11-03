@@ -46,3 +46,10 @@ is not `PL-40SJ`'s fact, the value of a named constant. No constant holds this
 count, and `PL-40SJ`'s brief sends prose that restates a number to `PL-G424`'s
 family. No `reenters:` is recorded, because `PL-G424`'s fix deliberately leaves
 counts in prose to judgment. Feature `one-source-of-truth` works it.
+
+**Done 2026-11-03.** Every count of the group is gone from the four files.
+The names of the tools stay in `docs/apparatus.md`, because
+`tools/config_home_check.py` already compares that list with the `Makefile`'s
+`uv run python` lines, so a tool added to one and not the other fails
+`make check`. The test docstring's list had no such check, so it now names two
+tools as examples and points at the lines.

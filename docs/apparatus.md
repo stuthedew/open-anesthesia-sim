@@ -609,15 +609,17 @@ the interpreter that runs it could no longer parse it.
 than by filename, so the guard covers the next hook without being extended.
 
 Some of them are nonetheless *invoked* only under `uv run python`, and a few
-are invoked both bare and under it (see below). The `uv run python` lines in
-`Makefile` and `.github/workflows/quality.yml` list which ones. The
-distinction is worth keeping straight, because it is about what a tool reads rather than what it
+are invoked both bare and under it (see below). The distinction is worth
+keeping straight, because it is about what a tool reads rather than what it
 needs. `type_ignore_check.py` and `duplicate_code_check.py` are the odd ones out,
 each for a reason of its own. The first shells out to mypy and the second runs
 pylint, so each needs the virtualenv that its tool runs in.
 
-The rest share one reason. Each parses repository source with `ast`, and that
-source targets 3.14. For example, `app_metadata.py` writes
+The rest share one reason. `import_boundary_check.py`,
+`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
+`core_vocabulary_check.py`, `glyph_check.py`, `fixture_id_check.py`,
+`literal_home_check.py` and `regex_check.py` each parse repository source with
+`ast`, and that source targets 3.14. For example, `app_metadata.py` writes
 `except OSError, subprocess.SubprocessError:` without parentheses. That form
 comes from PEP 758, added in 3.14, so it is a `SyntaxError` to the 3.11
 parser. The PEP 695 type parameters in `app/bookmarks.py` are a `SyntaxError`
