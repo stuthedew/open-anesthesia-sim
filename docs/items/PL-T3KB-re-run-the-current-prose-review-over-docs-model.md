@@ -3,11 +3,13 @@ id: PL-T3KB
 title: Re-run the current prose review over docs/MODEL.md's first four rewritten parts (Status through the source hierarchy), which were written before the review named each text's readers, and rewrite what it now fails with no value changed
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1970
 payoff: the opening sections, conventions, equations, numerical method and source hierarchy of the model specification meet the same reader-named prose review as the later sections, so a clinician reads the whole document to one standard
 verify: grep -q '^Prose-review: read' docs/items/PL-T3KB-re-run-the-current-prose-review-over-docs-model.md
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -65,3 +67,7 @@ were cut: "The wording is a placeholder while the interface is being built"
 may revise" (the "Model outputs — not measurements." heading). Both wordings
 remain placeholders under the project owner's 2026-10-18 rule on look, wording
 and placement.
+
+**Counts.** Parts 1 to 4 and the new notes for developers, together:
+
+Prose-review: read 378, rewrote 248, rejected 33

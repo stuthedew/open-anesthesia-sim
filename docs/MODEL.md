@@ -291,19 +291,16 @@ checks each way a patient could get into a run today, so adding patient factors
 will make it fail. The work that adds them must then rewrite this section and
 the hazard table's row for this misuse.
 
-**For developers.** `SimulationController.reset()` builds the settings record
-for the fresh run definition before it clears anything, which is why a refused
-Reset leaves the run exactly as it was, and the halt goes through the
-failed-step path. Before each step, `SimulationController.advance()` compares
-`AgentUptakeSystem.settings_key()` with the key it noted when the run
-definition last recorded settings. Nothing in `app/` writes a setting past the
-controller. A later change through the controller records the whole settings
-record. The agent selector and the sliders read the snapshot inside slots
-guarded by `app/halt_gate.py`'s `halt_gate`, and the halt resets the selector
-from the run's record because the snapshot that would name the agent is what
-refused. After a halt that comes before the screen is redrawn, every withheld
-value is withheld before the dials are written, because writing a dial can
-raise an exception.
+**For developers.** `SimulationController.reset()` builds the new run's settings record
+before it clears anything. So a refused Reset leaves the run exactly as it was, and the halt
+goes through the failed-step path. Before each step, `SimulationController.advance()`
+compares `AgentUptakeSystem.settings_key()` with the key saved when the run last recorded
+settings. Code in `app/` changes settings only through the controller, which records the
+whole settings record at each change. The agent selector and the sliders read the snapshot
+only inside handlers guarded by `halt_gate` in `app/halt_gate.py`. A halt resets the
+selector from the run's record, because the refused snapshot is the one that would name the
+agent. If a halt comes before the screen is redrawn, every withheld value is hidden before
+the dials are written, because writing a dial can raise an exception.
 
 ## How this document is held to the tree
 
@@ -631,13 +628,12 @@ The guarantee does not cover four things, and none of them is a defect:
   property of the machine. So is how many steps it has reached when a
   wall-clock minute is up. Neither is a property of the model.
 
-**For developers.** `UptakeEquationSettings` in `core/governing_equations.py`
-stores each flow in the unit the user set it in. On a 0.1 L/min grid across the
-supported 0 to 10 L/min range, multiplying a per-second flow by 60 fails to
-return the setting for 7 of the 101 cardiac outputs (1.9, 3.8, 3.9 and 7.6 to
-7.9 L/min). A step that differs from the one a run has already taken raises a
-`SimulationConfigurationError`, because a run stepped at two cadences would
-leave `elapsed_s` no step to multiply by.
+**For developers.** `UptakeEquationSettings` in `core/governing_equations.py` stores each
+flow in the unit the user set it in. Converting to a per-second flow and multiplying by 60
+does not always return the setting. On a 0.1 L/min grid across the supported 0 to 10 L/min
+range, it fails for 7 of the 101 cardiac outputs (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min). A
+step of another length than the run's earlier steps raises a `SimulationConfigurationError`,
+because `elapsed_s` is the step count times one step length.
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 `tools/import_boundary_check.py` is the check on the model's code. It runs in
@@ -957,13 +953,13 @@ was read.
 **For developers.** Each agent file stores the liquid's density as
 `liquid_density`, with its spread and the temperature at which it was
 measured, and the molar mass as `molar_mass_g_mol`. Each has its own `sources`
-entry, which says why no tier-1 source exists for it. `core/liquid_agent.py`
-derives the millilitres of vapour per millilitre of liquid from them.
+entry, which says why no tier-1 source (§ "Source hierarchy") exists.
+`core/liquid_agent.py` derives the millilitres of vapour per millilitre of liquid from them.
 `tests/reference/test_published_vapour_to_liquid.py` checks the derived ratios
 against Biro's within 1% and against Gas Man's within 0.5%. The display reads
-the amount and the ratio from one snapshot, which carries the running agent's
-ratio beside the agent (`SimulationSnapshot.agent_vapour_per_liquid`). A unit
-test fails if any other code under `src/` calls `liquid_volume_ml`.
+the amount and the ratio from one snapshot, which pairs the ratio with the running agent
+(`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other code under
+`src/` calls `liquid_volume_ml`.
 
 ## Symbols
 
@@ -1365,13 +1361,11 @@ removal strategy, recorded there as not implemented.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 <!-- not-restated: 2 % -->
 
-**For developers.** The machine profile's `circuit_volume_l` supplies $`V_C`$,
-so it holds the assembled total of the apparatus and the patient circuit.
-Nothing checks which one a stored volume is: `tools/doc_check.py`'s
-`check_provenance` asks only that a stored number has a row in this document.
-The planned split in `docs/machine-abstraction.md` gives the machine an
-`apparatus_volume_l`. Desflurane's 18% is stored as its
-`max_delivered_concentration_percent`.
+**For developers.** The machine profile's `circuit_volume_l` supplies $`V_C`$, so it holds
+the total of the apparatus and the patient circuit. Nothing checks that a stored volume is
+that total. `check_provenance` in `tools/doc_check.py` checks only that each stored number
+appears in this document. The planned split in `docs/machine-abstraction.md` adds an
+`apparatus_volume_l`. Desflurane's 18% is stored as `max_delivered_concentration_percent`.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 ### Alveolar gas
@@ -2072,12 +2066,12 @@ correctness. It compares all six modelled fractions with a separate, independent
 the governing equations.
 
 **For developers.** Exhausted agent is $`\dot V_F\int F_I\,dt`$ along the
-coupled trajectory, which the same propagator integrates. The worst residuals
+coupled solution, which the same step matrix integrates. The worst residuals
 measured on 2026-09-06 were 1.0e-12 L for sevoflurane, 2.4e-12 L for
 isoflurane and 1.3e-11 L for desflurane, and the relative error was at most
-9.2e-13 in every case. Conservation is a property of the matrix, and the
-arithmetic is done in fractions, so the equal-and-opposite pairs cancel only
-to floating-point precision relative to the largest quantity in play.
+9.2e-13 in every case. Conservation is built into the matrix. The arithmetic is done in
+fractions, so the equal-and-opposite pairs cancel only to rounding precision, relative to
+the largest quantity in play.
 
 Every off-diagonal entry of $`A`$ is a transfer rate, so it is nonnegative.
 That makes $`A`$ a Metzler matrix and $`\exp(A\Delta t)`$ an entrywise
