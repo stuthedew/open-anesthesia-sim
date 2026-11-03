@@ -3,14 +3,14 @@ id: PL-TN0G
 title: Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: feature, infra
 feature: dead-test-limits
-touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml
+touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml, .claude/rules/dead-ends-apparatus.md, .claude/rules/test-oracles.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, waiting on the owner's answer
 added: 2026-11-03
 payoff: a test limit that another assertion always overrules is named at review, so no displayed explanation is written for a number that never decides anything
-verify: grep -q 'never decides' tools/assertion_probe.py && grep -q 'assertion_probe' tools/diff_mutation.py && grep -q 'Assertions that never decide a result' docs/mutation-testing.md && grep -q '### The first sweep' docs/mutation-testing.md
+verify: ! grep -q 'assertion_notes' tools/diff_mutation.py && grep -q 'PL-TN0G' .claude/rules/test-oracles.md && ! grep -q 'Assertions that never decide a result' docs/mutation-testing.md
 ---
 
 **Problem.** Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
@@ -219,7 +219,7 @@ caught the 0.5% case either: at `334d9cc6`, lines 397-415 of
 in a list and takes `max()`, so seeing that they test one thing takes
 reasoning (inferred from the code).
 
-**Decision needed.** Which of three routes?
+**Decision asked, 2026-11-03.** Which of three routes?
 
 - **(a)** Drop mutation. Change `tools/assertion_probe.py` to record, in one
   ordinary test run, the value each comparison got and the limit it allowed,
@@ -240,3 +240,105 @@ every answer the per-branch note in `tools/diff_mutation.py`, its
 `docs/mutation-testing.md` section and the mutation runs go, and the approach
 is recorded in `.claude/rules/dead-ends-apparatus.md` § "Mutation testing"
 (already written).
+
+**Answer: (a)** (project owner, 2026-11-03, ratified, over (b) the rule alone
+and (c) nothing). The owner also asked for the best practice to be researched.
+
+**Research, 2026-11-03.** Verified means the page itself was read; the rest
+comes from search-result excerpts, because par.nsf.gov, osti.gov,
+errorprone.info and export.arxiv.org do not resolve from this container.
+
+- Octopus, merge request !3, "Update to testsuite tolerances by systematically
+  reducing them", 2016,
+  https://gitlab.com/octopus-code/octopus/-/merge_requests/3 (verified). A
+  default tolerance left "many tests having a much larger tolerance than the
+  minimum one required", so "large changes in the values calculated by the
+  code will not be detected". The fix is one tolerance per check, reduced to
+  the minimum that passes on every build machine. Writing each spread in the
+  test lets "a script ... automatically identify all the tests that have
+  unusually high spreads". It also warns that results which vary across
+  machines need large tolerances, which "can hide further problems".
+- Dutta, Shi and Misailovic, "FLEX: Fixing Flaky Tests in Machine Learning
+  Projects by Updating Assertion Bounds", ESEC/FSE 2021,
+  https://github.com/uiuc-arc/flex (authors and venue verified from the
+  README). It picks a bound from many repeated runs with extreme value theory.
+  Excerpt only: 35 flaky tests from 21 projects.
+- Xia, Dutta and others, "Balancing Effectiveness and Flakiness of
+  Non-Deterministic Machine Learning Tests" (FASER), ICSE 2023,
+  https://github.com/ise-uiuc/FASER (title and venue verified). Excerpt only:
+  it trades fault detection, measured by mutation score, against the chance
+  of a flaky failure, and tightened the bounds of 23 of 87 tests, raising
+  their mutation score by 15.76 percentage points on average.
+- Error Prone, FloatingPointAssertionWithinEpsilon,
+  https://raw.githubusercontent.com/google/error-prone/master/docs/bugpattern/FloatingPointAssertionWithinEpsilon.md
+  (verified). It flags a tolerance smaller than the gap to the next
+  representable number, which makes the check an exact equality in disguise.
+- Jahangirova, Clark, Harman and Tonella, "Test oracle assessment and
+  improvement", ISSTA 2016, pp. 247-258, https://doi.org/10.1145/2931037.2931062
+  (excerpt). Mutation finds an assertion too weak to catch a fault; generated
+  inputs find one too strict for correct behaviour.
+- Schuler and Zeller, "Checked coverage: an indicator for oracle quality",
+  Software Testing, Verification and Reliability 23(7):531-551, 2013
+  (excerpt). It counts the statements whose results reach an assertion.
+- Kanewala and Bieman, "Testing scientific software: a systematic literature
+  review", Information and Software Technology, 2014,
+  https://doi.org/10.1016/j.infsof.2014.05.006 (excerpt). The missing oracle
+  is the main difficulty in testing scientific code.
+- A Sandia report, https://www.osti.gov/servlets/purl/1709044 (excerpt only;
+  title and authors unread). It separates acceptance criteria for verifying a
+  numerical algorithm, taken from its known mathematical properties, from
+  criteria for its adequacy, taken from what the application needs.
+  Oberkampf and Roy, *Verification and Validation in Scientific Computing*,
+  Cambridge University Press, 2010, chapter 5, is the textbook form.
+
+**What the research changes in the build.**
+
+1. No published tool was found that names an assertion implied by another.
+   The nearest practice tightens each bound toward the observed spread
+   (Octopus, FLEX, FASER). This simulator is deterministic, so its spread
+   across runs is zero, and the observed size is the deviation in one run.
+2. A raw ratio of allowed to observed deviation would flag nearly every bare
+   `pytest.approx`, whose default relative tolerance of 1e-6 is about 10^9
+   times the rounding error of exact arithmetic. A report that fires on all
+   of them is read past. So compare limits only where two assertions in one
+   test recorded the same nonzero number. Then one limit implies the other by
+   arithmetic, and units cancel. In the 0.5% case the deviation that
+   `pytest.approx` computes, |coarse - fine|, and one entry of `gaps` should
+   be the same float, because floating-point subtraction gives the same
+   magnitude either way round (inferred; the control checks it).
+3. The report names a pair and a person decides. It never tightens a limit to
+   the observed value, because results drift across machines and library
+   versions (Octopus).
+4. The tolerance rule follows the Sandia split. Each chosen tolerance's
+   comment says which kind it is and where its number comes from: a
+   numerical limit, from the method's expected error or the rounding of the
+   arithmetic, or a clinical or published limit, from a cited source. Line
+   689 of `tests/unit/test_formatting.py` is the second kind, and its comment
+   is what tells a reader the match is deliberate. A bare `pytest.approx` sets
+   no chosen value and needs no comment.
+
+**Next steps** (written 2026-11-03 for the session after the reset).
+
+1. Keep the rewrite in `tools/assertion_probe.py` and drop its mutant runs.
+   Insert `__probe_enter__('id') or` at the start of each `assert` test, so
+   what is recorded while it runs belongs to that assertion. Wrap
+   `pytest.approx`'s scalar comparison (check the class name in the installed
+   pytest) to record the deviation and the allowed size, max(rel x
+   |expected|, abs). Rewrite a single comparison with a numeric side,
+   `L <= R` and the like, to `__bound__('id', L, '<=', R)`. Count and name
+   the forms it does not read: `math.isclose`, chained comparisons and
+   assertion helpers.
+2. Run the positive control first: `test_step_refinement_converges` at
+   `334d9cc6`, in a worktree. It must name the `pytest.approx` limit as looser
+   than the 1e-14 limit on the same gap. If it does not, stop, and drop the
+   report.
+3. Sweep `tests/unit` and `tests/reference`, one ordinary run each, and read
+   every named pair. Keep the report only if it names a real dead limit
+   beyond the control. Otherwise drop it and add it to the dead end in
+   `.claude/rules/dead-ends-apparatus.md` § "Mutation testing".
+4. Under either outcome: remove `assertion_notes` from
+   `diff_mutation.compare_tests` with its two tests and the mutant-map code
+   only it uses, remove the `docs/mutation-testing.md` section, add the
+   tolerance rule (step 4 above) to `.claude/rules/test-oracles.md` citing
+   `PL-TN0G`, and record the counts here. If the report is kept, decide
+   where its per-branch note runs: one ordinary run of the changed tests.
