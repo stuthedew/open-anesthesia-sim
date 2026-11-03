@@ -115,7 +115,9 @@ def refuse(rule, why):
 def record(path):
     """One record from the GitHub API, read without a token."""
     request = urllib.request.Request(API + path, headers={"Accept": "application/vnd.github+json"})
-    # Two reads of 15 s each stay well inside the 60 s Claude Code allows a hook by default.
+    # Two reads of 15 s each stay well inside the 600 s Claude Code allows a
+    # command hook by default (https://code.claude.com/docs/en/hooks, read
+    # 2026-11-03, `PL-KJN6`).
     with urllib.request.urlopen(request, timeout=15) as response:
         return json.load(response)
 

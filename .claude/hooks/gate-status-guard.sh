@@ -248,6 +248,14 @@ CLOSERS = (")",) + ENDS
 MAKE_GATES = ("check", "test", "docket", "doc-check", "prebuild", "pr-title")
 DOCKET_GATES = ("check", "verify")
 DIRECT = ("pytest", "mypy", "ruff")
+# The options with which a direct gate reports on itself and judges nothing,
+# so no verdict rides its exit status: `ruff --version | head -1` and `pytest
+# --collect-only -q | tail -3` are not gates (`PL-9PPJ`). `-V` is the version
+# in all three.
+NO_VERDICT = ("--version", "-V", "--collect-only", "--co", "--help", "-h")
+# The commands that print a word of their own, so a gate followed by `&& echo
+# PASS || echo FAIL` states its verdict in the output, as `|| echo $?` does.
+ANNOUNCERS = ("echo", "printf")
 
 
 def base(token):
@@ -365,7 +373,7 @@ def gate(segment):
     if name == "docket" and arguments and arguments[0] in DOCKET_GATES:
         return head + " " + arguments[0]
     if name in DIRECT:
-        return name
+        return None if any(word in NO_VERDICT for word in arguments) else name
     if shell_split.is_python(name):
         return check_script(arguments)
     if name.endswith("_check.py"):
@@ -606,6 +614,21 @@ if any(runs_arm(segment) and output_piped(index) for index, segment in enumerate
     )
     sys.exit(0)
 
+def announces(start):
+    """Whether segments `start` and the one after it are `A || B`, each printing a word.
+
+    Each must be an `echo` or `printf` of its own, outside any group, so
+    whichever runs says which way the command before them went.
+    """
+    if start + 1 >= len(segments) or separators[start] != "||":
+        return False
+    return all(
+        (shell_split.command_words(segments[at])[:1] or [""])[0] in ANNOUNCERS
+        and depth[at] == depth[start - 1]
+        for at in (start, start + 1)
+    )
+
+
 offender = swallowed_by = None
 for index, segment in enumerate(segments):
     name = gate(segment)
@@ -624,6 +647,10 @@ for index, segment in enumerate(segments):
         following = at + 1
         after = segments[following] if following < len(segments) else []
         if separator is None:
+            break
+        # `gate && echo PASS || echo FAIL` prints one word on a green gate and
+        # another on a red one, so the verdict is in the output (`PL-9PPJ`).
+        if separator == "&&" and announces(following):
             break
         if separator == "&&" or (separator == "|" and pipefail[at]):
             # The status travels to the end of a pipeline: under `pipefail`
@@ -779,7 +806,8 @@ reason = (
     "so `tail` still trims the output and a red gate still exits non-zero. It "
     "is one token, it costs no context, and it is never wrong to add. Two more "
     "spellings are accepted, where the sequencing suits: `&&`, which "
-    "short-circuits on failure (`" + spelled + " && tail -45 /tmp/gate.log`), "
+    "short-circuits on failure (`" + spelled + " > /tmp/gate.log 2>&1 && tail -45 "
+    "/tmp/gate.log`), "
     "and reading the status straight out into the output "
     "(`" + spelled + " > /tmp/gate.log 2>&1; echo \"exit=$?\"`).\n\n"
     "Guarded because their exit status IS the evidence a session reports: "
