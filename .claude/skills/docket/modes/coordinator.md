@@ -83,11 +83,12 @@ put to the owner at once, with a recommendation.
   its version would be that release.
 - Decisions go in item files. The thread asks the coordinator, not the owner,
   what to work on next (`.claude/rules/instruction-writing.md` rule 10).
-- Run `uv run pytest --version | head -1` as the first command. A Projects
-  thread does not load `.claude/` (`PL-CR81`), and only the setup script in
-  `docs/maintainer.md` gives it the repository's hooks. When the hooks are
-  loaded, `gate-status-guard.sh` refuses that command. When it prints a pytest
-  version instead, the thread has no guard hooks and no session-start digest.
+- Run `uv run pytest -q tests/unit/test_line_splits.py | tail -1` as the
+  first command. A Projects thread does not load `.claude/` (`PL-CR81`), and
+  only the setup script in `docs/maintainer.md` gives it the repository's
+  hooks. When the hooks are loaded, `gate-status-guard.sh` refuses that
+  command. When it prints a test count instead, the thread has no guard hooks
+  and no session-start digest.
   It then says so in its first reply and records it in `PL-CR81`.
 - Read a skill by its path, `.claude/skills/<name>/SKILL.md`, wherever a rule
   says to use it. A thread's Skill tool lists none of the repository's skills,

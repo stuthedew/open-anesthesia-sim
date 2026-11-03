@@ -3,12 +3,14 @@ id: PL-9PPJ
 title: gate-status-guard.sh refuses commands that run no gate: timing tools/doc_check.py with output sent to /dev/null, ruff --version | head, pytest --collect-only | tail; and it refuses make check && echo PASS || echo FAIL while admitting make check || echo failed: $?, though both print the verdict
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-review-2026-11
-touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, .claude/skills/docket/modes/coordinator.md
+touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: a session checking a tool's version or listing tests through a pipe is no longer refused and sent to retry
 verify: grep -q 'def test_a_version_run_piped_to_head_is_admitted' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT

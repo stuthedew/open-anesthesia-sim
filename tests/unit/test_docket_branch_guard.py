@@ -176,6 +176,35 @@ def test_branch_guard_asks_once_per_session_not_once_per_edit(tmp_path: Path) ->
     assert other_session.stdout, "a different session gets its own answer"
 
 
+def test_spent_markers_start_python_once(tmp_path: Path) -> None:
+    """Once both questions are spent, an edit costs one Python start (`PL-J22P`).
+
+    The hook started Python once for the checkout and again for the session
+    id before it looked at its markers, so every later edit and Bash call paid
+    about 95 ms for nothing.
+    """
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path)
+    _with_the_check(work)
+    _run_guard(work, tmp_path, target=work / "src" / "w.py")
+    assert sorted(path.name for path in (tmp_path / "markers").iterdir()) == [
+        "docket-branch-s1",
+        "docket-claim-s1",
+    ]
+    starts = tmp_path / "starts.log"
+    interpreter = work / "bin" / "python3"
+    interpreter.unlink()
+    interpreter.write_text(
+        f'#!/bin/sh\necho start >> "{starts}"\nexec "{sys.executable}" "$@"\n', encoding="utf-8"
+    )
+    interpreter.chmod(0o755)
+
+    result = _run_guard(work, tmp_path, target=work / "src" / "w.py")
+
+    assert result.stdout == ""
+    assert starts.read_text(encoding="utf-8").splitlines() == ["start"]
+
+
 def test_a_session_id_laid_out_across_lines_is_read_as_json(tmp_path: Path) -> None:
     """An id on the line after its key is the same member (RFC 8259 § 2), read as `json` reads it.
 

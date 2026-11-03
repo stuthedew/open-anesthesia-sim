@@ -3,12 +3,14 @@ id: PL-SMM1
 title: floor-interpreter-guard.sh refuses python3 -m json.tool on a data file under src/, reading every argument after -m as a tree to parse, and its header omits the heredoc and substitution gaps its own table records
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-review-2026-11
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: a session can pretty-print an agent's data file without being refused, and the guard's header states every gap it has
 verify: grep -q 'def test_json_tool_on_a_data_file_is_admitted' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-61FT

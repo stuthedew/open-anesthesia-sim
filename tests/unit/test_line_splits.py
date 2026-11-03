@@ -2,11 +2,11 @@
 
 `splitlines()` breaks at `\\x0b`, `\\x0c`, `\\x1c`-`\\x1e`, `\\x85`, U+2028 and
 U+2029 as well as at a newline, and no format these trees read ends a line
-there: git's records, a JSON-lines transcript, the item-read log and Python
-source all end one at `\\n` once Python has decoded the text, and so do
-Markdown, YAML and a Makefile (`docket.lines` names the specifications). Four
-sessions reached for it at four readers and each read one record as two
-(`PL-139L`, `PL-PK4B`, `PL-K1D6`, `PL-LRBV`, under the head `PL-4YVK`).
+there: git's records, a JSON-lines transcript and Python source all end one
+at `\\n` once Python has decoded the text, and so do Markdown, YAML and a
+Makefile (`docket.lines` names the specifications). Four sessions reached for
+it at four readers and each read one record as two (`PL-139L`, `PL-PK4B`,
+`PL-K1D6`, `PL-LRBV`, under the head `PL-4YVK`).
 Converting those four left every next reader free to pick it again, so this
 refuses the call itself: `docket.lines.split_lines` is the replacement, or
 `str.split("\\n")` and `str.partition("\\n")` in a tool that does not import
