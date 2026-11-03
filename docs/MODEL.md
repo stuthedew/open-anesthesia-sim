@@ -4927,17 +4927,17 @@ that it does. The elimination this simulator runs is the rebreathing one. What
 is asserted about it is the regression pin above.
 
 **For developers.** The test is `tests/reference/test_published_wash_in_and_elimination.py`.
-The elimination pin holds the five-minute ratio to $`1\times10^{-4}`$ absolute, and its
-failure message states the distance from each published mean. No tolerance is set wide enough
-to include the disagreement. Neither paper's full text is in PubMed Central. Both are in the
+It checks the five-minute elimination ratio against a stored value to $`1\times10^{-4}`$ absolute,
+and its failure message gives the distance from each published mean. No tolerance is wide enough
+to hide the disagreement. Neither paper's full text is in PubMed Central. Both are in the
 private reference corpus that `docs/references/README.md` describes, and each has an
 extraction note in `docs/references/` that gives the pages cited above. The open-circuit
-condition is a test-only driver. Its $`F_I`$ is not exactly zero, because exhaled gas refills
-the circuit during each step before it is discarded. The remaining $`F_I`$ is at most
+condition is a test-only driver. Its $`F_I`$ is not zero, because exhaled gas refills the circuit
+during each step before being discarded. The remaining $`F_I`$ is at most
 $`\dot V_A \Delta t / V_C`$ of $`F_A`$ at the start of the step, or 1.1 × 10⁻³ at the shipped
-ventilation, step and circuit volume. The test also asserts that residual $`F_I`$ and the
-model's own conservation identity across the discards. Across the whole supported flow range,
-the open-circuit elimination moves by 4 × 10⁻⁶ published SD.
+ventilation, step and circuit volume. The test also checks this residual $`F_I`$ and the model's
+mass balance across the discards. Across the supported flow range, the open-circuit elimination
+changes by 4 × 10⁻⁶ published SD.
 <!-- not-restated: 1.1 -->
 
 #### Desflurane's residual, and why the parameter file was not changed
@@ -5082,14 +5082,14 @@ affects one agent alone.
 `test_the_apparatus_dead_space_moves_every_cohort_together` assert both
 halves, so this finding cannot go out of date without a test failing.
 
-**It is still open whether the comparison should subtract any decrement at all.** Yasuda
+**It is still open whether the comparison should subtract the apparatus dead space.** Yasuda
 derived the alveolar fraction of ventilation, $`f_A`$, from mixed expired gas,
 $`F_M = f_A F_A + f_D F_I`$. The 1-l mixing chamber that supplies $`F_M`$ sits beyond the
-nonrebreathing valve. So the re-inspired 50 ml never reaches the chamber, and their $`f_A`$ is
+nonrebreathing valve. The re-inspired 50 ml never reaches the chamber, so their $`f_A`$ is
 $`(V_T - V_{D,\text{anat}} - V_{D,\text{app}})/V_T`$. That value already excludes the
 apparatus dead space, so a comparison run at *their* alveolar ventilation must not subtract it
-again. This model runs at a default 4.0 L/min, which has no primary source. Neither paper
-reports its alveolar ventilation (below).
+again. Neither paper reports that ventilation (below). This model runs at a default 4.0 L/min,
+which has no primary source.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Neither paper publishes a ventilation.** Ventilation was titrated for each subject to
@@ -5147,16 +5147,16 @@ project cannot test it:**
 *What it proposed.* The published $`F_A`$ is end-tidal gas from an
 anaesthetized volunteer. This model's $`F_A`$ is the fraction in one perfectly
 mixed compartment. In a lung with ventilation-perfusion dispersion, a unit
-with ventilation-perfusion ratio $`r`$ sits at
-$`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ through an elimination.
+with ventilation-perfusion ratio $`r`$ has
+$`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ during an elimination.
 So the last units to empty carry the highest partial pressure during washout
-and the lowest during wash-in. A ratio of the two would then be biased upward,
-by an amount that grows as solubility falls. Consider a
-log-normal perfusion distribution at log SD 1.0 with a 5% shunt. On that
-distribution, the arterial retention that this model fixes at
-$`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44% for
-desflurane, 30% for sevoflurane and 15% for isoflurane. That is the same rank
-order as the residuals, which is what made the hypothesis attractive.
+and the lowest during wash-in. A washout-to-wash-in ratio would then be biased
+upward, by an amount that grows as solubility falls. Take a log-normal
+perfusion distribution at log SD 1.0 with a 5% shunt. On that distribution, this
+model understates the arterial retention, which it fixes at
+$`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$, by 44% for desflurane, 30% for
+sevoflurane and 15% for isoflurane. That is the same rank order as the
+residuals, which is what made the hypothesis attractive.
 <!-- not-restated: 5 % -->
 
 *What the methods sections settled in its favour.* The fifth table row rules
@@ -5287,13 +5287,13 @@ produces.
 
 **Two of the three questions about the published protocol are answered, and the
 third cannot be.** The three questions are the breathing system, how end-tidal
-gas was sampled, and the alveolar ventilation during elimination. The published
-circuit is non-rebreathing, so its design puts the potent agents' inspired
-fraction at or near zero. Its 50 ml of series dead space cannot account for the
-residual. Neither paper publishes a ventilation. Ventilation was titrated in
-each subject to normocapnia, and neither paper reports a $`\dot V_E`$ or an
-$`f_A`$. So the ventilation during elimination is unknown, and there is no
-published value at which to run the comparison.
+gas was sampled (the eighth table row, above), and the alveolar ventilation
+during elimination. The published circuit is non-rebreathing, so its design puts
+the potent agents' inspired fraction at or near zero. Its 50 ml of series dead
+space cannot account for the residual. Ventilation was titrated in each subject
+to normocapnia, and neither paper reports a $`\dot V_E`$ or an $`f_A`$. So the
+ventilation during elimination is unknown, and the comparison has no published
+value to run at.
 
 So one candidate is left, the published value itself, and no measurement available to this
 project can settle it. **No candidate is claimed as the cause.** The cause of the residual is
@@ -5366,13 +5366,13 @@ four belong beside any statement of this result, wherever it is restated.
 **For developers.**
 `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination` checks the
 vessel-rich coefficient claim, and `test_a_larger_circuit_can_only_slow_the_elimination` checks
-the circuit-volume direction. Rows four to six of the candidate table were measured on an
-independent forward-Euler integration of these equations. With no shunt, that integration puts
-desflurane at −2.29 SD, against the shipped driver's −2.33. The seventh row was measured on the
-shipped driver. `data/patients/reference_adult.json` records the 4.0 L/min alveolar
-ventilation as a program default. Both Yasuda papers, Carpenter 1989 and Targ 1989 were read
-at full text on 2026-09-13. The Targ study is also behind the circuit volume's provenance and
-the inert-circuit entry in § "Known limitations".
+the circuit-volume direction. Candidate-table rows four to six were measured on an independent,
+simple fixed-step (forward-Euler) integration of these equations. With no shunt, it puts
+desflurane at −2.29 SD, against the shipped driver's −2.33. The seventh row used the shipped
+driver. `data/patients/reference_adult.json` records the 4.0 L/min alveolar ventilation as a
+program default. Both Yasuda papers, Carpenter 1989, and Targ 1989 were read at full text on
+2026-09-13. Targ 1989 is also cited for the circuit volume and the inert-circuit entry in
+§ "Known limitations".
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 #### The early wash-in curve against the published figures
