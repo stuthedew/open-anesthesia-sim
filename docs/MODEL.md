@@ -4563,6 +4563,7 @@ matches a patient. A wrong transfer rate gives the same answer at every step,
 so it passes here. § "Independent-solution test" below checks that the
 equations are solved correctly, and § "Published wash-in and elimination
 validation test" compares the model with measured patients.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 Held by `test_step_refinement_converges`, for the three halvings, and by
 `test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
