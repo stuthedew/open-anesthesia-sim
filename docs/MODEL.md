@@ -10280,15 +10280,11 @@ of ten at or above it.
 `test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
 arithmetic for every shipped agent.
 
-One step of the MAC readout is therefore 0.02 percentage points of sevoflurane,
-0.012 of isoflurane and 0.06 of desflurane, the same 0.01 MAC for every agent.
-No MAC step is finer than a percent step. The two readouts round at different
-concentrations, though, so the MAC digit can move while the percent readout
-stays put. Sevoflurane at 0.029% and 0.031% reads `0.03%` both times, but
-`0.01 ×MAC` and then `0.02 ×MAC`. Such a move is a real change of less than
-0.01 percentage points. `test_no_mac_readout_claims_more_than_the_percent_beside_it`
-and `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` check both
-points. The three per-agent figures have no test yet (`PL-19W8`).
+The smallest change the MAC readout can show is therefore 0.02 percentage points
+of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane, never less than the
+percent readout's. The two readouts round separately, so the MAC value can
+occasionally change while the percent stays the same. The three per-agent
+figures have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
 The below-resolution form applies to the MAC line for the same reason it

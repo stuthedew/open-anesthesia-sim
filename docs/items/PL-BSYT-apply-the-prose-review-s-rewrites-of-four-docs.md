@@ -35,3 +35,5 @@ The reviewer also proposed moving each test name to a "**For developers.**" note
 **Generator check.** One-off; prose-quality work the plain-writing rule routes to its own item.
 
 **Checked 2026-11-03.** `PL-ZDZ0` rewrote the second of the four paragraphs (the MAC-step paragraph) through close-out's prose review: it now says "step" and "MAC readout", and "One count of the MAC line" is gone. It also rewrote the paragraph after it, which began "The unit conversion does not preserve information across agents", without "glyph position". Proposal 2 above is therefore done. Proposals 1, 3 and 4 still apply, and "glyph position" is still in the two later paragraphs this item does not cover.
+
+**Checked 2026-11-03, on the claim about test names.** The brief above says `tools/doc_check.py` holds a numeric paragraph by the test it names, so a test name must stay in the paragraph. On `PL-ZDZ0`, removing the test name from the MAC-step paragraph left `make doc-check` passing, so for that paragraph the claim was false. Try each removal before keeping a name on this ground.
