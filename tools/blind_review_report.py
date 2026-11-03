@@ -74,9 +74,6 @@ from blind_review import passes_between  # noqa: E402
 #: `Blind-review` record (`PL-HDRN`), so the first one a record is owed on.
 DEFAULT_SINCE = 1767
 
-#: Seconds for a call that reaches the remote, longer than `vcs.GIT_TIMEOUT`.
-NETWORK_TIMEOUT = 60.0
-
 #: How many heads one `git fetch` asks for.
 FETCH_BATCH = 100
 
@@ -146,7 +143,7 @@ def network_git(root: Path) -> NetworkGit:
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
 
     def run(args: Sequence[str]) -> GitCall:
-        return call_git(args, root, timeout=NETWORK_TIMEOUT, env=env)
+        return call_git(args, root, env=env)
 
     return run
 

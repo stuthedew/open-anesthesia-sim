@@ -86,7 +86,8 @@ UNBANDED = "-"
 
 #: `PL-04KR`'s ceiling on new apparatus paths per filing: its baseline read
 #: 1.16, 0.26, 0.21, 0.13 over the weeks to 2026-09-19, and the prediction is
-#: that it stays at or below the last.
+#: that it stays at or below the last. `missed` reads it only in a week whose
+#: count of new paths did not fall, for the reason given there (`PL-2T7X`).
 NEW_PATHS_CEILING = 0.13
 
 #: The bands `PL-04KR` predicts no apparatus filing reaches. Its baseline read
@@ -400,6 +401,18 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     fall is the reassuring direction. Re-entry is compared with the complete
     period before it, since the prediction is that it is flat or falling.
     The predictions are stated per week, so `report` is read by week.
+
+    The new-paths ceiling breaks only in a week whose count of new paths is
+    at least the count of the complete week before it (`PL-2T7X`). The
+    ceiling is a ratio per filing, so it rises whenever filings fall faster
+    than new paths. The week of 2026-10-26 named 11 new paths, down from 34,
+    over 19 filings, down from 117, and read 0.58 against the 0.13 ceiling.
+    The surface grew more slowly that week, which is the convergence
+    `PL-04KR` expects. This relaxes the prediction only where the count fell:
+    every earlier week reads as it did, so the two weeks that broke the
+    ceiling while their counts rose, from 2026-10-12 and 2026-10-19, still
+    break it. A first complete week has no week before it, and is read
+    against the ceiling alone.
     """
     if report.lane != LANE_WORKFLOW:
         return ()
@@ -409,11 +422,17 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     last = complete[-1]
     out: list[str] = []
     ratio = last.new_paths_per_item
-    if ratio is not None and ratio > NEW_PATHS_CEILING:
+    before = complete[-2].new_paths if len(complete) > 1 else None
+    if (
+        ratio is not None
+        and ratio > NEW_PATHS_CEILING
+        and (before is None or last.new_paths >= before)
+    ):
+        against = "" if before is None else f", against {before} new the period before"
         out.append(
             f"{last.new_paths} new apparatus paths over {last.filed + last.by_head} filings, "
-            f"{ratio:.2f} a filing, above the {NEW_PATHS_CEILING} ceiling: the surface is "
-            "still growing"
+            f"{ratio:.2f} a filing, above the {NEW_PATHS_CEILING} ceiling{against}: the "
+            "surface is still growing"
         )
     if last.severe:
         counted = ", ".join(f"{last.severe[band]} {band}" for band in sorted(last.severe))

@@ -131,7 +131,7 @@ LOCAL_ONLY = 4
 
 #: How long one write is given. A push through the harness proxy is seconds, but
 #: this is a write whose failure is reported rather than retried, so it is given
-#: far longer than the ten seconds `vcs._run_git` gives a read.
+#: longer than the `vcs.NETWORK_GIT_TIMEOUT` a read from the remote gets.
 WRITE_TIMEOUT = 120.0
 
 # What an attribution line must look like to stay a trailer: a token, a colon, a
