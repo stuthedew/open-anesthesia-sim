@@ -26,7 +26,8 @@ The first time it writes the hooks, it also runs the repository's own
 `SessionStart` commands and prints what they print, because Claude Code has
 already chosen which session-start hooks to run by then. After that the
 copied entries run on their own, and this hook only checks that the copy is
-current.
+current. When it rewrites a copy that changed, it runs only the commands the
+old copy did not hold, since Claude Code ran the rest from it (`PL-H8NX`).
 
 Each copied command first sets `CLAUDE_PROJECT_DIR` to the checkout this
 file sits in. Claude Code sets that variable from the session's working
@@ -64,8 +65,10 @@ BOOTSTRAP_COMMAND = (
 )
 
 #: The longest a repository `SessionStart` command may run when this hook runs
-#: it, in seconds. It is Claude Code's own default for a command hook.
-COMMAND_TIMEOUT_S = 60
+#: it, in seconds. It is Claude Code's own default for a command hook: the
+#: hooks documentation gives "600 for `command`, `http`, and `mcp_tool`"
+#: (https://code.claude.com/docs/en/hooks, read 2026-11-03, `PL-KJN6`).
+COMMAND_TIMEOUT_S = 600
 
 #: What a session start prints when a repository command fails. Claude Code
 #: adds a `SessionStart` hook's output to the session, so the session learns
@@ -209,6 +212,23 @@ def start_commands(project_hooks: dict[str, object], source: str) -> list[tuple[
     return commands
 
 
+def _start_commands_held(user: dict[str, object]) -> frozenset[str]:
+    """Every `SessionStart` command the user settings `user` hold.
+
+    Claude Code runs these itself at a start, so a command among them has run
+    by the time this hook runs.
+    """
+    hooks = user.get("hooks")
+    groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
+    held: set[str] = set()
+    for group in groups if isinstance(groups, list) else []:
+        entries = group.get("hooks") if isinstance(group, dict) else None
+        for hook in entries if isinstance(entries, list) else []:
+            if isinstance(hook, dict) and hook.get("type") == "command":
+                held.add(str(hook.get("command", "")))
+    return frozenset(held)
+
+
 def _run(command: str, timeout_s: float, payload: str, root: Path) -> str:
     """What `command` prints, run as Claude Code runs a command hook."""
     environment = {**os.environ, "CLAUDE_PROJECT_DIR": str(root)}
@@ -272,10 +292,14 @@ def main(payload: str, *, entrypoint: str | None, root: Path, user_path: Path) -
         write_atomically(user_path, json.dumps(wanted, indent=2) + "\n")
     except OSError as error:
         return COULD_NOT_WRITE.format(path=user_path, error=error)
+    # A command the user settings already held ran at this start, from the
+    # copy, so only the ones the write adds are run here (`PL-H8NX`).
+    already = _start_commands_held(user)
     source = _source_of(payload)
     return "".join(
         _run(command, timeout_s, payload, root)
         for command, timeout_s in start_commands(project_hooks, source)
+        if pinned(command, root) not in already
     )
 
 
