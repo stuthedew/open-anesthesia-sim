@@ -9001,11 +9001,10 @@ def _unwrapped_partial(node: ast.expr) -> ast.expr:
 def _assigned_names(function: ast.AST) -> dict[str, list[ast.expr | None]]:
     """Return each name that `function` binds, with every value a plain assignment gives it.
 
-    A plain assignment to a name gives its value, as in `callback = self._apply` or
-    `callback: Slot = self._apply`. Any other binding of the name adds None, which says the
-    name may also hold something that no assignment shows. A parameter, a loop target, a
-    `with` or `except` target, an unpacking, `:=`, `+=` and an import are such bindings
-    (blind review of `PL-WV74`).
+    A plain assignment, such as `callback = self._apply` or `callback: Slot = self._apply`,
+    gives the name its value. Any other binding of the name adds None, which says the name
+    may also hold something that no assignment shows. A parameter, a loop target, a `with`
+    or `except` target, an unpacking, `:=`, `+=` and an import are such bindings.
     """
 
     assigned: dict[str, list[ast.expr | None]] = {}
@@ -9161,17 +9160,16 @@ def _halt_gate_bypasses(
 ) -> _HaltGateReading:
     """Find each call in `view_class`'s source whose callback bypasses the halt gate.
 
-    The source holds every connection the class makes, including the ones it makes when it
-    later builds a dialog. A `partial` in a slot position is treated as the method that it
-    wraps. A method that overrides one of Qt's own, such as `keyPressEvent`, is called by
-    Qt directly, so it must pass the gate too. Each key in `exemptions` pairs the class's
-    name with the callback's source text, or with `def <name>` for such a method. A callback
-    listed there is not reported as a bypass, but its entry is reported as stale when the
-    callback passes the gate. A callback held in a local variable is judged as the value
-    assigned to it, through `_followed`.
+    The halt gate is `halt_gate` in `app/halt_gate.py`. The class's source holds every
+    connection the class makes, including the ones it makes when it later builds a dialog.
+    Each callback is followed through `_followed`, so a `partial` is treated as the method
+    that it wraps, and a local variable as the values assigned to it. A method that
+    overrides one of Qt's own, such as `keyPressEvent`, is called by Qt directly, so it must
+    pass the gate too. Each key in `exemptions` pairs the class's name with the callback's
+    source text, or with `def <name>` for such a method. A callback listed there is not
+    reported as a bypass, but its entry is reported as stale when the callback passes the gate.
 
-    The check reads only the class's own source. `_outside_bypasses` reads the rest of
-    `app/` for slots that other code connects to the view's methods.
+    `_outside_bypasses` reads the rest of `app/` for view methods that other code connects.
     """
 
     (class_node,) = ast.parse(inspect.getsource(view_class)).body
@@ -9232,7 +9230,7 @@ def _halt_gate_bypasses(
 
 
 def _view_methods(views: Sequence[type]) -> dict[str, list[tuple[type, bool]]]:
-    """Map each method name that a view defines in this project to its views and their gates.
+    """Map each method name that the views define in this project to the views that define it.
 
     Each entry pairs a view with whether its method of that name passes the halt gate.
     A method that a view takes from PySide6, such as `update` or `close`, is left out,
@@ -9266,16 +9264,16 @@ def _outside_bypasses(
     views: Sequence[type],
     exemptions: Mapping[tuple[str, str], str],
 ) -> _HaltGateReading:
-    """Find each call outside `views`' own classes that hands out an ungated view method.
+    """Find each call outside the views' classes that passes on a view method without the gate.
 
-    `modules` maps each module's dotted name to its parsed source. Every call in it is read
-    except those inside the views' own classes, which `_halt_gate_bypasses` reads. A
-    callback is matched to a view's method by its attribute name alone, as `view._apply` or
-    `self.view._apply` is matched to `RunView._apply`, because the source does not say which
-    object the name before the dot holds. A callback named `self.<name>` is the enclosing
+    `modules` maps each module's dotted name to its parsed source. Calls inside the views'
+    own classes are left to `_halt_gate_bypasses`. A callback is matched to a view's method
+    by its attribute name alone, as `view._apply` or `self.view._apply` is matched to
+    `RunView._apply`, because the source does not say which object the name before the dot
+    holds. A callback named `self.<name>` is the enclosing
     class's own method and is not matched, so a callback that another class stores as
     `self._callback = view._apply` and connects later is not seen. A lambda that calls a
-    view's method from outside is not judged either. Each key in `exemptions` pairs the
+    view's method from outside is not checked either. Each key in `exemptions` pairs the
     module's dotted name with the callback's source text.
     """
 
@@ -9355,13 +9353,11 @@ def _app_modules() -> dict[str, ast.Module]:
 def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
     """Every slot that `RunView` and `SimulationView` connect or hand out passes the halt gate.
 
-    A slot that reads or changes a run can raise, for example on a run whose snapshot
-    refuses a value. PySide6 prints an exception raised inside a slot and carries on, so the
-    run still said "Paused", and no halt appeared on screen. Each slot used to be wrapped in
-    a `try` by hand, and six were found without one, each in a separate review: `PL-YK2V`,
-    `PL-7DJK`, `PL-V2HC`, `PL-08SS`, `PL-F2T2` and `PL-M3M2`. Every slot now passes through
-    `app/halt_gate.py`'s `halt_gate`, and this test makes each new slot pass through it too
-    (`PL-HJKN`).
+    A slot that reads or changes a run can raise, for example on a run whose snapshot rejects
+    a value. Without the gate, PySide6 prints an exception raised inside a slot and carries
+    on, so the run still shows "Paused" and no halt appears on screen. Hand-written `try`
+    blocks missed six slots, so every slot now passes through `app/halt_gate.py`'s
+    `halt_gate`, and this test makes each new slot pass through it too (`PL-HJKN`).
 
     The test parses each class's source, and `_callback_bypass` decides which callbacks
     bypass the gate. It also parses every other module under `app/` for a view method that
@@ -9550,15 +9546,14 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
 
 
 def test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view() -> None:
-    """The check reports each ungated view method that `_wire_from_outside` connects.
+    """The check reports each view method without the gate that `_wire_from_outside` connects.
 
-    Before `PL-WV74` the check read only the view's own class, so a slot connected from
-    another module, or held in a variable first, passed unseen. The expected list was
-    written by hand from that function's source. A gated method passes, whether it is named
-    at once or held in a variable first. An ungated method is reported in each shape: named
-    at once, held in a variable, wrapped in a `partial`, chosen by a conditional expression,
-    and held in a list. A `partial` is reported twice, once by the call that passes it on
-    and once by its own call, which also catches a `partial` that is stored and passed later.
+    The expected list was written by hand from that function's source. A method that passes
+    the gate is not reported, whether it is named at once or held in a variable first. A
+    method without the gate is reported in each shape: named at once, held in a variable,
+    wrapped in a `partial`, chosen by a conditional expression, and held in a list. A
+    `partial` is reported twice, once by the call that passes it on and once by its own
+    call, which also catches a `partial` that is stored and passed later.
     """
 
     modules = {"synthetic": ast.parse(inspect.getsource(_wire_from_outside))}
