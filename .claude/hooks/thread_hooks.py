@@ -220,13 +220,13 @@ def _start_commands_held(user: dict[str, object]) -> frozenset[str]:
     """
     hooks = user.get("hooks")
     groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-    return frozenset(
-        str(hook.get("command", ""))
-        for group in (groups if isinstance(groups, list) else [])
-        if isinstance(group, dict)
-        for hook in (group.get("hooks") if isinstance(group.get("hooks"), list) else [])
-        if isinstance(hook, dict) and hook.get("type") == "command"
-    )
+    held: set[str] = set()
+    for group in groups if isinstance(groups, list) else []:
+        entries = group.get("hooks") if isinstance(group, dict) else None
+        for hook in entries if isinstance(entries, list) else []:
+            if isinstance(hook, dict) and hook.get("type") == "command":
+                held.add(str(hook.get("command", "")))
+    return frozenset(held)
 
 
 def _run(command: str, timeout_s: float, payload: str, root: Path) -> str:
