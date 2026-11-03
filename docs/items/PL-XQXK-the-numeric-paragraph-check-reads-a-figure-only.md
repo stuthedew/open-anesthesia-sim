@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-claims-held-by-tests
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md, docs/items/PL-5L84-docs-model-md-states-the-20-c-reference.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02
 closed: 2026-11-03
@@ -35,3 +35,5 @@ verify: grep -q 'def test_a_figure_in_each_unit_the_documents_write_is_read_with
 A percentage point is the difference between two percents, so it is read as its own unit and never compared with a stored percent. The units no value is stored in are `UNSTORED_UNITS` in `tools/doc_check.py`.
 
 **Generator check, answered.** `DisplayUnit` in `src/anesthesia_sim/app/display_units.py` is not a second copy of this list. It holds the units the interface shows beside a value. `PROSE_UNITS` holds the units the documents write after a number, which include px, mmHg, kPa and °C that the interface never shows.
+
+**Blind review, 2026-11-03.** Both passes found that listing °C and grams as units no value is stored in was wrong. Agent files store the density's reference temperature in °C, its density in g/mL and its molar mass in g/mol. Read as °C, "measured at 20.0 °C" could never match the stored 20.0 again. The fix reads g/mL and g/mol as stored units (`UNIT_ENDINGS`), leaves °C and plain grams in no list, so a figure in them stays a bare number as before, and files `PL-5L84` to tie the 29 "20 °C" paragraphs and then read °C. One pass also found millilitres per minute unread. They are now converted to L/min, and the seven flows in `docs/MODEL.md` raised no finding.

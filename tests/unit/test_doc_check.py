@@ -7756,28 +7756,30 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         ("Sea-level pressure is 760 mmHg.", "mmHg"),
         ("Sea-level pressure is 101.3 kPa.", "kPa"),
         ("The vapour pressure is quoted at 1 atm.", "atm"),
-        ("The density is quoted at 20 °C.", "°C"),
-        ("A bottle holds 250 g of liquid.", "g"),
+        ("The liquid weighs 1.5203 g/mL.", "g/mL"),
+        ("The molar mass is 184.49 g/mol.", "g/mol"),
         ("The blood volume is 70 mL/kg.", "mL/kg"),
         ("One count is 0.02 pp of sevoflurane.", "pp"),
         ("The share moves by 1.2 percentage points.", "percentage points"),
         ("The share moves by 1 percentage point.", "percentage point"),
         ("That blood holds about 0.18 mL.", "mL"),
         ("Davis and Mapleson's 1222 ml is the same object.", "ml"),
+        ("The cardiac output is 6480 ml/min.", "ml/min"),
     ],
     ids=[
         "pixels",
         "mmHg",
         "kPa",
         "atm",
-        "degrees",
-        "grams",
+        "density",
+        "molar-mass",
         "per-kilogram",
         "pp",
         "percentage-points",
         "percentage-point",
         "millilitres",
         "lower-case-millilitres",
+        "millilitres-per-minute",
     ],
 )
 def test_a_figure_in_each_unit_the_documents_write_is_read_with_that_unit(
@@ -7842,6 +7844,34 @@ def test_a_volume_restated_in_millilitres_with_no_marker_is_refused(tmp_path: Pa
 
     assert len(untied) == 1
     assert "500 mL equals core/thing.py POOL_L = 0.5" in untied[0]
+
+
+@pytest.mark.parametrize(
+    ("sentence", "constant", "expected"),
+    [
+        ("The liquid weighs 1.5203 g/mL.", "DENSITY_G_ML", "1.5203 g/mL"),
+        ("The molar mass is 184.49 g/mol.", "MOLAR_MASS_G_MOL", "184.49 g/mol"),
+    ],
+    ids=["density", "molar-mass"],
+)
+def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused(
+    tmp_path: Path, sentence: str, constant: str, expected: str
+) -> None:
+    """An agent file stores its liquid density in g/mL and its molar mass in g/mol.
+
+    Reading "g" alone, as a unit no value is stored in, let a restated density
+    go stale with nothing asking.
+    """
+    value = expected.split()[0]
+    root = _repo(tmp_path, model=_model_with(sentence))
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        f"from typing import Final\n\n{constant}: Final = {value}\n", encoding="utf-8"
+    )
+
+    untied = _untied(root)
+
+    assert len(untied) == 1
+    assert f"{expected} equals core/thing.py {constant} = {value}" in untied[0]
 
 
 def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpose() -> None:
