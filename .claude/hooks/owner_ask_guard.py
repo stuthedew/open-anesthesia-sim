@@ -10,6 +10,15 @@ that names a pull request, because the hook exists to stop asks that are not
 real questions, never to filter what else a thread says (project owner,
 2026-11-03).
 
+**What "not a real question" means here.** The owner calls these
+"non-questions". It is an ask that carries no recorded question: a bare
+request to read, merge or review a pull request, or a question written into
+the message when no `Owner-ask` record backs it. A recorded question is the
+decision or review line that `bin/docket arm --owner-ask` prints. The hook
+cannot judge whether a recorded question is worth asking. A question with an
+obvious answer still passes once it is recorded, and only `arm`'s printed
+instructions to the session guard against that.
+
 **What an ask needs is what `arm` records** (`PL-3D2F`). For an ask, the hook
 asks `bin/docket arm --owner-ask` about this checkout's branch:
 
