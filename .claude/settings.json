@@ -55,7 +55,7 @@
           },
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/regex_guard.py\""
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/regex-guard.sh\""
           }
         ]
       },

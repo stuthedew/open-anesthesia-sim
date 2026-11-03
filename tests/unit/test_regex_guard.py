@@ -1,4 +1,4 @@
-"""`.claude/hooks/regex_guard.py` must refuse an edit that adds a regular expression with no reason.
+"""`.claude/hooks/regex-guard.sh` must refuse an edit that adds a regular expression with no reason.
 
 The hook is the stop `PL-7JYV` asked for, so the failure that matters is an
 edit it lets through when it should refuse: a tool it reads wrongly, or a
@@ -11,18 +11,17 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "regex_guard.py"
+HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "regex-guard.sh"
 
 
 def _decision(tool: str, tool_input: Mapping[str, object], checkout: Path) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one call in `checkout`, or `None` for none."""
     payload = json.dumps({"tool_name": tool, "tool_input": tool_input})
     result = subprocess.run(
-        [sys.executable, str(HOOK)],
+        ["bash", str(HOOK)],
         input=payload,
         capture_output=True,
         text=True,

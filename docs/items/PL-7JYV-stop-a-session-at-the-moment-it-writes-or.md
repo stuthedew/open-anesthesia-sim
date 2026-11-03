@@ -1,8 +1,17 @@
 ---
 id: PL-7JYV
 title: Stop a session at the moment it writes or changes a regular expression in Python, make it consider and research a parser or string method first, and require a written reason where regex is still the right tool
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: infra
+feature: regex-review
+touches: tools/regex_check.py, tools/regex_baseline.py, .claude/hooks/regex-guard.sh, .claude/settings.json, tests/unit/test_regex_check.py, tests/unit/test_regex_guard.py, Makefile, .github/workflows/quality.yml, tests/unit/test_tools_portability.py, docs/apparatus.md, docket.toml
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1983
+payoff: a session that reaches for a regular expression is stopped at the edit and asked to try a parser, an existing reader or a string method first, and one it keeps carries its reason beside it
+verify: grep -q 'def test_writing_a_new_file_with_a_regular_expression_is_refused_with_the_guidance' tests/unit/test_regex_guard.py && grep -q 'regex-guard.sh' .claude/settings.json
 ---
 
 **Problem.** Stop a session at the moment it writes or changes a regular expression in Python, make it consider and research a parser or string method first, and require a written reason where regex is still the right tool
@@ -27,14 +36,15 @@ parser or an existing reader can still be chosen cheaply.
 
 **What was built.** The stop is a hook, and a check stands behind it.
 
-1. `.claude/hooks/regex_guard.py` runs before every `Edit`, `MultiEdit` and
-   `Write` of a Python file. It works out what the file would hold after the
-   edit. Where that text holds a call to `re` or `regex` that the file did not
+1. `.claude/hooks/regex-guard.sh` runs `tools/regex_check.py --screen`
+   before every `Edit`, `MultiEdit` and `Write` of a Python file in the
+   checkout. It works out what the file would hold after the edit. Where that text holds a call to `re` or `regex` that the file did not
    hold before, with no `regex:` comment giving its reason, the hook refuses
    the edit. The refusal says what to try first. The session then writes the
    code another way, or sends the edit again with the reason beside the call.
-2. `tools/regex_check.py` holds the rule and the guidance, and the hook reads
-   both from it. `make check` and CI run it over every tracked Python file.
+2. `tools/regex_check.py` holds the rule and the guidance, so the hook and
+   the check cannot disagree. `make check` and CI run it over every tracked
+   Python file.
    It catches what the hook cannot see: an edit made through Bash, and a
    Projects thread, where the repository's hooks do not run.
 3. `tools/regex_baseline.py` lets the 346 existing calls stand. It only
@@ -85,6 +95,16 @@ workflow files, of which the shell hooks held none on 2026-11-03. A
 
 The three papers were read at abstract level, through search results, on
 2026-11-03.
+
+**Shape.** The hook first lived in `.claude/hooks/` as Python that imported
+the tool. `tests/unit/test_tools_portability.py` refuses a hook that imports
+from `tools/`, so the rule moved into the tool behind `--screen`, with a
+shell entry point in the protected directory, the shape
+`.claude/hooks/pr-body-email-guard.sh` already takes. The tool imports
+`docket.vcs` only for the check over the tree. Measured on 2026-11-03, an
+edit of a file that is not Python pays about 0.08 s, an edit of the 921-line
+`tools/fact_home_check.py` about 0.12 s, and an edit of `tools/doc_check.py`,
+the largest at 10,632 lines, about 0.6 s.
 
 **Generator check.** Work the owner asked for. It names no misread fact of
 its own. The regular expressions it stops are instances of facts that heads

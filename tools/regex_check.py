@@ -17,10 +17,29 @@ gives the reason. The comment goes at the end of one of the statement's lines,
 or in the comment lines directly above the statement. `GUIDANCE` is what a
 session reads when this check or the edit hook stops it.
 
-The hook `.claude/hooks/regex_guard.py` uses `added_uses` to refuse the edit
-that writes such a call. This check is the backstop for what the hook cannot
-see: an edit made through a shell command, and a thread where the
-repository's hooks do not run.
+**`--screen` refuses the edit that writes such a call.** It is the
+`PreToolUse` hook on an `Edit`, `MultiEdit` or `Write`, run through
+`.claude/hooks/regex-guard.sh`. It works out what a Python file in the
+checkout would hold after the edit. Where that text holds a call that the file
+did not hold before, with no reason, it refuses the edit and prints `GUIDANCE`.
+The session then writes the code another way, or sends the edit again with
+the reason beside the call. A call counts as the same call when `ast.unparse`
+writes it the same way, so moving or reformatting one is not refused, and
+changing the pattern of one that has no reason is.
+
+The hook lets an edit through, saying nothing, where it cannot tell: a payload
+it cannot read, an `old_string` the file does not hold (the edit fails on its
+own), or a text that does not parse. The last case covers a file that uses
+syntax newer than the bare `python3` that runs the hook. A file outside the
+checkout, such as a scratch script, is not read.
+
+The check over the tree is the backstop for what the hook cannot see: an edit
+made through a Bash command, a `NotebookEdit`, and a thread where the
+repository's hooks do not run. The hook is wired on the three tool names
+Claude Code uses today. If Claude Code renames one, the hook stops running for
+that tool and nothing reports it, because checking every tool call would put a
+Python start-up in front of each one. `make check` and CI still refuse the
+call.
 
 The calls the tree held on 2026-11-03 are in `tools/regex_baseline.py`, keyed
 by file, enclosing function and call, and never by line. That baseline only
@@ -50,6 +69,7 @@ from __future__ import annotations
 
 import ast
 import io
+import json
 import sys
 import tokenize
 from collections import Counter
@@ -61,9 +81,10 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / ".claude" / "hooks"))
 
 from docket.lines import split_lines  # noqa: E402
-from docket.vcs import Unlisted, tracked_under  # noqa: E402
+from hook_input import deny, project_root  # noqa: E402
 
 from check_support import (  # noqa: E402
     Baseline,
@@ -177,7 +198,12 @@ def _reason_lines(source: str) -> set[int]:
 
     lines = set()
 
-    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    except tokenize.TokenError as error:
+        raise SyntaxError(str(error)) from error
+
+    for token in tokens:
         if token.type != tokenize.COMMENT:
             continue
 
@@ -274,7 +300,9 @@ def uses(source: str) -> list[Use]:
 
     finder = _Finder(modules, functions)
     finder.visit(tree)
-    reasons = _reason_lines(source)
+    # Tokenizing is about a third of the cost on a large file, and a file
+    # without the tag holds no reason to find.
+    reasons = _reason_lines(source) if REASON_TAG in source else set()
     source_lines = split_lines(source)
     found = []
 
@@ -356,6 +384,10 @@ def analyze(root: Path, baseline: Baseline = GRANDFATHERED_REGEX) -> Report:
     sites: dict[tuple[str, tuple[str, str]], list[Use]] = {}
     found: dict[str, Counter[tuple[str, str]]] = {}
 
+    # Imported here rather than at the top, because importing it takes about
+    # 0.1 s and `--screen` runs before every edit of any file.
+    from docket.vcs import Unlisted, tracked_under
+
     try:
         paths = tracked_under(root, "", ".py")
     except Unlisted as error:
@@ -418,8 +450,125 @@ def format_report(report: Report) -> str:
     return "\n".join(lines)
 
 
+#: The guard's name in the log of refusals that `hook_input.deny` keeps.
+GUARD_NAME = "regex-guard"
+
+#: The file endings `--screen` reads as Python source.
+PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
+
+
+def _replaced(text: str, old: object, new: object, every: object) -> str | None:
+    """Return `text` with one edit applied, or `None` where the edit cannot apply."""
+
+    if not isinstance(old, str) or not isinstance(new, str) or not old or old not in text:
+        return None
+
+    return text.replace(old, new) if every is True else text.replace(old, new, 1)
+
+
+def proposed(payload: str) -> tuple[str, str] | None:
+    """Return a Python file's text before and after the edit `payload` describes.
+
+    `None` where the payload names no Python file in the checkout, describes no
+    edit this hook reads, or describes an edit that cannot apply.
+    """
+
+    try:
+        data = json.loads(payload)
+    except ValueError:
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    tool = data.get("tool_name")
+    tool_input = data.get("tool_input")
+
+    if not isinstance(tool_input, dict):
+        return None
+
+    file_path = tool_input.get("file_path")
+
+    if not isinstance(file_path, str) or Path(file_path).suffix not in PYTHON_SUFFIXES:
+        return None
+
+    if not Path(file_path).resolve().is_relative_to(project_root().resolve()):
+        return None
+
+    try:
+        before = Path(file_path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        before = ""
+    except (OSError, UnicodeDecodeError):
+        return None
+
+    after: str | None
+
+    if tool == "Write":
+        content = tool_input.get("content")
+        after = content if isinstance(content, str) else None
+    elif tool == "Edit":
+        after = _replaced(
+            before,
+            tool_input.get("old_string"),
+            tool_input.get("new_string"),
+            tool_input.get("replace_all"),
+        )
+    elif tool == "MultiEdit":
+        edits = tool_input.get("edits")
+        after = before if isinstance(edits, list) else None
+
+        for edit in edits if isinstance(edits, list) else []:
+            if after is None or not isinstance(edit, dict):
+                after = None
+                break
+
+            after = _replaced(
+                after, edit.get("old_string"), edit.get("new_string"), edit.get("replace_all")
+            )
+    else:
+        after = None
+
+    return None if after is None else (before, after)
+
+
+def screen(payload: str) -> str | None:
+    """Return the hook output that refuses the edit `payload` describes, or `None`."""
+
+    texts = proposed(payload)
+
+    if texts is None:
+        return None
+
+    try:
+        added = added_uses(*texts)
+    except (SyntaxError, ValueError):
+        return None
+
+    if not added:
+        return None
+
+    named = "\n".join(f"  {describe(use)}" for use in added)
+    reason = (
+        "This edit adds a regular expression with no `regex:` reason beside it:\n"
+        f"{named}\n\n{GUIDANCE}\n\n"
+        "Then send the edit again, written another way or with the reason beside each call."
+    )
+    return deny(GUARD_NAME, "regex-without-reason", reason, payload)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    return run_report(argv, __doc__ or "", analyze, format_report)
+    arguments = sys.argv[1:] if argv is None else list(argv)
+
+    if "--screen" in arguments:
+        refusal = screen(sys.stdin.read())
+
+        if refusal is not None:
+            print(refusal)
+
+        return 0
+
+    return run_report(arguments, __doc__ or "", analyze, format_report)
 
 
 if __name__ == "__main__":
