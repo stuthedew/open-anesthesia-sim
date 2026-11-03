@@ -715,6 +715,23 @@ def test_the_hint_asks_nothing_of_an_item_file_or_a_file_elsewhere(
     assert capsys.readouterr().out == ""
 
 
+def test_hint_on_a_detached_head_is_not_asked(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A session stands on a detached HEAD or on the default branch before it
+    # creates its work branch. Spending the hook's one question there left the
+    # first edit on the work branch unasked (`PL-SRQB`).
+    work = str(record / "src" / "work.py")
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=record, check=True)
+
+    assert _run(monkeypatch, "--hint", work) == branch_id_check.NOT_ASKED
+
+    subprocess.run(["git", "checkout", "-q", "--detach"], cwd=record, check=True)
+
+    assert _run(monkeypatch, "--hint", work) == branch_id_check.NOT_ASKED
+    assert capsys.readouterr().out == ""
+
+
 def test_the_hint_reads_a_name_as_the_refusal_does(
     record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -20,6 +20,7 @@ week". Neither holds. The whole mechanism (`docs/dead-ends.md`,
 was committed on `claude/hopeful-allen-tetrje` on 2026-09-13 and reached no
 session until `#527` merges. Verified by a session whose own `SessionStart`
 digest carried no dead-ends block.
+<!-- absent: .claude/hooks/item_read_log.py -->
 
 **Why it matters.** The piece's stated position is that its numbers are
 attached so the claims can be checked rather than taken. Two checkable claims
@@ -44,3 +45,4 @@ plus a judgment the holder has to make - whether a claim that was false when
 published and is true now is repaired by a silent edit or wants a line saying
 so, given that the piece's stated position is that its numbers are attached to
 be checked.
+<!-- absent: .claude/hooks/item_read_log.py -->

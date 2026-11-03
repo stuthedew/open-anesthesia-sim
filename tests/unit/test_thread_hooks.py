@@ -124,6 +124,28 @@ def test_a_change_to_the_repository_hooks_reaches_the_user_settings_at_the_next_
     assert json.loads(user_path.read_text(encoding="utf-8"))["hooks"]["PreToolUse"] == []
 
 
+def test_a_changed_hooks_block_does_not_rerun_start_commands(tmp_path: Path) -> None:
+    # Claude Code ran the old copy's session-start command at this start, so
+    # rewriting a changed copy runs only a command the old copy lacked
+    # (`PL-H8NX`).
+    user_path = tmp_path / "home" / ".claude" / "settings.json"
+    root = _checkout(tmp_path)
+    _start(root, user_path)
+    changed = {
+        "hooks": {
+            **PROJECT["hooks"],
+            "SessionStart": [
+                {"hooks": [{"type": "command", "command": "echo digest-ran"}]},
+                {"hooks": [{"type": "command", "command": "echo new-ran"}]},
+            ],
+            "PreToolUse": [],
+        }
+    }
+    (root / ".claude" / "settings.json").write_text(json.dumps(changed), encoding="utf-8")
+
+    assert _start(root, user_path) == "new-ran\n"
+
+
 def test_a_copied_hook_finds_the_checkout_after_the_working_directory_moves(tmp_path: Path) -> None:
     """`PL-TNY6`: a copied command acts on the checkout wherever the session's directory is.
 

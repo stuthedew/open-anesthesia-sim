@@ -5,8 +5,8 @@ or behind a wrapper `shell_split.WRAPPERS` names, that is handed `src` or
 `tests` in any path form: `src`, `src/`, `./src`, an absolute path, or a file
 below it. It reads a tree there as parsed when it is the script the
 interpreter runs, one of the interpreter's own options, a word after a module
-run with `-m` or after a `-c` string, or a file redirected onto the
-interpreter's input. It also refuses `compileall` or `py_compile` run with
+run with `-m` that names a directory or Python source, or after a `-c`
+string, or a file redirected onto the interpreter's input. It also refuses `compileall` or `py_compile` run with
 `-m` on `.`. Inside a `-c` string it reads only a tree written with its
 slash, and only a path that names a directory or Python source: a last part
 with no suffix, or one ending in `.py`, `.pyi` or `.pyw`. Code that opens
@@ -16,7 +16,9 @@ interpreter never parses, so it does not read them (`PL-CDZ8`).
 Outside the promise: an interpreter named by path, which is the deliberate
 spelling, and a tree reached through a `cd`, by `find -exec` or as a list on
 standard input, or named with no slash inside a `-c` string, where the word is
-as likely code as a path (`PL-R5N0`). Each is a known gap and not a defect: a
+as likely code as a path (`PL-R5N0`). So is an interpreter run inside a `$( )`
+substitution, and code a heredoc hands to `python3 -`, which this hook reads
+as document text (`PL-SMM1`). Each is a known gap and not a defect: a
 row of `KNOWN_GAPS` in `tests/unit/test_floor_interpreter_guard.py`, held to
 the verdict it gets today, and filed as an item only once a session is seen
 writing it. A false refusal is worked when a session meets one, and never
@@ -170,6 +172,11 @@ def bare_call_at_a_tree(command: str) -> str | None:
             read = arguments[:after]
         elif kind == "-c":
             read = arguments[: after - 1] + arguments[after:]
+        elif kind == "-m":
+            # A module is handed its words, and parses one only where it names a
+            # directory or Python source, as a `-c` string is read below: `python3
+            # -m json.tool` on an agent data file parses no 3.14 source (`PL-SMM1`).
+            read = arguments[:after] + [word for word in arguments[after:] if not NOT_SOURCE.search(word)]
         else:
             read = arguments
         # A redirection is no argument, since bash lifts it out wherever it

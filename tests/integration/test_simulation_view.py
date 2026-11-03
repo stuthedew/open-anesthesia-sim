@@ -32,6 +32,7 @@ import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import cache, partial
+from pathlib import Path
 from typing import Any, Final, NoReturn
 
 import pytest
@@ -8979,17 +8980,164 @@ def _callback_bypass(
 
 
 def _unwrapped_partial(node: ast.expr) -> ast.expr:
-    """Return the function that `node` wraps when it is a `partial` call, or `node` itself."""
+    """Return the function that `node` wraps when it is a `partial` call, or `node` itself.
+
+    Both `partial(...)` and `functools.partial(...)` count.
+    """
 
     if (
         isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "partial"
+        and (
+            (isinstance(node.func, ast.Name) and node.func.id == "partial")
+            or (isinstance(node.func, ast.Attribute) and node.func.attr == "partial")
+        )
         and node.args
     ):
         return node.args[0]
 
     return node
+
+
+def _assigned_names(function: ast.AST) -> dict[str, list[ast.expr | None]]:
+    """Return each name that `function` binds, with every value a plain assignment gives it.
+
+    A plain assignment, such as `callback = self._apply` or `callback: Slot = self._apply`,
+    gives the name its value. Any other binding of the name adds None, which says the name
+    may also hold something that no assignment shows. A parameter, a loop target, a `with`
+    or `except` target, an unpacking, `:=`, `+=` and an import are such bindings.
+    """
+
+    assigned: dict[str, list[ast.expr | None]] = {}
+    plain_targets: set[int] = set()
+
+    for node in ast.walk(function):
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets, value = [node.target], node.value
+        else:
+            continue
+
+        for target in targets:
+            if isinstance(target, ast.Name):
+                plain_targets.add(id(target))
+                assigned.setdefault(target.id, []).append(value)
+
+    otherwise: set[str] = set()
+
+    for node in ast.walk(function):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            if id(node) not in plain_targets:
+                otherwise.add(node.id)
+        elif isinstance(node, ast.arg):
+            otherwise.add(node.arg)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            otherwise.add(node.name)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            otherwise.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+
+    for name in otherwise:
+        assigned.setdefault(name, []).append(None)
+
+    return assigned
+
+
+def _followed(node: ast.expr, assigned: Mapping[str, list[ast.expr | None]]) -> list[ast.expr]:
+    """Return the callbacks that `node` stands for, following a local variable to its values.
+
+    A name that the enclosing function assigns stands for each value assigned to it, so
+    `callback = self._apply; button.clicked.connect(callback)` is judged as a connection of
+    `self._apply`. A name that is also bound some other way, such as a parameter or a loop
+    target, stands for itself as well. A `partial` stands for the function that it wraps.
+    A conditional expression stands for both of its values, and a tuple, list or set
+    assigned to a name stands for each of its elements. Any other node stands for itself.
+    """
+
+    pending, seen, found = [node], set[str](), list[ast.expr]()
+
+    while pending:
+        current = _unwrapped_partial(pending.pop())
+
+        if isinstance(current, ast.Name) and current.id in assigned:
+            if current.id not in seen:
+                seen.add(current.id)
+
+                for value in reversed(assigned[current.id]):
+                    if value is None:
+                        found.append(current)
+                    else:
+                        pending.extend(reversed(list(_elements(value))))
+        elif isinstance(current, ast.IfExp):
+            pending.extend((current.orelse, current.body))
+        else:
+            found.append(current)
+
+    return found
+
+
+def _passed_callbacks(
+    call: ast.Call, assigned: Mapping[str, list[ast.expr | None]]
+) -> list[tuple[ast.expr, str]] | None:
+    """Return each callback that `call` passes on, with its position, or None for a disconnect.
+
+    The positions are those that `_callback_bypass` describes. Each callback is followed
+    through `_followed`, so a variable stands for the value assigned to it.
+    """
+
+    if isinstance(call.func, ast.Attribute):
+        called: str | None = call.func.attr
+    else:
+        called = call.func.id if isinstance(call.func, ast.Name) else None
+
+    if called == "disconnect":
+        return None
+
+    if called == "connect":
+        (slot,) = call.args
+        return [(callback, "connect") for callback in _followed(slot, assigned)]
+
+    slots = call.args[1:] if called in _CALLS_THAT_TAKE_A_SLOT else []
+    passed = [(argument, any(argument is slot for slot in slots)) for argument in call.args]
+    passed += [(keyword.value, keyword.arg in _qt_signal_names()) for keyword in call.keywords]
+    positioned: list[tuple[ast.expr, str]] = []
+
+    for value, takes_a_slot in passed:
+        if takes_a_slot:
+            positioned.extend((callback, "slot") for callback in _followed(value, assigned))
+        else:
+            positioned.extend(
+                (callback, "argument")
+                for element in _elements(value)
+                for callback in _followed(element, assigned)
+            )
+
+    return positioned
+
+
+def _calls_with_their_assignments(
+    body: list[ast.stmt],
+) -> Iterator[tuple[ast.Call, dict[str, list[ast.expr | None]]]]:
+    """Yield each call in `body` with the names its top-level function assigns.
+
+    `body` is a class's or a module's statements, and each class in it is read the same
+    way. A call in a function nested inside a method sees the names the whole method
+    assigns. A call outside any function sees none.
+    """
+
+    for statement in body:
+        if isinstance(statement, ast.ClassDef):
+            yield from _calls_with_their_assignments(statement.body)
+            continue
+
+        assigned = (
+            _assigned_names(statement)
+            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef))
+            else {}
+        )
+
+        for node in ast.walk(statement):
+            if isinstance(node, ast.Call):
+                yield node, assigned
 
 
 @dataclass(frozen=True)
@@ -9012,16 +9160,16 @@ def _halt_gate_bypasses(
 ) -> _HaltGateReading:
     """Find each call in `view_class`'s source whose callback bypasses the halt gate.
 
-    The source holds every connection the class makes, including the ones it makes when it
-    later builds a dialog. A `partial` in a slot position is treated as the method that it
-    wraps. A method that overrides one of Qt's own, such as `keyPressEvent`, is called by
-    Qt directly, so it must pass the gate too. Each key in `exemptions` pairs the class's
-    name with the callback's source text, or with `def <name>` for such a method. A callback
-    listed there is not reported as a bypass, but its entry is reported as stale when the
-    callback passes the gate.
+    The halt gate is `halt_gate` in `app/halt_gate.py`. The class's source holds every
+    connection the class makes, including the ones it makes when it later builds a dialog.
+    Each callback is followed through `_followed`, so a `partial` is treated as the method
+    that it wraps, and a local variable as the values assigned to it. A method that
+    overrides one of Qt's own, such as `keyPressEvent`, is called by Qt directly, so it must
+    pass the gate too. Each key in `exemptions` pairs the class's name with the callback's
+    source text, or with `def <name>` for such a method. A callback listed there is not
+    reported as a bypass, but its entry is reported as stale when the callback passes the gate.
 
-    The check reads only the class's own source. It cannot see a slot that a function
-    outside the class connects, or a callback held in a variable before it is passed on.
+    `_outside_bypasses` reads the rest of `app/` for view methods that other code connects.
     """
 
     (class_node,) = ast.parse(inspect.getsource(view_class)).body
@@ -9046,34 +9194,14 @@ def _halt_gate_bypasses(
 
     connections = 0
 
-    for call in (node for node in ast.walk(class_node) if isinstance(node, ast.Call)):
-        if isinstance(call.func, ast.Attribute):
-            called: str | None = call.func.attr
-        else:
-            called = call.func.id if isinstance(call.func, ast.Name) else None
+    for call, assigned in _calls_with_their_assignments(class_node.body):
+        positioned = _passed_callbacks(call, assigned)
 
-        if called == "disconnect":
+        if positioned is None:
             continue
 
-        positioned: list[tuple[ast.expr, str]]
-
-        if called == "connect":
+        if isinstance(call.func, ast.Attribute) and call.func.attr == "connect":
             connections += 1
-            (slot,) = call.args
-            positioned = [(_unwrapped_partial(slot), "connect")]
-        else:
-            slots = call.args[1:] if called in _CALLS_THAT_TAKE_A_SLOT else []
-            passed = [(argument, any(argument is slot for slot in slots)) for argument in call.args]
-            passed += [
-                (keyword.value, keyword.arg in _qt_signal_names()) for keyword in call.keywords
-            ]
-            positioned = []
-
-            for value, takes_a_slot in passed:
-                if takes_a_slot:
-                    positioned.append((_unwrapped_partial(value), "slot"))
-                else:
-                    positioned.extend((element, "argument") for element in _elements(value))
 
         run_at_once = _own_method(call.func, view_class) is not None
 
@@ -9101,22 +9229,143 @@ def _halt_gate_bypasses(
     return _HaltGateReading(bypasses, exempt_but_gated, exemptions_handed_out, connections)
 
 
+def _view_methods(views: Sequence[type]) -> dict[str, list[tuple[type, bool]]]:
+    """Map each method name that the views define in this project to the views that define it.
+
+    Each entry pairs a view with whether its method of that name passes the halt gate.
+    A method that a view takes from PySide6, such as `update` or `close`, is left out,
+    because its name says nothing about which object a call reaches. So is a property.
+    """
+
+    methods: dict[str, list[tuple[type, bool]]] = {}
+
+    for view in views:
+        names = {
+            name
+            for base in view.__mro__
+            if base.__module__.startswith("anesthesia_sim") or base.__module__ == __name__
+            for name in vars(base)
+            if not name.startswith("__")
+        }
+
+        for name in sorted(names):
+            member = inspect.getattr_static(view, name)
+
+            if isinstance(member, property) or not callable(member):
+                continue
+
+            methods.setdefault(name, []).append((view, passes_halt_gate(member)))
+
+    return methods
+
+
+def _outside_bypasses(
+    modules: Mapping[str, ast.Module],
+    views: Sequence[type],
+    exemptions: Mapping[tuple[str, str], str],
+) -> _HaltGateReading:
+    """Find each call outside the views' classes that passes on a view method without the gate.
+
+    `modules` maps each module's dotted name to its parsed source. Calls inside the views'
+    own classes are left to `_halt_gate_bypasses`. A callback is matched to a view's method
+    by its attribute name alone, as `view._apply` or `self.view._apply` is matched to
+    `RunView._apply`, because the source does not say which object the name before the dot
+    holds. A callback named `self.<name>` is the enclosing
+    class's own method and is not matched, so a callback that another class stores as
+    `self._callback = view._apply` and connects later is not seen. A lambda that calls a
+    view's method from outside is not checked either. Each key in `exemptions` pairs the
+    module's dotted name with the callback's source text.
+    """
+
+    methods = _view_methods(views)
+    own_classes = {(view.__module__, view.__name__) for view in views}
+    judged: list[tuple[str, str, str, str | None]] = []
+    connections = 0
+
+    for module_name, tree in modules.items():
+        body = [
+            statement
+            for statement in tree.body
+            if not (
+                isinstance(statement, ast.ClassDef) and (module_name, statement.name) in own_classes
+            )
+        ]
+
+        for call, assigned in _calls_with_their_assignments(body):
+            positioned = _passed_callbacks(call, assigned)
+
+            if positioned is None:
+                continue
+
+            if isinstance(call.func, ast.Attribute) and call.func.attr == "connect":
+                connections += 1
+
+            for callback, _ in positioned:
+                if not isinstance(callback, ast.Attribute) or callback.attr not in methods:
+                    continue
+
+                if isinstance(callback.value, ast.Name) and callback.value.id == "self":
+                    continue
+
+                ungated = [
+                    f"{view.__name__}.{callback.attr}"
+                    for view, gated in methods[callback.attr]
+                    if not gated
+                ]
+                reason = (
+                    f"it is named like {', '.join(ungated)}, which does not pass the gate"
+                    if ungated
+                    else None
+                )
+                judged.append((module_name, ast.unparse(call), ast.unparse(callback), reason))
+
+    bypasses: list[tuple[str, str]] = []
+    exempt_but_gated: list[tuple[str, str]] = []
+    exemptions_handed_out: set[tuple[str, str]] = set()
+
+    for module_name, text, callback_text, reason in judged:
+        key = (module_name, callback_text)
+
+        if key in exemptions:
+            exemptions_handed_out.add(key)
+
+            if reason is None:
+                exempt_but_gated.append(key)
+        elif reason is not None:
+            bypasses.append((f"{module_name}: {text}", reason))
+
+    return _HaltGateReading(bypasses, exempt_but_gated, exemptions_handed_out, connections)
+
+
+def _app_modules() -> dict[str, ast.Module]:
+    """Return every module under `src/anesthesia_sim/app/`, parsed, by its dotted name."""
+
+    package = Path(inspect.getfile(run_view_module)).parent
+
+    return {
+        ".".join(("anesthesia_sim", "app", *path.relative_to(package).with_suffix("").parts)): (
+            ast.parse(path.read_text(encoding="utf-8"))
+        )
+        for path in sorted(package.rglob("*.py"))
+    }
+
+
 def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
     """Every slot that `RunView` and `SimulationView` connect or hand out passes the halt gate.
 
-    A slot that reads or changes a run can raise, for example on a run whose snapshot
-    refuses a value. PySide6 prints an exception raised inside a slot and carries on, so the
-    run still said "Paused", and no halt appeared on screen. Each slot used to be wrapped in
-    a `try` by hand, and six were found without one, each in a separate review: `PL-YK2V`,
-    `PL-7DJK`, `PL-V2HC`, `PL-08SS`, `PL-F2T2` and `PL-M3M2`. Every slot now passes through
-    `app/halt_gate.py`'s `halt_gate`, and this test makes each new slot pass through it too
-    (`PL-HJKN`).
+    A slot that reads or changes a run can raise, for example on a run whose snapshot rejects
+    a value. Without the gate, PySide6 prints an exception raised inside a slot and carries
+    on, so the run still shows "Paused" and no halt appears on screen. Hand-written `try`
+    blocks missed six slots, so every slot now passes through `app/halt_gate.py`'s
+    `halt_gate`, and this test makes each new slot pass through it too (`PL-HJKN`).
 
     The test parses each class's source, and `_callback_bypass` decides which callbacks
-    bypass the gate. The test fails on any such callback unless it is listed in
-    `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it does not need the gate.
-    `test_the_halt_gate_check_finds_each_way_around_the_gate` shows that the check
-    catches each kind of bypass.
+    bypass the gate. It also parses every other module under `app/` for a view method that
+    other code connects without the gate (`PL-WV74`). The test fails on any such callback
+    unless it is listed in `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it does not
+    need the gate. `test_the_halt_gate_check_finds_each_way_around_the_gate` and
+    `test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view` show that the
+    check catches each kind of bypass.
     """
 
     bypasses: list[str] = []
@@ -9130,6 +9379,15 @@ def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
         exemptions_handed_out |= reading.exemptions_handed_out
 
         assert reading.connections > 0, f"no connection found in {view_class.__name__}'s source"
+
+    outside = _outside_bypasses(
+        _app_modules(), (RunView, SimulationView), _HANDED_OUT_WITHOUT_THE_HALT_GATE
+    )
+    bypasses.extend(f"{call}: {why}" for call, why in outside.bypasses)
+    exempt_but_gated.extend(outside.exempt_but_gated)
+    exemptions_handed_out |= outside.exemptions_handed_out
+
+    assert outside.connections > 0, "no connection found outside the views' own source"
 
     stale = set(_HANDED_OUT_WITHOUT_THE_HALT_GATE) - exemptions_handed_out
 
@@ -9199,10 +9457,39 @@ class _ViewWiredAroundTheGate(QWidget):
         type(button)("Pause", clicked=run.controller.pause)
         self._run_now(*(self._ungated,))
         self._register((self._gated, self._ungated))
+        held_gated = self._gated
+        button.clicked.connect(held_gated)
+        held_ungated = self._ungated
+        timer.singleShot(0, held_ungated)
+        for looped in (self._ungated,):
+            button.clicked.connect(looped)
+        chosen = self._gated if key else self._ungated
+        timer.singleShot(0, chosen)
+        self._stored = partial(self._ungated, 1)
 
 
 def _bare_function() -> None:
     """A module-level function that `_ViewWiredAroundTheGate` connects by its bare name."""
+
+
+def _wire_from_outside(view: _ViewWiredAroundTheGate, button: Any, timer: Any) -> None:
+    """Connect `view`'s methods from outside its class, in each shape the check must judge.
+
+    It is never called. `test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view`
+    reads its source.
+    """
+
+    button.clicked.connect(view._gated)
+    button.clicked.connect(view._ungated)
+    held_gated = view._gated
+    button.clicked.connect(held_gated)
+    held_ungated = view._ungated
+    timer.singleShot(0, held_ungated)
+    timer.singleShot(0, partial(view._ungated))
+    chosen = view._gated if timer else view._ungated
+    button.clicked.connect(chosen)
+    slots = [view._gated, view._ungated]
+    timer.register(slots)
 
 
 def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
@@ -9235,10 +9522,14 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
         "type(button)('Pause', clicked=run.controller.pause)",
         "self._run_now(*(self._ungated,))",
         "self._register((self._gated, self._ungated))",
+        "timer.singleShot(0, held_ungated)",
+        "timer.singleShot(0, chosen)",
+        "partial(self._ungated, 1)",
+        "button.clicked.connect(looped)",
     ]
     assert reading.exempt_but_gated == []
     assert reading.exemptions_handed_out == set()
-    assert reading.connections == 8
+    assert reading.connections == 10
 
     exempt = ("_ViewWiredAroundTheGate", "run.controller.pause")
     gated = ("_ViewWiredAroundTheGate", "self._gated")
@@ -9250,8 +9541,43 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
 
     assert "button.clicked.connect(run.controller.pause)" not in reported
     assert "def keyPressEvent" not in reported
-    assert reading.exempt_but_gated == [gated] * 5
+    assert reading.exempt_but_gated == [gated] * 7
     assert reading.exemptions_handed_out == {exempt, gated, override}
+
+
+def test_the_halt_gate_check_finds_a_slot_connected_from_outside_the_view() -> None:
+    """The check reports each view method without the gate that `_wire_from_outside` connects.
+
+    The expected list was written by hand from that function's source. A method that passes
+    the gate is not reported, whether it is named at once or held in a variable first. A
+    method without the gate is reported in each shape: named at once, held in a variable,
+    wrapped in a `partial`, chosen by a conditional expression, and held in a list. A
+    `partial` is reported twice, once by the call that passes it on and once by its own
+    call, which also catches a `partial` that is stored and passed later.
+    """
+
+    modules = {"synthetic": ast.parse(inspect.getsource(_wire_from_outside))}
+    reading = _outside_bypasses(modules, (_ViewWiredAroundTheGate,), {})
+
+    assert [call for call, _ in reading.bypasses] == [
+        "synthetic: button.clicked.connect(view._ungated)",
+        "synthetic: timer.singleShot(0, held_ungated)",
+        "synthetic: timer.singleShot(0, partial(view._ungated))",
+        "synthetic: button.clicked.connect(chosen)",
+        "synthetic: timer.register(slots)",
+        "synthetic: partial(view._ungated)",
+    ]
+    assert reading.connections == 4
+
+    exempt = ("synthetic", "view._ungated")
+    gated = ("synthetic", "view._gated")
+    reading = _outside_bypasses(
+        modules, (_ViewWiredAroundTheGate,), {exempt: "a test", gated: "a test"}
+    )
+
+    assert reading.bypasses == []
+    assert reading.exempt_but_gated == [gated] * 4
+    assert reading.exemptions_handed_out == {exempt, gated}
 
 
 def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(

@@ -144,7 +144,9 @@ def record(path: str) -> object:
 
     root = os.environ.get("DIRECT_MERGE_GUARD_API") or open_pull_requests.GITHUB_API
     request = open_pull_requests.api_request(root + path, agent="direct-merge-guard")
-    # Two reads of 15 s each stay well inside the 60 s Claude Code allows a hook by default.
+    # Two reads of 15 s each stay well inside the 600 s Claude Code allows a
+    # command hook by default (https://code.claude.com/docs/en/hooks, read
+    # 2026-11-03, `PL-KJN6`).
     with urllib.request.urlopen(request, timeout=15) as response:
         answer: object = json.load(response)
     return answer

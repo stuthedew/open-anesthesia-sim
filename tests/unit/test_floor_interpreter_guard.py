@@ -507,6 +507,21 @@ def test_a_known_gap_keeps_todays_verdict(
     )
 
 
+def test_json_tool_on_a_data_file_is_admitted() -> None:
+    """A module parses a word it is handed only where it names Python source (`PL-SMM1`).
+
+    Pretty-printing an agent's data file parses no 3.14 source, so it is no
+    floor parse. A module handed a tree or a `.py` file still is.
+    """
+    data = "src/anesthesia_sim/data/agents/sevoflurane.json"
+    assert _decision(f"python3 -m json.tool {data}") is None
+    assert _decision(f"python3 -m json.tool {data} | head -20") is None
+    assert _decision("python3 -m pytest tests/") is not None
+    assert _decision("python3 -m pytest tests") is not None
+    assert _decision("python3 -m json.tool src/anesthesia_sim/app_metadata.py") is not None
+    assert _decision("python3 -m mypy src/anesthesia_sim/data") is not None
+
+
 def test_prose_about_the_rule_in_a_heredoc_is_not_matched() -> None:
     """The repository documents this rule by writing the refused command down."""
     command = "cat > docs/note.md <<'EOF'\npython3 -m compileall src/\nEOF"
