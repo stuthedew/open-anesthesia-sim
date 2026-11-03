@@ -19,6 +19,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import assertion_probe
 import diff_mutation
 import pytest
 from diff_mutation import (
@@ -1060,6 +1061,9 @@ class Runs:
     clean: int = 0
     #: Each run's tree name, patterns, tests, and the changed test file's text there.
     asked: list[tuple[str, list[str], list[str], str]] = field(default_factory=list)
+    #: The tests each assertion probe was asked to run, and the notes it returns.
+    probed: list[list[str]] = field(default_factory=list)
+    probe_notes: list[str] = field(default_factory=list)
 
 
 @pytest.fixture
@@ -1083,7 +1087,13 @@ def runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Runs:
         return stubbed.whole if whole and stubbed.whole is not None else stubbed.branch
 
     shown = "@@ -1,1 +1,1 @@\n-    return unit\n+    return None\n"
+
+    def probe(root: Path, tests: list[str], table: object) -> list[str]:
+        stubbed.probed.append(list(tests))
+        return list(stubbed.probe_notes)
+
     monkeypatch.setattr(diff_mutation, "_compared_statuses", display_statuses)
+    monkeypatch.setattr(assertion_probe, "notes", probe)
     monkeypatch.setattr(diff_mutation, "_clean_run", lambda tree, tests: stubbed.clean)
     monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: _completed(shown))
     return stubbed
@@ -1314,6 +1324,30 @@ def test_a_mutant_the_branch_run_does_not_list_counts_as_untested(repo: Path, ru
 
     assert compared.uncaught[0].startswith(f"tests/unit/test_d.py: {UNIT_MUTANT} - caught by")
     assert "no tests on this branch's version" in compared.uncaught[0]
+
+
+def test_the_changed_tests_are_probed_for_assertions_that_never_decide(
+    repo: Path, runs: Runs
+) -> None:
+    runs.base = runs.branch = {UNIT_MUTANT: "killed"}
+    runs.probe_notes = ["Never decides: tests/unit/test_d.py:10 in test_label"]
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    # Only the test the branch changed is probed, and the probe's notes come
+    # after the comparison's, where they refuse nothing.
+    assert runs.probed == [["tests/unit/test_d.py::test_label"]]
+    assert compared.notes[-1] == "Never decides: tests/unit/test_d.py:10 in test_label"
+    assert compared.uncaught == compared.undecided == []
+
+
+def test_a_deleted_test_file_is_not_probed(repo: Path, runs: Runs) -> None:
+    (repo / "tests/unit/test_d.py").unlink()
+    change = branch_change(repo, "main", mutmut_table(repo))
+
+    compare_tests(repo, change, mutmut_table(repo))
+
+    assert runs.probed == []
 
 
 def test_a_base_test_that_fails_on_the_branchs_source_is_not_compared(
