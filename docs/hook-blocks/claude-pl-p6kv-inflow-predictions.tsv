@@ -1,0 +1,6 @@
+time	session	guard	rule
+2026-11-03T18:57:59.249110+00:00	e0115eb0-e2c8-5a85-bbb9-f728a3f703d8	floor-interpreter-guard	floor-interpreter
+2026-11-03T18:57:59.251044+00:00	e0115eb0-e2c8-5a85-bbb9-f728a3f703d8	gate-status-guard	status-swallowed
+2026-11-03T18:58:18.035988+00:00	e0115eb0-e2c8-5a85-bbb9-f728a3f703d8	gate-status-guard	status-swallowed
+2026-11-03T18:58:47.142131+00:00	e0115eb0-e2c8-5a85-bbb9-f728a3f703d8	gate-status-guard	status-swallowed
+2026-11-03T19:04:37.544354+00:00	e0115eb0-e2c8-5a85-bbb9-f728a3f703d8	gate-status-guard	status-swallowed

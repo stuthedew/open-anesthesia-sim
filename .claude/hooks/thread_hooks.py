@@ -53,12 +53,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from hook_input import write_atomically
-
-#: The value of `CLAUDE_CODE_ENTRYPOINT` in a Claude Projects thread, read from
-#: a thread's environment on 2026-10-26. An ordinary cloud session has
-#: another, such as `remote_desktop`.
-PROJECTS_ENTRYPOINT = "remote_projects"
+from hook_input import PROJECTS_ENTRYPOINT, write_atomically
 
 #: The command the setup script binds to `SessionStart`. It tests for this
 #: file first, so a checkout from before this hook, or a session with no

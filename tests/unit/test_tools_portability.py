@@ -49,10 +49,10 @@ source, and `src/` is free to use the language `.python-version` pins.
 `ast.parse`'s `feature_version` cannot bridge that: it only ever narrows the
 syntax accepted, so it cannot teach an older parser a newer language.
 
-So the eight tools that parse repository source - `contrast_check.py`,
+So the nine tools that parse repository source - `contrast_check.py`,
 `agent_identity_check.py`, `import_boundary_check.py`,
 `workflow_paths_check.py`, `core_vocabulary_check.py`, `glyph_check.py`,
-`fixture_id_check.py` and `literal_home_check.py` -
+`fixture_id_check.py`, `literal_home_check.py` and `regex_check.py` -
 are invoked through
 `uv run python` in both `make check` and `.github/workflows/quality.yml`, and
 are deliberately absent from that workflow's floor section, while staying
@@ -72,7 +72,8 @@ checks those files (`PL-MB3F`).
 `app/simulation_view.py` happened to carry no 3.12+ syntax; one PEP 695
 generic added to either would have failed the floor section on a tool its
 author had not touched. `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922` and
-`PL-40SJ` added the other six, each for the same reason about its own input.
+`PL-40SJ` added the other six, and `PL-7JYV` added `regex_check.py`, each for
+the same reason about its own input.
 """
 
 from __future__ import annotations

@@ -270,6 +270,20 @@ transcript. That line is the trial's record of the arm, and the model review
 reads it from the transcript by session id. Sessions on your own computer are
 not in the trial, and the script writes nothing there.
 
+Projects threads are not in the trial either. A thread does not read
+`.claude/settings.local.json`, so a cap written there would do nothing, and
+the digest says the thread is in neither arm. A thread runs at the level the
+coordinator started it with (`PL-6LVZ`).
+
+To move a cloud session to another level, ask the session to run `python3
+tools/effort_trial.py move --to xhigh --reason "<why>"`. The app's effort
+picker cannot raise a session above its cap, so the picker alone does not
+move it. The command writes the new cap and records the move. The level then
+holds through a compaction, and the model review leaves the session out of
+both arms. A session that starts work on a generator's cause runs the same
+command, under your rule of 2026-11-02 that such work runs at `xhigh`
+(`PL-WBW3`).
+
 Until 2026-10-24, the cloud environment's setup script drew the arm. That
 script runs only when the environment's snapshot is built, about once a week.
 So it put no session in either arm (`PL-8MZ9`). The `effort_trial.py` line in

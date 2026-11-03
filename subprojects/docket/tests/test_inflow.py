@@ -7,7 +7,8 @@ filings are counted apart from the inflow the question is about.
 
 from __future__ import annotations
 
-from datetime import date
+from dataclasses import replace
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -350,6 +351,29 @@ def test_the_release_report_names_each_prediction_the_last_week_broke() -> None:
     assert "1 re-entries against 0" in reentry
 
 
+def test_the_new_paths_ceiling_breaks_only_when_the_count_did_not_fall() -> None:
+    """A week of fewer filings and fewer new paths can read above the ceiling per filing.
+
+    The week from 2026-10-26 named 11 new paths over 19 filings, after 34 over
+    117, and was reported as growth (`PL-2T7X`). Here three new paths over ten
+    filings are followed by two over four: 0.50 a filing, but fewer new paths.
+    """
+    first = [
+        _item(f"PL-1{n:03d}", date(2026, 9, 1), touches=(f"tools/a{n % 3}.py",)) for n in range(10)
+    ]
+    fewer = [
+        _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=(f"tools/b{n % 2}.py",)) for n in range(4)
+    ]
+    today = date(2026, 9, 15)
+
+    assert missed(analyze([*first, *fewer], CONFIG, today=today), today) == ()
+
+    as_many = [*fewer, _item("PL-2009", date(2026, 9, 9), touches=("tools/b2.py",))]
+    (line,) = missed(analyze([*first, *as_many], CONFIG, today=today), today)
+    assert "3 new apparatus paths over 5 filings, 0.60 a filing" in line
+    assert "against 3 new the period before" in line
+
+
 def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> None:
     today = date(2026, 9, 15)
     broken = [_item("PL-1000", date(2026, 9, 1)), _item("PL-2000", date(2026, 9, 8), priority="P1")]
@@ -359,40 +383,75 @@ def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> No
     assert _missed_expectations(broken, Config(items_dir="docs/items"), today) == ""
 
 
-def test_a_class_pinned_p1_on_a_rule_file_is_not_an_unexpected_band() -> None:
-    """A simulator item pinned to P1 by its class says nothing about the apparatus.
+def _severe(items: list[Item], week: date) -> dict[str, int]:
+    """The unexpected bands `analyze` counts for the week starting `week`."""
+    periods = analyze(items, CONFIG, today=week + timedelta(days=7)).periods
+    return dict(next(p for p in periods if p.start == week).severe)
 
-    `PL-HQF5` and `PL-4RL2` were safety- and science-classed product items that
-    also declared a rule file, and the week to 2026-10-18 reported both as a
-    broken prediction (`PL-00TR`). A pinned item that reaches a tool still
-    counts, and so does an unpinned P1 on a rule file.
+
+def test_a_crossing_item_s_p1_is_not_an_unexpected_band() -> None:
+    """A band on an item that also edits the product says nothing about the apparatus.
+
+    `PL-HQF5` and `PL-4RL2` declared a rule file beside simulator files
+    (`PL-00TR`). `PL-M85T`, `PL-RNYV` and `PL-S79P` declared a tool or an
+    apparatus test beside them, and the week to 2026-10-25 reported all three
+    as a broken prediction (`PL-P6KV`). A pinned or unpinned P1 in the
+    workflow lane still counts.
     """
-    config = Config(
-        items_dir=CONFIG.items_dir,
-        notes_file=CONFIG.notes_file,
-        workflow_paths=CONFIG.workflow_paths,
-        instruction_paths=(".claude/rules",),
-    )
-    week = date(2026, 9, 8)
-    rule_only = _item(
+    week = date(2026, 9, 7)
+    on_a_rule = _item(
         "PL-3000",
         week,
         touches=("src/core.py", ".claude/rules/core-domain.md"),
         priority="P1",
         classes=("defect", "safety"),
     )
+    with_a_tool = _item(
+        "PL-3003",
+        week,
+        touches=("src/app.py", "tools/contrast_check.py"),
+        priority="P1",
+        classes=("safety", "anticipated"),
+    )
+    unpinned_crossing = _item("PL-3004", week, touches=("src/a.py", "tools/a.py"), priority="P1")
     in_a_tool = _item(
         "PL-3001", week, touches=("tools/a.py",), priority="P1", classes=("defect", "safety")
     )
     unpinned = _item("PL-3002", week, touches=(".claude/rules/x.md",), priority="P1")
 
-    def severe(items: list[Item]) -> dict[str, int]:
-        periods = analyze(items, config, today=date(2026, 9, 15)).periods
-        return dict(next(p for p in periods if p.start == week).severe)
+    assert _severe([on_a_rule, with_a_tool, unpinned_crossing], week) == {}
+    assert _severe([on_a_rule, in_a_tool], week) == {"P1": 1}
+    assert _severe([unpinned], week) == {"P1": 1}
 
-    assert severe([rule_only]) == {}
-    assert severe([rule_only, in_a_tool]) == {"P1": 1}
-    assert severe([unpinned]) == {"P1": 1}
+
+def test_an_owner_set_p1_is_not_an_unexpected_band() -> None:
+    """The owner placed `PL-JRVV` at P1, which records an order, not a severity (`PL-P6KV`).
+
+    A record naming another band describes a decision the item no longer
+    carries, so that item still counts.
+    """
+    week = date(2026, 9, 7)
+    placed = replace(_item("PL-3005", week, priority="P1"), owner_priority="P1, 2026-09-08")
+    stale = replace(placed, identifier="PL-3006", owner_priority="P2, 2026-09-08")
+
+    assert _severe([placed], week) == {}
+    assert _severe([stale], week) == {"P1": 1}
+
+
+def test_a_missed_prediction_says_where_to_file_its_investigation() -> None:
+    """A miss names where to look for an investigation and how to file one (`PL-P6KV`).
+
+    Four cuts printed the week of 2026-10-19's misses and none filed an item.
+    """
+    filings = [
+        _item(f"PL-0PT{n}", date(2026, 9, n), touches=(f"tools/t{n}.py",), priority="P1")
+        for n in range(7, 14)
+    ]
+
+    shown = _missed_expectations(filings, CONFIG, date(2026, 9, 14))
+
+    assert "bin/docket feature convergence-visibility" in shown
+    assert 'bin/docket new --feature convergence-visibility "..."' in shown
 
 
 def test_product_lane_counts_a_product_reentry() -> None:

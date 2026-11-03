@@ -419,10 +419,10 @@ jobs:
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/possessive_section_check.py
-      # Deliberately absent from the floor section above, all eight of them, for
+      # Deliberately absent from the floor section above, all nine of them, for
       # a reason about the *input* rather than about the tool. That section runs
       # the tools under the 3.11 floor to prove they need no virtualenv; these
-      # eight read `app/`, `src/anesthesia_sim/`, `src/anesthesia_sim/core/`,
+      # nine read `app/`, `src/anesthesia_sim/`, `src/anesthesia_sim/core/`,
       # `src/anesthesia_sim/data/` and `tests/` with `ast`, and that source
       # targets 3.14, so the 3.11 parser
       # cannot read what they are given - a `SyntaxError` on
@@ -437,15 +437,17 @@ jobs:
       # this whole job red before uv was even installed, naming a tool whose
       # author had touched nothing. The rule that generalizes it is in
       # `tests/unit/test_tools_portability.py`'s docstring, and the Makefile
-      # carries the same note on the same eight lines. `glyph_check.py` joined
+      # carries the same note on the same nine lines. `glyph_check.py` joined
       # them under `PL-8XPQ`, reading the same trees for the same reason.
       # `fixture_id_check.py` joined them under `PL-7922` with the broadest
       # input of the group - every `*.py` in the repository - which is the same
       # argument `workflow_paths_check.py` makes about `tests/`.
       # `literal_home_check.py` joined them under `PL-40SJ`, reading
       # `src/anesthesia_sim/` for the numbers typed where a name belongs.
+      # `regex_check.py` joined them under `PL-7JYV`, reading every `*.py` for
+      # a regular expression written without a reason.
       # `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`,
-      # `PL-7922`, `PL-40SJ`.
+      # `PL-7922`, `PL-40SJ`, `PL-7JYV`.
       #
       # On a pull request it compares `KNOWN_SHORTFALLS` with the base, passed
       # as the verify replay passes it, and fails on an entry added in the
@@ -466,6 +468,7 @@ jobs:
       - run: uv run python tools/glyph_check.py
       - run: uv run python tools/fixture_id_check.py
       - run: uv run python tools/literal_home_check.py
+      - run: uv run python tools/regex_check.py
 
       # Deliberately not in the floor section above, and deliberately run once
       # rather than twice, for a reason about its *input*: it is the only check

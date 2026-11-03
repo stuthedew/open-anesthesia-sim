@@ -216,7 +216,13 @@ monthly run does this:
    leaves 2 when divided by 4 was `high` under the first rule and is `xhigh`
    under the second, so it prints a different arm if it resumes on the new
    code; the first-line rule assigns it. A session with no line, or whose line
-   says it is "in neither arm", has no arm and is counted and left out.
+   says it is "in neither arm", has no arm and is counted and left out. A
+   session any of whose "Effort trial:" lines says it "was then moved" to a
+   level is counted and left out of both arms too, because the owner or the
+   rule for a generator's cause set its effort, not the draw (`PL-6LVZ`,
+   `PL-WBW3`). The `move` command prints that line into a tool result, so
+   read the session's `user` events as well as its `system` ones. Report each
+   such session at the level it was moved to in the secondary result below.
    Analyze sessions by the level they were assigned (intention to treat).
    Report, as a second result, the level they actually ran at: the lower of
    the arm and the level the app asked for, which `list_sessions` gives as
@@ -225,9 +231,12 @@ monthly run does this:
    writes `effortLevel`. Report how many ran at a level other than the one
    assigned. Once it has adequate data, this randomized comparison is the
    primary result and the historical one supports it. Projects threads are not
-   assigned and are analyzed apart. A thread whose transcript shows no
-   session-start digest ran without this repository's hooks at all, so it
-   has no arm.
+   assigned and are analyzed apart. A thread never reads
+   `.claude/settings.local.json`, where the cap is written (`PL-CR81`), so a
+   thread is in neither arm whatever its digest says. Until `PL-6LVZ`, a
+   thread's digest printed an arm it never ran at. Tell a thread by its
+   `hearth-thread` tag in `list_sessions`. Its level is the one
+   `session_context.effort_level` gives.
 7. **When to stop.** Once both arms reach the sample size step 3 computes, put
    ending the trial to the owner with the result. Put it to them at the run on
    2027-04-24 in any case, six months in, with the counts and what more data
