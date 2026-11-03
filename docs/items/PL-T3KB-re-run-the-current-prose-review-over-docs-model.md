@@ -46,3 +46,22 @@ rewrites are applied, and the branch's `Prose-review:` trailer records the
 counts.
 The close-out writes those counts into this file as a line of its own, in
 the trailer's form, and `verify:` reads that line.
+
+**Moved from `docs/MODEL.md`.** The review moved two pieces of history out of
+the document, and they are kept here.
+
+- § "This is an engineering bar, not a regulatory status": "ISO 14971:2019 is
+  the second standard this section relies on. The 2007 edition mentioned
+  **reasonably foreseeable misuse** only in passing. The 2019 edition made it a
+  defined term."
+- § "Source hierarchy", on Lowe and Ernst: "Interlibrary loan is a third way of
+  reaching a source. It is neither the route that
+  `.claude/rules/citing-sources.md` describes nor the personal access through
+  which the Workbook arrived."
+
+Two hazard-table and display sentences that recorded wording as a placeholder
+were cut: "The wording is a placeholder while the interface is being built"
+(the mark-stopped row) and "The wording is a placeholder that the project owner
+may revise" (the "Model outputs — not measurements." heading). Both wordings
+remain placeholders under the project owner's 2026-10-18 rule on look, wording
+and placement.
