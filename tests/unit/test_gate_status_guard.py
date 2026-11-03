@@ -970,7 +970,7 @@ def test_the_remedy_runs_the_gate_the_command_ran(command: str, spelled: str) ->
 
 @pytest.mark.parametrize(("command", "spelled"), REMEDIES)
 def test_each_offered_remedy_redirects_into_its_log(command: str, spelled: str) -> None:
-    """Every spelling the refusal offers that reads the log first writes the run into it (`PL-VDK9`).
+    """Each spelling the refusal offers that reads the log first writes the run there (`PL-VDK9`).
 
     `make check && tail -45 /tmp/gate.log` printed the whole run and then the
     tail of an older log, so a remedy is held to what it does: each one is
