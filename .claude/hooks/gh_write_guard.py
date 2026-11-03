@@ -51,7 +51,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hook_input
 
 #: The guard's name in the refusal log.
-GUARD = "gh-write-guard"
+GH_GUARD = "gh-write-guard"
 
 #: Each `gh` command that only reads, with the actions of it that only read.
 #: `None` means every action is a read. Read from `gh help` in gh 2.89.0 on
@@ -198,7 +198,7 @@ def judge(payload: str) -> str | None:
         return None
     shown = "; ".join("`" + " ".join(command) + "`" for command in refused)
     reason = f"Refused: {shown} may change something on GitHub.\n\n{REMEDY}"
-    return hook_input.deny(GUARD, "gh-write", reason, payload)
+    return hook_input.deny(GH_GUARD, "gh-write", reason, payload)
 
 
 def names_gh(command: str) -> bool:
@@ -217,7 +217,7 @@ def unjudged(payload: str, error: BaseException) -> str | None:
         f"Refused: this hook could not read the command ({type(error).__name__}: {error}), "
         f"and the command names `gh`, which may change something on GitHub.\n\n{REMEDY}"
     )
-    return hook_input.deny(GUARD, "unjudged", reason, payload)
+    return hook_input.deny(GH_GUARD, "unjudged", reason, payload)
 
 
 def main() -> int:
