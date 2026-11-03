@@ -292,7 +292,8 @@ jobs:
       # Bare for the same reason as the lines above, and the one tool here that
       # reads source with `ast` and still belongs at the floor: the apparatus
       # trees it reads are held to the floor themselves, where `src/` is not,
-      # which is why the eight tools further down are not here (`PL-4S6C`).
+      # which is why the tools further down that run only under
+      # `uv run python` are not here (`PL-4S6C`).
       - run: python3 tools/fact_home_check.py
       # Bare: it reads configuration files as text and parses no Python. It
       # refuses a configuration copy that differs from its home (`PL-SH0W`).
@@ -408,10 +409,10 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
-      # Repeated from the floor section above, unlike the eight lines after
-      # them. `branch_id_check.py` reads `git log` and the branch name, never
-      # project source, so the 3.11 parser has nothing it cannot read
-      # (`PL-CP74`). The other two read every module's docstrings for the
+      # Repeated from the floor section above, unlike the tools after them,
+      # which run only under `uv run python`. `branch_id_check.py` reads
+      # `git log` and the branch name, never project source, so the 3.11
+      # parser has nothing it cannot read (`PL-CP74`). The other two read every module's docstrings for the
       # citations in them, and the floor declines the files it cannot parse, so
       # these are the runs that check them (project owner, 2026-09-24,
       # ratified, over leaving the possessive check at the floor alone, where
@@ -419,10 +420,10 @@ jobs:
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/possessive_section_check.py
-      # Deliberately absent from the floor section above, all nine of them, for
-      # a reason about the *input* rather than about the tool. That section runs
-      # the tools under the 3.11 floor to prove they need no virtualenv; these
-      # nine read `app/`, `src/anesthesia_sim/`, `src/anesthesia_sim/core/`,
+      # The tools on the `uv run python` lines below are deliberately absent from
+      # the floor section above, for a reason about the *input* rather than
+      # about the tool. That section runs the tools under the 3.11 floor to
+      # prove they need no virtualenv. These tools read `app/`, `src/anesthesia_sim/`, `src/anesthesia_sim/core/`,
       # `src/anesthesia_sim/data/` and `tests/` with `ast`, and that source
       # targets 3.14, so the 3.11 parser
       # cannot read what they are given - a `SyntaxError` on
@@ -437,7 +438,7 @@ jobs:
       # this whole job red before uv was even installed, naming a tool whose
       # author had touched nothing. The rule that generalizes it is in
       # `tests/unit/test_tools_portability.py`'s docstring, and the Makefile
-      # carries the same note on the same nine lines. `glyph_check.py` joined
+      # carries the same note on the same lines. `glyph_check.py` joined
       # them under `PL-8XPQ`, reading the same trees for the same reason.
       # `fixture_id_check.py` joined them under `PL-7922` with the broadest
       # input of the group - every `*.py` in the repository - which is the same

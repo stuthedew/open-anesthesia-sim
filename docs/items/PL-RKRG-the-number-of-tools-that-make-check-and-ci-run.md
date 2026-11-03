@@ -3,12 +3,14 @@ id: PL-RKRG
 title: The number of tools that make check and CI run under uv run python is written as a word in six comments and docstrings (Makefile twice, quality.yml twice, docs/apparatus.md twice, test_tools_portability.py), so each new tool must update every copy by hand
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: Makefile, .github/workflows/quality.yml, docs/apparatus.md, tests/unit/test_tools_portability.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1997
 payoff: the comments beside the gates stop describing a tool count that is already wrong in three places, and the next tool added needs no hand edits to stay true
 verify: ! grep -qiE '\b(eight|nine|ten|eleven) (of them|tools|lines)|(other|these|same) (eight|nine|ten|eleven)\b' Makefile .github/workflows/quality.yml tests/unit/test_tools_portability.py && ! grep -qE 'Ten of them|other nine' docs/apparatus.md
 ---
