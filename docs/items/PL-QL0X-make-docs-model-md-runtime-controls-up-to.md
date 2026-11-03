@@ -58,3 +58,24 @@ every fork reads its provenance from `RunDefinition.reaching_segment_at`, which
 at a keyframe returns the stretch before it, so a control-event fork opens at
 an earlier keyframe too. Both now say "every fork". The second blind review
 found this.
+
+**Handoff (2026-11-03 02:45Z).** The thread that did this part stopped for
+length, past its spend budget, after the owner's pause on `PL-H76S` lifted.
+The rewrite is closed and pushed on #1953, which is a draft and unarmed:
+history pass `012a50e1`, phrasing pass `a920241a`, prose review and both blind
+reviews `66b01ab7`, `verify --self` ACCEPT at `66b01ab7`, and main merged in
+after #1962. What is left:
+
+1. Re-run the close-out prose review on this branch under the rules #1956 to
+   #1962 added to `.claude/rules/plain-writing.md` (each paragraph's reader,
+   decided point, and no rewrite longer than the paragraph it replaces). The
+   review applied in `66b01ab7` ran under the earlier rule.
+2. Apply what it returns, then run `bin/docket verify --self PL-QL0X` again.
+3. Publish `/mnt/project-files/v0.7.0/pl-zt47/pr1953-body-draft.md` as the
+   pull request body, with its verify line filled and its review counts
+   updated, and rename the pull request to "PL-QL0X: rewrite docs/MODEL.md's
+   runtime controls, halting and control-input record in plain English, with
+   their history moved to the items".
+4. Ask `bin/docket arm`. Under `PL-ZTZF` this rewrite merges on green: no
+   stored value changed, and `tools/model_rewrite.py lost` drops only history
+   and one stale code quotation, which the note above accounts for.
