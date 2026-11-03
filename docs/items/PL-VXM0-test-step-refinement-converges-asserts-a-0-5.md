@@ -3,11 +3,13 @@ id: PL-VXM0
 title: test_step_refinement_converges asserts a 0.5% relative / 1e-8 absolute tolerance that its own 1e-14 gap assertion makes redundant: any gap failing the first exceeds 1e-8 and so fails the second. Decide whether to keep the 0.5% check as the fallback a fork with an approximate method would use (and say so in the test) or remove it, and whether docs/MODEL.md's requirement to document a 'release comparison tolerance' still has a purpose
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md, tests/reference/test_sevo_patient.py
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1967
 payoff: the step-size test keeps only limits that can fail, so no displayed explanation has to justify a number that never decides anything
 verify: ! grep -q STEP_REFINEMENT_RELATIVE_TOLERANCE tests/reference/test_sevo_patient.py && ! grep -q 'release comparison tolerance' docs/MODEL.md
 ---
@@ -68,9 +70,9 @@ reasons:
    to an approximate method should not fall back on a fixed 0.5%. The
    standard check for such a method is an order-of-accuracy test: halving
    the step should shrink each gap by the factor the method's order
-   predicts, about 2 for a first-order method. This test made exactly that
-   check under the operator split, before #376 replaced it with the exact
-   step. A fixed percentage would pass a method whose error does not shrink
+   predicts, about 2 for a first-order method. Under the operator split,
+   before #376 replaced it with the exact step, this test made a weaker form
+   of that check: it required each gap to be smaller than the last. A fixed percentage would pass a method whose error does not shrink
    at all, as long as the error is small. Sources: Oberkampf WL, Roy CJ.
    *Verification and Validation in Scientific Computing*. Cambridge
    University Press; 2010, chapter "Code verification", on the
@@ -96,5 +98,17 @@ limit, `STEP_REFINEMENT_RELATIVE_TOLERANCE` and
 `STEP_REFINEMENT_ABSOLUTE_TOLERANCE` are gone, and `docs/MODEL.md`
 § "Step-refinement test" no longer requires a release comparison tolerance
 and says in its note for developers what a fork with an approximate method
-should test instead. This lands with the resumed `docs/MODEL.md` rewrite
-(#1950), because that section is paused there.
+should test instead.
+
+**Decision** (project owner, 2026-11-03 03:27Z, ratified, over keeping the
+assertion with a value derived from the display): "Agree with removing. Go
+ahead". It landed on its own pull request on current `main`, ahead of the
+paused `docs/MODEL.md` rewrite, so #1950 drops its own developer note on the
+0.5% when that rewrite resumes.
+
+**Prose review, 2026-11-03.** The close-out review read four units. Its
+rewrite of the new note for developers was taken. Its rewrites of the
+paragraph before that note, the comment on `STEP_REFINEMENT_SETTLED_GAP` and
+the test's docstring were not taken: this change does not touch those
+sentences, the comment's rewrite keeps the 1.4e-11 figure that `PL-PHP4`
+corrects on #1950, and #1950 rewrites that section already.
