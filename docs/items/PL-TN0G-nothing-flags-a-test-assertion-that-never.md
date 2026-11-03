@@ -165,7 +165,7 @@ gap to be within 1e-14 (`STEP_REFINEMENT_ABSOLUTE_TOLERANCE` and
 assertion overrules another only when some mutant breaks what they check, and
 here none does.
 
-**Decision needed.** Does the warning at review still get built?
+**Decision asked, 2026-11-03.** Does the warning at review still get built?
 Recommendation (session, 2026-11-03): no. The mutation approach cannot see the
 case that motivated it. On `tests/unit/test_alveolar.py` its 10 warnings were
 all false alarms: one guard reached by several routes, or two checks of one
@@ -182,3 +182,61 @@ which `.claude/rules/plain-writing.md` § "Give a chosen value its reason from a
 record" now asks of every chosen value a document states. The other route is a
 check that one assertion's limit implies another's. That would read the test's
 own comparisons, which is judgment, and it would be a new item.
+
+**Answer** (project owner, 2026-11-03, ratified, over building the warning
+at review): no, on the mutation approach.
+
+**The unit sweep, finished 2026-11-03.** It ran 52 minutes over 146 tests with
+two or more assertions. Of 546 assertions, 206 decide a result, 199 never
+decide, and 141 fail for no mutant. There were 71,071 completed runs, 62,837
+raised runs and 16 timeouts. Three test cases were left out: two stopped
+before they finished, and in one a mutant left state behind. One of the three
+processes was killed for memory at about 1.4 GB, so its files were swept only
+in part. Of the 199 named assertions, 71 are looser than one other assertion
+and 109 catch exactly the same mutants as another. Nearly all are in three
+files: `tests/unit/test_dashboard_frame.py` (106),
+`tests/unit/test_formatting.py` (67) and `tests/unit/test_run_definition.py`
+(26).
+
+None is a dead limit. Every named assertion that compares a number was read.
+Most check one value two ways, or several inputs of one formatter. One is
+implied by its neighbour: `tests/unit/test_formatting.py:689`,
+`abs(centre - 2.17) <= 0.25`, always passes when line 682's
+`centre == pytest.approx(2.16)` does. It is deliberate: it compares the centre
+with Song et al.'s published mean and standard deviation, which checks the
+expected value 2.16 independently, and its comment gives the reason for 0.25.
+The sweep's raw output was in the session scratchpad and goes with it.
+
+**Reopened by the owner, 2026-11-03.** The owner asked whether dropping the
+tool means not worrying about dead limits at all. Nothing else would catch the
+next one. Only `.claude/rules/plain-writing.md` § "Give a chosen value its
+reason from a record" asks why a limit is its value, and it covers only values
+a document states; no rule under `.claude/rules/` asks it of a test tolerance
+that no document quotes. A static check comparing two limits would not have
+caught the 0.5% case either: at `334d9cc6`, lines 397-415 of
+`tests/reference/test_sevo_patient.py`, one assertion compares each pair with
+`pytest.approx` and the other builds the same coarse-minus-fine differences
+in a list and takes `max()`, so seeing that they test one thing takes
+reasoning (inferred from the code).
+
+**Decision needed.** Which of three routes?
+
+- **(a)** Drop mutation. Change `tools/assertion_probe.py` to record, in one
+  ordinary test run, the value each comparison got and the limit it allowed,
+  and list any limit orders of magnitude looser than the tightest one in the
+  same test. Add a rule to `.claude/rules/test-oracles.md` that a test
+  tolerance carries its reason in a comment.
+- **(b)** Drop mutation and the tool, and add only the tolerance-reason rule.
+- **(c)** Drop mutation and the tool, and add nothing.
+
+**Recommended** (session, 2026-11-03): **(a)**. At `334d9cc6` the test's
+docstring gives the mixed-venous gap as about 4e-17. The 0.5% check allowed at
+least 1e-8, about 10^8 times that gap, and the 1e-14 check about 250 times, so
+the report should name the 0.5% limit (inferred, not yet run). It costs one
+test run, not 52 minutes of mutants. Stopping rule, set in advance: run the
+one test at `334d9cc6` first, and drop the report if it does not name the 0.5%
+limit. Then sweep, and drop it if its list holds no real dead limit. Under
+every answer the per-branch note in `tools/diff_mutation.py`, its
+`docs/mutation-testing.md` section and the mutation runs go, and the approach
+is recorded in `.claude/rules/dead-ends-apparatus.md` § "Mutation testing"
+(already written).

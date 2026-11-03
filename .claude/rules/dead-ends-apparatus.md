@@ -34,3 +34,7 @@ reason its question no longer exists, because `tools/dead_ends.py check
 
 - **`classes`-derived lanes instead of `touches`-derived** — refuted 2026-09-04: put 33 of 145 open items on the wrong side, 18 of them workflow defects that would have gone to a simulator session.
 - **Treating a shared file as a concurrency refusal** — refuted 2026-09-06: excluded 27 of Gate 1's 112 open entries, all declaring `docs/MODEL.md`, from every batch. `PL-VRMK`
+
+## Mutation testing
+
+- **Mutation testing to find a test limit that another assertion always overrules** — refuted 2026-11-03: on the step-size test at `334d9cc6` no mutant made the result depend on the step, so neither limit failed in 828 runs and the 0.5% limit went unnamed. Over the unit tests it named 199 of 546 assertions, none a dead limit: each was one guard reached by several routes, or two checks of one value. `PL-TN0G`
