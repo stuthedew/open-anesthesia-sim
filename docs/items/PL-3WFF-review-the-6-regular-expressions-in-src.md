@@ -32,3 +32,26 @@ it with a `# regex:` comment giving the reason. Either way, lower or delete its
 entry in `tools/regex_baseline.py` in the same commit.
 
 **Done when.** No entry under `src/` is left in `tools/regex_baseline.py`.
+
+**Checked 2026-11-03.** The "Regex usage code review" session reviewed all
+six and recommends keeping each one. Each is a whole-value check where outside
+input enters, run with `fullmatch` and ASCII ranges such as `[0-9]`, because
+`\d` matches any Unicode digit and `$` matches before a trailing newline. Each
+already has a comment above it giving its reason, but without the `regex:`
+tag. A standard-library parser alone accepts too much: `date.fromisoformat`
+returns a date for `"20080305"` on Python 3.13, which this session confirmed,
+and the review reports that `Decimal` accepts `1e3`, `NaN` and `1_000`.
+
+So the work is small:
+
+1. Start each existing comment with `regex:`.
+2. Fix one comment. `src/anesthesia_sim/layout/run_identity.py` calls the
+   session token "a version 4 UUID", but 32 zeros match `_SESSION_TOKEN`, and
+   `uuid.UUID(hex="0" * 32).version` is `None`, which this session confirmed.
+   The refusal message already states the real rule, 32 lowercase hexadecimal
+   digits.
+3. Decide two smaller points the review raised. `_VERSION` in
+   `src/anesthesia_sim/app/view_registry.py` accepts leading zeros, which
+   Semantic Versioning 2.0.0 item 2 forbids, though developers write that
+   value in code. `_CURRENCY_CODE_PATTERN` checks only the shape, so an
+   unassigned code such as `QQQ` passes, which is acceptable for a label.

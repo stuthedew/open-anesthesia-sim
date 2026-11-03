@@ -29,3 +29,22 @@ work splits naturally by directory, so a session may close it in several
 branches, and should file a member item per directory where one runs long.
 
 **Done when.** `tools/regex_baseline.py` holds no entry outside `src/`.
+
+**Leads from the "Regex usage code review" session, 2026-11-03.** It judged
+most of these patterns to be the right tool: shape checks of ids, versions and
+hashes, provided each grammar comes from one exported pattern. The code checks
+under `tools/` already read Python with `ast`, and `docket.vcs` reads git's
+machine formats. It placed the real risk in three places, which are where to
+start:
+
+1. Readers of the meaning of English prose, in `tools/doc_check.py` and
+   docket's `checks.py`.
+2. Docket's hand-written readers of Markdown, YAML and shell. CI now tests
+   them against markdown-it-py and PyYAML, and the review found no defect
+   filed against them since 2026-10-12 for Markdown and YAML, and since
+   2026-10-20 for shell.
+3. The Bash guards, which decide from a command's spelling (`PL-SG93`).
+
+It also noted that docket's `SEMVER_PATTERN` uses `\d`, which matches any
+Unicode digit, the problem `PL-PNGQ` fixed for `isdigit`. This session
+confirmed the pattern in `subprojects/docket/src/docket/model.py`.
