@@ -10292,11 +10292,11 @@ percent for every agent. The three figures above have no test yet (`PL-19W8`).
 The two readouts still round at different points, so near a MAC rounding
 boundary the MAC digit can change while the percent digit does not. For
 sevoflurane, 0.029% and 0.031% both read `0.03%`, while the MAC readout goes
-from `0.01 ×MAC` to `0.02 ×MAC`. That change is a rounding step. The
-concentration moved by 0.002 percentage points, which is less than one step
-of either readout. A reader who sees the MAC digit move alone should read it
-as a concentration sitting near a boundary, not as a change the percent
-readout is hiding.
+from `0.01 ×MAC` to `0.02 ×MAC`. The modeled concentration did change, by
+less than one step of the percent readout: here by 0.002 percentage points,
+and never by as much as 0.01. So a MAC digit that moves alone shows a real
+change too small for the percent readout to show, and gives no size for it
+beyond that bound.
 `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` pins this example,
 and a matching one for isoflurane and desflurane.
 
