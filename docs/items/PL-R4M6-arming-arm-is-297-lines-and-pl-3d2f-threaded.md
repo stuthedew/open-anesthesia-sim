@@ -3,12 +3,14 @@ id: PL-R4M6
 title: arming.arm is 297 lines, and PL-3D2F threaded its owner-ask fast path through it as five if owner_ask checks; split it into stages that the full answer and the fast path each compose
 priority: P3
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: guard-code-structure
 touches: subprojects/docket/src/docket/arming.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane code-structure change, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1996
 payoff: a change to what arm checks edits one stage, and the owner-ask fast path cannot drift from the full answer by a missed check
 verify: grep -q 'def _read_change' subprojects/docket/src/docket/arming.py
 ---

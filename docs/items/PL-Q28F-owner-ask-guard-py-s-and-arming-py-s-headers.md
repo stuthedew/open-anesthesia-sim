@@ -3,12 +3,14 @@ id: PL-Q28F
 title: owner_ask_guard.py's and arming.py's headers carry decision history (68 and 206 lines) that belongs in the items, so a reader must get past the history to learn what the code does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: guard-code-structure
 touches: subprojects/docket/src/docket/arming.py, .claude/hooks/owner_ask_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane code-structure change, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1996
 payoff: a reader of arming.py or owner_ask_guard.py learns what the code does from its header, and finds each decision's history in its item
 verify: ! grep -qF 'moved here from `CLAUDE.md` with it' subprojects/docket/src/docket/arming.py && ! grep -qF '**Why the state decides, and the wording only finds the ask.**' .claude/hooks/owner_ask_guard.py
 ---
