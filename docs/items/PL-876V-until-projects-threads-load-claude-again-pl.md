@@ -3,11 +3,13 @@ id: PL-876V
 title: Until Projects threads load .claude/ again (PL-CR81), a thread does not know it runs with no guard hooks, no session-start digest and no repository skills: have the coordinator open each thread's first message with the hook probe and the skill paths, so the thread says it is unguarded and reads .claude/skills/ by path
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: projects-trial
 touches: .claude/skills/docket/modes/coordinator.md
 added: 2026-10-25
+closed: 2026-11-03
+pr: 1971
 payoff: a Projects thread knows when it runs without guard hooks and skills, and reads the skills by path
 verify: grep -qF 'pytest --version' .claude/skills/docket/modes/coordinator.md
 ---
@@ -31,3 +33,5 @@ The list says to drop these lines once `PL-CR81` is fixed.
 
 **Generator check.** One external behaviour that nothing in the repository
 models, the same one `PL-CR81` records. It is a one-off.
+
+**Built 2026-11-03.** `.claude/skills/docket/modes/coordinator.md` § "What every brief tells its thread" now tells each thread to run the hook probe first, to say it is unguarded when the probe prints a version, and to read skills by path. `PL-CR81` closed the same day with the probe refused, because the setup script now gives threads the hooks. Its cause is not fixed, and the skills still do not load. So the drop condition names what would make the lines unnecessary: threads loading `.claude/` themselves, or a plugin carrying the hooks and skills (`PL-XFDQ`).
