@@ -1779,7 +1779,7 @@ or more re-entries than the week before - the cut names it, and otherwise says
 nothing about inflow at all. The `P0` and `P1` count reads only workflow-lane
 filings, the population `PL-04KR`'s baseline of 0, 2, 1 and 0 a week was
 measured on. An item that also edits the product can take its band from the
-product half, as a `safety` class pins it to `P1` (`PL-00TR`, `PL-P6KV`). Two
+product half, as a `safety` class pins it to `P1` (`PL-00TR`, `PL-NHQ6`). Two
 more kinds of band are left out, because each records a rank rather than a
 severity: an item in the generator tier, and an item whose `owner-priority:`
 names the band it has. A cut that prints a miss also says to file an

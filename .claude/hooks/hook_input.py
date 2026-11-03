@@ -25,6 +25,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
+#: The value of `CLAUDE_CODE_ENTRYPOINT` in a Claude Projects thread, read from
+#: a thread's environment on 2026-10-26. An ordinary cloud session has
+#: another, such as `remote_desktop`. `thread_hooks.py` and
+#: `tools/effort_trial.py` both read it from here.
+PROJECTS_ENTRYPOINT = "remote_projects"
+
 #: Where each guard's refusals are logged, one line each, on this machine. It
 #: is outside every checkout, so a refusal in one clone is still counted when
 #: another clone records a pull request. `HOOK_BLOCK_LOG` overrides it, which

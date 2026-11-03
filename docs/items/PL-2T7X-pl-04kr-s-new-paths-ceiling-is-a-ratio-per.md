@@ -10,7 +10,7 @@ touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/tests/test_
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only release-report fix with no effect on what a learner sees, worked and closed on its own branch
 added: 2026-11-03
 closed: 2026-11-03
-pr: 1979
+pr: 1977
 payoff: a release cut stops reporting apparatus growth in a week when fewer new apparatus files appeared than the week before, so a falling filing count no longer costs an investigation item
 verify: grep -q 'def test_the_new_paths_ceiling_breaks_only_when_the_count_did_not_fall' subprojects/docket/tests/test_inflow.py
 ---
