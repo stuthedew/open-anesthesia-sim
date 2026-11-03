@@ -3,12 +3,14 @@ id: PL-70B2
 title: Make docs/MODEL.md's agent and MAC parameter sections, § "Required invariants", and § "Required tests" up to the published wash-in validation subsections readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-02
+pr: 1950
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Parameter provenance" "Required invariants" "Preserved circuit reference tests" "Zero-agent test" "Zero-ventilation test" "Zero-cardiac-output test" "Zero-tissue-flow test" "Equilibrium test" "Directional ventilation test" "Directional solubility test" "Directional tissue-capacity test" "Washout test" "Step-refinement test" "Independent-solution test"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -42,3 +44,12 @@ decided split. The mechanism that let the history and padding accumulate,
 `verify:` runs. The pull request body accounts for every line
 `tools/model_rewrite.py lost` prints, and the project owner has read the
 rewrite.
+
+**History moved out of the release-check paragraph** (2026-11-02, when the
+project owner found the paragraph too long). Under the operator split, the
+check compared each step only with the next shorter one because a direct
+comparison of 0.1 s with 0.025 s failed. That comparison gave a mixed-venous
+gap of 1.4e-6 in fraction, 0.55% of a fraction that has barely begun to rise at
+60 s. Under the exact step, the same two runs land about 4e-17 apart there
+(measured 2026-10-03). `tests/reference/test_sevo_patient.py` keeps the
+tolerance constants and their measured gaps.
