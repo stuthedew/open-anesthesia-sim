@@ -189,17 +189,23 @@ CORE_PACKAGE = f"{PACKAGE}.core"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
-#: The script that generates every mutant into `mutants/` without running any
-#: test. It calls the steps mutmut 3.8.0's `run` takes before it collects
-#: coverage, which is the slow part. They are mutmut's internals rather than its
-#: command line, so the pinned version in `pyproject.toml` is what keeps them.
-#: `tools/assertion_probe.py` runs it too, before it rewrites the copied tests.
-GENERATE_SCRIPT = """
-import shutil
+#: The script `listing` runs to generate mutants without running any test, and
+#: to print each listed mutant's diff, as JSON keyed by name. It calls the
+#: steps mutmut 3.8.0's `run` takes before it collects coverage, which is the
+#: slow part, and the function `mutmut show` prints from. They are mutmut's
+#: internals rather than its command line, so the pinned version in
+#: `pyproject.toml` is what keeps them. `listing` falls back to running every
+#: mutant when the script fails.
+LIST_SCRIPT = """
+import fnmatch, json, shutil, sys
 from pathlib import Path
 from mutmut.__main__ import create_mutants
+from mutmut.mutation.data import SourceFileMutationData
+from mutmut.mutation.diff_apply import get_diff_for_mutant
 from mutmut.mutation.trampoline import set_mutant_under_test
-from mutmut.utils.file_utils import copy_also_copy_files, copy_src_dir, setup_source_paths
+from mutmut.utils.file_utils import (
+    copy_also_copy_files, copy_src_dir, setup_source_paths, walk_mutatable_files,
+)
 shutil.rmtree("mutants", ignore_errors=True)
 Path("mutants").mkdir()
 set_mutant_under_test("mutant_generation")
@@ -207,18 +213,6 @@ copy_src_dir()
 copy_also_copy_files()
 setup_source_paths()
 create_mutants(1)
-"""
-#: The script `listing` runs to generate mutants and print each listed
-#: mutant's diff, as JSON keyed by name, using the function `mutmut show`
-#: prints from. `listing` falls back to running every mutant when the script
-#: fails.
-LIST_SCRIPT = (
-    GENERATE_SCRIPT
-    + """
-import fnmatch, json, sys
-from mutmut.mutation.data import SourceFileMutationData
-from mutmut.mutation.diff_apply import get_diff_for_mutant
-from mutmut.utils.file_utils import walk_mutatable_files
 patterns = sys.argv[1:]
 shown = {}
 for path in walk_mutatable_files():
@@ -229,7 +223,6 @@ for path in walk_mutatable_files():
             shown[name] = get_diff_for_mutant(name, path=path)
 print(json.dumps(shown))
 """
-)
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
 SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
@@ -435,16 +428,6 @@ def working_files(root: Path, tree: str) -> list[str]:
         if name.startswith(prefix) and name.endswith(".py")
     )
     return sorted(names)
-
-
-def mutated_files(root: Path, table: Mapping[str, object]) -> list[str]:
-    """The files under the table's `source_paths` that mutmut mutates, by `is_mutated`."""
-    return [
-        name
-        for source in _strings(table, "source_paths")
-        for name in working_files(root, source)
-        if is_mutated(name, table)
-    ]
 
 
 def simulator_unit_tests(root: Path) -> list[str]:
@@ -1210,59 +1193,7 @@ def _compared_statuses(
     return settle(tree, found, recorded_exit_codes(tree, files))
 
 
-def _base_versions(root: Path, change: Change) -> tuple[list[str], dict[str, str]]:
-    """The files the branch changed under `tests/`, and the base version of each that has one."""
-    changed = [
-        path for path in doc_check._changed_paths(root, change.fork) if path.startswith(TESTS)
-    ]
-    listing = read_git(["ls-tree", "-r", "--name-only", "-z", change.fork, "--", *changed], root)
-    base = {
-        path: read_git(["show", f"{change.fork}:{path}"], root) for path in listed_paths(listing)
-    }
-    return changed, base
-
-
 def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Compared:
-    """What `_compare_versions` finds for the changed tests, with `assertion_notes` added."""
-    compared = _compare_versions(root, change, table)
-    compared.notes += assertion_notes(root, change, table)
-    return compared
-
-
-def assertion_notes(root: Path, change: Change, table: Mapping[str, object]) -> list[str]:
-    """A note for each assertion of a changed simulator unit test that never decides a result.
-
-    `tools/assertion_probe.py` runs each test that `branch_selection` names
-    under every mutant it reaches, and names an assertion when every mutant it
-    catches also fails another assertion of the same test. That limit is
-    overruled by another one, so a reader is owed an explanation of why it is
-    there. The notes refuse nothing (`PL-TN0G`). A changed test outside
-    `tests/unit/` is not probed, because one reference test under every mutant
-    it reaches takes hours.
-    """
-    import assertion_probe  # Imported here, because it imports this module.
-
-    unit_tests = [
-        path
-        for path in change.tests
-        if path.startswith(f"{UNIT_TESTS}/") and (root / path).is_file()
-    ]
-    if not unit_tests:
-        return []
-    _, base = _base_versions(root, change)
-    skipped = deselected(table)
-    selected = [
-        test
-        for path in unit_tests
-        for test in branch_selection(
-            path, base.get(path), (root / path).read_text(encoding="utf-8")
-        )
-        if test not in skipped
-    ]
-    return assertion_probe.notes(root, selected, table)
-
-
-def _compare_versions(root: Path, change: Change, table: Mapping[str, object]) -> Compared:
     """The mutants that a changed test's base version kills and the branch's version misses.
 
     A mutant of the code cannot show that a branch weakened a test, because
@@ -1304,7 +1235,13 @@ def _compare_versions(root: Path, change: Change, table: Mapping[str, object]) -
         )
     if not unit_tests:
         return compared
-    changed, base = _base_versions(root, change)
+    changed = [
+        path for path in doc_check._changed_paths(root, change.fork) if path.startswith(TESTS)
+    ]
+    listing = read_git(["ls-tree", "-r", "--name-only", "-z", change.fork, "--", *changed], root)
+    base = {
+        path: read_git(["show", f"{change.fork}:{path}"], root) for path in listed_paths(listing)
+    }
     # A test the table deselects never runs under mutmut, and a selection of
     # nothing but such tests would collect none.
     skipped = deselected(table)
@@ -1322,7 +1259,12 @@ def _compare_versions(root: Path, change: Change, table: Mapping[str, object]) -
         selection = base_selection(path, base[path], branch)
         selections.append((path, tuple(t for t in selection if t not in skipped)))
     on_branch = [path for path in unit_tests if (root / path).is_file()]
-    mutated = mutated_files(root, table)
+    mutated = [
+        name
+        for source in _strings(table, "source_paths")
+        for name in working_files(root, source)
+        if is_mutated(name, table)
+    ]
     displays = [name for name in mutated if module_name(name).startswith(f"{DISPLAY_PACKAGE}.")]
     with tempfile.TemporaryDirectory(prefix="diff_mutation_") as scratch:
         base_tree, branch_tree = Path(scratch, "base"), Path(scratch, "branch")
@@ -1462,7 +1404,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             code, log = run(root, (), table)
             if code:
                 raise Refusal(f"mutmut exited {code}. The end of {log}:\n{_tail(log)}")
-            files = mutated_files(root, table)
+            files = [
+                name
+                for source in _strings(table, "source_paths")
+                for name in working_files(root, source)
+                if is_mutated(name, table)
+            ]
             found = statuses(root)
             if not found:
                 raise Refusal(

@@ -38,3 +38,4 @@ reason its question no longer exists, because `tools/dead_ends.py check
 ## Mutation testing
 
 - **Mutation testing to find a test limit that another assertion always overrules** — refuted 2026-11-03: on the step-size test at `334d9cc6` no mutant made the result depend on the step, so neither limit failed in 828 runs and the 0.5% limit went unnamed. Over the unit tests it named 199 of 546 assertions, none a dead limit: each was one guard reached by several routes, or two checks of one value. `PL-TN0G`
+- **One ordinary run that pairs two limits in a test on the same number they checked** — refuted 2026-11-03: it named the step-size test's 0.5% limit at `334d9cc6`, but over 3,963 unit and reference test cases it named six pairs and none was a dead limit. Three were different quantities with the same rounding error, and the others were near-equal ceilings, a final loop value, and two errors equal by the test's construction. `PL-TN0G`

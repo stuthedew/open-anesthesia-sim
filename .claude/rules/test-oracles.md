@@ -61,6 +61,20 @@ test that imports `anesthesia_sim` is the simulator's, which is the rule
    variant that does not need it. A replay on 2026-10-17 found that 16 of 58
    recent regression tests could not even be collected against the code
    before their fix (`PL-6JKB`).
+7. **Say what kind of limit each chosen tolerance is, and where its number
+   comes from.** A comment beside the tolerance names one of two kinds. A
+   numerical limit comes from the method's expected error or from the
+   rounding of the arithmetic, and the comment says which and how large. A
+   clinical or published limit comes from a source, and the comment cites it
+   with its table or page. A bare `pytest.approx` chooses no value and needs
+   no comment. Before you add a second limit on a value that a test already
+   bounds, check whether the two overlap, because the looser one can then
+   never fail. The step-size test held its gaps to 0.5% beside a 1e-14 limit
+   on the same gaps for two months (`PL-VXM0`). No tool finds such a pair
+   reliably, so this check is yours (`PL-TN0G`). The split between the two
+   kinds follows Oberkampf and Roy,
+   *Verification and Validation in Scientific Computing*, Cambridge
+   University Press, 2010, chapter 5.
 
 A high mutation score does not replace any of this. mutmut never changes the
 data files or module-level constants, and a mutant cannot show whether an

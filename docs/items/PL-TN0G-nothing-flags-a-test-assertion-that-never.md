@@ -3,14 +3,16 @@ id: PL-TN0G
 title: Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, infra
 feature: dead-test-limits
-touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml, .claude/rules/dead-ends-apparatus.md, .claude/rules/test-oracles.md
+touches: .claude/rules/dead-ends-apparatus.md, .claude/rules/test-oracles.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, waiting on the owner's answer
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1969
 payoff: a test limit that another assertion always overrules is named at review, so no displayed explanation is written for a number that never decides anything
-verify: ! grep -q 'assertion_notes' tools/diff_mutation.py && grep -q 'PL-TN0G' .claude/rules/test-oracles.md && ! grep -q 'Assertions that never decide a result' docs/mutation-testing.md
+verify: grep -q 'One ordinary run that pairs two limits' .claude/rules/dead-ends-apparatus.md && grep -q 'Say what kind of limit each chosen tolerance is' .claude/rules/test-oracles.md && ! grep -q 'assertion_notes' tools/diff_mutation.py
 ---
 
 **Problem.** Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
@@ -119,12 +121,12 @@ Built and pushed on `claude/pl-tn0g-dead-assertion-warning` (draft #1969):
   driver, `--sweep`, `--report`), with `tests/unit/test_assertion_probe.py`.
   The tests pin a never-deciding pair, a deciding pair, a raised run left out,
   parametrized cases counted together, and the plugin end to end.
-- `diff_mutation.compare_tests` now calls `assertion_notes`, which probes the
-  unit tests `branch_selection` names and adds a note for each. The mutant
-  generation is shared as `GENERATE_SCRIPT`.
-- `docs/mutation-testing.md` § "Assertions that never decide a result" says how
-  it works. The results subsection, headed `### The first sweep`, is still to
-  write, and the item's `verify:` now requires it.
+- `diff_mutation.compare_tests` called `assertion_notes`, which probed the
+  unit tests `branch_selection` names and added a note for each. The mutant
+  generation was shared as `GENERATE_SCRIPT`. Both were removed on 2026-11-03,
+  under answer (a) below.
+- A section of `docs/mutation-testing.md` headed "Assertions that never decide
+  a result" said how it worked. It was removed on 2026-11-03 with the note.
 - Two choices made while building. A `with pytest.raises(...)` block is
   rewritten too (`__probe_raises__`), so its failures count as an assertion's
   rather than as a raise. pytest runs with `--tb=native`, because pytest's own
@@ -342,3 +344,58 @@ errorprone.info and export.arxiv.org do not resolve from this container.
    tolerance rule (step 4 above) to `.claude/rules/test-oracles.md` citing
    `PL-TN0G`, and record the counts here. If the report is kept, decide
    where its per-branch note runs: one ordinary run of the changed tests.
+
+**The limit sweep, finished 2026-11-03.** All four steps are done, and the
+report is dropped.
+
+1. The probe was rebuilt as step 1 says, with one change: each `assert` test
+   became `__probe_exit__(__probe_enter__('id'), (cond))`, so a comparison made
+   after the assertion ends is not charged to it. A bound's checked number was
+   the left side, unless the left side was a literal or an upper-case
+   constant and the right side was not. A number was paired only when it was
+   finite, nonzero and not a whole number.
+2. The positive control passed. At `334d9cc6` it named
+   `tests/reference/test_sevo_patient.py:399` (the `pytest.approx` limit) as
+   looser than `:411` (the 1e-14 limit). They shared 3 of the 6 numbers the
+   looser limit checked, and the looser one left 1.14e8 to 1.67e9 times the
+   room. So the deviation `pytest.approx` computes and the entry of `gaps` were
+   the same float, as the research inferred (verified by this run).
+3. The sweep ran 3,963 test cases of `tests/unit` and `tests/reference` in
+   6 min 50 s on four workers, and all passed on the rewritten copy. They ran
+   9,011 assertions, summed over cases, and 1,944 of those set a limit on a
+   fractional number. 3,588 times, two assertions set the same limit on one
+   number. It could not read 36 chained comparisons, 8 assertion helpers
+   called as statements, and 3 `isclose` calls. It named six pairs, and none
+   is a dead limit:
+   - `tests/reference/test_canonical_evaluation.py`, lines 506 and 511: a
+     fraction and an accumulator with the same rounding error, 4.4e-16.
+   - `tests/unit/test_layout_model.py`, lines 219 and 997: a rectangle's
+     coordinate and the gap between two edges, at 5.6e-17.
+   - `tests/unit/test_numerical_envelope_sweep.py`, lines 313 and 534: the
+     agent balance of the whole system and of the circuit stepped alone. They
+     shared 31 rounding residues, at limits of about 3 and 4 machine epsilons.
+     Each guards its own code path.
+   - The same file, lines 305 and 485: two ceilings on fractions held at a
+     99% dial, equal to three significant figures, in different loops.
+   - `tests/reference/test_sevo_patient.py`, lines 510 and 518: the last
+     washout step against the step before, and the same amount against the
+     loaded amount. The second exists so the run cannot pass by never washing
+     out.
+   - `tests/unit/test_agent_simulation_validation.py`, lines 614 and 615: an
+     absolute and a relative error that the test makes equal by delivering
+     1 L, so that it checks both branches of the validator.
+4. Under that outcome the probe, its tests, its tools-map entry and its
+   `workflow_paths` entry are removed, and the attempt is a second entry in
+   `.claude/rules/dead-ends-apparatus.md` § "Mutation testing". The mutation
+   note and its documentation section are removed, as the answer above says.
+   `.claude/rules/test-oracles.md` gains rule 7, which asks each chosen
+   tolerance to say whether it is a numerical or a clinical or published
+   limit and where its number comes from, and to check for an overlapping
+   limit before adding a second one.
+
+The rounding-level matches are why the report could not stand on its own.
+Rounding errors are small multiples of a power of two, so two unrelated
+quantities often share one. A filter for that would have to tell a shared
+quantity from a shared value, which is the judgment the report was meant to
+spare. `PL-NYFZ` (a tolerance below the gap between neighbouring
+floating-point numbers) is a different check and stays open.
