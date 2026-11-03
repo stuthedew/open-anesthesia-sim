@@ -51,13 +51,21 @@ The item, pull request or commit that wrote the paragraph.
 
 ## Accepted rewrite
 
+```text
 Optional: the version the owner accepted, once there is one.
+```
 ````
 
 `file` decides which readers the reviewer judges the paragraph for, so it must
 be a file that a row of the reader table names. The paragraph must read as one
 unit of `MIN_WORDS` words or more, as `tools/new_prose.py` reads that file,
 because the review never sees a shorter one.
+
+A review's rewrite of the entry may have no more words than the entry allows.
+That is the accepted rewrite's length where the entry has one, and the
+rejected paragraph's length otherwise, both counted as `tools/new_prose.py`
+counts a unit's words. Adding an accepted rewrite applies at once to every
+run of the current prompt (`PL-CWRZ`).
 
 ## Running the set
 
@@ -69,6 +77,8 @@ that the set holds:
    close-out step 8 does, and save its reply to a file.
 3. Run `python3 tools/rejected_prose.py record REPLY`, with that file's path.
 
-The review must flag every entry. If it keeps one, change the prompt and run
+The review must flag every entry, and each rewrite must be no longer than its
+entry allows. If it keeps one or writes a longer one, change the prompt and run
 the set again. `python3 tools/rejected_prose.py check` runs in `make check` and
-CI, and refuses a prompt with no run, or with a run that kept an entry.
+CI. It refuses a prompt with no run, or with a run that kept an entry or wrote
+a longer rewrite.

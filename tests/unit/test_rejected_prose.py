@@ -2,8 +2,9 @@
 
 The set holds paragraphs the owner rejected after the close-out prose review
 passed them (`PL-FYGJ`). These tests pin what an entry must hold, how a
-reviewer's verdicts are read, and when `check` refuses: no run for the current
-prompt and readers, a run that kept an entry, and a kind above its cap.
+reviewer's verdicts and rewrites are read, and when `check` refuses: no run for
+the current prompt and readers, a run that kept an entry, a run whose rewrite
+has more words than its entry allows (`PL-CWRZ`), and a kind above its cap.
 """
 
 from __future__ import annotations
@@ -24,8 +25,10 @@ from rejected_prose import (
     check,
     main,
     parse_entry,
+    prose_words,
     readers_digest,
     record,
+    rewrites,
     show,
     verdicts,
 )
@@ -39,6 +42,20 @@ READERS = """\
 TABLE = reader_table(READERS)
 PROMPT = "Review the prose below.\n"
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
+
+
+def _words(count: int) -> str:
+    return " ".join(["word"] * count)
+
+
+def _reply(*verdicts: str, words: int = MIN_WORDS) -> str:
+    """A reply giving unit N the Nth verdict, and a rewrite of `words` words after each rewrite."""
+    out = []
+    for number, verdict in enumerate(verdicts, start=1):
+        out.append(f"[{number}] {verdict}")
+        if verdict == "rewrite":
+            out += ["```", _words(words), "```"]
+    return "\n".join(out) + "\n"
 
 
 def _entry(
@@ -94,9 +111,12 @@ def test_an_entry_records_its_kind_file_date_and_paragraph() -> None:
 def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
     sections = (
         "## The owner's words\n\nNo.\n\n## Where it came from\n\nA test.\n\n"
-        "## Accepted rewrite\n\nA plainer paragraph.\n"
+        "## Accepted rewrite\n\n```text\nA plainer paragraph.\n```\n"
     )
-    assert parse_entry("jargon-2026-11-02-a.md", _entry(sections=sections), TABLE).kind == "jargon"
+    entry = parse_entry("jargon-2026-11-02-a.md", _entry(sections=sections), TABLE)
+
+    assert (entry.accepted_words, entry.allowed) == (3, 3)
+    assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).allowed == MIN_WORDS
 
 
 @pytest.mark.parametrize(
@@ -151,6 +171,14 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
             "jargon-2026-11-02-a.md",
             _entry(path="src/pkg/model.py", paragraph='"""' + PARAGRAPH),
             "does not parse as src/pkg/model.py would",
+        ),
+        (
+            "jargon-2026-11-02-a.md",
+            _entry(
+                sections="## The owner's words\n\nNo.\n\n## Where it came from\n\nA.\n\n"
+                "## Accepted rewrite\n\nA plainer paragraph.\n"
+            ),
+            "the Accepted rewrite section must hold one closed fenced block",
         ),
     ],
 )
@@ -214,7 +242,7 @@ def test_check_passes_once_a_run_of_the_current_prompt_flags_every_entry(tmp_pat
         tmp_path,
         {"jargon-2026-11-02-a.md": _entry(), "length-2026-11-02-b.md": _entry(kind="length")},
     )
-    _run(root, "one.json", "[1] rewrite\n[2] rewrite\n")
+    _run(root, "one.json", _reply("rewrite", "rewrite"))
 
     assert check(root, PROMPT, TABLE) == []
 
@@ -222,8 +250,8 @@ def test_check_passes_once_a_run_of_the_current_prompt_flags_every_entry(tmp_pat
 def test_a_run_that_kept_an_entry_fails_even_beside_one_that_flagged_it(tmp_path: Path) -> None:
     """A miss stays on record, so running the same prompt again until it passes clears nothing."""
     root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
-    _run(root, "first.json", "[1] keep\n")
-    _run(root, "second.json", "[1] rewrite\n")
+    _run(root, "first.json", _reply("keep"))
+    _run(root, "second.json", _reply("rewrite"))
 
     assert check(root, PROMPT, TABLE) == [
         "runs/first.json kept jargon-2026-11-02-a.md: change the prompt so the review flags it, "
@@ -233,19 +261,19 @@ def test_a_run_that_kept_an_entry_fails_even_beside_one_that_flagged_it(tmp_path
 
 def test_a_changed_prompt_needs_a_new_run_and_the_old_miss_no_longer_counts(tmp_path: Path) -> None:
     root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
-    _run(root, "old.json", "[1] keep\n")
+    _run(root, "old.json", _reply("keep"))
     changed = PROMPT + "Flag every number in e-notation.\n"
 
     assert any(
         "no run of the set used the current prompt" in p for p in check(root, changed, TABLE)
     )
-    _run(root, "new.json", "[1] rewrite\n", prompt=changed)
+    _run(root, "new.json", _reply("rewrite"), prompt=changed)
     assert check(root, changed, TABLE) == []
 
 
 def test_a_changed_reader_row_for_a_file_the_run_read_needs_a_new_run(tmp_path: Path) -> None:
     root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
-    _run(root, "one.json", "[1] rewrite\n")
+    _run(root, "one.json", _reply("rewrite"))
     narrowed = reader_table(READERS.replace("E-notation.", "Nothing."))
     other_row = reader_table(READERS.replace("Our history.", "Nothing."))
 
@@ -257,7 +285,7 @@ def test_a_changed_reader_row_for_a_file_the_run_read_needs_a_new_run(tmp_path: 
 def test_a_new_entry_after_the_run_needs_no_new_run(tmp_path: Path) -> None:
     """Only a miss is added, so the next change to the prompt is what must flag it."""
     root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
-    _run(root, "one.json", "[1] rewrite\n")
+    _run(root, "one.json", _reply("rewrite"))
     (root / REJECTED_DIR.relative_to(ROOT) / "length-2026-11-03-b.md").write_text(
         _entry(kind="length", rejected="2026-11-03"), encoding="utf-8"
     )
@@ -271,7 +299,7 @@ def test_a_kind_above_its_cap_names_the_oldest_entry_to_delete(tmp_path: Path) -
     }
     entries["jargon-2026-11-02-0.md"] = _entry()
     root = _root(tmp_path, entries)
-    _run(root, "one.json", "\n".join(f"[{n}] rewrite" for n in range(1, len(entries) + 1)))
+    _run(root, "one.json", _reply(*["rewrite"] * len(entries)))
 
     assert check(root, PROMPT, TABLE) == [
         f"kind jargon holds {CAP_PER_KIND + 1} entries, more than {CAP_PER_KIND}: delete the "
@@ -311,8 +339,15 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     assert not (root / RUNS_DIR.relative_to(ROOT)).exists()
 
     reply.write_text("[1] rewrite\n[2] keep\n", encoding="utf-8")
+    assert main(["record", str(reply)], root=root) == 1
+    assert "not recorded: [1] rewrite has no closed fenced block" in capsys.readouterr().err
+    assert not (root / RUNS_DIR.relative_to(ROOT)).exists()
+
+    reply.write_text(_reply("rewrite", "keep", words=MIN_WORDS + 1), encoding="utf-8")
     assert main(["record", str(reply)], root=root) == 0
-    assert "the review kept jargon-2026-11-02-b.md" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert f"rewrote jargon-2026-11-02-a.md in {MIN_WORDS + 1} words, more than the" in out
+    assert "kept jargon-2026-11-02-b.md: change the prompt" in out
     (written,) = (root / RUNS_DIR.relative_to(ROOT)).glob("*.json")
     assert json.loads(written.read_text(encoding="utf-8"))["entries"] == [
         "jargon-2026-11-02-a.md",
@@ -322,3 +357,78 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
 
     assert main(["show"], root=root) == 0
     assert capsys.readouterr().out.startswith(PROMPT)
+
+
+def test_rewrites_takes_the_first_block_after_each_rewrite_verdict() -> None:
+    """A summary line of verdicts, or a block above every verdict, is passed over."""
+    reply = (
+        "```\nnot a rewrite\n```\n"
+        "Summary: [1] rewrite, [2] keep, [3] rewrite\n"
+        "## [1]\n**[1] rewrite**\n```markdown\none\n```\n```\nsecond block\n```\n"
+        "[2] keep\n[3] rewrite\n```\nthree\nlines\n```\n"
+    )
+
+    assert rewrites(reply) == {1: ("one",), 3: ("three", "lines")}
+
+
+@pytest.mark.parametrize(
+    "reply", ["[1] rewrite\n[2] rewrite\n```\ntwo\n```\n", "[1] rewrite\n```\nnever closed\n"]
+)
+def test_a_rewrite_verdict_with_no_closed_block_is_refused(reply: str) -> None:
+    with pytest.raises(ValueError) as raised:
+        rewrites(reply)
+    assert str(raised.value) == "[1] rewrite has no closed fenced block"
+
+
+def test_prose_words_counts_only_the_prose_a_unit_holds() -> None:
+    """Quotes, indent, comment marks and headings are not words, as the listing tool counts."""
+    docstring = ['    """Return the dose.', "", '    Two more words."""']
+
+    assert prose_words("src/pkg/m.py", docstring) == 6
+    assert prose_words("src/pkg/m.py", ["    # A comment of six words here."]) == 6
+    assert prose_words("docs/MODEL.md", ["## A heading", "", "First paragraph here."]) == 3
+
+
+def test_a_rewrite_longer_than_its_entry_allows_fails(tmp_path: Path) -> None:
+    """Flagging is not enough: the writer applies the rewrite, so it may not grow the text."""
+    root = _root(tmp_path, {"length-2026-11-02-a.md": _entry(kind="length")})
+    _run(root, "equal.json", _reply("rewrite", words=MIN_WORDS))
+    assert check(root, PROMPT, TABLE) == []
+
+    _run(root, "longer.json", _reply("rewrite", words=MIN_WORDS + 1))
+    assert check(root, PROMPT, TABLE) == [
+        f"runs/longer.json rewrote length-2026-11-02-a.md in {MIN_WORDS + 1} words, more than "
+        f"the {MIN_WORDS} of the paragraph the owner rejected: change the prompt so a rewrite "
+        "carries only what its reader needs, then run the set again"
+    ]
+
+
+def test_an_accepted_rewrite_sets_how_long_a_rewrite_may_be(tmp_path: Path) -> None:
+    def accepted(words: int) -> str:
+        return _entry(
+            sections="## The owner's words\n\nNo.\n\n## Where it came from\n\nA.\n\n"
+            f"## Accepted rewrite\n\n```text\n{_words(words)}\n```\n"
+        )
+
+    shorter = _root(tmp_path / "shorter", {"jargon-2026-11-02-a.md": accepted(MIN_WORDS - 10)})
+    _run(shorter, "one.json", _reply("rewrite", words=MIN_WORDS - 9))
+    assert check(shorter, PROMPT, TABLE) == [
+        f"runs/one.json rewrote jargon-2026-11-02-a.md in {MIN_WORDS - 9} words, more than the "
+        f"{MIN_WORDS - 10} of the rewrite the owner accepted: change the prompt so a rewrite "
+        "carries only what its reader needs, then run the set again"
+    ]
+
+    longer = _root(tmp_path / "longer", {"jargon-2026-11-02-a.md": accepted(MIN_WORDS + 10)})
+    _run(longer, "one.json", _reply("rewrite", words=MIN_WORDS + 10))
+    assert check(longer, PROMPT, TABLE) == []
+
+
+def test_a_rewrite_that_does_not_parse_as_its_file_is_named(tmp_path: Path) -> None:
+    docstring = _entry(path="src/pkg/m.py", paragraph=f'"""{PARAGRAPH}"""')
+    root = _root(tmp_path, {"jargon-2026-11-02-a.md": docstring})
+    _run(root, "one.json", '[1] rewrite\n```\n"""never closed\n```\n')
+
+    (problem,) = check(root, PROMPT, TABLE)
+    assert problem.startswith(
+        "runs/one.json's rewrite of jargon-2026-11-02-a.md does not parse as src/pkg/m.py"
+    )
