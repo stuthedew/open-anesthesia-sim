@@ -342,16 +342,26 @@ page and decides which file a session reads.
    sets, and a new miss of a full kind replaces the oldest (project owner,
    2026-11-03, `PL-FYGJ`).
 
+   **When the owner names a paragraph a gold standard, in those words, add it
+   to `docs/prose-review/gold/`.** Quote his words. The review must keep each
+   gold-standard entry, so a review that flags every paragraph fails the set
+   (project owner, 2026-11-03, ratified, `PL-556C`). A paragraph he calls
+   acceptable, or says needs no change, stays out, because the review must
+   stay free to improve it (project owner, 2026-11-03). A gold-standard entry
+   needs a run of the current prompt, as below, because nobody knows whether
+   that prompt keeps it until a run reads it.
+
    **A change to the prompt is tested on the set before it lands.** Run
    `python3 tools/rejected_prose.py show`, give its whole output to one fresh
    reviewer as above, save the reply to a file, and run `python3
-   tools/rejected_prose.py record FILE`. The review must flag every entry,
-   and no rewrite may have more words than its entry allows. If it keeps one
-   or writes a longer one, change the prompt and run the set again. `python3
-   tools/rejected_prose.py check`, in `make check` and CI, refuses a branch
-   whose prompt, or whose reader rows for a file the set holds, have no run,
-   or have a run that kept an entry or rewrote one at more words than it
-   allows.
+   tools/rejected_prose.py record FILE`. The review must flag every rejected
+   entry and keep every gold standard, and no rewrite may have more words than
+   its entry allows. If it misjudges one or writes a longer one, change the
+   prompt and run the set again. `python3 tools/rejected_prose.py check`, in
+   `make check` and CI, refuses a branch whose prompt, or whose reader rows
+   for a file the set holds, have no run, or have a run that misjudged an
+   entry or rewrote one at more words than it allows. It also refuses an
+   gold-standard entry that no run of the current prompt has read.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a

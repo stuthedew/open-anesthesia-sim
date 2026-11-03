@@ -1,9 +1,17 @@
 ---
 id: PL-556C
 title: The prose review's test set holds only paragraphs the owner rejected, so a review that rewrites every paragraph passes it, and its no-longer-than-rejected word limit is a floor that passed a 149-word rewrite of a paragraph he called overly verbose at 149 words
-status: untriaged
+priority: P1
+effort: M
+status: done
 feature: reader-tested-prose
+touches: docs/prose-review, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md
+deferred-from: v0.7.0 - apparatus for the prose review, built on the owner's request of 2026-11-03 rather than ranked by the release gate
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1965
+payoff: a review that flags every paragraph it reads fails the prose review's test, so the test shows whether the review keeps the owner's gold-standard paragraphs as well as flags those he rejected
+verify: grep -q 'GOLD_DIR' tools/rejected_prose.py && grep -q 'def test_a_run_that_flagged_a_gold_standard_entry_fails' tests/unit/test_rejected_prose.py
 ---
 
 **Problem.** The rejected-paragraph test (`PL-FYGJ`, `PL-CWRZ`) holds only
@@ -23,6 +31,14 @@ and no rewrite has more words than the paragraph it replaces. Two gaps follow.
 The owner asked on 2026-11-03 at 02:46Z why the limit is the rejected
 paragraph's length, and whether that is arbitrary. The answer is that it is
 the one length the owner has judged, and that it is a floor.
+
+**Why it matters.** Close-out step 8 has the writer apply the review's
+rewrites. A review that flags text the owner would accept makes the writer
+rewrite good prose, and the test as it stands cannot see that.
+
+**Generator check.** Not a generator. The mechanism behind it is `PL-H76S`,
+closed spent on 2026-11-03. This item and `PL-HLQK` are two gaps in the test
+that `PL-FYGJ` built, fewer than the three items a generator causes.
 
 **What best practice says.**
 
@@ -59,6 +75,49 @@ The accepted paragraphs come from the owner's reads of the resumed
 `docs/MODEL.md` rewrite. Change 1 can be built before any exist, and fails no
 run until the first is added.
 
-**Done when.** The set can hold paragraphs the owner accepted, a run fails
-when the review flags one, and `check` reports each run's agreement with the
-owner's verdicts.
+**Decided 2026-11-03.** Build change 1 now (project owner, 2026-11-03,
+03:00Z, ratified, over waiting until the first accepted paragraph exists).
+Change 2 is `PL-HLQK`, which waits for the first gold-standard entry. Change 3
+needs no work, because `PL-CWRZ`'s accepted rewrite already sets a rewrite's
+limit to the length of the version the owner accepted. The owner's request
+lifts the pause on new workflow machinery for this change.
+
+**Which paragraphs the review must keep** (project owner, 2026-11-03, 03:17Z:
+"gold standard paragraphs should be specifically identified"). Only a
+paragraph the owner names a gold standard, in those words, becomes an entry.
+At 03:14Z he said that the paragraphs he has accepted so far were acceptable
+but not gold standards. A paragraph that is acceptable, or that needs no
+change, stays out: a rewrite could still improve it, and a test that the
+review must keep it would punish that rewrite. The session first proposed
+"needs no change" as the bar, and the owner refused it. So the folder starts
+empty.
+
+The design, decided by the building session:
+
+1. Gold-standard paragraphs live in `docs/prose-review/gold/`, one file each,
+   named `gold-DATE-SLUG.md`. The front matter gives `file` and `named`, the
+   date the owner named the paragraph. The body has the same three sections
+   as a rejected entry, and "The owner's words" quotes him naming it. `gold`
+   can never be a failure kind, so an entry's name says which folder it
+   belongs to, in the run records as well. The folder is named for the bar,
+   so that a later session does not read "accepted" as enough.
+2. Every run of the current prompt must keep each gold-standard entry it
+   read.
+3. A new gold-standard entry needs a run of the current prompt, where a new
+   rejected entry does not. A rejected entry is a known miss of the current
+   prompt, so a run would only confirm it. Nobody knows whether the current
+   prompt keeps a gold standard until a run reads it.
+4. The gold-standard entries count as one kind under the cap of 59 per kind.
+   The bound the cap rests on then applies to flagging a gold standard: if
+   the review keeps all 59, the chance that it flags one is below 5%, at 95%
+   confidence (Hanley and Lippman-Hand, 1983).
+5. `show` numbers the units in the order of each entry's name hashed with
+   SHA-256, so a unit's position does not show which folder it came from.
+6. A rejected entry's accepted rewrite is not shown as a unit. Shown beside
+   its rejected original, it lets the reviewer compare the two versions,
+   which a real review never can. `check` refuses a gold-standard entry whose
+   text repeats a rejected paragraph or an accepted rewrite.
+
+**Done when.** The set can hold paragraphs the owner named gold standards, and
+a run of the current prompt fails when the review flags one or has not read
+one.
