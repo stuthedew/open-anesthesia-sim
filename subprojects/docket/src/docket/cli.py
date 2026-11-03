@@ -5685,21 +5685,42 @@ def cmd_arm(args: argparse.Namespace) -> int:
 
     With `--owner-ask` it answers one question for `.claude/hooks/owner_ask_guard.py`:
     what may be sent to the owner about this pull request. It prints the
-    recorded ask's opening line and exits 0, or prints why nothing may be sent,
-    led by the answer's first line, and exits 3.
+    recorded ask's opening line and exits 0. Where the pull request waits on
+    the owner's read and no `Owner-ask` record says what to ask, it prints why
+    nothing may be sent, led by "send the owner nothing", and exits 3. Every
+    other answer prints its first line and exits with its own status: 2 where
+    it cannot answer, and 1 otherwise (`PL-R1HT`). That reading skips the
+    checks that only decide between arming and the other holds, so it takes
+    a fraction of the full answer's time (`PL-3D2F`).
     """
     inv = _invocation(args)
-    unknown = arming.NO_ASK if args.owner_ask else arming.EXIT[arming.UNKNOWN]
-    nothing = "send the owner nothing: " if args.owner_ask else ""
+    unknown = arming.EXIT[arming.UNKNOWN]
     if inv.git is None:
-        print(f"{nothing}unknown - `--no-git` asks git nothing, and the answer is read from git")
+        print("unknown - `--no-git` asks git nothing, and the answer is read from git")
         return unknown
     if not inv.tracked:
         print(
-            f"{nothing}unknown - the store is not below the repository root, so no path can be "
+            "unknown - the store is not below the repository root, so no path can be "
             "told apart from it"
         )
         return unknown
+    if args.owner_ask:
+        verdict = arming.arm(
+            inv.root,
+            items_dir=inv.tracked,
+            now=_now(args),
+            fetch=not args.no_fetch,
+            runner=inv.git,
+            newest=_newest_pull_request(inv.root, inv.config),
+            owner_ask=True,
+        )
+        line = verdict.sendable
+        if line is not None:
+            print(line)
+            return 0
+        lead = "send the owner nothing: " if verdict.unasked else ""
+        print(f"{lead}{verdict.lines[0]}")
+        return verdict.code
     verdict = arming.arm(
         inv.root,
         items_dir=inv.tracked,
@@ -5711,13 +5732,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         prose_count=_prose_count(inv.root, inv.config),
         blind_count=_blind_count(inv.root, inv.config),
     )
-    if args.owner_ask:
-        line = verdict.sendable
-        if line is not None:
-            print(line)
-            return 0
-        print(f"{nothing}{verdict.lines[0]}")
-        return arming.NO_ASK
     for line in verdict.lines:
         print(line)
     return verdict.code
@@ -6224,8 +6238,9 @@ def build_parser() -> argparse.ArgumentParser:
     arm_cmd.add_argument(
         "--owner-ask",
         action="store_true",
-        help="print only the line the owner may be sent about this pull request and exit 0, or "
-        "say why nothing may be sent and exit 3",
+        help="print only the line the owner may be sent about this pull request and exit 0; "
+        "exit 3 where it waits on the owner's read with no Owner-ask recorded, 2 where it "
+        "cannot answer, and 1 otherwise",
     )
     arm_cmd.set_defaults(func=cmd_arm)
     ci_scope_cmd = add(
