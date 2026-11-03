@@ -23,3 +23,5 @@ added: 2026-11-03
 5. Delete `unasserted` and the exemption patterns, about 150 lines.
 
 The cost is a rewrite of the hook and its tests, about size M. `arm` would also run on every post, not only on matched ones, and it measured 2.2 s on a one-file branch and 28.4 s on a branch changing 62 simulator paths. So step 2 needs a fast path that reads only the trailers and the claims. The owner ratified the wording design in `PL-TLPH` and kept it in `PL-5HQY`. This evidence reopens that choice, so the choice goes back to the owner.
+
+**Decided, 2026-11-03.** Key the refusal on the state that `arm` records, and delete the wording rules, as recommended above (project owner, 2026-11-03, ratified, over keeping the wording rules that `PL-TLPH` built and `PL-5HQY` kept). The owner's answer was "Yes". Build it together with `PL-R1HT`, whose distinct exit code it needs.
