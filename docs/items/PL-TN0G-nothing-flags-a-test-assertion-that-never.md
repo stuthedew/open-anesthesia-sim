@@ -3,10 +3,11 @@ id: PL-TN0G
 title: Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
 priority: P2
 effort: M
-status: ready
+status: needs-decision
 classes: feature, infra
 feature: dead-test-limits
 touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml
+deferred-from: v0.7.0 - workflow tooling outside the schematic release, waiting on the owner's answer
 added: 2026-11-03
 payoff: a test limit that another assertion always overrules is named at review, so no displayed explanation is written for a number that never decides anything
 verify: grep -q 'never decides' tools/assertion_probe.py && grep -q 'assertion_probe' tools/diff_mutation.py && grep -q 'Assertions that never decide a result' docs/mutation-testing.md && grep -q '### The first sweep' docs/mutation-testing.md
@@ -150,3 +151,34 @@ lines 213-222), or two checks of one value that every mutant breaks together
 213 and 219 by 222), so the strict filter alone does not separate a dead limit
 from these. If the sweep agrees, the per-branch note should be cut to what the
 `PL-VXM0` pattern needs, or dropped, and that choice recorded here.
+
+**Positive control, 2026-11-03: the probe does not name the 0.5% limit.** On a
+worktree of `334d9cc6`, `test_step_refinement_converges` ran under its 1,812
+reachable mutants in 14 minutes: 828 runs completed and 984 raised. Neither of
+its two assertions failed in any completed run, so both are counted as failing
+for no mutant, and nothing is named. No mutant made the result depend on the
+step size, because each one changes all three step sizes alike. The 0.5% limit
+was dead by logic rather than by mutants. It passes whenever each gap is within
+its absolute tolerance of 1e-8, and the other assertion already requires every
+gap to be within 1e-14 (`STEP_REFINEMENT_ABSOLUTE_TOLERANCE` and
+`STEP_REFINEMENT_SETTLED_GAP` at `334d9cc6`). A mutant can show that one
+assertion overrules another only when some mutant breaks what they check, and
+here none does.
+
+**Decision needed.** Does the warning at review still get built?
+Recommendation (session, 2026-11-03): no. The mutation approach cannot see the
+case that motivated it. On `tests/unit/test_alveolar.py` its 10 warnings were
+all false alarms: one guard reached by several routes, or two checks of one
+value. So the plan is:
+
+1. Remove the per-branch note from `diff_mutation.compare_tests`.
+2. Finish the unit sweep, and record its counts in `### The first sweep`.
+3. Keep `tools/assertion_probe.py` only if the sweep names at least one real
+   dead limit. Otherwise remove it.
+4. Record the approach in `docs/dead-ends.md`, with this control as the reason.
+
+What found the 0.5% limit was the question "why is this number this value",
+which `.claude/rules/plain-writing.md` § "Give a chosen value its reason from a
+record" now asks of every chosen value a document states. The other route is a
+check that one assertion's limit implies another's. That would read the test's
+own comparisons, which is judgment, and it would be a new item.
