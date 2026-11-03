@@ -180,6 +180,48 @@ were caught outside the unit tests. To check one survivor:
 A failure in step 3 means that a slower test catches the mutant. A pass means
 that the mutant survives all three test trees.
 
+## Assertions that never decide a result
+
+mutmut asks whether some assertion of the tests catches each mutant. It does
+not ask whether each assertion catches a mutant that the others miss. So a
+limit that a stricter assertion in the same test always overrules goes
+unnoticed, and a reader is still owed an explanation of why it is there. The
+step-size test's 0.5% limit sat beside a 1e-14 limit for two months that way
+(`PL-VXM0`).
+
+`tools/assertion_probe.py` finds such assertions (`PL-TN0G`). It copies the
+tree, has mutmut generate every mutant, and rewrites each assertion in the
+copied tests so that it records a failure and lets the test carry on. Then it
+runs each test once with no mutant, and once under each mutant of the
+functions the test reaches. Each run gives the set of assertions that failed.
+An assertion **never decides a result** when every mutant it catches also
+fails another assertion of the same test. The probe names those assertions and
+the assertions that cover them, and says when one other assertion catches all
+of the same mutants and more.
+
+- `uv run --group mutation python tools/assertion_probe.py TEST...` probes the
+  named test files or test ids. `--jobs 4` runs four pytest processes.
+  `--budget S` leaves out a test case whose mutant runs would take more than
+  `S` seconds, estimated from its clean run, and names it. `--out DIR` keeps
+  the JSON lines, and `--report DIR/*.jsonl` reports on them again.
+- `--sweep` probes every simulator test file under `tests/unit/` and
+  `tests/reference/`.
+- `bin/docket verify` prints, as notes of `--verdict`, each such assertion in
+  the unit tests that the branch changed or added. The notes refuse nothing.
+
+Only a run that finished counts. A run that raised an exception outside an
+assertion, or passed its time limit, is counted and left out, because the
+assertions after the raise never ran. A test that evaluates fewer than two
+assertions takes no verdict. An assertion that fails for no mutant is counted
+but not named, because mutmut never changes the data files or the constants,
+and most such assertions guard values that a mutant cannot reach.
+
+The probe imports each test module once, with no mutant applied. A test that
+computes its expected value at import time from simulator code then has the
+false kill described in § "Pitfalls" below. That gives the assertion a kill
+that a real fault might not give, so the probe errs toward naming too few
+assertions.
+
 ## Pitfalls
 
 Each of these was measured on 2026-10-17.

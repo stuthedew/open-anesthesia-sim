@@ -235,8 +235,13 @@ def rewrite(path: str, source: str) -> Rewritten:
     """
     finder = _Finder(path)
     finder.visit(ast.parse(source))
-    # The columns that `ast` gives are byte offsets into each UTF-8 line.
-    lines = source.encode("utf-8").splitlines(keepends=True)
+    # The columns that `ast` gives are byte offsets into each UTF-8 line. Python
+    # also ends a line at a lone carriage return, which this split would not.
+    data = source.encode("utf-8")
+    if b"\r" in data.replace(b"\r\n", b""):
+        raise SyntaxError(f"{path} ends a line with a lone carriage return")
+    lines = [line + b"\n" for line in data.split(b"\n")]
+    lines[-1] = lines[-1][:-1]
     for line, column, _, text in sorted(finder.edits, reverse=True):
         row = lines[line - 1]
         lines[line - 1] = row[:column] + text.encode("utf-8") + row[column:]
@@ -756,7 +761,9 @@ def run_probe(
     processes probe the tests between them. Each writes its records to a file
     in `out`, or in the scratch directory where `out` is `None`.
     """
-    import diff_mutation
+    # `diff_mutation` puts `docket` on the path, so it is imported first.
+    import diff_mutation  # noqa: I001
+    from docket.lines import split_lines
 
     with tempfile.TemporaryDirectory(prefix="assertion_probe_") as scratch:
         tree = Path(scratch, "tree")
@@ -765,13 +772,11 @@ def run_probe(
             [sys.executable, "-c", diff_mutation.GENERATE_SCRIPT],
             cwd=tree,
             capture_output=True,
-            encoding="utf-8",
             check=False,
         )
         if generated.returncode:
-            raise diff_mutation.Refusal(
-                f"mutmut could not generate the mutants: {generated.stderr.strip()[-2000:]}"
-            )
+            told = generated.stderr.decode("utf-8", errors="replace").strip()[-2000:]
+            raise diff_mutation.Refusal(f"mutmut could not generate the mutants: {told}")
         mutants = tree / diff_mutation.MUTANTS
         refused = rewrite_tree(mutants / "tests", mutants)
         records = out or Path(scratch, "records")
@@ -829,7 +834,7 @@ def run_probe(
                 raise diff_mutation.Refusal(
                     f"pytest exited {code} on {', '.join(part)} before it wrote a result:\n{tail}"
                 )
-            lines += target.read_text(encoding="utf-8").splitlines()
+            lines += split_lines(target.read_text(encoding="utf-8"))
         return Probed(lines, refused)
 
 
@@ -872,7 +877,9 @@ def notes(root: Path, tests: Sequence[str], table: Mapping[str, object]) -> list
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    import diff_mutation
+    # `diff_mutation` puts `docket` on the path, so it is imported first.
+    import diff_mutation  # noqa: I001
+    from docket.lines import split_lines
 
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("tests", nargs="*", help="test files or test ids to probe")
@@ -895,7 +902,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.report:
-            lines = [line for path in args.report for line in path.read_text("utf-8").splitlines()]
+            lines = [line for path in args.report for line in split_lines(path.read_text("utf-8"))]
             refused: list[str] = []
         else:
             root = args.root.resolve()

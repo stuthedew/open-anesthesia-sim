@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: feature, infra
 feature: dead-test-limits
-touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md
+touches: tools/diff_mutation.py, tools/assertion_probe.py, tests/unit/test_diff_mutation.py, tests/unit/test_assertion_probe.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml
 added: 2026-11-03
 payoff: a test limit that another assertion always overrules is named at review, so no displayed explanation is written for a number that never decides anything
-verify: grep -q 'never decides' tools/assertion_probe.py && grep -q 'assertion_probe' tools/diff_mutation.py && grep -q 'Assertions that never decide a result' docs/mutation-testing.md
+verify: grep -q 'never decides' tools/assertion_probe.py && grep -q 'assertion_probe' tools/diff_mutation.py && grep -q 'Assertions that never decide a result' docs/mutation-testing.md && grep -q '### The first sweep' docs/mutation-testing.md
 ---
 
 **Problem.** Nothing flags a test assertion that never decides a result: mutation testing asks whether some assertion catches each fault, never whether each assertion catches a fault the others miss, so the step-size test's 0.5% limit sat beside a stricter 1e-14 limit from #376 (2026-09-05) until a prose rewrite found it (PL-VXM0). Add a warning that switches off each assertion of a changed simulator test in turn and names any whose removal loses no caught mutant, and run it once over the existing unit and reference tests
