@@ -72,133 +72,36 @@ said first under either, since everything else was read from HEAD (`PL-21KN`).
 moved or a remote copy HEAD lacks changes nothing about a pull request that
 has already merged; what went unread is said beside it.
 
-**The decisions the rule rests on**, moved here from `CLAUDE.md` with it:
+**The decisions behind these rules** are each recorded in their items:
 
-- a claim holds whichever push carried it (project owner, 2026-09-23,
-  ratified, over arming whatever rode the push, `PL-QP9Z`, and over reading
-  only a start claim on that push, `PL-1MCK`);
-- it holds until the item closes in the branch's own copy and not past it
-  (same date, ratified, over holding it past the item's closing, `PL-KWCY`),
-  and a block releases it too (2026-09-24, ratified, over holding it until
-  closed, `PL-3FYK`) - `claims.RELEASING_STATUSES`;
-- a pull request a claim rides is a draft (2026-09-24, ratified, over opening
-  none while a claim rides or titling it as the capture, because `#978` was
-  merged by hand while its claim was open, `PL-H14W`);
-- the tooling arms on green beside the store, and everything else waits on a
-  read, this module included (2026-09-25, ratified, over holding every path
-  outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
-  docket change and was clicked through, so it guarded nothing, the simulator
-  included. This module stays held so that the gate cannot loosen itself
-  (until 2026-10-19, below);
-- a body record arms on green beside them (2026-09-25, ratified with the
-  record's form, over every pull request holding on the record it writes
-  before its merge, `PL-979D`): the record is a copy of the body, never a
-  change to read;
-- only the owner's read list waits on a read - `src/`, `tests/` outside
-  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md` and
-  this module, until 2026-10-19 - and every other path arms on green, named
-  beside the answer, unless the change raises a question for the owner (the
-  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
-  every path outside the store, the tooling and the records; built by
-  `PL-KKHD`). The rule was written there alone, so on one day `#1298` armed
-  under it while `#1308` held under the old one. It reopened `PL-0JGZ`
-  (project owner, 2026-09-26, ratified), which kept `ROADMAP.md` and
-  `docs/WORKING_NOTES.md` off what arms because the roadmap is where the owner
-  sets direction: neither is on the list, so both arm, and the owner settled
-  it so (project owner, 2026-10-03, ratified, over holding them as before).
-  `.github/workflows/` and `.claude/hooks/` joined the list the same day,
-  since they decide merges and tags as this module does (project owner,
-  2026-10-03, ratified, over leaving them armed on green; `PL-KKHD` records
-  both answers), until the owner's rule of 2026-10-12 below;
-- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it
-  the reader every guard hook reads a Bash call through, so that a change to
-  what the guards refuse still waited on a read outside `.claude/hooks/`
-  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
-  `PL-JNYL` records the answer), until the same rule;
-- workflow items need no merge confirmation (project owner, 2026-10-12: "don't
-  need to ask me for merge confirmation for workflow items"), so
-  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm
-  on green with the rest of the workflow lane, while a product path waits as
-  before, in a change crossing both lanes too (`PL-KPM2`). This module stays
-  on the list so that the gate still cannot loosen itself: a change to it
-  could drop `src/` from the list and merge unread (project owner, 2026-10-12,
-  ratified, over arming a change to it on green with the rest of the workflow
-  lane; `PL-VKHD` records the answer), until the owner's answer of 2026-10-19
-  below;
-- a test of the tooling under `tests/` - a file pytest collects that imports
-  no `anesthesia_sim` on either side of the change - arms on green, as
-  `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
-  (project owner, 2026-10-05, ratified, over keeping every change under
-  `tests/` on the read list; built by `PL-552M`). Since 2026-10-03, 16 of the
-  51 merges held for a read had been held by such tests alone, every
-  `PL-R417` slice among them, so the hold asked for reads with nothing to
-  judge, the click-through that retired the hold on the tooling (`PL-SQTR`).
-  The import rule is the one `tools/workflow_paths_check.py` holds
-  `docket.toml`'s `workflow_paths` to, spelt here and imported there, and it
-  is read from the tree rather than from `workflow_paths`, which arms on
-  green: widening what arms still takes an edit the gate holds (`PL-0JGZ`);
-- a pull request reaches the owner only for a real decision or a high-risk
-  change, and housekeeping merges on green (project owner, 2026-10-17: "Model
-  comes to me only when there is a real decision as discussed or making a high
-  risk change you want a second set of eyes on then you should present the
-  case for the change, the risks etc. but house keeping stuff I don't need to
-  sign off everything"; built by `PL-DKBG`). The read list had held `#1516`'s
-  measured figures and tightened tests exactly as it would a changed equation,
-  and its ask invented two points to judge. So the list no longer holds by
-  itself: a change to it waits for the session's recorded judgment,
-  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads from
-  the branch's commits, and only `needed` and this module wait on the owner
-  (this module until 2026-10-19, below). Chosen over dropping the list and
-  leaving the judgment to prose, which fails open on a session that never
-  makes it, and over keeping the list and rewording the ask, which leaves
-  housekeeping waiting on the owner.
-- a hold for the owner's read carries its ask as an `Owner-ask` record, a
-  decision with at least two options and a recommendation or a review,
-  and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
-  "View chooser thread just told me a generic read pull request without a
-  question again" and "it's not supposed to ask for a merge if nothing to
-  review"; built by `PL-9JHM`). The ask's shape was prose twice before
-  (`PL-9KHK`, `PL-DKBG`), and sessions still sent a bare read. A form for
-  "nothing to decide" was weighed and refused, because a pull request with
-  nothing to review should not reach the owner at all: the way out of such a
-  hold is `Owner-read: not needed`;
-- a change to this module holds only when it changes or deletes an existing
-  test pinning its answers, and otherwise arms on green with the rest of the
-  tooling (project owner, 2026-10-19, ratified, over holding every change to
-  it with a review ask and over arming it on green with no such test;
-  `PL-9JHM` records the owner's answer). It reopens `PL-VKHD`'s answer of
-  2026-10-12, which held every change here so that the gate could not loosen
-  itself, because nine of those holds in two weeks were mostly refactors
-  with nothing to review. To loosen an existing answer, a change has to edit
-  the test that pins it, so that kind of loosening still waits. A loosening
-  that no test pins merges unread, and so would one that also rewrote the
-  check reading the pins, since this module judges its own change;
-- the gate's read covers the existing tests that pin its answers as well as
-  this module, and since 2026-10-19 those tests alone (`PL-9JHM`), so a
-  loosening through what the answer is read through has to edit one (project
-  owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
-  and `test_cli.py` whole, and over leaving it; `PL-WW0Q`). It reopens, for
-  that one route, `PL-SQTR`'s line at this module alone;
-- a simulator change's new long prose waits for a recorded review: `arm`
-  holds while the count that `prose_count_command` gives is above zero, or
-  could not be read, and only the prose added since the newest
-  `Prose-review` record is counted (2026-10-19, decided in the workflow
-  decision round without the owner as the one clearly correct option, over
-  relying on a pointer in close-out step 5 and measuring five more branches,
-  `PL-W04Z`). Five of six simulator branches had skipped step 8's review, and
-  their prose was rated awkward in 58% of verdicts against 22% for the one
-  that ran it (`PL-J6CK`). Docket names no repository tool, so the count is a
-  configured command, as the forge's are;
-- a simulator change waits for its blind generalist review passes: `arm`
-  holds while the number `blind_count_command` gives is more than the newest
-  `Blind-review` record says ran, or could not be read (2026-10-25, a
-  session's call under `PL-HDRN`, over leaving close-out step 9 as prose
-  alone). No simulator branch had merged under step 9 yet, so its skip rate
-  was not measured. Step 8 was skipped by five branches in six while it was
-  prose alone (`PL-W04Z`), and a branch that ran the passes pays one trailer
-  line.
-  A record is not undone by a later change, because close-out step 9 says a
-  fix made for a finding needs no further pass.
+- A claim holds whichever push carried it, until the branch's own copy closes
+  or blocks the item, and a pull request that a claim rides is a draft
+  (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`, `PL-H14W`).
+- The queue's tooling and the pull request body records arm on green beside
+  the store (`PL-SQTR`, `PL-K6B2`, `PL-979D`).
+- Every other path arms on green unless the change raises a question for the
+  owner, and a workflow change needs no merge confirmation (`PL-KKHD`,
+  `PL-0JGZ`, `PL-JNYL`, `PL-KPM2`).
+- A test of the tooling under `tests/`, one that imports no `anesthesia_sim`
+  on either side of the change, arms on green (`PL-552M`). The import rule is
+  spelt here and imported by `tools/workflow_paths_check.py`. It is read from
+  the tree, not from `docket.toml`'s `workflow_paths`, so widening what arms
+  still takes an edit that this gate holds.
+- A simulator change waits for the session's `Owner-read:` judgment, and only
+  `needed` waits on the owner (`PL-DKBG`). A hold for the owner's read carries
+  its question as an `Owner-ask` record (`PL-9JHM`).
+- A change to this module waits on the owner only when it changes or deletes
+  an existing test that pins its answers (`PL-9JHM`, `PL-VKHD`, `PL-WW0Q`). A
+  loosening that no test pins merges unread, and so would one that also
+  rewrote the check that reads the pins, since this module judges its own
+  change.
+- A simulator change's new long prose waits for a recorded review
+  (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
+  A blind review record is not undone by a later change, because close-out
+  step 9 says a fix made for a finding needs no further pass.
+
+The dated reasoning for each rule, as this header held it until 2026-11-03,
+is in `PL-Q28F`.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge

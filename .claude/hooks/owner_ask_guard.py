@@ -24,10 +24,9 @@ asks `bin/docket arm --owner-ask` about this checkout's branch:
 
 - **Held for the owner's read, with no `Owner-ask` recorded (exit 3).** The
   ask is refused, whatever its form. A question written into the message is
-  refused too. Until `PL-R1HT` the hook accepted any question in the recorded
-  form in this state, so a made-up question carried an ask past "send the
-  owner nothing". The way past the refusal is to record an `Owner-ask:`
-  trailer, or `Owner-read: not needed - <why>` where the change needs no read.
+  refused too (`PL-R1HT`). The way past the refusal is to record an
+  `Owner-ask:` trailer, or `Owner-read: not needed - <why>` where the change
+  needs no read.
 - **An ask recorded (exit 0).** The ask must carry the recorded line word for
   word.
 - **Any other answer, or none.** The ask must carry a line in the recorded
@@ -35,28 +34,18 @@ asks `bin/docket arm --owner-ask` about this checkout's branch:
   checkout on no pull request's branch, where `arm` cannot answer
   (`PL-YV90`).
 
-**Why the state decides, and the wording only finds the ask.** From `PL-TLPH`
-to `PL-ZCF9` the hook also judged from the wording whether a phrase asked at
-all, and let through phrases that were quoted, negated, about a decision card
-or put in the future. A review on 2026-11-03 found that 20 of 33 unlisted asks
-passed, and that 14 of 18 new phrasings in those four contexts were refused
-(`PL-3D2F`). Those context rules are deleted. A message that holds an ask
-phrasing in a sentence that asks nothing, such as "no longer needs your read",
-is refused, and the refusal says to reword it and record the mistake.
-
-**Why a hook and not more text.** On `#1612` and `#1676` a session read `arm`
-through `head`, missed the line saying to send nothing, and sent the owner a
-bare "read #N and merge it" (`PL-TLPH`). Text fails whenever it is read short,
-so this checks the message itself, at the one moment it goes out.
+**The state decides, and the wording only finds the ask** (`PL-3D2F`). A
+message that holds an ask phrasing in a sentence that asks nothing, such as
+"no longer needs your read", is refused, and the refusal says to reword it
+and record the mistake. The hook checks the message itself, at the moment it
+goes out, because a session that reads `arm`'s output short misses the line
+saying to send nothing (`PL-TLPH`).
 
 **Which tools: every Projects tool but a named few** (`PL-YN60`). The hook is
 wired on every `mcp__hearthbot__` tool and reads every string in the call's
 input, at any depth. It skips only the tools in `NOT_TO_THE_OWNER`, whose text
-goes to another session or names a thread. It first listed the tools it read,
-`reply`, `update_message` and `ask_decision`. The harness renamed them to
-`post_message`, `edit_message` and `request_decision`, so a thread's edits and
-decision cards went unchecked and nothing said so. Naming the skipped tools
-instead means a renamed or new tool is checked until someone says otherwise.
+goes to another session or names a thread. Naming the skipped tools means a
+renamed or new tool is checked until someone says otherwise.
 Nobody has read these tools' schemas, so the hook does not guess which field
 holds the text (`PL-646J`).
 
