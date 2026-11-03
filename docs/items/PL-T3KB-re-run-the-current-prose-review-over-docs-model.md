@@ -9,7 +9,7 @@ feature: prose-quality
 touches: docs/MODEL.md
 added: 2026-11-03
 payoff: the opening sections, conventions, equations, numerical method and source hierarchy of the model specification meet the same reader-named prose review as the later sections, so a clinician reads the whole document to one standard
-verify: uv run python tools/model_rewrite.py ids "Status" "Intended use, and the safety class this project holds itself to" "Reasonably foreseeable misuse, and the hazards the presentation carries" "How this document is held to the tree" "Purpose" "Model boundary" "Conventions" "Symbols" "Compartment capacities" "Tissue groups" "Governing equations" "Conservation of agent mass" "Numerical method" "Source hierarchy: what may be cited as the authority for a value"
+verify: grep -q '^Prose-review: read' docs/items/PL-T3KB-re-run-the-current-prose-review-over-docs-model.md
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
 ---
 
@@ -28,6 +28,11 @@ current prompt, unchanged since #1962 (2026-11-03 02:37Z): `PL-QL0X` (#1953) at
 03:14Z, `PL-70B2` (#1950) at 04:25Z, and `PL-WBR3` (#1952) and `PL-QHR2` (#1964)
 after it.
 
+**Why it matters.** A clinician reads `docs/MODEL.md` to decide whether to
+trust a displayed value. The first four parts are the ones that state the
+intended use, the hazards, the equations and the numerical method, and they
+are the only parts not yet held to the reader-named review.
+
 **How.** Print each part's units with `tools/new_prose.py` against a base that
 lacks that part's lines, give each part's output to one fresh reviewer as
 close-out step 8 says, and apply the rewrites that keep every value, unit,
@@ -39,3 +44,5 @@ read (project owner, 2026-11-02 19:40Z).
 **Done when** the four parts' prose has been through the current review, the
 rewrites are applied, and the branch's `Prose-review:` trailer records the
 counts.
+The close-out writes those counts into this file as a line of its own, in
+the trailer's form, and `verify:` reads that line.
