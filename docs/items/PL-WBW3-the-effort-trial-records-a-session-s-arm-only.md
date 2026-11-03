@@ -3,12 +3,14 @@ id: PL-WBW3
 title: The effort trial records a session's arm only from its start-of-session line, so a session the owner moves to another level mid-session (session_01GnrHQs9QJ7TXfJF2dw2JpV, high to xhigh on 2026-11-03, PL-TN0G) is counted in the arm it left: give the model review a record of the move, or have it exclude such sessions
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: effort-trial
 touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh, .claude/skills/model-review/SKILL.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1981
 payoff: a session the owner moves to another effort level keeps that level and is analysed at it, not in the arm it left
 verify: grep -q 'def test_a_level_set_mid_session_survives_compaction' tests/unit/test_effort_trial.py
 ---
@@ -26,3 +28,5 @@ verify: grep -q 'def test_a_level_set_mid_session_survives_compaction' tests/uni
 **Generator check.** One-off pair with `PL-6LVZ`. Both misread the effort a session ran at, which the trial records only as the arm its hash drew.
 
 **Next steps, 2026-11-03.** Built with `PL-6LVZ` on one branch. That item's "Next steps" paragraph has the plan for both.
+
+**Built 2026-11-03 with `PL-6LVZ`.** The `move` command records the level a session was moved to, and the session-start hook keeps that level at a compaction instead of writing the drawn cap back. The session this item names was a Projects thread. A thread never reads `.claude/settings.local.json` (`PL-6LVZ` § "A Projects thread never read the cap"), so the cap the hook wrote back there did not lower its level, and its arm line was wrong from the start. The review now treats every thread as in neither arm.
