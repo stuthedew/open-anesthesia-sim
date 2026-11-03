@@ -7749,6 +7749,131 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
     assert [line for line, _ in members] == [3, 5, 10, 13, 16, 17, 21, 23, 25, 27, 31]
 
 
+@pytest.mark.parametrize(
+    ("prose", "unit"),
+    [
+        ("Fat's whole first hour spans under 4 px on the chart.", "px"),
+        ("Sea-level pressure is 760 mmHg.", "mmHg"),
+        ("Sea-level pressure is 101.3 kPa.", "kPa"),
+        ("The vapour pressure is quoted at 1 atm.", "atm"),
+        ("The liquid weighs 1.5203 g/mL.", "g/mL"),
+        ("The molar mass is 184.49 g/mol.", "g/mol"),
+        ("The blood volume is 70 mL/kg.", "mL/kg"),
+        ("One count is 0.02 pp of sevoflurane.", "pp"),
+        ("The share moves by 1.2 percentage points.", "percentage points"),
+        ("The share moves by 1 percentage point.", "percentage point"),
+        ("That blood holds about 0.18 mL.", "mL"),
+        ("Davis and Mapleson's 1222 ml is the same object.", "ml"),
+        ("The cardiac output is 6480 ml/min.", "ml/min"),
+    ],
+    ids=[
+        "pixels",
+        "mmHg",
+        "kPa",
+        "atm",
+        "density",
+        "molar-mass",
+        "per-kilogram",
+        "pp",
+        "percentage-points",
+        "percentage-point",
+        "millilitres",
+        "lower-case-millilitres",
+        "millilitres-per-minute",
+    ],
+)
+def test_a_figure_in_each_unit_the_documents_write_is_read_with_that_unit(
+    prose: str, unit: str
+) -> None:
+    """Regression for `PL-XQXK`: a figure in px, mL, mmHg or percentage points was read bare.
+
+    Read bare, it made its paragraph no member of a section held by its
+    numeric paragraphs. `PL-8YBS`'s wrong claim that fat's first hour spans
+    under 4 px sat in one such paragraph. A bare decimal could also be taken
+    for a stored coefficient, so three `not-restated:` markers declared
+    figures that were in mL or percentage points.
+    """
+    assert [written for _, written in doc_check._untied_figures(prose, prose)] == [unit]
+
+
+def test_a_paragraph_stating_a_figure_in_pixels_is_a_numeric_paragraph_member() -> None:
+    document = "\n".join(
+        [
+            "### Displayed precision",
+            "",
+            "Fat's whole first hour spans under 4 px on the chart.",  # line 3
+            "",
+        ]
+    )
+
+    members = list(doc_check._numeric_paragraph_members(document, _numeric_family()))
+
+    assert [line for line, _ in members] == [3]
+
+
+@pytest.mark.parametrize(
+    ("number", "unit", "figure"),
+    [
+        ("1222", "ml", (1.222, "L")),
+        ("10", "mL", (0.01, "L")),
+        ("1.2", "percentage points", (1.2, "percentage points")),
+        ("0.02", "pp", (0.02, "pp")),
+        ("760", "mmHg", (760.0, "mmHg")),
+    ],
+    ids=["ml", "mL", "percentage-points", "pp", "mmHg"],
+)
+def test_a_millilitre_figure_is_read_in_litres_and_a_percentage_point_stays_one(
+    number: str, unit: str, figure: tuple[float, str]
+) -> None:
+    """A stored volume is in litres, so a volume in millilitres is compared in litres.
+
+    A percentage point is the difference between two percents, so it is never
+    compared with a stored percent.
+    """
+    assert doc_check._prose_figure(number, unit) == figure
+
+
+def test_a_volume_restated_in_millilitres_with_no_marker_is_refused(tmp_path: Path) -> None:
+    """`docs/MODEL.md` restated the stored venous pool as "1222 ml", and nothing asked."""
+    root = _repo(tmp_path, model=_model_with("The pool holds 500 mL."))
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        "from typing import Final\n\nPOOL_L: Final = 0.5\n", encoding="utf-8"
+    )
+
+    untied = _untied(root)
+
+    assert len(untied) == 1
+    assert "500 mL equals core/thing.py POOL_L = 0.5" in untied[0]
+
+
+@pytest.mark.parametrize(
+    ("sentence", "constant", "expected"),
+    [
+        ("The liquid weighs 1.5203 g/mL.", "DENSITY_G_ML", "1.5203 g/mL"),
+        ("The molar mass is 184.49 g/mol.", "MOLAR_MASS_G_MOL", "184.49 g/mol"),
+    ],
+    ids=["density", "molar-mass"],
+)
+def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused(
+    tmp_path: Path, sentence: str, constant: str, expected: str
+) -> None:
+    """An agent file stores its liquid density in g/mL and its molar mass in g/mol.
+
+    Reading "g" alone, as a unit no value is stored in, let a restated density
+    go stale with nothing asking.
+    """
+    value = expected.split()[0]
+    root = _repo(tmp_path, model=_model_with(sentence))
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        f"from typing import Final\n\n{constant}: Final = {value}\n", encoding="utf-8"
+    )
+
+    untied = _untied(root)
+
+    assert len(untied) == 1
+    assert f"{expected} equals core/thing.py {constant} = {value}" in untied[0]
+
+
 def test_a_numeric_family_holds_a_paragraph_by_each_form_a_writer_adds_on_purpose() -> None:
     """A test, a marker, a published source and a date each hold a paragraph.
 

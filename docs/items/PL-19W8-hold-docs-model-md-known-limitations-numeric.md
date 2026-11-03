@@ -105,3 +105,5 @@ script made.
    wrong or missing a condition. If none were, `PL-JP7P`, `PL-MCQ5`,
    `PL-5C1H` and `PL-H94Q` are dropped with that count as the reason.
    Otherwise they are set ready.
+
+**Added 2026-11-03 by `PL-XQXK`.** Widening the units the numeric-paragraph check reads made one more § "Displayed precision" paragraph a member: one count of the MAC line is 0.02 percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane. `test_the_mac_resolution_is_derived_from_the_percent_resolution` holds only the property that one MAC count is coarser than one percent count, so the paragraph declares that the three figures have no test yet and names this item.
