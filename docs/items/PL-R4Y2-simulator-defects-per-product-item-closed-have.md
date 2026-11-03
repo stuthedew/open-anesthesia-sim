@@ -3,12 +3,14 @@ id: PL-R4Y2
 title: Simulator defects per product item closed have stayed at about 0.7 to 0.8 a week while apparatus defects fell, and a recorded head explains only 16% of product defects: run the generator question over the open product defects, starting with stale state after a halt
 priority: P2
 effort: L
-status: blocked
+status: done
 classes: housekeeping
 feature: defect-review-2026-10
 touches: docs/items, ROADMAP.md
 blocked-by: 2026-11-02
 added: 2026-10-19
+closed: 2026-11-03
+pr: 1993
 payoff: the stale-state defects a learner can see get their root cause fixed once, instead of each one being found and patched separately
 verify: grep -qE '^\*\*Re-measured\.' docs/items/PL-R4Y2-*.md
 ---
@@ -166,3 +168,23 @@ Its convention ties a sentence to a value held in a file. It does not reach a
 figure the model computes or a display resolution restated in prose, and the
 2026-10-26 pass above found four more items of the first shape. Recording that
 head is work for a session of its own, not for this triage.
+
+**Re-measured.** Taken on 2026-11-03 on `main` at `2aa342de`, with the script in § "How to take the re-measurement" and the replay batch's 45 ids from `a4746bda7`. Every earlier week reproduces the interim reading of 2026-10-27 exactly, so the weeks compare on the same footing.
+
+| Week of | Organic defects | Of them, `PL-GTHP`'s replay batch | Items closed | Rate | Rate without the replay batch |
+| --- | --- | --- | --- | --- | --- |
+| 2026-09-28 | 25 | 0 | 30 | 0.83 | 0.83 |
+| 2026-10-05 | 14 | 0 | 24 | 0.58 | 0.58 |
+| 2026-10-12 | 36 | 0 | 52 | 0.69 | 0.69 |
+| 2026-10-19 | 44 | 16 | 94 | 0.47 | 0.30 |
+| 2026-10-26 | 8 | 0 | 72 | 0.11 | 0.11 |
+| 2026-11-02 (2 days) | 3 | 0 | 21 | 0.14 | 0.14 |
+
+The two full weeks after `PL-5JTH` closed on 2026-10-19 read 0.30 and 0.11, against 0.58 to 0.83 in the four weeks before. The count of organic defects fell too, from 14 to 52 a week to 8, so the lower rate does not come only from more items closing. Heads now explain 99 of the 295 product defects (34%), counting a member named in a head's `root-cause-of:` or an item that re-enters one. That is up from 89 of 279 (32%) on 2026-10-27.
+
+Two limits apply:
+
+- **The latest week is partial.** It holds two days, and 30 items filed on 2026-11-03 are untriaged, so they sit in no lane and are not counted. Four of them look like product items (`PL-3WFF`, `PL-5L84`, `PL-BSYT`, `PL-ZDZ0`), so that week will rise once they are triaged. They do not touch the two full weeks above.
+- **Two weeks is a short series.** The rate has dipped before, to 0.14 in the week of 2026-09-07 and 0.24 in the week of 2026-09-21, and rose again. A third low week would make the fall a trend.
+
+The generator question now has an answer for every triaged product defect. The ones filed after 2026-10-27 were asked at triage, which has done so since `PL-K5CX`. The three re-entries of `PL-4FBP` that the 2026-10-31 triage named were answered the same day by `PL-FM15` (#1891), which recorded that no successor head is owed. The `docs/MODEL.md` claims about figures the model computes, which the 2026-10-26 pass above left unrecorded, now have a head of their own, `PL-B6YV`, closed 2026-11-02. Nothing is left for this item.

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+feature: verify-false-reject
 milestone: v0.4.29
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
