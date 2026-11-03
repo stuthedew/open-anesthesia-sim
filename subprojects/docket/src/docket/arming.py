@@ -1604,16 +1604,90 @@ def arm(
 
     **With `owner_ask`, it answers only what may be sent to the owner**
     (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
-    ask a Projects message carries, and the whole reading took 2.2 s on a one-file branch and
-    28.4 s on one changing 62 simulator paths. Only `sendable`, `unasked` and
-    an `unknown` answer are read from the verdict, and they rest on four
-    things: the change's paths and pinned tests, the `OWNER_READ` record, the
-    claims and the `OWNER_ASK` record. So it never runs `auto_merge`,
-    `prose_count` or `blind_count`, whose answers can only add a hold, and it
-    counts no commits behind. Where nothing holds the pull request for the
-    owner's read, it reads no claim and no ask either, and answers `not held`.
-    It asks `newest` only where the answer is a hold for the owner's read,
-    because only a merge already made changes that answer then.
+    ask a Projects message carries, and the full answer took 2.2 s on a
+    one-file branch and 28.4 s on one changing 62 simulator paths. Only
+    `sendable`, `unasked` and an `unknown` answer are read from the verdict,
+    so `_owner_ask_answer` runs only the stages those rest on.
+
+    **Each step is a stage** (`PL-R4M6`): `_read_branch`, `_read_forge`,
+    `_read_change`, `_read_reviews`, `_read_claims` and `_read_behind` each
+    return what they read and what went unread, `_held` gathers them into one
+    `hold` verdict, and `_settle` turns that into the answer. The full answer
+    and the owner-ask answer compose the same stages, so a change to a step
+    reaches both.
+    """
+    where = _read_branch(root, fetch=fetch, runner=runner)
+    if isinstance(where, Verdict):
+        return where
+    if owner_ask:
+        return _owner_ask_answer(root, where, items_dir=items_dir, now=now, newest=newest)
+    forge = _Forge() if newest is None else _read_forge(root, where, newest, auto_merge)
+    if forge.merged is not None:
+        return Verdict(
+            ALREADY_MERGED,
+            branch=where.name,
+            base=where.base,
+            unpulled=where.unpulled,
+            unread=(*where.unread, *forge.unread),
+            merged=forge.merged,
+        )
+    change = _read_change(root, where, items_dir)
+    reviews = _read_reviews(root, where, change, prose_count, blind_count)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
+    behind, uncounted = _read_behind(root, where)
+    unread = (
+        *where.unread,
+        *forge.unread,
+        *change.unread,
+        *reviews.unread,
+        *misread,
+        *unclaimed,
+        *uncounted,
+        *_silenced(where),
+    )
+    return _settle(
+        _held(
+            where,
+            change,
+            record=record,
+            ask=ask,
+            misasked=misasked,
+            claims=claims,
+            switched_off=forge.switched_off,
+            reviews=reviews,
+            behind=behind,
+            unread=unread,
+        )
+    )
+
+
+@dataclass(frozen=True)
+class _Branch:
+    """Where `HEAD`'s branch stands, which every later stage of `arm` reads from.
+
+    `ran` is the caller's runner, or plain git once a fetch has moved the refs.
+    `run` wraps it and remembers every call git did not answer, so the stages
+    that share it report one partial read. `unread` holds the fetch's failure.
+    """
+
+    name: str
+    base: str
+    remotes: frozenset[str]
+    heads: RemoteHeads | None
+    ran: Runner
+    run: _Silences
+    unpulled: str
+    unread: tuple[str, ...]
+
+
+def _read_branch(root: Path, *, fetch: bool, runner: Runner | None) -> _Branch | Verdict:
+    """Fetch, then find the branch, its base and its copy on the remote.
+
+    Returns an `unknown` verdict where there is no branch to answer for: git
+    did not answer, `HEAD` is detached, no base resolved, or `HEAD` is on the
+    default branch.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -1643,78 +1717,142 @@ def arm(
     if not resolved(base):
         reason = run.reason or f"no default branch could be established to compare {name} with"
         return Verdict(UNKNOWN, branch=name, unread=(reason, *unread))
-    branch = name
-    if branch == _head_name(base, remotes):
+    if name == _head_name(base, remotes):
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
-    unpulled = _unpulled(root, run, heads, name, branch)
-    switched_off = ""
-    if newest is not None and not owner_ask:
-        pull, merged, unasked_forge = _newest_merge(root, ran, newest, name, base, remotes)
-        unread.extend(unasked_forge)
-        if merged is not None:
-            return Verdict(
-                ALREADY_MERGED,
-                branch=name,
-                base=base,
-                unpulled=unpulled,
-                unread=tuple(unread),
-                merged=merged,
-            )
-        if pull is not None and pull.state == PULL_OPEN and auto_merge is not None:
-            switch = auto_merge(pull.number)
-            if switch.declined:
-                unread.append(
-                    f"whether auto-merge on #{pull.number} was switched off could not be "
-                    f"asked - {switch.declined}"
-                )
-            elif switch.state == AUTO_MERGE_OFF:
-                owned, misread = _switched_off_here(root, run, base, switch.at)
-                unread.extend(misread)
-                if not owned:
-                    switched_off = switch.at
+    unpulled = _unpulled(root, run, heads, name, name)
+    return _Branch(name, base, remotes, heads, ran, run, unpulled, tuple(unread))
 
+
+@dataclass(frozen=True)
+class _Forge:
+    """What the forge said: the merge `HEAD` still stands on, and an owner's switch-off."""
+
+    merged: MergedPullRequest | None = None
+    switched_off: str = ""
+    unread: tuple[str, ...] = ()
+
+
+def _read_forge(
+    root: Path,
+    where: _Branch,
+    newest: Callable[[str, str], PullRequestLookup],
+    auto_merge: Callable[[int], AutoMerge] | None,
+) -> _Forge:
+    """Ask the forge whether the pull request merged, and whether its auto-merge was switched off.
+
+    A merge returns at once, since nothing else changes the answer then. A
+    switch off counts only where no commit since records it as the session's
+    own (`AUTO_MERGE`).
+    """
+    pull, merged, unread = _newest_merge(
+        root, where.ran, newest, where.name, where.base, where.remotes
+    )
+    if merged is not None:
+        return _Forge(merged=merged, unread=unread)
+    if pull is None or pull.state != PULL_OPEN or auto_merge is None:
+        return _Forge(unread=unread)
+    switch = auto_merge(pull.number)
+    if switch.declined:
+        said = (
+            f"whether auto-merge on #{pull.number} was switched off could not be "
+            f"asked - {switch.declined}"
+        )
+        return _Forge(unread=(*unread, said))
+    if switch.state != AUTO_MERGE_OFF:
+        return _Forge(unread=unread)
+    owned, misread = _switched_off_here(root, where.run, where.base, switch.at)
+    return _Forge(switched_off="" if owned else switch.at, unread=(*unread, *misread))
+
+
+@dataclass(frozen=True)
+class _Change:
+    """The paths a squash of the branch would land, sorted by what each waits on.
+
+    `on_list` waits on a read, `outside` arms on green beside the store, and
+    `worked` is every path outside the store and the body records. `gate` says
+    whether this module changed, `moved` whether it moved, and `pinned` names
+    the existing tests of its answers that changed.
+    """
+
+    prefix: str
+    on_list: tuple[str, ...] = ()
+    outside: tuple[str, ...] = ()
+    worked: tuple[str, ...] = ()
+    gate: bool = False
+    moved: bool = False
+    pinned: tuple[str, ...] = ()
+    unread: tuple[str, ...] = ()
+
+
+def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
+    """Read the net change `base...HEAD` and sort its paths."""
+    run, base = where.run, where.base
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
     # it made outside it, which a rename would print as one path under the store.
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
-    on_list: tuple[str, ...] = ()
-    outside: tuple[str, ...] = ()
-    worked: tuple[str, ...] = ()
-    gate = False
+    if not answered(changed):
+        said = f"git would not diff {where.name} against {base}, so what a merge lands is unknown"
+        return _Change(prefix, unread=(said,))
+    paths = set(listed_paths(changed))
+    worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
+    # The gate is reported apart, and asked for directly rather than read
+    # back out of what `arms_on_green` holds.
+    gate = GATE in paths
+    rest = paths - {GATE}
     moved = False
+    if gate:
+        fork = run(["merge-base", base, "HEAD"], root).strip()
+        held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
+        moved = held.rstrip("\0") != GATE
+    tooling, unread = _tests_of_the_tooling(sorted(rest), base, root, run)
     pinned: tuple[str, ...] = ()
-    if answered(changed):
-        paths = set(listed_paths(changed))
-        worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
-        # The gate is reported apart, and asked for directly rather than read
-        # back out of what `arms_on_green` holds.
-        gate = GATE in paths
-        rest = paths - {GATE}
-        if gate:
-            fork = run(["merge-base", base, "HEAD"], root).strip()
-            held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
-            moved = held.rstrip("\0") != GATE
-        tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
-        unread.extend(unreadable)
-        if PINS is not None and PINS in paths:
-            pinned, unpinned = _pins_changed(base, root, run)
-            unread.extend(unpinned)
-        on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
-        outside = tuple(
-            sorted(
-                path
-                for path in rest
-                if arms_on_green(path, tooling) and outside_the_store(path, prefix)
-            )
+    if PINS is not None and PINS in paths:
+        pinned, unpinned = _pins_changed(base, root, run)
+        unread = (*unread, *unpinned)
+    on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
+    outside = tuple(
+        sorted(
+            path
+            for path in rest
+            if arms_on_green(path, tooling) and outside_the_store(path, prefix)
         )
-    else:
-        unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
+    )
+    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, tuple(unread))
+
+
+@dataclass(frozen=True)
+class _Reviews:
+    """The prose and blind reviews a simulator change owes, and what the records say ran."""
+
+    unreviewed: int = 0
+    prose_since: str = ""
+    prose_declined: str = ""
+    blind_owed: int = 0
+    blind_recorded: int = 0
+    blind_since: str = ""
+    blind_declined: str = ""
+    unread: tuple[str, ...] = ()
+
+
+def _read_reviews(
+    root: Path,
+    where: _Branch,
+    change: _Change,
+    prose_count: Callable[[str], CommandCount] | None,
+    blind_count: Callable[[], CommandCount] | None,
+) -> _Reviews:
+    """Count the reviews owed, where the change reaches a path that waits on a read."""
+    if not change.on_list:
+        return _Reviews()
+    run, span = where.run, ["HEAD", f"^{where.base}"]
+    unread: list[str] = []
     unreviewed = 0
     prose_since = ""
     prose_declined = ""
-    if on_list and prose_count is not None and not owner_ask:
-        prose_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], PROSE_REVIEW)
+    if prose_count is not None:
+        prose_since, value = _newest_trailer(root, run, span, PROSE_REVIEW)
         if prose_since and not PROSE_FORM.fullmatch(value):
             unread.append(
                 f"the {PROSE_REVIEW} record on {prose_since[:12]} is not 'read N, rewrote M, "
@@ -1728,8 +1866,8 @@ def arm(
     blind_recorded = 0
     blind_since = ""
     blind_declined = ""
-    if on_list and blind_count is not None and not owner_ask:
-        blind = newest_blind_record(root, ["HEAD", f"^{base}"], runner=run)
+    if blind_count is not None:
+        blind = newest_blind_record(root, span, runner=run)
         if blind.record is None and blind.commit:
             unread.append(
                 f"the {BLIND_REVIEW} record on {blind.commit[:12]} could not be read "
@@ -1742,106 +1880,197 @@ def arm(
         passes = blind_count()
         blind_declined = passes.declined
         blind_owed = 0 if blind_declined else passes.count
-    record, misread = _owner_read(root, run, base, on_list)
-    unread.extend(misread)
-    if owner_ask and not Verdict(HOLD, moved=moved, pinned=pinned, record=record).needs_owner:
-        if run.reason:
-            unread.append(run.reason)
-        if unpulled or unread:
-            return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
-        return Verdict(NOT_HELD, branch=name, base=base)
-    ask, misasked = _owner_ask(root, run, base, worked)
+    return _Reviews(
+        unreviewed,
+        prose_since,
+        prose_declined,
+        blind_owed,
+        blind_recorded,
+        blind_since,
+        blind_declined,
+        tuple(unread),
+    )
 
-    read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
+
+def _read_claims(
+    root: Path, where: _Branch, *, now: datetime, items_dir: str
+) -> tuple[tuple[Hold, ...], tuple[str, ...]]:
+    """The unreleased claims bound to this branch, and the claim records that could not be read."""
+    unread: list[str] = []
+    read = holdings(root, now=now, items_dir=items_dir, remote=where.heads, runner=where.ran)
     if not read.known:
         unread.append(f"who holds what could not be read - {read.declined}")
+    mine = where.name
     claims = tuple(
         hold
         for hold in read.holds
-        if hold.state != RELEASED and _head_name(hold.ref, remotes) == branch
+        if hold.state != RELEASED and _head_name(hold.ref, where.remotes) == mine
     )
     for ref in read.unreadable:
-        if _head_name(ref, remotes) == branch:
-            unread.append(f"{ref} could not be compared with {base}, so a claim on it was not read")
+        if _head_name(ref, where.remotes) == mine:
+            unread.append(
+                f"{ref} could not be compared with {where.base}, so a claim on it was not read"
+            )
     for line in read.malformed:
         # `<hash> on <ref>: Claim: <text>`, as `claims` writes it; a ref name
         # can hold neither a space nor a colon.
-        where, _, _ = line.partition(": ")
-        if _head_name(where.partition(" on ")[2], remotes) == branch:
-            unread.append(f"a trailer on {name} is not a claim record, so it was not read: {line}")
+        at, _, _ = line.partition(": ")
+        if _head_name(at.partition(" on ")[2], where.remotes) == mine:
+            unread.append(f"a trailer on {mine} is not a claim record, so it was not read: {line}")
+    return claims, tuple(unread)
 
-    behind = 0
-    if not owner_ask:
-        counted = run(["rev-list", "--count", f"HEAD..{base}"], root).strip()
-        counted_behind = whole_number(counted)
-        if counted_behind is None:
-            unread.append(f"git would not count {base}'s commits that {name} lacks")
-        behind = counted_behind or 0
-    if run.reason:
-        unread.append(run.reason)
 
-    found = Verdict(
+def _read_behind(root: Path, where: _Branch) -> tuple[int, tuple[str, ...]]:
+    """How many of the base's commits the branch lacks."""
+    counted = whole_number(where.run(["rev-list", "--count", f"HEAD..{where.base}"], root).strip())
+    if counted is None:
+        return 0, (f"git would not count {where.base}'s commits that {where.name} lacks",)
+    return counted, ()
+
+
+def _silenced(where: _Branch) -> tuple[str, ...]:
+    """The calls git did not answer during the read, as one line, or nothing."""
+    return (where.run.reason,) if where.run.reason else ()
+
+
+def _held(
+    where: _Branch,
+    change: _Change,
+    *,
+    record: OwnerRead | None,
+    ask: OwnerAsk | None,
+    misasked: str,
+    claims: tuple[Hold, ...],
+    switched_off: str,
+    reviews: _Reviews,
+    behind: int,
+    unread: tuple[str, ...],
+) -> Verdict:
+    """The `hold` verdict carrying everything read, which `_settle` turns into the answer."""
+    return Verdict(
         HOLD,
-        branch=name,
-        base=base,
-        items_dir=prefix.rstrip("/"),
+        branch=where.name,
+        base=where.base,
+        items_dir=change.prefix.rstrip("/"),
         claims=claims,
-        read=on_list,
+        read=change.on_list,
         record=record,
         ask=ask,
         misasked=misasked,
-        outside=outside,
-        gate=gate,
-        moved=moved,
-        pinned=pinned,
+        outside=change.outside,
+        gate=change.gate,
+        moved=change.moved,
+        pinned=change.pinned,
         switched_off=switched_off,
-        unreviewed=unreviewed,
-        prose_since=prose_since,
-        prose_declined=prose_declined,
-        blind_owed=blind_owed,
-        blind_recorded=blind_recorded,
-        blind_since=blind_since,
-        blind_declined=blind_declined,
+        unreviewed=reviews.unreviewed,
+        prose_since=reviews.prose_since,
+        prose_declined=reviews.prose_declined,
+        blind_owed=reviews.blind_owed,
+        blind_recorded=reviews.blind_recorded,
+        blind_since=reviews.blind_since,
+        blind_declined=reviews.blind_declined,
         behind=behind,
-        unpulled=unpulled,
-        unread=tuple(unread),
+        unpulled=where.unpulled,
+        unread=unread,
     )
-    if owner_ask and found.asks_owner and newest is not None:
-        _, merged, unasked_forge = _newest_merge(root, ran, newest, name, base, remotes)
-        if merged is not None:
-            return Verdict(
-                ALREADY_MERGED,
-                branch=name,
-                base=base,
-                unpulled=unpulled,
-                unread=(*found.unread, *unasked_forge),
-                merged=merged,
-            )
-        if unasked_forge:
-            found = replace(found, unread=(*found.unread, *unasked_forge))
+
+
+def _settle(found: Verdict) -> Verdict:
+    """The answer from everything read: `hold`, then `unknown`, then `behind`, then `arm`."""
     if (
-        claims
+        found.claims
         or found.unjudged
         or found.needs_owner
-        or switched_off
+        or found.switched_off
         or found.prose_held
         or found.blind_held
     ):
         return found
-    if unpulled or unread:
-        return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
-    if behind:
-        return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
+    if found.unpulled or found.unread:
+        return Verdict(
+            UNKNOWN,
+            branch=found.branch,
+            base=found.base,
+            unpulled=found.unpulled,
+            unread=found.unread,
+        )
+    if found.behind:
+        return Verdict(
+            BEHIND,
+            branch=found.branch,
+            base=found.base,
+            items_dir=found.items_dir,
+            behind=found.behind,
+        )
     return Verdict(
         ARM,
-        branch=name,
-        base=base,
+        branch=found.branch,
+        base=found.base,
         items_dir=found.items_dir,
-        read=on_list,
-        record=record,
-        outside=outside,
-        gate=gate,
+        read=found.read,
+        record=found.record,
+        outside=found.outside,
+        gate=found.gate,
     )
+
+
+def _owner_ask_answer(
+    root: Path,
+    where: _Branch,
+    *,
+    items_dir: str,
+    now: datetime,
+    newest: Callable[[str, str], PullRequestLookup] | None,
+) -> Verdict:
+    """`arm --owner-ask`: only what may be sent to the owner (`PL-3D2F`).
+
+    It reads the change and the `OWNER_READ` record first. Where nothing holds
+    the pull request for the owner's read, it answers `not held` and reads no
+    claim and no ask. Otherwise it reads the ask and the claims, and asks the
+    forge only where the answer would go to the owner, because only a merge
+    already made changes that answer. It never counts reviews, reads the
+    auto-merge switch or counts commits behind, since those can only add a
+    hold.
+    """
+    change = _read_change(root, where, items_dir)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list)
+    if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
+        unread = (*where.unread, *change.unread, *misread, *_silenced(where))
+        if where.unpulled or unread:
+            return Verdict(
+                UNKNOWN, branch=where.name, base=where.base, unpulled=where.unpulled, unread=unread
+            )
+        return Verdict(NOT_HELD, branch=where.name, base=where.base)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
+    found = _held(
+        where,
+        change,
+        record=record,
+        ask=ask,
+        misasked=misasked,
+        claims=claims,
+        switched_off="",
+        reviews=_Reviews(),
+        behind=0,
+        unread=(*where.unread, *change.unread, *misread, *unclaimed, *_silenced(where)),
+    )
+    if found.asks_owner and newest is not None:
+        _, merged, unasked = _newest_merge(
+            root, where.ran, newest, where.name, where.base, where.remotes
+        )
+        if merged is not None:
+            return Verdict(
+                ALREADY_MERGED,
+                branch=where.name,
+                base=where.base,
+                unpulled=where.unpulled,
+                unread=(*found.unread, *unasked),
+                merged=merged,
+            )
+        if unasked:
+            found = replace(found, unread=(*found.unread, *unasked))
+    return _settle(found)
 
 
 def _newest_merge(
