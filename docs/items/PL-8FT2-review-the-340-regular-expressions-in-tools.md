@@ -1,9 +1,16 @@
 ---
 id: PL-8FT2
 title: Review the 340 regular expressions in tools/, .claude/hooks/, subprojects/docket/ and the tests that tools/regex_baseline.py lets stand without a reason, starting with the ones that read a format a module already parses
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: defect, refactor
 feature: regex-review
+touches: tools/, .claude/hooks/, subprojects/docket/, tests/unit/, tests/integration/, tests/reference/
+deferred-from: v0.7.0 - captured after the freeze; apparatus regex review the schematic does not wait on
 added: 2026-11-03
+payoff: each format the tools read has one reader, so a pattern re-reading item ids, front matter or version numbers stops producing defects when that format changes
+verify: ! grep -qE '^ *"(tools|subprojects|\.claude|tests)/' tools/regex_baseline.py
 ---
 
 **Problem.** Review the 340 regular expressions in tools/, .claude/hooks/, subprojects/docket/ and the tests that tools/regex_baseline.py lets stand without a reason, starting with the ones that read a format a module already parses
@@ -55,3 +62,9 @@ non-ASCII digits. `release.SEMVER_RE`, built from it, matches "01.2.3",
 2 says a normal version "MUST NOT contain leading zeroes"
 (https://semver.org/spec/v2.0.0.html). `PL-3WFF` records the same for the
 simulator's `_VERSION`.
+
+**Reproduced 2026-11-03.** `tools/regex_baseline.py` holds 346 calls, 340 of them outside `src/`: 143 under `subprojects/docket/`, 135 in `tools/`, 15 in `.claude/hooks/`, 41 in `tests/unit/`, 5 in `tests/integration/` and 1 in `tests/reference/`. `SEMVER_PATTERN` in `subprojects/docket/src/docket/model.py` still reads `\d+` for each of its three numbers.
+
+**Classes.** `defect` for the patterns that restate a grammar a module already parses, because `CLAUDE.md`'s one-source-of-truth rule forbids that second reader. `refactor` for the rest, where a string method would do better but no stated rule is broken.
+
+**Generator check.** Leads to PL-4S6C's fact (which spelling of a repeated predicate is the answer); worked by directory, filing a member item per directory as the brief says. Not a new head.
