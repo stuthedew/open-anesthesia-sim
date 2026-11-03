@@ -77,7 +77,15 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_generator, is_under
+from .model import (
+    LANE_PRODUCT,
+    LANE_WORKFLOW,
+    MIN_ROOT_CAUSE_ITEMS,
+    Item,
+    is_generator,
+    is_under,
+    owner_set_priority,
+)
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 
 #: What a filing with no `priority:` yet is counted as, so an untriaged capture
@@ -89,6 +97,11 @@ UNBANDED = "-"
 #: that it stays at or below the last. `missed` reads it only in a week whose
 #: count of new paths did not fall, for the reason given there (`PL-2T7X`).
 NEW_PATHS_CEILING = 0.13
+
+#: The feature that items about `PL-04KR`'s predictions are filed under, so a
+#: missed week's investigation is listed where the next cut tells a session
+#: to look before filing another (`PL-P6KV`).
+INFLOW_FEATURE = "convergence-visibility"
 
 #: The bands `PL-04KR` predicts no apparatus filing reaches. Its baseline read
 #: 0, 2, 1, 0 P1 workflow filings a week; a P0 misses it by more.
@@ -107,22 +120,32 @@ def _generator_tier(item: Item) -> bool:
     return bool(item.root_cause_of or item.impairs_generators)
 
 
-def _pinned_by_class(item: Item, config: Config, apparatus: frozenset[str]) -> bool:
-    """Whether `item`'s band records its class rather than an apparatus severity.
+def _unexpected_band(item: Item, config: Config) -> bool:
+    """Whether `item`'s band is the apparatus severity `PL-04KR` predicts none reaches.
 
-    `docket check` pins a `safety_classes` item to `P0` or `P1`. A simulator
-    item of that kind often also declares an instruction file, such as a rule
-    under `.claude/rules/` that the change keeps true, and so counts as an
-    apparatus filing. Counted as an unexpected band, it reported a broken
-    prediction that nothing in the apparatus broke: `PL-HQF5` and `PL-4RL2` in
-    the week to 2026-10-18 (`PL-00TR`). A pinned item that reaches any other
-    apparatus path still counts, because a safety-classed defect in the
-    apparatus is the severity the prediction is about.
+    Three readings of a `P0` or `P1` are left out, because each band records
+    something other than how severe an apparatus finding is:
+
+    - **The generator tier**, where the band records a rank (`_generator_tier`).
+    - **An owner-set priority**, where the band records the owner's order,
+      read from `owner-priority:` by `model.owner_set_priority`. `PL-JRVV`
+      was placed at `P1` that way in the week of 2026-10-19 (`PL-P6KV`).
+    - **An item outside the workflow lane**, read from `Item.lane`. Such an
+      item edits the product as well, so its band can come from the product
+      half: a `safety` class pins it to `P1` whatever the apparatus paths are.
+      `PL-04KR`'s baseline of 0, 2, 1 and 0 `P1` filings a week counted
+      workflow-lane items, and only that population reproduces it over the
+      store on 2026-11-03. Counted, crossing items reported `PL-HQF5` and
+      `PL-4RL2` for the week to 2026-10-18 (`PL-00TR`), and `PL-M85T`,
+      `PL-RNYV` and `PL-S79P` for the week to 10-25 (`PL-P6KV`). The cost is
+      that an apparatus defect that also edits a product file is not counted:
+      `PL-7FPD` declared `pyproject.toml`, while its twin `PL-H57W` counted.
     """
     return (
-        any(cls in config.safety_classes for cls in item.classes)
-        and bool(config.instruction_paths)
-        and all(is_under(path, config.instruction_paths) for path in apparatus)
+        item.priority in UNEXPECTED_BANDS
+        and item.lane(config.workflow_paths) == LANE_WORKFLOW
+        and not _generator_tier(item)
+        and not owner_set_priority(item)
     )
 
 
@@ -152,9 +175,9 @@ class InflowPeriod:
     #: not reach them. A sweep's own filings are left out with the rest of
     #: `by_head`, so a campaign cannot read as fixes failing.
     reentries: int = 0
-    #: Of `filed`, those in `UNEXPECTED_BANDS` for a reason other than the
-    #: generator tier or a class pin on a simulator item: what `PL-04KR`'s
-    #: prediction is about.
+    #: Of `filed`, the workflow-lane filings in `UNEXPECTED_BANDS` whose band
+    #: records severity rather than a rank: what `PL-04KR`'s prediction is
+    #: about. `_unexpected_band` says which are left out.
     severe: Mapping[str, int] = field(default_factory=dict)
 
     @property
@@ -298,13 +321,7 @@ def analyze(
                 new_paths=sum(1 for day in first_named.values() if start <= day <= end),
                 reentries=sum(1 for item in organic if item.reenters),
                 severe=dict(
-                    Counter(
-                        item.priority
-                        for item in organic
-                        if item.priority in UNEXPECTED_BANDS
-                        and not _generator_tier(item)
-                        and not _pinned_by_class(item, config, named[item.identifier])
-                    )
+                    Counter(item.priority for item in organic if _unexpected_band(item, config))
                 ),
             )
         )
@@ -437,7 +454,8 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     if last.severe:
         counted = ", ".join(f"{last.severe[band]} {band}" for band in sorted(last.severe))
         out.append(
-            f"{counted} apparatus filing(s) outside the generator tier, where none was expected"
+            f"{counted} apparatus filing(s) in the workflow lane whose band no rank or owner "
+            "set, where none was expected"
         )
     if len(complete) > 1 and last.reentries > complete[-2].reentries:
         out.append(

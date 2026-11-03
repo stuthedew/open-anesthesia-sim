@@ -1776,10 +1776,15 @@ the answering item does not move that date. Like `trend`, it decides nothing and
 the last complete week broke one of `PL-04KR`'s pre-registered predictions -
 more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing,
 or more re-entries than the week before - the cut names it, and otherwise says
-nothing about inflow at all. Two kinds of `P0` or `P1` filing are left out of
-that count. One is an item in the generator tier. The other is a class-pinned
-item, whose `safety` or `science` class holds it at `P1`, when its only
-apparatus paths are instruction files (`PL-00TR`). A week above 0.13 new paths
+nothing about inflow at all. The `P0` and `P1` count reads only workflow-lane
+filings, the population `PL-04KR`'s baseline of 0, 2, 1 and 0 a week was
+measured on. An item that also edits the product can take its band from the
+product half, as a `safety` class pins it to `P1` (`PL-00TR`, `PL-NHQ6`). Two
+more kinds of band are left out, because each records a rank rather than a
+severity: an item in the generator tier, and an item whose `owner-priority:`
+names the band it has. A cut that prints a miss also says to file an
+investigation under `convergence-visibility` unless one is already listed for
+that week. A week above 0.13 new paths
 a filing breaks that prediction only when it named at least as many new paths
 as the week before. The ratio rises whenever filings fall faster than new
 paths, and a falling count of new paths is the convergence the prediction
