@@ -214,7 +214,7 @@ import re
 import string
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
@@ -230,6 +230,7 @@ from .vcs import (
     RECORDS,
     REMOTE,
     MergedPullRequest,
+    NewestPullRequest,
     PullRequestLookup,
     RemoteHeads,
     Runner,
@@ -258,16 +259,26 @@ BEHIND = "behind"
 ALREADY_MERGED = "landed"
 UNKNOWN = "unknown"
 
+#: The answer `arm(owner_ask=True)` gives where the pull request does not wait
+#: on the owner's read. That reading stops before the checks that decide
+#: between `arm`, `behind` and the other holds, so it names none of them
+#: (`PL-3D2F`).
+NOT_HELD = "not held"
+
 #: The exit status of each answer. `behind` and `landed` share `hold`'s: all
-#: three say "not now", and the line printed says which.
-EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, UNKNOWN: 2}
+#: three say "not now", and the line printed says which. `not held` shares it
+#: too, since that reading cannot say whether the pull request may be armed.
+EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, NOT_HELD: 1, UNKNOWN: 2}
 
 #: The exit status of a `hold` that waits on the owner's read while no
 #: `OWNER_ASK` record says what to ask, so that nothing may be sent to the
 #: owner yet. It differs from `hold`'s 1 so that the status alone says so: on
 #: `#1612` and `#1676` a session read `arm` through `head`, missed the line
 #: saying to send nothing, and sent the owner a bare read ask (`PL-TLPH`).
-#: `--owner-ask` exits with it too, whenever nothing may be sent.
+#: `--owner-ask` exits with it in exactly that state, and with 1 or 2 in every
+#: other state that has nothing to send, so `.claude/hooks/owner_ask_guard.py`
+#: can tell a thread held for the owner's read from a checkout `arm` cannot
+#: answer for (`PL-R1HT`).
 NO_ASK = 3
 
 #: How many paths outside the store, the tooling and the records a `hold`
@@ -1362,6 +1373,12 @@ class Verdict:
                 )
                 said.append(f"  {self._shown(self.outside)}")
             return tuple(said)
+        if self.answer == NOT_HELD:
+            return (
+                f"not held - {self.branch} does not wait on the owner's read, so there is no "
+                "ask to send them; `bin/docket arm` says whether it may be armed",
+                *notes,
+            )
         if self.answer == ALREADY_MERGED and (merged := self.merged) is not None:
             said = [
                 f"landed - #{merged.number} merged {self.branch} at {merged.head[:12]}, and "
@@ -1539,6 +1556,7 @@ def arm(
     auto_merge: Callable[[int], AutoMerge] | None = None,
     prose_count: Callable[[str], CommandCount] | None = None,
     blind_count: Callable[[], CommandCount] | None = None,
+    owner_ask: bool = False,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -1583,6 +1601,19 @@ def arm(
     the change reaches a simulator path. The newest `BLIND_REVIEW` record
     must record at least that many, and a count that could not be read holds
     the pull request too.
+
+    **With `owner_ask`, it answers only what may be sent to the owner**
+    (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
+    Projects post, and the whole reading took 2.2 s on a one-file branch and
+    28.4 s on one changing 62 simulator paths. Only `sendable`, `unasked` and
+    an `unknown` answer are read from the verdict, and they rest on four
+    things: the change's paths and pinned tests, the `OWNER_READ` record, the
+    claims and the `OWNER_ASK` record. So it never runs `auto_merge`,
+    `prose_count` or `blind_count`, whose answers can only add a hold, and it
+    counts no commits behind. Where nothing holds the pull request for the
+    owner's read, it reads no claim and no ask either, and answers `not held`.
+    It asks `newest` only where the answer is a hold for the owner's read,
+    because only a merge already made changes that answer then.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -1618,43 +1649,30 @@ def arm(
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
     unpulled = _unpulled(root, run, heads, name, branch)
     switched_off = ""
-    if newest is not None:
-        asked = newest(branch, _head_name(base, remotes))
-        pull = asked.newest
-        if asked.declined:
-            unread.append(
-                f"whether {name}'s pull request has already merged could not be asked - "
-                f"{asked.declined}"
+    if newest is not None and not owner_ask:
+        pull, merged, unasked_forge = _newest_merge(root, ran, newest, name, base, remotes)
+        unread.extend(unasked_forge)
+        if merged is not None:
+            return Verdict(
+                ALREADY_MERGED,
+                branch=name,
+                base=base,
+                unpulled=unpulled,
+                unread=tuple(unread),
+                merged=merged,
             )
-        elif pull is not None:
-            probe = _Silences(ran)
-            merged = carried_merge(pull, base, root, runner=probe)
-            if probe.reason:
+        if pull is not None and pull.state == PULL_OPEN and auto_merge is not None:
+            switch = auto_merge(pull.number)
+            if switch.declined:
                 unread.append(
-                    f"git could not compare {name} with {pull.head[:12]}, the head "
-                    f"#{pull.number} merged at - {probe.reason}"
+                    f"whether auto-merge on #{pull.number} was switched off could not be "
+                    f"asked - {switch.declined}"
                 )
-            elif merged is not None:
-                return Verdict(
-                    ALREADY_MERGED,
-                    branch=name,
-                    base=base,
-                    unpulled=unpulled,
-                    unread=tuple(unread),
-                    merged=merged,
-                )
-            if pull.state == PULL_OPEN and auto_merge is not None:
-                switch = auto_merge(pull.number)
-                if switch.declined:
-                    unread.append(
-                        f"whether auto-merge on #{pull.number} was switched off could not be "
-                        f"asked - {switch.declined}"
-                    )
-                elif switch.state == AUTO_MERGE_OFF:
-                    owned, misread = _switched_off_here(root, run, base, switch.at)
-                    unread.extend(misread)
-                    if not owned:
-                        switched_off = switch.at
+            elif switch.state == AUTO_MERGE_OFF:
+                owned, misread = _switched_off_here(root, run, base, switch.at)
+                unread.extend(misread)
+                if not owned:
+                    switched_off = switch.at
 
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
@@ -1695,7 +1713,7 @@ def arm(
     unreviewed = 0
     prose_since = ""
     prose_declined = ""
-    if on_list and prose_count is not None:
+    if on_list and prose_count is not None and not owner_ask:
         prose_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], PROSE_REVIEW)
         if prose_since and not PROSE_FORM.fullmatch(value):
             unread.append(
@@ -1710,7 +1728,7 @@ def arm(
     blind_recorded = 0
     blind_since = ""
     blind_declined = ""
-    if on_list and blind_count is not None:
+    if on_list and blind_count is not None and not owner_ask:
         blind = newest_blind_record(root, ["HEAD", f"^{base}"], runner=run)
         if blind.record is None and blind.commit:
             unread.append(
@@ -1726,6 +1744,12 @@ def arm(
         blind_owed = 0 if blind_declined else passes.count
     record, misread = _owner_read(root, run, base, on_list)
     unread.extend(misread)
+    if owner_ask and not Verdict(HOLD, moved=moved, pinned=pinned, record=record).needs_owner:
+        if run.reason:
+            unread.append(run.reason)
+        if unpulled or unread:
+            return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
+        return Verdict(NOT_HELD, branch=name, base=base)
     ask, misasked = _owner_ask(root, run, base, worked)
 
     read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
@@ -1746,11 +1770,13 @@ def arm(
         if _head_name(where.partition(" on ")[2], remotes) == branch:
             unread.append(f"a trailer on {name} is not a claim record, so it was not read: {line}")
 
-    counted = run(["rev-list", "--count", f"HEAD..{base}"], root).strip()
-    behind = whole_number(counted)
-    if behind is None:
-        unread.append(f"git would not count {base}'s commits that {name} lacks")
-        behind = 0
+    behind = 0
+    if not owner_ask:
+        counted = run(["rev-list", "--count", f"HEAD..{base}"], root).strip()
+        counted_behind = whole_number(counted)
+        if counted_behind is None:
+            unread.append(f"git would not count {base}'s commits that {name} lacks")
+        behind = counted_behind or 0
     if run.reason:
         unread.append(run.reason)
 
@@ -1780,6 +1806,19 @@ def arm(
         unpulled=unpulled,
         unread=tuple(unread),
     )
+    if owner_ask and found.asks_owner and newest is not None:
+        _, merged, unasked_forge = _newest_merge(root, ran, newest, name, base, remotes)
+        if merged is not None:
+            return Verdict(
+                ALREADY_MERGED,
+                branch=name,
+                base=base,
+                unpulled=unpulled,
+                unread=(*found.unread, *unasked_forge),
+                merged=merged,
+            )
+        if unasked_forge:
+            found = replace(found, unread=(*found.unread, *unasked_forge))
     if (
         claims
         or found.unjudged
@@ -1803,6 +1842,46 @@ def arm(
         outside=outside,
         gate=gate,
     )
+
+
+def _newest_merge(
+    root: Path,
+    ran: Runner,
+    newest: Callable[[str, str], PullRequestLookup],
+    name: str,
+    base: str,
+    remotes: frozenset[str],
+) -> tuple[NewestPullRequest | None, MergedPullRequest | None, tuple[str, ...]]:
+    """The branch's newest pull request, the merge of it HEAD still stands on, and what went unread.
+
+    The merge is `vcs.carried_merge`'s, and None where the pull request has
+    not merged or HEAD has moved past the head it merged at.
+    """
+    asked = newest(name, _head_name(base, remotes))
+    pull = asked.newest
+    if asked.declined:
+        return (
+            None,
+            None,
+            (
+                f"whether {name}'s pull request has already merged could not be asked - "
+                f"{asked.declined}",
+            ),
+        )
+    if pull is None:
+        return None, None, ()
+    probe = _Silences(ran)
+    merged = carried_merge(pull, base, root, runner=probe)
+    if probe.reason:
+        return (
+            pull,
+            None,
+            (
+                f"git could not compare {name} with {pull.head[:12]}, the head "
+                f"#{pull.number} merged at - {probe.reason}",
+            ),
+        )
+    return pull, merged, ()
 
 
 def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[bool, tuple[str, ...]]:

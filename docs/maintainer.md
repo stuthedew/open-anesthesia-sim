@@ -520,14 +520,15 @@ surrounding paragraph for the change to make sense, so that you never have to
 open a file to find it (project owner, 2026-11-02, `PL-77QB`). Until a record
 made after the newest change covers the pull request, `arm` tells the session
 to send you nothing. It says so on the first line of its output and with an
-exit status of its own. A thread cannot send the ask
-anyway. `.claude/hooks/owner_ask_guard.py` checks every Projects message that
-asks you to read or merge: a post, an edit, a decision card, and any Projects
-tool it has not been told to skip (`PL-YN60`). Where `arm` has a recorded ask
-for the checkout's branch, the message must carry that ask's line
-(`PL-TLPH`). Otherwise, as for the coordinator relaying a thread's ask, it must
-carry a line in the recorded form. The hook cannot check that such a line is
-the recorded line itself (`PL-YV90`). A question whose answer
+exit status of its own. `.claude/hooks/owner_ask_guard.py` enforces it on every
+Projects message: a post, an edit, a decision card, and any Projects tool it
+has not been told to skip (`PL-YN60`). While the checkout's pull request waits
+on your read with no recorded ask, the hook refuses every message to you from
+that thread, whatever its wording (`PL-3D2F`). Where an ask is recorded, any
+message naming a pull request must carry that ask's line (`PL-TLPH`). In every
+other case, such as the coordinator relaying a thread's ask, a message that
+reads as a read or merge ask must carry a line in the recorded form. The hook
+cannot check that such a line is the recorded line itself (`PL-YV90`). A question whose answer
 is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges
 on green without asking you. A change to a test that pins `arm`'s results

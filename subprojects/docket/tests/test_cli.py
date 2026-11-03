@@ -12022,18 +12022,20 @@ def test_arm_no_ask_hold_leads_with_send_nothing_and_exits_3(
 def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`--owner-ask` prints the recorded ask and exits 0, or says why nothing may go and exits 3.
+    """`--owner-ask` prints the recorded ask and exits 0, and gives each other state its own status.
 
-    It is what `.claude/hooks/owner_ask_guard.py` asks before a thread's reply
-    may ask the owner to read or merge (`PL-TLPH`). A branch that arms, one a
-    claim holds and one with no recorded ask all send nothing.
+    It is what `.claude/hooks/owner_ask_guard.py` asks before every Projects
+    post (`PL-TLPH`). A branch that arms and one a claim holds send nothing
+    and exit 1. Only a hold for the owner's read with no recorded ask exits 3,
+    so the hook refuses every message from that checkout (`PL-R1HT`).
     """
     root, git = _arm_repo(tmp_path)
     _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
 
-    assert _arm(root, "--owner-ask") == arming.NO_ASK
-    assert capsys.readouterr().out.startswith(
-        f"send the owner nothing: arm - {ARM_BRANCH} waits on no read from the owner"
+    assert _arm(root, "--owner-ask") == 1
+    assert capsys.readouterr().out == (
+        f"not held - {ARM_BRANCH} does not wait on the owner's read, so there is no ask to send "
+        "them; `bin/docket arm` says whether it may be armed\n"
     )
 
     _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
@@ -12054,10 +12056,101 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
 
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
 
-    assert _arm(root, "--owner-ask") == arming.NO_ASK
-    assert capsys.readouterr().out.startswith(
-        f"send the owner nothing: hold - {ARM_BRANCH}: a merge would erase its open claim"
+    assert _arm(root, "--owner-ask") == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_BRANCH}: a merge would erase its open claim")
+    assert "send the owner nothing" not in out
+
+
+def test_arm_owner_ask_tells_a_hold_for_the_owner_s_read_from_a_checkout_it_cannot_answer_for(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A thread held for the owner's read exits 3, and the coordinator's checkout exits 2.
+
+    Until `PL-R1HT` both exited 3, so the hook gave a held thread the form
+    check meant for the coordinator, and a hand-written question in the
+    recorded form carried an ask past "send the owner nothing".
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root, "--owner-ask") == arming.NO_ASK == 3
+    assert capsys.readouterr().out.startswith("send the owner nothing: hold - ")
+
+    git("checkout", "-q", "main")
+
+    assert _arm(root, "--owner-ask") == arming.EXIT[arming.UNKNOWN] == 2
+    out = capsys.readouterr().out
+    assert out.startswith("unknown - HEAD is on main, the default branch")
+    assert "send the owner nothing" not in out
+
+    assert _arm(root, "--owner-ask", "--no-git") == 2
+    assert capsys.readouterr().out.startswith("unknown - `--no-git` asks git nothing")
+
+
+def test_arm_owner_ask_reads_no_count_and_asks_the_forge_only_for_a_hold_for_the_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The hook's question skips every check that can only add a hold (`PL-3D2F`).
+
+    The prose, blind review and auto-merge commands cost up to 28 s on a large
+    branch and cannot change what may be sent, so `arm` runs none of them.
+    It asks the forge only where the pull request waits on the owner's read,
+    since a merge already made is the one fact that changes that answer.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "src/anesthesia_sim/core/model.py", "2026-09-01T12:00:00+00:00")
+    head = git("rev-parse", "HEAD").strip()
+    asked = tmp_path / "asked"
+    never = tmp_path / "never"
+    (root / "docket.toml").write_text(
+        "[docket]\n"
+        f"newest_pull_request_command = 'sh -c \"echo $0 > {asked}; echo 12 open {head}\"'\n"
+        f"auto_merge_command = 'sh -c \"echo auto >> {never}; exit 1\"'\n"
+        f"prose_count_command = 'sh -c \"echo prose >> {never}; exit 1\"'\n"
+        f"blind_count_command = 'sh -c \"echo blind >> {never}; exit 1\"'\n",
+        encoding="utf-8",
     )
+    (root / ".git" / "info").mkdir(exist_ok=True)
+    (root / ".git" / "info" / "exclude").write_text("/docket.toml\n", encoding="utf-8")
+    _record_read(git, "not needed - a renamed constant", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root, "--owner-ask") == 1
+    assert capsys.readouterr().out.startswith(f"not held - {ARM_BRANCH}")
+    assert not asked.exists()
+
+    _record_read(git, "needed - the dose label changes", "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root, "--owner-ask") == arming.NO_ASK
+    assert capsys.readouterr().out.startswith("send the owner nothing: hold - ")
+    assert asked.read_text(encoding="utf-8") == f"{ARM_BRANCH}\n"
+    assert not never.exists()
+
+    # The full answer runs all three, which is what the fast path saves.
+    assert _arm(root) == arming.NO_ASK
+    capsys.readouterr()
+    assert sorted(never.read_text(encoding="utf-8").split()) == ["auto", "blind", "prose"]
+
+
+def test_arm_owner_ask_sends_nothing_for_a_held_pull_request_that_has_merged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A hold for the read whose pull request merged is `landed`, so nothing is held (`PL-3D2F`).
+
+    The forge is asked after the hold is found, not first as the full answer
+    asks it, and the answer is the same.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+    head = git("rev-parse", "HEAD").strip()
+    _forge_says(root, f"12 merged {head}")
+
+    assert _arm(root, "--owner-ask") == 1
+    assert capsys.readouterr().out.startswith(f"landed - #12 merged {ARM_BRANCH} at {head[:12]}")
+    assert _arm(root) == 1
+    assert capsys.readouterr().out.startswith(f"landed - #12 merged {ARM_BRANCH} at {head[:12]}")
 
 
 @pytest.mark.parametrize(
