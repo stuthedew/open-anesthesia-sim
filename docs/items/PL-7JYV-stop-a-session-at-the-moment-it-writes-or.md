@@ -106,6 +106,20 @@ edit of a file that is not Python pays about 0.08 s, an edit of the 921-line
 `tools/fact_home_check.py` about 0.12 s, and an edit of `tools/doc_check.py`,
 the largest at 10,632 lines, about 0.6 s.
 
+**Review from another session.** The "Guard implementation review" session
+sent four points for a new hook at 13:23 CST on 2026-11-03, drawn from the
+twenty findings `#1980` filed. The message reached this session only when the
+owner asked it to refresh the in-flight sessions. Three held already. The
+hook refuses only on exact syntax, a call with no `regex:` comment, and leaves
+the judgment to the session (`PL-GPJ7`). It reads its payload from standard
+input, and its Python is in a `.py` file that the linters read (`PL-S3TF`).
+The fourth did not hold, and was fixed: the hook passed silently when it could
+not check an edit (`PL-9KSJ`). It now lets the edit through with a note the
+session reads, for a text that does not parse, an error in the tool, and a
+Python that does not start. Its refusals reach the refusal log as stops the
+owner asked for, which the tool's docstring says, for the reading that keeps
+or retires guards (`PL-SG93`, `PL-8RGF`).
+
 **Generator check.** Work the owner asked for. It names no misread fact of
 its own. The regular expressions it stops are instances of facts that heads
 such as `PL-9HD1` and `PL-4S6C` already state.

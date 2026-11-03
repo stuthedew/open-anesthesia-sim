@@ -8,11 +8,16 @@ edit that adds no new call, costs a session a retry each time it happens.
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
+
+import pytest
+import regex_check
 
 HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "regex-guard.sh"
 
@@ -102,8 +107,29 @@ def test_what_the_hook_cannot_judge_is_let_through(tmp_path: Path) -> None:
 
     assert _decision("Write", {"file_path": str(notes), "content": regex}, tmp_path) is None
     assert _decision("Edit", absent, tmp_path) is None
-    assert _decision("Write", {"file_path": str(target), "content": broken}, tmp_path) is None
     assert _decision("Bash", {"command": "true"}, tmp_path) is None
+
+    note = _decision("Write", {"file_path": str(target), "content": broken}, tmp_path)
+
+    assert note is not None
+    assert "permissionDecision" not in note
+    assert "was not checked" in note["additionalContext"]
+
+
+def test_a_failure_inside_the_hook_is_reported_and_not_passed_silently(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken(payload: str) -> str | None:
+        raise RuntimeError("simulated")
+
+    monkeypatch.setattr(regex_check, "screen", broken)
+    monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
+
+    assert regex_check.main(["--screen"]) == 0
+    note = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+
+    assert "permissionDecision" not in note
+    assert "the hook failed (RuntimeError: simulated)" in note["additionalContext"]
 
 
 def test_a_file_outside_the_checkout_is_let_through(tmp_path: Path) -> None:
@@ -114,3 +140,26 @@ def test_a_file_outside_the_checkout_is_let_through(tmp_path: Path) -> None:
 
     assert _decision("Write", {"file_path": str(scratch), "content": regex}, checkout) is None
     assert _decision("Write", {"file_path": str(checkout / "a.py"), "content": regex}, checkout)
+
+
+def test_a_hook_whose_python_cannot_start_says_so(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "python3"
+    fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    fake.chmod(0o755)
+    payload = json.dumps({"tool_name": "Write", "tool_input": {"file_path": "a.py"}})
+
+    result = subprocess.run(
+        ["bash", str(HOOK)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
+        check=False,
+    )
+
+    assert result.returncode == 0
+    note = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "the hook could not start" in note["additionalContext"]

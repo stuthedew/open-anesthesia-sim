@@ -11,10 +11,15 @@
 # whole tree in `make check` and CI. Its docstring says what the hook reads and
 # what it lets through. This script is only the entry point, kept here so that
 # what `.claude/settings.json` runs stays in the protected directory, as
-# `docs/apparatus.md` § "Wired hooks (`.claude/hooks/`)" explains. A failure of
-# the tool lets the edit through, and the check over the tree still applies.
+# `docs/apparatus.md` § "Wired hooks (`.claude/hooks/`)" explains.
+#
+# A failure lets the edit through and says so in a note the session reads,
+# never silently (`PL-9KSJ`). The tool reports its own errors that way. The
+# note below covers the one case it cannot: a Python that does not start.
 set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-python3 "$root/tools/regex_check.py" --screen || true
+if ! python3 "$root/tools/regex_check.py" --screen; then
+  printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "This edit was not checked for a regular expression without a reason: the hook could not start. `make check` still checks the file."}}'
+fi
 exit 0

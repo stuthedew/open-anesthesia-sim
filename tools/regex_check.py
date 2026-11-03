@@ -27,11 +27,20 @@ the reason beside the call. A call counts as the same call when `ast.unparse`
 writes it the same way, so moving or reformatting one is not refused, and
 changing the pattern of one that has no reason is.
 
-The hook lets an edit through, saying nothing, where it cannot tell: a payload
-it cannot read, an `old_string` the file does not hold (the edit fails on its
-own), or a text that does not parse. The last case covers a file that uses
-syntax newer than the bare `python3` that runs the hook. A file outside the
-checkout, such as a scratch script, is not read.
+The hook lets an edit through and says nothing where there is nothing to
+check: a file that is not Python, a file outside the checkout such as a
+scratch script, a payload it cannot read, or an `old_string` the file does not
+hold, where the edit fails on its own. Where it could not check, it lets the
+edit through with a note the session reads, so that a blind or broken hook is
+not taken for a pass (`PL-9KSJ`). That covers a text that does not parse,
+which includes a file using syntax newer than the bare `python3` running the
+hook, and any error in the hook itself.
+
+Each refusal is logged through `hook_input.deny`, as every guard's is. A
+refusal here is the stop the owner asked for, which a session answers by
+writing the code another way or by giving its reason. It is not a prevented
+defect, and a reading of the refusal log that keeps or retires guards should
+count it that way (`PL-SG93`, `PL-8RGF`).
 
 The check over the tree is the backstop for what the hook cannot see: an edit
 made through a Bash command, a `NotebookEdit`, and a thread where the
@@ -532,8 +541,24 @@ def proposed(payload: str) -> tuple[str, str] | None:
     return None if after is None else (before, after)
 
 
+def unchecked(why: str) -> str:
+    """Return the hook output that lets an edit through and says it was not checked."""
+
+    note = (
+        f"This edit was not checked for a regular expression without a reason: {why}. "
+        "`make check` still checks the file."
+    )
+    return json.dumps(
+        {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}
+    )
+
+
 def screen(payload: str) -> str | None:
-    """Return the hook output that refuses the edit `payload` describes, or `None`."""
+    """Return the hook output for the edit `payload` describes, or `None` to say nothing.
+
+    The output refuses an edit that adds a call with no reason, and notes an
+    edit it could not check.
+    """
 
     texts = proposed(payload)
 
@@ -542,8 +567,8 @@ def screen(payload: str) -> str | None:
 
     try:
         added = added_uses(*texts)
-    except (SyntaxError, ValueError):
-        return None
+    except (SyntaxError, ValueError) as error:
+        return unchecked(f"the file would not parse here ({type(error).__name__}: {error})")
 
     if not added:
         return None
@@ -561,10 +586,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
 
     if "--screen" in arguments:
-        refusal = screen(sys.stdin.read())
+        payload = sys.stdin.read()
 
-        if refusal is not None:
-            print(refusal)
+        try:
+            output = screen(payload)
+        # Any failure at all is reported as a note rather than passed silently.
+        except Exception as error:
+            output = unchecked(f"the hook failed ({type(error).__name__}: {error})")
+
+        if output is not None:
+            print(output)
 
         return 0
 
