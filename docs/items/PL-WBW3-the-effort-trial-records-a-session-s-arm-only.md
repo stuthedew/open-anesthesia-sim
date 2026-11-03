@@ -24,3 +24,5 @@ verify: grep -q 'def test_a_level_set_mid_session_survives_compaction' tests/uni
 **Done when.** The model review can tell which sessions changed level mid-session, and either uses the level they ran at or leaves them out. A compaction no longer writes the drawn cap over a level the owner set during the session.
 
 **Generator check.** One-off pair with `PL-6LVZ`. Both misread the effort a session ran at, which the trial records only as the arm its hash drew.
+
+**Next steps, 2026-11-03.** Built with `PL-6LVZ` on one branch. That item's "Next steps" paragraph has the plan for both.
