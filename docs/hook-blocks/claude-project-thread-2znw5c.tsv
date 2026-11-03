@@ -1,3 +1,5 @@
 time	session	guard	rule
 2026-11-03T22:12:50.545259+00:00	0495cf4f-8ec1-5b77-9a0b-49f1b4bddabc	gate-status-guard	status-swallowed
 2026-11-03T22:21:21.595731+00:00	0495cf4f-8ec1-5b77-9a0b-49f1b4bddabc	gate-status-guard	status-swallowed
+2026-11-03T22:26:24.347275+00:00	0495cf4f-8ec1-5b77-9a0b-49f1b4bddabc	floor-interpreter-guard	floor-interpreter
+2026-11-03T22:57:13.219360+00:00	0495cf4f-8ec1-5b77-9a0b-49f1b4bddabc	gate-status-guard	arm-piped

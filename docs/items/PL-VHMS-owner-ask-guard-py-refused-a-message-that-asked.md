@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+feature: owner-ask-refusals
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-11-02
 closed: 2026-11-02

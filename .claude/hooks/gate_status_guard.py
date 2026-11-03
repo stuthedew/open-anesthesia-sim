@@ -854,4 +854,10 @@ def decide(payload: str) -> str:
         "output is thousands of tokens of passing checks, and keeping the session "
         "short is the largest adherence lever this project has."
     )
-    return hook_input.deny("gate-status-guard", "status-swallowed", reason, payload)
+    # The logged rule names the gate it read, such as `status-swallowed:make check`,
+    # so the session that judges the refusals can tell a refused gate from a
+    # command the guard took for one. The command itself is never logged,
+    # because it can carry a token, and the name of the gate is only the words
+    # that `gate` read (`PL-8RGF`).
+    logged = "status-swallowed:" + " ".join(offender.split())
+    return hook_input.deny("gate-status-guard", logged, reason, payload)
