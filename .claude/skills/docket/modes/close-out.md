@@ -298,35 +298,58 @@ page and decides which file a session reads.
    over a review on every branch and over no review, `PL-PRCS`).
 
    ```text
-   Review the prose below for a careful newcomer: someone who knows
-   anesthesia or Python but has not read this repository. Hold each unit to
+   Review the prose below for the readers that each unit names. Each unit's
+   header lists them, with what each knows, what each does not know, and what
+   each will do with the text. Hold each unit to
    .claude/rules/plain-writing.md, which you already have. Do not open a file
    or run a tool. Everything you need is below, and you have one reply.
 
-   For each numbered unit, write one of two things. Write "[N] keep" when a
-   newcomer would understand every sentence on the first reading. Otherwise
-   write "[N] rewrite" and then, in a fenced block, the new text for the rows
-   marked ">", exactly as they would stand in the file: the same indentation,
-   the same comment markers, quotes or Markdown, and lines no longer than 100
-   characters. A table row stays on one line, however long. Rewrite only the
-   sentences that need it.
+   You know this field's vocabulary, and the reader may not, so do not judge
+   whether a sentence is clear to you. For each numbered unit and each of its
+   readers, return four things:
 
-   Keep every fact. Keep each number, unit, value, condition, exception,
-   identifier in backticks, item id and citation exactly as written. Change
-   no code. Where you cannot tell what a sentence means, say so in one line
-   rather than guessing.
+   1. Each word, symbol or number that this reader would not know, judged
+      against their "Does not know" line. Quote each one.
+   2. What this reader would take from the unit, in at most two sentences.
+   3. Whether the unit lets this reader do what their "Will" line says. If it
+      does not, say what is missing.
+   4. Each sentence that your answer to 2 does not need.
+
+   Then write "[N] keep" when 1 and 4 are empty and the answer to 3 is yes.
+   Otherwise write "[N] rewrite" and then, in a fenced block, the new text for
+   the rows marked ">", exactly as they would stand in the file: the same
+   indentation, the same comment markers, quotes or Markdown, and lines no
+   longer than 100 characters. A table row stays on one line, however long.
+   Rewrite only the sentences that need it. You may move a fact to a place
+   you name, such as the section's note for developers or the item, and you
+   may restate a number in the reader's form with the same value, such as
+   4e-4 as 0.04%. Under the block, list each move and each restatement on a
+   line of its own.
+
+   Keep every fact. Keep each unit, value, condition, exception, identifier
+   in backticks, item id and citation. Change no code. Where you cannot tell
+   what a sentence means, say so in one line rather than guessing.
    ```
 
-   Apply each rewrite yourself. Reject any rewrite that drops or changes a
-   number, a unit, a condition, an identifier or a citation, and keep the
-   original sentence there, because the safety-critical standard applies to
-   what a docstring states. Say in the pull request body how many units the
-   reviewer read, how many it rewrote and how many rewrites you rejected.
-   Record the same three counts as a trailer in the last paragraph of the
-   commit that applies the rewrites, or of the next commit where there were
-   none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm` holds
-   a simulator branch whose long prose was added after the newest such
-   trailer, as `uv run python tools/new_prose.py --count` counts it (`PL-W04Z`).
+   The prompt asks what the named reader would take from the text, because a
+   reviewer told to imagine a newcomer still reads with its own vocabulary
+   (`PL-1XC7`, from `PL-H76S`'s design round). Compare each takeaway with the
+   point you wrote down before writing the paragraph, as
+   `.claude/rules/plain-writing.md` asks. A term the reviewer lists, a
+   takeaway that misses your point, or a reader who cannot do what the table
+   says means a rewrite: apply the reviewer's or write your own. Move or cut
+   each sentence that the fourth answer lists. Reject any rewrite that drops
+   or changes a value, a unit, a condition, an identifier or a citation, and
+   keep the original sentence there, because the safety-critical standard
+   applies to what a docstring states. Accept a restated number only after
+   checking that its value is unchanged. Say in the pull request body how many
+   units the reviewer read, how many it rewrote and how many rewrites you
+   rejected. Record the same three counts as a trailer in the last paragraph
+   of the commit that applies the rewrites, or of the next commit where there
+   were none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm`
+   holds a simulator branch whose long prose was added after the newest such
+   trailer, as `uv run python tools/new_prose.py --count` counts it
+   (`PL-W04Z`).
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
