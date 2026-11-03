@@ -3,12 +3,14 @@ id: PL-VNRM
 title: owner_ask_guard.py refused a message that asked for nothing: 'nothing below needs your read now', a withdrawal of an earlier read ask
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: owner-ask-refusals
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1973
 payoff: a thread can withdraw a read ask, so the owner's list of what they owe stays current
 verify: grep -q 'def test_a_withdrawn_read_ask_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7
@@ -23,3 +25,5 @@ reenters: PL-GPJ7
 **Done when.** A message saying that nothing needs the owner's read passes the guard as a row in `tests/unit/test_owner_ask_guard.py`. "This needs your read" in a message that names a pull request is still refused.
 
 **Generator check.** The fact is `PL-GPJ7`'s: whether a sentence makes the claim a hard gate checks, when the gate recognises it by wording. This item is a member of `PL-ZCF9`, the successor head filed in the same triage pass (`reenters: PL-GPJ7`).
+
+**Fixed under `PL-ZCF9`, 2026-11-03.** The message above now passes the guard by the negation rule: the clause opens with "Nothing", and no exception later in the sentence names a pull request. Its row is in `tests/unit/test_owner_ask_guard.py`, beside other phrasings in the same context and the rows just outside the rule that are still refused. `PL-ZCF9`'s brief says why the fix covers the context rather than this one phrasing.

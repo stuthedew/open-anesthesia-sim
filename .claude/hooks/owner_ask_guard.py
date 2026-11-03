@@ -13,19 +13,34 @@ missed the line saying to send nothing, and sent the owner a bare "read #N and
 merge it". Text fails whenever it is read short, so this checks the message
 itself, at the one moment it goes out.
 
-**What an ask is, is a list, not an inference.** `ASKS` names the phrasings
-sessions have used, the closing-block lines that carry them, and close
-variants of each. A hand-off such as "over to you" or "your call" counts only
-in a sentence that also names a pull request. A noun hand-off that reports a
-decision already recorded, such as "recorded your choice" or "your choice is
-recorded", does not count (`PL-YGR6`). Nor does a hold that "each" or
-"both" puts in the future, in a sentence naming no pull request, such as "each
-will wait for your read" in a plan for pull requests not yet opened
-(`PL-VHMS`). A wording the list does not
-name still passes, so a new one seen in a thread is added to `ASKS` with a
-test row. A message that matches by accident is told to reword. A false
-refusal costs a rewording, while a missed ask costs the owner's attention, so
-the list leans toward refusing.
+**What an ask is: a listed phrase in a sentence that asserts it** (`PL-ZCF9`).
+The hook decides in two steps. First, `ASKS` names the phrasings sessions have
+used, the closing-block lines that carry them, and close variants of each. A
+hand-off such as "over to you" or "your call" counts only in a sentence that
+also names a pull request. A hand-off that reports a decision already recorded,
+such as "recorded your choice", does not count (`PL-YGR6`). Second,
+`unasserted` reads the context of each phrase found. It lets the phrase through
+when the phrase is quoted, when it is negated, when its clause points at a
+decision card, or when "each" or "both" puts it in the future. Its docstring
+gives each rule and its limits.
+
+Clinical text processing splits the problem the same way. ConText decides,
+from words near a condition that a report names, whether the report asserts
+the condition, negates it, puts it in the past or the future, or gives it to
+someone other than the patient (Harkema H, Dowling JN, Thornblade T, Chapman
+WW, J Biomed Inform 2009;42(5):839-851, doi:10.1016/j.jbi.2009.05.002). It
+extends NegEx, which does this for negation alone (Chapman WW et al., J Biomed
+Inform 2001;34(5):301-310, doi:10.1006/jbin.2001.1029).
+
+Six items recorded messages that asked for nothing and were refused, between
+2026-10-19 and 2026-11-03. Until `PL-ZCF9`, each fix exempted one phrasing from
+one pattern, so the next phrasing in the same context was refused again. Each
+rule in `unasserted` applies to every phrase in `ASKS`, so a new phrasing in a
+context the rules know passes with no change. A new kind of context still needs a new
+rule. A wording that `ASKS` does not name still passes, so a new one seen in a
+thread is added there with a test row. A message that matches by accident is
+told to reword. A false refusal costs a rewording, while a missed ask costs the
+owner's attention, so each rule is narrow and a doubtful case is refused.
 
 **Which tools: every Projects tool but a named few** (`PL-YN60`). The hook is
 wired on every `mcp__hearthbot__` tool and reads every string in the call's
@@ -132,17 +147,16 @@ _REPORTED_AFTER = (
 _REPORTED_BEFORE = "".join(rf"(?<!\b{verb}[ \t])" for verb in _RECORDED)
 
 #: Words that hand a decision to the owner. They are an ask only beside a pull
-#: request, since "the colour is your call" asks for no read. A hand-off just
-#: after a quote mark is a mention, as in a reply listing what the hook counts,
-#: which this hook refused on 2026-10-19 (`PL-XR8B`). A noun hand-off that
-#: reports a recorded decision is not one either (`_RECORDED`).
+#: request, since "the colour is your call" asks for no read. A noun hand-off
+#: that reports a recorded decision is not one either (`_RECORDED`). The group
+#: named `core` is the hand-off itself, which `unasserted` reads around.
 _HANDOFF = (
-    r"(?<![\"'])\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you"
+    r"(?P<core>\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you"
     r"|"
     + _REPORTED_BEFORE
     + r"your[ \t]+(?:call|decision|choice|go)\b"
     + _REPORTED_AFTER
-    + r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
+    + r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b)"
 )
 
 #: A pull request named by number or by name.
@@ -152,30 +166,13 @@ _PULL_REQUEST = r"(?:#\d+|\bpull[ \t]+requests?\b|\bprs?\b)"
 _SAME_SENTENCE = r"[^.!?\n]{0,80}?"
 
 #: A pull request held for the owner: "It waits on your read", "#1676 is ready
-#: for your review". This is the one phrasing that is also a plain statement
-#: of what will happen, so `asked` lets one future form of it through
-#: (`_foretold`).
+#: for your review". The group named `core` is the whole hold.
 HOLD_FOR_YOUR_READ = (
-    r"\b(?:waiting|waits|wait|awaiting|awaits|needs|need|ready)[ \t]+(?:(?:for|on)[ \t]+)?"
-    r"your[ \t]+(?:read|review|approval|merge|go-ahead)\b"
+    r"(?P<core>\b(?:waiting|waits|wait|awaiting|awaits|needs|need|ready)[ \t]+"
+    r"(?:(?:for|on)[ \t]+)?your[ \t]+(?:read|review|approval|merge|go-ahead)\b)"
 )
 
-#: A hold put in the future by a distributive subject, just before
-#: `HOLD_FOR_YOUR_READ`: "each will wait for your read", "both would need your
-#: review", "each one is going to be ready for your read". One word may come
-#: between the modal and the verb, as "be" does. The hook refused "each will
-#: wait for your read" in a reply that planned pull requests not yet opened, on
-#: 2026-11-02 (`PL-VHMS`). The subject is a short list, not any word, because
-#: "I will wait for your read", "Merging will wait for your go-ahead" and "This
-#: change will need your review" are asks about a pull request that exists.
-_FORETELLING_SUBJECT = re.compile(
-    r"(?:^|[^\w'#-])(?:each(?:[ \t]+one|[ \t]+of[ \t]+them)?|both(?:[ \t]+of[ \t]+them)?"
-    r"|all[ \t]+of[ \t]+them|every[ \t]+one)"
-    r"[ \t]+(?:will|would|(?:is|are)[ \t]+going[ \t]+to)(?:[ \t]+\w+)?[ \t]+$",
-    re.IGNORECASE,
-)
-
-#: A pull request named in any form, for `_foretold`.
+#: A pull request named in any form.
 _NAMES_A_PULL_REQUEST = re.compile(_PULL_REQUEST, re.IGNORECASE)
 
 #: The end of a sentence: a full stop, question mark or exclamation mark
@@ -183,29 +180,139 @@ _NAMES_A_PULL_REQUEST = re.compile(_PULL_REQUEST, re.IGNORECASE)
 #: `MODEL.md` or `v0.7.0` does not end one.
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)|\n")
 
+#: The end of a clause, for the negation and decision-card rules: a sentence
+#: end, a comma, semicolon, colon, bracket or dash, or a word that opens a new
+#: clause. Short clauses keep a rule from reaching an ask in the next clause,
+#: so a doubtful case is refused.
+_CLAUSE_END = re.compile(
+    r"[.!?](?=\s|$)|[\n,;:()\[\]\u2013\u2014]|[ \t]-[ \t]"
+    r"|\b(?:and|but|so|because|while|although|though|whereas|however|unless|until)\b",
+    re.IGNORECASE,
+)
 
-def _foretold(shown: str, start: int, end: int) -> bool:
-    """Whether the hold matched at `start:end` only says what will happen later.
+#: Text between two straight double quote marks on one line. `asked` finds
+#: quotations in a copy of the text whose backticks are double quote marks, so
+#: a code span counts too.
+_DOUBLE_QUOTED = re.compile(r'"([^"\n]*)"')
 
-    It does when its subject is one of `_FORETELLING_SUBJECT`'s distributive
-    words, such as "each" or "both", a modal such as "will" puts it in the
-    future, and its sentence names no pull request. A plan that says "each will
-    wait for your read" is about pull requests not yet opened, so there is
-    nothing yet to read. "#1945 and #1946 touch MODEL.md, so each will wait for
-    your read" and "Each pull request will wait for your read" are still
-    refused, because each may be about one that exists. The check reads only
-    the hold's own sentence, so "#1944 is open. Each will wait for your read."
-    passes. That is the hole this leaves, and a reworded ask that falls in it
-    is added to the tests.
+#: Text between two single quote marks on one line. The opening mark must
+#: start a word and the closing mark must end one, so the apostrophes in
+#: "it's" and "#1688's" open and close nothing.
+_SINGLE_QUOTED = re.compile(r"(?<![\w'])'(?=[^\s'])((?:[^'\n]|'(?=\w))*?)(?<=[^\s'])'(?!\w)")
+
+#: A negation just before an ask phrase: "does not need your read", "isn't
+#: ready for your review", "no longer needs your read", "is not your call",
+#: "merge without waiting on your read".
+_NEGATED_JUST_BEFORE = re.compile(
+    r"(?:\bnot|n't|\bnever|\bwithout|\bno[ \t]+longer)[ \t]+(?:(?:be|been|yet|still)[ \t]+)?$",
+    re.IGNORECASE,
+)
+
+#: A clause that opens with a negative subject: "Nothing below needs your
+#: read", "None of them need your review", "No pull request waits on your
+#: read". At most three words may come between the negative and the ask
+#: phrase, and none of them may be a pull request's number.
+_NEGATIVE_SUBJECT = re.compile(
+    r"^[^\w#]*(?:\d+[.)][ \t]*)?(?:nothing|none|neither|no)\b(?:[ \t]+[\w'/.-]+){0,3}[ \t]+$",
+    re.IGNORECASE,
+)
+
+#: An exception that follows a negated ask and names a pull request, as in
+#: "Nothing needs your read except #1950" or "#1950 doesn't need your read,
+#: but #1951 does". The sentence then asks after all.
+_EXCEPTION = re.compile(
+    r"\b(?:but|except|other[ \t]+than|apart[ \t]+from|besides|save[ \t]+for|only)\b"
+    + _SAME_SENTENCE
+    + _PULL_REQUEST,
+    re.IGNORECASE,
+)
+
+#: A decision card, named in a clause as where the owner's answer goes.
+_DECISION_CARD = re.compile(r"\bcards?\b", re.IGNORECASE)
+
+#: A future put on an ask phrase by a distributive subject just before it:
+#: "each will wait for your read", "both would need your review", "each one is
+#: going to be ready for your read". One word may come between the modal and
+#: the phrase, as "be" does. The hook refused "each will wait for your read"
+#: in a reply that planned pull requests not yet opened, on 2026-11-02
+#: (`PL-VHMS`). The subject is a short list, not any word, because "I will
+#: wait for your read", "Merging will wait for your go-ahead" and "This change
+#: will need your review" are asks about a pull request that exists.
+_FORETELLING_SUBJECT = re.compile(
+    r"(?:^|[^\w'#-])(?:each(?:[ \t]+one|[ \t]+of[ \t]+them)?|both(?:[ \t]+of[ \t]+them)?"
+    r"|all[ \t]+of[ \t]+them|every[ \t]+one)"
+    r"[ \t]+(?:will|would|(?:is|are)[ \t]+going[ \t]+to)(?:[ \t]+\w+)?[ \t]+$",
+    re.IGNORECASE,
+)
+
+
+def quotations(shown: str) -> list[tuple[int, int]]:
+    """Where each quoted stretch of `shown` starts and ends, without its quote marks."""
+    return [
+        found.span(1)
+        for quoted in (_DOUBLE_QUOTED, _SINGLE_QUOTED)
+        for found in quoted.finditer(shown)
+    ]
+
+
+def _around(shown: str, ends: re.Pattern[str], start: int, end: int) -> tuple[int, int]:
+    """Where the sentence or clause that holds `shown[start:end]` starts and ends."""
+    begin = 0
+    for found in ends.finditer(shown, 0, start):
+        begin = found.end()
+    following = ends.search(shown, end)
+    return begin, following.start() if following is not None else len(shown)
+
+
+def unasserted(shown: str, quoted: list[tuple[int, int]], start: int, end: int) -> bool:
+    """Whether the ask phrase at `shown[start:end]` sits where it asks for nothing.
+
+    Four rules read the phrase's context, and each applies to every phrase in
+    `ASKS`:
+
+    - **Quoted.** The phrase lies wholly inside quote marks or a code span
+      that names no pull request, so it is a mention, as in a reply that lists
+      what the hook counts (`PL-XR8B`, `PL-0W6J`). A quotation that names a
+      pull request can be a thread's bare ask passed on, so it is still
+      refused. "Reply 'Merge it'" is refused too, because the phrase there is
+      the verb "Reply", outside the quote marks.
+    - **About a decision card.** The phrase's clause names a card and no pull
+      request, as in "waiting on your go-ahead on the decision card"
+      (`PL-Q0TK`). The card is a `request_decision` call, which this hook
+      reads like any other message, so the line points at an ask the hook has
+      already checked.
+    - **Negated.** "not", "n't", "never", "without" or "no longer" stands just
+      before the phrase, or its clause opens with "nothing", "none", "neither"
+      or "no", as in "Nothing below needs your read now" (`PL-VNRM`). An
+      exception later in the sentence that names a pull request, as in
+      "except #1950", makes it an ask again.
+    - **Foretold.** `_FORETELLING_SUBJECT` stands just before the phrase and
+      its sentence names no pull request, as in a plan for pull requests not
+      yet opened (`PL-VHMS`). The rule reads only that sentence, so "#1944 is
+      open. Each will wait for your read." passes. That is the hole it leaves.
     """
-    sentence_start = 0
-    for found in _SENTENCE_END.finditer(shown, 0, start):
-        sentence_start = found.end()
-    following = _SENTENCE_END.search(shown, end)
-    sentence_end = following.start() if following is not None else len(shown)
-    if _FORETELLING_SUBJECT.search(shown[sentence_start:start]) is None:
-        return False
-    return _NAMES_A_PULL_REQUEST.search(shown[sentence_start:sentence_end]) is None
+    if any(
+        left <= start and end <= right and _NAMES_A_PULL_REQUEST.search(shown, left, right) is None
+        for left, right in quoted
+    ):
+        return True
+    sentence = _around(shown, _SENTENCE_END, start, end)
+    clause = _around(shown, _CLAUSE_END, start, end)
+    if (
+        _DECISION_CARD.search(shown, *clause) is not None
+        and _NAMES_A_PULL_REQUEST.search(shown, *clause) is None
+    ):
+        return True
+    before = shown[clause[0] : start]
+    if (
+        _NEGATED_JUST_BEFORE.search(before) is not None
+        or _NEGATIVE_SUBJECT.match(before) is not None
+    ) and _EXCEPTION.search(shown, end, sentence[1]) is None:
+        return True
+    return (
+        _FORETELLING_SUBJECT.search(shown[sentence[0] : start]) is not None
+        and _NAMES_A_PULL_REQUEST.search(shown, *sentence) is None
+    )
 
 
 #: The phrasings of an ask to read or merge a pull request (`PL-TLPH`). Each is
@@ -227,8 +334,9 @@ ASKS = tuple(
         HOLD_FOR_YOUR_READ,
         # `arm`'s own words, copied into a reply.
         r"\bwaits?[ \t]+on[ \t]+the[ \t]+owner'?s[ \t]+read\b",
-        # "Say Merge it", "reply 'Merge it'".
-        r"\b(?:say|reply|send|type|give|answer|tap)[ \t]+(?:me[ \t]+)?[\"']?merge[ \t]+it\b",
+        # "Say Merge it", "reply 'Merge it'". The verb is the `core`, so quote
+        # marks around "Merge it" do not make the ask a mention.
+        r"\b(?P<core>say|reply|send|type|give|answer|tap)[ \t]+(?:me[ \t]+)?[\"']?merge[ \t]+it\b",
         # "Merge it when you have read it."
         _START + r"merge[ \t]+it\b",
         # "Shall I merge?", "Merge #1676?"
@@ -274,15 +382,25 @@ def plain(text: str) -> str:
 
 
 def asked(text: str) -> str | None:
-    """The first phrase in `text` that asks the owner to read or merge, or None."""
-    shown = plain(text)
+    """The first phrase in `text` that asks the owner to read or merge, or None.
+
+    Each match of `ASKS` is checked by `unasserted`, which reads its `core`
+    group where the pattern has one and the whole match where it has none. A
+    match that asks for nothing is skipped, and the search goes on from the
+    character after its start, so an ask that overlaps it is still found.
+    """
+    # The two copies differ only in what replaces a backtick, so a position in
+    # one is the same position in the other. Matching reads a backtick as a
+    # space, so "Read `#1950`" is still an ask.
+    quoted = quotations(plain(text.replace("`", '"')))
+    shown = plain(text.replace("`", " "))
     for pattern in ASKS:
-        for found in pattern.finditer(shown):
-            if pattern.pattern == HOLD_FOR_YOUR_READ and _foretold(
-                shown, found.start(), found.end()
-            ):
-                continue
-            return found.group(0).strip(" \t.!?:;-*+")
+        position = 0
+        while (found := pattern.search(shown, position)) is not None:
+            core = found.span("core") if "core" in pattern.groupindex else found.span()
+            if not unasserted(shown, quoted, *core):
+                return found.group(0).strip(" \t.!?:;-*+")
+            position = found.start() + 1
     return None
 
 
