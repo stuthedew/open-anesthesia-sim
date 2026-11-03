@@ -109,3 +109,44 @@ mutant that raises. `--verdict` carries those assertions as notes for changed
 tests. The sweep has run, the positive control is named, and
 a new section of `docs/mutation-testing.md` headed Assertions that never decide a result, records
 the counts and the step-7 choice.
+
+**Progress, 2026-11-03 (session reset for length, not for the work).**
+
+Built and pushed on `claude/pl-tn0g-dead-assertion-warning` (draft #1969):
+
+- `tools/assertion_probe.py` (the rewrite, the pytest plugin, the verdicts, the
+  driver, `--sweep`, `--report`), with `tests/unit/test_assertion_probe.py`.
+  The tests pin a never-deciding pair, a deciding pair, a raised run left out,
+  parametrized cases counted together, and the plugin end to end.
+- `diff_mutation.compare_tests` now calls `assertion_notes`, which probes the
+  unit tests `branch_selection` names and adds a note for each. The mutant
+  generation is shared as `GENERATE_SCRIPT`.
+- `docs/mutation-testing.md` § "Assertions that never decide a result" says how
+  it works. The results subsection, headed `### The first sweep`, is still to
+  write, and the item's `verify:` now requires it.
+- Two choices made while building. A `with pytest.raises(...)` block is
+  rewritten too (`__probe_raises__`), so its failures count as an assertion's
+  rather than as a raise. pytest runs with `--tb=native`, because pytest's own
+  traceback took 185 ms of a 190 ms mutant run.
+
+Running in the background, in this session's scratchpad
+(`/tmp/claude-0/-home-user-open-anesthesia-sim/6dbe0110-85af-5e82-a8e7-345cdd45c5e6/scratchpad`):
+
+- The positive control: `control-out/` holds the probe of
+  `test_step_refinement_converges` on a worktree of `334d9cc6` at
+  `scratchpad/control`, 1,812 mutants at about 2 s each. Its report goes to
+  `control-out/report.txt`.
+- The unit sweep: `sweep-unit/`, three processes, `--budget 900`, over the 60
+  simulator unit test files in `sweep_files.txt`. Report in
+  `sweep-unit/report.txt`.
+- Still to run: the 14 reference files, with a per-case budget, naming what it
+  leaves out. Remove the worktree with `git worktree remove` when done.
+
+Early step-7 evidence, from the smoke run of `tests/unit/test_alveolar.py`: it
+named 10 assertions, and none is a dead limit. Each is one guard reached by
+several routes (a `replace`, a `copy` and a `pickle` of the same compartment,
+lines 213-222), or two checks of one value that every mutant breaks together
+(lines 348 and 352). Three of them are strict subsumption (line 188 by 185, and
+213 and 219 by 222), so the strict filter alone does not separate a dead limit
+from these. If the sweep agrees, the per-branch note should be cut to what the
+`PL-VXM0` pattern needs, or dropped, and that choice recorded here.
