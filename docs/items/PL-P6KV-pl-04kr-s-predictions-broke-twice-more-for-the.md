@@ -9,6 +9,7 @@ feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-P6KV-pl-04kr-s-predictions-broke-twice-more-for-the.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 added: 2026-11-03
 closed: 2026-11-03
+pr: 1979
 payoff: a release cut stops reporting a broken P1 prediction for product or owner-ranked work, and a real miss tells the session cutting it to file the investigation
 verify: grep -q 'def test_an_owner_set_p1_is_not_an_unexpected_band' subprojects/docket/tests/test_inflow.py
 ---
