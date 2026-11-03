@@ -2938,10 +2938,10 @@ the ranking forbids is an adoption the reader cannot see. So a stored value
 whose authority is not a primary measurement must carry three things, and
 every such value carries all three today:
 
-- **The tier, on the entry itself, with the values it covers.** The `tier`
-  field in the data file records the tier, and `make check` checks it against
-  the fixed list of allowed tiers. The entry's `authority_for` field names the
-  stored values for which the entry is the authority.
+- **The tier, on the entry itself, with the values it covers.** Each source
+  entry in the data file records its tier in a `tier` field, and the
+  project's checks reject a tier outside the fixed list. The entry's
+  `authority_for` field lists the stored values that rest on it.
 - **Why no tier-1 source was adopted.** This goes on the entry, or in the
   file's `provenance_gap` where the whole file is in that state.
 - **The date and whose decision it was**, where a lower tier is adopted in
@@ -3065,10 +3065,10 @@ value, but not which tier its source has. Whoever changes a count must check
 that the sentence around it is still true.
 
 Of all the stored values, `mac_percent` is the only one used as a divisor for
-a displayed value. It is tier 3, from De Wolf et al.'s Gas Man set. It is the
-divisor of the second display unit, so its tier affects a displayed clinical value as
-well as a starting dial position. § "Delivery-limit and MAC parameters" states
-what that costs, and § "Known limitations" records it.
+a displayed value. It is tier 3, from De Wolf et al.'s Gas Man set. It divides
+every value shown in MAC multiples, so its tier affects a displayed clinical
+value as well as a starting dial position. § "Delivery-limit and MAC
+parameters" states what that costs, and § "Known limitations" records it.
 
 Every `sources` entry in every data file names its tier. Each agent's data file
 cites the primary blood:gas measurements beside its tier-3 blood:gas value:
@@ -3096,32 +3096,30 @@ taken on 2026-09-03. The route to primary values for all three agents is
 primary source for any of its eleven parameters, and it records that in those
 words. The file also says something specific about each parameter.
 
-**Five carry a measurement cited alongside and explicitly not adopted**, in
-the form the agent files use. That form gives the measured value, its
-reference conditions, and how far the stored number sits from it. Hudgel and
-Devadatta measured FRC by helium dilution in ten healthy men. Read with
-Wahba's review of the roughly 20 percent reduction under general anaesthesia,
-that measurement brackets the lung gas volume. Cattermole et al.'s 686
-subjects in the 50–75 kg band give a median cardiac output of 5.51 L/min, and
-the stored value is 9.3 percent below it. Janssen et al.'s whole-body MRI
-gives a skeletal-muscle mass. Its apparent agreement with the stored muscle
-volume is a coincidence, since that cohort of men averaged about 86 kg rather
-than 70. Heinonen et al.'s PET measurement of resting adipose perfusion is
-about half what the stored fat flow fraction implies. Frayn and Karpe's review
-supplies the muscle comparison. It also supplies the reason the fat gap is a
-question about the absolute level rather than the muscle-to-fat ratio, which
-the stored fractions get right.
+**Five carry a measurement cited beside them and explicitly not adopted.**
+Each gives the measured value, its reference conditions, and how far the
+stored number sits from it. Hudgel and Devadatta measured FRC by helium
+dilution in ten healthy men. Read with Wahba's review of the roughly 20
+percent reduction under general anaesthesia, that measurement brackets the
+lung gas volume. Cattermole et al.'s 686 subjects in the 50–75 kg band give a
+median cardiac output of 5.51 L/min, and the stored value is 9.3 percent below
+it. Janssen et al.'s whole-body MRI gives a skeletal-muscle mass. Its apparent
+agreement with the stored muscle volume is a coincidence, since those men
+averaged about 86 kg rather than 70. Heinonen et al.'s PET measurement of
+resting adipose perfusion is about half what the stored fat flow fraction
+implies. Frayn and Karpe's review supplies the muscle comparison. It also
+shows that the fat gap concerns the absolute flow, not the muscle-to-fat
+ratio, which the stored fractions get right.
 
-**Six have no comparison, and the file says why for each**, so that the
-silence is not taken for an oversight. Two are not measurements at all. The
-reference weight is a label that no equation reads. The venous pool is a
-well-stirred mixing volume that sets the 14.7-second mixed-venous time
-constant. It is not the physiologic venous blood volume, which is several
-times larger. One, the default alveolar ventilation, is a convention: Gas
-Man's program default. The remaining three are
-lumped-compartment aggregates: the vessel-rich volume and flow fraction, and
-the fat volume. For each of them, no single measurement exists of the quantity
-that this model means.
+**Six have no comparison, and the file says why for each**, so that the gap
+is not taken for an oversight. Two are not measurements. The reference
+weight is a label that no equation uses. The venous pool is a well-mixed volume
+that sets the 14.7-second mixed-venous time constant. It is not the
+physiologic venous blood volume, which is several times larger. One, the
+default alveolar ventilation, is a convention: Gas Man's program default. The
+remaining three each combine several tissues into one group: the vessel-rich
+volume and flow fraction, and the fat volume. No single measurement exists of
+what this model means by each of them.
 
 **None of these comparisons changes or promotes a stored value.** A measurement
 cited beside a tier-3 number does not source it, which is the second of the
@@ -3167,12 +3165,9 @@ interlibrary-loan scan. Two papers that use the book had cited it at pages
 57 and 83: Lerou and Booij's system model (*Br J Anaesth* 2001;86:12–28) and
 Couto da Silva, Mapleson and Vickers' study of Lowe's method (*Br J Anaesth*
 1997;79:103–12). Both were read at full text on 2026-09-06. This repository
-does not hold the scan, because it is publisher-copyright material and the
-repository is public. The scan's own record prints the author as Lowe, Harry
-J., so his initials are `HJ`. The Workbook's `HF` is therefore a misprint.
-Interlibrary loan is a third way of reaching a source. It is neither the route
-that `.claude/rules/citing-sources.md` describes nor the personal access
-through which the Workbook arrived.
+does not hold the scan, because it is under publisher copyright and the
+repository is public. The scan's own record gives the author as Lowe, Harry
+J., so his initials are `HJ`, and the Workbook's `HF` is a misprint.
 
 **Page 56 settles the tier question for the book, in one sentence.** Of
 figure 4.1b, the table in which the volumes and flows are printed, it says:
@@ -3762,18 +3757,15 @@ cent of a 100 kg body, with cardiac output an allometric function of mass.
 **The vessel-rich flow fraction is 0.76 here and 75.8% in the one reachable
 publication of the same parameter set.** The stored value comes from the
 Workbook's own page-168 table, which gives the vessel-rich relative flow as
-0.76 (read at the source on 2026-09-06). Table 1 of De Wolf et al. 2012 prints
-75.8. That is the same paper the twelve partition coefficients come from, and
-75.8 + 18 + 6 = 99.8.
-`_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one` and
-`PatientCompartments.__post_init__` each reject a set whose sum lies outside
-`FLOW_FRACTION_TOLERANCE = 1e-12` of 1.0. So the published triple could not be
-stored as printed, even if it were preferred. That tolerance stays where it
-is, because a tolerance wide enough to admit 99.8% would also admit a
-transcription error silently. The difference changes the vessel-rich time
-constant by 0.26%, which is below the resolution of anything a learner reads
-off the curve. The De Wolf entry in `reference_adult.json` records the
-difference in full.
+0.76 (read at the source on 2026-09-06). Table 1 of De Wolf et al. 2012, the
+paper the twelve partition coefficients come from, prints 75.8, and
+75.8 + 18 + 6 = 99.8. The model requires the flow fractions to sum to 1 to
+within one part in a million million, so the published set could not be
+stored as printed, even if it were preferred. That limit stays, because one
+loose enough to admit 99.8% would also admit a transcription error silently.
+The difference changes the vessel-rich time constant by 0.26%, below the
+resolution of anything a learner reads off the curve. The De Wolf entry in
+`reference_adult.json` records the difference in full.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
 
 **The two machine rows adopt no source of any tier.** The reference patient
@@ -3799,28 +3791,21 @@ rather than the patient. So they live in
   <!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
 - **Default fresh gas flow, 4.0 L/min.** No published counterpart for this
   value exists in any source this project has reached. The Workbook's
-  parameter table gives the circuit row a volume and no flow. Its interface
-  defaults are described without numbers. The two Gas Man simulation studies
+  parameter table gives the circuit row a volume and no flow, and describes
+  its interface defaults without numbers. The two Gas Man simulation studies
   read here chose flows for their own purposes (De Wolf et al. used 1 L/min,
   and Weber et al. used 10 L/min for washout). The value is a **teaching
   default, not a clinical recommendation** (project owner, 2026-09-20,
-  ratified, over lowering it to match contemporary low-flow practice). It is a
-  flow well inside the supported interval. It was chosen because it puts the
-  circuit time constant at 90 s. That is long enough for the machine lag to
-  show as a distinct phase of the early rise, and short enough to resolve
-  within the first minutes of a teaching run. The data file labels this as a
-  design rationale, not a measurement.
-  **It is also the flow a run starts at when a machine profile states none.**
-  `default_fresh_gas_flow_l_min` is optional in a profile, because no surveyed
-  machine publishes a startup flow. A run built from a
-  profile that omits it starts at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
-  in `core/circuit.py`
-  (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
-  The authority for that fallback is this rationale and not a source.
-  `test_the_flow_default_matches_the_shipped_machine_file` fails if the
-  constant and the file's value ever differ. The rationale holds for this
-  file's 6.0 L circuit. At a smaller assembled volume, the same flow gives a
-  shorter lag, as § "What real workstations hold" below computes.
+  ratified, over lowering it to match contemporary low-flow practice). It is
+  well inside the supported range of flows. It puts the circuit time constant
+  at 90 s: long enough for the machine lag to show as a distinct phase of the
+  early rise, and short enough to resolve within the first minutes of a
+  teaching run. The data file labels this a design rationale, not a
+  measurement. **It is also the flow a run starts at when a machine profile
+  states none**, because no surveyed machine publishes a startup flow. The
+  authority for that fallback is this rationale, not a source. The rationale
+  holds for this file's 6.0 L circuit. A smaller circuit gives a shorter lag
+  at the same flow, as § "What real workstations hold" below computes.
 
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
@@ -4012,6 +3997,16 @@ Eger and Shafer 2005 and Fiserova-Bergerova and Diaz 1986 were checked in
 PubMed on 2026-10-25 (PMIDs 23737195, 16115976 and 3721592). Only Baker and
 Farmery was read in full text. `docs/references/README.md` has its full
 citation.
+
+**For developers.** `_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one`
+and `PatientCompartments.__post_init__` each reject a set of flow fractions
+whose sum lies outside `FLOW_FRACTION_TOLERANCE = 1e-12` of 1.0.
+`default_fresh_gas_flow_l_min` is optional in a machine profile. A run built
+from a profile that omits it starts at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
+in `core/circuit.py`
+(`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
+`test_the_flow_default_matches_the_shipped_machine_file` fails if the constant
+and the file's value ever differ.
 
 ### v0.2.0: isoflurane and desflurane
 
