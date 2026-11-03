@@ -247,3 +247,5 @@ cut and prints any prediction it broke. The false alarm in the `P1` count is a
 separate item, so a later cut's miss can be read for what it is.
 
 **Restated 2026-11-03 under `PL-2T7X`.** The new-paths prediction now breaks only in a week whose count of new paths is at least the count of the week before. The 0.13 ceiling per filing rose when filings fell faster than new paths, so the week of 2026-10-26 reported 11 new paths, down from 34, as growth. `PL-2T7X` records the forms weighed and the replay showing that no other week's reading changed.
+
+**Restated 2026-11-03 under `PL-P6KV`.** The `P0` and `P1` prediction now counts only workflow-lane filings, the population its baseline was measured on, and leaves out an owner-set band. `PL-P6KV` records the verdict on the week of 2026-10-19.

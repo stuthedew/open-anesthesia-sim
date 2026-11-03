@@ -56,6 +56,7 @@ from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .digits import whole_number
 from .duplicates import anchor, near_duplicates
+from .inflow import INFLOW_FEATURE
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
 from .lines import split_lines
@@ -5028,6 +5029,11 @@ def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> 
     Silent when every prediction holds, which is the report the owner asked
     for - one that speaks when the trend is not the expected one (`PL-WXKD`).
     A project declaring no `workflow_paths` has no apparatus to report on.
+
+    A miss ends by saying what to do about it. `PL-04KR` names a broken
+    prediction as its trigger to investigate, but the report said only what
+    broke. v0.6.11 to v0.6.14 each printed two misses for the week of
+    2026-10-19, and no session filed an item until 2026-11-03 (`PL-P6KV`).
     """
     if not config.workflow_paths:
         return ""
@@ -5039,6 +5045,9 @@ def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> 
             "\nApparatus inflow missed a prediction pre-registered in PL-04KR; "
             "`bin/docket inflow` has the table:",
             *(f"  {line}" for line in lines),
+            "  A miss is PL-04KR's trigger to investigate. Unless `bin/docket feature "
+            f"{INFLOW_FEATURE}` already lists an item for this week, file one with "
+            f'`bin/docket new --feature {INFLOW_FEATURE} "..."` and say so in the reply.',
         ]
     )
 
