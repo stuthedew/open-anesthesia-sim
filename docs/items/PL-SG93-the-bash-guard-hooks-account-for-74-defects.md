@@ -41,8 +41,10 @@ read in part: 5 of at least 8 pages, 48 minutes of work, about 22 Bash calls,
 no guard refusals and one auto-mode classifier refusal. That is too little to
 weigh any guard.
 
-Projects threads add nothing to the count. A thread in this project runs none
-of the repository's hooks (`PL-CR81`), so its guards refuse nothing.
+Projects threads do add to the count. This paragraph said on 2026-10-25 that a
+thread runs none of the repository's hooks (`PL-CR81`). `PL-X6VN` has since
+given threads the hooks, and on 2026-11-03, 47 of the 125 tracked lines sat in
+files named `claude-project-thread-*` (`PL-8RGF`).
 
 **Decision needed.** How should the block counts be collected? Two routes:
 
@@ -85,7 +87,7 @@ for it.
 
 **The log is an outbox, not a second source** (project owner, 2026-10-25, ratified, over deleting each line from the local log once it is copied). The project owner asked whether a local log diverges from the single-source-of-truth principle. The tracked files under `docs/hook-blocks/` are the source, and `count` reads only them. The local log only holds lines until a record copies them, and a copied line never changes, so the two can differ only by lines not yet copied. Deleting copied lines would lose them whenever the record commit is never pushed. His answer: "That's fine. Keep".
 
-**What is left.** Read the counts on or after 2026-11-22, four weeks from now, with `python3 tools/hook_blocks.py count`. Record them under a `**Block counts.**` heading here with a keep, simplify or retire verdict for each guard. Keep `no-prune-guard` and `direct-merge-guard` whatever the count, because each guards an action that cannot be undone. The counts are a floor, lowest for the guards that fire after `bin/docket record`: `push-check-guard`, `gate-status-guard` and `direct-merge-guard`. Their late refusals are copied only by a later record on the same machine, and a container that ends after one pull request loses them. A Projects thread runs no guard at all (`PL-CR81`). Weigh those three guards' counts with that in mind. `pr-body-email-guard` is counted from 2026-10-25 like the others, since `PL-HHKC`.
+**What is left.** Read the counts on or after 2026-11-22, four weeks from now, with `python3 tools/hook_blocks.py count`. Record them under a `**Block counts.**` heading here with a keep, simplify or retire verdict for each guard. Keep `no-prune-guard` and `direct-merge-guard` whatever the count, because each guards an action that cannot be undone. The counts are a floor, lowest for the guards that fire after `bin/docket record`: `push-check-guard`, `gate-status-guard` and `direct-merge-guard`. Their late refusals are copied only by a later record on the same machine, and a container that ends after one pull request loses them. Weigh those three guards' counts with that in mind. `pr-body-email-guard` is counted from 2026-10-25 like the others, since `PL-HHKC`.
 
 **Checked 2026-10-25:** nothing here can be done before 2026-11-22. The logging is on `main` and working: `python3 tools/hook_blocks.py count` already reads 14 refusals from five branches' files, from `floor-interpreter-guard`, `gate-status-guard` and `push-check-guard`. A session that picks this item before 2026-11-22 has nothing to do, and yields it. The item stays `ready`, because `blocked-by` takes an item or a milestone and no date.
 
@@ -114,3 +116,29 @@ warns that "Bash permission patterns that try to constrain command arguments
 are fragile" (https://code.claude.com/docs/en/permissions). So, when each
 guard's verdict is recorded, first ask whether its effect can be enforced
 where it happens.
+
+**Judge a sample before reading a count as value** (`PL-8RGF`, 2026-11-03). A
+count alone cannot tell a refusal that prevented an error from one that blocked
+correct work, and a false refusal is retried most, so the guard that blocks the
+most correct work would look the most valuable. Two changes landed, and the
+verdict session owes one step more:
+
+- `python3 tools/hook_blocks.py count` also reports bursts. A burst is a
+  refusal and the retries that followed it within two minutes, from the same
+  guard and rule in the same session. Read bursts, not refusals, as blocks.
+- From 2026-11-03 the gate-status guard logs its rule as
+  `status-swallowed:<gate>`, naming the gate it read, such as
+  `status-swallowed:make check`. A refusal of a command that runs no gate
+  then shows the program it mistook for one.
+- Before giving a guard its verdict, take up to ten of its bursts, spread
+  across sessions, and judge each as a true refusal (the command would have
+  lost a verdict or done the harm the guard exists for) or a false one (the
+  command was correct). Record the sample's true and false counts beside the
+  burst count. Where the log line does not say enough to judge, read that
+  session's transcript around the refusal's time. A guard whose sample is
+  mostly false is a simplify or retire candidate, whatever its count, except
+  the two guards kept above for irreversible actions. Already known false on
+  2026-11-03: the gate-status guard's refusals of `python3 -X importtime
+  tools/pr_body_check.py --screen ... | tail`, of `python3
+  tools/branch_id_check.py --hint ... | cut`, and of a timing of
+  `tools/doc_check.py` with its output sent to `/dev/null` (`PL-9PPJ`).

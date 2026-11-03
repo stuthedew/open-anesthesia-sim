@@ -169,7 +169,7 @@ def test_two_refusals_in_one_second_stay_two_lines(
         hook_input.deny("g", "r", "Refused.", '{"session_id": "cse_a"}')
     assert len(set(log.read_text(encoding="utf-8").split("\n")[:-1])) == 2
     copy(log, tmp_path, "b")
-    assert count(tmp_path) == ["g\tr\t2 refusals\t1 sessions"]
+    assert count(tmp_path) == ["g\tr\t2 refusals\t1 bursts\t1 sessions"]
 
 
 def test_count_gives_refusals_and_sessions_per_guard_and_rule(tmp_path: Path) -> None:
@@ -185,7 +185,7 @@ def test_count_gives_refusals_and_sessions_per_guard_and_rule(tmp_path: Path) ->
     (tmp_path / BLOCKS_DIR / "c.tsv").write_text(
         f"{BLOCKS_HEADER}\n2026-10-25T10:00:00+00:00\tcse_a\tno-prune-guard\tprune\n"
     )
-    assert count(tmp_path) == ["no-prune-guard\tprune\t3 refusals\t2 sessions"]
+    assert count(tmp_path) == ["no-prune-guard\tprune\t3 refusals\t3 bursts\t2 sessions"]
 
 
 def test_the_missing_log_copies_nothing(tmp_path: Path) -> None:
@@ -197,3 +197,24 @@ def test_record_runs_the_copy() -> None:
     from docket.config import load
 
     assert load(REPO).record_command == "python3 tools/hook_blocks.py copy"
+
+
+def test_count_reports_a_burst_once(tmp_path: Path) -> None:
+    """A session refused for one rule, and refused again on its retry, made one burst.
+
+    On 2026-11-03, 26 of 125 tracked lines repeated the same guard and rule in
+    the same session within two minutes, mostly a session rewriting a refused
+    call (`PL-8RGF`). Counted as blocks, those retries make the guard that
+    refuses the most correct work look the most valuable.
+    """
+    log = _log(
+        tmp_path / "log.tsv",
+        "2026-11-03T10:00:00+00:00\tcse_a\tgate-status-guard\tstatus-swallowed:pytest",
+        "2026-11-03T10:01:59+00:00\tcse_a\tgate-status-guard\tstatus-swallowed:pytest",
+        "2026-11-03T10:04:00+00:00\tcse_a\tgate-status-guard\tstatus-swallowed:pytest",
+        "2026-11-03T10:04:30+00:00\tcse_b\tgate-status-guard\tstatus-swallowed:pytest",
+    )
+    copy(log, tmp_path, "b")
+    assert count(tmp_path) == [
+        "gate-status-guard\tstatus-swallowed:pytest\t4 refusals\t3 bursts\t2 sessions"
+    ]
