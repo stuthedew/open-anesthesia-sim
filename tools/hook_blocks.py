@@ -16,13 +16,23 @@ cost alone.
   `record_command`, so the lines ride the commit that carries the pull
   request's number.
 - `count` prints, for each guard and rule, how many refusals the tracked files
-  hold and in how many sessions. It is what `PL-SG93`'s verdicts are read
-  from.
+  hold, how many bursts they make and in how many sessions. It is what
+  `PL-SG93`'s verdicts are read from.
 
 A line is the time in UTC to the microsecond, the session id, the guard's name
 and the rule that refused, separated by tabs. Two lines alike are one refusal,
 so `count` counts each distinct line once, whichever files hold it. The command
-is never logged, because a command can carry a token.
+is never logged, because a command can carry a token. Since 2026-11-03 the
+gate-status guard's rule names the gate it read, as `status-swallowed:make
+check` (`PL-8RGF`).
+
+**A retry is not a second block.** A refused session usually rewrites the call
+and tries again within a minute or two, and a false refusal is retried most. On
+2026-11-03, 26 of the 125 tracked lines repeated a refusal by the same guard
+and rule in the same session less than two minutes earlier (`PL-8RGF`). So
+`count` also counts bursts. A refusal less than `BURST_WINDOW_S` after the one
+before it, from the same guard and rule in the same session, belongs to that
+refusal's burst.
 
 **The counts are a floor, and the floor is lowest for the guards that fire
 late.** The copy runs at `bin/docket record`, before the closure push, the arm
@@ -40,7 +50,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,6 +70,10 @@ BLOCKS_HEADER = "time\tsession\tguard\trule"
 
 #: The four fields of a log line.
 LINE_FIELDS = 4
+
+#: The longest gap, in seconds, between two refusals that `count` puts in one
+#: burst. Two minutes is the window in which `PL-8RGF` found the retries.
+BURST_WINDOW_S = 120
 
 #: The characters a branch name may keep in its file name. Each other
 #: character, such as the `/` in `claude/x`, becomes `-`.
@@ -110,20 +125,33 @@ def copy(log: Path, root: Path, branch: str) -> list[str]:
     return [f"hook blocks: copied {len(new)} {noun} into {target.relative_to(root)}"]
 
 
+def bursts(times: list[datetime]) -> int:
+    """How many bursts the refusal times of one guard, rule and session make.
+
+    A refusal starts a new burst unless it comes less than `BURST_WINDOW_S`
+    seconds after the refusal before it.
+    """
+    ordered = sorted(times)
+    return 1 + sum(
+        1
+        for before, after in zip(ordered, ordered[1:], strict=False)
+        if (after - before).total_seconds() >= BURST_WINDOW_S
+    )
+
+
 def count(root: Path) -> list[str]:
-    """Return one line per guard and rule: its refusals in the tracked files, and its sessions."""
-    refusals: Counter[tuple[str, str]] = Counter()
-    sessions: dict[tuple[str, str], set[str]] = defaultdict(set)
+    """Return one line per guard and rule: its refusals, its bursts and its sessions."""
+    times: dict[tuple[str, str], dict[str, list[datetime]]] = defaultdict(lambda: defaultdict(list))
     for line in held_lines(root):
-        _, session, guard, rule = line.split("\t")
-        refusals[(guard, rule)] += 1
-        sessions[(guard, rule)].add(session)
-    if not refusals:
+        stamp, session, guard, rule = line.split("\t")
+        times[(guard, rule)][session].append(datetime.fromisoformat(stamp))
+    if not times:
         return [f"hook blocks: {BLOCKS_DIR} holds no refusals yet"]
     return [
-        f"{guard}\t{rule}\t{refusals[key]} refusals\t{len(sessions[key])} sessions"
-        for key in sorted(refusals)
-        for guard, rule in (key,)
+        f"{guard}\t{rule}\t{sum(len(stamps) for stamps in by_session.values())} refusals"
+        f"\t{sum(bursts(stamps) for stamps in by_session.values())} bursts"
+        f"\t{len(by_session)} sessions"
+        for (guard, rule), by_session in sorted(times.items())
     ]
 
 

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+feature: remote-ref-deletion
 milestone: v0.6.2
 touches: tools/branch_sweep.py, .claude/rules/instruction-writing.md, .claude/skills/docket/modes/capture.md, tests/unit/test_branch_sweep.py
 added: 2026-10-24

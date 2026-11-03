@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+feature: skill-routing
 milestone: v0.6.11
 touches: .claude/skills/model-review/SKILL.md
 deferred-from: v0.7.0 - captured after the freeze; a skill description in the workflow lane, not safety or science
