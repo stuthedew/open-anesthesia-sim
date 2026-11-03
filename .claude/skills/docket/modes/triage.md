@@ -82,6 +82,13 @@ fact has one source of truth" is the stated rule that each copy breaks, so
 (project owner, 2026-10-24, ratified, over classing a copy `refactor` until
 the copies disagree, `PL-ZZ03`).
 
+**An item whose work is to search on purpose and file what it finds - an
+inventory, an audit, a survey - gets `sweep:`**, written with `bin/docket set
+<id> --sweep "what it looks for"`. `bin/docket inflow` then counts the items its
+work files apart from ordinary inflow, so a week spent sweeping does not read
+as rising inflow or as fixes failing. Without it, `PL-K88Z`'s inventory read as
+9 ordinary filings and 5 failed fixes in the week of 2026-10-19 (`PL-CJGH`).
+
 **Write the answers with `bin/docket set`, not into the file.** `bin/docket set
 <id> --priority P2 --effort S --classes defect --touches a.py --status ready
 --verify '...' --payoff '...'` writes the named fields in canonical order, keeps the file's

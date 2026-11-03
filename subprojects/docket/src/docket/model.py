@@ -926,6 +926,20 @@ class Item:
     #: it does not move, so three filings that re-enter the line after that
     #: date open the line again.
     no_successor: tuple[str, ...] = ()
+    #: What this item sweeps for, where its work is to search a surface on
+    #: purpose and file each finding: an inventory, an audit, a survey. Prose,
+    #: and presence is the claim, as for `impairs_generators`. `docket inflow`
+    #: counts the items its work filed apart from ordinary inflow, so a week
+    #: spent finding instances on purpose does not read as rising inflow or as
+    #: fixes failing. Which item's work filed an item is read from git by
+    #: `vcs.filing_parents`, so a sweep records only that it is one.
+    #:
+    #: A head's `root-cause-of:` already does this for its members, and a
+    #: sweep recorded only by a `feature:` did not: `PL-K88Z`'s inventory filed
+    #: 9 of the 117 apparatus filings in the week of 2026-10-19, and 5 of the
+    #: 29 re-entries (`PL-CJGH`). Nothing could infer it. An item whose work
+    #: files many others may be a busy close-out as easily as a sweep.
+    sweep: str = ""
     #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
     #: version of the milestone whose gate does not hold the item, never a gate
     #: it goes to. Two kinds of item carry it: a finding made after that gate's
@@ -2239,6 +2253,7 @@ def parse_item(text: str, path: str = "") -> Item:
         impairs_generators=fields.get("impairs-generators", ""),
         reenters=lists["reenters"],
         no_successor=lists["no-successor"],
+        sweep=fields.get("sweep", ""),
         recurrences=lists["recurrences"],
         deferred_from=fields.get("deferred-from", ""),
         resource=fields.get("resource", ""),
@@ -2289,6 +2304,7 @@ FIELD_ORDER = (
     "impairs-generators",
     "reenters",
     "no-successor",
+    "sweep",
     "recurrences",
 )
 
@@ -2328,6 +2344,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "impairs-generators": item.impairs_generators,
         "reenters": ", ".join(item.reenters),
         "no-successor": ", ".join(item.no_successor),
+        "sweep": item.sweep,
         "recurrences": ", ".join(item.recurrences),
     }
 

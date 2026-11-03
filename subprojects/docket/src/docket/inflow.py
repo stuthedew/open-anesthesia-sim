@@ -47,6 +47,15 @@ that came after. Three filings that re-enter the line after that date list it
 as open again, so a recorded answer cannot hide a mechanism that has started
 producing again.
 
+**So does a sweep recorded only as a sweep.** An item whose `sweep:` says its
+work is a deliberate search files dozens of items that no head's
+`root-cause-of:` names. Counted as ordinary inflow, `PL-K88Z`'s inventory put
+9 filings and 5 re-entries into the week of 2026-10-19 (`PL-CJGH`). Which
+item's work filed each item is read from git by `vcs.filing_parents`, and
+only where some item records a sweep, so a store with none asks git nothing.
+Where git cannot answer, the column prints `?` and the report says why, since
+those filings are then counted as ordinary.
+
 **At release time it is silent unless an expectation failed.** `missed`
 checks the last complete period against `PL-04KR`'s pre-registered
 predictions, and `docket release` prints what it returns and nothing when it
@@ -87,6 +96,7 @@ from .model import (
     owner_set_priority,
 )
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
+from .vcs import FilingParents
 
 #: What a filing with no `priority:` yet is counted as, so an untriaged capture
 #: is shown rather than dropped from the mix.
@@ -173,12 +183,17 @@ class InflowPeriod:
     new_paths: int
     #: Of `filed`, the filings carrying `reenters:` - a shipped fix that did
     #: not reach them. A sweep's own filings are left out with the rest of
-    #: `by_head`, so a campaign cannot read as fixes failing.
+    #: `by_head` and `by_sweep`, so a campaign cannot read as fixes failing.
     reentries: int = 0
     #: Of `filed`, the workflow-lane filings in `UNEXPECTED_BANDS` whose band
     #: records severity rather than a rank: what `PL-04KR`'s prediction is
     #: about. `_unexpected_band` says which are left out.
     severe: Mapping[str, int] = field(default_factory=dict)
+    #: Apparatus filings that an item's work filed while that item was open,
+    #: where the item's `sweep:` records a deliberate search. Counted apart
+    #: for the reason `by_head` is. A filing a head also names is counted
+    #: there and not here.
+    by_sweep: int = 0
 
     @property
     def label(self) -> str:
@@ -194,10 +209,14 @@ class InflowPeriod:
         return self.filed / self.days
 
     @property
+    def total(self) -> int:
+        """Every apparatus filing in the period: ordinary, a head's and a sweep's."""
+        return self.filed + self.by_head + self.by_sweep
+
+    @property
     def new_paths_per_item(self) -> float | None:
         """New paths over every apparatus filing, the sweep's included: a sweep names paths too."""
-        total = self.filed + self.by_head
-        return self.new_paths / total if total else None
+        return self.new_paths / self.total if self.total else None
 
 
 @dataclass(frozen=True)
@@ -229,6 +248,10 @@ class Inflow:
     #: filings re-enter it after, by id. Read over every item, as `successors`
     #: is.
     answered: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
+    #: Why a sweep's filings could not be told apart, or `""`. Set only where
+    #: some item records `sweep:` and git could not say which item's work
+    #: filed each item. Those filings are then counted in `filed`.
+    sweeps_unread: str = ""
 
 
 def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> frozenset[str]:
@@ -274,6 +297,28 @@ def _filed_by_head(items: Sequence[Item]) -> set[str]:
     return out
 
 
+def _filed_by_sweep(items: Sequence[Item], filing: FilingParents) -> set[str]:
+    """Each id a sweep's work filed between the sweep's filing and its close.
+
+    The window is the one `_filed_by_head` uses. A commit led by the sweep's id
+    after the sweep closed is a later correction to it, and what that commit
+    files is an ordinary capture.
+    """
+    sweeps = {item.identifier: item for item in items if item.sweep}
+    out: set[str] = set()
+    for item in items:
+        when = item.added
+        if when is None:
+            continue
+        for parent in filing.parents.get(item.identifier, ()):
+            sweep = sweeps.get(parent)
+            if sweep is None or sweep.added is None or when < sweep.added:
+                continue
+            if sweep.closed is None or when <= sweep.closed:
+                out.add(item.identifier)
+    return out
+
+
 def analyze(
     items: Sequence[Item],
     config: Config,
@@ -281,7 +326,13 @@ def analyze(
     by: str = BY_WEEK,
     today: date | None = None,
     lane: str = LANE_WORKFLOW,
+    filing: FilingParents | None = None,
 ) -> Inflow:
+    """Count the filings in `items` period by period.
+
+    `filing` is `vcs.filing_parents`' answer. It is needed only where an item
+    records `sweep:`, and a caller with no such item passes nothing.
+    """
     if lane == LANE_PRODUCT:
         excluded: tuple[str, ...] = ()
         named = {item.identifier: product_paths(item, config) for item in items}
@@ -295,7 +346,17 @@ def analyze(
     if not filings:
         return Inflow(periods=(), anchor=None, by=by, excluded=excluded, lane=lane)
 
-    swept = _filed_by_head(items)
+    headed = _filed_by_head(items)
+    sweeps_unread = ""
+    by_sweep: set[str] = set()
+    if any(item.sweep for item in items):
+        if filing is None:
+            sweeps_unread = "nothing read which item's work filed each item"
+        elif filing.declined:
+            sweeps_unread = filing.declined
+        else:
+            by_sweep = _filed_by_sweep(items, filing) - headed
+    swept = headed | by_sweep
     reentering: dict[str, list[str]] = {}
     for _, item in filings:
         if item.identifier not in swept:
@@ -316,7 +377,8 @@ def analyze(
                 start=start,
                 end=end,
                 filed=len(organic),
-                by_head=len(window) - len(organic),
+                by_head=sum(1 for item in window if item.identifier in headed),
+                by_sweep=sum(1 for item in window if item.identifier in by_sweep),
                 priorities=dict(Counter(item.priority or UNBANDED for item in organic)),
                 new_paths=sum(1 for day in first_named.values() if start <= day <= end),
                 reentries=sum(1 for item in organic if item.reenters),
@@ -376,6 +438,7 @@ def analyze(
         reentered=reentered,
         successors=successors,
         answered=answered,
+        sweeps_unread=sweeps_unread,
     )
 
 
@@ -447,7 +510,7 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     ):
         against = "" if before is None else f", against {before} new the period before"
         out.append(
-            f"{last.new_paths} new apparatus paths over {last.filed + last.by_head} filings, "
+            f"{last.new_paths} new apparatus paths over {last.total} filings, "
             f"{ratio:.2f} a filing, above the {NEW_PATHS_CEILING} ceiling{against}: the "
             "surface is still growing"
         )
@@ -462,4 +525,10 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
             f"{last.reentries} re-entries against {complete[-2].reentries} the period before: "
             "fixes are not holding"
         )
-    return tuple(f"{last.label}: {line}" for line in out)
+    lines = [f"{last.label}: {line}" for line in out]
+    if lines and report.sweeps_unread:
+        lines.append(
+            "a sweep's filings could not be told apart, so these counts include them: "
+            f"{report.sweeps_unread}"
+        )
+    return tuple(lines)
