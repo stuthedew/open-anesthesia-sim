@@ -30,8 +30,10 @@ Where a term needs explaining, use a plainer word rather than a definition.
 Restate a number in the reader's form only where the reader needs that
 number, with the same value, such as 4e-4 as 0.04%. Make the new text as
 short as the takeaway allows, and no longer than the rows it replaces,
-counted in words. Under the block, list each move, each cut and each
-restatement on a line of its own.
+counted in words. The unit's header gives its count. Aim for fewer words
+than that, because a rewrite written to the limit can run a word over it.
+Under the block, list each move, each cut and each restatement on a line of
+its own.
 
 Keep every fact, in the new text or in the place you name for it. In the
 new text, keep each unit, value, condition, exception, identifier in
