@@ -4,7 +4,7 @@ title: The close-out prose review asks a model to read as a newcomer, which a mo
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: S
-status: blocked
+status: ready
 feature: reader-tested-prose
 touches: .claude/skills/docket/modes/close-out.md
 blocked-by: PL-R7Q6

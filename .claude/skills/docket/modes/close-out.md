@@ -288,8 +288,9 @@ page and decides which file a session reads.
    docstring and comment of 30 words or more that the branch added or changed
    in `src/` or in a file under `tests/` that imports the simulator, with its
    rows and the code around it. It also prints each changed paragraph and table
-   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Where it
-   prints none, this step is done.
+   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Each unit
+   names its readers from the table in `.claude/rules/plain-writing.md`
+   (`PL-R7Q6`). Where it prints none, this step is done.
    Otherwise start one subagent, `general-purpose` at the session's own
    effort level (`docs/maintainer.md`, 2026-10-19), with the
    prompt below followed by the tool's whole output. The prompt tells it to

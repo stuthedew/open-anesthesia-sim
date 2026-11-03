@@ -1443,3 +1443,22 @@ resident rules, applies the patterns there too.
 
 **Why nothing is cut.** The existing points name compressed wording only, so
 no sentence said any of this. The addition is text the owner asked for.
+
+## The reader table, added 2026-11-02
+
+`PL-R7Q6` replaced the one-sentence reader in the resident
+`.claude/rules/plain-writing.md`, "a careful newcomer, someone who knows
+anesthesia or Python", with a table. Each row names a kind of text, its
+readers, what each knows and does not know, and what each will do with the
+text. `PL-H76S` found that the single reader let a term pass because some
+reader might know it, and that no step named the developer who wants to change
+a value.
+
+**The carrier test.** The moment is any write of prose, the same as the rest
+of the rule, so the table stays resident. `tools/new_prose.py` reads the table
+and prints each unit's readers for the close-out prose review, so the review
+gets the same readers without a second copy.
+
+**What was replaced, and the cost.** The newcomer sentence went. The rule grew
+from 7,925 to 10,211 characters, because no shorter form names two readers of
+one document and what each does not know.
