@@ -1,9 +1,15 @@
 ---
 id: PL-HLQK
 title: The prose review's test reports only pass or fail, so nothing shows how often a run agrees with the owner's verdicts on the paragraphs he rejected and on those he named gold standards
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: feature
 feature: reader-tested-prose
+touches: tools/rejected_prose.py, tests/unit/test_rejected_prose.py
 added: 2026-11-03
+payoff: a change to the prose review's prompt shows whether it moved the review closer to the owner's verdicts or further from them
+verify: grep -q 'def test_check_prints_agreement_for_each_run' tests/unit/test_rejected_prose.py
 ---
 
 **Problem.** `python3 tools/rejected_prose.py check` reports whether each run
@@ -33,3 +39,7 @@ shows.
 **Done when.** `check` prints, for each run of the current prompt, how many
 rejected entries it flagged and how many gold-standard entries it kept, each out of
 how many it read.
+
+**Generator check.** One-off: work the owner approved on 2026-11-03 as change 2 of `PL-556C`.
+
+**Triaged 2026-11-03 at `ready`, not `blocked`.** It waits on the owner naming a gold standard, and `blocked-by` takes only an item, a milestone or a date. `docs/prose-review/gold/` held only `.gitkeep` that day. A session that starts this item checks that folder first, and leaves the item if it is still empty.

@@ -111,3 +111,17 @@ the printed minimum was refused again: it now prints both numbers in full. Rule
 `sys.float_info.epsilon`. Two ints compared with `pytest.approx` were refused,
 though pytest compares them exactly: such a comparison is now left alone. Each
 code fix has a test that failed on the reviewed code.
+
+**A second triage, merged in #1972 while this branch built the check.** A
+batch triage pass answered this item at the same time, with a different
+Done-when: count the tolerances below the spacing, and drop the item if there
+are none, because a new check under `tools/` is a new workflow mechanism and
+waits while a workflow-lane generator is live. This branch keeps its own
+answer (session decision, 2026-11-03). The project owner picked this feature
+on 2026-11-03 at 16:58Z ("Finish dead test limit feature"), which lifts the
+pause for it. The check sits in the simulator's `tests/conftest.py`, not in
+`tools/`. It is exact, so it is silent until a test breaks the rule. And the
+owner's question when `PL-TN0G` dropped its tool was whether nothing would
+then catch the next case. The count that triage asked for is the
+`**Measured 2026-11-03**` paragraph above.
+
