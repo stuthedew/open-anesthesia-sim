@@ -48,8 +48,19 @@ Three commands:
 - `check` exits 1 when an entry does not parse, names a kind that
   `FAILURE_KINDS` does not hold, or names a file that no row of the reader table
   names; when a kind holds more than `CAP_PER_KIND` entries; and when the
-  current prompt and readers have no run, or have a run that kept an entry.
-  `make check` and CI run it.
+  current prompt and readers have no run, or have a run that kept an entry or
+  rewrote one at more words than it allows. `make check` and CI run it.
+
+**A rewrite may not be longer than its entry allows** (`PL-CWRZ`). Flagging a
+paragraph is not enough, because the writer then applies the reviewer's
+rewrite. On the first run the review flagged all five entries, and four of its
+rewrites came out longer than the paragraph the owner rejected. So each
+rewrite's words are counted as `tools/new_prose.py` counts a unit's, over the
+fenced block that follows its verdict. An entry with an accepted rewrite allows
+that rewrite's words, and any other entry allows the words of the paragraph the
+owner rejected. `.claude/rules/plain-writing.md` point 7, "Plain is not
+longer", is why there is no margin. An accepted rewrite added to an entry
+applies at once to every current run.
 
 **What a run covers.** The prompt and the readers' rows are what tell the
 reviewer what to look for, so a change to either needs a new run. A new entry
@@ -136,6 +147,13 @@ class Entry:
     #: The paragraph exactly as it stood in `file`, one string per line.
     lines: tuple[str, ...]
     unit: Unit
+    #: The words of the rewrite the owner accepted, where the entry records one.
+    accepted_words: int | None = None
+
+    @property
+    def allowed(self) -> int:
+        """The most words a review's rewrite of this entry may have."""
+        return self.unit.words if self.accepted_words is None else self.accepted_words
 
 
 @dataclass(frozen=True)
@@ -184,29 +202,41 @@ def _sections(body: list[str]) -> dict[str, tuple[int, int]]:
     return found
 
 
-def _paragraph(body: list[str], span: tuple[int, int]) -> tuple[str, ...]:
-    """The lines of the one closed fenced block that the section at `span` holds."""
+def _paragraph(body: list[str], title: str, span: tuple[int, int]) -> tuple[str, ...]:
+    """The lines of the one closed fenced block that the section `title`, at `span`, holds."""
     blocks = [block for block in read_markdown(body).blocks if span[0] <= block.start < span[1]]
     if len(blocks) != 1 or blocks[0].kind != FENCE or not blocks[0].closing:
-        raise ValueError("the Paragraph section must hold one closed fenced block and nothing else")
+        raise ValueError(f"the {title} section must hold one closed fenced block and nothing else")
     return tuple(body[blocks[0].start + 1 : blocks[0].end - 1])
 
 
-def _unit(path: str, lines: Sequence[str]) -> Unit:
-    """The paragraph `lines` as `tools/new_prose.py` reads a unit of the file at `path`.
+def _units(path: str, lines: Sequence[str]) -> list[Unit]:
+    """The units that `tools/new_prose.py` reads in `lines`, as text of the file at `path`.
 
-    A Python paragraph is read with its common indent removed, since a function's
-    docstring stands indented in its file.
+    Python text is read with its common indent removed, since a function's
+    docstring stands indented in its file. Raises `ValueError` where Python
+    refuses the text.
     """
     source = "\n".join(lines) + "\n"
     if path not in new_prose.DOCUMENTS:
         source = textwrap.dedent(source)
     try:
-        units = new_prose.units_of(path, source)
+        return new_prose.units_of(path, source)
     except UNTOKENIZABLE as error:
-        raise ValueError(
-            f"the paragraph does not parse as {path} would: {refusal(error)}"
-        ) from None
+        raise ValueError(f"does not parse as {path} would: {refusal(error)}") from None
+
+
+def prose_words(path: str, lines: Sequence[str]) -> int:
+    """The words of prose in `lines`, counted as `tools/new_prose.py` counts a unit's."""
+    return sum(unit.words for unit in _units(path, lines))
+
+
+def _unit(path: str, lines: Sequence[str]) -> Unit:
+    """The paragraph `lines` as `tools/new_prose.py` reads a unit of the file at `path`."""
+    try:
+        units = _units(path, lines)
+    except ValueError as error:
+        raise ValueError(f"the paragraph {error}") from None
     if len(units) != 1:
         raise ValueError(f"the paragraph reads as {len(units)} units of {path}, not one")
     if units[0].words < MIN_WORDS:
@@ -251,8 +281,15 @@ def parse_entry(name: str, text: str, table: Sequence[Reader]) -> Entry:
     for title, (start, end) in sections.items():
         if not any(line.strip() for line in body[start:end]):
             raise ValueError(f"section {title!r} is empty")
-    lines = _paragraph(body, sections["Paragraph"])
-    return Entry(name, kind, path, rejected, lines, _unit(path, lines))
+    lines = _paragraph(body, "Paragraph", sections["Paragraph"])
+    accepted = None
+    if "Accepted rewrite" in sections:
+        rewrite = _paragraph(body, "Accepted rewrite", sections["Accepted rewrite"])
+        try:
+            accepted = prose_words(path, rewrite)
+        except ValueError as error:
+            raise ValueError(f"the accepted rewrite {error}") from None
+    return Entry(name, kind, path, rejected, lines, _unit(path, lines), accepted)
 
 
 def read_entries(directory: Path, table: Sequence[Reader]) -> tuple[list[Entry], list[str]]:
@@ -302,11 +339,89 @@ def verdicts(reply: str, count: int) -> list[str]:
     return [found[number].pop() for number in range(1, count + 1)]
 
 
+def rewrites(reply: str) -> dict[int, tuple[str, ...]]:
+    """The rewrite that `reply` gives each unit it marks "[N] rewrite", by unit number.
+
+    A rewrite is the first closed fenced block after a "[N] rewrite" verdict and
+    before the next verdict of any unit, one string per line. Where the reply
+    gives one unit's verdict twice, as a summary might, the first verdict that a
+    block follows is used. Raises `ValueError` where no verdict of a unit marked
+    for rewriting is followed by a block.
+    """
+    lines = split_lines(reply)
+    marks = [
+        (index, int(match.group(1)), match.group(2).lower())
+        for index, line in enumerate(lines)
+        for match in VERDICT_RE.finditer(re.sub(r"[*_`]", "", line))
+    ]
+    fences = [block for block in read_markdown(lines).blocks if block.kind == FENCE]
+    found: dict[int, tuple[str, ...]] = {}
+    for position, (index, number, verdict) in enumerate(marks):
+        if verdict != "rewrite" or number in found:
+            continue
+        limit = marks[position + 1][0] if position + 1 < len(marks) else len(lines)
+        block = next((b for b in fences if index < b.start < limit), None)
+        if block is not None and block.closing:
+            found[number] = tuple(lines[block.start + 1 : block.end - 1])
+    missing = sorted({number for _, number, verdict in marks if verdict == "rewrite"} - set(found))
+    if missing:
+        raise ValueError(
+            "; ".join(f"[{number}] rewrite has no closed fenced block" for number in missing)
+        )
+    return found
+
+
+def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[Entry]) -> list[str]:
+    """Each way the run called `name` fails the entries it `read`, from its `reply`.
+
+    `entries` is the set as it stands now. An entry the run read that has since
+    been deleted, as the cap deletes the oldest, is not judged.
+    """
+    try:
+        given = verdicts(reply, len(read))
+        blocks = rewrites(reply)
+    except ValueError as error:
+        return [f"runs/{name}: {error}"]
+    by_name = {entry.name: entry for entry in entries}
+    problems: list[str] = []
+    for number, (entry_name, verdict) in enumerate(zip(read, given, strict=True), start=1):
+        if verdict != "rewrite":
+            problems.append(
+                f"runs/{name} kept {entry_name}: change the prompt so the review flags it, "
+                "then run the set again"
+            )
+            continue
+        entry = by_name.get(entry_name)
+        if entry is None:
+            continue
+        try:
+            words = prose_words(entry.file, blocks[number])
+        except ValueError as error:
+            problems.append(f"runs/{name}'s rewrite of {entry_name} {error}")
+            continue
+        if words > entry.allowed:
+            against = (
+                "the rewrite the owner accepted"
+                if entry.accepted_words is not None
+                else "the paragraph the owner rejected"
+            )
+            problems.append(
+                f"runs/{name} rewrote {entry_name} in {words} words, more than the "
+                f"{entry.allowed} of {against}: change the prompt so a rewrite carries only "
+                "what its reader needs, then run the set again"
+            )
+    return problems
+
+
 def record(
     prompt: str, entries: Sequence[Entry], table: Sequence[Reader], reply: str, now: datetime
 ) -> dict[str, object]:
-    """The record of one run, after checking that `reply` gives every entry a verdict."""
+    """The record of one run, after checking that `reply` gives every entry a verdict.
+
+    Raises `ValueError` where it does not, or where a rewrite has no block.
+    """
     verdicts(reply, len(entries))
+    rewrites(reply)
     return {
         "recorded": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "prompt": digest(prompt),
@@ -369,17 +484,7 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
             "output to one fresh general-purpose reviewer, save the reply, and run `record` on it"
         )
     for run in current:
-        try:
-            given = verdicts(run.reply, len(run.entries))
-        except ValueError as error:
-            problems.append(f"runs/{run.name}: {error}")
-            continue
-        for name, verdict in zip(run.entries, given, strict=True):
-            if verdict != "rewrite":
-                problems.append(
-                    f"runs/{run.name} kept {name}: change the prompt so the review flags it, "
-                    "then run the set again"
-                )
+        problems += run_problems(run.name, run.reply, run.entries, entries)
     return problems
 
 
@@ -411,23 +516,19 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
         print(show(prompt, entries, table))
         return 0
     reply = args.reply.read_text(encoding="utf-8")
+    now = datetime.now(UTC)
     try:
-        given = verdicts(reply, len(entries))
+        run = record(prompt, entries, table, reply, now)
     except ValueError as error:
         print(f"rejected_prose: not recorded: {error}", file=sys.stderr)
         return 1
-    now = datetime.now(UTC)
     runs_dir = root / RUNS_DIR.relative_to(ROOT)
     runs_dir.mkdir(parents=True, exist_ok=True)
     path = runs_dir / f"{now.strftime('%Y-%m-%dT%H%M%SZ')}.json"
-    run = record(prompt, entries, table, reply, now)
     path.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(f"rejected_prose: recorded {path.relative_to(root)}")
-    for entry, verdict in zip(entries, given, strict=True):
-        if verdict == "keep":
-            print(
-                f"rejected_prose: the review kept {entry.name}: change the prompt, then run again"
-            )
+    for problem in run_problems(path.name, reply, [entry.name for entry in entries], entries):
+        print(f"rejected_prose: {problem}")
     return 0
 
 
