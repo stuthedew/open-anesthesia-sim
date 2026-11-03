@@ -467,7 +467,10 @@ each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
 citation and number that the rewrite dropped or added. The rewrite is
 housekeeping when it added none, and when each one it dropped is history moved
-to an item or a duplicate that the document still holds. The blind review
+to an item or a duplicate that the document still holds. A number rewritten in
+the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.
+The tool checks that the two values are equal and stand in the same section
+(`PL-TZ7R`). The blind review
 passes and the prose review still run. A sentence whose meaning needs a
 clinician's judgment, such as what a hazard row or a limitation promises,
 still comes to you, and the ask quotes it before and after.

@@ -1462,3 +1462,24 @@ gets the same readers without a second copy.
 **What was replaced, and the cost.** The newcomer sentence went. The rule grew
 from 7,925 to 10,211 characters, because no shorter form names two readers of
 one document and what each does not know.
+
+## The step before writing, and a chosen value's reason, added 2026-11-03
+
+`PL-TZ7R` added two paragraphs to the resident
+`.claude/rules/plain-writing.md`. The first has the writer write down what a
+paragraph's reader should take from it and do with it, and send each other
+fact to where its own reader looks: the item, or a note for developers at the
+end of a `docs/MODEL.md` section. The second has the writer give a chosen
+value's purpose, reason and effect from a record, trace the value with
+`git log -S` when the reason is not at hand, and never state a reason no record
+holds. `PL-H76S` found that no step asked what the reader needed, and that
+writers stated reasons with no source.
+
+**The carrier test.** Both faults showed first in drafts posted to the owner
+in a reply, before any file was opened, so a `paths:` scope on `docs/MODEL.md`
+would have loaded too late. The paragraphs stay with the rest of the rule.
+
+**What was replaced, and the cost.** Point 7's "keep every fact" sentence was
+replaced by one that says where a fact may go. The rule grew from 10,211 to
+11,763 characters. Nothing else in the rule says when to decide a paragraph's
+point or where a value's reason comes from, so nothing could be cut for them.
