@@ -46,9 +46,9 @@ this number, and what changing it would do. In `docs/MODEL.md`, that goes in the
 note for developers. Take each answer from the code or test that uses the value,
 or from a cited record. When the reason is not at hand, trace the value's
 history first, with `git log -S` and the items. Search for the value as the
-code writes it. The 0.5% tolerance of the step-size test is `5e-3` in
-`tests/reference/test_sevo_patient.py`, and `git log -S 5e-3` finds the commit
-that first set it. When the trace finds no reason, file an item for the missing
+code writes it. The step-size test's 0.5% tolerance, removed in `PL-VXM0`, was
+`5e-3` in `tests/reference/test_sevo_patient.py`, and `git log -S 5e-3` finds
+the commit that first set it. When the trace finds no reason, file an item for the missing
 record, and say in the text what the trace found. Never state a reason that no
 record holds.
 

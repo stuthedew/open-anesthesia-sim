@@ -1,4 +1,4 @@
-"""Show, record and check the prose review's test set: paragraphs the owner rejected.
+"""Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
 Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives a fresh
 reviewer the prompt in `docs/prose-review/prompt.md` and each long paragraph a
@@ -8,6 +8,12 @@ owner rejects a paragraph that the review passed, the paragraph becomes an entry
 in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
 set, and it must flag every entry, so the review cannot pass again a kind of text
 the owner has already turned down (`PL-FYGJ`, from `PL-H76S`'s design round).
+When the owner names a paragraph a gold standard, in those words, it becomes
+an entry in `docs/prose-review/gold/`, and the review must keep it. Without
+those entries, a review that flagged every paragraph would pass (`PL-556C`). A
+paragraph he finds acceptable, or says needs no change, stays out. A rewrite
+could still improve it, and the review must stay free to propose one (project
+owner, 2026-11-03).
 
 **An entry** is one Markdown file named `KIND-DATE-SLUG.md`. Its front matter
 gives `kind`, one of `FAILURE_KINDS`; `file`, the document the paragraph came
@@ -20,15 +26,24 @@ fenced block, exactly as it stood in its file. It must read as one unit of
 review never sees a shorter unit. A shorter rejected paragraph is a miss of
 that word limit rather than of the prompt, so it belongs in an item.
 
-**How the set stays small.** Only a miss is added: a paragraph that the review
-passed and the owner then rejected. A kind holds at most `CAP_PER_KIND` entries.
-A new miss of a full kind replaces the oldest entry, and git history keeps the
-one replaced. If the review flags all 59 entries of a kind, the chance that it
-misses a paragraph of that kind is below 5%, at 95% confidence. The bound after
-no misses in n tries is 1 - 0.05^(1/n) (Hanley JA, Lippman-Hand A. If nothing
-goes wrong, is everything all right? Interpreting zero numerators. JAMA.
-1983;249(13):1743-1745). It treats the entries as independent, so it is a best
-case. The owner set the cap (project owner, 2026-11-03).
+**A gold-standard entry** is named `gold-DATE-SLUG.md`. Its front matter gives
+`file` and `named`, the date the owner named the paragraph a gold standard, and
+its body has the three required sections only. `GOLD_KIND` is never one of
+`FAILURE_KINDS`, so the start of an entry's name says which folder it belongs
+to, in a run's record as well.
+
+**How the set stays small.** A rejected entry is added only for a miss: a
+paragraph that the review passed and the owner then rejected. A kind holds at
+most `CAP_PER_KIND` entries. A new entry of a full kind replaces the oldest
+entry, and git history keeps the one replaced. If the review flags all 59
+entries of a kind, the chance that it misses a paragraph of that kind is below
+5%, at 95% confidence. The bound after no misses in n tries is 1 - 0.05^(1/n)
+(Hanley JA, Lippman-Hand A. If nothing goes wrong, is everything all right?
+Interpreting zero numerators. JAMA. 1983;249(13):1743-1745). It treats the
+entries as independent, so it is a best case. The owner set the cap (project
+owner, 2026-11-03). The gold-standard entries count as one more kind under the
+same cap. The same bound then applies to the chance that the review flags a
+gold-standard paragraph.
 
 Three commands:
 
@@ -37,7 +52,11 @@ Three commands:
   in `tools/new_prose.py`'s format, with every row marked `>`. It prints the
   paragraph without its kind or the owner's words, so the reviewer judges it as
   it would any branch's prose. Unlike a real review, no lines of the file
-  around the paragraph are shown, because the entry does not keep them.
+  around the paragraph are shown, because the entry does not keep them. The
+  units come in the order of each entry's name hashed with SHA-256, so a unit's
+  position does not show which folder it came from. A rejected entry's accepted
+  rewrite is not shown. Beside its rejected original, it would let the reviewer
+  compare two versions of one paragraph, which a real review never can.
 - `record REPLY` reads the reviewer's whole reply from the file REPLY and finds
   its "[N] keep" or "[N] rewrite" verdict for each entry. It writes one record
   to `docs/prose-review/runs/`, holding the reply, the entries in the order
@@ -47,9 +66,12 @@ Three commands:
   tool is the only writer of those records.
 - `check` exits 1 when an entry does not parse, names a kind that
   `FAILURE_KINDS` does not hold, or names a file that no row of the reader table
-  names; when a kind holds more than `CAP_PER_KIND` entries; and when the
-  current prompt and readers have no run, or have a run that kept an entry or
-  rewrote one at more words than it allows. `make check` and CI run it.
+  names; when a kind holds more than `CAP_PER_KIND` entries; when a
+  gold-standard entry repeats a rejected paragraph or an accepted rewrite; when
+  the current prompt and readers have no run, or have a run that kept a rejected
+  entry, flagged a gold-standard one, or rewrote one at more words than it
+  allows; and when no run of them read a gold-standard entry. `make check` and
+  CI run it.
 
 **A rewrite may not be longer than its entry allows** (`PL-CWRZ`). Flagging a
 paragraph is not enough, because the writer then applies the reviewer's
@@ -63,12 +85,14 @@ longer", is why there is no margin. An accepted rewrite added to an entry
 applies at once to every current run.
 
 **What a run covers.** The prompt and the readers' rows are what tell the
-reviewer what to look for, so a change to either needs a new run. A new entry
-needs none, because only a miss is added, and the next change to the prompt
-must flag it. A new row for a file that no run read needs none either. Every
-run of the current prompt and readers must have flagged every entry it read. So
-a miss stays on record, and running the same prompt again until it passes does
-not clear it: the prompt has to change.
+reviewer what to look for, so a change to either needs a new run. A new
+rejected entry needs none, because only a miss is added, and the next change to
+the prompt must flag it. A new gold-standard entry does need one, because nobody
+knows whether the current prompt keeps it until a run reads it. A new row for a
+file that no run read needs no run either. Every run of the current prompt and
+readers must have judged every entry it read as the owner did. So a miss stays
+on record, and running the same prompt again until it passes does not clear it:
+the prompt has to change.
 
 Standard library only, like every tool under `tools/`.
 """
@@ -115,15 +139,21 @@ FAILURE_KINDS: Mapping[str, str] = {
         "a reason for a chosen value, or a claim that none was recorded, that no record supports"
     ),
 }
+#: The kind of every entry in `GOLD_DIR`. It is never one of `FAILURE_KINDS`,
+#: so the start of an entry's name says which folder it belongs to.
+GOLD_KIND = "gold"
 #: The most entries one kind may hold. The owner set it on 2026-11-03.
 CAP_PER_KIND = 59
 
 #: Where the entries and the records of each run live.
 REJECTED_DIR = ROOT / "docs" / "prose-review" / "rejected"
+GOLD_DIR = ROOT / "docs" / "prose-review" / "gold"
 RUNS_DIR = ROOT / "docs" / "prose-review" / "runs"
 
 #: The front-matter keys an entry must have, and no others.
 ENTRY_KEYS = ("kind", "file", "rejected")
+#: The front-matter keys a gold-standard entry must have, and no others.
+GOLD_KEYS = ("file", "named")
 #: The sections an entry's body must have, in this order.
 REQUIRED_SECTIONS = ("Paragraph", "The owner's words", "Where it came from")
 #: The section an entry may add after them, once the owner accepts a rewrite.
@@ -136,18 +166,30 @@ RUN_KEYS = ("recorded", "prompt", "readers", "entries", "reply")
 VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
 
 
+def expected_verdict(name: str) -> str:
+    """The verdict the review must give the entry called `name`, "keep" or "rewrite".
+
+    An entry the owner named a gold standard must be kept, and one he rejected
+    must be flagged. The name alone decides it, even for an entry since deleted.
+    """
+    return "keep" if name.startswith(f"{GOLD_KIND}-") else "rewrite"
+
+
 @dataclass(frozen=True)
 class Entry:
-    """One paragraph the owner rejected, as its file in `REJECTED_DIR` records it."""
+    """One paragraph the owner rejected or named a gold standard, as its file records it."""
 
     name: str
+    #: One of `FAILURE_KINDS`, or `GOLD_KIND`.
     kind: str
     file: str
-    rejected: date
+    #: The date of the owner's verdict on the paragraph.
+    judged: date
     #: The paragraph exactly as it stood in `file`, one string per line.
     lines: tuple[str, ...]
     unit: Unit
-    #: The words of the rewrite the owner accepted, where the entry records one.
+    #: The rewrite the owner accepted, and its words, where a rejected entry records one.
+    accepted_lines: tuple[str, ...] | None = None
     accepted_words: int | None = None
 
     @property
@@ -247,61 +289,111 @@ def _unit(path: str, lines: Sequence[str]) -> Unit:
     return Unit(path, units[0].kind, 1, len(lines), units[0].text)
 
 
-def parse_entry(name: str, text: str, table: Sequence[Reader]) -> Entry:
+def parse_entry(name: str, text: str, table: Sequence[Reader], *, gold: bool = False) -> Entry:
     """The entry that the file called `name` records in `text`.
 
-    Raises `ValueError` saying what is wrong with it.
+    `gold` says that the file stands in `GOLD_DIR`, where it records a paragraph
+    the owner named a gold standard. Raises `ValueError` saying what is wrong with
+    the entry.
     """
     fields, body_text, declined = parse_front_matter(text)
     if declined:
         raise ValueError(f"its front matter has {declined}")
-    if tuple(sorted(fields)) != tuple(sorted(ENTRY_KEYS)):
-        raise ValueError(f"its front matter must have exactly {', '.join(ENTRY_KEYS)}")
-    kind, path = fields["kind"], fields["file"]
-    if kind not in FAILURE_KINDS:
+    keys = GOLD_KEYS if gold else ENTRY_KEYS
+    if tuple(sorted(fields)) != tuple(sorted(keys)):
+        raise ValueError(f"its front matter must have exactly {', '.join(keys)}")
+    kind = GOLD_KIND if gold else fields["kind"]
+    date_key = "named" if gold else "rejected"
+    path = fields["file"]
+    if not gold and kind not in FAILURE_KINDS:
         raise ValueError(f"kind {kind!r} is not one of {', '.join(FAILURE_KINDS)}")
     try:
-        rejected = date.fromisoformat(fields["rejected"])
+        judged = date.fromisoformat(fields[date_key])
     except ValueError:
         raise ValueError(
-            f"rejected {fields['rejected']!r} is not a date written YYYY-MM-DD"
+            f"{date_key} {fields[date_key]!r} is not a date written YYYY-MM-DD"
         ) from None
-    if not name.startswith(f"{kind}-{rejected.isoformat()}-") or not name.endswith(".md"):
-        raise ValueError(f"its name must be {kind}-{rejected.isoformat()}-SLUG.md")
+    if not name.startswith(f"{kind}-{judged.isoformat()}-") or not name.endswith(".md"):
+        raise ValueError(f"its name must be {kind}-{judged.isoformat()}-SLUG.md")
     if not readers_of(table, path):
         raise ValueError(f"no row of the reader table names {path}")
     body = split_lines(body_text)
     sections = _sections(body)
     titles = tuple(sections)
-    if titles not in (REQUIRED_SECTIONS, REQUIRED_SECTIONS + OPTIONAL_SECTIONS):
+    allowed = (
+        (REQUIRED_SECTIONS,) if gold else (REQUIRED_SECTIONS, REQUIRED_SECTIONS + OPTIONAL_SECTIONS)
+    )
+    if titles not in allowed:
+        optional = "" if gold else f", then optionally {', '.join(OPTIONAL_SECTIONS)}"
         raise ValueError(
             f"its sections are {', '.join(titles) or 'none'}, and must be "
-            f"{', '.join(REQUIRED_SECTIONS)}, then optionally {', '.join(OPTIONAL_SECTIONS)}"
+            f"{', '.join(REQUIRED_SECTIONS)}{optional}"
         )
     for title, (start, end) in sections.items():
         if not any(line.strip() for line in body[start:end]):
             raise ValueError(f"section {title!r} is empty")
     lines = _paragraph(body, "Paragraph", sections["Paragraph"])
-    accepted = None
+    rewrite = words = None
     if "Accepted rewrite" in sections:
         rewrite = _paragraph(body, "Accepted rewrite", sections["Accepted rewrite"])
         try:
-            accepted = prose_words(path, rewrite)
+            words = prose_words(path, rewrite)
         except ValueError as error:
             raise ValueError(f"the accepted rewrite {error}") from None
-    return Entry(name, kind, path, rejected, lines, _unit(path, lines), accepted)
+    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite, words)
 
 
-def read_entries(directory: Path, table: Sequence[Reader]) -> tuple[list[Entry], list[str]]:
+def read_entries(
+    directory: Path, table: Sequence[Reader], *, gold: bool = False
+) -> tuple[list[Entry], list[str]]:
     """Every entry in `directory`, sorted by name, and a line for each file that is not one."""
     entries: list[Entry] = []
     problems: list[str] = []
     for path in sorted(directory.glob("*.md")):
         try:
-            entries.append(parse_entry(path.name, path.read_text(encoding="utf-8"), table))
+            text = path.read_text(encoding="utf-8")
+            entries.append(parse_entry(path.name, text, table, gold=gold))
         except ValueError as error:
             problems.append(f"{path.name}: {error}")
     return entries, problems
+
+
+def read_set(root: Path, table: Sequence[Reader]) -> tuple[list[Entry], list[str]]:
+    """Every entry the owner rejected or named a gold standard, in `show`'s order.
+
+    The second result has a line for each file that is not an entry. The order
+    is that of each entry's name hashed with SHA-256, so a unit's position does
+    not show the reviewer which folder it came from.
+    """
+    rejected, problems = read_entries(root / REJECTED_DIR.relative_to(ROOT), table)
+    kept, more = read_entries(root / GOLD_DIR.relative_to(ROOT), table, gold=True)
+    return sorted(rejected + kept, key=lambda entry: digest(entry.name)), problems + more
+
+
+def _text(lines: Sequence[str]) -> str:
+    """`lines` as one string with each run of white space made one space."""
+    return " ".join(" ".join(lines).split())
+
+
+def repeats(entries: Sequence[Entry]) -> list[str]:
+    """A line for each gold-standard entry whose text another entry already holds.
+
+    A paragraph the owner rejected and then named a gold standard in the same
+    words is kept by one entry, for his later verdict. An accepted rewrite is not
+    also a gold-standard entry, because the review would then see it beside its rejected
+    original and could compare the two.
+    """
+    held: dict[str, str] = {}
+    for entry in entries:
+        if entry.kind != GOLD_KIND:
+            held[_text(entry.lines)] = f"the paragraph that {entry.name} records as rejected"
+            if entry.accepted_lines is not None:
+                held[_text(entry.accepted_lines)] = f"the accepted rewrite in {entry.name}"
+    return [
+        f"{entry.name} repeats {held[_text(entry.lines)]}: record a paragraph in one entry only"
+        for entry in entries
+        if entry.kind == GOLD_KIND and _text(entry.lines) in held
+    ]
 
 
 def show(prompt: str, entries: Sequence[Entry], table: Sequence[Reader]) -> str:
@@ -374,8 +466,9 @@ def rewrites(reply: str) -> dict[int, tuple[str, ...]]:
 def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[Entry]) -> list[str]:
     """Each way the run called `name` fails the entries it `read`, from its `reply`.
 
-    `entries` is the set as it stands now. An entry the run read that has since
-    been deleted, as the cap deletes the oldest, is not judged.
+    `entries` is the set as it stands now. A verdict on an entry that has since
+    been deleted, as the cap deletes the oldest, is still judged, but a rewrite
+    of it is not counted.
     """
     try:
         given = verdicts(reply, len(read))
@@ -385,6 +478,14 @@ def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[E
     by_name = {entry.name: entry for entry in entries}
     problems: list[str] = []
     for number, (entry_name, verdict) in enumerate(zip(read, given, strict=True), start=1):
+        if expected_verdict(entry_name) == "keep":
+            if verdict != "keep":
+                problems.append(
+                    f"runs/{name} flagged {entry_name}, which the owner named a gold standard: "
+                    "change the prompt so the review keeps text that serves its reader, then run "
+                    "the set again"
+                )
+            continue
         if verdict != "rewrite":
             problems.append(
                 f"runs/{name} kept {entry_name}: change the prompt so the review flags it, "
@@ -456,15 +557,16 @@ def parse_run(name: str, text: str) -> Run:
 
 def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     """Each reason the set or its runs fail, or none."""
-    entries, problems = read_entries(root / REJECTED_DIR.relative_to(ROOT), table)
+    entries, problems = read_set(root, table)
     held = Counter(entry.kind for entry in entries)
     for kind, count in sorted(held.items()):
         if count > CAP_PER_KIND:
-            oldest = min((e for e in entries if e.kind == kind), key=lambda e: (e.rejected, e.name))
+            oldest = min((e for e in entries if e.kind == kind), key=lambda e: (e.judged, e.name))
             problems.append(
                 f"kind {kind} holds {count} entries, more than {CAP_PER_KIND}: delete the "
                 f"oldest, {oldest.name}, which git history keeps"
             )
+    problems += repeats(entries)
     runs: list[Run] = []
     runs_dir = root / RUNS_DIR.relative_to(ROOT)
     for path in sorted(runs_dir.glob("*.json")) if runs_dir.is_dir() else []:
@@ -485,6 +587,14 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
         )
     for run in current:
         problems += run_problems(run.name, run.reply, run.entries, entries)
+    read = {name for run in current for name in run.entries}
+    problems += [
+        f"no run of the current prompt and readers read {entry.name}: run the set, because "
+        "nobody knows whether the current prompt keeps a gold-standard paragraph until "
+        "a run reads it"
+        for entry in entries
+        if current and entry.kind == GOLD_KIND and entry.name not in read
+    ]
     return problems
 
 
@@ -505,9 +615,12 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
         for problem in problems:
             print(f"rejected_prose: {problem}", file=sys.stderr)
         if not problems:
-            print("rejected_prose: every run of the current prompt flagged every entry it read")
+            print(
+                "rejected_prose: every run of the current prompt flagged each rejected entry "
+                "and kept each gold-standard entry it read"
+            )
         return 1 if problems else 0
-    entries, problems = read_entries(root / REJECTED_DIR.relative_to(ROOT), table)
+    entries, problems = read_set(root, table)
     for problem in problems:
         print(f"rejected_prose: {problem}", file=sys.stderr)
     if problems:
