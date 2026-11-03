@@ -7311,11 +7311,13 @@ A NaN fails both halves, and an infinity fails one. An `int` too long for a
 `float` is compared exactly and refused against the range, in the setting's
 own words. `StepCount` refuses what is not an `int` the same way, as a
 `TypeError`. The `require_positive_finite` and `require_nonnegative_finite`
-guards in `core/validation.py` apply the same rules to every volume,
-coefficient, amount and step they guard, and so does `SimulationStep` through
-the first of them. Those two guards have no supported range to refuse an `int`
-past the float range against. So they refuse it by name, as outside the range
-a `float` holds, before `isfinite` reads the value.
+guards in `core/validation.py` refuse a `bool`, a `Decimal` or a string in the
+same way, for each amount, flow and step they guard. `SimulationStep` builds
+through the first of them. The two guards do not refuse a value built as
+another checked quantity, and they leave minus zero as it is. They have no
+supported range to refuse an `int` past the float range against. So they
+refuse it by name, as outside the range a `float` holds, before `isfinite`
+reads the value.
 
 **The dial's bound is enforced in both records that hold the pair, through one
 guard.** The delivered concentration has the same four ways in as a flow. Its
@@ -7340,8 +7342,11 @@ guards and the ventilation and cardiac output sliders all read it from there,
 and the fresh gas flow slider follows through the circuit's accepted range.
 `test_envelope_limits_match_the_supported_input_ranges` in
 `tests/reference/test_coupled_dynamics.py` then fails on purpose. Re-run that
-file's envelope and trajectory sweeps at the new limits, update its constants
-and its bound, and re-derive the measured figures in the subsections below.
+file's envelope and trajectory sweeps at the new limits, and update its
+constants and its bound. Then re-derive every figure measured at the flow
+maxima: the fastest time constant in § "Supported simulation step", the corner
+sweeps in § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`,
+and the figures in the subsections below.
 Checking `RunDefinition` and `Keyframe` on load is open work, `PL-8W1Q`.
 
 #### What a setting outside the range costs
@@ -7825,10 +7830,12 @@ advanced up to $`10^{300}`$ L with accounting passing throughout.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A mass-balance guard cannot catch a failure that destroys every term it
-compares.** At $`10^{-300}`$ L the propagator can be driven to the zero
-matrix. `propagate()` then returns the zero state vector, and the accounting
-identity is handed $`0 + 0 - 0 - 0`$ on totals that were all annihilated
-together. Zero does balance zero. That is the pattern to look for wherever a
+compares.** When this was measured, before the refusals described below, an
+alveolar volume of $`10^{-300}`$ L drove the propagator to the zero matrix.
+`propagate()` then returned the zero state vector, and the accounting identity
+was handed $`0 + 0 - 0 - 0`$ on totals that were all annihilated together. Zero
+does balance zero. No volume that can now be built reaches this, and a test
+reaches it only with a matrix built for the purpose. That is the pattern to look for wherever a
 residual is formed from quantities that the same failure can affect.
 
 So `core/matrix_exponential.py` refuses a zero propagator. The reason is that
