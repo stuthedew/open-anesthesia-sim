@@ -1,9 +1,16 @@
 ---
 id: PL-3WFF
 title: Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, docs
 feature: regex-review
+touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/currency_code.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_view_registry.py, tools/regex_baseline.py
+deferred-from: v0.7.0 - captured after the freeze; comment tags and one wrong comment in code the schematic does not depend on
 added: 2026-11-03
+payoff: every regular expression in the simulator says why it is the right tool, and no comment claims the session token is a UUID version the check does not enforce
+verify: ! grep -qF '"src/anesthesia_sim/' tools/regex_baseline.py && ! grep -qF 'version 4 UUID' src/anesthesia_sim/layout/run_identity.py
 ---
 
 **Problem.** Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
@@ -55,3 +62,12 @@ So the work is small:
    Semantic Versioning 2.0.0 item 2 forbids, though developers write that
    value in code. `_CURRENCY_CODE_PATTERN` checks only the shape, so an
    unassigned code such as `QQQ` passes, which is acceptable for a label.
+
+**Decided at triage, 2026-11-03.** Both points are a session's call, since each changes one check's wording or one pattern and nothing a learner relies on.
+
+- **`_VERSION` refuses leading zeros.** Write it as `(0|[1-9][0-9]*)` three times, and add a test in `tests/unit/test_view_registry.py` that "0.07.0" is refused. The reason is that the version is shown to the user ("That View was removed in version ..."), and "0.07.0" would name a release that `pyproject.toml` never writes. That needs one pattern change and one test.
+- **`_CURRENCY_CODE_PATTERN` stays a shape check.** Its `regex:` comment says that a code such as `QQQ` passes. The code only labels a cost the user entered, and checking against the ISO 4217 list would need a data file kept current by hand for no gain in what a learner sees.
+
+**Reproduced 2026-11-03.** `tools/regex_baseline.py` still lists all six files under `src/`. None of the six comments starts with `regex:`. `uuid.UUID(hex="0" * 32).version` returns `None` on Python 3.13, and `_SESSION_TOKEN` matches 32 zeros, so the "version 4 UUID" comment in `run_identity.py` is still wrong.
+
+**Generator check.** One-off; follows from PL-7JYV's baseline, which names what is left.
