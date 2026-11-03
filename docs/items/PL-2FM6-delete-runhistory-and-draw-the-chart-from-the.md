@@ -158,3 +158,10 @@ segment. A 12 h window at 150 columns over four segments evaluates in 15.4 ms,
 and the worst departure from the canonical path is 3.3e-10 pp - seven orders
 below the 0.01 pp the readout resolves. Cost still scales with segments in
 view, which is `PL-1PSX` rather than anything new here.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Closed-form agreement test", when `PL-WBR3` took the decision history out of that section:
+
+Until PL-2FM6, the run also kept one recorded sample per step, and the chart
+drew from those samples. This test was what showed that the two records
+described one run. The record of samples is gone. The comparison against the
+stepped system now carries the claim.
