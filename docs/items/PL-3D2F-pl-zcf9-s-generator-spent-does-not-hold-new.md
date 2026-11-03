@@ -10,8 +10,8 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, s
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1984
-payoff: a thread that should send the owner nothing sends nothing, however it words the message, and no new phrasing files another item
-verify: ! grep -q 'def unasserted' .claude/hooks/owner_ask_guard.py && grep -q 'def test_a_thread_held_for_the_owners_read_with_no_ask_sends_nothing' tests/unit/test_owner_ask_guard.py
+payoff: an ask the owner gets is a recorded question, never a bare read or merge request or a made-up question, while progress notes still reach them unchecked
+verify: ! grep -q 'def unasserted' .claude/hooks/owner_ask_guard.py && grep -q 'def test_a_waiting_threads_ask_is_refused_until_it_records_one' tests/unit/test_owner_ask_guard.py
 reenters: PL-ZCF9
 ---
 
@@ -37,12 +37,16 @@ The cost is a rewrite of the hook and its tests, about size M. `arm` would also 
 
 **Built 2026-11-03.** `.claude/hooks/owner_ask_guard.py` now asks `arm --owner-ask` before every Projects message and keys its check on the exit status that `PL-R1HT` made distinct:
 
-1. Exit 3, held for the owner's read with no ask recorded: every message to the owner is refused, whatever its wording. The refusal says to record an `Owner-ask:` or an `Owner-read: not needed`, and that rewording does not help.
-2. Exit 0, an ask recorded: a message that names any pull request must carry the recorded line word for word. The hook does not know the checkout's own pull request number, so any pull request named counts.
-3. Any other status, or none: the coordinator's form check, on the `ASKS` phrasings with no context rule. A quoted, negated, foretold or card-bound phrase is now refused there, which `test_the_coordinators_check_reads_no_context_around_an_ask` pins.
+1. Exit 3, held for the owner's read with no ask recorded: the ask is refused, and so is a question in the recorded form that no record backs (`PL-R1HT`'s reproduction).
+2. Exit 0, an ask recorded: the ask must carry the recorded line word for word.
+3. Any other status, or none: the coordinator's form check. The ask must carry a line in the recorded form.
 
-`unasserted`, the quotation, negation, decision-card and foretelling patterns, and the `_RECORDED` exemptions are deleted. The hook went from 522 lines to 330. The refusal in the coordinator's check still tells a session to file an item when the refusal was wrong.
+The hook checks only an ask: a phrasing in `ASKS`, or a question in the form `arm --owner-ask` renders. Any other message goes through without `arm` being asked. A quoted, negated, foretold or card-bound ask phrasing is now refused, which `test_the_coordinators_check_reads_no_context_around_an_ask` pins.
+
+`unasserted`, the quotation, negation, decision-card and foretelling patterns, and the `_RECORDED` exemptions are deleted. The hook went from 522 lines to 340. The refusal in the coordinator's check still tells a session to file an item when the refusal was wrong.
 
 **The fast path.** `arming.arm(owner_ask=True)` reads only what decides `sendable` and `unasked`: the changed paths, the pinned tests, the `Owner-read` record, and then, only where the owner's read is held, the claims and the `Owner-ask` record. It never runs the prose, blind-review or auto-merge commands, and it counts no commits behind. It asks the forge whether the pull request merged only once the answer is a hold for the owner's read. Measured on 2026-11-03 with `--no-fetch`: 0.32 s against 1.6 s on this one-file branch, and on a scratch branch touching 62 simulator files, 0.26 s against 3.9 s where nothing was held and 1.55 s against 3.1 s where an `Owner-read: needed` record held it. The full answer there did not reach the 28.4 s measured above, because the prose and blind-review counts failed fast in that scratch worktree. `test_arm_owner_ask_reads_no_count_and_asks_the_forge_only_for_a_hold_for_the_read` checks that none of the three commands runs and that the forge is asked only in the held state.
+
+**Owner's answer on the pull request, 2026-11-03.** The first build refused every message from a thread waiting on the owner's read, then every message naming a pull request. The owner rejected both: "Shouldn't be blocking progress updates and you shouldn't be asking me if it should. You should just fix. The goal was only to prevent it from asking me non-questions or asking me to generically review a PR, etc. shouldn't be catching unrelated stuff like progress updates" (project owner, 2026-11-03). So the hook checks only a message that asks, and the state decides what that ask needs. The ask phrasings in `ASKS` still find the ask, with no context rules, so the wording gate this item set out to remove survives in its finding half. A phrase in a sentence that asks nothing is still refused, and the refusal still files an item. A state that tells the hook which messages are progress notes would need a record a thread writes on purpose, and none exists.
 
 **Generator check.** This re-enters `PL-ZCF9`, and through it the fact `PL-GPJ7` names: whether a sentence makes the claim that a gate checks, when the gate recognises it by wording. This change stops reading wording wherever `arm` records the answer. Wording is still read in the coordinator's check, because `arm` cannot answer for a named pull request (project owner, 2026-10-24, ratified, over building that). A wrong refusal there still files an item titled "owner_ask_guard.py refused a message that asked for nothing", so a recurrence will show in the store as items with that title.

@@ -1403,7 +1403,7 @@ Retiring prose builds no mechanism, so the generator pause did not apply.
 | --- | --- | --- |
 | The preamble, and § "What this project is" apart from the pause | Nothing. They state the project's purpose and judgment. | Kept |
 | The generator pause, and the generator bullet in § "The queue" | Reviewed by `PL-6VJ3` the same day. No check can read how a reply ends or tell whether a change is a new mechanism. | Kept |
-| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only what reaches the owner about a pull request: a held thread's messages and the coordinator's read or merge asks. | Kept |
+| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only the Projects asks to read, merge or decide, a thread's and the coordinator's. | Kept |
 | Simulation time as explicit state, and deterministic results | `tools/import_boundary_check.py` bars `time`, `datetime`, `random`, `secrets` and `uuid` under `core/` only. `app/` holds the clock legitimately and must keep a tick's real duration out of the run, which nothing checks. | Kept |
 | Tests with every core behavior change | CI's 100% coverage gate catches new code that no test runs. It does not catch a changed behavior that the old tests still pass. | Kept |
 | One source of truth | `tools/literal_home_check.py` and `tools/fact_home_check.py`, which the bullet already names. It keeps only what neither check reaches, and the owner specified it on 2026-10-12. | Kept |

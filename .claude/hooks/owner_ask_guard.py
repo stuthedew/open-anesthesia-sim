@@ -1,34 +1,39 @@
 """PreToolUse hook on the Projects tools: refuse a message the owner should not be sent yet.
 
-**What it refuses, by what `arm` records** (`PL-3D2F`). Before every Projects
-message, the hook asks `bin/docket arm --owner-ask` about this checkout's
-branch. The answer decides the check:
+**What it checks: an ask, and only an ask** (`PL-TLPH`, `PL-3D2F`). A message
+asks when it holds one of the phrasings in `ASKS`, such as "Read #1676 and
+merge it" or "It waits on your read", or a question in the form that `arm
+--owner-ask` renders. `docket.arming.renders_owner_ask` recognizes that form
+from the renderer's own templates, so the hook holds no copy of it. Any other
+message goes through without `arm` being asked. That includes a progress note
+that names a pull request, because the hook exists to stop asks that are not
+real questions, never to filter what else a thread says (project owner,
+2026-11-03).
 
-- **Held for the owner's read, with no `Owner-ask` recorded (exit 3).** Every
-  message to the owner is refused, whatever its wording. The way past it is
-  to record an `Owner-ask:` trailer, or `Owner-read: not needed - <why>` where
-  the change needs no read. Rewording the message changes nothing.
-- **An ask recorded (exit 0).** A message that names a pull request must
-  carry the recorded line word for word. The hook does not know the number of
-  the checkout's own pull request, so any pull request named counts.
-- **Any other answer, or none.** The message is read for the phrasings in
-  `ASKS`. An ask must carry a line in the form `arm --owner-ask` renders. This
-  is the coordinator's check: it relays a thread's ask from a checkout on no
-  pull request's branch, where `arm` cannot answer (`PL-YV90`).
-  `docket.arming.renders_owner_ask` recognizes the form from the templates
-  the renderer uses, so the hook holds no copy of it.
+**What an ask needs is what `arm` records** (`PL-3D2F`). For an ask, the hook
+asks `bin/docket arm --owner-ask` about this checkout's branch:
 
-**Why the state and not the wording.** Whether the owner may be asked is a fact
-that `arm` records. Whether a sentence asks something is a judgment that no
-pattern makes reliably. From `PL-TLPH` to `PL-ZCF9` the hook recognized an ask
-by its wording, and let through phrases that were quoted, negated, about a
-decision card or put in the future. A review on 2026-11-03 found that 20 of 33
-unlisted asks passed, and that 14 of 18 new phrasings in those four contexts
-were refused (`PL-3D2F`). Each false refusal filed an item and each missed ask
-left no trace, so every fix had narrowed the guard. Keyed on the state, a
-thread that should send nothing sends nothing. The coordinator's check above
-still reads wording, but no exemption softens it, so a doubtful case is
-refused.
+- **Held for the owner's read, with no `Owner-ask` recorded (exit 3).** The
+  ask is refused, whatever its form. A question written into the message is
+  refused too. Until `PL-R1HT` the hook accepted any question in the recorded
+  form in this state, so a made-up question carried an ask past "send the
+  owner nothing". The way past the refusal is to record an `Owner-ask:`
+  trailer, or `Owner-read: not needed - <why>` where the change needs no read.
+- **An ask recorded (exit 0).** The ask must carry the recorded line word for
+  word.
+- **Any other answer, or none.** The ask must carry a line in the recorded
+  form. This is the coordinator's check: it relays a thread's ask from a
+  checkout on no pull request's branch, where `arm` cannot answer
+  (`PL-YV90`).
+
+**Why the state decides, and the wording only finds the ask.** From `PL-TLPH`
+to `PL-ZCF9` the hook also judged from the wording whether a phrase asked at
+all, and let through phrases that were quoted, negated, about a decision card
+or put in the future. A review on 2026-11-03 found that 20 of 33 unlisted asks
+passed, and that 14 of 18 new phrasings in those four contexts were refused
+(`PL-3D2F`). Those context rules are deleted. A message that holds an ask
+phrasing in a sentence that asks nothing, such as "no longer needs your read",
+is refused, and the refusal says to reword it and record the mistake.
 
 **Why a hook and not more text.** On `#1612` and `#1676` a session read `arm`
 through `head`, missed the line saying to send nothing, and sent the owner a
@@ -114,15 +119,10 @@ HOLD_FOR_YOUR_READ = (
     r"(?:(?:for|on)[ \t]+)?your[ \t]+(?:read|review|approval|merge|go-ahead)\b"
 )
 
-#: A pull request named in any form. The hook does not know the number of the
-#: checkout's own pull request, so a message naming any pull request counts.
-NAMES_A_PULL_REQUEST = re.compile(_PULL_REQUEST, re.IGNORECASE)
-
-#: The phrasings of an ask to read or merge a pull request (`PL-TLPH`), read
-#: only where `arm` cannot tie the checkout to a hold. Each is matched
-#: case-insensitively against the text with its Markdown emphasis removed. A
-#: quoted, negated or foretold phrase still matches: the context rules that
-#: let those through were deleted in `PL-3D2F`.
+#: The phrasings of an ask to read or merge a pull request (`PL-TLPH`). Each
+#: is matched case-insensitively against the text with its Markdown emphasis
+#: removed. A quoted, negated or foretold phrase still matches: the context
+#: rules that let those through were deleted in `PL-3D2F`.
 ASKS = tuple(
     re.compile(pattern, re.IGNORECASE | re.MULTILINE)
     for pattern in (
@@ -259,33 +259,43 @@ def mistaken(phrase: str) -> str:
 
 
 def refusal(text: str, root: Path) -> str | None:
-    """Why this message may not go to the owner, or None to let it through."""
+    """Why this message may not go to the owner, or None to let it through.
+
+    Only an ask is checked: a phrasing in `ASKS`, or a question in the form
+    `arm --owner-ask` renders. Any other message, such as a progress note,
+    goes through without `arm` being asked.
+    """
+    phrase = asked(text)
+    posed = renders_owner_ask(squeezed(text))
+    if phrase is None and not posed:
+        return None
+    what = f'("{phrase}")' if phrase is not None else "(a question in the recorded form)"
+    wrong = mistaken(phrase) if phrase is not None else ""
     answer = owner_ask(root)
     if answer is not None and answer[0] == NO_ASK:
         return (
-            "This checkout's pull request waits on the owner's read, and no Owner-ask record "
-            "says what to ask them, so no message goes to the owner from here until one does. "
-            f"`bin/docket arm --owner-ask` says:\n\n    {answer[1]}\n\n"
+            f"This message asks the owner to read, merge or decide something {what}, and this "
+            "checkout's pull request waits on the owner's read with no Owner-ask record saying "
+            f"what to ask. `bin/docket arm --owner-ask` says:\n\n    {answer[1]}\n\n"
             "Run `bin/docket arm` and read all of its output. Where the owner has something to "
             "decide or review, record it as an `Owner-ask:` trailer and send the line arm then "
             "prints. Where the change needs no read, record `Owner-read: not needed - <why>`, "
-            "and it merges on green. Rewording the message does not get past this check, "
-            "because it reads arm's record and not the message (PL-3D2F)."
+            "and it merges on green. A question written into the message without that record "
+            "is refused too (PL-R1HT)." + wrong
         )
     if answer is not None and answer[0] == 0:
         line = answer[1]
-        if NAMES_A_PULL_REQUEST.search(plain(text)) is None or carries(text, line):
+        if carries(text, line):
             return None
         return (
-            "This checkout's pull request has a recorded Owner-ask, and this message names a "
-            "pull request without carrying it. Open the message with this line, word for word, "
-            "and keep the rest short:\n\n"
+            f"This message asks the owner to read, merge or decide something {what}, and this "
+            "checkout's pull request has a recorded Owner-ask that the message does not carry. "
+            "Open the ask with this line, word for word, and keep the rest short:\n\n"
             f"    {line}\n\n"
-            "That line is what the owner judges, so a bare 'read #N' or 'Merge it' without "
-            "it is refused (PL-TLPH)."
+            "That line is what the owner judges, so a bare 'read #N', 'Merge it' or another "
+            "question without it is refused (PL-TLPH)." + wrong
         )
-    phrase = asked(text)
-    if phrase is None or renders_owner_ask(squeezed(text)):
+    if posed:
         return None
     said = (
         f"`bin/docket arm --owner-ask` says, for this checkout's branch:\n\n    {answer[1]}\n\n"
@@ -298,7 +308,7 @@ def refusal(text: str, root: Path) -> str | None:
         "thread's Owner-ask line word for word, or send the owner nothing about that pull "
         "request. On a thread's own branch, run `bin/docket arm` and read all of its output, "
         "not through head or tail: it says what to do. On #1612 and #1676 a bare ask reached "
-        "the owner (PL-TLPH)." + mistaken(phrase)
+        "the owner (PL-TLPH)." + wrong
     )
 
 

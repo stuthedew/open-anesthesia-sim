@@ -12024,10 +12024,10 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
 ) -> None:
     """`--owner-ask` prints the recorded ask and exits 0, and gives each other state its own status.
 
-    It is what `.claude/hooks/owner_ask_guard.py` asks before every Projects
-    post (`PL-TLPH`). A branch that arms and one a claim holds send nothing
-    and exit 1. Only a hold for the owner's read with no recorded ask exits 3,
-    so the hook refuses every message from that checkout (`PL-R1HT`).
+    It is what `.claude/hooks/owner_ask_guard.py` asks before an ask reaches
+    the owner (`PL-TLPH`). A branch that arms and one a claim holds send
+    nothing and exit 1. Only a hold for the owner's read with no recorded ask
+    exits 3, so the hook refuses any ask from that checkout (`PL-R1HT`).
     """
     root, git = _arm_repo(tmp_path)
     _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")

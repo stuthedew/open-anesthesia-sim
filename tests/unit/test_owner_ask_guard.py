@@ -87,40 +87,35 @@ NOT_HELD = (
 )
 
 
-#: Messages a thread held for the owner's read might send. Every one is
-#: refused, whatever it says. The first is `PL-R1HT`'s reproduction, a
-#: hand-written question in the recorded form, which the form check let
-#: through while `arm` exited 3 for every state with nothing to send.
+#: Asks from a thread held for the owner's read with no recorded ask. Each is
+#: refused. The first is `PL-R1HT`'s reproduction, a hand-written question in
+#: the recorded form, which the hook let through while `arm` exited 3 for
+#: every state with nothing to send. The others are bare read and merge asks.
 HELD = (
     'Which unit should the label show? Option "mcg": keeps the label short. Option "mg": '
     'matches the pump. I recommend "mcg": it is what the item specifies.',
     "Read #1950 and merge it.",
-    "#1950 is green.",
-    "Nothing below needs your read now.",
-    "Done for today.",
+    "It waits on your read.",
+    "Please review the pull request.",
 )
 
 
 @pytest.mark.parametrize("text", HELD)
-def test_a_thread_held_for_the_owners_read_with_no_ask_sends_nothing(
-    tmp_path: Path, text: str
-) -> None:
-    """The refusal reads `arm`'s record, so no rewording gets past it (`PL-3D2F`)."""
+def test_a_waiting_threads_ask_is_refused_until_it_records_one(tmp_path: Path, text: str) -> None:
+    """In this state no ask may reach the owner, however it is put (`PL-R1HT`, `PL-3D2F`)."""
     decision = _decision(tmp_path, text, code=3, said=NOTHING)
     assert decision is not None
     assert decision["permissionDecision"] == "deny"
     reason = decision["permissionDecisionReason"]
-    assert "no message goes to the owner from here until one does" in reason
+    assert "waits on the owner's read with no Owner-ask record" in reason
     assert NOTHING in reason
-    assert "Rewording the message does not get past this check" in reason
-    assert MISTAKEN not in reason
 
 
-def test_a_held_threads_decision_card_and_edit_are_refused_too(tmp_path: Path) -> None:
-    card = {"question": "Which colour?", "options": [{"label": "Blue"}, {"label": "Red"}]}
+def test_a_waiting_threads_card_and_edit_are_read_as_a_post_is(tmp_path: Path) -> None:
+    card = {"question": "Merge #1950 now?", "options": [{"label": "Merge"}, {"label": "Wait"}]}
     for tool, tool_input in (
         ("mcp__hearthbot__request_decision", card),
-        ("mcp__hearthbot__edit_message", {"message_id": "m", "text": "CI is running."}),
+        ("mcp__hearthbot__edit_message", {"message_id": "m", "text": "Read #1950 and merge it."}),
     ):
         assert _decision(tmp_path, "", code=3, said=NOTHING, tool=tool, tool_input=tool_input)
 
@@ -145,30 +140,50 @@ def test_an_ask_carrying_the_recorded_line_is_let_through(tmp_path: Path) -> Non
     "text",
     [
         "Read #1688 and merge it.",
-        "#1688 is green.",
-        "Nothing on the pull request needs your read.",
+        "#1688 is ready for your review.",
         'The thread asks: Which unit? Option "mcg": short. Option "mg": the pump. I recommend '
-        '"mcg": the item says so. See the PR.',
+        '"mcg": the item says so.',
     ],
 )
-def test_a_message_naming_a_pull_request_without_the_recorded_line_is_refused(
+def test_an_ask_without_the_recorded_line_is_refused_where_one_is_recorded(
     tmp_path: Path, text: str
 ) -> None:
-    """With an ask recorded, the line is checked on any message that names a pull request.
-
-    The last row is a well-formed line in the recorded form that is not this
-    branch's line, which the coordinator's check would accept.
-    """
+    """The last row is a question in the recorded form that is not this branch's line."""
     decision = _decision(tmp_path, text, code=0, said=ASK_LINE)
     assert decision is not None
     reason = decision["permissionDecisionReason"]
-    assert "names a pull request without carrying it" in reason
+    assert "has a recorded Owner-ask that the message does not carry" in reason
     assert ASK_LINE in reason
-    assert MISTAKEN not in reason
 
 
-def test_a_message_naming_no_pull_request_passes_where_an_ask_is_recorded(tmp_path: Path) -> None:
-    assert _decision(tmp_path, "CI is running; I will report back.", code=0, said=ASK_LINE) is None
+def test_a_progress_note_never_asks_arm(tmp_path: Path) -> None:
+    """A message that asks nothing goes through without `arm` being run at all.
+
+    The stand-in `arm` here fails the test if it runs, by printing a line
+    the hook would refuse on and exiting 3.
+    """
+    marker = tmp_path / "arm-ran"
+    script = tmp_path / "arm.py"
+    script.write_text(
+        f"import pathlib, sys\npathlib.Path({str(marker)!r}).touch()\nprint('x')\nsys.exit(3)\n",
+        encoding="utf-8",
+    )
+    payload = json.dumps(
+        {"tool_name": "mcp__hearthbot__post_message", "tool_input": {"text": "#1950 is green."}}
+    )
+    env = {**os.environ, "OWNER_ASK_GUARD_ARM": str(script)}
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not result.stdout.strip()
+    assert not marker.exists()
 
 
 #: The phrasings of an ask that the coordinator's check refuses when no line in
@@ -217,9 +232,8 @@ def test_an_ask_with_no_recorded_line_is_refused_where_nothing_is_held(
 
 #: Phrases that the hook let through before `PL-3D2F`, because they were quoted,
 #: negated, about a decision card, foretold, or reported a recorded choice. The
-#: coordinator's check no longer reads context, so each is refused. A thread on
-#: a branch held for the owner's read is refused whatever it says, which is
-#: where these exemptions let asks through.
+#: hook no longer reads context, so each holds an ask phrasing and is refused.
+#: The refusal says to reword the message and record the mistake.
 NO_LONGER_EXEMPT = (
     'The hook\'s rows quote "over to you" beside a pull request.',
     "Nothing below needs your read now.",
@@ -235,7 +249,14 @@ def test_the_coordinators_check_reads_no_context_around_an_ask(tmp_path: Path, t
     assert _decision(tmp_path, text, code=1, said=NOT_HELD) is not None
 
 
+#: Messages that ask for nothing. They go through in every state `arm` can be
+#: in, including a pull request waiting on the owner's read (project owner,
+#: 2026-11-03: the hook should never catch progress updates).
 PROGRESS = (
+    "Tests are running; I will report back.",
+    "Done for today.",
+    "#1950 is green.",
+    "The PR is finished and CI passed.",
     "#1688 is open as a draft, and CI is running.",
     "#1676 merged.",
     "Merged #1676 on your word.",
@@ -253,12 +274,14 @@ PROGRESS = (
 )
 
 
-@pytest.mark.parametrize("code", [1, 2])
+@pytest.mark.parametrize(
+    ("code", "said"), [(0, ASK_LINE), (1, NOT_HELD), (2, NO_BRANCH), (3, NOTHING)]
+)
 @pytest.mark.parametrize("text", PROGRESS)
-def test_a_progress_reply_is_let_through_where_nothing_is_held(
-    tmp_path: Path, text: str, code: int
+def test_a_progress_reply_is_let_through_in_every_state(
+    tmp_path: Path, text: str, code: int, said: str
 ) -> None:
-    assert _decision(tmp_path, text, code=code, said=NOT_HELD) is None
+    assert _decision(tmp_path, text, code=code, said=said) is None
 
 
 def test_a_refusal_says_how_to_record_that_it_was_wrong(tmp_path: Path) -> None:

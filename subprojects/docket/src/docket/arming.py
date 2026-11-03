@@ -1604,7 +1604,7 @@ def arm(
 
     **With `owner_ask`, it answers only what may be sent to the owner**
     (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
-    Projects post, and the whole reading took 2.2 s on a one-file branch and
+    ask a Projects message carries, and the whole reading took 2.2 s on a one-file branch and
     28.4 s on one changing 62 simulator paths. Only `sendable`, `unasked` and
     an `unknown` answer are read from the verdict, and they rest on four
     things: the change's paths and pinned tests, the `OWNER_READ` record, the
