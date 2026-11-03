@@ -2461,9 +2461,11 @@ UNIT_WORDS: dict[str, str] = {
 #: source quoted in `docs/MODEL.md` writes "4 l/min" and "2.5 l" (`PL-2T6S`).
 UNIT_CASES: dict[str, str] = {"l/min": "L/min", "l/s": "L/s", "l": "L"}
 
-#: A unit of time that prose writes and no stored value is kept in, with the
-#: unit it converts to and the factor. So "24 hours" is read as 86400 s and
-#: "1 ms" as 0.001 s.
+#: A unit that prose writes and no stored value is kept in, with the unit it
+#: converts to and the factor. So "24 hours" is read as 86400 s, "1 ms" as
+#: 0.001 s and "1222 ml" as 1.222 L (`PL-XQXK`). A stored volume is in litres,
+#: and the documents state small volumes in millilitres, so a restatement of a
+#: stored volume in millilitres is asked about too.
 UNIT_SCALES: dict[str, tuple[str, float]] = {
     "ms": ("s", 0.001),
     "min": ("s", 60.0),
@@ -2472,13 +2474,49 @@ UNIT_SCALES: dict[str, tuple[str, float]] = {
     "h": ("s", 3600.0),
     "hour": ("s", 3600.0),
     "hours": ("s", 3600.0),
+    "mL": ("L", 0.001),
+    "ml": ("L", 0.001),
 }
 
+#: A unit that prose writes and no stored value is kept in or converts to. A
+#: figure in one of these is still a figure with a unit, so it makes its
+#: paragraph a member of a section held by its numeric paragraphs. It never
+#: equals a stored value. These are the units `docs/MODEL.md` and `README.md`
+#: wrote after a number on 2026-11-03, when `PL-XQXK` counted them. A
+#: percentage point is a difference between two percents, not a percent, so
+#: it is not converted to `%`.
+UNSTORED_UNITS = frozenset(
+    {
+        "px",
+        "mmHg",
+        "kPa",
+        "atm",
+        "°C",
+        "g",
+        "mL/kg",
+        "pp",
+        "percentage point",
+        "percentage points",
+    }
+)
+
 #: Every unit a figure in prose may carry, longest first so that `L/min` is
-#: not read as `L`.
+#: not read as `L`, and `mL/kg` not as `mL`.
 PROSE_UNITS = "|".join(
     sorted(
-        {"L/min", "L/s", "L", "%", "kg", "s", "MAC", *UNIT_WORDS, *UNIT_SCALES, *UNIT_CASES},
+        {
+            "L/min",
+            "L/s",
+            "L",
+            "%",
+            "kg",
+            "s",
+            "MAC",
+            *UNIT_WORDS,
+            *UNIT_SCALES,
+            *UNIT_CASES,
+            *UNSTORED_UNITS,
+        },
         key=len,
         reverse=True,
     )
@@ -2538,8 +2576,9 @@ MATH_FIGURE_RE = re.compile(
 def _prose_figure(number: str, unit: str | None) -> tuple[float, str | None]:
     """A figure as prose writes it, in the unit a stored value is kept in.
 
-    A unit written as a word becomes its symbol (`UNIT_WORDS`), and a unit of
-    time no value is stored in is converted to seconds (`UNIT_SCALES`).
+    A unit written as a word becomes its symbol (`UNIT_WORDS`). A unit no value
+    is stored in, such as minutes or millilitres, is converted to the one a
+    value is stored in (`UNIT_SCALES`).
     """
     if unit is None:
         return float(number), None

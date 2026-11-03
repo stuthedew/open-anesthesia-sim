@@ -2438,6 +2438,7 @@ where the arithmetic has been checked against a high-precision evaluation, and
 how accurate it was found to be. It is set far outside every shipped value, so
 no real parameter set comes near it. A value inside it can still describe no
 patient: a 10 mL lung is inside the envelope and is not a lung.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **What it guarantees.** Both ranges are positive and include their ends. So every product or
 quotient of two such values is positive, finite and well within a computer's range. A volume
@@ -3425,6 +3426,7 @@ Appendix C's `GASMAN.INI` listing, on page 172, reads `[Volumes] … VEN=1.0`.
 That is a program default, tier 3. Davis and Mapleson's 1222 ml is tier 2 and
 is the same object this model has, so the stored venous pool is a considered
 replacement for Gas Man's default.
+<!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
 
 **So, three rules for a `sources` entry.**
 
@@ -8094,7 +8096,6 @@ measured on a 1 000 px plot. The chord is the rung's span divided by 1 000:
 | 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
 
 <!-- provenance: app/chart_time_base.py SELECTABLE_TIME_BASE_FLOOR_S = 900 -->
-<!-- not-restated: 0.0004 -->
 
 <!-- not-restated: 2 %, 6 % -->
 
@@ -10149,6 +10150,9 @@ delivered-agent setting uses the same resolution, both in the readout beside
 its slider and in the slider's own drag label. So the value a reader dials and
 the values it produces are read at one scale. A positive value that would round
 to `0.00%` is displayed as `<0.01%` rather than as zero.
+`test_format_percent_uses_the_documented_display_resolution` holds the
+resolution, and `test_format_percent_marks_a_value_below_the_resolution`
+holds the `<0.01%` form.
 
 This is a recorded decision (PL-040), not a formatting convention, because
 displayed precision is a claim about what the model can support. Earlier
@@ -10287,6 +10291,9 @@ rather than being the percent resolution restated. A per-agent MAC resolution
 would put different magnitudes at the same glyph position. That is the failure
 that "Why the resolution is uniform rather than per-compartment" rejects below,
 arriving across agents instead of across compartments.
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` holds the
+property that one count of the MAC line is coarser than one count of the
+percent for every agent. The three figures above have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
 The below-resolution form applies to the MAC line for the same reason it
@@ -10710,7 +10717,6 @@ would be a tenth of one.
 `test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
 repeats the conversion for every shipped agent from the stored molar mass and
 density.
-<!-- not-restated: 1.10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The delivered total in millilitres of liquid is shown to a tenth** (project
@@ -10850,7 +10856,7 @@ blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and 9.7
 to 10.0 mL at 60 min. That is the flat reading that the readouts' lower limit
 refuses.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- not-restated: 0.18 -->
+<!-- not-restated: 10 mL, 10.0 mL -->
 
 Relative to the amount, the shift is narrow. In venous blood and the three
 tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
@@ -10876,7 +10882,9 @@ relative, as above. It rests second on a row of values scanned by glyph
 position. The schematic's amounts are labels on separate containers, each
 followed by its unit, and the comparison of amounts that the schematic
 invites is made on the share bar, along one scale. An amount below 0.01 mL
-reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`. A finer floor
+reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`
+(`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
+A finer floor
 would print four or more decimals for a moment's worth of agent. The floor is
 a legibility choice and a placeholder, and it is coarse in the allowed
 direction.
