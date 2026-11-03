@@ -11,17 +11,22 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import new_prose
 import pytest
 from docket.config import load
 from new_prose import (
     MIN_WORDS,
+    PROMPT,
     ROOT,
+    RULE,
     Unit,
     branch_prose,
     document_units,
     excerpt,
     main,
     prose_units,
+    reader_table,
+    readers_of,
 )
 
 LONG = " ".join(["word"] * MIN_WORDS)
@@ -157,8 +162,10 @@ def test_main_numbers_each_unit_with_its_rows(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert out.startswith(
-        "3 docstrings, comments and document paragraphs of 30 words or more changed"
+    prompt = PROMPT.read_text(encoding="utf-8")
+    assert out.startswith(prompt)
+    assert out[len(prompt) :].startswith(
+        "\n3 docstrings, comments and document paragraphs of 30 words or more changed"
     )
     assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words" in out
     assert "[3] src/pkg/fresh.py, rows 13-13, comment" in out
@@ -315,3 +322,97 @@ def test_count_counts_a_new_model_paragraph_and_leaves_out_a_reviewed_one(
     model.write_text(DOCUMENT + f"\n{LONG} added\n\n| a | {LONG} b |\n", encoding="utf-8")
     _commit(documented, "a table row the review did not see")
     assert _count(documented, capsys, reviewed) == (0, "1")
+
+
+#: A reader table in the rule's form, with rows written for these tests alone.
+READERS = """\
+Some prose before the table.
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician | Anesthesia. | Code. | Trust a value. |
+| `docs/MODEL.md` | A forker | Python. | Our names. | Change a value. |
+| Code in `src/` | A developer | Python. | Our history. | Change the code. |
+| Replies to the owner | The owner | Anesthesia. | Tool names. | Decide. |
+"""
+
+
+def test_reader_table_reads_each_row_and_the_files_it_names() -> None:
+    table = reader_table(READERS)
+
+    assert [(reader.paths, reader.who, reader.will_do) for reader in table] == [
+        (("docs/MODEL.md",), "A clinician", "Trust a value."),
+        (("docs/MODEL.md",), "A forker", "Change a value."),
+        (("src/",), "A developer", "Change the code."),
+        ((), "The owner", "Decide."),
+    ]
+
+
+def test_a_row_naming_a_directory_names_every_file_under_it() -> None:
+    table = reader_table(READERS)
+
+    assert [reader.who for reader in readers_of(table, "src/pkg/model.py")] == ["A developer"]
+    assert [reader.who for reader in readers_of(table, "docs/MODEL.md")] == [
+        "A clinician",
+        "A forker",
+    ]
+    assert readers_of(table, "srcx/model.py") == []
+    assert readers_of(table, "README.md") == []
+
+
+def test_a_rule_without_the_reader_table_is_refused() -> None:
+    with pytest.raises(ValueError, match="no table headed"):
+        reader_table("| Kind | Reader |\n| --- | --- |\n| `a` | b |\n")
+
+
+def test_each_unit_names_its_reader(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rule = tmp_path / "rule.md"
+    rule.write_text(READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/fresh.py", SOURCE)
+
+    assert main(["--root", str(repo), "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words, for: A developer" in out
+    assert (
+        "\n".join(
+            [
+                "Readers of src/pkg/fresh.py:",
+                "  - A developer.",
+                "    Knows: Python.",
+                "    Does not know: Our history.",
+                "    Will: Change the code.",
+            ]
+        )
+        in out
+    )
+
+
+def test_a_unit_whose_file_no_row_names_stops_the_report(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rule = tmp_path / "rule.md"
+    rule.write_text(READERS.replace("Code in `src/`", "Code in `lib/`"), encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/fresh.py", SOURCE)
+
+    assert main(["--root", str(repo), "--base", "main"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "no row of the reader table in rule.md names src/pkg/fresh.py" in captured.err
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "src/anesthesia_sim/core/patient.py",
+        "tests/unit/test_patient.py",
+        "docs/MODEL.md",
+        "README.md",
+    ],
+)
+def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: str) -> None:
+    """A rule edit that drops a row would stop every review of that kind of file."""
+    assert readers_of(reader_table(RULE.read_text(encoding="utf-8")), path)

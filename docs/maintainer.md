@@ -467,7 +467,10 @@ each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
 citation and number that the rewrite dropped or added. The rewrite is
 housekeeping when it added none, and when each one it dropped is history moved
-to an item or a duplicate that the document still holds. The blind review
+to an item or a duplicate that the document still holds. A number rewritten in
+the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.
+The tool checks that the two values are equal and stand in the same section
+(`PL-TZ7R`). The blind review
 passes and the prose review still run. A sentence whose meaning needs a
 clinician's judgment, such as what a hazard row or a limitation promises,
 still comes to you, and the ask quotes it before and after.
@@ -500,15 +503,24 @@ itself.
 **A hold comes to you with its question or its risk, never a bare "read #N"**
 (project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
 as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the first
-line of the ask. The ask is either a decision or a risk review. A decision has
+line of the ask. The ask is either a decision or a review. A decision has
 at least two options and a recommendation. Each option says what it changes
 for you or for a learner. The decision is worded in clinical or learner terms.
 A choice between approaches to the interface comes with one annotated
-screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A risk review
-says what could go wrong and for whom, what was checked, and the one thing to
-look at. Until a record made after the newest change covers the pull request,
-`arm` tells the session to send you nothing. It says so on the first line of
-its output and with an exit status of its own. A thread cannot send the ask
+screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A review says
+what changed in one plain sentence, asks you one yes-or-no question, says what
+was already checked, and says what to reply. The question is one you can
+decide as the owner or as a clinician. It never asks you to re-check what the
+tests or reviews already covered, such as whether a rewording kept its
+meaning. Where there is no such question, it says so and recommends merging.
+No part of the ask names a tool, file, command or item id, and `arm` refuses a
+record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
+quotes the text you are to judge, before and after, with enough of the
+surrounding paragraph for the change to make sense, so that you never have to
+open a file to find it (project owner, 2026-11-02, `PL-77QB`). Until a record
+made after the newest change covers the pull request, `arm` tells the session
+to send you nothing. It says so on the first line of its output and with an
+exit status of its own. A thread cannot send the ask
 anyway. `.claude/hooks/owner_ask_guard.py` checks every Projects message that
 asks you to read or merge: a post, an edit, a decision card, and any Projects
 tool it has not been told to skip (`PL-YN60`). Where `arm` has a recorded ask
@@ -519,7 +531,7 @@ the recorded line itself (`PL-YV90`). A question whose answer
 is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges
 on green without asking you. A change to a test that pins `arm`'s results
-still waits for you whatever that record says, so its ask is a risk review.
+still waits for you whatever that record says, so its ask is a review.
 
 A held pull request merges when you say so, and nothing more is needed:
 "Merge it" is enough. It merges by the route that § "Bring a stale base in

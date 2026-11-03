@@ -14,7 +14,18 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from model_rewrite import added_facts, cited_ids, facts, gone_facts, main, report_ids
+from model_rewrite import (
+    added_facts,
+    cited_ids,
+    facts,
+    gone_facts,
+    main,
+    number_value,
+    pair_restated,
+    report_added,
+    report_gone,
+    report_ids,
+)
 
 DOCUMENT = """\
 # Model
@@ -140,6 +151,116 @@ def test_lost_lists_a_fact_the_rewrite_added() -> None:
     assert added[("number", "7 L/min")].context.startswith("Fresh gas enters at")
     assert {item.text for item in gone_facts(DOCUMENT, after, "")} == {"6 L/min"}
     assert added_facts(DOCUMENT, DOCUMENT) == []
+
+
+def test_a_fact_moved_to_the_note_for_developers_prints_nothing() -> None:
+    """A section's note for developers is where `PL-TZ7R` sends numerical detail.
+
+    `lost` counts each fact across the whole document, so a value that moves
+    from a paragraph to the note at the end of its section is neither dropped
+    nor added, and the section part accounts for nothing.
+    """
+    after = DOCUMENT.replace(" of 6 L/min, measured 2026-10-03 in #1808.", ".").replace(
+        "pp. 161-162.\n",
+        "pp. 161-162.\n\n**For developers.** The flow is 6 L/min, measured 2026-10-03 in #1808.\n",
+    )
+
+    assert after != DOCUMENT
+    assert gone_facts(DOCUMENT, after, "") == []
+    assert added_facts(DOCUMENT, after) == []
+
+
+@pytest.mark.parametrize(
+    ("written", "value"),
+    [
+        ("0.5%", (0.005, None)),
+        ("5e-3", (0.005, None)),
+        ("0.04 %", (0.0004, None)),
+        ("10 percent", (0.1, None)),
+        ("1,000", (1000.0, None)),
+        ("−2.29", (-2.29, None)),
+        ("6 l/min", (6.0, "L/min")),
+        ("2 min", (120.0, "s")),
+        ("1.5 MAC", (1.5, "MAC")),
+    ],
+)
+def test_number_value_reads_a_percent_as_a_fraction_and_a_unit_as_doc_check_does(
+    written: str, value: tuple[float, str | None]
+) -> None:
+    read = number_value(written)
+
+    assert read is not None
+    assert read[1] == value[1]
+    assert read[0] == pytest.approx(value[0], rel=1e-12)
+
+
+def test_a_comma_that_is_not_a_thousands_separator_is_never_paired() -> None:
+    assert number_value("1,5") is None
+
+
+RESTATED = """\
+# Model
+
+## Step size
+
+The step test allows a relative difference of 5e-3, and it ran at 0.07%.
+
+## Hazards
+
+Fresh gas runs at 6 L/min.
+"""
+
+
+def test_a_number_restated_with_the_same_value_in_its_section_is_paired() -> None:
+    """4e-4 rewritten as 0.04% is one value in a new form, so it is marked `restated`.
+
+    0.07% and 7e-4 differ by about 1e-19 in floating point after the percent
+    is divided by 100, so the pair also shows that the comparison allows for
+    that rounding.
+    """
+    after = RESTATED.replace("of 5e-3,", "of 0.5%,").replace("at 0.07%.", "at 7e-4.")
+
+    gone, added = pair_restated(
+        RESTATED, after, gone_facts(RESTATED, after, ""), added_facts(RESTATED, after)
+    )
+
+    assert {(item.text, item.restated_as) for item in gone} == {("5e-3", "0.5%"), ("0.07%", "7e-4")}
+    assert {(item.text, item.restates) for item in added} == {("0.5%", "5e-3"), ("7e-4", "0.07%")}
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        # The same value, added to another section.
+        RESTATED.replace("of 5e-3,", "of,").replace("at 6 L/min.", "at 6 L/min, within 0.5%."),
+        # A different value.
+        RESTATED.replace("of 5e-3,", "of 0.6%,"),
+        # The same number in another unit.
+        RESTATED.replace("of 5e-3,", "of 5e-3 L,"),
+    ],
+)
+def test_a_dropped_number_is_not_paired_across_sections_values_or_units(after: str) -> None:
+    gone, added = pair_restated(
+        RESTATED, after, gone_facts(RESTATED, after, ""), added_facts(RESTATED, after)
+    )
+
+    assert [item.text for item in gone] == ["5e-3"]
+    assert not any(item.restated_as for item in gone)
+    assert not any(item.restates for item in added)
+
+
+def test_lost_prints_a_restated_number_beside_its_new_form() -> None:
+    after = RESTATED.replace("of 5e-3,", "of 0.5%,")
+    gone, added = pair_restated(
+        RESTATED, after, gone_facts(RESTATED, after, ""), added_facts(RESTATED, after)
+    )
+
+    out = report_gone(gone, "main") + report_added(added)
+
+    assert "1 of them are restated in another form with the same value." in out[0]
+    assert any(line.startswith("  restated 5e-3 as 0.5%  (fork line 5:") for line in out)
+    assert any("1 of them restate a dropped number with the same value." in line for line in out)
+    assert any(line.startswith("  added 0.5% restating 5e-3  (line 5:") for line in out)
 
 
 def _git(cwd: Path, *args: str) -> None:

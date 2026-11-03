@@ -288,47 +288,70 @@ page and decides which file a session reads.
    docstring and comment of 30 words or more that the branch added or changed
    in `src/` or in a file under `tests/` that imports the simulator, with its
    rows and the code around it. It also prints each changed paragraph and table
-   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Where it
-   prints none, this step is done.
+   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Each unit
+   names its readers from the table in `.claude/rules/plain-writing.md`
+   (`PL-R7Q6`). Where it prints none, this step is done.
    Otherwise start one subagent, `general-purpose` at the session's own
-   effort level (`docs/maintainer.md`, 2026-10-19), with the
-   prompt below followed by the tool's whole output. The prompt tells it to
-   open nothing, so it costs one turn (project owner, 2026-10-18, ratified,
-   over a review on every branch and over no review, `PL-PRCS`).
+   effort level (`docs/maintainer.md`, 2026-10-19), and give it the tool's
+   whole output and nothing else. The output opens with the reviewer's prompt,
+   whose one home is `docs/prose-review/prompt.md`, so no prompt is copied by
+   hand. The prompt tells the reviewer to open nothing, so it costs one turn
+   (project owner, 2026-10-18, ratified, over a review on every branch and
+   over no review, `PL-PRCS`). For each unit and each of its readers, the
+   reviewer returns each word, symbol or number that the reader would not
+   know, what the reader would take from the unit, whether the unit lets the
+   reader do what the reader table says they will do, and each sentence that
+   the takeaway does not need. It then writes `[N] keep`, or `[N] rewrite`
+   with new text for the reader the unit serves, no longer than the text it
+   replaces, and a list of the facts it moved and where each went.
 
-   ```text
-   Review the prose below for a careful newcomer: someone who knows
-   anesthesia or Python but has not read this repository. Hold each unit to
-   .claude/rules/plain-writing.md, which you already have. Do not open a file
-   or run a tool. Everything you need is below, and you have one reply.
-
-   For each numbered unit, write one of two things. Write "[N] keep" when a
-   newcomer would understand every sentence on the first reading. Otherwise
-   write "[N] rewrite" and then, in a fenced block, the new text for the rows
-   marked ">", exactly as they would stand in the file: the same indentation,
-   the same comment markers, quotes or Markdown, and lines no longer than 100
-   characters. A table row stays on one line, however long. Rewrite only the
-   sentences that need it.
-
-   Keep every fact. Keep each number, unit, value, condition, exception,
-   identifier in backticks, item id and citation exactly as written. Change
-   no code. Where you cannot tell what a sentence means, say so in one line
-   rather than guessing.
-   ```
-
-   Apply each rewrite yourself. Reject any rewrite that drops or changes a
-   number, a unit, a condition, an identifier or a citation, and keep the
-   original sentence there, because the safety-critical standard applies to
-   what a docstring states. Say in the pull request body how many units the
-   reviewer read, how many it rewrote and how many rewrites you rejected.
-   Record the same three counts as a trailer in the last paragraph of the
-   commit that applies the rewrites, or of the next commit where there were
-   none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm` holds
-   a simulator branch whose long prose was added after the newest such
-   trailer, as `uv run python tools/new_prose.py --count` counts it (`PL-W04Z`).
+   The prompt asks what the named reader would take from the text, because a
+   reviewer told to imagine a newcomer still reads with its own vocabulary
+   (`PL-1XC7`, from `PL-H76S`'s design round). Compare each takeaway with the
+   point you wrote down before writing the paragraph, as
+   `.claude/rules/plain-writing.md` asks. A term the reviewer lists, a
+   takeaway that misses your point, or a reader who cannot do what the table
+   says means a rewrite: apply the reviewer's or write your own. Keep either
+   one no longer than the text it replaces, counted in words. On the first
+   run of the test set below, four of the reviewer's five rewrites were longer
+   than the paragraph the owner had rejected (`PL-CWRZ`). Move or cut each
+   sentence that the fourth answer lists, and put each fact the reviewer
+   moved in the place it names. Reject any rewrite that drops
+   or changes a value, a unit, a condition, an identifier or a citation, and
+   keep the original sentence there, because the safety-critical standard
+   applies to what a docstring states. Accept a restated number only after
+   checking that its value is unchanged. Say in the pull request body how many
+   units the reviewer read, how many it rewrote and how many rewrites you
+   rejected. Record the same three counts as a trailer in the last paragraph
+   of the commit that applies the rewrites, or of the next commit where there
+   were none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm`
+   holds a simulator branch whose long prose was added after the newest such
+   trailer, as `uv run python tools/new_prose.py --count` counts it
+   (`PL-W04Z`).
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
+
+   **When the owner rejects a paragraph that this review passed, add it to
+   the review's test set in `docs/prose-review/rejected/`.** The owner is the
+   only clinician who reads this prose, so each such rejection is a failure
+   the review must not repeat. Write one entry under the kind of failure it
+   fits, or add a kind to `tools/rejected_prose.py` with its meaning, as
+   `docs/prose-review/README.md` says. A rejection that the review already
+   flagged adds nothing. A kind holds at most the number of entries the tool
+   sets, and a new miss of a full kind replaces the oldest (project owner,
+   2026-11-03, `PL-FYGJ`).
+
+   **A change to the prompt is tested on the set before it lands.** Run
+   `python3 tools/rejected_prose.py show`, give its whole output to one fresh
+   reviewer as above, save the reply to a file, and run `python3
+   tools/rejected_prose.py record FILE`. The review must flag every entry,
+   and no rewrite may have more words than its entry allows. If it keeps one
+   or writes a longer one, change the prompt and run the set again. `python3
+   tools/rejected_prose.py check`, in `make check` and CI, refuses a branch
+   whose prompt, or whose reader rows for a file the set holds, have no run,
+   or have a run that kept an entry or rewrote one at more words than it
+   allows.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a

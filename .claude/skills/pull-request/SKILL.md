@@ -65,7 +65,9 @@ prints. **A rewrite of `docs/MODEL.md` is housekeeping when it changes no
 value, equation, code span or citation** (project owner, 2026-11-02, ratified,
 `PL-ZTZF`). `python3 tools/model_rewrite.py lost` decides that part. It must
 add nothing, and each fact it lists as dropped must be history or a duplicate
-the document still holds. The owner then reads only a sentence whose meaning
+the document still holds. A number it marks as restated, such as 4e-4 written
+as 0.04%, has the same value, so it counts as kept and its new form does not
+count as added (`PL-TZ7R`). The owner then reads only a sentence whose meaning
 needs a clinician's judgment, such as what a hazard row promises, and the ask
 quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
 `PL-KPM2`). `arm` gives one of three answers:
@@ -78,7 +80,10 @@ quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
   push that brings the hold, or green CI merges half the work. While the hold
   is a claim, keep the pull request a draft. Once no claim holds it, record the
   judgment or ask the owner, as `arm` says. A pull request held for the owner
-  merges on their word alone.
+  merges on their word alone. The ask quotes the text the owner is to judge,
+  before and after and with its surrounding paragraph, in the reply itself,
+  and never sends them into a file to find it (project owner, 2026-11-02,
+  `PL-77QB`, `PL-BGN1`).
 - **`behind N`**: bring `origin/main` in and ask again.
 
 `subprojects/docket/src/docket/arming.py` carries the rules and the decisions
