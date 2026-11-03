@@ -4569,16 +4569,6 @@ these figures, not just editing a constant.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-The release comparison tolerance is 5e-3 relative or 1e-8 absolute, and
-meeting either one is enough. It applies to the alveolar, vessel-rich and
-mixed-venous fractions after 60 s of the default sevoflurane wash-in. Under
-the operator split, comparing 0.1 s directly with 0.025 s exceeded the
-tolerance in the mixed-venous fraction alone. That compartment has barely
-begun to fill at 60 s, so the split's gap of 1.4e-6 in fraction between those
-two steps was 0.55% of the mixed-venous fraction. Under the exact step, the two runs land about
-4e-17 apart there (measured 2026-10-03).
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
 This gate tests self-consistency across the supported steps, not
 correctness. A wrong transfer rate is exactly as independent of the step as a
 right one, so it passes here. The § "Independent-solution test" below is the
@@ -4587,6 +4577,11 @@ test that asks whether the solution is the right one at all.
 Held by `test_step_refinement_converges`, for the three halvings, and by
 `test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
 minimum step. Both are in `tests/reference/test_sevo_patient.py`.
+
+**For developers.** A method that does not solve the equations exactly fails
+the 1e-14 bound, because its result moves with the step. Test such a method by
+checking that each halving of the step shrinks every gap by a predicted factor,
+about two when its error is proportional to the step.
 
 ### Independent-solution test
 
