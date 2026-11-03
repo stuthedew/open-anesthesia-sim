@@ -25,6 +25,12 @@ TAKES_A_WORD = frozenset(
 )
 
 
+#: The git commands that reach the remote rather than reading this checkout.
+#: `docket.vcs` gives them a longer timeout, and `docket.verify` treats a
+#: `verify:` command that runs one as depending on more than the tree.
+GIT_NETWORK_SUBCOMMANDS = frozenset({"ls-remote", "fetch", "push", "pull", "clone"})
+
+
 def own_options(args: list[str] | tuple[str, ...]) -> tuple[list[tuple[str, str]], int]:
     """git's own options at the head of `args`, each with its value, and where the command stands.
 

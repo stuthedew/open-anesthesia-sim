@@ -350,6 +350,29 @@ def test_the_release_report_names_each_prediction_the_last_week_broke() -> None:
     assert "1 re-entries against 0" in reentry
 
 
+def test_the_new_paths_ceiling_breaks_only_when_the_count_did_not_fall() -> None:
+    """A week of fewer filings and fewer new paths can read above the ceiling per filing.
+
+    The week from 2026-10-26 named 11 new paths over 19 filings, after 34 over
+    117, and was reported as growth (`PL-2T7X`). Here three new paths over ten
+    filings are followed by two over four: 0.50 a filing, but fewer new paths.
+    """
+    first = [
+        _item(f"PL-1{n:03d}", date(2026, 9, 1), touches=(f"tools/a{n % 3}.py",)) for n in range(10)
+    ]
+    fewer = [
+        _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=(f"tools/b{n % 2}.py",)) for n in range(4)
+    ]
+    today = date(2026, 9, 15)
+
+    assert missed(analyze([*first, *fewer], CONFIG, today=today), today) == ()
+
+    as_many = [*fewer, _item("PL-2009", date(2026, 9, 9), touches=("tools/b2.py",))]
+    (line,) = missed(analyze([*first, *as_many], CONFIG, today=today), today)
+    assert "3 new apparatus paths over 5 filings, 0.60 a filing" in line
+    assert "against 3 new the period before" in line
+
+
 def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> None:
     today = date(2026, 9, 15)
     broken = [_item("PL-1000", date(2026, 9, 1)), _item("PL-2000", date(2026, 9, 8), priority="P1")]

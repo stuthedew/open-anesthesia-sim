@@ -50,7 +50,7 @@ from pathlib import Path, PurePath, PurePosixPath
 from . import markdown
 from .config import Config
 from .digits import whole_number
-from .gitargv import subcommand_of
+from .gitargv import GIT_NETWORK_SUBCOMMANDS, subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import (
     PullRequestNumber,
@@ -512,7 +512,7 @@ def _run_git(args: list[str], root: Path) -> str:
     | `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | **silence** |
     | `diff` outside a repository | 1 | **silence** |
     | a mistyped option | 129 | **silence** |
-    | git missing, or the ten-second timeout | - | **silence** |
+    | git missing, or the timeout (`timeout_for`) | - | **silence** |
     | a path whose bytes are not in the locale's encoding | 0 | **silence** |
 
     The last row is this function's, not git's: `changed_path_args` has git
@@ -560,9 +560,28 @@ def git_answer(args: list[str], returncode: int, stdout: str) -> str:
     return SILENT
 
 
-#: How long one git call may run before it is read as unanswered, unless the
-#: caller names a longer bound for a read it knows is long.
+#: How long one git call that reads this checkout may run before it is read as
+#: unanswered, unless the caller names a longer bound for a read it knows is long.
 GIT_TIMEOUT = 10
+
+#: How long one git call that reaches the remote may run: a fetch, `ls-remote`,
+#: a push, a pull or a clone, as `GIT_NETWORK_SUBCOMMANDS` names them. A fetch
+#: from a cloud container took 12 and 15 seconds on 2026-11-03, so the ten
+#: seconds above gave up on a remote that was answering. Every read command and
+#: the session-start digest then reported stale refs (`PL-TFY2`). Sixty seconds
+#: is four times the slowest fetch measured, and the bound
+#: `tools/blind_review_report.py` already gave its fetches. A lower bound gives
+#: up on a slow remote that works. A higher one makes a command wait longer on a
+#: remote that hangs without refusing.
+NETWORK_GIT_TIMEOUT = 60
+
+
+def timeout_for(args: Sequence[str]) -> float:
+    """The bound a git call gets when its caller names none: longer where it reaches the remote."""
+    if subcommand_of(tuple(args)) in GIT_NETWORK_SUBCOMMANDS:
+        return NETWORK_GIT_TIMEOUT
+    return GIT_TIMEOUT
+
 
 #: The bound for a read over a whole branch or the whole history - a patch, a
 #: path listing, a log of every item ever added - which grows with the
@@ -650,16 +669,19 @@ def call_git(
     args: Sequence[str],
     root: Path,
     *,
-    timeout: float = GIT_TIMEOUT,
+    timeout: float | None = None,
     stdin: bytes | None = None,
     env: Mapping[str, str] | None = None,
 ) -> GitCall:
     """Run git once in `root`, never raising: the one place a git process starts.
 
     `git` is resolved through `PATH`; `_run_git`'s docstring says why. `env`
-    replaces the environment whole, as `subprocess.run` takes it.
+    replaces the environment whole, as `subprocess.run` takes it. Where
+    `timeout` is `None` the bound is `timeout_for(args)`.
     """
     argv = tuple(args)
+    if timeout is None:
+        timeout = timeout_for(argv)
     try:
         result = subprocess.run(
             ["git", *argv],
@@ -681,7 +703,7 @@ class GitUnanswered(Exception):
     """A git read the caller cannot do without, which git did not answer, and git's reason."""
 
 
-def read_git(args: Sequence[str], root: Path, *, timeout: float = GIT_TIMEOUT) -> str:
+def read_git(args: Sequence[str], root: Path, *, timeout: float | None = None) -> str:
     """Git's answer, by `_run_git`'s classification, or `GitUnanswered` with git's reason.
 
     For a read with no value to return in place of an answer: an empty list of

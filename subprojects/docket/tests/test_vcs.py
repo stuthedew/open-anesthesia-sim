@@ -76,6 +76,7 @@ from docket.vcs import (
     batch_header,
     behind_remote,
     branch_state,
+    call_git,
     change_landed,
     changed_items,
     changed_path_args,
@@ -5162,6 +5163,32 @@ def test_fetch_remote_reports_whether_the_remote_answered(tmp_path: Path) -> Non
 
     subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
     assert fetch_remote(work) == Fetch(UNFETCHABLE, None)
+
+
+def test_a_git_call_that_reaches_the_remote_gets_the_network_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-TFY2`: a fetch got the ten seconds a local read gets, and gave up on a working remote.
+
+    A fetch from a cloud container took 15 s on 2026-11-03, so every read
+    command reported stale refs. The bound is taken from the command name past
+    git's own options, so `-C <path> fetch` is a network call too, and a caller
+    that names a bound keeps it.
+    """
+    bounds: list[tuple[str, float]] = []
+
+    def record(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        timeout = kwargs["timeout"]
+        assert isinstance(timeout, float | int)
+        bounds.append((" ".join(argv[1:]), timeout))
+        return subprocess.CompletedProcess(argv, 0, b"", b"")
+
+    monkeypatch.setattr("docket.vcs.subprocess.run", record)
+    _run_git(["fetch", "--quiet", "origin"], tmp_path)
+    _run_git(["-C", str(tmp_path), "ls-remote", "--heads", "origin"], tmp_path)
+    _run_git(["log", "-1"], tmp_path)
+    call_git(["fetch", "origin"], tmp_path, timeout=120)
+    assert [bound for _, bound in bounds] == [60, 60, 10, 120], bounds
 
 
 def test_snapshot_dates_the_refs_it_did_not_fetch(tmp_path: Path) -> None:

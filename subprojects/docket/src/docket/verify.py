@@ -45,6 +45,7 @@ from typing import TypeVar
 
 from . import vcs
 from .config import Config
+from .gitargv import GIT_NETWORK_SUBCOMMANDS
 from .grep import Cache, Wrap, wrapped
 from .lines import ENCODING, file_text, split_lines
 from .model import (
@@ -1171,10 +1172,9 @@ def file_arguments(command: str) -> frozenset[str]:
 
 
 #: Command words whose answer is a fact about the world rather than about the
-#: tree: the first element is `git` followed by one of its network subcommands,
-#: the rest stand alone. Kept as command words rather than substrings because
-#: a `verify:` may legitimately *search* for one - see `reaches_outside_tree`.
-GIT_NETWORK_SUBCOMMANDS = frozenset({"ls-remote", "fetch", "push", "pull", "clone"})
+#: tree: `git` followed by one of `GIT_NETWORK_SUBCOMMANDS`, or one of these
+#: alone. Kept as command words rather than substrings because a `verify:` may
+#: legitimately *search* for one - see `reaches_outside_tree`.
 NETWORK_COMMANDS = frozenset({"curl", "wget", "gh", "ssh", "scp", "rsync", "nc"})
 
 
