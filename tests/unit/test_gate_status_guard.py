@@ -979,7 +979,7 @@ def test_each_offered_remedy_redirects_into_its_log(command: str, spelled: str) 
     reason = _decision(command)["permissionDecisionReason"]
     offered = [line.strip() for line in reason.splitlines() if line.startswith("    ")]
     accepted = reason.partition("Two more spellings are accepted")[2].partition("Guarded")[0]
-    offered += [span for span in re.findall(r"`([^`]+)`", accepted) if span.startswith(spelled)]
+    offered += [span for span in accepted.split("`")[1::2] if span.startswith(spelled)]
     assert len(offered) >= 4, reason
     for remedy in offered:
         assert _decision(remedy) is None, f"{command!r} was offered {remedy!r}, which is refused"
