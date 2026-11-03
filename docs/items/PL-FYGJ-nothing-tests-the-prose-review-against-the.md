@@ -57,6 +57,74 @@ limits the owner asked about at 22:14Z.
 6. **The habit.** Close-out step 8 says to add an entry when the owner rejects
    a paragraph that the review passed.
 
+**Plan for the build, 2026-11-03.** Written by the thread that built
+`PL-R7Q6`, `PL-TZ7R` and `PL-1XC7`, which stopped for length before starting
+this item. The choices below are a session's, within the design above, and
+are open to the session that builds it.
+
+1. **Move the prompt to its own file.** Close-out step 8's prompt moves from
+   the fenced block in `.claude/skills/docket/modes/close-out.md` to
+   `docs/prose-review/prompt.md`, its one home. `tools/new_prose.py` prints
+   that file first, so the session hands the reviewer the tool's whole output
+   and copies no prompt by hand. Step 8 keeps a one-paragraph description of
+   what the reviewer returns, including the words "would not know", which
+   `PL-1XC7`'s `verify:` reads. The check in step 4 can then tell a prompt
+   change by the file's content.
+2. **The entries.** One Markdown file per entry in
+   `docs/prose-review/rejected/`, named `KIND-DATE-SLUG.md`. Front matter
+   gives `kind`, `file` (the document the paragraph came from, which decides
+   its readers through the reader table) and `rejected` (the date). The body
+   has `## Paragraph` (the text as it stood, verbatim), `## The owner's words`
+   (quoted, with date, time and where) and, where one exists,
+   `## Accepted rewrite`. A short `README.md` in the folder says what an entry
+   is, that only a miss is added, and how to run the set.
+3. **The first five entries**, all from `PL-H76S`'s evidence above and the
+   shared evidence file
+   (`v0.7.0/pl-zt47/pl-h76s-evidence-release-check-paragraph.md`). None has
+   an accepted rewrite yet, because the `docs/MODEL.md` rewrite is paused.
+   - `jargon`: the 20:02Z paragraph, "The 5e-3 relative tolerance was chosen
+     when the simulator used the operator split...". Owner, 20:03Z: "this is
+     still unintelligible to a human".
+   - `length`: the 20:10Z paragraph, "The release check, and why it allows
+     0.5%. The simulator moves the model forward...". Owner, 20:17Z: "Way too
+     verbose".
+   - `unusable-reason`: the 20:20Z paragraph, cut to 12 lines. Owner, 20:30Z:
+     "I guess it's overly verbose and I still struggle to understand the why
+     behind it or if I am a dev or someone who forked the project, how I would
+     use this info to modify these values for a particular goal".
+   - `unsourced-reason`: the fifth version's "Why 0.5%" bullet ("No record
+     says how it was chosen..."). Owner, 20:40Z: "how do we not know where the
+     0.5% came from? We should absolutely know where that came from".
+   - `jargon`: the fifth version's "How to change it" bullet ("first-order
+     method", "1.4e-11"). Owner, 20:40Z: "the last paragraph is starting to be
+     unintelligible again".
+4. **A tool, `tools/rejected_prose.py`, with three commands.** It holds the
+   kinds, each with a one-line meaning, and the cap of 59 entries per kind as
+   constants, so the README points at it rather than restating them.
+   - `show` prints the prompt from `docs/prose-review/prompt.md`, the readers
+     of each entry's file (through `new_prose.reader_table` and
+     `readers_of`), then each entry as a unit in `new_prose`'s format, every
+     row marked `>`.
+   - `record REPLY` reads the reviewer's reply from a file, counts the
+     `[N] rewrite` lines against the entries, and appends one record to
+     `docs/prose-review/runs.json`: the date, the SHA-256 of the prompt file,
+     the number of entries and the number flagged. The tool is that file's
+     only writer.
+   - `check` exits 1 when an entry does not parse, names an unknown kind or a
+     file no reader-table row names, when a kind holds more than 59 entries,
+     or when no record for the current prompt's hash flags every entry it
+     ran on. It joins `make check`. A new entry needs no new run, because
+     only a miss is added. The next prompt change has to flag it.
+5. **Run the set now.** `PL-1XC7` changed the prompt, so this item's first
+   run tests that prompt on the five entries, with one `general-purpose`
+   subagent at the session's effort level, as step 8 runs. Where the prompt
+   misses an entry, revise the prompt in this item and run again.
+6. **Step 8's habit line.** When the owner rejects a paragraph that the
+   review passed, add an entry under the kind it fits, or add a kind to the
+   tool with its meaning. At 59 entries of a kind, the new one replaces the
+   oldest.
+7. **Docs.** `docs/apparatus.md` gains the tool and the folder.
+
 **Done when.** The folder holds the first entries, step 8 says when to add one
 and that a prompt change runs the review on the set, and a check refuses a
 prompt change with no recorded run.
