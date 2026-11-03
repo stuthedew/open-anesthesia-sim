@@ -71,8 +71,9 @@ STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 # The second gap for each fraction is larger than the first rather than half
 # of it, because the finer run takes more steps and rounding accumulates once
 # per step. The bound leaves room for another machine's rounding. It is still
-# about three orders of magnitude below the 1.4e-11 that a genuinely
-# first-order method would show at these steps.
+# more than eight orders of magnitude below the gaps of up to 1.8e-6 that
+# Euler's method, a first-order method, shows at these steps (measured
+# 2026-11-03 with the derivative in tests/reference/test_coupled_dynamics.py).
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
 # The largest allowed gap in a fraction after the same 60 s between a run at

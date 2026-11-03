@@ -4511,11 +4511,13 @@ the step halved, so under it the gate required each gap to be smaller than the
 last. Under the exact step, correct arithmetic would fail that requirement. The
 gate compares three values: the alveolar, vessel-rich and mixed-venous
 fractions after 60 s. Measured on 2026-11-01, the worst successive-halving gap
-across the three is 3.4e-16, in the alveolar fraction. A first-order method
-would show 1.4e-11 at these steps. The gate's bound, 1e-14, was sized on
-2026-09-06 at about twelve times the worst gap measured then, 8.1e-16. That
-measurement reported four values, and no record names the fourth. The test has
-compared the same three since the exact step was introduced.
+across the three is 3.4e-16, in the alveolar fraction. Euler's method, a simple
+first-order method, shows gaps of up to 1.8e-6 at these steps (measured
+2026-11-03). All of these gaps are absolute differences in fraction. The
+gate's bound, 1e-14, was sized on 2026-09-06 at about twelve times the worst
+gap measured then, 8.1e-16. That measurement reported four values, and no
+record names the fourth. The test has compared the same three since the exact
+step was introduced.
 
 **A second test beside the gate checks the smallest supported step**,
 `MINIMUM_SIMULATION_STEP_S`. A minute simulated in 1 ms steps must land within
@@ -4535,29 +4537,32 @@ means re-measuring these figures, not just editing a constant.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-**Why the step-size check allows 0.5%, and how to change it.**
+**For developers.** The test also allows each run to differ from the next by
+0.5%. That limit has its own history and use.
 
 - **What it checks.** Every change must pass a test that reruns the first
   minute of the default sevoflurane induction with steps of 0.1 s, 0.05 s and
   0.025 s. Each run's alveolar, vessel-rich and mixed-venous concentrations
   must be within 0.5% of the next run's, or within 1e-8 as a fraction
   (0.000001 vol%) near zero, where a tiny gap is a large percentage.
-- **Why 0.5%.** No record says how it was chosen. It dates from an earlier,
-  approximate method, whose runs differed by about 0.04% in the alveolar
-  concentration and by more in mixed venous. The same test also requires
-  each gap to stay below 1e-14 as a fraction. Any gap that breaks 0.5% is at
-  least 1e-8, so it breaks 1e-14 too. Today the 0.5% limit changes no outcome.
-- **How to change it.** A fork with an approximate method fails 1e-14 even
-  when its arithmetic is correct: a first-order method shows gaps near
-  1.4e-11. Relax 1e-14, and 0.5% becomes the working check. Set it above the
-  method's own gaps at these steps and below a difference a learner could
-  see. The constants are in `tests/reference/test_sevo_patient.py`.
+- **Where 0.5% came from.** It was picked when this test was first written, on
+  2026-08-22, and no reason was recorded. On 2026-08-30 it was checked against
+  the earlier, approximate method, whose runs differed by about 0.04% in
+  alveolar concentration, and kept. Today it never decides the result, because
+  the absolute limit of 1e-14 above is far stricter.
+- **How to change it.** A fork that switches to an approximate method will
+  fail the 1e-14 limit, because its results shift with the step. Euler's
+  method shifts these three concentrations by up to 0.15%. Raise 1e-14 above
+  your method's gaps, and the 0.5% limit then does the checking. Both limits
+  are in `tests/reference/test_sevo_patient.py`.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-This gate tests self-consistency across the supported steps, not
-correctness. A wrong transfer rate is exactly as independent of the step as a
-right one, so it passes here. The § "Independent-solution test" below is the
-test that asks whether the solution is the right one at all.
+Passing this test shows only that the 0.1 s step is short enough for the
+model's equations to be solved accurately. It does not show that the model
+matches a patient. A wrong transfer rate gives the same answer at every step,
+so it passes here. § "Independent-solution test" below checks that the
+equations are solved correctly, and § "Published wash-in and elimination
+validation test" compares the model with measured patients.
 
 Held by `test_step_refinement_converges`, for the three halvings, and by
 `test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
