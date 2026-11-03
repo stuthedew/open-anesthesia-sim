@@ -48,3 +48,10 @@ start:
 It also noted that docket's `SEMVER_PATTERN` uses `\d`, which matches any
 Unicode digit, the problem `PL-PNGQ` fixed for `isdigit`. This session
 confirmed the pattern in `subprojects/docket/src/docket/model.py`.
+
+**Also, 2026-11-03:** `SEMVER_PATTERN` accepts leading zeros as well as
+non-ASCII digits. `release.SEMVER_RE`, built from it, matches "01.2.3",
+"v0.07.0" and "١.٢.٣", checked on Python 3.13. Semantic Versioning 2.0.0 item
+2 says a normal version "MUST NOT contain leading zeroes"
+(https://semver.org/spec/v2.0.0.html). `PL-3WFF` records the same for the
+simulator's `_VERSION`.
