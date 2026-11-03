@@ -79,3 +79,11 @@ after #1962. What is left:
 4. Ask `bin/docket arm`. Under `PL-ZTZF` this rewrite merges on green: no
    stored value changed, and `tools/model_rewrite.py lost` drops only history
    and one stale code quotation, which the note above accounts for.
+
+**Done (2026-11-03).** A carry thread ran the prose review again under the
+reader-tested rules and applied it in `d259b967`: it read 48 paragraphs,
+rewrote 47 and none was rejected. Twelve rewrites moved measured figures out
+of the clinician's paragraph, and those figures now stand unchanged in two
+"For developers" notes, at the end of § "The run is that record, and every
+state is derived from it" and of § "The canonical evaluation rule".
+`bin/docket verify --self PL-QL0X` returned ACCEPT at `d259b967`.
