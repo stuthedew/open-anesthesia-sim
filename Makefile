@@ -332,7 +332,7 @@ check: sync
 # decays, and this is what stops the next session
 # writing a section citation in a form that says nothing to its reader.
 	uv run python tools/possessive_section_check.py
-# Under `uv run`, all eight of them, like the two lines above, and for a reason
+# Under `uv run`, all nine of them, like the two lines above, and for a reason
 # about the *input* rather than about the tool. These read `app/`, `tests/` and
 # modules under `src/anesthesia_sim/` with `ast`, and that source
 # targets 3.14. PEP 695 (3.12) type parameters in `app/bookmarks.py`

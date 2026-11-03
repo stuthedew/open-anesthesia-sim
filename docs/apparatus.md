@@ -636,7 +636,7 @@ leaving each tool's own docstring to explain it. It ran bare until `PL-L17Q`.
 It was green only because the two files it then read happened to carry no
 3.12+ syntax. One PEP 695 generic added to either file would have failed the
 floor section on a tool nobody had touched. The module docstring of
-`tests/unit/test_tools_portability.py` states the rule that the eight are an
+`tests/unit/test_tools_portability.py` states the rule that the nine are an
 instance of. A tool that joins them belongs on the `uv run python` lines in
 both `Makefile` and `.github/workflows/quality.yml`, never in that workflow's
 floor section.
