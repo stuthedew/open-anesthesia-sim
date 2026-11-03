@@ -7344,9 +7344,10 @@ and the fresh gas flow slider follows through the circuit's accepted range.
 `tests/reference/test_coupled_dynamics.py` then fails on purpose. Re-run that
 file's envelope and trajectory sweeps at the new limits, and update its
 constants and its bound. Then re-derive every figure measured at the flow
-maxima: the fastest time constant in § "Supported simulation step", the corner
-sweeps in § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`,
-and the figures in the subsections below.
+maxima: the fastest time constant in § "Alveolar gas" and § "Supported
+simulation step", the corner sweeps in § "The numerical envelope" and
+`tests/unit/test_numerical_envelope.py`, and the figures in the subsections
+below.
 Checking `RunDefinition` and `Keyframe` on load is open work, `PL-8W1Q`.
 
 #### What a setting outside the range costs
