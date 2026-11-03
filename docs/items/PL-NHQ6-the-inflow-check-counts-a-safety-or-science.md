@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-NHQ6-the-inflow-check-counts-a-safety-or-science.md, docs/items/PL-P6KV-pl-04kr-s-predictions-broke-twice-more-for-the.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-NHQ6-the-inflow-check-counts-a-safety-or-science.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only release-report fix with no effect on what a learner sees
 added: 2026-11-03
 closed: 2026-11-03
@@ -42,3 +42,13 @@ reenters: PL-00TR
 - **The cost.** Apparatus safety defects that also declare `pyproject.toml` or `docs/ARCHITECTURE.md` are not counted: `PL-0PJG`, `PL-BXB2`, `PL-V53R`, `PL-XMNC` and `PL-7FPD` over the whole store. `PL-7FPD`'s twin `PL-H57W` is workflow-lane and still counts.
 - **The owner-set exemption is a judgment, not a measurement.** The baseline predates `owner-priority:`. An owner-set band records the owner's order rather than the severity of a finding. Over the store it drops `PL-JRVV` and the four `reader-tested-prose` items filed 2026-11-02.
 - **Replay.** At the end of each week from 2026-09-28 to 11-02, one reported line changes: the week of 2026-10-19 counts 3, not 8. The open week of 2026-11-02 would have counted 11 at the next cut and now counts 1.
+
+**Which branch closes what** (project owner, 2026-11-03, ratified, over closing `PL-P6KV` in both pull requests). Two sessions worked `PL-P6KV` at once. `#1977` closes it with its reading of the two misses. `#1979` closes this item with the counting fix and leaves `PL-P6KV` as `#1977` wrote it.
+
+**What `#1979`'s reading added to `PL-P6KV`'s.**
+
+- Without the one-source-of-truth inventory, re-entries were still 16 against 8, so that miss was real. The inventory counts as ordinary inflow because a sweep is recorded only as a `feature:`. Filed as `PL-CJGH`.
+- 11 of the 29 re-entries were filed on the day the item they re-enter closed, which may count a finding made during the work as a fix that did not hold. Filed as `PL-BB16`.
+- The cut printed the misses and nothing about what to do with them, which is why four cuts passed with no item. A cut that prints a miss now ends with the command to file its investigation, after checking `bin/docket feature convergence-visibility` for one already filed.
+
+**What the lane does not answer.** It decides which filings the prediction is about, which is the population `PL-04KR` registered. It is not a record of which paths are the simulator proper, which this item's first brief asked for. An apparatus safety defect that also declares `pyproject.toml` or `docs/ARCHITECTURE.md` is a crossing item, so it goes uncounted. No item now asks for that record, because the prediction does not need it.

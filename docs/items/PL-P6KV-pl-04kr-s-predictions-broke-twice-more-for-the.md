@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-P6KV-pl-04kr-s-predictions-broke-twice-more-for-the.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
+touches: docs/items/PL-P6KV-pl-04kr-s-predictions-broke-twice-more-for-the.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only reading of a release report, with no effect on what a learner sees
 added: 2026-11-03
 closed: 2026-11-03
@@ -42,11 +42,3 @@ verify: grep -q 'Verdict, read 2026-11-03: no unfound generator' docs/items/PL-P
 - 3 are single: `PL-LL9F`, `PL-3G9M` and `PL-YL5R`.
 
 **The current week will miss again.** Two days into the week of 2026-11-02 the count stands at 11 `P1` filings. Six are the counting gap in `PL-NHQ6`. Five are `reader-tested-prose`, which the owner asked for after judging `docs/MODEL.md`'s prose on 2026-11-02, four of them at an owner-set `P1`.
-
-**A second reading, 2026-11-03, on `#1979`.** A second session worked this item in parallel and reached the same verdict. Its code change landed under `PL-NHQ6`, which records the counting rule and why it differs from the rule that item first recommended. That reading adds three findings to the one above:
-
-- `PL-04KR` registered "P1 workflow filings by week", and counting workflow-lane `P0` and `P1` filings over today's store gives its baseline of 0, 2, 1 and 0 exactly. So the count now reads the item's lane.
-- Without the one-source-of-truth inventory, re-entries were still 16 against 8, so that miss was real. The inventory counts as ordinary inflow because a sweep is recorded only as a `feature:`. That is filed as `PL-CJGH`.
-- 11 of the 29 re-entries were filed on the day the item they re-enter closed, which may count a finding made during the work as a fix that did not hold. That is filed as `PL-BB16`.
-
-The cut printed the misses and nothing about what to do with them, which is why four cuts passed with no item. A cut that prints a miss now ends with the command to file its investigation, after checking `bin/docket feature convergence-visibility` for one already filed.
