@@ -47,32 +47,24 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
 
-# The release comparison tolerance, which docs/MODEL.md § "Step-refinement test"
-# requires to be documented before tagging. It is unchanged from the two-step
-# version of this gate under the operator split. Then the coarsest and finest
-# steps differed by about 4e-4 relative in the alveolar fraction at 60 s, an
-# order of magnitude within this tolerance. Under the exact step they differ by
-# about 1.4e-13 relative (measured 2026-10-03).
-STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
-STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
-
 # The largest allowed gap in a fraction after 60 s between runs at two
 # supported steps.
 #
-# The gate takes two gaps for each fraction: the first between 0.1 s and
-# 0.05 s, and the second between 0.05 s and 0.025 s. With the exact step, these
-# gaps come from floating-point rounding, not from error in the method. The
-# bound was set on 2026-09-06 at about twelve times the worst gap measured
-# then, 8.1e-16 in the alveolar fraction. That measurement reported four
-# values, and no record names the fourth. This test has compared the same
-# three fractions since the exact step landed (#376). A new measurement on
-# 2026-11-01 found the worst gap in those three fractions to be 3.4e-16, in
-# the alveolar fraction. The bound now allows about thirty times that gap.
-# The second gap for each fraction is larger than the first rather than half
-# of it, because the finer run takes more steps and rounding accumulates once
-# per step. The bound leaves room for another machine's rounding. It is still
-# about three orders of magnitude below the 1.4e-11 that a genuinely
-# first-order method would show at these steps.
+# The test takes two gaps for each fraction: between 0.1 s and 0.05 s, and
+# between 0.05 s and 0.025 s. The model solves its equations exactly over each
+# step, so these gaps come from floating-point rounding, not from error in the
+# method. The bound was set on 2026-09-06 at about twelve times the worst gap
+# measured then, 8.1e-16 in the alveolar fraction. That measurement reported
+# four values, and no record names the fourth. This test has compared the same
+# three fractions since the exact solution landed (#376). On 2026-11-01 the
+# worst gap in those three was 3.4e-16, in the alveolar fraction, so the bound
+# now allows about thirty times that gap. The second gap for each fraction is
+# larger than the first rather than half of it, because the finer run takes
+# more steps and rounding accumulates once per step. The bound leaves room for
+# another machine's rounding. It is still more than eight orders of magnitude
+# below the gaps of up to 1.8e-6 that Euler's method, a simple approximate
+# method, shows at these steps (measured 2026-11-03 with the derivative in
+# tests/reference/test_coupled_dynamics.py).
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
 # The largest allowed gap in a fraction after the same 60 s between a run at
@@ -373,14 +365,7 @@ def test_step_refinement_converges() -> None:
     the step does not affect the result at all.
 
     Each comparison is between successive halvings rather than against the
-    finest step. That is the ordinary grid-refinement idiom. It also keeps the
-    documented tolerance meaning exactly what it meant when this gate compared
-    two steps. Under the operator split, comparing 0.1 s directly with 0.025 s
-    spanned a larger step ratio, and it exceeded the relative tolerance in
-    mixed venous alone. At 60 s that compartment is only starting to fill, so
-    the split's difference of 1.4e-6 in fraction was 0.55% of its value. Under
-    the exact step, the two steps land about 4e-17 apart there (measured
-    2026-10-03).
+    finest step. That is the ordinary grid-refinement idiom.
 
     This is not the reference gate. `tests/reference/test_coupled_dynamics.py`
     asks whether the shipped composition converges to the *right* answer, by
@@ -393,14 +378,6 @@ def test_step_refinement_converges() -> None:
 
     by_step_s = {step_s: _states_after_one_minute(step_s) for step_s in STEP_REFINEMENT_STEPS_S}
     successive = list(zip(STEP_REFINEMENT_STEPS_S, STEP_REFINEMENT_STEPS_S[1:], strict=False))
-
-    for coarse_step_s, fine_step_s in successive:
-        for label, value in by_step_s[coarse_step_s].items():
-            assert value == pytest.approx(
-                by_step_s[fine_step_s][label],
-                rel=STEP_REFINEMENT_RELATIVE_TOLERANCE,
-                abs=STEP_REFINEMENT_ABSOLUTE_TOLERANCE,
-            ), f"{label} at {coarse_step_s} s disagrees with the {fine_step_s} s solution"
 
     for label in by_step_s[STEP_REFINEMENT_STEPS_S[-1]]:
         gaps = [

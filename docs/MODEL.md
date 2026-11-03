@@ -121,10 +121,9 @@ ISO 14971:2019, the risk-management standard for medical devices, is the second
 standard this section relies on. The 2007 edition mentioned **reasonably
 foreseeable misuse** only in passing. The 2019 edition made it a defined term,
 and its clause 5.2 requires documenting that misuse. Using this simulator
-outside the intended use above is such misuse. So far, the intended-use
-boundary is the only safeguard this document states against it. The hazard
-table in the next section covers ways a reader could misread the display, and
-it has no row for this misuse yet.
+outside the intended use above is such misuse. The hazard table in the next
+section has a row for it. § "What keeps a real patient's data out of a run"
+names the two safeguards against it and the tests that enforce them.
 
 **Sources for this section.** IEC 62304 and ISO 14971 are published standards
 and are not open access. The clause structure, the three class definitions,
@@ -150,6 +149,7 @@ test is any good.
 
 | A reader could be misled into | What stops it | Held by |
 | --- | --- | --- |
+| reading a run as a prediction for a real patient whose data was entered into it | the use statement, which is the disclaimer at the foot of the window, stays in view. The simulated patient is always the shipped reference adult. Cardiac output and ventilation are teaching controls, and a learner can set either one to a value measured in a patient. Only the use statement stops a learner reading that run as a prediction for that patient (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue and never the only one. The agent name is always visible. It sits in the invariant tier, the outputs that every top-level window shows, within the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's"). `tools/agent_identity_check.py` audits the ISO 5360 colours in `src/anesthesia_sim/app/theme.py` together with the text colour that stays readable on each | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. So a run still shows as stopped, and does not offer Pause, even when its own snapshot refuses a value. A banner written before any frame of the stopped run was drawn says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run that a mark stopped as one the learner paused, while two runs are compared | a run that a mark stopped reads "Paused — stopped on your mark". While two runs are compared, the branch control's own "stopped on your mark" is withdrawn, so this status word is the only cue. A MAC target's row reads "reached" from its first crossing, so later crossings do not change it. A failure, or reaching the supported run length, takes precedence over this word. A new branch, at the instant where it forks from its parent, carries the parent's halt record but still reads "Paused", because no step of the branch stopped it. The wording is a placeholder while the interface is being built | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
@@ -275,6 +275,35 @@ disclaimer stops being read, and the chart's hover already names every value
 it reports as modelled. The wording is a placeholder that the project owner
 may revise. The requirement behind it is the hazard row for reading a modelled
 compartment value as a measured one.
+
+### What keeps a real patient's data out of a run
+
+§ "Intended use" excludes entering an identifiable patient's data, and using a
+run to inform the management of a specific patient. Two safeguards stand
+against that misuse today:
+
+1. The use statement (`USE_DISCLAIMER_TEXT` in `app/dashboard_frame.py`) sits
+   at the foot of the window. It says that the simulator is for teaching and
+   is not a clinical prediction, monitoring or dosing tool. It stays in view in
+   the shipped Workspaces, however the page scrolls.
+2. The simulated patient is always the reference adult in
+   `data/patients/reference_adult.json`. No control accepts a weight, age, sex,
+   height or body composition. Every run keeps that patient's compartment
+   volumes and perfusion fractions, whatever the learner sets.
+
+Changing cardiac output and alveolar ventilation is a core teaching feature.
+It also lets a learner set either one to a value measured in a real patient.
+The run then shows the reference adult at that flow, and it is not a
+prediction for that patient. The simulator accepts such a value, so the use
+statement is the only safeguard against reading that run as a prediction.
+
+The patient factors planned in `ROADMAP.md` (planned-milestone item 30) will
+remove the second safeguard. `test_every_run_simulates_the_shipped_reference_adult`
+checks each way a patient could get into a run today. It checks that there is
+one shipped patient file, that the uptake system is built from the agent alone,
+and that there is no patient argument or control. Adding patient factors must
+change one of those, so the test will fail. The work that adds them must then
+rewrite this section and the hazard table's row for this misuse.
 
 ## How this document is held to the tree
 
@@ -4003,53 +4032,39 @@ citation.
 
 ### v0.2.0: isoflurane and desflurane
 
-Isoflurane and desflurane use the same governing equations and compartment
-structure as sevoflurane. They also use the same physiologic parameters, from
-`data/patients/reference_adult.json`. Only the partition coefficients in each
-agent's own `data/agents/*.json` file differ. All twelve partition coefficients
-of the three agents were taken from one table, De Wolf et al. 2012, Table 1.
-That is the paper already cited for sevoflurane. So the three data files share
-one source and can be compared directly.
+Isoflurane and desflurane use the same equations, compartments and reference adult patient as
+sevoflurane. Only the partition coefficients differ. All twelve values, one blood:gas and three
+tissue:gas coefficients for each agent, come from De Wolf et al. 2012, Table 1, the paper already
+cited for sevoflurane. So the three agents' values can be compared directly.
 
-**The nine tissue:gas values in that table derive from one study's
-measurements.** They are Gas Man's figures for the human measurements of
-Yasuda, Targ and Eger 1989, checked against the paper and adopted as described
-below. Five of the nine differ from the study's means by up to 9%, as the
-table below shows. Even so, all three agents' tissue coefficients come from
-*one study, one laboratory, one technique and one cohort*, measured side by side
-in the same specimens. Any systematic error in that technique therefore affects
-every agent identically. A MAC-normalized axis exists to compare agents. An
-error that all three agents share does not make one agent look different from
-another, so a single shared source gives the axis the strongest comparability
-it can have. The three blood:gas values are still the Gas Man set, at tier 3.
-Their comparability rests only on their coming from one published table.
+**The nine tissue:gas values in that table come from one study's measurements.** They are the
+Gas Man simulation program's figures for the human measurements of Yasuda, Targ and Eger 1989.
+Five of the nine differ from the study's means by up to 9%, as the table below shows. Even so,
+all three agents' tissue values come from *one study, one laboratory, one technique and one
+cohort*, measured side by side in the same specimens. Any systematic error in that technique
+therefore affects every agent alike. When values are shown as multiples of MAC to compare
+agents, an error that all three share cannot make one agent look different from another. The
+three blood:gas values are the Gas Man set, graded tier 3 under § "Source hierarchy". They are
+comparable only because they come from one published table.
 
-This shared-source argument covers the *coefficients* only. It does **not**
-cover the three `mac_percent` divisors. Their deviations from the primary
-literature run in opposite directions for sevoflurane and desflurane.
-§ "Delivery-limit and MAC parameters" measures those deviations separately.
-Each agent file records the primary measurement beside its stored number and
-states the difference.
+The shared-source argument covers the partition coefficients only. It does not cover the stored
+MAC values, which differ from the primary literature in opposite directions for sevoflurane and
+desflurane. § "Delivery-limit and MAC parameters" measures the differences.
 
-**Gas Man's Workbook attributes the nine tissue:gas coefficients to Yasuda,
-Targ and Eger, and the paper confirms it.** The note under the Workbook's
-page-168 parameter table reads "Values for isoflurane, halothane, desflurane and
-sevoflurane are taken from Yasuda, Targ and Eger". The note alone could not move
-the coefficients' tier. A program's statement about where its own values came
-from is not independent evidence. This is the rule in § "Republication does not
-promote a value between tiers", applied one step further back. The Workbook's
-reference 45 is also a different document: the abstract
-`Anesthesiology 69:A615`, from the 1988 ASA annual-meeting supplement, not
-Yasuda, Targ and Eger's 1989 *Anesthesia & Analgesia* paper. And the same
-Workbook paragraph credits sevoflurane's values to Yasuda and, one sentence
-later, to "the package insert and Abbott data".
+**Gas Man's Workbook says the nine tissue:gas coefficients come from Yasuda, Targ and Eger, and
+the paper confirms it.** The note under the Workbook's page-168 parameter table reads "Values for
+isoflurane, halothane, desflurane and sevoflurane are taken from Yasuda, Targ and Eger". That
+note alone could not raise the coefficients' source grade (tier), because a program's statement
+about its own sources is not independent evidence (§ "Republication does not promote a value
+between tiers"). The note had two further weaknesses. The Workbook's reference 45 is the 1988 ASA
+annual-meeting abstract `Anesthesiology 69:A615`, not Yasuda, Targ and Eger's 1989 *Anesthesia &
+Analgesia* paper. And the same Workbook paragraph credits sevoflurane's values to Yasuda and,
+one sentence later, to "the package insert and Abbott data".
 
-So the 1989 paper itself was read in full text on 2026-09-13. It is in the
-private reference corpus. Its Table 1 reports tissue:**gas** coefficients,
-which is the quantity that the agent files store. The coefficients come from
-14 autopsy specimens, 6 to 10 per tissue, with a mean age of 65.8 ± 14.4 yr,
-equilibrated at 37 °C. The table below compares them with the nine stored
-values:
+So the 1989 paper itself was read in full on 2026-09-13. Its Table 1 reports tissue:**gas**
+coefficients, the quantity that the model stores. They come from 14 autopsy specimens, 6 to 10
+per tissue, with a mean age of 65.8 ± 14.4 yr, equilibrated at 37 °C. The table below compares
+them with the nine stored values:
 
 | | vessel-rich (Yasuda's brain) | muscle | fat |
 | --- | ---: | ---: | ---: |
@@ -4069,15 +4084,12 @@ values:
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 
-All nine stored values lie within 0.71 SD of the measured mean. Two match it
-exactly. Two more, isoflurane vessel-rich and sevoflurane muscle, are the mean
-rounded to the stored precision. The other five are not roundings, and the
-largest gap is isoflurane fat, 9.0% above the mean. They are Gas Man's figures
-for these measurements. A parameter set assembled from another source could
-not match this closely by coincidence, so the comparison confirms the
-Workbook's attribution. It also settles the Workbook's contradiction for
-sevoflurane: sevoflurane's three stored values match this paper, not a package
-insert.
+All nine stored values lie within 0.71 SD of the measured mean. Two match it exactly. Two more,
+isoflurane vessel-rich and sevoflurane muscle, are the mean rounded to the stored precision. The
+other five differ by more than rounding, and the largest gap is isoflurane fat, 9.0% above the
+mean. Values from another source could not match this closely by chance, so the comparison
+confirms the Workbook's attribution. It also settles the Workbook's contradiction for
+sevoflurane: sevoflurane's three stored values match this paper, not a package insert.
 
 Two further points matter for the model:
 
@@ -4097,58 +4109,54 @@ Two further points matter for the model:
 **The tier changed and the stored values did not** (project owner,
 2026-09-13). These were two separate decisions.
 
-*Adopted.* The nine tissue:gas coefficients descend from a primary human
-measurement. So Yasuda, Targ and Eger is now the adopted authority for them in
-all three agent files, and they are tier 1. De Wolf et al. stays the adopted
-authority for the three blood:gas values alone, which this study did not
-measure. No number changed. The `tier` and `adopted` fields record where each
-number came from, separately from the number itself.
+*Adopted.* The nine tissue:gas coefficients trace back to a primary human measurement. So all
+three agents now cite Yasuda, Targ and Eger as their source, at tier 1, the grade for a primary
+measurement. De Wolf et al. stays the source for the three blood:gas values, which this study did
+not measure. Only the recorded source and grade changed. No number did.
 
-*Declined.* Storing Yasuda's published figures in place of Gas Man's figures
-for the nine coefficients would move three displayed time constants. The
-sevoflurane vessel-rich time constant would move +4.5% (1.15 instead of 1.1),
-isoflurane fat −8.3% (64.2 instead of 70.0), and desflurane fat −7.7% (12.0
-instead of 13.0). The change would also require recomputing every pinned
-reference state under `tests/reference/`, because those states are this
-parameter set's solution. And the accuracy gained would be smaller than the
-error that the model already carries by lumping several organs into one
-compartment. The vessel-rich group is one compartment standing for brain,
-heart, liver, kidney and viscera. So this structure cannot make use of a
-difference of 0.05 in a brain measurement. The Gas Man values are therefore
-kept.
+*Declined.* Storing Yasuda's published figures instead of Gas Man's for the nine coefficients
+would move three displayed time constants. Sevoflurane's vessel-rich time constant would move
++4.5% (coefficient 1.15 instead of 1.1), isoflurane's fat −8.3% (64.2 instead of 70.0), and
+desflurane's fat −7.7% (12.0 instead of 13.0). The accuracy gained would be smaller than the error
+that lumping brain, heart, liver, kidney and viscera into one vessel-rich compartment already
+causes. A lumped compartment cannot use a difference of 0.05 in a brain measurement. So the Gas
+Man values are kept.
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 <!-- not-restated: 0.05 -->
 
-Desflurane is markedly less soluble than sevoflurane, which is itself less
-soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
-any equation. Lower solubility only means faster equilibration through the
-same closed-form solutions. `tests/reference/test_multi_agent.py` checks the
-simulated alveolar/circuit ratios, not only the stored coefficients.
+Desflurane is markedly less soluble than sevoflurane, which is itself less soluble than
+isoflurane (blood:gas 0.42 < 0.65 < 1.3). With the same equations, lower solubility only makes
+the agent equilibrate faster.
 
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 
-**Desflurane's tissue coefficients were checked against a published
-measurement and kept.** Desflurane's elimination at five minutes is the one
-comparison in this repository where the model misses a human measurement by
-washing out too fast. That elimination ratio is most sensitive to the
-vessel-rich coefficient, which makes that coefficient the obvious suspect. But
-the coefficient is not the cause. The value that would close the gap is
-nineteen standard deviations above the human measurement. It would also invert
-the measured solubility order of the three shipped agents. § "Desflurane's
-residual, and why the parameter file was not changed" gives the reasoning.
-Read it before changing any coefficient in `data/agents/desflurane.json`.
+**Desflurane's tissue coefficients were checked against a published measurement and kept.**
+Desflurane's elimination at five minutes is the only comparison where the model misses a human
+measurement by washing out too fast. That result is most sensitive to the vessel-rich
+coefficient, which makes that coefficient the obvious suspect. It is not the cause. The value
+that would close the gap is nineteen standard deviations above the human measurement, and it
+would invert the measured solubility order of the three agents. § "Desflurane's residual, and
+why the parameter file was not changed" gives the reasoning. Read it before changing any of
+desflurane's coefficients.
+
+**For developers.** Each agent's partition coefficients are in
+`data/agents/*.json`, whose `tier` and `adopted` fields record each value's
+source. The three agents share the physiologic parameters in
+`data/patients/reference_adult.json`. Storing Yasuda's figures would require
+recomputing every pinned reference state under `tests/reference/`, because
+those states are this parameter set's solution.
+`tests/reference/test_multi_agent.py` checks the stored coefficients and the
+simulated alveolar-to-circuit ratios.
 
 ### Delivery-limit and MAC parameters
 
-Two per-agent parameters are stored in the agent data files but play no part
-in the governing equations. Each one exists to limit a control that the user
-sees, or to set its starting value. A value that a clinician could read or
-act on is safety-critical whether or not the model integrates it, so both are
-specified here.
+Two per-agent values are stored with each agent but play no part in the model's equations. Each
+one limits a control the user sees, or sets its starting value. A value that a clinician could
+read or act on is safety-critical whether or not the model uses it, so both are specified here.
 
 `max_delivered_concentration_percent` is the highest concentration that the
 agent's real vaporizer can deliver (sevoflurane 8%, isoflurane 5%,
@@ -4168,27 +4176,19 @@ nothing about whether a given concentration is appropriate for a patient.
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**The maximum describes a vaporizer, although the agent file stores it.**
-Each agent file's value is the calibrated dial maximum of the vaporizers that
-the file's adopted source names. These are the Dräger Vapor 2000 and
-Datex-Ohmeda Sevotec 5 for sevoflurane, the Penlon Sigma Delta and Datex-Ohmeda
-Isotec 5 for isoflurane, and the Tec 6 for desflurane. Each file's note calls
-the value a device-capability limit rather than a scientific model parameter.
-So desflurane's figure says how far a Tec 6 dial turns. It does not say that
-desflurane cannot be delivered above that figure. Another desflurane
-vaporizer, or an injector that delivers into the circle, is not bound by this
-figure, because the figure is not a property of the agent.
+**The maximum describes a vaporizer, although it is stored with the agent.** Each agent's value
+is the calibrated dial maximum of the vaporizers that its source names: the Dräger Vapor 2000
+and Datex-Ohmeda Sevotec 5 for sevoflurane, the Penlon Sigma Delta and Datex-Ohmeda Isotec 5 for
+isoflurane, and the Tec 6 for desflurane. So desflurane's figure says how far a Tec 6 dial turns.
+Another desflurane vaporizer, or an injector that delivers into the circle, is not bound by it.
 
 The value is stored under the agent for two reasons:
 
 - The reference breathing system in
   `data/machines/reference_circle_system.json` is not a machine and names no
   vaporizer. A per-machine entry would only repeat the agent file's number.
-- `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()` in
-  `core/parameters.py` rejects an agent whose own vaporizer cannot deliver its
-  1 MAC, and the 1-MAC start in `AgentUptakeSystem.for_agent()` depends on
-  that check. The check can be written only where the maximum and
-  `mac_percent` are in the same file.
+- The dial's start at 1 MAC relies on rejecting any agent whose own vaporizer cannot deliver
+  1 MAC. That check needs the maximum and the MAC in the same file.
 
 **The value moves when a machine profile mounts a vaporizer whose maximum
 differs from the agent file's.** It then moves to the per-agent limit on the
@@ -4205,16 +4205,13 @@ Three things move with it at that point:
 
 Until then, the circuit and the dial read the same number from the same file.
 
-**The three maxima come from two classes of vaporizer, a distinction this
-model needs only away from sea level.** Sevoflurane's 8% and isoflurane's 5%
-are the maxima of variable-bypass dials. Desflurane's 18% is the upper end of
-the Tec 6's range, and a Tec 6 is a heated gas–vapour blender rather than a
-variable-bypass vaporizer. § "Assumptions" fixes ambient pressure at 760 mmHg.
-At that pressure, the same dial setting on either class gives the same partial
-pressure. So nothing in the core has to know which kind of device a given
-limit came from. In this model the two classes would differ only at reduced
-ambient pressure, which is not modelled.
-See § "Known limitations".
+**The three maxima come from two classes of vaporizer, which this model would need to tell apart
+only away from sea level.** Sevoflurane's 8% and isoflurane's 5% are the maxima of
+variable-bypass dials. Desflurane's 18% is the top of the Tec 6's range, and a Tec 6 is a heated
+gas–vapour blender. The model fixes ambient pressure at 760 mmHg (§ "Assumptions"). At that
+pressure, the same dial setting on either class gives the same partial pressure. So the model
+does not need to know which kind of device a limit came from. The classes would differ only at
+reduced ambient pressure, which is not modelled. See § "Known limitations".
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
@@ -4239,25 +4236,20 @@ Specifically, the model does **not**:
 - imply that an alveolar concentration equal to `mac_percent` corresponds to
   any particular clinical state in a particular patient.
 
-MAC is a population ED50 for immobility in response to a standardized
-stimulus. It varies with age, and it is modified by other agents, opioids,
-temperature and patient factors, none of which are modeled here. Presenting a
-single-agent alveolar concentration as if it indexed anesthetic depth would
-be exactly the kind of plausible-but-wrong clinical inference that
-`CLAUDE.md` forbids. So the displayed unit is a *ratio to* 1 MAC, written
-`×MAC`, and never a depth. § "MAC multiples as a display unit" gives the
-reasoning.
+MAC is a population ED50 for immobility in response to a standardized stimulus. It varies with
+age, and other agents, opioids, temperature and patient factors modify it. None of these are
+modeled here. Presenting a single-agent alveolar concentration as if it indicated anesthetic
+depth would be exactly the plausible but wrong clinical inference that the project's safety
+standard forbids. So the display shows a *ratio to* 1 MAC, written `×MAC`, and never a depth.
+§ "MAC multiples as a display unit" gives the reasoning.
 
-**As a divisor of displayed values, `mac_percent` carries clinical weight.**
-If it only chose where the dial started, an error in it would move only a
-run's starting point. But it is also the divisor of every displayed compartment
-value and of the chart's second axis. In that role it is a clinically
-meaningful transformation under `CLAUDE.md`'s safety-critical standard. The
-stored values are **tier 3**. They are the single adult MACs, with no
-adjustment for age, that De Wolf et al. state they used in their Gas Man
-simulations. They were adopted for two reasons. They belong to the same
-parameter set as every partition coefficient in this model. And the reference
-adult has no age parameter to which an age-related MAC could be applied.
+**Because displayed values are divided by it, the stored MAC carries clinical weight.** If it
+only set where the dial started, an error in it would move only a run's starting point. But every
+displayed compartment value, and the chart's second axis, is divided by it. The stored values are
+single adult MACs with no adjustment for age, which De Wolf et al. state they used in their Gas
+Man simulations. They are graded **tier 3** under § "Source hierarchy". They were adopted for two
+reasons. They belong to the same parameter set as every partition coefficient in this model. And
+the reference adult has no age to which an age-related MAC could be applied.
 
 **The size of the gap, and which comparison it distorts.** Mapleson's
 meta-analysis of the published MAC literature gives these values for age 40:
@@ -4274,28 +4266,24 @@ values with them.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
-The errors run in opposite directions for sevoflurane and desflurane. So when
-sevoflurane is compared with desflurane in MAC multiples, the result differs by
-about 22% between the two MAC sources. That comparison is the one the second
-display unit exists for. The difference is larger than either source's own
-confidence limits. It is a limitation of the display, and § "Known
-limitations" lists it.
+The errors run in opposite directions for sevoflurane and desflurane. So a comparison of the two
+in MAC multiples differs by about 22% between the stored MACs and Mapleson's. Comparing agents is
+what the MAC-multiple display exists for. The 22% is larger than either source's own confidence
+limits. It is a limitation of the display, listed in § "Known limitations".
 
 **Why the Mapleson values are not adopted** (project owner, 2026-09-04,
 ratified, over adopting Mapleson's age-40 values). There are three reasons:
 
-1. Mapleson 1996 is a meta-analysis. It fits a regression to a literature
-   survey and measures nothing, which makes it **tier 2** under § "Source
-   hierarchy". A lower tier may still be adopted on a recorded decision, and
-   the next two reasons are why this decision went the other way.
-2. Every other parameter in this model comes from the Gas Man set. A Mapleson
-   divisor applied to a Gas Man trajectory would make each displayed multiple
-   a ratio between two different parameter lineages. Dividing this model's
-   output by this model's own MAC is at least internally consistent.
-3. With confidence limits of ±7-10%, no MAC source makes a cross-agent
-   comparison exact. So the interface and this section display the divisor
-   and disclose the limitation, instead of presenting another non-primary
-   number as settled.
+1. Mapleson 1996 is a meta-analysis. It fits a regression to published studies and measures
+   nothing, so § "Source hierarchy" grades it **tier 2**. A lower-tier source, like the stored
+   values, may still be adopted by a recorded decision. Reasons 2 and 3 explain why the stored
+   values were kept.
+2. Every other parameter in this model comes from the Gas Man set. Dividing the model's Gas Man
+   concentrations by a Mapleson MAC would make each displayed multiple a ratio between values
+   from two different sources. Dividing by the model's own MAC is at least internally consistent.
+3. With confidence limits of ±7-10%, no MAC source makes a comparison between agents exact. The
+   display shows the MAC it divides by and states the limitation, instead of presenting another
+   estimate as settled.
 
 `ROADMAP.md`'s planned-milestone item 31 is the route to primary values for
 all three agents.
@@ -4303,6 +4291,12 @@ all three agents.
 Each agent's `sources` array carries the citation, the tier, the Mapleson
 value that the stored value was not taken from, and the difference between
 the two.
+
+**For developers.** `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()`
+in `core/parameters.py` rejects an agent whose own vaporizer cannot deliver
+its 1 MAC. The 1-MAC start in `AgentUptakeSystem.for_agent()` depends on that
+check. Because `mac_percent` divides every displayed compartment value, a
+change to it falls under the safety-critical standard in `CLAUDE.md`.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -4474,60 +4468,54 @@ step sizes can show only that a pair of runs agree. Three step sizes show that
 the step does not enter the result.
 <!-- not-restated: 0.05 -->
 
-**The gaps sit at rounding level, so the gate requires them to stay there.**
-The exact step reaches the same solution at every supported step size. So the
-gaps are as small as floating-point rounding allows, and they do not shrink as
-the step shrinks. The operator split had a first-order error that halved when
-the step halved, so under it the gate required each gap to be smaller than the
-last. Under the exact step, correct arithmetic would fail that requirement. The
-gate compares three values: the alveolar, vessel-rich and mixed-venous
-fractions after 60 s. Measured on 2026-11-01, the worst successive-halving gap
-across the three is 3.4e-16, in the alveolar fraction. A first-order method
-would show 1.4e-11 at these steps. The gate's bound, 1e-14, was sized on
-2026-09-06 at about twelve times the worst gap measured then, 8.1e-16. That
-measurement reported four values, and no record names the fourth. The test has
-compared the same three since the exact step was introduced.
+**Changing the step size changes the result only by rounding, and the test requires that.** The
+model solves its equations exactly over each step, so it reaches the same answer at every
+supported step size. The gaps between runs are as small as computer rounding allows, and they do
+not shrink as the step shrinks. The test compares the alveolar, vessel-rich and mixed-venous
+concentrations after 60 s.
 
-**A second test beside the gate checks the smallest supported step**,
-`MINIMUM_SIMULATION_STEP_S`. A minute simulated in 1 ms steps must land within
-3e-14 of the same minute simulated in 0.1 s steps, in each compared fraction.
-This bound is wider than the bound for the halvings because that minute takes
-60 000 steps rather than at most 2 400. The residual is rounding error, and it
-accumulates once per step. Measured on 2026-10-03, the worst gap is 2.4e-15, in
-the alveolar fraction. The bound allows about twelve times that gap, the same
-margin at which the halvings' bound was sized. The gap does not vary smoothly
-with the step. It depends on how the propagator happens to round at that
-particular step, and steps near 1 ms reach 1.2e-14. A machine that rounds
-differently could reach that size at 1 ms, so against such a machine the
-margin is nearer two and a half times. The test enforces what declaring a
-minimum step claims: the solution at the declared minimum step is the shipped
-solution. The test also pins the minimum step at 1 ms. So moving the minimum
-means re-measuring these figures, not just editing a constant.
+**A second test checks the smallest supported step, 1 ms.** A minute in 1 ms steps must match the
+same minute in the application's 0.1 s steps, to within rounding. So the smallest step the model
+accepts gives the application's answer. The test expects the smallest step to be 1 ms, so
+changing it means measuring the rounding figures below again.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-**The release check, and why it allows 0.5%.** The model advances in fixed
-steps of 0.1 s, and a shorter step should give almost the same result. Before
-each release, a test reruns the first minute of the default sevoflurane
-induction with steps of 0.1 s, 0.05 s and 0.025 s. Each run's alveolar,
-vessel-rich and mixed-venous concentrations must be within 0.5% of the run with
-the next shorter step. The 0.5% was set for the simulator's earlier calculation
-method, at about ten times the 0.04% alveolar difference that method showed.
-The current method's runs agree to better than one part in a trillion
-(measured 2026-10-03), so the much tighter limits above are the ones that would
-catch a real error. A compartment that holds almost no agent also passes if its
-two values differ by less than 0.000001 vol%, because there a tiny difference
-is a large percentage.
+Passing this test shows only that the 0.1 s step is short enough for the
+model's equations to be solved accurately. It does not show that the model
+matches a patient. A wrong transfer rate gives the same answer at every step,
+so it passes here. § "Independent-solution test" below checks that the
+equations are solved correctly, and § "Published wash-in and elimination
+validation test" compares the model with measured patients.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-This gate tests self-consistency across the supported steps, not
-correctness. A wrong transfer rate is exactly as independent of the step as a
-right one, so it passes here. The § "Independent-solution test" below is the
-test that asks whether the solution is the right one at all.
 
 Held by `test_step_refinement_converges`, for the three halvings, and by
 `test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
 minimum step. Both are in `tests/reference/test_sevo_patient.py`.
+
+**For developers.** Each figure is an absolute gap in fraction. The worst gap
+between successive halvings is 3.4e-16, in the alveolar fraction (measured
+2026-11-01). Euler's method, whose error halves with the step, shows gaps up to
+1.8e-6 at these steps (measured 2026-11-03). The test's limit, 1e-14, was set
+on 2026-09-06 at about twelve times the worst gap then, 8.1e-16. That
+measurement reported four values, and no record names the fourth. The test has
+compared the same three since the method became exact.
+
+The test of the smallest step, `MINIMUM_SIMULATION_STEP_S`, allows 3e-14 in
+each compared fraction. That is wider than the halvings' limit because its
+minute takes 60 000 steps rather than at most 2 400, and rounding builds up
+once per step. Measured on 2026-10-03, its worst gap is 2.4e-15, in the
+alveolar fraction, so the limit allows about twelve times that gap, the same
+margin as the halvings'. The gap does not change smoothly with the step. It
+depends on how the calculation happens to round at that step, and steps near
+1 ms reach 1.2e-14. On a machine that rounds differently, the margin could be
+nearer two and a half times.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+
+A method that does not solve the equations exactly fails the 1e-14 limit,
+because its result moves with the step. Test such a method by checking that
+each halving of the step shrinks every gap by a predicted factor, about two
+when its error is proportional to the step.
 
 ### Independent-solution test
 
@@ -4551,97 +4539,49 @@ $$
 
 over every state $`k`$ and every trajectory below.
 
-**The held runs to the pinned horizons have a bound of their own.** A held run
-keeps its settings fixed throughout.
-`test_the_shipped_step_reaches_the_pinned_reference_horizons` runs each agent
-at the reference operating point to 60, 600 and 3600 s at the shipped 0.1 s
-step. It compares the endpoint with the independent solution at that horizon,
-and a separate test ties that solution to the pinned reference states. The test
-allows `HELD_RUN_ROUNDING_BOUND`, an absolute $`10^{-12}`$, rather than the
-$`4\times10^{-13}`$ above. The one-hour held run reaches a larger residual than
-any trajectory below: **7.16e-14**, for desflurane in muscle (measured
-2026-09-07, and unchanged when re-measured on 2026-11-02). Rounding is added
-once per step, but step count alone does not explain the difference. The hour
-takes 36 000 steps, and so does the 900 s unperfused load at 0.025 s, whose
-worst residual is smaller. The 600 s figures are at most 1.34e-14 and the 60 s
-figures at most 5.69e-16. The bound is set, like the one above, from how far
-the shipped solution moves when the same interval is divided into different
-steps. For the one-hour run that spread is 2.17e-13, and the bound is 4.6 times
-it. `tests/reference/test_coupled_dynamics.py` records the full table.
+**Runs at fixed settings out to one hour have a limit of their own.** A test runs each agent at
+the reference settings for 60, 600 and 3600 s at the application's 0.1 s step. It compares each
+result with the independent solution at that time. The limit is looser than the one above,
+because the one-hour run builds up more rounding error than any run below.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- not-restated: 900 s -->
 
-**Why the tolerance is absolute.** The operator split's error was
-$`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step size. The
-exact step has no such coefficient, because it computes the exact solution of
-these equations over the interval. What the comparison measures is the
-accumulated floating-point difference between two independently written
-solutions, which agree exactly in exact arithmetic. That residual grows with
-the *number* of steps rather than with their size. So it is slightly worse at a
-finer step, which is the opposite of the split. A per-step coefficient would
-therefore state the reverse of what is true.
+**Why the limit is a fixed size.** The model solves its equations exactly over each step. So the
+only difference between it and the independently written solution is computer rounding, since
+the two agree exactly in exact arithmetic. Rounding builds up with the *number* of steps rather
+than with their size, so it is slightly larger at a finer step. A limit that shrank with the step
+would therefore claim the reverse of what is true.
 
-**The residuals the bound is set from.** The residual was measured on
-2026-09-07 across all three agents and every trajectory below.
-The maximum was taken over the whole trajectory rather than at the endpoints.
-At the shipped 0.1 s step, the worst figures are 1.58e-14 for *ordinary use*,
-1.54e-14 for the *envelope corner*, 1.39e-14 for the *ventilator start*,
-1.34e-14 for the *reference point* and 8.80e-15 for the *unperfused load, then
-dial off*. Desflurane gives the worst figure on every trajectory. Re-measured
-on 2026-10-25, all five were unchanged to every digit that
-`tests/reference/test_coupled_dynamics.py` records. They lie
-within a factor of 1.8 of one another, because what is measured is accumulated
-rounding, and rounding does not grow with how far the settings move. The
-unperfused load gives the smallest figure although it runs longest, 900 s
-against the others' 600 s. Its worst falls in the loading phase, while the
-blood and tissue states are still exactly zero and only the circuit and
-alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
-That gives the worst figure measured on any trajectory: **5.89e-14**, for
-desflurane on a *ventilator start* at the finest step. The next largest is
-5.46e-14, for desflurane on the held *envelope corner* at the same step
-(measured 2026-10-25). The operator split's worst over the same
-domain was 2.29e-4 at this step. Against it, the exact step is nine orders of
-magnitude closer to the independent solution.
+**The measurements the limit is set from.** Each of the five runs below was compared with the
+independent solution along its whole length, for all three agents. The differences are rounding.
+At the application's 0.1 s step, desflurane gives the largest on every run. Even the largest
+difference measured is nine orders of magnitude smaller than the worst error of the earlier,
+approximate method.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- not-restated: 900 s -->
 
 The oracle runs at an eighth of the step under test. At that step its
 truncation error no longer contributes to the residual, as the next paragraph
 shows.
 
-**The residual is rounding, not truncation, because it has no consistent
-direction.** Refining the oracle a further eightfold, to 0.0015625 s, moves the
-five figures above by at most 11%, and it moves some up and some down. RK4 is a
-fourth-order method. So if the residual still carried the oracle's truncation
-error, it would fall by a factor of about four thousand and would never rise.
-A residual that moves by a few percent in either direction is the difference
-between two independently accumulated rounding paths.
+**The remaining difference is rounding, because it has no consistent direction.** Running the
+independent solution with steps eight times shorter again, 0.0015625 s, moves the largest
+differences by at most 11%, some up and some down. If the difference still held error from the
+independent solution's own method, it would fall about four thousandfold and never rise. A
+difference that moves a few percent either way comes from rounding in the two solutions.
 
-**The margin allows for rounding that differs between machines.** It is wider
-than the margin of 1.22 that the splitting bound carried. A systematic error
-coefficient comes out the same on every machine, but accumulated rounding does
-not. A different `exp` implementation or a contracted multiply-add moves the
-last bits of both solutions. So the margin is sized on how much accumulated
-rounding can vary, not on the residual. To measure that, the same trajectories
-were solved at 0.1, 0.05 and 0.025 s with no oracle involved. This is one exact
-propagator, divided into steps differently, so every difference comes from the
-shipped solver's own accumulated rounding. The answer moves by up to 1.07e-13,
-which is larger than the residual itself. The bound is 3.7 times that spread
-and 6.8 times the worst residual. It is still nearly nine orders of magnitude
-below the error of any method that is not exact. So the gate fails as soon as
-method error returns, which is what the gate is for.
+**The limit leaves room for rounding that differs between computers.** It is sized on how much
+the model's own rounding can vary. Solving the same runs at 0.1, 0.05 and 0.025 s moves the
+answer by more than its difference from the independent solution, and the limit is set above
+that spread. It is still nearly nine orders of magnitude below the error of any method that does
+not solve the equations exactly. So the test fails as soon as such an error returns.
 <!-- not-restated: 0.05 -->
 
-**The domain the bound covers.** The domain is *trajectories*, not operating
-points. A run of the application is a sequence of settings, each held until
-someone moves a slider. Moving a slider put the operator split under the most
-strain, because the state was then far from the equilibrium of the new
-settings. Any method that is not exact would be strained the same way, because
-its truncation error grows with how fast the state is changing. A gate that
-holds one operating point for a whole run tests a method only on runs whose
-settings never change. Those runs are the smaller part of what the interface
-produces. A release gate that covers less than the inputs a user can reach
-claims more verification than its evidence supports.
+**The runs the limit covers.** The test covers *trajectories*, runs whose settings change over
+time, as well as fixed settings. A run of the application is a sequence of settings, each held
+until someone moves a slider. A slider move puts an approximate method under the most strain,
+because the state is then far from where the new settings will settle it, and the method's error
+grows with how fast the state changes. Runs whose settings never change are the smaller part of
+what the interface produces. Limited to them, the test that every release must pass would claim
+more checking than its evidence supports.
 
 The gate therefore drives five kinds of run:
 
@@ -4660,10 +4600,10 @@ The gate therefore drives five kinds of run:
   and cardiac output all at their supported maxima. Those maxima are 10, 12
   and 10 L/min, which are also the sliders' maxima.
 - a *ventilator start*: the same corner, but with alveolar ventilation at zero
-  for the first 300 s, and then ventilation at its maximum. During the first
-  300 s the circuit saturates at the dial setting against lungs that can take
-  none of it. This is an ordinary manoeuvre. Under the operator split, it
-  exceeded the bound that had been set from runs holding the corner.
+  for the first 300 s, then at its maximum. Meanwhile the circuit fills to the
+  dial setting while the lungs take up none of it. This is an ordinary
+  manoeuvre. The earlier, approximate method exceeded the limit set from runs
+  held at the corner.
 - an *unperfused load, then dial off*: the corner with cardiac output at zero
   for 600 s, and then perfusion at its maximum with the vaporizer closed for
   300 s. During the first 600 s the circuit and alveoli saturate while every
@@ -4677,48 +4617,36 @@ The gate therefore drives five kinds of run:
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 <!-- not-restated: 5 % -->
 
-**Trajectories that nobody wrote by hand.** The five runs above change their
-settings once or never, at moments chosen by their author. A learner moves four
-sliders again and again, in combinations that nobody listed. So the gate also
-drives three randomised trajectories for each agent. Each is fixed by a seed,
-so that a failure reproduces exactly. Each lasts 600 s and starts empty at a
-random point in the settings envelope. At intervals of 0.1 to 20 s, always on
-a step boundary, each control moves to a random supported value with
-probability one half, and at least one control always moves. One move in five
-lands exactly on a limit of its range, so zero ventilation, zero perfusion and
-zero fresh gas flow are all reached. These runs are held to the same oracle and
-the same 4e-13 bound as the five above. Their worst figure, measured on
-2026-11-01 at the shipped step, is 1.10e-14, for desflurane in the vessel-rich
-fraction. That is below the worst of the five hand-written runs, as an exact
-step predicts. A run that changes its settings 48 to 64 times takes as many
-steps as one that never changes them, so it accumulates as much rounding and
-no more.
-`test_randomised_control_trajectories_keep_every_invariant` drives the same
-runs through `SimulationState`. It checks that no step raises an exception,
-that the agent accounting check passes after every step, and that the state
-counts every step taken. It also checks that each of the six fractions stays
-finite, at or above zero, and at or below the highest fraction delivered so
-far. Every compartment is fed only from the others and from the vaporizer. So
-no compartment can hold agent at a higher fraction than was ever delivered. A
-looser upper bound of 1 would pass a model change that drove a compartment to
-several times the dial setting.
+**Trajectories that nobody wrote by hand.** The five runs above change their settings once or
+never. A learner moves four sliders again and again, in combinations that nobody listed. So the
+test also drives three random runs for each agent. Each is fixed in advance, so that a failure
+can be repeated exactly. Each lasts 600 s and moves the controls every 0.1 to 20 s, sometimes to
+the very end of a slider's range. So zero ventilation, zero perfusion and zero fresh gas flow are
+all reached. These runs must meet the same limit as the five above, and they stay below the worst
+of them.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-In every case the maximum is taken over the whole trajectory rather than at
-an endpoint, because the worst disagreement does not sit at one predictable
-instant. Under the operator split it always lay inside a transient: at about
-85 s into the wash-in at held settings, and about 13 s after a setting change.
-Under the exact step it lies wherever rounding happens to peak, and that moves
-with the step. Measured on 2026-10-25:
+A second test drives the same runs through the full simulation. It checks that every step runs
+without error, that the agent accounting adds up after every step, and that every step is
+counted. It also checks that each of the six concentrations stays finite, at or above zero, and
+at or below the highest concentration delivered so far. No compartment can hold agent at a higher
+concentration than was ever delivered, because each is fed only from the others and from the
+vaporizer. A looser upper limit would let a model change drive a compartment to several times the
+dial setting.
+
+In every case the largest difference is taken over the whole run, because it
+falls at no predictable moment. With the earlier, approximate method it fell
+soon after a change: about 85 s into a wash-in at fixed settings, and about
+13 s after a setting change. With the present method it falls wherever
+rounding peaks, which moves with the step. Measured on 2026-10-25:
 
 - At the shipped 0.1 s step, nine of the fifteen pairs of agent and trajectory
   peak in the last 1.5 s of a 600 s run. Desflurane peaks there on four of the
   five trajectories. Only sevoflurane on the ventilator start peaks inside a
   transient, 6.4 s after ventilation starts.
-- At 0.05 s, only four of the fifteen pairs peak in the last 1.5 s, and at
-  0.025 s only five do. The ventilator start peaks in the circuit
-  between 236 s and 283 s, while ventilation is still off, for every agent at
-  0.025 s and for two of the three at 0.05 s. The 5.89e-14 above is one of
+- At 0.05 s, only four of the fifteen pairs peak in the last 1.5 s, and at 0.025 s five do. The
+  ventilator start peaks in the circuit between 236 s and 283 s, while ventilation is off, for
+  every agent at 0.025 s and for two of the three at 0.05 s. The worst of all runs is one of
   these, at 236.1 s.
 - At every step, the unperfused load peaks during its loading phase, between
   350.8 s and the phase's end at 600 s, long after the circuit and alveoli
@@ -4735,40 +4663,36 @@ reference states follow that growth at held settings out to 3600 s.
 The corner and the two setting-change trajectories were chosen by measuring
 the operator split's error coefficient:
 
-- At held settings, each axis was swept separately. Fresh gas flow and
-  alveolar ventilation raised the coefficient monotonically up to their slider
-  maxima. Cardiac output had an interior *minimum* near 5 L/min and rose
-  toward both ends, more toward the upper end. The governing equations are
-  linear in the delivered fraction, so each agent's worst dial was its
-  vaporizer maximum.
-- Across trajectories, the sweep first tried the corners of the settings
-  envelope in both phases. It then varied each setting around the worst corner.
-  The worst point was always the first transition after the loading phase
-  saturated. Repeating the cycle three or six times did not raise the peak, so
-  the split's coefficient was bounded rather than accumulating over a run. A
-  third phase inserted between the two never gave a larger error than the
-  two-phase run.
+- Varied one at a time at fixed settings, the old method's error rose
+  steadily with fresh gas flow and alveolar ventilation, to their slider
+  maxima. Against cardiac output it was lowest near 5 L/min and rose toward
+  both ends, more toward the top. The equations are linear in the delivered
+  fraction, so each agent's worst dial was its vaporizer maximum.
+- Across trajectories, the sweep first tried every combination of extreme settings in both
+  phases. It then varied each setting around the worst combination. The worst point was always the
+  first setting change after the loading phase filled. Repeating the cycle three or six times did
+  not raise the peak, so the old method's error did not build up over a run. A third phase between
+  the two never raised the error.
 - Every axis was monotone toward the corner used, except cardiac output
   during loading. That axis was worst at *zero*, the opposite end from the
   held-settings corner.
 
 <!-- not-restated: 5 L/min -->
 
-Under the operator split the unperfused load had the larger error and the
-ventilator start the smaller. Under the exact step the two have swapped
-places, and the residual does accumulate over a run. Three ventilator starts
-in a row give desflurane 2.46e-14, against 1.39e-14 for one (measured
-2026-10-25). So the sweep still shows where a method that is not exact has its
-largest error, which is the error the gate exists to catch. It does not bound
-the exact step's rounding residual, which a longer run raises. The
-monotonicity was measured, not proved. A change to the governing equations
-could move the maximum off these trajectories, so re-run the sweep after such
-a change rather than trusting it.
+With the earlier, approximate method, the unperfused load had the larger
+error and the ventilator start the smaller. With the present method the two
+have swapped places, and rounding builds up over a run. Three ventilator
+starts in a row give desflurane a larger difference than one start. So the
+sweep still shows where an approximate method has its largest error, which is
+the error the test exists to catch. The sweep does not bound the present
+method's rounding, which a longer run raises. The steady rise along each
+setting was measured, not proved. A change to the equations could move the
+worst case off these runs, so repeat the sweep after such a change.
 
-Within one step, the exact step never updates a compartment from a value that
-the same step has already changed. So it leaves no systematic error with a
-consistent sign. A gradient between two compartments is therefore no less
-accurate than either reading it is taken from.
+Within one step, the model never updates a compartment from a value that the
+same step has already changed. So it leaves no error that runs in one
+direction, and a difference between two compartments is as accurate as either
+reading it is taken from.
 
 The reference states are pinned in the test file. A change to the oracle or to
 a parameter file must be re-derived and reviewed rather than silently adopted.
@@ -4777,6 +4701,62 @@ Re-pinning them from the implementation would turn this gate into a
 self-comparison. The supported ranges above are restated in the test file and
 checked against `core/supported_ranges.py`. So widening the model's declared
 domain cannot silently leave this gate measuring only a subset of it.
+
+**For developers.** Each figure here is an absolute residual in fraction,
+taken as the maximum over the whole run.
+
+- **Runs held to one hour.**
+  `test_the_shipped_step_reaches_the_pinned_reference_horizons` compares each
+  run's endpoint with the independent solution, and a separate test ties that
+  solution to the pinned reference states. It allows `HELD_RUN_ROUNDING_BOUND`,
+  an absolute $`10^{-12}`$, against the $`4\times10^{-13}`$ for the other runs.
+  The one-hour run reaches **7.16e-14**, for desflurane in muscle (measured
+  2026-09-07, unchanged on 2026-11-02). Step count alone does not explain
+  this. The hour takes 36 000 steps, and so does the 900 s unperfused load at
+  0.025 s, whose worst residual is smaller. The 600 s figures are at most
+  1.34e-14, and the 60 s figures at most 5.69e-16. Dividing the hour into
+  different steps moves the shipped solution by up to 2.17e-13, and the limit
+  is 4.6 times that spread. `tests/reference/test_coupled_dynamics.py` records
+  the full table.
+- **Why the limit does not shrink with the step.** The operator split's error
+  was $`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step
+  size. The exact step has no such coefficient.
+- **The five runs.** Measured on 2026-09-07 at the 0.1 s step, the worst
+  residuals are 1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope
+  corner*, 1.39e-14 for the *ventilator start*, 1.34e-14 for the *reference
+  point* and 8.80e-15 for the *unperfused load, then dial off*. Re-measured on
+  2026-10-25, all five were unchanged to every digit that
+  `tests/reference/test_coupled_dynamics.py` records. They lie within a factor
+  of 1.8 of each other, because rounding does not grow with how far settings
+  move. The unperfused load gives the smallest although it runs 900 s, against
+  the others' 600 s. Its worst falls while the blood and tissue states are
+  still exactly zero. Three desflurane ventilator starts in a row reach
+  2.46e-14, against 1.39e-14 for one (2026-10-25). The test repeats all five at 0.05 s and 0.025 s. The
+  worst there is **5.89e-14**, for desflurane on a ventilator start at 0.025 s,
+  and the next is 5.46e-14, for desflurane on the held envelope corner at the
+  same step (measured 2026-10-25). The earlier method's worst over these runs
+  was 2.29e-4 at 0.1 s.
+- **The margin for other machines.** The earlier method's limit carried a
+  margin of 1.22. Its error coefficient came out the same on every machine,
+  but rounding does not. A different `exp` implementation or a fused
+  multiply-add instruction moves the last bits of both solutions. The spread
+  was measured with no independent solution, as one exact calculation divided
+  into 0.1, 0.05 and 0.025 s steps. It reaches 1.07e-13. The limit is 3.7 times
+  that spread and 6.8 times the worst residual.
+- **The random runs.** Each is fixed by a seed and starts empty at a random
+  point in the settings envelope. Controls move only on a step boundary. At
+  each move, each control changes with probability one half, at least one
+  always changes, and one move in five lands exactly on a limit. They meet
+  the same 4e-13 limit. Their worst residual is 1.10e-14, for desflurane in
+  the vessel-rich fraction (measured 2026-11-01 at the shipped step). A run
+  that changes its settings 48 to 64 times takes as many steps as one that
+  never does, so it builds up as much rounding and no more.
+  `test_randomised_control_trajectories_keep_every_invariant` drives the same
+  runs through `SimulationState`. Its concentration check replaces a looser
+  upper limit of 1.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 900 s -->
+<!-- not-restated: 0.05 -->
 
 ### Published wash-in and elimination validation test
 
@@ -6171,28 +6151,21 @@ Changing delivered concentration does not alter existing circuit concentration.
 
 **These four are the model's inputs, and the list contains every model input
 and nothing else.** The interface has settings of its own that also change
-during a run without resetting state. They are the playback rate, the chart's
-time base, and the choice of which compartment traces are drawn. None of them
-appears in the list, because none of them affects model state. No step is
-resized. No segment or keyframe of the run definition is added, discarded or
-altered. Identical inputs still produce identical results.
-"Interface boundary" is where those settings are bounded. The distinction is
-worth stating rather than leaving the reader to infer it from the document
-in which a control is described. A reader who took the playback rate for a
-model input would treat a case played at sixty times real time as a different
-run, rather than as the same run watched faster.
-"The reproducibility guarantee" exists to rule out that reading.
+during a run without resetting state: the playback rate, the chart's time base,
+and the choice of which compartment traces are drawn. None of them is a model
+input, because none affects the model's state. Identical inputs still produce
+identical results, so a case played at sixty times real time is the same run
+watched faster. § "Interface boundary" sets the constraints on those settings,
+and § "The reproducibility guarantee" rules out treating the playback rate as
+an input.
 
-**"Identical inputs" matters in that paragraph, because the playback rate
-decides when an input arrives.** The rate is not a model input,
-and it changes nothing about a step. That much is exactly as stated. But the
-rate does decide the grid of simulated instants at which a control changed
-*during* a run can first act. That grid is `multiplier × 0.1` s wide. So the
-same slider moves made at two different rates are not the same inputs, and
-they do not produce the same run. Nothing here is stale or resized. The reader
-simply has a coarser choice of when an input acts. § "Supported simulation
-step" measures this, and `PL-NBWP` is where the claim above was found to be
-overstated.
+**The playback rate does decide when an input arrives.** A control changed
+*during* a run first acts at the next tick, and ticks fall every
+`multiplier × 0.1` s of simulated time, where the multiplier is the playback
+rate. So the same slider moves made at two different rates are different
+inputs, and they produce different runs. At a faster rate, the learner has a
+coarser choice of when an input acts. § "Supported simulation step" measures
+this.
 
 ### Halting on a marked crossing
 
@@ -6234,18 +6207,17 @@ taken "at 0.8 ×MAC" would then open from two different states.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
-**A halt leaves the run paused, and resuming is explicit.** This follows from
-the paragraph above rather than being a separate choice. A halt is exact, but
-the learner's next action would not be. A setting changed while the run plays
-first acts at a tick boundary. Without the pause, "halt at 0.8 ×MAC, then
-turn the vaporizer off" would turn the vaporizer off up to 30 simulated
+**A halt leaves the run paused, and resuming is explicit.** The reason is the
+grid in the paragraph above. A halt is exact, but a setting changed while the
+run plays first acts at the next tick. Without the pause, "halt at 0.8 ×MAC,
+then turn the vaporizer off" could turn the vaporizer off up to 30 simulated
 seconds after the value being looked at. The displayed value would be right,
 and the action taken from it would be wrong. No step is taken while the run is
-paused, and the setters apply unconditionally. So a halt that pauses makes the
-pause-change-resume route automatic. A learner does not have to know to use
-it. The run's status word says that a mark stopped it, "Paused — stopped on
-your mark", so the halt is not mistaken for the learner's own Pause while two
-runs are compared and the branch control is withdrawn (`PL-QBQX`).
+paused, and a setting changed then applies at once. So the learner gets the
+safe order, pause, change, resume, without having to know it. The run's status
+reads "Paused — stopped on your mark", so the halt is not mistaken for the
+learner's own Pause while two runs are compared and the branch control is
+withdrawn.
 
 **A crossing is a transition between two steps, never a comparison at one
 step.** The test asks whether the reading was on one side of the height at the
@@ -6259,20 +6231,19 @@ rule also makes a halt resumable. The run is left standing on the crossing
 step. So the earlier reading for the next step is the crossing step's own
 reading, and the crossing that was just halted on is not crossed again.
 
-**A MAC target halts on every crossing, in either direction** (project owner,
-2026-09-20). A target names a compartment and a height and has no crossing
-direction. Consider a case taken up through 0.8 ×MAC and back down through it.
-It has reached what the learner marked both times, so it stops both times. The
-alternative was to halt once and then require the target to be re-armed. That
-was considered and refused. Two targets that look identical in the list would
-then behave differently according to which one had already fired. Nothing on
-screen would distinguish them, and that is the hidden mode this interface is
-built to avoid. Resuming a paused run takes one control, and the learner is
-already looking at it.
+**A MAC target halts on every crossing, in either direction.** A target names
+a compartment and a height and has no direction. Consider a case taken up
+through 0.8 ×MAC and back down through it. It has reached what the learner
+marked both times, so it stops both times. A target that halted once and then
+had to be set again would make two identical-looking targets in the list behave
+differently, according to which one had already halted. Nothing on screen would
+distinguish them, and that is the hidden mode this interface is built to avoid.
+Resuming a paused run takes one control, and the learner is already looking at
+it.
 
-**The state of a mark is reported as one of six outcomes, not two.** The
-distinctions are required rather than stylistic, because each of the last four
-outcomes would be mistaken for one of the others.
+**The state of a mark is one of six outcomes.** Each of the last four has its
+own wording, because a reader would otherwise mistake it for one of the
+others.
 
 - **Still running**: nothing has happened yet, and the run can still reach the
   mark.
@@ -6287,22 +6258,20 @@ outcomes would be mistaken for one of the others.
   stands on or opened on. This outcome is historical. It is a property of the
   run rather than of the mark, so a reset and a change of agent clear it,
   because each begins a new run.
-  Two steps are checked again every time the standings are read, against the
-  marks as they are at that moment (`PL-1ZQ4`; project owner, 2026-10-17,
-  ratified, over keeping MAC targets historical everywhere). The first is the
-  step on which a stopped run's clock ends. The run may be paused, halted, or
-  at the supported run length, on a trunk or on a branch. A run that stopped
-  after a failure does not count, because a failure is not a pause. The second
-  is the step on which a branch opened. A branch opens *standing on* that step,
-  however far it has run since. That step is where the branch is, rather than
-  something its trunk did. So suppose a target is added after the step that
-  crossed it. The target then reads reached on the trunk standing on that step
-  and on every branch opened there, whichever came first, the target or the
-  branch. A run that leaves the step it stood on keeps what that step crossed,
-  so the target still reads reached once the run moves on. A run that went
-  past the step before the target was added never stood on it with the target
-  marked. That run reads the target as still running, as it reads any height
-  it did not stop on.
+
+  Two steps are checked again against the current marks every time the mark
+  outcomes are read. The first is the last step of a stopped run, whether it
+  paused, halted or reached the supported run length, on a trunk or on a
+  branch. A run stopped by a failure is not checked, because a failure is not a
+  pause. The second is the step on which a branch opened. A branch stands on
+  that step from the start, however far it has run since, so the step counts
+  as the branch's own. Suppose a target is added after the step that crossed
+  it. The target then shows as reached on a trunk standing on that step and on
+  every branch opened there, whichever came first, the target or the branch.
+  The run keeps that result after it moves on. A run that went past the step
+  before the target was added never stood on it with the target marked. That
+  run shows the target as still running, as it shows any height it did not
+  stop on.
 - **Not reached within the supported run length**: the run has stopped at the
   limit that § "Supported run length" declares, and this mark is still
   outstanding. A height above a compartment's asymptote is never reached. So
@@ -6334,55 +6303,45 @@ outcomes would be mistaken for one of the others.
   setting afterwards.
 
 **The two kinds of mark are reported in two vocabularies, and the clock is
-what divides them** (project owner, 2026-09-20, ratified, over reusing
-"reached" for both kinds). A run's clock only increases, and it never goes
-below the instant the run began. So the state of a *time bookmark* is a
-position: either ahead of the clock, or at or behind it. No history is needed
-to decide it. A *MAC target* names a height, and no clock orders heights. A
-compartment may arrive at a height, leave it and arrive again. So the only
-thing that can be said of a target is what the run did. Therefore "passed" and
-"before this branch opened" apply to time bookmarks and never to targets.
-"Reached" applies to targets and never to bookmarks. The remaining three
-outcomes apply to both.
+what divides them.** A run's clock only increases, and it never goes below the
+instant the run began. So the state of a *time bookmark* is a position: either
+ahead of the clock, or at or behind it. No history is needed to decide it. A
+*MAC target* names a height, and a compartment may arrive at a height, leave it
+and arrive again. So the only thing that can be said of a target is what the
+run did. "Passed" and "before this branch opened" therefore apply only to time
+bookmarks, and "Reached" applies only to targets. The other three outcomes
+apply to both.
 
-**Reporting a passed bookmark as "reached" was measured to be wrong in seven
-ways, and it is refused** (`PL-3K9B`, measured 2026-09-20). Suppose a bookmark
-is decided from the set of halts alone. Then every instant that the run is at
-or behind, but never *stopped on*, would read "still running". That says the
-run can still reach the mark. In none of the seven cases could any step make
-that true. Four cases involve a branch opening on or at a mark. One involves a
-mark added behind a running trunk. One involves a mark removed and re-added.
-One involves a branch reset. The word is "passed" rather than "reached"
-because the two claims separate as soon as a clock moves backwards. In the
-reference simulator, a bookmark is a pause point that fires on the original
-pass and on every replay alike (Philip JH, *Workbook for Gas Man®*, Med Man
-Simulations, chapter 2, "Using Bookmarks"). So a rewind, or truncating at a
-mark and running on, leaves a mark that will stop the learner again. Any
-historical claim about that mark has meanwhile been revoked. A positional word
-is read again from the clock every time the row is drawn, so it survives a
-rewind. A historical word would have to be withdrawn, and failing to withdraw
-it is a displayed value going quietly wrong.
+**A bookmark is reported as "passed", never as "reached".** Suppose a
+bookmark's state were decided only from where the run halted. Then every
+instant that the run is at or behind, but never *stopped on*, would read "still
+running", which says the run can still reach the mark. Seven cases were found
+(2026-09-20) in which no step could make that true. "Reached" would also go
+wrong whenever the clock moves backwards. In the reference simulator, a
+bookmark is a pause point that fires on the original pass and on every replay
+alike (Philip JH, *Workbook for Gas Man®*, Med Man Simulations, chapter 2,
+"Using Bookmarks"). So a rewind, or truncating at a mark and running on, leaves
+a mark that will stop the learner again, and any earlier claim that it was
+reached is no longer true. "Passed" is worked out again from the clock every
+time the row is drawn, so it survives a rewind. "Reached" would have to be
+withdrawn, and failing to withdraw it is a displayed value going quietly wrong.
 
 ### The control-input record
 
-Every change to a runtime control that the model actually runs under is
-recorded against the simulated time at which it took effect. The record is kept
-with the run and cleared with it. § "The control-input timeline" below says
-what the record is for, what it does and does not assert, and why it has the
-shape it has. That section sits with the display rules that the rest of the
-interface section carries.
+Every change to a control that the model runs under is recorded against the
+simulated time at which it took effect. The record is kept with the run and
+cleared with it. § "The control-input timeline" and the display rules below say
+what the record is for, what it asserts, and why it has its shape.
 
 #### The run is that record, and every state is derived from it
 
 **What is held.** A run is stored as two things. The first is the settings in
 force at each moment: the four controls above, together with the patient and
 agent parameters that the equations read. The second is one *keyframe* per
-change, which is the state at the instant that change took effect. Nothing else
-about the run is stored. The chart's drawing path, described below, keeps
-propagators from one frame to the next, but those are operators formed from
-these settings, not states. The flows among those settings are stored as they
-were set, in liters per minute, for the reason that § "Time" gives.
-`core/run_definition.py` is where this lives.
+change, which is the state at the instant that change took effect. Nothing
+else about the run is stored. Flows are stored as they were set, in liters per
+minute, for the reason that § "Time" gives. The record lives in
+`core/run_definition.py`.
 
 **What is derived.** While every setting is held constant, the equations are
 linear and time-invariant. So between two changes, the propagator under
@@ -6409,102 +6368,101 @@ the smallest difference that the two-decimal percent readout under
 § "The canonical evaluation rule" below states, as a guarantee, which of the
 two paths a stored, exported or branched value may be taken from.
 
-**What this is for, measured rather than argued.** Until PL-2FM6, the run
-recorded one sample per step. That cost 130.8 bytes per sample, measured over
-20 000 samples of a live run. A 30-day case at the fixed 0.1 s step is
-25 920 000 samples, or 3.16 GiB. The same case stored as a definition is
-1.6 MiB, about two thousand times smaller. That figure assumes a busy ICU day
-with 50 setting changes, which over the case gives 1 501 stretches. The second
-gain is that the cost of drawing a window no longer depends on how long the run
-has been going. A one-hour window at 600 columns costs 10.6 ms on a two-hour
-run and 13.0 ms on a thirty-day run. The recorded path cost 62.6 ms at four
-hours and 207.7 ms at twelve.
+**Why the run is stored as a definition.** A 30-day case at the fixed 0.1 s step,
+stored as one sample per step, takes 3.16 GiB. The same case stored as its
+settings and their changes takes 1.6 MiB, about two thousand times less. The
+second gain is that the time to draw a chart window does not grow with how long
+the run has been going.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**Where the cost does still move is the number of changes inside the window**,
-because each stretch in view needs its own propagator. As measured on the same
-thirty-day run, a full-span window at 600 columns cost 14.2 ms with two
-changes in view, 231 ms with sixty, and about 1.1 s with six hundred. That
-cost was paid on every frame until PL-CNCF. In that regime the columns are
-sparser than the changes, and sampling 600 instants is the wrong way to draw
-the run in any case. What to draw instead is a question for the interface, not
-for the model.
+**What does move the cost is the number of changes inside the window**,
+because each stretch in view needs its own propagator. On the same thirty-day
+run, a full-span window at 600 columns costs 14.2 ms with two changes in view,
+231 ms with sixty, and about 1.1 s with six hundred, on a frame that forms all
+its propagators. Once the changes outnumber the columns, sampling 600 instants
+is the wrong way to draw the run. What to draw instead is a question for the
+interface.
 
-**It now moves on the first frame only.** `RunDefinition.evaluate_anchored`
-keeps the propagators that each window uses, so that the next window can use
-them. All but three of them cover an interval that the grid fixes. One such
-interval is the column spacing, which the time base fixes. The other is each
+**The number of changes moves the cost of the first frame only.**
+`RunDefinition.evaluate_anchored` keeps the propagators that each window uses,
+so that the next window can reuse them. All but three cover an interval that
+the grid fixes: either the column spacing, which the time base fixes, or a
 stretch's offset to its first grid column, which the anchoring fixes. The three
-that change are the propagators for the window's two bounds, and the one for
-the offset in the stretch where the window opens. That stretch's first grid
-column is the first one past the left edge. So a window that follows the run
-forms new propagators for its two bounds. It forms the third one on a frame
-whose left edge has passed a grid column since the frame before. It also forms
-those of any stretch newly in view. A new column spacing forms them all once
-more. This was re-measured on 2026-10-04 on a 24-hour run, the longest that
+that change are those for the window's two bounds, and the one for the offset
+in the stretch where the window opens, whose first grid column is the first one
+past the left edge. So a window that follows the run forms two new propagators
+every frame. It forms the third only when its left edge has passed a grid
+column since the frame before. It also forms those of any stretch newly in
+view, and a new column spacing forms them all again.
+
+The cost was measured on 2026-10-04 on a 24-hour run, the longest that
 § "Supported run length" allows, with every setting distinct. The full-span
-window at 600 columns has its left edge at the run's opening, which never
-moves. On its first frame it costs 13.2 ms, 179 ms and 819 ms with two, sixty
-and six hundred changes in view, as it did before. On each frame after that it
-costs 6.3 ms, 5.9 ms and 8.3 ms. Only the last window's propagators are kept.
-Each is about 3.1 KB, and six hundred of them take 1.8 MiB. So what is kept is
-bounded by one window and does not grow with the run. A kept propagator is, bit
-for bit, the matrix that forming it again would give. That holds because it is
-looked up only by the settings and the interval it was formed from, and those
-are everything it is formed from. Which propagators are kept depends on the
-window drawn last, but no drawn value can depend on it. So the store is not a
-second record of the run, and `state_at` reads none of it.
+window at 600 columns has its left edge fixed at the run's opening. With two,
+sixty and six hundred changes in view, it costs 13.2 ms, 179 ms and 819 ms on
+its first frame, and 6.3 ms, 5.9 ms and 8.3 ms on each frame after.
+
+Only the last window's propagators are kept. Each is about 3.1 KB, and six
+hundred take 1.8 MiB, so the store is bounded by one window and does not grow
+with the run. A kept propagator is, bit for bit, the matrix that forming it
+again would give, because it is looked up by everything it is formed from: the
+settings and the interval. Which propagators are kept depends on the window
+drawn last, but no drawn value can depend on that. So the store is not a second
+record of the run, and `state_at` reads none of it.
 
 **What `drawn_window` costs a frame, at the settings the dashboard draws with**
-(PL-CNCF, measured 2026-10-04). The dashboard draws every 200 ms
-(`RENDER_INTERVAL_S` in `app/dashboard_frame.py`). It draws at most two runs
-(`MAX_DISPLAYED_RUNS`). Each run is drawn through one
+(measured 2026-10-04). The dashboard redraws every 200 ms
+(`RENDER_INTERVAL_S` in `app/dashboard_frame.py`) and shows at most two runs
+(`MAX_DISPLAYED_RUNS`). Each run is drawn by one
 `SimulationController.drawn_window` call at
 `max(150, plot width in pixels + 1)` columns (`chart_columns` in
-`app/chart_frame.py`). The table gives the cost of one run's call, before and
-after the propagators were kept. The call follows a 15-minute window on a
-30-minute run at 1x, and each value is the median of 40 frames:
+`app/chart_frame.py`). Each cell gives one run's call without kept propagators,
+then with them, as the median of 40 frames, with a 15-minute window following
+a 30-minute run at 1x:
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 | Changes in view | 150 columns | 1 069 columns | 2 401 columns |
 | --- | --- | --- | --- |
-| None | 6.6 ms, now 3.9 ms | 12.3 ms, now 10.1 ms | 20.3 ms, now 18.6 ms |
-| Ten | 25.0 ms, now 3.5 ms | 28.6 ms, now 9.4 ms | 35.5 ms, now 18.0 ms |
-| Sixty | 135 ms, now 3.7 ms | 119 ms, now 9.1 ms | 129 ms, now 18.8 ms |
+| None | 6.6 ms → 3.9 ms | 12.3 ms → 10.1 ms | 20.3 ms → 18.6 ms |
+| Ten | 25.0 ms → 3.5 ms | 28.6 ms → 9.4 ms | 35.5 ms → 18.0 ms |
+| Sixty | 135 ms → 3.7 ms | 119 ms → 9.1 ms | 129 ms → 18.8 ms |
 
-Three costs are left. The propagators for the two bounds change every frame,
-and each takes about 1.4 ms. The third propagator is formed on a frame whose
-left edge has passed a grid column. Last, there is one chained product per
-column, at about 7 us each. So the column count, not the number of changes in
-view, now sets the cost. At 1x, the third propagator is formed on about one
-following frame in forty at 150 columns, one in four at 1 069 and one in two at
-2 401. From 5x up, the left edge passes a column on nearly every frame at 1 069
-columns or more, so nearly every frame forms it. This was re-measured in a
-later process whose times ran about a quarter above the table's. With sixty
-changes in view at 1 069 columns, one run's call cost 13.0 ms at 20x against
-12.0 ms at 1x. At 2 401 columns it cost 23.9 ms against 22.8 ms. Two runs at 2 401
-columns therefore take about 40-50 ms of a 200 ms frame. Before the propagators
-were kept, sixty changes in view on two runs at 1 069 columns took about
-240 ms. That is longer than the frame they were drawn in.
+Three costs are left. The two propagators for the window's bounds change every
+frame, at about 1.4 ms each. The third is formed only on a frame whose left
+edge has passed a grid column. Last, each column costs one chained product, at
+about 7 µs. So the column count now sets the cost, not the number of changes
+in view. At 1x, the third propagator is formed on about one frame in forty at
+150 columns, one in four at 1 069 and one in two at 2 401. From 5x up, at
+1 069 columns or more, nearly every frame forms it. Playing faster adds little.
+In a later measurement, whose times ran about a quarter above the table's, one
+run with sixty changes in view cost 13.0 ms at 20x against 12.0 ms at 1x at
+1 069 columns, and 23.9 ms against 22.8 ms at 2 401. Two runs at 2 401 columns
+therefore take about 40-50 ms of a 200 ms frame. Without kept propagators, two
+runs with sixty changes in view at 1 069 columns take about 240 ms, which is
+longer than the frame.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
-**This is the only record.** Until PL-2FM6, a recorded history was kept beside
-the definition, and the chart was drawn from that history. The
-"Closed-form agreement test" checked that the two agreed. PL-2FM6 deleted the
-history. The chart is now drawn from the definition, through
-`SimulationController.drawn_window` and `RunDefinition.evaluate_anchored`.
-There is no second record in which a divergence could appear. The stepped
-system that advances the run still exists, and the agreement test checks the
-definition against it.
+**This is the only record.** The chart is drawn from the definition, through
+`SimulationController.drawn_window` and `RunDefinition.evaluate_anchored`, so
+there is no second record that could disagree with it. The stepped system that
+advances the run is still checked against the definition by the "Closed-form
+agreement test".
+
+**For developers.** Recording one sample per step costs 130.8 bytes per
+sample, measured over 20 000 samples of a live run, so the 30-day case is
+25 920 000 samples. The definition's size assumes a busy ICU day with 50
+setting changes, which over the case gives 1 501 stretches. A one-hour window at 600
+columns costs 10.6 ms to draw on a two-hour run and 13.0 ms on a thirty-day
+run. Drawing from per-step samples cost 62.6 ms at four hours and 207.7 ms at
+twelve.
 
 #### The canonical evaluation rule
 
-**One instant, one answer, whatever route the caller took.** A run's states are
-derived rather than recorded, and a derived value can be reached by more than
-one sequence of arithmetic. The fixed 0.1 s step used to rule that out, because
-it left every caller only the same step width to take. A propagator that is
-exact over any horizon removes that limit, and with it that protection. The
-rule below replaces the protection.
+**One instant, one answer, whatever route the caller took.** A run's states
+are calculated, and the same value can be reached by more than one sequence
+of arithmetic. A fixed 0.1 s step allows only one sequence, because every
+caller must take that step. A propagator that is exact over any interval lifts
+that limit, and with it that protection. The rule below restores the
+protection.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 - **Canonical.** The state at an instant is one propagation from the keyframe
@@ -6531,16 +6489,14 @@ from the canonical path. A value from the display path may be drawn, and it may
 be used for nothing else. It may not be a keyframe, an exported figure or a
 branch's opening state.
 
-**The program enforces this rule, not the paragraph above.** The display path
-returns its states wrapped in `DisplayState`, which is not a state vector. So a
-display state cannot be passed where a state vector is expected.
-`RunDefinition` also refuses one as an opening state by name. Its error says
-which path the value came from, rather than failing on a length mismatch. The
-wrapper is deliberately not a subclass of the state tuple. The places that
-consume a state and must apply this rule include some that have not been
-written yet. A place that does not think to check anything refuses only a value
-that is structurally not a state, so a subclass of the state tuple would pass
-it.
+**The program enforces this rule.** The display path returns its states
+wrapped in `DisplayState`, which is not a state vector, so a display state
+cannot be passed where a state vector is expected. `RunDefinition` also
+rejects one as an opening state by name, with an error that says which path
+the value came from instead of a length mismatch. The wrapper is not a
+subclass of the state tuple, because some code that will take a state has not
+been written yet. Code without a check of its own rejects only a value whose
+shape is not a state's, and a subclass would pass it.
 
 **How far apart the two paths are, measured.** The table gives the worst
 absolute difference between the canonical and the display result at the same
@@ -6564,44 +6520,32 @@ that a supported run reaches at this column count.
 
 **The headroom is wide against every amount on screen, and there is none
 against the residual lines, which is why the rule is enforced rather than
-trusted.** A fraction is displayed as a two-decimal percent, so § "Displayed
-precision" resolves 1e-4. The measured difference is eight orders below that.
-The agent-accounting panel displays its three amounts to 0.1 L (`PL-TG60`), and
-the accumulators' measured difference is more than seven orders below that. If
-those readouts were all that a run showed, the margins would make the
-separation between the two paths academic. But the panel's two residual lines
-print the power of ten that a residual lies below, and a residual is formed from
-the two accumulators. § "Displayed precision" records passing residuals below
-2.1e-11 L, measured on branches played for 30 minutes (`PL-KXW1`). The display
-path's accumulator difference at 1800 s, 3.1e-12 L, is the size of such a
-residual. A passing residual grows over a longer run: over 24 h the worst
-relative residual measured was 3.08e-12, which on amounts of tens of litres is
-of the order of 1e-10 L (`PL-D88N`). The difference at 24 h, 3.1e-9 L, is
-larger than that too. So a display value that reached the mass-balance readout would change the
-decade it prints. That is a place a reader can see, and the wrong decade would
-look exactly like an ordinary passing residual.
+trusted.** A fraction is displayed as a two-decimal percent, and the measured
+difference between the two paths is about a hundred-millionth of that step.
+The agent-accounting panel displays its three amounts to 0.1 L, and the
+paths' running totals differ by less than a ten-millionth of that. But the
+panel's two residual lines print the power of ten that a residual lies below,
+and a residual is formed from those running totals. Their difference between
+the paths is as large as an ordinary passing residual, at 30 minutes and over
+24 h. So a display value that reached the mass-balance readout would change
+the power of ten it prints, and the wrong one would look exactly like an
+ordinary passing residual.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What this requires of a branch.** `ROADMAP.md` item 12 asks that a branched
-run reproduce its parent element-wise, not merely within a tolerance. This rule
-supplies that under one condition and one property of how a branch is built.
-Both were measured rather than assumed:
+run reproduce its parent exactly, not merely within a tolerance. This rule
+does so under one condition and one property of how a branch is built:
 
 - **A branch opens at a keyframe.** Suppose a branch restarted from the
-  canonical state at an instant for which the parent has no keyframe. That
-  would replace one propagation over an interval with two propagations over its
-  halves, which is a different rounding of the same exact solution. Opening at
-  a stretch boundary reproduces the parent bit for bit. The restart was
-  measured twice, both times on the run in
-  `tests/reference/test_canonical_evaluation.py`, which now checks the second
-  measurement. The first found up to 5.3e-13 in an accumulator (2026-09-07).
-  The second forked at 1 234.5 s and probed the 141 instants at or past the
-  fork. It found 1 109 of the 1 269 state elements differing, worst 7.8e-15 as
-  a fraction and 1.9e-12 L on an accumulator (2026-09-21, `PL-Z3W6`). The size
-  of the difference depends on where the fork is taken and how far past it a
-  reader looks. So these are instances of the divergence, not a bound on it.
-  What is bounded is the route the program actually takes, and that bound is
-  zero.
+  canonical state at an instant for which the parent has no keyframe. It would
+  then compute in two propagations what the parent computed in one, which
+  rounds the same exact solution differently. Opening at a stretch boundary
+  reproduces the parent bit for bit, and
+  `tests/reference/test_canonical_evaluation.py` checks it. On the run there, a
+  restart at 1 234.5 s changed 1 109 of the 1 269 state values in their last
+  digits. Such differences depend on where the fork is and how far past it one
+  looks, so they are examples, not a bound. The route the program actually
+  takes is bounded, and that bound is zero.
 - **The branch's run definition opens *at* the fork instant, on the case's own
   axis**, carrying the parent's keyframe. Parent and child then name the same
   case instant. Each forms its propagation interval as that instant minus the
@@ -6611,66 +6555,52 @@ Both were measured rather than assumed:
 
 Restarting at an instant with no keyframe, which the first condition rules out,
 is a defect that a plausible branch implementation would introduce. The second
-condition removes a second defect. Until 2026-09-14 (`PL-ZMRT`, project owner),
-a branch's definition opened at a zero of its own. The rule here then required
-every caller to reach a branch instant by *subtracting* the fork instant from
-the case's time, rather than by naming the branch's own elapsed time. That
-distinction mattered, because the subtraction does not always round-trip. With
-a fork at 900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 and not
-1e-6. So a child asked for its own `1e-6` propagated over a different interval
-from its parent, and landed one unit in the last place away. The measurement is
-still arithmetically true, but it no longer describes a hazard this program can
-express. With one time frame, there is no offset for a caller to name and no
-conversion to get right.
-<!-- not-restated: 900 s -->
+condition prevents another. If a branch's definition opened at a zero of its
+own, every caller would reach a branch instant by *subtracting* the fork
+instant from the case's time, instead of naming the branch's own elapsed time.
+That subtraction can change the last digit of the result. So a branch would
+compute over a slightly different interval from its parent, and give a result
+that differs in its last digit. With one time frame, there is no offset for a
+caller to name and no conversion to get right.
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
-way** (`PL-B8MK`, decided and built 2026-09-20). The two conditions above
-coincided for every fork the program took before bookmarks. Those forks were
-taken *at* control events, and a control event is a keyframe. So "opens at a
-keyframe" and "opens at the fork instant" named one instant, and nothing
-distinguished them. A bookmark's instant is not in general a keyframe. On a 120 s run with two
-control changes, only 3 of the 1 201 instants where a halt could land are
-keyframes. Meeting both conditions there would mean *recording* a keyframe
-where the run halts. This project measured that route and refused it. It makes
-the branch exact against its parent, but it displaces the parent's own later
-results: 48 of 54 elements differ from the same case built without the mark.
-Marking a run would then change the run, which `CLAUDE.md`'s determinism
-requirement refuses outright.
+way.** At a control event both conditions can be met at one instant, because a
+control event is a keyframe. A bookmark's instant usually is not. On a 120 s
+run with two control changes, only 3 of the 1 201 instants where a halt could
+land are keyframes. Meeting both conditions there would mean *recording* a
+keyframe where the run halts. That makes the branch exact against its parent,
+but it changes the parent's later results:
+48 of 54 values differ from the same case built without the mark. Marking a
+run would then change the run, which the project's determinism requirement
+(`CLAUDE.md`) forbids.
 
-So a bookmark fork keeps the first condition and relaxes the second to this:
+So every fork keeps the first condition and relaxes the second to this:
 **the branch's run definition opens at the keyframe at or before the fork
 instant, on the case's own axis**. Meanwhile the branch's clock and its live
-uptake system are at the fork. The element-wise guarantee is untouched, because
-it never depended on the definition opening *at* the fork. It depends on parent
+uptake system are at the fork. Exact reproduction is untouched, because it
+never depended on the definition opening *at* the fork. It depends on parent
 and child forming each propagation interval from the *same keyframe* by the
-*same subtraction*. Opening at the keyframe where the parent's own segment
-opens states that property directly. It does not rely on the special case in
-which the two instants coincide. This was measured on 2026-09-14 on a 3 600 s
-sevoflurane run with changes at 300 s and 600 s, forked at a bookmark of
-655.3 s. Across the nine state entries at six probes out to an hour, 0 of 54
-elements differ. The trunk stays byte-identical to the same case built without
-the bookmark.
+*same subtraction*, and opening where the parent's own stretch opens states
+that directly. This was measured on 2026-09-14 on a 3 600 s sevoflurane run
+with changes at 300 s and 600 s, forked at a bookmark at 655.3 s. Across nine
+state values at six times out to an hour, 0 of 54 differ. The trunk stays
+identical, byte for byte, to the same case built without the bookmark.
 
 **A branch taken where a run is paused or stopped runs under the settings the
 dials show there, and records the settings the run had on its way there as
-where it came from** (`PL-ZR49`, 2026-10-26). The two can differ, because the
-learner can turn a dial while the run is paused. Take a sevoflurane run at 2%
-that is paused at 10 min, after which the learner turns the vaporizer to 3%.
-The run reached 10 min under a stretch of settings at 2%. That stretch has
-already run, so nothing can change it. The 3% starts a new stretch at 10 min,
-which has not run yet. A change made while the run is paused goes into that
-new stretch. It never adds a second stretch at the same instant, and it never
-reaches back into the 2% stretch. So turning the dial again before the next
-step replaces the 3%. Below, the *reaching stretch* is the stretch that ran up
-to the instant, the 2% one here. The *stretch in force* is the stretch that
-runs from the instant on, the 3% one here. Where nothing changed at the
-instant, the two are the same stretch. Before this item, the three ways of
-branching each chose between the two stretches on their own. So did a
-branch's reset and the halt record, which lists the marks a run stopped on.
-Their choices disagreed, and eight defects followed (`PL-3K9B`, `PL-2N43`,
-`PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`, `PL-NRR6`, `PL-K5BS`, `PL-XV0D`). Every
-branch now follows one rule:
+where it came from.** The two can differ, because the learner can turn a dial
+while the run is paused. Take a sevoflurane run at 2% that is paused at
+10 min, after which the learner turns the vaporizer to 3%. The run reached
+10 min under a stretch of settings at 2%, and that stretch cannot change. The
+3% starts a new stretch at 10 min that has not run yet. Any change made during
+the pause goes into that new stretch, so turning the dial again before the
+next step replaces the 3%. A change during the pause never adds a second
+stretch at the same instant, and it never reaches back into the 2% stretch.
+Below, the *reaching stretch* is the stretch that ran up to the instant, the 2%
+one here. The *stretch in force* is the stretch that runs from the instant on,
+the 3% one here. Where nothing changed at the instant, the two are the same
+stretch. The halt record lists the marks a run stopped on. The three ways of
+branching, a branch's reset and the halt record all follow one rule:
 <!-- not-restated: 2 % -->
 
 - **Its provenance, the record of where it came from, is the reaching
@@ -6686,93 +6616,91 @@ branch now follows one rule:
   in force at the fork (`RunDefinition.segment_at`). So "Branch here" opens
   with the dials as they stand when it is taken. A branch at an instant that
   the trunk has already passed runs under the settings the trunk had as it
-  left that instant. Those settings include a change made at that instant, and
-  no change made later. On a run that a mark has halted, a branch taken before
-  the learner changes a setting there runs under the old setting. A branch
-  taken after that change runs under the new one, as do the branches taken
-  from that instant's mark and keyframe entries in the "From" selector
-  (`PL-HSP8`). The project owner chose this rule as the more intuitive one: a
-  branch opens at what the dial says and does not go back to the previous
-  setting (project owner, 2026-10-26).
+  left that instant, including a change made at that instant and no change
+  made later. On a run that a mark has halted, a branch taken before the
+  learner changes a setting there runs under the old setting. A branch taken
+  after that change runs under the new one, as do the branches taken from that
+  instant's mark and keyframe entries in the "From" selector. A branch opens at
+  what the dial says and does not go back to the previous setting.
 - **The branch's timeline opens with the parent's changes at the fork.** The
   branch's run definition records, as a change at the fork, each setting it
   runs under that differs from its provenance. Its control timeline opens with
-  a copy of each change that the parent recorded at the fork
+  a copy of each change the parent recorded at the fork
   (`RunRecord.opened_with`). After the case's opening, those copies are the
   settings that differ between the reaching stretch and the stretch in force,
   so the run definition and the control timeline agree. At the case's opening,
   the copies are the changes the parent made before Start, each shown from the
   value the parent's timeline starts at. Either way, the branch's timeline
-  states the settings it opened under, whatever the trunk does at the fork
-  instant afterwards (`PL-TNYP`). No later change merges into a copied entry or
-  removes it. A change that the learner makes at the fork is recorded after
-  the copies.
-- **A reset branch keeps its settings and the entries it opened with**
-  (`PL-K5BS`). It reopens at the fork on the same provenance. Its timeline
-  opens with the entries from its first opening. After them, it records each
-  setting that differs from the one the branch opened under. An opened entry
-  records where the branch began, not something done to it since. So when the
-  trunk's Reset asks before discarding the branch, an opened entry does not
-  count as work the branch would lose (`RunRecord.opened_with`). Every later
-  entry does count. That includes a setting that the learner changed and kept
-  through a reset. It also includes a dial that the learner set back to the
-  trunk's value from before its change at the fork. The branch opened at what
-  the dial said, so setting the dial back is the learner's own change.
+  shows the settings it opened under, whatever the trunk later does at the fork
+  instant. No later change merges into a copied entry or removes it, and a
+  change the learner makes at the fork is recorded after the copies.
+- **A reset branch keeps its settings and the entries it opened with.** It
+  reopens at the fork on the same provenance. Its timeline opens with the
+  entries from its first opening, followed by each setting that differs from
+  the one the branch opened under. An opened entry records where the branch
+  began, not something done to it since. So when the trunk's Reset asks before
+  discarding the branch, an opened entry does not count as work the branch
+  would lose (`RunRecord.opened_with`). Every later entry does count. That
+  includes a setting that the learner changed and kept through a reset, and a
+  dial that the learner set back to the trunk's value from before its change
+  at the fork. The branch opened at what the dial said, so setting the dial
+  back is the learner's own change.
 - **The halt record names the marks as they are.** A run's halt record lists
-  the marks that the step it stopped on crossed. That step is the step that
-  halted a trunk, or the step that reached a branch's fork. The record is
-  computed again whenever it is read, against the current marks, as the
-  standings are (`PL-1ZQ4`). So a mark removed and added back under another
-  label is named as it now is (`PL-XV0D`).
-- **A crossing has the answer the canonical readings give, on the trunk as on
-  every branch** (`PL-QVBR`). A running trunk also holds its live, stepped
-  readings, and the two can lie about 1e-14 apart on opposite sides of a
-  height. When the trunk halted on its live readings at the exact height, a
-  branch opened on the halting step could read the same target as still
-  running. Testing the canonical readings at the exact height fails a
-  different way. A steady compartment's canonical reading moves by one unit in
-  the last place from step to step, so a run that settled on a target crossed
-  it again and again. A run with no ventilation and a target on the circuit at
-  1.00 ×MAC of a 1 MAC dial halted 965 times in ten minutes (2026-11-01). So a
-  target's height is a band, one part in a hundred thousand of the height on
-  either side (`bookmarks.HEIGHT_BAND`). A reading inside the band is at the
-  height, and the crossing rule above is applied to the band. The band is
-  about five hundred times finer than a two-decimal readout near 1 MAC of
-  sevoflurane.
-  A canonical reading costs a matrix exponential, about 2 ms, where a whole
-  step costs about 60 µs. So the live readings screen each step. Where
-  neither lies near an edge of a band, the canonical readings lie on the same
-  sides of it, and a step the live readings find crossing nothing is passed.
-  A step they find crossing a mark, or one with a live reading within one part
-  in a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is
-  tested again from the canonical readings, so the run halts only on a
-  crossing its halt record names. The widest gap measured between the two
-  readings was 1.2e-9 of the reading, over 2 h at the 0.001 s step
-  (2026-11-01). Extrapolated in proportion to 24 h, it is 1.4e-8, about a
-  seventieth of the allowance. A marked instant needs no canonical reading,
-  because whether a step crosses it depends only on the step's two instants.
+  the marks crossed by the step it stopped on: the step that halted a trunk, or
+  the step that reached a branch's fork. The record is worked out again against
+  the current marks whenever it is read, as the mark outcomes are. So a mark
+  removed and added back under another label is named by its new label.
+- **A crossing is decided by the canonical readings, on the trunk as on every
+  branch.** A running trunk also holds its live, stepped readings. The live
+  and canonical readings can lie about a hundred-trillionth apart on opposite
+  sides of a height. When the trunk halted on its live readings at the exact
+  height, a branch opened on the halting step could show the same target as
+  still running. Testing the canonical readings at the exact height fails
+  differently. A steady compartment's canonical reading
+  moves in its last digit from step to step, so a run that settled on a target
+  crossed it again and again. A run with no ventilation and a target on the
+  circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten minutes
+  (2026-11-01). So a target's height is a band, one part in a hundred thousand
+  of the height on either side (`bookmarks.HEIGHT_BAND`). A reading inside the
+  band is at the height, and the crossing rule above applies to the band. The
+  band is about five hundred times finer than a two-decimal readout near 1 MAC
+  of sevoflurane.
+
+  A canonical reading costs about 2 ms, where a whole step costs about 60 µs.
+  So the live readings screen each step. Where neither of a step's live
+  readings lies near an edge of a band, the canonical readings lie on the same
+  sides of it, and a step the live readings find crossing nothing is passed. A
+  step they find crossing a mark, or one with a live reading within one part in
+  a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is tested
+  again from the canonical readings. So the run halts only on a crossing that
+  its halt record names. The widest measured gap between the two readings, over
+  2 h at the 0.001 s step (2026-11-01), was 1.2 parts per billion. Scaled
+  linearly to 24 h, it is 14 parts per billion, about a seventieth of the
+  allowance. A marked instant needs no canonical
+  reading, because whether a step crosses it depends only on the step's two
+  instants.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the
-opening still replaces the opening stretch, as it did before this item, even
-after a branch was taken there. The branch's provenance then names settings
-the trunk no longer opens under. That provenance has not become false, because
-the opening keyframe is a state that no setting produced, and the branch did
-run under those settings from there. Its own timeline still states them, as
-its copy of the trunk's changes made before Start.
+opening still replaces the opening stretch, even after a branch was taken
+there. The branch's provenance then names settings the trunk no longer opens
+under. That provenance is still true, because the opening keyframe is a state
+that no setting produced, and the branch did run under those settings from
+there. Its own timeline still states them, as its copy of the trunk's changes
+made before Start.
 
-**Returning to a marked instant the run has already passed is that fork taken
-late** (`PL-W4XQ`, 2026-10-12). Consider a learner paused at three hours who
-marks the one-hour point and goes back to it. The learner is asking for a fork
-at an instant for which the run holds no keyframe, and on which the run is not
-standing. So neither of the two earlier ways of forking applies. The
-construction above needs neither. The state at an instant the run has reached
-is the run's definition evaluated there. Standing on a halt only ever named the
-fork. So `SimulationController.resumed_at_mark` takes the mark itself and forks
-at the step that reached it, using the bookmark fork's construction. Here is
-what that reproduces, and what it does not:
+**Returning to a marked instant the run has already passed is the same fork,
+taken late.** Consider a learner paused at three hours who marks the one-hour
+point and goes back to it. The run holds no keyframe at that instant and is
+not standing on it, so neither of the two earlier ways of forking applies. The
+construction above needs neither. The state at any instant the run has
+reached is the run's definition evaluated there, and standing on a halt only
+ever served to name the fork instant. So
+`SimulationController.resumed_at_mark` takes the mark itself and forks at the
+step that reached it, using the bookmark fork's construction. Here is what
+that reproduces, and what it does not:
 
 - **It reproduces the case's state at the mark, element for element.** The
   branch opens from the canonical state there, inside the parent's own stretch.
@@ -6784,17 +6712,16 @@ what that reproduces, and what it does not:
 - **It is the branch the halt would have given.** A mark set before the run
   passed it halts the run, and the run is forked at the halt. The same mark set
   after the clock went past it is forked here. The two branches' whole
-  provenance compares equal: stretch, fork state, step count and the step the
-  fork ends. Taken at the same moment, both run under the same settings,
-  including a change the trunk made while it stood on the halt (`PL-HSP8`).
-  The branch also stays the halt's branch for a mark added later. Every run
-  asks which marks were crossed by the step it opened on or stands on. It asks
-  against the marks as they are whenever its standings are read. So a mark
-  added inside that step is treated the same on the trunk and on the branch,
-  whether it was added before the branch or after (`PL-1ZQ4`). Each way of
-  forking asks about that step in the same way, including a fork at a control
-  event. So `resumed_at` at a keyframe the trunk halted on opens on the halt's
-  crossing, as `resumed_here` does.
+  provenance is equal: stretch, fork state, step count and the step the fork
+  ends. Taken at the same moment, both run under the same settings, including a
+  change the trunk made while it stood on the halt. The branch also stays the
+  halt's branch for a mark added later. Every run checks which marks were
+  crossed by the step it opened on or stands on, against the marks as they are
+  whenever its mark outcomes are read. So a mark added inside that step is
+  treated the same on the trunk and on the branch, whether it was added before
+  the branch or after. Every way of forking checks that step in the same way,
+  including a fork at a control event. So `resumed_at` at a keyframe the trunk
+  halted on opens on the halt's crossing, as `resumed_here` does.
 - **It leaves the trunk the case it was.** Nothing is recorded where the mark
   is. That is what kept the bookmark fork from changing the run it marks.
 - **It does not open at the typed instant.** The fork is the end of the step
@@ -6812,22 +6739,19 @@ what that reproduces, and what it does not:
   under the settings the trunk had as it left the mark's instant, until the
   learner changes something. Its own control record holds only a change the
   trunk made at that instant, if there was one. The trunk's later changes stay
-  the trunk's. This is how it differs from the reference simulator's rewind.
-  That rewind returns to time zero, keeps the recorded settings and plays them
-  back as it runs (Philip JH, *Workbook for Gas Man®*, Med Man Simulations,
-  appendix E, "Replaying Simulations", printed pages 186-87, as read and quoted
-  in `PL-W4XQ`). That simulator takes the trunk back and truncates it at the
-  mark. Returning to a mark here forks instead (project owner, 2026-10-12,
-  ratified, over truncating the run at the mark after a confirm, `PL-ZW0J`).
-  The run that happened stays on the axis beside the alternative.
+  the trunk's. The reference simulator's rewind works differently. It returns
+  to time zero, keeps the recorded settings and plays them back as it runs
+  (Philip JH, *Workbook for Gas Man®*, Med Man Simulations, appendix E,
+  "Replaying Simulations", printed pages 186-87). So it takes the trunk back and
+  truncates it at the mark. Returning to a mark here forks instead, so the run
+  that happened stays on the axis beside the alternative.
 - **Its opening readouts are the canonical state's, not the ones the trunk
   showed when it stood there.** A running case displays its stepped live state,
   which is one propagation per step from the opening. Every branch opens from
-  the canonical state. Over three hours of the run in the item's measurement
-  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is about nine
-  orders of magnitude below the 1e-4 that a two-decimal percent can show, so no
-  reader can see the difference. The same is true for a fork at a control event
-  or at a halt.
+  the canonical state. Over three hours of a run measured on 2026-10-12, the
+  two agree to 4.9e-14 as a fraction, less than a billionth of the 0.01% that a
+  two-decimal percent can show. No reader can see the difference. The same
+  holds for a fork at a control event or at a halt.
 
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
@@ -6837,90 +6761,82 @@ a run. The learner reaches such a mark by running on, and the halt there is
 then the fork.
 
 **Branching where a paused run stands is the same fork, with the clock naming
-the instant** (`PL-Y2SL`, 2026-10-12). The clock always stands on a whole
-number of steps. The construction above reproduces the case at any instant the
-run has reached. So `SimulationController.resumed_here` forks wherever the
-trunk is paused, on a halt or anywhere else. It forks from the canonical state
-there, inside the parent's own stretch, and records nothing on the trunk. The
-branch opens standing on the crossing made by the step that ends there. That
-crossing is asked again of the marks as they are now, as `resumed_at_mark` asks
-it. It is not read from a halt's record, which names only what was marked when
-the run stopped (`PL-2N43`). Three kinds of run are refused. A running run is
-refused, because where it stands moves with every step. A failed run is
-refused, because a failure is not a pause. A run at the supported run length is
-refused, because it has no step left for a branch to take.
+the instant.** The clock always stands on a whole number of steps, and the
+construction above reproduces the case at any instant the run has reached. So
+`SimulationController.resumed_here` forks wherever the trunk is paused, on a
+halt or anywhere else. It forks from the canonical state there, inside the
+parent's own stretch, and records nothing on the trunk. The branch opens
+standing on the crossing made by the step that ends there. That crossing is
+checked again against the marks as they are now, as `resumed_at_mark` checks
+it, and is not read from a halt's record, which names only what was marked
+when the run stopped. Three kinds of run are refused: a running run, because
+where it stands moves with every step; a failed run, because a failure is not a
+pause; and a run at the supported run length, because it has no step left for a
+branch to take.
 
-**So nothing is left over to bound, and there is nothing to show a learner**
-(`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this
-document for "the bound on any divergence that could not be eliminated". On the
-canonical path, no such divergence survives. A branch and its parent agree
-element for element at every instant they share. That holds for a fork on a
-keyframe and for a fork between two keyframes.
-`tests/reference/test_canonical_evaluation.py` checks each shape over 207
+**So nothing is left over to bound, and there is nothing to show a learner.**
+`ROADMAP.md`'s v0.5.0 definition of done asks this document for "the bound on
+any divergence that could not be eliminated". On the canonical path, no such
+divergence survives. A branch and its parent agree exactly at every instant
+they share, for a fork on a keyframe and for a fork between two keyframes.
+`tests/reference/test_canonical_evaluation.py` checks each case over 207
 instants, against a restart at the fork, which does not agree.
 `tests/integration/test_controller.py` checks the same over 201, 301 and 601
-case instants. It also checks the 240 drawn columns that a trunk and a bookmark
-branch share. The two divergences that do exist are named rather than left as a
-residue. One is the display path's divergence, tabulated above and refused in
-code as a source for anything but a drawn value. The other is the restart's,
-which no branch this program builds ever takes. A bound of zero drawn on screen
-would tell a learner there is something to watch where there is nothing. That
-would be a false signal, not a safeguard.
-§ "What a branch comparison asserts, and what it does not" says what the
-comparison these two runs are drawn for may and may not claim. This zero is one
-clause of that.
+case instants, and over the 240 drawn columns that a trunk and a bookmark
+branch share. Two divergences do exist. The display path's, tabulated above,
+is refused in code as a source for anything but a drawn value. The restart's
+is never taken by any branch this program builds. A bound of zero drawn on
+screen would tell a learner there is something to watch where there is
+nothing. § "What a branch comparison asserts, and what it does not" says what
+a comparison of the two drawn runs may claim, and the zero bound is one of
+those claims.
 
-**What the relaxation costs is a second job the second condition was doing
-silently.** When the definition opens at the fork, `opened_at_s` *is* where the
-branch began. `drawn_window` clips its lower bound there, with
-`first_s = max(start_s, self._run_definition.opened_at_s)` in
-`app/controller.py`. The comment on that line reads
-"a branch opens at its fork". Once the definition opens at the earlier
-keyframe, that stops being true. The clip would then let a branch be drawn back
-across an interval it never lived through, showing the trunk's trajectory under
-the branch's identity. That is a presentation failure of the kind the
-safety-critical standard names: the right numbers in the wrong patient context.
-It is not a cosmetic failure. So a bookmark fork carries the fork instant
-explicitly, and the clip is read from it. `ResumePoint.fork` carries it, and
-`SimulationController.began_at_s` reads it. `began_at_s` is zero on a trunk and
-the fork instant on a branch. It is also what `app/bookmarks.py` is given to
-decide that a mark is unreachable. `began_at_s` exists to stop code from
-inferring the number from `run_segments[0].opening.instant_s` instead. That
-value is where the *definition* opens, which is the instant this relaxation
-moves.
+**Relaxing the second condition takes away a second job it was doing.** When a
+definition opens at the fork, its `opened_at_s` is where the branch began, so a
+chart could clip a branch's drawn range there. Once the definition opens at the
+earlier keyframe, that clip would draw the branch back across time it never
+lived through, showing the trunk's course under the branch's name. That is the
+right numbers in the wrong patient context, a presentation failure that the
+safety-critical standard names. So every fork carries the fork instant
+explicitly, in `ResumePoint.fork`, and `SimulationController.began_at_s` reads
+it: zero on a trunk, the fork instant on a branch. `drawn_window` clips its
+lower bound there, with `first_s = max(start_s, self.began_at_s)` in
+`app/controller.py`, and `app/bookmarks.py` is given it to decide that a mark
+is unreachable. `began_at_s` exists so that no code infers the fork instant
+from `run_segments[0].opening.instant_s`, which is where the *definition*
+opens, the instant this relaxation moves.
 
-**One thing more follows from the relaxation, and it is `reset()`'s.** Reset
+**The relaxation also decides what `reset()` records.** Reset
 keeps the settings and restores the state. Consider a branch that is reset
 after its learner has dialled something new. It stands at the fork state under
 settings its parent never used. Its definition still opens at the parent's
-keyframe under the parent's settings. What the learner has dialled is recorded
+keyframe under the parent's settings. The new setting is recorded
 as a *change at the fork*, in the run definition and in the branch's own
-control timeline (`PL-K5BS`). The keyframe that this change opens is the
-fork's own state. So the trace starts where the readouts say the branch is standing,
+control timeline. The keyframe that this change opens is the
+fork's own state. So the trace starts where the readouts say the branch is,
 and the parent's stretch stays the parent's.
 
 **Deciding that from the settings instead makes it depend on the order of two
 reversible acts**, which is why it is recorded rather than written into the
-opening. The two sequences *dial, dial back, reset* and *dial, reset, dial
-back* leave one branch: the same settings, the same live state and the same
-displayed values. Suppose the definition's opening were chosen at the moment of
-the reset. The second sequence would then get the fork rather than the
-keyframe. It would restart from two propagations where the parent took one, and
-it would silently stop reproducing the parent. Measured on 2026-09-20, 40 of 45
-elements differed across five probes, worst 1.21e-15. When the dial is recorded
-as a change instead, the dial-back is collapsed by a rule the run definition
-already has: a dial moved and moved back before a step ran is collapsed. The
-branch is then where it started. After a reset that *kept* the new setting, the
-remaining difference is 2.49e-04 on the same probes. That is a second
-management rather than a rounding, and this arrangement preserves that
-distinction.
+opening. The sequences *dial, dial back, reset* and *dial, reset, dial back*
+leave the same branch: the same settings, live state and displayed values.
+Suppose the definition's opening were chosen at the moment of the reset. The
+second sequence would then get the fork rather than the keyframe, compute in
+two propagations where the parent took one, and silently stop reproducing the
+parent. On 2026-09-20, 40 of 45 values differed across five probes. When the
+dial is recorded as a change instead, the dial-back is collapsed by a rule the
+run definition already has: a dial moved and moved back before a step ran
+cancels out. The branch is then where it started. After a reset that *kept*
+the new setting, the remaining difference is 0.000249 on the same probes. That
+is a different management of the case, not rounding, and recording the dial as
+a change keeps the two apart.
 
 **What is not relaxed is the one frame.** The definition still opens at a case
-instant on the case's own axis. The clock still continues the parent's. Nothing
-converts between frames. So the hazard that `PL-ZMRT` removed, a subtraction on
-the caller's side that does not round-trip, does not come back this way. The
-only change is that the definition's opening no longer equals the fork instant.
-It is earlier than the fork instant, on the same axis.
+instant on the case's own axis, and the clock still continues the parent's.
+Nothing converts between frames, so relaxing the second condition does not
+bring back the callers' subtraction that can change the last digit. The only
+change is that the definition now opens earlier than the fork instant, on the
+same axis.
 
 **One simulated-time frame, and every reader is in it.** A branch's *simulated
 time* is the case's time, measured from induction. It continues the parent's
@@ -6934,33 +6850,31 @@ reaching the fork ran under opens, on the case's own axis. `advance()`
 and `drawn_window()` pass case time straight through to the definition. Nothing
 converts between frames anywhere, because there is only the one frame.
 
-Continuing the case's time is not a presentation preference. Uptake and
-distribution are a function of the time since induction. A branch that counted
-from zero would therefore place the patient at the wrong point on the uptake
-curve, on the clock, the control marks and the axis at once. That is the
-correct value shown under the wrong patient context, which `CLAUDE.md`'s
-safety-critical standard counts as a failure in its own right. Continuing the
+Continuing the case's time is a matter of correctness. Uptake and distribution
+are a function of the time since induction. A branch that counted from zero
+would therefore place the patient at the wrong point on the uptake curve, on
+the clock, the control marks and the axis at once. That is the correct value
+shown under the wrong patient context, which the project's safety-critical
+standard (`CLAUDE.md`) counts as a failure in its own right. Continuing the
 case's time also keeps simulated time to the single multiplication that
 § "Simulated time is a count of steps, not a running total" describes. A
-branch's instants are the case's step count times the step. They are not the
-fork instant plus a second total. Since `PL-ZMRT` this applies to the run
-definition's instants as well as to the clock's. Before `PL-ZMRT` it applied
-only to the clock.
+branch's instants, in its run definition and on its clock, are the case's step
+count times the step, not the fork instant plus a second total.
 
 **What one frame is worth, measured 2026-09-14.** Two measurements were taken,
 on a 120 s sevoflurane run and on the branches taken from it.
 
 The first measurement is the reproduction. A branch was forked at the 60 s
 keyframe and advanced 60 s further. It agrees with its parent at all 601 case
-instants that the two share. Both are handed the same float, the case's own
-`steps × step`, and neither performs any arithmetic on it. A definition opened
-at a zero of its own, and asked for its own `steps × step` instead, differs
-from the parent at **354 of those 601**. Both are exact solutions of the same
-equations. Only the first is the same sequence of floating-point operations,
-which is the kind of sameness `ROADMAP.md` item 12 asks for. The old
-arrangement could reach the first result too, but only through a subtraction
-made by the caller, which the arrangement could not enforce. The current
-arrangement cannot express the second result at all.
+instants that the two share. Both are given the same number, the case's own
+`steps × step`, and neither does any arithmetic on it. A definition opened at a
+zero of its own, and asked for its own `steps × step` instead, differs from the
+parent at **354 of those 601**. Both are exact solutions of the same
+equations, but only the first is the same sequence of floating-point
+operations, which is the sameness `ROADMAP.md` item 12 asks for. A definition
+opened at its own zero could match too, but only if every caller subtracted
+the fork instant itself, and nothing enforced that. With one frame, the second
+result cannot arise.
 
 The second measurement is what a reader sees. Drawn columns sit on absolute
 multiples of the spacing (§ "What the chart draws"). So one frame puts a trunk
@@ -6974,15 +6888,15 @@ then could not be read against each other at matched points.
 `tests/reference/test_canonical_evaluation.py` test both measurements.
 
 **A fork at a bookmark adds exactly one column to that, and it is the fork
-itself** (`PL-B8MK`, measured 2026-09-20 on a 120 s axis at 150 columns). The
-fork above lands on the trunk's own columns because a control event is drawn
-on every run that has one. A bookmark's instant is not a control event, so the
-trunk draws it only if it happens to fall on the grid. The branch always draws
-it, because it is the left end of the branch's own clipped range. Everywhere
-else, the two traces can still be read against each other. The value at that
-one vertex is the case's own state there, which both runs contain. So the
-extra column marks the instant at which the two stop being the same run. It
-does not mark a disagreement about that instant.
+itself** (measured 2026-09-20 on a 120 s axis at 150 columns). The fork above
+lands on the trunk's own columns because a control event is drawn on every run
+that has one. A bookmark's instant is not a control event, so the trunk draws
+it only if it happens to fall on the grid. The branch always draws it, because
+it is the left end of the branch's own clipped range. Everywhere else, the two
+traces can still be read against each other. The value at that one point is
+the case's own state there, which both runs contain. So the extra column marks
+the instant at which the two stop being the same run, not a disagreement about
+that instant.
 
 **The drawn values at the columns they do share are equal to floating-point
 composition rather than bit for bit, where a control-event fork's are exact.**
@@ -7002,19 +6916,48 @@ twelve orders below the 0.1 L to which the agent-accounting panel displays an
 amount. A branch forked at the
 600 s control event instead differs at none of the columns it shares.
 
-The guarantee above is unaffected, because it rests on `state_at` and not on
+The guarantee above still holds, because it rests on `state_at` and not on
 `evaluate`. Asked for those same 382 instants canonically, the two runs agree
-element for element, with 0 differing. `tests/integration/test_controller.py`
-tests that pair on the 45.3 s case above. Across the 240 columns that the two
-runs share, 0 of 2 160 canonical elements differ. Of the same 2 160 drawn
-elements, 1 909 do differ, worst 2.7e-15, and the fork is the one extra
-column. § "The canonical
-evaluation rule" is what separates the two paths. This difference is an
-instance of that separation rather than an exception to it.
-It is recorded here for one reason. A difference trace between two runs would
-show a few units in the last place here, where two identical runs should show
-zero. A reader who met that without this paragraph would take it for a
-disagreement about the case.
+exactly, with 0 values differing. `tests/integration/test_controller.py` tests
+that pair on the 45.3 s case above. Across the 240 columns that the two runs
+share, 0 of 2 160 canonical values differ, while 1 909 of the same 2 160 drawn
+values do, and the fork is the one extra column. This is the separation that
+§ "The canonical evaluation rule" makes between the two paths. It matters to a
+reader of a trace of the difference between two runs. That trace would show a
+few units in the last digit here, where two identical runs show zero, and that
+is not a disagreement about the case.
+
+**For developers.** These are the measured figures behind the statements
+above, in the order the statements appear.
+
+- **Headroom.** A two-decimal percent resolves 1e-4 (§ "Displayed
+  precision"). That section records passing residuals below 2.1e-11 L,
+  measured on branches played for 30 minutes. The display path's
+  accumulator difference at 1800 s is 3.1e-12 L. Over 24 h the worst
+  relative residual measured was 3.08e-12, which on amounts of tens of
+  litres is of the order of 1e-10 L. The accumulator difference at 24 h is
+  3.1e-9 L.
+- **A restart off a keyframe.** The restart was probed at the 141 instants
+  at or past the fork (2026-09-21). The worst difference was 7.8e-15 as a
+  fraction and 1.9e-12 L on an accumulator. An earlier restart on the same
+  run differed by up to 5.3e-13 in an accumulator (2026-09-07).
+- **The subtraction.** With a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
+  9.999999974752427e-07 and not 1e-6. So a child asked for its own `1e-6`
+  would land one unit in the last place away.
+- **The height band.** The live and canonical readings can lie about 1e-14
+  apart.
+- **Halting.** A canonical reading is one matrix exponential. The widest gap
+  measured between the live and canonical readings was 1.2e-9 of the
+  reading. Extrapolated in proportion to 24 h, it is 1.4e-8.
+- **Dial order at a reset.** On the 2026-09-20 probes, the worst of the
+  differing elements was 1.21e-15.
+- **Drawn values of two identical runs.** The worst of the differing drawn
+  elements was 2.7e-15.
+- **A branch's opening readouts.** Their agreement with the trunk is about
+  nine orders of magnitude below the 1e-4 that a two-decimal percent can
+  show.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 900 s -->
 
 ### Supported input ranges
 
@@ -10769,18 +10712,13 @@ precision than the display shows" was a small claim. Under the exact step the
 gap is nine orders of magnitude. The rounding in the readout is now the only
 place where resolution is lost anywhere between a slider and a pixel.
 
-**What the last digit does not cover, and what it still does.**
-~~The error is a systematic sequencing bias rather than noise, and its sign is
-opposite at the two ends of the transfer chain. A *difference* between two of
-the six readouts therefore carries the sum of two displacements, up to 1.8
-times the error in either reading alone, worst measured at 0.030 percentage
-points, so the numeric gap between two readouts is the least certain thing on
-the display.~~ **Withdrawn 2026-09-06 (`PL-GS5X`).** That bias was a property
-of the operator split's sub-step ordering. Within one step, the exact step
-never updates a compartment from an upstream value that the same step has
-already changed. So there is no displacement with a consistent sign, and a gap
-between two readouts is no less accurate than either of the readings it is
-taken from.
+**What the last digit does not cover, and what it still does.** An earlier
+version of this section warned that the gap between two readouts was the least
+certain number on the display. That warning was withdrawn on 2026-09-06
+(`PL-GS5X`), because the error it described came from the earlier method's
+order of updates. Within one step, the model never updates a compartment from a
+value that the same step has already changed. So a gap between two readouts is
+as accurate as either reading it is taken from.
 
 The comparison that the interface actually invites is therefore no longer at
 risk from the solver, and that is a measurement rather than an assurance. The

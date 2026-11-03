@@ -8,9 +8,49 @@ each point.
 
 Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
-titles and bodies, and replies. Write for a careful newcomer, someone who knows
-anesthesia or Python but has not read this repository. They should understand each
-sentence the first time they read it.
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs, commit messages and pull request titles | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `tools/new_prose.py` reads this table and prints each unit's readers
+for the close-out prose review, so a new row reaches the review with no other
+change.
+
+**Before you write a paragraph, decide what its reader needs.** Write down, in
+one sentence, what the reader should take from the paragraph and what they will
+do with it, using the table above. Keep each fact that serves that sentence.
+Put each other fact where its own reader will look for it. Decision history goes
+in the item. In `docs/MODEL.md`, numerical detail goes in a note for developers
+at the end of the same section, a paragraph that opens with "**For
+developers.**" The detail stays in that document, because the document must
+specify the numerical method (`PL-TZ7R`).
+
+**Give a chosen value its reason from a record.** Where a paragraph gives a
+chosen value, such as a tolerance or a limit, say what the value does, why it is
+this number, and what changing it would do. In `docs/MODEL.md`, that goes in the
+note for developers. Take each answer from the code or test that uses the value,
+or from a cited record. When the reason is not at hand, trace the value's
+history first, with `git log -S` and the items. Search for the value as the
+code writes it. The step-size test's 0.5% tolerance, removed in `PL-VXM0`, was
+`5e-3` in `tests/reference/test_sevo_patient.py`, and `git log -S 5e-3` finds
+the commit that first set it. When the trace finds no reason, file an item for the missing
+record, and say in the text what the trace found. Never state a reason that no
+record holds.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
@@ -35,8 +75,11 @@ sentence the first time they read it.
 6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
    reader can find.
 7. **Plain is not longer.** Say each thing once, where the reader needs it.
-   Cut words that add nothing, but keep every fact. A unit, a value, an
-   equation, a condition, an exception and a citation are not padding.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
 8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
    it.
 

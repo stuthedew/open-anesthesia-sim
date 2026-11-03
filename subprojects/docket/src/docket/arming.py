@@ -153,7 +153,7 @@ has already merged; what went unread is said beside it.
   makes it, and over keeping the list and rewording the ask, which leaves
   housekeeping waiting on the owner.
 - a hold for the owner's read carries its ask as an `Owner-ask` record, a
-  decision with at least two options and a recommendation or a risk review,
+  decision with at least two options and a recommendation or a review,
   and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
   "View chooser thread just told me a generic read pull request without a
   question again" and "it's not supposed to ask for a merge if nothing to
@@ -165,7 +165,7 @@ has already merged; what went unread is said beside it.
 - a change to this module holds only when it changes or deletes an existing
   test pinning its answers, and otherwise arms on green with the rest of the
   tooling (project owner, 2026-10-19, ratified, over holding every change to
-  it with a risk-review ask and over arming it on green with no such test;
+  it with a review ask and over arming it on green with no such test;
   `PL-9JHM` records the owner's answer). It reopens `PL-VKHD`'s answer of
   2026-10-12, which held every change here so that the gate could not loosen
   itself, because nine of those holds in two weeks were mostly refactors
@@ -224,6 +224,7 @@ from .digits import whole_number
 from .lines import split_lines
 from .model import TESTS as TESTS
 from .python import imports
+from .store import ID_PATTERN
 from .vcs import (
     PULL_OPEN,
     RECORDS,
@@ -290,22 +291,55 @@ READ_NOT_NEEDED = "not needed"
 #:
 #: - a decision: `<question>? | <option>: <what it changes> | <option>: <what
 #:   it changes> | recommend <option> - <why>`, with at least two options;
-#: - a risk review, for a high-risk change with no choice in it: `risk -
-#:   <what could go wrong, for whom> | checked - <what was checked to rule it
-#:   out> | look - <the one thing the owner should look at>`.
+#: - a review, for a high-risk change with no choice in it: `changed - <what
+#:   changed, in one plain sentence> | question - <one yes-or-no question>? |
+#:   checked - <what was already checked> | reply - <what to reply>`. The
+#:   reply quotes the text to judge, before and after, under the line,
+#:   because a pointer into a file sent the owner to dig for it (project
+#:   owner, 2026-11-02, `PL-77QB`).
+#:
+#: The review form had three fields until 2026-11-02: `risk`, `checked` and
+#: `look`, rendered as "Risk to review: ... Checked: ... Please look at:
+#: ...". Twice that day the owner could not tell what such an ask wanted from
+#: them: "I am having a hard time understanding what this is asking from me?"
+#: (project owner, 2026-11-02, 19:39Z, `PL-BGN1`). The new form leads with
+#: what changed, asks one question they can answer yes or no, and ends with
+#: what to reply. A record in the old form is refused rather than rendered,
+#: so a branch that still carries one asks the owner nothing until its
+#: session records the new form (`ASK_OLD_REVIEW`).
 OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
-ASK_RISK = ("risk", "checked", "look")
+ASK_REVIEW = ("changed", "question", "checked", "reply")
+ASK_OLD_REVIEW = ("risk", "checked", "look")
+
+#: What no field of an `OWNER_ASK` record may hold, because the owner reads it
+#: in a reply and cannot look it up: code in backquotes, a file name, a
+#: command-line flag, a `bin/` command, a snake_case name and an item id. On
+#: `#1947` an ask told the owner "tools/model_rewrite.py lost accounts for
+#: every figure" and "verify --self ACCEPTs" (project owner, 2026-11-02,
+#: `PL-BGN1`). This finds the names a tool or file goes by. Whether the rest
+#: of a sentence is plain is judgment, which the printed instructions ask for.
+ASK_JARGON = re.compile(
+    r"`"
+    r"|\b[\w/.-]+\.(?:py|md|toml|ya?ml|json|txt)\b"
+    r"|(?<!\S)--[a-z][\w-]*"
+    r"|\bbin/\w"
+    r"|\b[a-z]+_[a-z_]+\b"
+    rf"|\b(?:{ID_PATTERN})"
+)
 
 #: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
 #: is sent. `renders_owner_ask` recognizes a line in either form from these
 #: same templates, so `.claude/hooks/owner_ask_guard.py` can check a
-#: coordinator's post without a second copy of the form (`PL-YV90`). A risk
+#: coordinator's post without a second copy of the form (`PL-YV90`). A
 #: review is one template. A decision is `ASK_DECISION_SHOWN`, whose
 #: `options` are two or more `ASK_OPTION_SHOWN` joined by
 #: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
-ASK_RISK_SHOWN = "Risk to review: {risk}. Checked: {checked}. Please look at: {look}."
+ASK_REVIEW_SHOWN = (
+    "What changed: {changed}. Question for you: {question} Already checked: {checked}. "
+    "What to reply: {reply}."
+)
 ASK_DECISION_SHOWN = "{question} {options} {recommend}"
 ASK_OPTION_SHOWN = 'Option "{label}": {change}.'
 ASK_OPTIONS_JOIN = " "
@@ -320,7 +354,14 @@ ASK_RECOMMEND_SHOWN = 'I recommend "{pick}": {why}.'
 #: it is `Owner-read: not needed`, never a question made up to fill the form.
 #: On `#1650` the owner had to ask twice what a recorded ask asked them to
 #: judge, so the text also asks for learner terms and, for a choice between
-#: interface approaches, a screenshot per option (`PL-KYTY`).
+#: interface approaches, a screenshot per option (`PL-KYTY`). On `#1946` a
+#: risk ask read "a pinned test of the owner-ask guard changes, so a relayed
+#: ask in the new form could be refused", and the owner could not tell what
+#: it meant. So every field is written in plain words, and the review form
+#: asks one question (project owner, 2026-11-02, `PL-BGN1`). The question is
+#: one the owner can decide as the owner or as a clinician. On `#1947` an ask
+#: put to him whether reworded paragraphs kept their meaning, which the
+#: reviews had already checked: "How am I supposed to judge that?".
 READ_ASK = (
     "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
     "since its newest change outside the store and the pull request bodies says what to "
@@ -335,21 +376,42 @@ READ_ASK = (
     "choice is the owner's. A choice between approaches to the interface goes with one "
     "annotated screenshot per option, attached to the reply that carries the line "
     "(.claude/skills/run-the-app/SKILL.md). "
-    f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
-    f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
-    f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
-    f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
-    "the change merges on green. A change to a test pinning the gate's answers holds whatever "
-    "that record says, so for one of those use the risk form."
+    f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_REVIEW[0]} - <what "
+    f"changed, in one plain sentence> | {ASK_REVIEW[1]} - <one yes-or-no question the owner "
+    f"can decide as the owner or as a clinician, saying why it is theirs>? | "
+    f"{ASK_REVIEW[2]} - <what was already "
+    f"checked> | {ASK_REVIEW[3]} - <what to reply, such as Merge it, or what to change>`. "
+    "Never ask the owner to re-check what the tests or reviews already checked, such as "
+    "whether a rewording kept its meaning: they cannot judge that from a reply. If no such "
+    "question exists, the question says so, asks whether to merge, and recommends it. Under "
+    "the line, the reply quotes the text to judge, before and after. "
+    "Write every field in plain words for a clinician who has not read this repository "
+    "(.claude/rules/plain-writing.md): say what the owner or a learner would notice, and "
+    "never name a test, check, file or tool by its internal name. If neither form can be "
+    f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
+    "<why>` instead, and the change merges on green. A change to a test pinning the gate's "
+    "answers holds whatever that record says, so for one of those use the review form."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
 #: record renders. The line goes in the closing block, because a wording
 #: that said only what the ask opens with was followed to the letter
-#: (`PL-9KHK`).
+#: (`PL-9KHK`). The text to judge goes in the reply too. On 2026-11-02 an
+#: ask said "Please look at: the hazard table's 21 rows", and the owner had
+#: to open the file to find them. Their rule: "I want it to just show me the
+#: relevant text rather than me trying to dig through", as the default, unasked
+#: (project owner, 2026-11-02, `PL-77QB`). A changed sentence quoted alone
+#: was still hard to judge: "it's hard to judge an isolated sentence change"
+#: without the surrounding context (project owner, 2026-11-02, `PL-BGN1`).
 ASK_LINE = (
     "  Open the ask with this line, word for word, as the closing block's own line, never "
-    "as 'read #N', and repeat it whole in every later reply that still waits on it:"
+    "as 'read #N', and repeat it whole in every later reply that still waits on it. Under "
+    "it, quote the text the owner is to judge in the reply itself: the changed sentences, "
+    "rows or values, before and after, each with enough of its surroundings, such as the "
+    "whole paragraph, for the change to make sense. Never send the owner into a file to "
+    "find it. Attach "
+    "a generated file only for the full set of changes, and still quote the ones that "
+    "change meaning:"
 )
 
 #: What a `hold` without a claim tells a session about a repair push. A
@@ -610,7 +672,11 @@ BLIND_UNCOUNTED = (
 #: test for a real decision is the design round's, so it is pointed at rather
 #: than restated, and the high-risk cases are the ones the owner's rule names
 #: in this repository's terms. What a learner can be misled by is the first,
-#: because the safety-critical standard in `CLAUDE.md` makes it so.
+#: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
+#: of docs/MODEL.md that keeps every value, equation, code span and citation is
+#: housekeeping, and only a sentence whose meaning needs a clinician's judgment
+#: reaches the owner (project owner, 2026-11-02, ratified, over holding every
+#: section part of `PL-ZT47` for the owner's read, `PL-ZTZF`).
 JUDGE_ASK = (
     "  Decide whether the owner needs to read it, and record the answer as a trailer in "
     "the last paragraph of a commit made after the change, beside its Co-authored-by "
@@ -623,7 +689,12 @@ JUDGE_ASK = (
     "under that the owner did not ask for in their own words; or one whose breakage CI "
     "would not show or a revert would not undo. Anything else is housekeeping and not "
     "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
-    "a measurement. Then ask again."
+    "a measurement. A docs/MODEL.md rewrite is not needed when `python3 "
+    "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
+    "line it prints as dropped is history or a duplicate the document still holds, and no "
+    "sentence changes what a value means or what a hazard row or limitation promises. "
+    "Where one does, it is needed, and the ask quotes that sentence before and after. "
+    "Then ask again."
 )
 
 #: This module, which decides the answer. Since 2026-10-19 a change to it
@@ -997,22 +1068,43 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
 
     A decision needs a question ending in "?", at least two options that each
     say what they change, distinct labels, and a recommendation naming one of
-    them with its reason. A risk review needs its three fields in order, each
-    with a value. Whether a question's answer is obvious is judgment, so the
-    printed instructions say it and this does not try.
+    them with its reason. A review needs its four fields in order, each with
+    a value, and its question ends in "?". A review in the old `risk`,
+    `checked` and `look` form is refused (`ASK_OLD_REVIEW`). Whether a
+    question's answer is obvious is judgment, so the printed instructions say
+    it and this does not try.
     """
     fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
     named = [field.partition(" -") for field in fields]
-    if [word.strip().lower() for word, _, _ in named] == list(ASK_RISK):
+    words = [word.strip().lower() for word, _, _ in named]
+    jargon = ASK_JARGON.search(value)
+    if jargon:
+        return "", (
+            f"it names {jargon.group(0).strip()!r}, which the owner cannot read in a reply; "
+            "say in plain words what it checked or changed"
+        )
+    if words == list(ASK_OLD_REVIEW):
+        return "", (
+            "it is in the old risk, checked and look form, which the owner could not follow; "
+            "record it as changed, question, checked and reply"
+        )
+    if words == list(ASK_REVIEW):
         if not all(dash and said.strip() for _, dash, said in named):
-            return "", "a risk review needs a value after each of risk, checked and look"
-        risk, checked, look = (said.strip().rstrip(".") for _, _, said in named)
-        return ASK_RISK_SHOWN.format(risk=risk, checked=checked, look=look), ""
+            return "", "a review needs a value after each of changed, question, checked and reply"
+        changed, question, checked, reply = (said.strip() for _, _, said in named)
+        if not question.endswith("?"):
+            return "", "a review's question ends in '?', so the owner can answer it yes or no"
+        return ASK_REVIEW_SHOWN.format(
+            changed=changed.rstrip("."),
+            question=question,
+            checked=checked.rstrip("."),
+            reply=reply.rstrip("."),
+        ), ""
     question, options = fields[0], fields[1:-1]
     recommend = fields[-1] if len(fields) > 1 else ""
     if not question.endswith("?"):
         return "", (
-            "it is neither a risk review nor a decision whose first field is a question, and "
+            "it is neither a review nor a decision whose first field is a question, and "
             f"{ASK_SEPARATOR.strip()!r} with a space either side separates its fields"
         )
     word, _, rest = recommend.partition(" ")
@@ -1065,7 +1157,13 @@ _SHOWN_OPTION = _shown_pattern(ASK_OPTION_SHOWN, {"label": _SHOWN_LABEL, "change
 _SHOWN_ASKS = (
     re.compile(
         _shown_pattern(
-            ASK_RISK_SHOWN, {"risk": _SHOWN_VALUE, "checked": _SHOWN_VALUE, "look": _SHOWN_VALUE}
+            ASK_REVIEW_SHOWN,
+            {
+                "changed": _SHOWN_VALUE,
+                "question": _SHOWN_VALUE + r"\?",
+                "checked": _SHOWN_VALUE,
+                "reply": _SHOWN_VALUE,
+            },
         ),
         re.IGNORECASE,
     ),

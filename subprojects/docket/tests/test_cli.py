@@ -11743,7 +11743,7 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
         "what it changes for the owner or a learner",
         "recommend <option> - <why>",
         "For a high-risk change",
-        "risk - <what could go wrong, for whom>",
+        "changed - <what changed, in one plain sentence>",
         "nothing needs the owner",
         "Owner-read: not needed - <why>",
         "merges on green",
@@ -11753,6 +11753,53 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
     assert places == sorted(places)
     assert "never as 'read #N'" in arming.ASK_LINE
     assert "every later reply that still waits on it" in arming.ASK_LINE
+
+
+def test_arm_ask_quotes_the_text_to_judge_rather_than_pointing_at_a_file() -> None:
+    """A read ask shows the owner the text, before and after, in the reply itself (`PL-77QB`).
+
+    On 2026-11-02 a risk ask rendered as "Please look at: the hazard table's 21
+    rows", and the owner had to open the file to find them. The line `arm`
+    prints before the ask says to quote the text, and so does the review
+    form's description.
+    """
+    assert "quote the text the owner is to judge in the reply itself" in arming.ASK_LINE
+    assert "before and after" in arming.ASK_LINE
+    assert "Never send the owner into a file" in arming.ASK_LINE
+    assert "enough of its surroundings, such as the whole paragraph" in arming.ASK_LINE
+    assert "Please look at" not in arming.ASK_REVIEW_SHOWN
+    assert "the reply quotes the text to judge, before and after" in arming.READ_ASK
+
+
+def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
+    """A review ask says what changed, asks one question and says what to reply (`PL-BGN1`).
+
+    On `#1946` and `#1947` the owner could not tell what a "Risk to review ...
+    Checked ... Please look at" ask wanted from them. The old form is refused
+    rather than rendered, the fields are asked for in plain words, and the
+    question is one the owner can decide, never a re-check of what the tests
+    and reviews covered.
+    """
+    line, why = arming.parse_owner_ask(
+        "changed - the hazard table is reworded | question - should the table keep the "
+        "1 MAC figure? | checked - every figure still matches its source. | reply - Merge it"
+    )
+    assert why == ""
+    assert line == (
+        "What changed: the hazard table is reworded. Question for you: should the table keep "
+        "the 1 MAC figure? Already checked: every figure still matches its source. "
+        "What to reply: Merge it."
+    )
+    assert arming.renders_owner_ask(line)
+    old, why = arming.parse_owner_ask("risk - r | checked - c | look - l")
+    assert old == ""
+    assert "old risk, checked and look form" in why
+    assert "Write every field in plain words for a clinician" in arming.READ_ASK
+    assert "never name a test, check, file or tool by its internal name" in arming.READ_ASK
+    assert "can decide as the owner or as a clinician, saying why it is theirs" in (arming.READ_ASK)
+    assert "Never ask the owner to re-check what the tests or reviews already checked" in (
+        arming.READ_ASK
+    )
 
 
 def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
@@ -11849,7 +11896,7 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         line.startswith("  The Owner-ask record on ")
         and line.endswith(
             " was not read: it is "
-            "neither a risk review nor a decision whose first field is a question, and '|' "
+            "neither a review nor a decision whose first field is a question, and '|' "
             "with a space either side separates its fields."
         )
         for line in lines
@@ -12024,21 +12071,51 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
             "",
         ),
         (
-            "Risk - a dose label could read mg for mcg | checked - the formatter tests pin "
-            "the unit. | look - the infusion panel's label",
-            "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests "
-            "pin the unit. Please look at: the infusion panel's label.",
+            "Changed - the dose label reads mcg | question - should it show mcg/kg/min? | "
+            "checked - the label matches the unit stored. | reply - Merge it",
+            "What changed: the dose label reads mcg. Question for you: should it show "
+            "mcg/kg/min? Already checked: the label matches the unit stored. What to reply: "
+            "Merge it.",
             "",
         ),
         (
-            "risk - x | checked -  | look - z",
+            "changed - x | question -  | checked - y | reply - z",
             "",
-            "a risk review needs a value after each of risk, checked and look",
+            "a review needs a value after each of changed, question, checked and reply",
+        ),
+        (
+            "changed - x | question - is it right | checked - y | reply - z",
+            "",
+            "a review's question ends in '?', so the owner can answer it yes or no",
+        ),
+        (
+            "risk - x | checked - y | look - z",
+            "",
+            "it is in the old risk, checked and look form, which the owner could not follow; "
+            "record it as changed, question, checked and reply",
+        ),
+        (
+            "changed - x | question - y? | checked - verify --self ACCEPTs | reply - Merge it",
+            "",
+            "it names '--self', which the owner cannot read in a reply; say in plain words "
+            "what it checked or changed",
+        ),
+        (
+            "changed - x | question - y? | checked - tools/model_rewrite.py lost | reply - z",
+            "",
+            "it names 'tools/model_rewrite.py', which the owner cannot read in a reply; say in "
+            "plain words what it checked or changed",
+        ),
+        (
+            "Which panel? | A: doc_check holds | B: y | recommend A - z",
+            "",
+            "it names 'doc_check', which the owner cannot read in a reply; say in plain words "
+            "what it checked or changed",
         ),
         (
             "none - held by rule",
             "",
-            "it is neither a risk review nor a decision whose first field is a question, and "
+            "it is neither a review nor a decision whose first field is a question, and "
             "'|' with a space either side separates its fields",
         ),
         ("Merge it?", "", "its last field is not 'recommend <option> - <why>'"),

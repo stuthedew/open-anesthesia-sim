@@ -1443,3 +1443,43 @@ resident rules, applies the patterns there too.
 
 **Why nothing is cut.** The existing points name compressed wording only, so
 no sentence said any of this. The addition is text the owner asked for.
+
+## The reader table, added 2026-11-02
+
+`PL-R7Q6` replaced the one-sentence reader in the resident
+`.claude/rules/plain-writing.md`, "a careful newcomer, someone who knows
+anesthesia or Python", with a table. Each row names a kind of text, its
+readers, what each knows and does not know, and what each will do with the
+text. `PL-H76S` found that the single reader let a term pass because some
+reader might know it, and that no step named the developer who wants to change
+a value.
+
+**The carrier test.** The moment is any write of prose, the same as the rest
+of the rule, so the table stays resident. `tools/new_prose.py` reads the table
+and prints each unit's readers for the close-out prose review, so the review
+gets the same readers without a second copy.
+
+**What was replaced, and the cost.** The newcomer sentence went. The rule grew
+from 7,925 to 10,211 characters, because no shorter form names two readers of
+one document and what each does not know.
+
+## The step before writing, and a chosen value's reason, added 2026-11-03
+
+`PL-TZ7R` added two paragraphs to the resident
+`.claude/rules/plain-writing.md`. The first has the writer write down what a
+paragraph's reader should take from it and do with it, and send each other
+fact to where its own reader looks: the item, or a note for developers at the
+end of a `docs/MODEL.md` section. The second has the writer give a chosen
+value's purpose, reason and effect from a record, trace the value with
+`git log -S` when the reason is not at hand, and never state a reason no record
+holds. `PL-H76S` found that no step asked what the reader needed, and that
+writers stated reasons with no source.
+
+**The carrier test.** Both faults showed first in drafts posted to the owner
+in a reply, before any file was opened, so a `paths:` scope on `docs/MODEL.md`
+would have loaded too late. The paragraphs stay with the rest of the rule.
+
+**What was replaced, and the cost.** Point 7's "keep every fact" sentence was
+replaced by one that says where a fact may go. The rule grew from 10,211 to
+11,763 characters. Nothing else in the rule says when to decide a paragraph's
+point or where a value's reason comes from, so nothing could be cut for them.
