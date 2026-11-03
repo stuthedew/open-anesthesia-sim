@@ -88,3 +88,27 @@ for it.
 **Checked 2026-10-25:** nothing here can be done before 2026-11-22. The logging is on `main` and working: `python3 tools/hook_blocks.py count` already reads 14 refusals from five branches' files, from `floor-interpreter-guard`, `gate-status-guard` and `push-check-guard`. A session that picks this item before 2026-11-22 has nothing to do, and yields it. The item stays `ready`, because `blocked-by` takes an item or a milestone and no date.
 
 **Scheduled, 2026-10-25.** A one-time scheduled task, `trig_01P9v9dUodFbP7kY8pXRFS94`, starts a fresh session at 2026-11-23 15:00 UTC (09:00 CST) to read the counts and write the verdicts (project owner, 2026-10-25, ratified, over leaving the read to whoever remembers the date). The task stores no connectors, and its session request names no repository, so its first step attaches the repository with `add_repo` and stops if GitHub tools are missing. If that session fails, the item is still `ready` and any session can do the work.
+
+**Recommendation, 2026-11-03: add a fourth verdict, "move the check to git's
+own hook".** From a read-only review of the repository's regular expressions,
+filed at the owner's request. Two of the four Bash guards guard an effect that
+git itself sees, whatever the command's spelling:
+
+- `no-prune-guard.sh` stops the deletion of remote-tracking refs. Git's
+  `reference-transaction` hook, added in git 2.28.0, receives each reference
+  update as its old value, new value and ref name. A non-zero exit in the
+  "preparing" or "prepared" state aborts the whole transaction
+  (https://git-scm.com/docs/githooks). The cloud container runs git 2.43.0.
+- `push-check-guard.sh` runs checks before a push. Git's `pre-push` hook runs
+  on every push and refuses it with a non-zero exit. `git push --no-verify`
+  bypasses it, as `git push -h` says.
+
+`floor-interpreter-guard.sh` and `gate-status-guard.sh` have no git-side
+equivalent. Moving the first two means a spelling the guard misreads no
+longer lets the effect through. It does not retire `docket.shell`, which
+docket's `verify:` field and `tools/doc_check.py` also read. It costs a
+session-start step that sets `core.hooksPath`. Claude Code's permissions page
+warns that "Bash permission patterns that try to constrain command arguments
+are fragile" (https://code.claude.com/docs/en/permissions). So, when each
+guard's verdict is recorded, first ask whether its effect can be enforced
+where it happens.
