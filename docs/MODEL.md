@@ -10280,32 +10280,28 @@ of ten at or above it.
 `test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
 arithmetic for every shipped agent.
 
-One count of the MAC line is therefore 0.02 percentage points of sevoflurane,
-0.012 of isoflurane and 0.06 of desflurane. That is coarser than one step of
-the percent readout beside it for every agent. So the MAC readout's step is
-never smaller than the percent readout's.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` enforces the
-property that one count of the MAC line is coarser than one count of the
-percent for every agent. The three figures above have no test yet (`PL-19W8`).
+One step of the MAC readout is therefore 0.02 percentage points of sevoflurane,
+0.012 of isoflurane and 0.06 of desflurane. For each agent, that is larger than
+one step of the percent readout beside it.
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` enforces this
+for every agent. The three figures above have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-The two readouts still round at different points, so near a MAC rounding
+The two readouts still round at different values, so near a MAC rounding
 boundary the MAC digit can change while the percent digit does not. For
 sevoflurane, 0.029% and 0.031% both read `0.03%`, while the MAC readout goes
-from `0.01 ×MAC` to `0.02 ×MAC`. The modeled concentration did change, by
-less than one step of the percent readout: here by 0.002 percentage points,
-and never by as much as 0.01. So a MAC digit that moves alone shows a real
-change too small for the percent readout to show, and gives no size for it
-beyond that bound.
-`test_the_mac_digit_can_move_alone_at_a_rounding_boundary` pins this example,
-and a matching one for isoflurane and desflurane.
+from `0.01 ×MAC` to `0.02 ×MAC`. The modeled concentration did change, here by
+0.002 percentage points. So a MAC digit that moves alone shows a real change.
+That change is less than 0.01 percentage points, too small for the percent
+readout to show, and the readouts do not show how much less.
+`test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks this
+example, and a matching one for isoflurane and desflurane.
 
-The unit conversion does not preserve information across agents. That is why
-the MAC resolution is uniform in MAC rather than being the percent resolution
-restated. A per-agent MAC resolution would put different magnitudes at the
-same glyph position. That is the failure that "Why the resolution is uniform
-rather than per-compartment" rejects below, arriving across agents instead of
-across compartments.
+Converting the percent readout's step into MAC would give each agent a different
+step. The last digit of the MAC readout would then stand for a different amount
+for each agent. So the MAC readout uses the same step, measured in MAC, for every
+agent. "Why the resolution is uniform rather than per-compartment" below rejects
+the same problem across compartments.
 
 The below-resolution form applies to the MAC line for the same reason it
 applies to the percent line, and it matters more there, not less. A

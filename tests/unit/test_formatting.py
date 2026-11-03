@@ -387,16 +387,15 @@ def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
 
 
 def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
-    """The two units are read side by side, so neither may out-claim the other.
+    """Check that no MAC step is finer than the percent step beside it.
 
-    This is the property that the derivation in the test above exists to
-    guarantee, stated as a reader meets it. For every shipped agent, one count
-    of the MAC line is at least one count of the percent line above it. So
-    over a full step the MAC figure never resolves a finer difference than the
-    percent figure. This compares step sizes only. The two readouts still
-    round at different boundaries, so near a MAC rounding boundary the MAC
-    digit can change while the percent digit does not.
-    `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` pins that case.
+    The two readouts are read side by side. For every shipped agent, one step of
+    the MAC readout, in percentage points, must be at least one step of the
+    percent readout. The derivation in the test above exists to guarantee this.
+    The test compares step sizes only. The two readouts still round at different
+    values, so near a MAC rounding boundary the MAC digit can change while the
+    percent digit does not.
+    `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` covers that case.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -412,13 +411,12 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     """Show the MAC readout changing while the percent readout beside it does not.
 
     `docs/MODEL.md` § "Displayed precision" says this can happen, and this test
-    holds that sentence to the formatter. Each readout changes halfway between
-    two of its displayed values: the percent readout at 0.025%, 0.035% and so
-    on, and the MAC readout at 0.015 MAC, 0.025 MAC and so on. In percent, the
-    MAC boundaries depend on the agent's MAC, so they do not line up with the
-    percent boundaries. Each row straddles the MAC boundary at 0.015 MAC by
-    0.001 percentage points on either side, which stays inside one percent
-    step.
+    checks the formatter against that sentence. Each readout changes halfway
+    between two of its displayed values: the percent readout at 0.025%, 0.035%
+    and so on, and the MAC readout at 0.015 MAC, 0.025 MAC and so on. In percent,
+    the MAC boundaries depend on the agent's MAC, so they do not line up with the
+    percent boundaries. Each row straddles the MAC boundary at 0.015 MAC by 0.001
+    percentage points on either side, which stays inside one percent step.
 
     The expected strings were worked by hand from the stored MAC values:
 
@@ -430,8 +428,8 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
       Both percents read 0.09%.
 
     The test also checks that each stored MAC is still the value the hand
-    calculation used, and that the table covers every shipped agent, so a new
-    agent or a changed MAC fails here rather than leaving the example stale.
+    calculation used, and that the table covers every shipped agent. So a new
+    agent or a changed MAC fails here, rather than leaving the example stale.
     """
 
     # agent: (MAC used in the hand calculation, lower percent, upper percent,

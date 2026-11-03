@@ -33,3 +33,5 @@ The reviewer also proposed moving each test name to a "**For developers.**" note
 **Done when.** The four paragraphs pass close-out step 8's review with no listed term, and `python3 tools/model_rewrite.py lost` shows no value changed.
 
 **Generator check.** One-off; prose-quality work the plain-writing rule routes to its own item.
+
+**Checked 2026-11-03.** `PL-ZDZ0` rewrote the second of the four paragraphs (the MAC-step paragraph) through close-out's prose review: it now says "step" and "MAC readout", and "One count of the MAC line" is gone. It also rewrote the paragraph after it, which began "The unit conversion does not preserve information across agents", without "glyph position". Proposal 2 above is therefore done. Proposals 1, 3 and 4 still apply, and "glyph position" is still in the two later paragraphs this item does not cover.
