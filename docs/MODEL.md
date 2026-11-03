@@ -4033,10 +4033,9 @@ citation.
 ### v0.2.0: isoflurane and desflurane
 
 Isoflurane and desflurane use the same equations, compartments and reference adult patient as
-sevoflurane. Only the partition coefficients differ, and each agent stores its own in
-`data/agents/*.json`. All twelve come from one table, De Wolf et al. 2012, Table 1, the paper
-already cited for sevoflurane. So the three agents' values share one source and can be compared
-directly.
+sevoflurane. Only the partition coefficients differ. All twelve values, one blood:gas and three
+tissue:gas coefficients for each agent, come from De Wolf et al. 2012, Table 1, the paper already
+cited for sevoflurane. So the three agents' values can be compared directly.
 
 **The nine tissue:gas values in that table come from one study's measurements.** They are the
 Gas Man simulation program's figures for the human measurements of Yasuda, Targ and Eger 1989.
@@ -4048,10 +4047,9 @@ agents, an error that all three share cannot make one agent look different from 
 three blood:gas values are the Gas Man set, graded tier 3 under § "Source hierarchy". They are
 comparable only because they come from one published table.
 
-The shared-source argument applies to the partition coefficients only, **not** to the stored
-MAC values (`mac_percent`). Those differ from the primary literature in opposite directions for
-sevoflurane and desflurane. § "Delivery-limit and MAC parameters" measures the differences, and
-each agent file gives the primary value, the stored value and the difference.
+The shared-source argument covers the partition coefficients only. It does not cover the stored
+MAC values, which differ from the primary literature in opposite directions for sevoflurane and
+desflurane. § "Delivery-limit and MAC parameters" measures the differences.
 
 **Gas Man's Workbook says the nine tissue:gas coefficients come from Yasuda, Targ and Eger, and
 the paper confirms it.** The note under the Workbook's page-168 parameter table reads "Values for
@@ -4112,17 +4110,16 @@ Two further points matter for the model:
 2026-09-13). These were two separate decisions.
 
 *Adopted.* The nine tissue:gas coefficients trace back to a primary human measurement. So all
-three agent files now cite Yasuda, Targ and Eger as their source, at tier 1, the grade for a
-primary measurement. De Wolf et al. stays the source for the three blood:gas values, which this
-study did not measure. No number changed. Only the `tier` and `adopted` fields, which record each
-number's source, did.
+three agents now cite Yasuda, Targ and Eger as their source, at tier 1, the grade for a primary
+measurement. De Wolf et al. stays the source for the three blood:gas values, which this study did
+not measure. Only the recorded source and grade changed. No number did.
 
 *Declined.* Storing Yasuda's published figures instead of Gas Man's for the nine coefficients
 would move three displayed time constants. Sevoflurane's vessel-rich time constant would move
-+4.5% (1.15 instead of 1.1), isoflurane's fat −8.3% (64.2 instead of 70.0), and desflurane's fat
-−7.7% (12.0 instead of 13.0). The accuracy gained would be smaller than the error the model
-already carries by lumping brain, heart, liver, kidney and viscera into one vessel-rich
-compartment. That structure cannot use a difference of 0.05 in a brain measurement. So the Gas
++4.5% (coefficient 1.15 instead of 1.1), isoflurane's fat −8.3% (64.2 instead of 70.0), and
+desflurane's fat −7.7% (12.0 instead of 13.0). The accuracy gained would be smaller than the error
+that lumping brain, heart, liver, kidney and viscera into one vessel-rich compartment already
+causes. A lumped compartment cannot use a difference of 0.05 in a brain measurement. So the Gas
 Man values are kept.
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
@@ -4130,9 +4127,8 @@ Man values are kept.
 <!-- not-restated: 0.05 -->
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less soluble than
-isoflurane (blood:gas 0.42 < 0.65 < 1.3). The equations stay the same. Lower solubility only
-makes the agent equilibrate faster. A test checks the simulated alveolar-to-circuit ratios as
-well as the stored coefficients.
+isoflurane (blood:gas 0.42 < 0.65 < 1.3). With the same equations, lower solubility only makes
+the agent equilibrate faster.
 
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
@@ -4147,13 +4143,14 @@ would invert the measured solubility order of the three agents. § "Desflurane's
 why the parameter file was not changed" gives the reasoning. Read it before changing any of
 desflurane's coefficients.
 
-**For developers.** The three agents share the physiologic parameters in
-`data/patients/reference_adult.json`. Storing Yasuda's figures in place of Gas
-Man's would also require recomputing every pinned reference state under
-`tests/reference/`, because those states are this parameter set's solution.
-`tests/reference/test_multi_agent.py` checks the simulated alveolar-to-circuit
-ratios. Read § "Desflurane's residual, and why the parameter file was not
-changed" before editing `data/agents/desflurane.json`.
+**For developers.** Each agent's partition coefficients are in
+`data/agents/*.json`, whose `tier` and `adopted` fields record each value's
+source. The three agents share the physiologic parameters in
+`data/patients/reference_adult.json`. Storing Yasuda's figures would require
+recomputing every pinned reference state under `tests/reference/`, because
+those states are this parameter set's solution.
+`tests/reference/test_multi_agent.py` checks the stored coefficients and the
+simulated alveolar-to-circuit ratios.
 
 ### Delivery-limit and MAC parameters
 
@@ -4190,8 +4187,8 @@ The value is stored under the agent for two reasons:
 - The reference breathing system in
   `data/machines/reference_circle_system.json` is not a machine and names no
   vaporizer. A per-machine entry would only repeat the agent file's number.
-- A check rejects an agent whose own vaporizer cannot deliver 1 MAC, and the dial's 1-MAC start
-  depends on it. The check can be written only where the maximum and the agent's MAC share a file.
+- The dial's start at 1 MAC relies on rejecting any agent whose own vaporizer cannot deliver
+  1 MAC. That check needs the maximum and the MAC in the same file.
 
 **The value moves when a machine profile mounts a vaporizer whose maximum
 differs from the agent file's.** It then moves to the per-agent limit on the
@@ -4298,10 +4295,8 @@ the two.
 **For developers.** `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()`
 in `core/parameters.py` rejects an agent whose own vaporizer cannot deliver
 its 1 MAC. The 1-MAC start in `AgentUptakeSystem.for_agent()` depends on that
-check, and it can be written only where the maximum and `mac_percent` are in
-the same file. Because `mac_percent` divides every displayed compartment value,
-it falls under the safety-critical standard in `CLAUDE.md`, which also forbids
-presenting a single-agent concentration as a depth of anesthesia.
+check. Because `mac_percent` divides every displayed compartment value, a
+change to it falls under the safety-critical standard in `CLAUDE.md`.
 
 The project must not tag a release while scientific `TBD` values remain in
 this document. None remain as of this revision.
@@ -4476,15 +4471,13 @@ the step does not enter the result.
 **Changing the step size changes the result only by rounding, and the test requires that.** The
 model solves its equations exactly over each step, so it reaches the same answer at every
 supported step size. The gaps between runs are as small as computer rounding allows, and they do
-not shrink as the step shrinks. The earlier, approximate method had an error that halved when the
-step halved, so the test then required each gap to be smaller than the last. With the present
-method, correct arithmetic would fail that requirement. The test compares the alveolar,
-vessel-rich and mixed-venous concentrations after 60 s.
+not shrink as the step shrinks. The test compares the alveolar, vessel-rich and mixed-venous
+concentrations after 60 s.
 
-**A second test checks the smallest supported step, 1 ms.** A minute simulated in 1 ms steps must
-match the same minute simulated in the shipped 0.1 s steps, to within rounding. So the smallest
-step the model accepts still gives the shipped answer. The test also fixes the smallest step at
-1 ms, so changing it means measuring these figures again.
+**A second test checks the smallest supported step, 1 ms.** A minute in 1 ms steps must match the
+same minute in the application's 0.1 s steps, to within rounding. So the smallest step the model
+accepts gives the application's answer. The test expects the smallest step to be 1 ms, so
+changing it means measuring the rounding figures below again.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
@@ -4500,14 +4493,13 @@ Held by `test_step_refinement_converges`, for the three halvings, and by
 `test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
 minimum step. Both are in `tests/reference/test_sevo_patient.py`.
 
-**For developers.** Each figure here is an absolute gap in fraction. Measured
-on 2026-11-01, the worst gap between successive halvings is 3.4e-16, in the
-alveolar fraction. Euler's method, a simple first-order method, shows gaps of
-up to 1.8e-6 at these steps (measured 2026-11-03). The test's limit, 1e-14,
-was set on 2026-09-06 at about twelve times the worst gap measured then,
-8.1e-16. That measurement reported four values, and no record names the
-fourth. The test has compared the same three since the exact step was
-introduced.
+**For developers.** Each figure is an absolute gap in fraction. The worst gap
+between successive halvings is 3.4e-16, in the alveolar fraction (measured
+2026-11-01). Euler's method, whose error halves with the step, shows gaps up to
+1.8e-6 at these steps (measured 2026-11-03). The test's limit, 1e-14, was set
+on 2026-09-06 at about twelve times the worst gap then, 8.1e-16. That
+measurement reported four values, and no record names the fourth. The test has
+compared the same three since the method became exact.
 
 The test of the smallest step, `MINIMUM_SIMULATION_STEP_S`, allows 3e-14 in
 each compared fraction. That is wider than the halvings' limit because its
@@ -4548,9 +4540,9 @@ $$
 over every state $`k`$ and every trajectory below.
 
 **Runs at fixed settings out to one hour have a limit of their own.** A test runs each agent at
-the reference settings, held fixed, for 60, 600 and 3600 s at the shipped 0.1 s step. It compares
-each result with the independent solution at that time. The limit is looser than the one above,
-because the one-hour run reaches a larger rounding error than any run below.
+the reference settings for 60, 600 and 3600 s at the application's 0.1 s step. It compares each
+result with the independent solution at that time. The limit is looser than the one above,
+because the one-hour run builds up more rounding error than any run below.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Why the limit is a fixed size.** The model solves its equations exactly over each step. So the
@@ -4561,9 +4553,9 @@ would therefore claim the reverse of what is true.
 
 **The measurements the limit is set from.** Each of the five runs below was compared with the
 independent solution along its whole length, for all three agents. The differences are rounding.
-At the shipped 0.1 s step, desflurane gives the largest on every run. Even the largest difference
-measured is nine orders of magnitude smaller than the worst error of the earlier, approximate
-method.
+At the application's 0.1 s step, desflurane gives the largest on every run. Even the largest
+difference measured is nine orders of magnitude smaller than the worst error of the earlier,
+approximate method.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 The oracle runs at an eighth of the step under test. At that step its
@@ -4576,22 +4568,20 @@ differences by at most 11%, some up and some down. If the difference still held 
 independent solution's own method, it would fall about four thousandfold and never rise. A
 difference that moves a few percent either way comes from rounding in the two solutions.
 
-**The limit leaves room for rounding that differs between computers.** Rounding builds up
-differently on different machines, so the limit is sized on how much the model's own rounding
-can vary. Solving the same runs at 0.1, 0.05 and 0.025 s moves the answer by more than its
-difference from the independent solution. The limit is set above that spread. It is still nearly
-nine orders of magnitude below the error of any method that does not solve the equations
-exactly. So the test fails as soon as such error returns, which is what the test is for.
+**The limit leaves room for rounding that differs between computers.** It is sized on how much
+the model's own rounding can vary. Solving the same runs at 0.1, 0.05 and 0.025 s moves the
+answer by more than its difference from the independent solution, and the limit is set above
+that spread. It is still nearly nine orders of magnitude below the error of any method that does
+not solve the equations exactly. So the test fails as soon as such an error returns.
 <!-- not-restated: 0.05 -->
 
 **The runs the limit covers.** The test covers *trajectories*, runs whose settings change over
-time, not only fixed settings. A run of the application is a sequence of settings, each held until
-someone moves a slider. A slider move puts an approximate method under the most strain, because
-the state is then far from where the new settings will settle it, and the method's error grows
-with how fast the state changes. A test that held one set of settings throughout would cover only
-runs whose settings never change. Those are the smaller part of what the interface produces. A
-release test that covers less than the settings a user can reach claims more checking than its
-evidence supports.
+time, as well as fixed settings. A run of the application is a sequence of settings, each held
+until someone moves a slider. A slider move puts an approximate method under the most strain,
+because the state is then far from where the new settings will settle it, and the method's error
+grows with how fast the state changes. Runs whose settings never change are the smaller part of
+what the interface produces. Limited to them, the test that every release must pass would claim
+more checking than its evidence supports.
 
 The gate therefore drives five kinds of run:
 
@@ -4691,13 +4681,13 @@ the operator split's error coefficient:
 
 With the earlier, approximate method, the unperfused load had the larger
 error and the ventilator start the smaller. With the present method the two
-have swapped places, and rounding does build up over a run. Three ventilator
-starts in a row give desflurane 2.46e-14, against 1.39e-14 for one (measured
-2026-10-25). So the sweep still shows where an approximate method has its
-largest error, which is the error the test exists to catch. It does not bound
-the present method's rounding, which a longer run raises. The steady rise
-along each setting was measured, not proved. A change to the equations could
-move the worst case off these runs, so repeat the sweep after such a change.
+have swapped places, and rounding builds up over a run. Three ventilator
+starts in a row give desflurane a larger difference than one start. So the
+sweep still shows where an approximate method has its largest error, which is
+the error the test exists to catch. The sweep does not bound the present
+method's rounding, which a longer run raises. The steady rise along each
+setting was measured, not proved. A change to the equations could move the
+worst case off these runs, so repeat the sweep after such a change.
 
 Within one step, the model never updates a compartment from a value that the
 same step has already changed. So it leaves no error that runs in one
@@ -4731,26 +4721,27 @@ taken as the maximum over the whole run.
 - **Why the limit does not shrink with the step.** The operator split's error
   was $`C\,\Delta t`$, so a bound on $`C`$ bounded the error at every step
   size. The exact step has no such coefficient.
-- **The five runs.** Measured on 2026-09-07 at the shipped 0.1 s step, the
-  worst residuals are 1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope
+- **The five runs.** Measured on 2026-09-07 at the 0.1 s step, the worst
+  residuals are 1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope
   corner*, 1.39e-14 for the *ventilator start*, 1.34e-14 for the *reference
   point* and 8.80e-15 for the *unperfused load, then dial off*. Re-measured on
   2026-10-25, all five were unchanged to every digit that
   `tests/reference/test_coupled_dynamics.py` records. They lie within a factor
-  of 1.8 of one another, because rounding does not grow with how far the
-  settings move. The unperfused load gives the smallest figure although it
-  runs 900 s against the others' 600 s. Its worst falls while the blood and
-  tissue states are still exactly zero. The test also runs all five at 0.05 s
-  and 0.025 s. The worst figure there is **5.89e-14**, for desflurane on a
-  ventilator start at 0.025 s, and the next is 5.46e-14, for desflurane on the
-  held envelope corner at the same step (measured 2026-10-25). The operator
-  split's worst over the same runs was 2.29e-4 at the shipped 0.1 s step.
-- **The margin for other machines.** The splitting bound carried a margin of
-  1.22. A systematic error coefficient comes out the same on every machine,
-  but rounding does not: a different `exp` implementation or a contracted
-  multiply-add moves the last bits of both solutions. The spread was measured
-  with no independent solution involved, as one exact calculation divided into
-  0.1, 0.05 and 0.025 s steps. It reaches 1.07e-13. The limit is 3.7 times
+  of 1.8 of each other, because rounding does not grow with how far settings
+  move. The unperfused load gives the smallest although it runs 900 s, against
+  the others' 600 s. Its worst falls while the blood and tissue states are
+  still exactly zero. Three desflurane ventilator starts in a row reach
+  2.46e-14, against 1.39e-14 for one (2026-10-25). The test repeats all five at 0.05 s and 0.025 s. The
+  worst there is **5.89e-14**, for desflurane on a ventilator start at 0.025 s,
+  and the next is 5.46e-14, for desflurane on the held envelope corner at the
+  same step (measured 2026-10-25). The earlier method's worst over these runs
+  was 2.29e-4 at 0.1 s.
+- **The margin for other machines.** The earlier method's limit carried a
+  margin of 1.22. Its error coefficient came out the same on every machine,
+  but rounding does not. A different `exp` implementation or a fused
+  multiply-add instruction moves the last bits of both solutions. The spread
+  was measured with no independent solution, as one exact calculation divided
+  into 0.1, 0.05 and 0.025 s steps. It reaches 1.07e-13. The limit is 3.7 times
   that spread and 6.8 times the worst residual.
 - **The random runs.** Each is fixed by a seed and starts empty at a random
   point in the settings envelope. Controls move only on a step boundary. At
@@ -10758,18 +10749,13 @@ precision than the display shows" was a small claim. Under the exact step the
 gap is nine orders of magnitude. The rounding in the readout is now the only
 place where resolution is lost anywhere between a slider and a pixel.
 
-**What the last digit does not cover, and what it still does.**
-~~The error is a systematic sequencing bias rather than noise, and its sign is
-opposite at the two ends of the transfer chain. A *difference* between two of
-the six readouts therefore carries the sum of two displacements, up to 1.8
-times the error in either reading alone, worst measured at 0.030 percentage
-points, so the numeric gap between two readouts is the least certain thing on
-the display.~~ **Withdrawn 2026-09-06 (`PL-GS5X`).** That bias was a property
-of the operator split's sub-step ordering. Within one step, the exact step
-never updates a compartment from an upstream value that the same step has
-already changed. So there is no displacement with a consistent sign, and a gap
-between two readouts is no less accurate than either of the readings it is
-taken from.
+**What the last digit does not cover, and what it still does.** An earlier
+version of this section warned that the gap between two readouts was the least
+certain number on the display. That warning was withdrawn on 2026-09-06
+(`PL-GS5X`), because the error it described came from the earlier method's
+order of updates. Within one step, the model never updates a compartment from a
+value that the same step has already changed. So a gap between two readouts is
+as accurate as either reading it is taken from.
 
 The comparison that the interface actually invites is therefore no longer at
 risk from the solver, and that is a measurement rather than an assurance. The
