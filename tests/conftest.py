@@ -313,14 +313,19 @@ def _admits_no_difference(expected: float, tolerance: float) -> bool:
 
 
 def _explanation(how: str, expected: float, tolerance: float) -> str:
-    """Return the failure message for a comparison that admits no difference."""
+    """Return the failure message for a comparison that admits no difference.
+
+    Both numbers are printed in full. Rounded to a few figures, the spacing
+    usually rounds down, so a writer who copied the printed minimum would be
+    refused again.
+    """
     gap = float_spacing(expected)
     return (
-        f"{how} allows a difference of {tolerance:.3g}, which is smaller than the "
-        f"{gap:.3g} between {expected!r} and the nearest other floating-point number. "
+        f"{how} allows a difference of {tolerance!r}, which is smaller than the "
+        f"{gap!r} between {expected!r} and the nearest other floating-point number. "
         "Only an exact match can pass, so this is an exact check written as an "
         "approximate one. Write `==` if an exact match is meant, or allow at least "
-        f"{gap:.3g}, for example as a multiple of `math.ulp({expected!r})` (PL-NYFZ)."
+        f"{gap!r}, for example as a multiple of `math.ulp({expected!r})` (PL-NYFZ)."
     )
 
 
@@ -341,7 +346,10 @@ def _as_float(value: object) -> float | None:
 def _checked_approx_eq(self: ApproxScalar, actual: object) -> bool:
     """Refuse a `pytest.approx` element whose tolerance admits no difference, then compare."""
     expected = _as_float(self.expected)
-    if expected is not None:
+    # pytest compares two ints exactly, in integer arithmetic, so the spacing of
+    # floats does not limit them: approx(2**60, abs=1) passes for 2**60 + 1.
+    both_ints = isinstance(self.expected, int) and isinstance(actual, int)
+    if expected is not None and not both_ints:
         try:
             tolerance = self.tolerance
         except ValueError:

@@ -80,7 +80,9 @@ each kind, and it named all four.
    above are 180 times or more, apart from the deliberate bounds in units in
    the last place. So rule 7 gains one sentence: a limit at the size of
    rounding error is written as a multiple of `math.ulp` of the compared
-   value, or as a relative limit, never as a bare absolute number. Error
+   value, or as a relative limit of at least `sys.float_info.epsilon`, never
+   as a bare absolute number. A relative limit below 2.2e-16 is below the
+   spacing at some values (blind review, 2026-11-03). Error
    Prone also reaches only the assertion libraries' own comparisons.
 3. **The spacing** at a finite value x is the smaller of the gaps from x to
    `math.nextafter(x, inf)` and to `math.nextafter(x, -inf)`, as in Error
@@ -101,3 +103,11 @@ a power of two, a zero tolerance, pytest's default tolerance, and an
 **Built 2026-11-03.** The check is in `tests/conftest.py` and runs in every
 test run. `make check` passed with it installed, 12,020 tests, which agrees
 with the measurement: no tolerance in the suite is below the spacing today.
+
+**Blind review, 2026-11-03, one pass.** Three findings, all fixed on this
+branch. The failure message rounded the spacing down, so a writer who copied
+the printed minimum was refused again: it now prints both numbers in full. Rule
+7 named any relative limit as safe: it now sets the floor at
+`sys.float_info.epsilon`. Two ints compared with `pytest.approx` were refused,
+though pytest compares them exactly: such a comparison is now left alone. Each
+code fix has a test that failed on the reviewed code.

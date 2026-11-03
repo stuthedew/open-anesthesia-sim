@@ -70,8 +70,10 @@ test that imports `anesthesia_sim` is the simulator's, which is the rule
    no comment. A limit at the size of rounding error must be at least the
    spacing between floating-point numbers at the compared value, or only an
    exact match can pass. So write it as a multiple of `math.ulp` of that
-   value, or as a relative limit, never as a bare absolute number such as
-   `1e-14`. The suite fails a `pytest.approx` or `math.isclose` limit below
+   value, or as a relative limit of at least `sys.float_info.epsilon`
+   (2.2e-16) times that value, never as a bare absolute number such as
+   `1e-14`. A relative limit below 2.2e-16 is below the spacing at some
+   values, and one below 1.1e-16 at every value. The suite fails a `pytest.approx` or `math.isclose` limit below
    the spacing, but it cannot see a hand-written `abs(a - b) < limit`
    (`PL-NYFZ`). Before you add a second limit on a value that a test already
    bounds, check whether the two overlap, because the looser one can then
