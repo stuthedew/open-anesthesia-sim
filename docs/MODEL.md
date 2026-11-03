@@ -10150,9 +10150,9 @@ delivered-agent setting uses the same resolution, both in the readout beside
 its slider and in the slider's own drag label. So the value a reader dials and
 the values it produces are read at one scale. A positive value that would round
 to `0.00%` is displayed as `<0.01%` rather than as zero.
-`test_format_percent_uses_the_documented_display_resolution` holds the
+`test_format_percent_uses_the_documented_display_resolution` enforces the
 resolution, and `test_format_percent_marks_a_value_below_the_resolution`
-holds the `<0.01%` form.
+enforces the `<0.01%` form.
 
 This is a recorded decision (PL-040), not a formatting convention, because
 displayed precision is a claim about what the model can support. Earlier
@@ -10291,7 +10291,7 @@ rather than being the percent resolution restated. A per-agent MAC resolution
 would put different magnitudes at the same glyph position. That is the failure
 that "Why the resolution is uniform rather than per-compartment" rejects below,
 arriving across agents instead of across compartments.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` holds the
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` enforces the
 property that one count of the MAC line is coarser than one count of the
 percent for every agent. The three figures above have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
