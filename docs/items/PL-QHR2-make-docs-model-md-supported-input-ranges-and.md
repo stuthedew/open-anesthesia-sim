@@ -3,12 +3,14 @@ id: PL-QHR2
 title: Make docs/MODEL.md § "Supported input ranges" and its subsections readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-ZT47
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1964
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Runtime controls"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -43,3 +45,16 @@ decided split. The mechanism that let the history and padding accumulate,
 `tools/model_rewrite.py lost` prints. The owner reads it only where
 `PL-ZTZF`'s rule sends it: a changed value, equation, code span or citation,
 or a sentence whose meaning needs their judgment.
+
+**Done (2026-11-03).** The history pass moved the section's decision history
+to its items (accounted in the project's shared notes for `PL-ZT47`). Two
+blind reviews found three statements the rewrite had made wrong or
+misleading, all fixed: the note for developers now names the figures above
+the section that depend on the flow maxima, the two finite-number checks are
+no longer said to refuse a swapped checked quantity, and the all-zero
+propagator is described as a past measurement. The second review's finding
+about `core/supported_ranges.py`'s docstring is `PL-K4MQ`. The prose review
+read 40 paragraphs and rewrote 39. Three rewrites longer than the paragraph
+they replaced were rejected. Five sentences the reviewer could not interpret
+were made explicit. The stale claim about which gas volumes a caller can
+build was `PL-VXSR`, closed alongside.

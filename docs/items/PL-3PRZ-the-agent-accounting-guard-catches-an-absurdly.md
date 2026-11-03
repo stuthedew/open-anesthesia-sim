@@ -122,3 +122,26 @@ it is not amounts that underflow, it is the propagator that produces them, and
 no shipped path reaches a volume that does it. The shape worth carrying
 forward is the one this found: **a residual formed from quantities that a
 single failure can reach together proves nothing when that failure occurs.**
+
+## Moved from docs/MODEL.md (PL-QHR2, 2026-11-02)
+
+The rewrite of § "Supported input ranges" removed this history from the specification. It is kept here verbatim, as it stood on `main`.
+
+**Below that the mass-balance guard stopped firing, and what refuses now is
+upstream of it** (`PL-3PRZ`). At $`10^{-300}`$ L the run advanced and returned
+an alveolar fraction of exactly 0.0, with accounting passing. The guard was not
+weak. The propagator had been driven to the zero matrix, so `propagate()`
+returned the zero state vector. The identity was then handed
+$`0 + 0 - 0 - 0`$ on totals that had all been annihilated together. Zero does
+balance zero. Every term of the check had been destroyed before the check ran.
+That is the pattern to look for wherever a residual is formed from quantities
+that the same failure can affect.
+
+squarings described below. The second refusal still fires first wherever the
+scaling overflows.
+
+**Measured across every decade from $`10^{0}`$ to $`10^{-323}`$ L when that
+refusal landed**, before and after the change, the counts were these. Before,
+120 decades advanced with the constant state row exact, and the same 120
+advanced after. Before, 77 had been refused as non-finite, and 194 were
+refused after. The difference is made up exactly by the 116 that had returned
