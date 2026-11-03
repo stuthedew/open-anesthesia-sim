@@ -2434,8 +2434,12 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
 #: constant's name, and how prose writes that unit. Longer endings come first,
 #: so `_l_min` is read before `_l` and `_l_s` before `_s`. A fraction of MAC,
 #: such as `fraction_of_mac`, has no unit: prose writes it as a bare decimal,
-#: as in "0.34 of MAC", so its ending maps to `None`.
+#: as in "0.34 of MAC", so its ending maps to `None`. An agent's liquid
+#: density is stored in g/mL and its molar mass in g/mol, so prose that writes
+#: those units is compared with them.
 UNIT_ENDINGS: tuple[tuple[str, str | None], ...] = (
+    ("_g_ml", "g/mL"),
+    ("_g_mol", "g/mol"),
     ("_l_min", "L/min"),
     ("_l_s", "L/s"),
     ("_l", "L"),
@@ -2459,11 +2463,13 @@ UNIT_WORDS: dict[str, str] = {
 
 #: A unit written in lower case, and the symbol a stored value is kept in. A
 #: source quoted in `docs/MODEL.md` writes "4 l/min" and "2.5 l" (`PL-2T6S`).
-UNIT_CASES: dict[str, str] = {"l/min": "L/min", "l/s": "L/s", "l": "L"}
+UNIT_CASES: dict[str, str] = {"l/min": "L/min", "l/s": "L/s", "l": "L", "g/ml": "g/mL"}
 
-#: A unit of time that prose writes and no stored value is kept in, with the
-#: unit it converts to and the factor. So "24 hours" is read as 86400 s and
-#: "1 ms" as 0.001 s.
+#: A unit that prose writes and no stored value is kept in, with the unit it
+#: converts to and the factor. So "24 hours" is read as 86400 s, "1 ms" as
+#: 0.001 s and "1222 ml" as 1.222 L (`PL-XQXK`). A stored volume is in litres,
+#: and the documents state small volumes in millilitres, so a restatement of a
+#: stored volume in millilitres is asked about too.
 UNIT_SCALES: dict[str, tuple[str, float]] = {
     "ms": ("s", 0.001),
     "min": ("s", 60.0),
@@ -2472,13 +2478,45 @@ UNIT_SCALES: dict[str, tuple[str, float]] = {
     "h": ("s", 3600.0),
     "hour": ("s", 3600.0),
     "hours": ("s", 3600.0),
+    "mL": ("L", 0.001),
+    "ml": ("L", 0.001),
+    "mL/min": ("L/min", 0.001),
+    "ml/min": ("L/min", 0.001),
 }
 
+#: A unit that prose writes and no stored value is kept in or converts to. A
+#: figure in one of these is still a figure with a unit, so it makes its
+#: paragraph a member of a section held by its numeric paragraphs. It never
+#: equals a stored value. These are the units `docs/MODEL.md` and `README.md`
+#: wrote after a number on 2026-11-03, when `PL-XQXK` counted them. A
+#: percentage point is a difference between two percents, not a percent, so
+#: it is not converted to `%`. Degrees Celsius and grams are in no list, so a
+#: figure in them is read as a bare number. An agent file stores the
+#: temperature its density was measured at in °C, and `docs/MODEL.md` states
+#: 20 °C in 29 paragraphs that nothing ties to it yet (`PL-5L84`).
+UNSTORED_UNITS = frozenset(
+    {"px", "mmHg", "kPa", "atm", "mL/kg", "pp", "percentage point", "percentage points"}
+)
+
 #: Every unit a figure in prose may carry, longest first so that `L/min` is
-#: not read as `L`.
+#: not read as `L`, and `mL/kg` not as `mL`.
 PROSE_UNITS = "|".join(
     sorted(
-        {"L/min", "L/s", "L", "%", "kg", "s", "MAC", *UNIT_WORDS, *UNIT_SCALES, *UNIT_CASES},
+        {
+            "L/min",
+            "L/s",
+            "L",
+            "%",
+            "kg",
+            "s",
+            "MAC",
+            "g/mL",
+            "g/mol",
+            *UNIT_WORDS,
+            *UNIT_SCALES,
+            *UNIT_CASES,
+            *UNSTORED_UNITS,
+        },
         key=len,
         reverse=True,
     )
@@ -2538,8 +2576,9 @@ MATH_FIGURE_RE = re.compile(
 def _prose_figure(number: str, unit: str | None) -> tuple[float, str | None]:
     """A figure as prose writes it, in the unit a stored value is kept in.
 
-    A unit written as a word becomes its symbol (`UNIT_WORDS`), and a unit of
-    time no value is stored in is converted to seconds (`UNIT_SCALES`).
+    A unit written as a word becomes its symbol (`UNIT_WORDS`). A unit no value
+    is stored in, such as minutes or millilitres, is converted to the one a
+    value is stored in (`UNIT_SCALES`).
     """
     if unit is None:
         return float(number), None

@@ -682,7 +682,7 @@ measured rather than recalled:
 | `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | a silence |
 | `diff` outside a repository | 1 | a silence |
 | a mistyped option | 129 | a silence |
-| git missing, or the ten-second timeout | — | a silence |
+| git missing, or the timeout: 10 s for a local read, 60 s for a call that reaches the remote | — | a silence |
 
 The `show` row is one exception and it is forced rather than chosen:
 `cat-file --batch`, which the runner serves the same question from when it can,
