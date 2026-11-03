@@ -7375,6 +7375,17 @@ record, although the matrix never reads the maximum. Both records accept zero,
 which is the vaporizer off, and the maximum itself. Both refuse the first
 percent past the maximum.
 
+**For developers.** No source chose the three flow maxima. They began as the
+interface sliders' maxima, before the model declared any range. To change a
+range, edit its constant in `core/supported_ranges.py`. The flow types, the
+guards and the ventilation and cardiac output sliders all read it from there,
+and the fresh gas flow slider follows through the circuit's accepted range.
+`test_envelope_limits_match_the_supported_input_ranges` in
+`tests/reference/test_coupled_dynamics.py` then fails on purpose. Re-run that
+file's envelope and trajectory sweeps at the new limits, update its constants
+and its bound, and re-derive the measured figures in the subsections below.
+Checking `RunDefinition` and `Keyframe` on load is open work, `PL-8W1Q`.
+
 #### What a setting outside the range costs
 
 **The exact step solves the equations at any flow, so the limits are not
@@ -7562,8 +7573,8 @@ steps fit depends on the step. `SimulationState` checks the pair against
 relation between two fields, so it belongs to the record. The record checks
 the pair at every write to either field, in `__setattr__`. So a count or a
 step assigned straight onto a built state meets the constructor's own
-refusals, in the constructor's words, and the field keeps the value it had. A
-bare `int` count or a bare `float` step is refused with a `TypeError`. A count
+refusals, in the constructor's words, and the field keeps the value it had.
+`mypy` refuses such an assignment in `src/`. A bare `int` count or a bare `float` step is refused with a `TypeError`. A count
 past zero with no step, or a pair past the run length, is refused with a
 `SimulationConfigurationError`. This matches what § "Supported input ranges"
 says of a flow written onto its compartment.
@@ -7627,8 +7638,7 @@ At 23.5 hours of elimination it runs above them again, by 12 to 24%, or by a
 factor of 2.1 for desflurane. That is because this model's fat group returns
 more than the fitted fat term. With the apparatus taken away, the tissue
 return alone is a third to a half of the mean curve between hours 8 and 13.
-**That result does not move the 24 hours** (project owner, 2026-09-27,
-ratified). The number is argued against the two omissions above growing past
+**That result does not move the 24 hours.** The number is argued against the two omissions above growing past
 negligible over the span. The measured departures are neither of those
 omissions. The metabolism bound in the same subsection accounts for about an
 eighth of the excess where the tail runs above the curves. Where the tail runs
