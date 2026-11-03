@@ -1529,8 +1529,8 @@ Adopting it would need an entry of its own that meets the standard set in
 separate absent features: nitrous oxide, simultaneous gases, and concentration
 or second-gas effects. They are one feature. The fixed alveolar volume blocks
 all three, and lifting that constraint unblocks all three. Two standard
-formulations lift it. They agree closely, and a milestone that adds several
-gases could adopt either one. The first lets $`V_A`$ change over time, and the
+formulations lift it. They are equivalent to first order, and a milestone that
+adds several gases could adopt either one. The first lets $`V_A`$ change over time, and the
 concentration equation gains a volume term:
 
 $$
@@ -1858,8 +1858,8 @@ transfer. The total then stays within about two roundings of the exact sum,
 however long the run (Higham, *Accuracy and Stability of Numerical
 Algorithms*, 2nd ed., SIAM, 2002, §4.3, equation 4.8). A test checks both
 totals against an exact sum at the largest totals the supported settings
-reach. Saving, restoring and resetting a run carry these correction terms with
-it.
+reach. Saving and restoring a run carry these correction terms with it, and a
+reset clears them.
 
 Clipping a negative stored amount to zero does not repair mass balance. It
 must not be used to conceal an unstable update.
@@ -1913,8 +1913,8 @@ and the subsection named after it gives the measurements.
 - **The largest step, 0.1 s.** Each step is exact, so accuracy does not set it. It sets how
   late a dial change reaches the model. For an ordinary dial change, the delay causes about a
   tenth of the error that one standard deviation in a measured partition coefficient causes.
-  For an abrupt ventilation change, the delay causes about twice that error. The screen is
-  redrawn every 0.2 s, so a shorter step would not show. See § "Supported simulation step".
+  For an abrupt ventilation change, it causes about twice the error of one standard deviation.
+  The screen is redrawn every 0.2 s, so a shorter step would not show. See § "Supported simulation step".
 - **The smallest step, 1 ms.** It is the finest step at which the results have
   been tested and shown to match the results at 0.1 s. Nothing finer has been
   checked, so nothing finer is allowed. See § "Supported simulation step".
@@ -1922,7 +1922,7 @@ and the subsection named after it gives the measurements.
   0.001 to 10 000.** These limits sit far outside any real patient or agent.
   The arithmetic has been checked against a high-precision calculation across
   the whole range. The smallest volume is 0.01 L because at 0.001 L the error at
-  the hardest settings grew to 0.049% over 24 hours. See
+  the hardest settings grew to 0.049% of the state over 24 hours. See
   § "The numerical envelope".
 - **Delivered and stored fractions up to 0.99.** A gas cannot exceed the
   ambient pressure, so no fraction can pass 1. The model stops at 0.99 so that
@@ -2662,7 +2662,7 @@ same reading.
 
 The last row is why the smallest volume is 0.01 L and not 0.001 L. At 0.001 L, the hardest
 corner's step error was 1.7×10⁻⁹, against 5.8×10⁻¹¹ for the same corner at 0.01 L. Over a
-24-hour run, that error grew to 0.049%.
+24-hour run, that error grew to 0.049% of the state.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 The bound on the error after 24 h barely depends on the step. A shorter step needs fewer
