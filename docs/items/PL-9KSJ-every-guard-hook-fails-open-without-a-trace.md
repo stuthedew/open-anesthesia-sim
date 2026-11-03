@@ -58,26 +58,28 @@ guards, and `PL-DST3`. In order:
 2. Port `docket-branch-guard.sh`'s Python into a module and close
    `PL-S3TF`. Since `PL-J22P` the script holds a single `python3 -c`.
    `PL-B5K1` closes once #1991 has merged, when its `verify:` passes.
-3. Build the one failure path. A draft is at
-   `/mnt/project-files/v0.7.0/pl-9ksj/guard_launch.sh`. Each wired `.sh`
-   sources it and starts its Python through `launch_guard`. When `python3`
-   is missing or exits non-zero, `launch_guard` prints a note in
-   `additionalContext` naming the guard and Python's last line on standard
-   error. Putting the catch in the shell covers a crash on import, which a
-   `try` in Python cannot. `regex-guard.sh` then uses it, and the catch-all in
-   `tools/regex_check.py`'s `main` goes; its `unchecked` stays for a file that
-   does not parse. The direct-merge guard keeps refusing a merge call when
-   Python fails (`PL-NXRJ`) and gets the note on any other call. Cover
-   `gh_write_guard.py` from #1991, which fails closed on `gh` alone, and
-   `owner_ask_guard.py`, which `.claude/settings.json` runs as bare `python3`
-   and #1984 is refactoring.
-4. Make the next guard fail a test if it skips the launcher. Add
-   `test_a_crashing_guard_says_it_did_not_check`, parametrized over every
-   guard `.claude/settings.json` wires. It runs each with a `python3` on the
-   `PATH` that exits 1, and with a `json.py` that raises first on
-   `PYTHONPATH`, and finds the note, or the refusal for a merge call. A wired
-   hook that does not start through `launch_guard` fails it unless the test
-   lists the hook with a reason. Rewrite this item's `verify:` to that test,
+3. Build one shared entry point for every guard (project owner, 2026-11-03,
+   ratified, over one fail-loud block copied into each guard). It reads the
+   payload once from standard input, runs each guard's own `decide` for the
+   tool being called, and turns any crash or timeout into a note in
+   `additionalContext` naming the guard and the error. One Python start per
+   tool call then serves every guard on its matcher, which also removes the
+   per-guard start-up cost behind `PL-NDY5` and `PL-J22P`. A thin shell script
+   in front of it still has to report a `python3` that is missing or dies on
+   import, which no `try` in Python can catch. The draft at
+   `/mnt/project-files/v0.7.0/pl-9ksj/guard_launch.sh` shows that shell half;
+   the dispatch is new. Fit it to the guards left in `.claude/hooks/` once
+   #1991 has merged, including `gh_write_guard.py`, which fails closed on
+   `gh`. The direct-merge guard keeps refusing a merge call when Python fails
+   (`PL-NXRJ`). `tools/regex_check.py`'s catch-all in `main` goes; its
+   `unchecked` stays for a file that does not parse. `owner_ask_guard.py`,
+   which `.claude/settings.json` runs as bare `python3`, comes under it too.
+4. Add `test_a_crashing_guard_says_it_did_not_check`. It refuses any hook
+   that `.claude/settings.json` names and that does not run through the entry
+   point, unless the test lists the hook with a reason. Parametrized over the
+   guards, it runs each with a `python3` on the `PATH` that exits 1, and with
+   a `json.py` that raises first on `PYTHONPATH`, and finds the note, or the
+   refusal for a merge call. Rewrite this item's `verify:` to that test,
    because #1991 deletes `tests/unit/test_no_prune_guard.py`.
 5. Read what #1991's git hooks (`reference-transaction`, `pre-push`) do when
    their Python fails, and bring them under the same rule if they pass
