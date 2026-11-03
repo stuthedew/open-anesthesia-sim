@@ -4,11 +4,13 @@ title: The close-out prose review asks a model to read as a newcomer, which a mo
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: S
-status: ready
+status: done
 feature: reader-tested-prose
 touches: .claude/skills/docket/modes/close-out.md
 blocked-by: PL-R7Q6
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1959
 payoff: the prose review tests what the named reader would take from a paragraph and whether they could act on it
 verify: grep -q 'would not know' .claude/skills/docket/modes/close-out.md
 ---

@@ -4,7 +4,7 @@ title: Nothing tests the prose review against the paragraphs the owner has rejec
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: M
-status: blocked
+status: ready
 feature: reader-tested-prose
 touches: .claude/skills/docket/modes/close-out.md, docs/prose-review/rejected
 blocked-by: PL-1XC7
