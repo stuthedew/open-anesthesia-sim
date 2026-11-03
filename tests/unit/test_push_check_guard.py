@@ -494,3 +494,39 @@ def test_a_push_after_a_long_heredoc_is_still_judged(project: Path) -> None:
     assert decision is not None
     assert decision["permissionDecision"] == "deny"
     assert DOC_ERROR in decision["permissionDecisionReason"]
+
+
+def test_a_check_killed_at_the_deadline_is_named(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-DST3`: a check stopped at the limit neither passed nor failed, so the note says so.
+
+    The push still goes, since the guard cannot tell what the check would have
+    found. Before, it went with only the skill note, which read as a pass.
+    """
+    _stub(project, doc="import time\ntime.sleep(30)")
+    monkeypatch.setenv("PUSH_CHECK_GUARD_DEADLINE", "2")
+    output = _output("git push -u origin claude/x", cwd=project, project=project)
+    assert output is not None
+    assert "permissionDecision" not in output
+    note = output["additionalContext"]
+    assert "this push was not checked against them: `doc_check` (stopped at the 2-second" in note
+    assert ".claude/skills/pull-request/SKILL.md" in note
+
+
+def test_a_check_that_crashes_is_named(project: Path) -> None:
+    """A check that dies with a traceback gave no answer either, and the note names its error."""
+    _stub(project, branch="raise RuntimeError('boom')")
+    output = _output("git push -u origin claude/x", cwd=project, project=project)
+    assert output is not None
+    assert "permissionDecision" not in output
+    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in output["additionalContext"]
+
+
+def test_a_refusal_also_names_a_check_that_gave_no_answer(project: Path) -> None:
+    _stub(project, doc=DOC_FAILS, branch="raise RuntimeError('boom')")
+    decision = _decision("git push -u origin claude/x", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert DOC_ERROR in reason
+    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in reason

@@ -119,6 +119,10 @@ READS_THE_TREE = frozenset(
 # The interpreter of the project, relative to the top of the tree: the one
 # that the `uv run` steps of `make check` run under (`PL-3JG7`).
 PROJECT_PYTHON = ".venv/bin/python"
+# How long the checks may run, in seconds, before the guard stops them and lets
+# the push go with a note naming them. `doc_check` alone took 38 to 101 s on
+# 2026-11-03 (`PL-DST3`). The limit is kept short because the session waits on
+# it at every push. A test shortens it through `PUSH_CHECK_GUARD_DEADLINE`.
 DEADLINE = 100
 SKILL_NOTE = (
     "This was a push of this repository. Opening, arming, updating or merging "
@@ -274,6 +278,22 @@ def excerpt(text: str) -> str:
     return "\n".join(lines)
 
 
+def unfinished_note(unfinished: list[str]) -> str:
+    """The note naming each check that gave no answer, or "" where every one did.
+
+    A check stopped at the deadline, or one that crashed, neither passed nor
+    failed. Letting the push go without saying so would read to the session
+    as a push whose checks passed (`PL-DST3`, `PL-9KSJ`).
+    """
+    if not unfinished:
+        return ""
+    return (
+        "These checks gave no answer, so this push was not checked against them: "
+        + ", ".join(unfinished)
+        + ". Run each by hand before treating the push as checked."
+    )
+
+
 def push_targets(command: str, where: str) -> list[str | None]:
     """The directory each push in `command` runs in, or None where it cannot be followed."""
     targets: list[str | None] = []
@@ -320,8 +340,10 @@ def decide(payload: str) -> str:
                 )
                 running.append((top, name, argv, process))
 
-    deadline = time.monotonic() + DEADLINE
+    limit = float(os.environ.get("PUSH_CHECK_GUARD_DEADLINE") or DEADLINE)
+    deadline = time.monotonic() + limit
     refusals: list[str] = []
+    unfinished: list[str] = []
     readers: set[str] = set()
     read_trees: set[str] = set()
     for top, name, argv, process in running:
@@ -329,18 +351,29 @@ def decide(payload: str) -> str:
             out, err = process.communicate(timeout=max(0.0, deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             process.kill()
+            process.communicate()
+            unfinished.append(f"`{name}` (stopped at the {limit:g}-second limit)")
             continue
-        if process.returncode == 1 and "Traceback (most recent call last)" not in err:
+        crashed = "Traceback (most recent call last)" in err
+        if crashed or process.returncode not in (0, 1):
+            last = err.strip().rpartition("\n")[2]
+            unfinished.append(
+                f"`{name}` (exited {process.returncode}{': ' + last if last else ''})"
+            )
+            continue
+        if process.returncode == 1:
             rerun = " ".join(argv)
             report = "\n".join(part for part in (out.rstrip(), err.rstrip()) if part)
             refusals.append(f"`{name}` failed (`{rerun}` re-runs it):\n\n{excerpt(report)}")
             if name in READS_THE_TREE:
                 readers.add(name)
                 read_trees.add(top)
+    unchecked = unfinished_note(unfinished)
     if not refusals:
         if not trees:
             return ""
-        note = {"hookEventName": "PreToolUse", "additionalContext": SKILL_NOTE}
+        context = unchecked + "\n\n" + SKILL_NOTE if unchecked else SKILL_NOTE
+        note = {"hookEventName": "PreToolUse", "additionalContext": context}
         return json.dumps({"hookSpecificOutput": note})
 
     reason = (
@@ -348,6 +381,8 @@ def decide(payload: str) -> str:
         "in this checkout, since each would turn the pull request red and cost a "
         "fix cycle there (`PL-PLSJ`, `PL-S1BG`).\n\n" + "\n\n".join(refusals)
     )
+    if unchecked:
+        reason += "\n\n" + unchecked
     changed = sum(uncommitted(run, top) for top in read_trees)
     if changed:
         listed = ["`" + name + "`" for name, _ in checks("") if name in readers]
