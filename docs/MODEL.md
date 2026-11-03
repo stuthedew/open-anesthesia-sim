@@ -7889,6 +7889,8 @@ They are a value chosen once, by a caller who has gone to the trouble of
 building the model directly. `BreathingCircuit.set_circuit_volume` remains for
 the same reason. It is how the parameter gets to the circuit, and it is where
 the agent conservation and capacity guards live.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 **Zero is a supported input on all four, deliberately.** There are three
 reasons, and the third is the one that decides it:
