@@ -408,9 +408,9 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     """Show the MAC readout changing while the percent readout beside it does not.
 
     `docs/MODEL.md` § "Displayed precision" says this can happen. Each pair sits
-    0.001 percentage points either side of 0.015 MAC, where the MAC readout
-    changes from 0.01 to 0.02, and inside one step of the percent readout. The
-    expected strings were worked by hand from the stored MAC:
+    0.001 percentage points below and above 0.015 MAC, where the MAC readout
+    changes from 0.01 to 0.02. The expected strings were worked by hand from the
+    stored MAC:
 
     - Sevoflurane, MAC 2.0%: 0.029% and 0.031% are 0.0145 and 0.0155 MAC.
       Both read 0.03%.
@@ -419,7 +419,7 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     - Desflurane, MAC 6.0%: 0.089% and 0.091% are 0.0148 and 0.0152 MAC.
       Both read 0.09%.
 
-    A changed stored MAC, or an agent with no row, fails the test.
+    A changed stored MAC, or an agent with no entry in `cases`, fails the test.
     """
 
     # agent: (MAC used in the hand calculation, lower percent, upper percent,

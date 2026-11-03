@@ -10281,22 +10281,23 @@ of ten at or above it.
 arithmetic for every shipped agent.
 
 One step of the MAC readout is therefore 0.02 percentage points of sevoflurane,
-0.012 of isoflurane and 0.06 of desflurane, each larger than one step of the
-percent readout. `test_the_mac_resolution_is_derived_from_the_percent_resolution`
-checks that it is never smaller. The three figures have no test yet (`PL-19W8`).
+0.012 of isoflurane and 0.06 of desflurane. Each is larger than one step of the
+percent readout. `test_no_mac_readout_claims_more_than_the_percent_beside_it`
+checks that a MAC step is never smaller. The three figures have no test yet
+(`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-The two readouts round at different values, though. Sevoflurane at 0.029% and
-0.031% reads `0.03%` both times, but `0.01 ×MAC` and then `0.02 ×MAC`. So a MAC
-digit that moves alone is a real change of less than 0.01 percentage points.
+The two readouts change at different concentrations, though. Sevoflurane at
+0.029% and 0.031% reads `0.03%` both times, but `0.01 ×MAC` and then
+`0.02 ×MAC`. So when only the MAC digit moves, the concentration has changed by
+less than 0.01 percentage points.
 `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks this for all
 three agents.
 
-Converting the percent readout's step into MAC would give each agent a different
-step. The last digit of the MAC readout would then stand for a different amount
-for each agent. So the MAC readout uses the same step, measured in MAC, for every
-agent. § "Why the resolution is uniform rather than per-compartment" below does
-the same for compartments.
+If the MAC readout used the percent step converted into MAC, its last digit would
+mean a different fraction of MAC for each agent. So the MAC readout uses the
+same step, measured in MAC, for every agent. § "Why the resolution is uniform
+rather than per-compartment" below applies the same reasoning to compartments.
 
 The below-resolution form applies to the MAC line for the same reason it
 applies to the percent line, and it matters more there, not less. A
