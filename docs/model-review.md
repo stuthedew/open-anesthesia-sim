@@ -25,6 +25,11 @@ Decision rule: a corrected significant difference is put to the owner with its
 effect, interval, counts and confounders; the owner decides
 Stop early if: never by a session; the owner ends it, and the review puts the
 question at the run on 2027-04-24 in any case
+Amended 2026-11-03 (`PL-6LVZ`, `PL-WBW3`): a session moved to another level by
+hand, including one working on a generator's cause under the owner's rule of
+2026-11-02, is counted and left out of both arms. A Projects thread is in
+neither arm whatever its digest line says, because a thread never reads the
+effort cap
 
 ## Runs
 

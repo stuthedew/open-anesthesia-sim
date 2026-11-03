@@ -3,12 +3,14 @@ id: PL-6LVZ
 title: The effort trial counts a session that works on a generator's cause in the arm its hash drew, though the owner's rule of 2026-11-02 runs that work at xhigh whatever the draw, so the analysis can treat a session forced to xhigh as randomized
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: effort-trial
-touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/skills/model-review/SKILL.md
+touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/skills/model-review/SKILL.md, .claude/skills/docket/modes/triage.md, .claude/hooks/docket-digest.sh, .claude/hooks/hook_input.py, .claude/hooks/thread_hooks.py, docs/maintainer.md, docs/apparatus.md, docs/model-review.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1981
 payoff: the effort trial compares only sessions whose effort the draw set, so its result is not diluted by sessions the owner's rule forced to xhigh
 verify: grep -q 'def test_a_generator_cause_session_is_left_out_of_both_arms' tests/unit/test_effort_trial.py
 ---
@@ -54,3 +56,7 @@ stay in and the reason is recorded.
 5. **Tell sessions when to run it.** `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set" says a session working on a generator's cause runs the move first.
 6. **Update the model review.** In `.claude/skills/model-review/SKILL.md` step 6, a session any of whose "Effort trial:" lines says it was moved is counted and left out of both arms. Report it at the level it ran at as the secondary result.
 7. **Tests** named by the two `verify:` lines: `test_a_generator_cause_session_is_left_out_of_both_arms` and `test_a_level_set_mid_session_survives_compaction`.
+
+**A Projects thread never read the cap, measured 2026-11-03.** The "Fix effort trial session counting" thread (session `session_01GnrHQthtvRuMSFHHtwUmnM`, Claude Code 2.1.317, `CLAUDE_CODE_ENTRYPOINT=remote_projects`) read its CLI diagnostics log. All five settings loads recorded `source_count: 2`, the user and launcher settings, as `PL-CR81` measured on 2026-10-26, when a hook written into `.claude/settings.local.json` never fired. The hook had still written a `high` cap into that file, and printed the `high` arm. So every thread's arm line since the trial began named a cap the thread never applied. A thread ran at the level the coordinator started it with, which `get_session` gives as `session_context.effort_level`. The hook's input `session_id` equals `CLAUDE_CODE_SESSION_ID`: the session's transcript file under `~/.claude/projects/` is named by it.
+
+**Built 2026-11-03.** In a thread the hook now writes nothing and prints that the session is in neither arm. `python3 tools/effort_trial.py move --to LEVEL --reason WHY` writes the new cap and an `effortTrial` record of the session id, the drawn arm, the level and the reason, and prints a line saying the session was moved. The hook keeps a moved level for the same session id at a resume or a compaction. The model review's step 6 leaves moved sessions out of both arms, and `.claude/skills/docket/modes/triage.md` now records the owner's rule that work on a generator's cause runs at `xhigh` and says to run the move first.
