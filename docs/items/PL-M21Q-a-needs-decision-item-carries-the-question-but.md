@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, docs
+feature: recommendation-rationale
 milestone: v0.5.0
 touches: .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
