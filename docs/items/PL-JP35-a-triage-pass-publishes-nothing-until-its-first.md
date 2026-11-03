@@ -15,7 +15,7 @@ at 16:21 CST and pushed it. `bin/docket flight` showed the collision only when
 the owner asked about it. The re-read before each push that
 `.claude/skills/docket/modes/triage.md` requires (`PL-XJ22`) would have caught it
 before anything merged, so no work was lost. The cost was the duplicated work: three agents
-used about 590,000 tokens between them, and most of that went on items the
+used about 620,000 tokens between them, and most of that went on items the
 thread had already answered. `list_sessions` from the `claude-code-remote` MCP server lists no Projects thread
 (measured 2026-09-25, `.claude/rules/instruction-writing.md` rule 14), so nothing a
 session can read at the start of a pass shows another pass that has not pushed.
