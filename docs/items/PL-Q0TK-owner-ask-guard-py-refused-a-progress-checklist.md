@@ -3,12 +3,14 @@ id: PL-Q0TK
 title: owner_ask_guard.py refused a progress checklist that said a code edit was waiting on the owner's go-ahead on a decision card, though it asked for no pull request read or merge (PL-L08H thread, 2026-11-02)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: owner-ask-refusals
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1973
 payoff: a thread can tell the owner that work waits on their decision card without the guard refusing it
 verify: grep -q 'def test_a_go_ahead_on_a_decision_card_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7
@@ -25,3 +27,5 @@ reenters: PL-GPJ7
 **Done when.** A message that says work waits on the owner's answer on a decision card, and asks for no pull request read or merge, passes the guard as a row in `tests/unit/test_owner_ask_guard.py`. A message that asks the owner to read or merge a pull request is still refused.
 
 **Generator check.** The fact is `PL-GPJ7`'s: whether a sentence makes the claim a hard gate checks, when the gate recognises it by wording. This item is a member of `PL-ZCF9`, the successor head filed in the same triage pass (`reenters: PL-GPJ7`).
+
+**Fixed under `PL-ZCF9`, 2026-11-03.** The message above now passes the guard by the decision-card rule: the hold's clause names a card and no pull request. Its row is in `tests/unit/test_owner_ask_guard.py`, beside other phrasings in the same context and the rows just outside the rule that are still refused. `PL-ZCF9`'s brief says why the fix covers the context rather than this one phrasing.

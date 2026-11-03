@@ -6,10 +6,12 @@ merge it" (`PL-TLPH`). The hook refuses such a message unless `arm --owner-ask`
 prints a recorded ask and the message carries it.
 
 Two properties are under test. What it refuses: each phrasing of an ask in
-`ASKS`. What it lets through: progress replies and merge reports, which a
-thread sends far more often, so the allow list here is longer than the deny
-list on purpose. `OWNER_ASK_GUARD_ARM` stands in for `arm`, so nothing here
-reads a real branch.
+`ASKS`, and each context rule's edge, where an ask sits just outside the rule.
+What it lets through: progress replies, merge reports, and asks that are
+quoted, negated, about a decision card or put in the future. A thread sends
+those far more often, so the allow list here is longer than the deny list on
+purpose. `OWNER_ASK_GUARD_ARM` stands in for `arm`, so nothing here reads a
+real branch.
 """
 
 from __future__ import annotations
@@ -118,6 +120,29 @@ ASKS = (
     "I have opened #1950. Both changes would need your review.",
     "#1945 and #1946 both touch docs/MODEL.md, so each will wait for your read.",
     "Each part is drafted. Each will wait for your read, starting with #1945.",
+    # Each context rule stops at its edge (`PL-ZCF9`). A hold outside quote
+    # marks, or a reply verb before a quoted "Merge it", is not a mention.
+    "PR #1973 is green, and it waits on your read.",
+    'Reply "Merge it" for #1973.',
+    'The hook\'s rows quote "over to you", and #1973 waits on your read.',
+    # A quotation that names a pull request can be a thread's bare ask relayed,
+    # and a code span around the number does not hide it.
+    'The thread on #1950 says: "#1950 waits on your read."',
+    "Read `#1950` and merge it.",
+    # A negation in another clause, or one an exception naming a pull request
+    # turns back into an ask.
+    "This needs your read on #1950.",
+    "No CI failures; #1950 needs your read.",
+    "Nothing else is left, and #1950 waits on your read.",
+    "Nothing needs your read except #1950.",
+    "#1950 doesn't need your read, but #1951 does.",
+    "Don't forget #1950 waits on your read.",
+    "It's ready for your review.",
+    # A decision card in another clause, or in a clause that names the pull
+    # request, does not carry the ask.
+    "#1950 waits on your read; the card is for the colour.",
+    "#1950 waits on your read on the card.",
+    "Review #1950 on the card.",
 )
 
 
@@ -177,6 +202,61 @@ REPORTS = (
     "Your decision on #1700 has been noted, and it merges on green.",
     "I applied your call to the item, so #1688 is armed.",
 )
+
+
+#: Asks quoted as mentions. The first row is the progress line the hook refused
+#: on 2026-11-02 (`PL-0W6J`). The others are phrasings no thread has sent,
+#: which pass because the quotation rule reads every phrase in `ASKS`.
+QUOTED = (
+    'PL-VHMS: guard lets "each/both will wait for your read" through when no PR is named; '
+    "tests pass",
+    "✓ PL-0W6J: a quoted `ready for your review` in a line naming PR #1973 now passes",
+    "#1688's test rows include 'over to you' and 'your call'.",
+    'The hook counts "reply Merge it" as an ask.',
+)
+
+
+@pytest.mark.parametrize("text", QUOTED)
+def test_a_quoted_hold_in_a_progress_line_passes(tmp_path: Path, text: str) -> None:
+    assert _decision(tmp_path, text) is None
+
+
+#: Holds and hand-offs whose clause points at a decision card. The first row is
+#: a reconstruction of the checklist line the hook refused on 2026-11-02, which
+#: its item did not quote (`PL-Q0TK`).
+ON_A_CARD = (
+    "PL-L08H: the code edit is waiting on your go-ahead on the decision card; PR #1950 stays "
+    "a draft until then",
+    "✱ The colour change waits for your go-ahead on the card above.",
+    "Your call on the card; #1950 stays a draft.",
+)
+
+
+@pytest.mark.parametrize("text", ON_A_CARD)
+def test_a_go_ahead_on_a_decision_card_passes(tmp_path: Path, text: str) -> None:
+    """The card is a `request_decision` call, which the hook reads like any other message."""
+    assert _decision(tmp_path, text) is None
+
+
+#: Negated holds and hand-offs. The first row is a reconstruction around the
+#: phrase the hook refused on 2026-11-03, in a message withdrawing a read ask
+#: (`PL-VNRM`).
+NEGATED = (
+    "Nothing below needs your read now: the earlier ask on PR #1950 is withdrawn.",
+    "#1950 no longer needs your review; I withdrew the ask.",
+    "PR #1950 does not need your read: it changes no value.",
+    "#1950 isn't ready for your review yet.",
+    "#1950 is not your call; it merges on green.",
+    "○ No pull request waits on your read",
+    "None of them needs your review.",
+    # Posted in the project chat on 2026-11-02. The hook before `PL-ZCF9` refuses it.
+    "I'm starting the change so checked rewrites merge without waiting on your read.",
+)
+
+
+@pytest.mark.parametrize("text", NEGATED)
+def test_a_withdrawn_read_ask_passes(tmp_path: Path, text: str) -> None:
+    assert _decision(tmp_path, text) is None
 
 
 @pytest.mark.parametrize("text", REPORTS)
