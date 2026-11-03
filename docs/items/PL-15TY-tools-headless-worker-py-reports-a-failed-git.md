@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+feature: api-credit-runs
 milestone: v0.6.2
 touches: tools/headless_worker.py, subprojects/docket/src/docket/vcs.py, tests/unit/test_headless_worker.py
 added: 2026-10-20
