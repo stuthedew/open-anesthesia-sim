@@ -390,8 +390,8 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
     """Check that no MAC step is finer than the percent step beside it.
 
     For every shipped agent, one step of the MAC readout, in percentage points,
-    must be at least one step of the percent readout. This compares step sizes
-    only. `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` covers the
+    must be at least one step of the percent readout.
+    `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` covers the
     rounding boundaries, where the MAC digit can move alone.
     """
 
