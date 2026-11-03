@@ -10281,19 +10281,16 @@ of ten at or above it.
 arithmetic for every shipped agent.
 
 One step of the MAC readout is therefore 0.02 percentage points of sevoflurane,
-0.012 of isoflurane and 0.06 of desflurane. For each agent, that is larger than
-one step of the percent readout beside it.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` checks for
-every agent that it is never smaller. The three figures above have no test yet
-(`PL-19W8`).
+0.012 of isoflurane and 0.06 of desflurane, each larger than one step of the
+percent readout. `test_the_mac_resolution_is_derived_from_the_percent_resolution`
+checks that it is never smaller. The three figures have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-Near a MAC rounding boundary, the MAC digit can still change while the
-percent digit does not. For sevoflurane, 0.029% and 0.031% both read `0.03%`,
-while the MAC readout goes from `0.01 ×MAC` to `0.02 ×MAC`. The concentration
-did change, but by less than 0.01 percentage points, and neither readout shows
-by how much. `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks
-this for all three agents.
+The two readouts round at different values, though. Sevoflurane at 0.029% and
+0.031% reads `0.03%` both times, but `0.01 ×MAC` and then `0.02 ×MAC`. So a MAC
+digit that moves alone is a real change of less than 0.01 percentage points.
+`test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks this for all
+three agents.
 
 Converting the percent readout's step into MAC would give each agent a different
 step. The last digit of the MAC readout would then stand for a different amount
