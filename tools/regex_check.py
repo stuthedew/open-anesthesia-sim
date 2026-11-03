@@ -62,6 +62,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.vcs import Unlisted, tracked_under  # noqa: E402
 
 from check_support import (  # noqa: E402
@@ -274,7 +275,7 @@ def uses(source: str) -> list[Use]:
     finder = _Finder(modules, functions)
     finder.visit(tree)
     reasons = _reason_lines(source)
-    source_lines = source.splitlines()
+    source_lines = split_lines(source)
     found = []
 
     for call, scope, function, statement in finder.found:
