@@ -200,3 +200,15 @@ and the same superseded convergence claim, and `README.md` and
 Filed on the way: `PL-D3XX` — v0.4.7's venous-pool change had moved every
 measured residual in this file and none of the tables had been re-derived,
 which is fixed in the same commit.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Independent-solution test", when `PL-70B2` took the decision history out of that section:
+
+**Until 2026-09-07 this bound was 5e-12 and measured the wrong thing.** The
+oracle ran at half the shipped step. At that step the oracle is converged at
+held settings but not through a transient. So on the trajectories that set the bound, 86% to
+99.8% of what the gate reported was the oracle's own RK4 truncation rather
+than the shipped step's error. The bound therefore sat about 320 times above
+the residual it was watching. A regression that made the exact step a hundred
+times worse would have passed it. The oracle now runs at an eighth of the step
+under test. At that step, refining the oracle further stops changing the
+answer.

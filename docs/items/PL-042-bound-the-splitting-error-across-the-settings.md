@@ -58,3 +58,37 @@ silent-decay risk this item exists to fix. The independence rule is unaffected
 - what it forbids is importing a solver, and the oracle still uses the
 parameter loaders alone.
 
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Independent-solution test", when `PL-70B2` took the decision history out of that section:
+
+**The split's own coefficients are kept as history.** They are kept because
+they describe what this project shipped for eleven releases, and because any
+later work on step size starts from them rather than re-deriving them. The worst coefficient measured over
+the whole reachable domain was
+$`C_{\max} = 2.29\times10^{-3}\ \mathrm{s^{-1}}`$, on the
+*unperfused load, then dial off* trajectory with desflurane:
+
+| Run | Worst coefficient |
+| --- | --- |
+| Reference point, worst of the three agents | $`3.1\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, sevoflurane | $`7.0\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, isoflurane | $`7.4\times10^{-4}\ \mathrm{s^{-1}}`$ |
+| Envelope corner, desflurane | $`1.21\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, sevoflurane | $`1.03\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, isoflurane | $`1.11\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Ventilator start, desflurane | $`1.52\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, sevoflurane | $`1.34\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, isoflurane | $`1.40\times10^{-3}\ \mathrm{s^{-1}}`$ |
+| Unperfused load then dial off, desflurane | $`2.29\times10^{-3}\ \mathrm{s^{-1}}`$ |
+
+Two lessons from that gate survive it, and both are why the trajectories above
+are still driven. Domain variation is what made each of its bounds wrong,
+twice over, one dimension at a time. The bound was first set at
+$`5\times10^{-4}\ \mathrm{s^{-1}}`$ from the reference point alone. It was
+exceeded by a factor of about 2.4 at settings that three sliders could reach.
+It was then reset at $`1.5\times10^{-3}\ \mathrm{s^{-1}}`$ from the envelope,
+but measured only on runs that held one operating point. It was exceeded by a
+ventilator start at that same corner, which is a manoeuvre a user performs.
+Neither gate ever failed, because nothing it drove ever went where the error
+was. A release gate narrower than the reachable input domain is a verification
+claim broader than its evidence, whatever the method under it.
+<!-- not-restated: 2.4 -->
