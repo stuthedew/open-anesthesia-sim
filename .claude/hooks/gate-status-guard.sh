@@ -602,7 +602,8 @@ ARM_TRUNCATED = (
     "Run it on its own and read every line it prints. Its output is a few lines:\n\n"
     "    bin/docket arm\n\n"
     "To ask only what may be sent to the owner, `bin/docket arm --owner-ask` prints "
-    "one line and exits 0 when an ask is recorded, or 3 when nothing may be sent."
+    "one line. It exits 0 when an ask is recorded, 3 when the pull request waits for "
+    "the owner to read it and no ask is recorded, 2 when it cannot answer, and 1 otherwise."
 )
 if any(runs_arm(segment) and output_piped(index) for index, segment in enumerate(segments)):
     sys.stdout.write(
