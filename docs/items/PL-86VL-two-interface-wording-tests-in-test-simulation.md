@@ -3,12 +3,14 @@ id: PL-86VL
 title: Two interface-wording tests in test_simulation_view.py pass any wording they do not list: the end-tidal check misses ET, Et, EtSevo and FET, and the emergence-time check finds a hedge only in the 12 characters before its phrase
 priority: P1
 effort: M
-status: untriaged
+status: ready
 classes: safety, test, defect
+feature: presentation-safety
 touches: tests/integration/test_simulation_view.py
 deferred-from: v0.7.0 - captured after the freeze; it strengthens two interface-wording tests, and no string the view shows today uses an end-tidal abbreviation, so the release displays nothing wrong
 added: 2026-11-03
 payoff: a readout labelled with an end-tidal abbreviation, or any new interface wording, cannot reach the screen without a person approving it
+verify: grep -q 'def test_every_string_the_view_shows_is_on_the_approved_list' tests/integration/test_simulation_view.py && grep -qF 'ET sevo' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Two interface-wording tests in test_simulation_view.py pass any wording they do not list: the end-tidal check misses ET, Et, EtSevo and FET, and the emergence-time check finds a hedge only in the 12 characters before its phrase
@@ -61,6 +63,9 @@ doi:10.1016/j.jbi.2009.05.002).
 
 **Done when.** A change to any text the simulation view shows fails a test
 until the stored list is updated, and a readout labelled "ET sevo" fails it.
+The approved-list test is named
+`test_every_string_the_view_shows_is_on_the_approved_list`, and the
+end-tidal check's test names "ET sevo" among the labels it refuses.
 
 **Generator check.** One-off. The two checks are the only interface tests that
 hold wording to a list of forbidden phrases, and no head records that shape.

@@ -1,9 +1,16 @@
 ---
 id: PL-BSYT
 title: Apply the prose review's rewrites of four docs/MODEL.md Displayed-precision and Agent-amount paragraphs, which use count, glyph position, floor and placeholder in private senses
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: docs
 feature: prose-quality
+touches: docs/MODEL.md
+blocked-by: PL-ZDZ0
 added: 2026-11-03
+payoff: a clinician can read how precisely the concentration, MAC and agent-amount readouts are shown without decoding private terms, and so judge how far to trust them
+verify: ! grep -qF 'drag label' docs/MODEL.md && ! grep -qF 'The parameter spread gives the same answer' docs/MODEL.md && ! grep -qF 'coarse in the allowed' docs/MODEL.md
 ---
 
 **Problem.** The prose review on `PL-XQXK` (#1976) read four `docs/MODEL.md` paragraphs that the branch touched only to name a test or move a marker: the first paragraph of § "Displayed precision" (the 0.01-percentage-point resolution), the MAC-step paragraph after it, the paragraph on the exhausted total in millilitres of liquid, and the paragraph on why the schematic's amounts do not use the readouts' resolution. A clinician reader would not know "count" (one step of the last digit), "MAC line", "glyph position", "per-agent MAC resolution", "floor", "placeholder", "coarse in the allowed direction", "parameter spread", or why "exhaust total" and "exhausted total" are one quantity. `PL-XQXK` rewrote none of them, because `.claude/rules/plain-writing.md` makes rewriting untouched sentences work for the `prose-quality` feature.
@@ -17,4 +24,12 @@ added: 2026-11-03
 
 The reviewer also proposed moving each test name to a "**For developers.**" note. Keep the names in the paragraph: `tools/doc_check.py` holds a numeric paragraph by the test it names, so moving them out would leave the figures unheld.
 
+**Reproduced 2026-11-03.** The listed terms are still in the four paragraphs of `docs/MODEL.md`: "drag label" in the first paragraph of § "Displayed precision", "One count of the MAC line" in the second, "The parameter spread gives the same answer" and "the exhaust total's shift" in the third, and "coarse in the allowed direction" in the fourth. "glyph position" also appears in two later paragraphs of the section, which this item does not cover.
+
+**Why it matters.** `docs/MODEL.md` is what a clinician reads to decide how far to trust a displayed value. These four paragraphs explain how precisely the concentration, MAC and agent-amount readouts are shown, and a reader who cannot decode their terms cannot use them for that.
+
+**Order.** The second paragraph holds the false sentence that `PL-ZDZ0` corrects. That item goes first, so this one is blocked by it and the two rewrites do not collide in one paragraph.
+
 **Done when.** The four paragraphs pass close-out step 8's review with no listed term, and `python3 tools/model_rewrite.py lost` shows no value changed.
+
+**Generator check.** One-off; prose-quality work the plain-writing rule routes to its own item.
