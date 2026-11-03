@@ -3,12 +3,14 @@ id: PL-3HQ6
 title: item_read_log.py starts Python on every Read, Grep and Glob call, about 50 ms each, never sees bin/docket show, and serves no open decision since PL-NB35 and PL-KM3X closed; retire it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: perf
 feature: guard-review-2026-11
-touches: .claude/hooks/item_read_log.py, tools/item_reads.py, tests/unit/test_item_read_log.py, .claude/settings.json, docs/apparatus.md, docket.toml, tests/unit/test_line_splits.py
+touches: .claude/hooks/item_read_log.py, tools/item_reads.py, tests/unit/test_item_read_log.py, .claude/settings.json, docs/apparatus.md, docket.toml, tests/unit/test_line_splits.py, subprojects/docket/src/docket/store.py, tests/unit/test_generator_check.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: every Read, Grep and Glob call stops paying for a Python start that records a measurement nobody will read
 verify: ! grep -qF 'item_read_log.py' .claude/settings.json
 ---

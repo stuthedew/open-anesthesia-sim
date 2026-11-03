@@ -3,12 +3,14 @@ id: PL-H8NX
 title: thread_hooks.py re-runs the repository's SessionStart commands when the hooks block changed between two starts in one container, while Claude Code already runs the copies it installed, so the digest, fetch and effort-trial write run twice
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-review-2026-11
 touches: .claude/hooks/thread_hooks.py, tests/unit/test_thread_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: a thread's session start runs the digest and the fetch once, not twice, after main changes the hooks
 verify: grep -q 'def test_a_changed_hooks_block_does_not_rerun_start_commands' tests/unit/test_thread_hooks.py
 ---
