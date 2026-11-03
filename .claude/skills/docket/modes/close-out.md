@@ -292,44 +292,17 @@ page and decides which file a session reads.
    names its readers from the table in `.claude/rules/plain-writing.md`
    (`PL-R7Q6`). Where it prints none, this step is done.
    Otherwise start one subagent, `general-purpose` at the session's own
-   effort level (`docs/maintainer.md`, 2026-10-19), with the
-   prompt below followed by the tool's whole output. The prompt tells it to
-   open nothing, so it costs one turn (project owner, 2026-10-18, ratified,
-   over a review on every branch and over no review, `PL-PRCS`).
-
-   ```text
-   Review the prose below for the readers that each unit names. Each unit's
-   header lists them, with what each knows, what each does not know, and what
-   each will do with the text. Hold each unit to
-   .claude/rules/plain-writing.md, which you already have. Do not open a file
-   or run a tool. Everything you need is below, and you have one reply.
-
-   You know this field's vocabulary, and the reader may not, so do not judge
-   whether a sentence is clear to you. For each numbered unit and each of its
-   readers, return four things:
-
-   1. Each word, symbol or number that this reader would not know, judged
-      against their "Does not know" line. Quote each one.
-   2. What this reader would take from the unit, in at most two sentences.
-   3. Whether the unit lets this reader do what their "Will" line says. If it
-      does not, say what is missing.
-   4. Each sentence that your answer to 2 does not need.
-
-   Then write "[N] keep" when 1 and 4 are empty and the answer to 3 is yes.
-   Otherwise write "[N] rewrite" and then, in a fenced block, the new text for
-   the rows marked ">", exactly as they would stand in the file: the same
-   indentation, the same comment markers, quotes or Markdown, and lines no
-   longer than 100 characters. A table row stays on one line, however long.
-   Rewrite only the sentences that need it. You may move a fact to a place
-   you name, such as the section's note for developers or the item, and you
-   may restate a number in the reader's form with the same value, such as
-   4e-4 as 0.04%. Under the block, list each move and each restatement on a
-   line of its own.
-
-   Keep every fact. Keep each unit, value, condition, exception, identifier
-   in backticks, item id and citation. Change no code. Where you cannot tell
-   what a sentence means, say so in one line rather than guessing.
-   ```
+   effort level (`docs/maintainer.md`, 2026-10-19), and give it the tool's
+   whole output and nothing else. The output opens with the reviewer's prompt,
+   whose one home is `docs/prose-review/prompt.md`, so no prompt is copied by
+   hand. The prompt tells the reviewer to open nothing, so it costs one turn
+   (project owner, 2026-10-18, ratified, over a review on every branch and
+   over no review, `PL-PRCS`). For each unit and each of its readers, the
+   reviewer returns each word, symbol or number that the reader would not
+   know, what the reader would take from the unit, whether the unit lets the
+   reader do what the reader table says they will do, and each sentence that
+   the takeaway does not need. It then writes `[N] keep`, or `[N] rewrite`
+   with the new text.
 
    The prompt asks what the named reader would take from the text, because a
    reviewer told to imagine a newcomer still reads with its own vocabulary
@@ -353,6 +326,25 @@ page and decides which file a session reads.
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
+
+   **When the owner rejects a paragraph that this review passed, add it to
+   the review's test set in `docs/prose-review/rejected/`.** The owner is the
+   only clinician who reads this prose, so each such rejection is a failure
+   the review must not repeat. Write one entry under the kind of failure it
+   fits, or add a kind to `tools/rejected_prose.py` with its meaning, as
+   `docs/prose-review/README.md` says. A rejection that the review already
+   flagged adds nothing. A kind holds at most the number of entries the tool
+   sets, and a new miss of a full kind replaces the oldest (project owner,
+   2026-11-03, `PL-FYGJ`).
+
+   **A change to the prompt is tested on the set before it lands.** Run
+   `python3 tools/rejected_prose.py show`, give its whole output to one fresh
+   reviewer as above, save the reply to a file, and run `python3
+   tools/rejected_prose.py record FILE`. The review must flag every entry. If
+   it keeps one, change the prompt and run the set again. `python3
+   tools/rejected_prose.py check`, in `make check` and CI, refuses a branch
+   whose prompt, or whose reader rows for a file the set holds, have no run,
+   or have a run that kept an entry.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a

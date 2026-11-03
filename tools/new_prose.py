@@ -44,6 +44,12 @@ so the reviewer judges a unit against the reader it is for (`PL-R7Q6`). A unit
 whose file no row names stops the report with exit 1, because a review with no
 reader is the failure `PL-H76S` found.
 
+**The reviewer's prompt is printed first.** `PROMPT` is the prompt's one
+home, so the session hands the reviewer this tool's whole output and copies
+nothing by hand. `tools/rejected_prose.py` prints the same prompt before the
+paragraphs the owner rejected, which is how a change to it is tested
+(`PL-FYGJ`). Where no unit changed, the prompt is not printed.
+
 Exits 0 when it read the diff, whether or not it printed a unit. A changed file
 that will not parse is named in a "Not read" line, so a partial answer is never
 given as a whole one. Exits 1 when the diff could not be read or the default
@@ -69,7 +75,7 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -102,6 +108,10 @@ DOCUMENTS = frozenset(path.as_posix() for path in doc_check.PROVENANCE_DOCUMENTS
 
 #: The rule whose table names the readers of each kind of text.
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
+#: The prompt that the close-out's fresh reviewer is given before the units.
+#: This file is its one home, and `tools/rejected_prose.py` tests each change
+#: to it against the paragraphs the owner rejected (`PL-FYGJ`).
+PROMPT = ROOT / "docs" / "prose-review" / "prompt.md"
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
     "Kind of text",
@@ -317,10 +327,10 @@ def unread_by_anyone(table: Sequence[Reader], found: Found) -> list[str]:
     return sorted({unit.path for unit in found.units if not readers_of(table, unit.path)})
 
 
-def reader_lines(table: Sequence[Reader], found: Found) -> list[str]:
-    """For each file that holds a unit, in order, the full row of each of its readers."""
+def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
+    """For each file in `paths`, in order and once, the full row of each of its readers."""
     out: list[str] = []
-    for path in dict.fromkeys(unit.path for unit in found.units):
+    for path in dict.fromkeys(paths):
         out += ["", f"Readers of {path}:"]
         for reader in readers_of(table, path):
             out += [
@@ -330,6 +340,17 @@ def reader_lines(table: Sequence[Reader], found: Found) -> list[str]:
                 f"    Will: {reader.will_do}",
             ]
     return out
+
+
+def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Reader]) -> list[str]:
+    """The unit's numbered header, naming its readers from `table`, then its `rows`."""
+    who = "; ".join(reader.who for reader in readers_of(table, unit.path))
+    return [
+        "",
+        f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
+        f"{unit.kind}, {unit.words} words, for: {who}",
+        *rows,
+    ]
 
 
 def report(root: Path, found: Found, table: Sequence[Reader]) -> str:
@@ -347,18 +368,12 @@ def report(root: Path, found: Found, table: Sequence[Reader]) -> str:
             "marked > are the unit; rows marked | are the lines around it. Judge each unit "
             "for the readers its header names, as the list below describes them."
         )
-        out += reader_lines(table, found)
+        out += reader_lines(table, (unit.path for unit in found.units))
         texts: dict[str, list[str]] = {}
         for number, unit in enumerate(found.units, start=1):
             if unit.path not in texts:
                 texts[unit.path] = split_lines((root / unit.path).read_text(encoding="utf-8"))
-            who = "; ".join(reader.who for reader in readers_of(table, unit.path))
-            out += [
-                "",
-                f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
-                f"{unit.kind}, {unit.words} words, for: {who}",
-                *excerpt(texts[unit.path], unit),
-            ]
+            out += unit_lines(number, unit, excerpt(texts[unit.path], unit), table)
     else:
         out.append(
             f"No docstring, comment or document paragraph of {MIN_WORDS} words or more changed "
@@ -411,6 +426,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         file=sys.stderr,
                     )
                 return 1
+            if found.units:
+                print(PROMPT.read_text(encoding="utf-8"))
             print(report(root, found, table))
     except ValueError as error:
         print(f"new_prose: no answer: {RULE.name}: {error}", file=sys.stderr)

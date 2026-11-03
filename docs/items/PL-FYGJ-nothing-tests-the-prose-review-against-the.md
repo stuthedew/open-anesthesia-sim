@@ -4,13 +4,15 @@ title: Nothing tests the prose review against the paragraphs the owner has rejec
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: M
-status: ready
+status: done
 feature: reader-tested-prose
-touches: .claude/skills/docket/modes/close-out.md, docs/prose-review/rejected
+touches: .claude/skills/docket/modes/close-out.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tools/rules_paths_check.py, tests/unit/test_rejected_prose.py, tests/unit/test_new_prose.py, docs/apparatus.md, docket.toml, Makefile, .github/workflows/quality.yml
 blocked-by: PL-1XC7
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1961
 payoff: the prose review cannot pass again a kind of text the owner has already rejected
-verify: grep -q 'prose-review/rejected' .claude/skills/docket/modes/close-out.md
+verify: grep -q 'prose-review/rejected' .claude/skills/docket/modes/close-out.md && grep -q 'rejected_prose.py check' Makefile && grep -q 'def test_a_run_that_kept_an_entry_fails_even_beside_one_that_flagged_it' tests/unit/test_rejected_prose.py
 ---
 
 **Problem.** The owner is the only clinician who reads this project's prose.
@@ -124,6 +126,38 @@ are open to the session that builds it.
    tool with its meaning. At 59 entries of a kind, the new one replaces the
    oldest.
 7. **Docs.** `docs/apparatus.md` gains the tool and the folder.
+
+**Built 2026-11-03.** The plan above was followed, with six changes, each
+decided by the building session within the design:
+
+1. **One record per run, holding the reviewer's reply.** The plan had one
+   `runs.json` with counts. Each run is now its own file in
+   `docs/prose-review/runs/`, so two branches never edit one file, as
+   `tools/worker_runs.py` does for the same reason. The file keeps the reply,
+   and `check` reads the verdicts from it, so a later reader can see what the
+   reviewer said about each paragraph and no count is stored beside the text
+   it was counted from.
+2. **The hash covers the reader rows too.** A run records the hash of the
+   prompt and of the reader-table rows for each file its entries came from.
+   Those rows tell the reviewer what the reader does not know, so narrowing
+   one could stop the review flagging jargon without any change to the
+   prompt. A new row for another file needs no run.
+3. **A miss stays on record.** Every run of the current prompt and rows must
+   have flagged every entry it read. A reviewer is a model and its verdicts
+   vary, so a rule that took the newest run would let a session run the same
+   prompt until it passed.
+4. **An entry must read as one unit of at least `MIN_WORDS` words**, as
+   `tools/new_prose.py` reads its file, because the review never sees a
+   shorter unit. A rejected short paragraph is a miss of that word limit,
+   which is an item of its own.
+5. **Each entry says where it came from**, in a required third section, so
+   its provenance is in the entry and not only in this item.
+6. **The README sits at `docs/prose-review/README.md`**, because the tool reads
+   every Markdown file in `rejected/` as an entry.
+
+The third entry keeps the text of `b5e96f2b`, the version posted at 20:20Z
+that the owner answered at 20:30Z. The correction `342f869e` landed at
+20:29:55Z, and nothing shows the owner read it before answering.
 
 **Done when.** The folder holds the first entries, step 8 says when to add one
 and that a prompt change runs the review on the set, and a check refuses a

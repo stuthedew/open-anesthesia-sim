@@ -7,12 +7,12 @@ status: blocked
 classes: docs
 feature: prose-quality
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md
-blocked-by: PL-R7Q6, PL-TZ7R, PL-1XC7, PL-FYGJ
+blocked-by: PL-R7Q6, PL-TZ7R, PL-1XC7, PL-FYGJ, PL-CWRZ
 added: 2026-11-02
 payoff: the project's writing and review process produces paragraphs a clinician can follow, so the owner stops finding unreadable text after every review has passed it
 not-delegable: finding why the writing process failed is a judgment about how reviews are briefed, which no command can confirm
-root-cause-of: PL-8ZTQ, PL-BZR4, PL-ZT47, PL-VGDX, PL-1K5X, PL-FDMJ, PL-TPS7, PL-K7N7
-generator: live - the owner found unreadable prose on 2026-11-02 in a section rewrite that had passed the plain-writing rule and its reviews, after eight earlier writing items each added a rule or review step and closed
+root-cause-of: PL-8ZTQ, PL-BZR4, PL-ZT47, PL-VGDX, PL-1K5X, PL-FDMJ, PL-TPS7, PL-K7N7, PL-CWRZ
+generator: live - the owner found unreadable prose on 2026-11-02 in a section rewrite that had passed the plain-writing rule and its reviews, after eight earlier writing items each added a rule or review step and closed; on 2026-11-03 the first run of the rejected-paragraph test flagged all five paragraphs while four of the review's five rewrites came out longer (PL-CWRZ)
 misread: Whether a paragraph can be understood by the reader it is written for
 ---
 
@@ -442,7 +442,18 @@ was about.
 - Paraphrase testing. Digital.gov plain language guide.
   https://digital.gov/guides/plain-language/test/paraphrase-testing
 
-**Done when.** [superseded 2026-11-02: the design round named the cause and
+**Checked 2026-11-03.** All four approved changes are built: `PL-R7Q6`
+(#1957), `PL-TZ7R` (#1958), `PL-1XC7` (#1959) and `PL-FYGJ` (#1961). This
+item stays open, because the first run of `PL-FYGJ`'s test shows the length
+failure still happening. The review flagged all five rejected paragraphs, and
+four of its five rewrites came out longer than the paragraph the owner had
+rejected. The "Way too verbose" paragraph was cut only from 269 words to 225.
+`PL-CWRZ` holds the evidence and the options, and the owner decides whether
+it joins this fix. [The building session's call, put to the owner on
+2026-11-03: keep this open until `PL-CWRZ` is decided.]
+
+**Done when.** [superseded 2026-11-03: `PL-CWRZ` joins the four below.]
+[superseded 2026-11-02: the design round named the cause and
 the owner approved the fix.] `PL-R7Q6`, `PL-TZ7R`, `PL-1XC7` and `PL-FYGJ` are
 closed. The earlier form: The cause in the writing process is named, and a fix to the
 process, not a new pattern in the rule, is proposed to the owner.

@@ -16,6 +16,7 @@ import pytest
 from docket.config import load
 from new_prose import (
     MIN_WORDS,
+    PROMPT,
     ROOT,
     RULE,
     Unit,
@@ -161,8 +162,10 @@ def test_main_numbers_each_unit_with_its_rows(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert out.startswith(
-        "3 docstrings, comments and document paragraphs of 30 words or more changed"
+    prompt = PROMPT.read_text(encoding="utf-8")
+    assert out.startswith(prompt)
+    assert out[len(prompt) :].startswith(
+        "\n3 docstrings, comments and document paragraphs of 30 words or more changed"
     )
     assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words" in out
     assert "[3] src/pkg/fresh.py, rows 13-13, comment" in out
