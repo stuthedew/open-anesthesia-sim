@@ -33,3 +33,11 @@ write to `deliverable_fresh_gas_flow_range` made after construction - the
 overlap, and the held flow against the new range - and restores the old value
 on refusal, with a regression test per check. Making the field unwritable
 after construction is the other route, if no machine switch is planned.
+
+## Moved from docs/MODEL.md (PL-QHR2, 2026-11-02)
+
+The rewrite of § "Supported input ranges" removed this history from the specification. It is kept here verbatim, as it stood on `main`.
+
+amount against its capacity. Before the third relation was checked, a range
+reassigned on a built circuit to 20 to 30 L/min had left
+`accepted_fresh_gas_flow_range_l_min` inverted at 20 to 10 (`PL-HJ7L`). A
