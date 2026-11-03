@@ -65,7 +65,9 @@ prints. **A rewrite of `docs/MODEL.md` is housekeeping when it changes no
 value, equation, code span or citation** (project owner, 2026-11-02, ratified,
 `PL-ZTZF`). `python3 tools/model_rewrite.py lost` decides that part. It must
 add nothing, and each fact it lists as dropped must be history or a duplicate
-the document still holds. The owner then reads only a sentence whose meaning
+the document still holds. A number it marks as restated, such as 4e-4 written
+as 0.04%, has the same value, so it counts as kept and its new form does not
+count as added (`PL-TZ7R`). The owner then reads only a sentence whose meaning
 needs a clinician's judgment, such as what a hazard row promises, and the ask
 quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
 `PL-KPM2`). `arm` gives one of three answers:

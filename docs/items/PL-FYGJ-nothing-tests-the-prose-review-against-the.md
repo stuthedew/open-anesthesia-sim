@@ -34,9 +34,21 @@ limits the owner asked about at 22:14Z.
 2. **What is added.** Only a miss: a paragraph that the review passed and the
    owner then rejected. A rejection that the current review already catches
    adds nothing.
-3. **How it stays small.** At most two entries for each kind of failure, such
+3. **How it stays small.** At most 59 entries for each kind of failure, such
    as jargon, length, a reason a developer cannot use, or a reason with no
-   source. A new miss of a kind already held replaces the older entry.
+   source. A sixtieth miss of a kind replaces the oldest entry, and git
+   history keeps the one replaced. If the review flags all 59, the chance that
+   it misses a paragraph of that kind is below 5%, at 95% confidence. With
+   two entries, the cap first proposed, the same bound is about 78%. The bound
+   after zero misses in n tries is 1 - 0.05^(1/n) (Hanley JA, Lippman-Hand A.
+   If nothing goes wrong, is everything all right? Interpreting zero
+   numerators. JAMA. 1983;249(13):1743-1745. PMID 6827763). It treats the
+   entries as independent, so it is a best case. The owner set the cap
+   (project owner, 2026-11-03, 00:22Z to 00:26Z: "Let's keep more than two
+   examples for each reject type? Seems like slightly too small of a sample
+   size?", then, after the bounds for 5% and 10% were given, "Lets keep at
+   59"). Entries come only from his rejections, so most kinds will take a long
+   time to reach the cap.
 4. **The first entries.** One for each kind that `PL-H76S`'s six versions of
    the release-check paragraph show.
 5. **The test.** Whenever close-out step 8's prompt changes, the review runs on
