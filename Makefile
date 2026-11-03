@@ -387,8 +387,13 @@ check: sync
 # named one belongs, and a numeric constant defined in two modules: the
 # colours' one-home rule in `contrast_check.py`, extended to numbers.
 #
+# `regex_check.py` joined them under `PL-7JYV`. It reads every tracked `*.py`
+# with `ast` and refuses a regular expression that has no `regex:` comment
+# giving the reason for it, beyond the calls `tools/regex_baseline.py` lets
+# stand.
+#
 # `tools/type_ignore_check.py` above is the same category for a different reason.
-# All eight tools here stay standard-library-only and parse at the floor
+# All nine tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
 # `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`,
@@ -412,6 +417,7 @@ check: sync
 	uv run python tools/glyph_check.py
 	uv run python tools/fixture_id_check.py
 	uv run python tools/literal_home_check.py
+	uv run python tools/regex_check.py
 
 fix:
 	uv run ruff format .
