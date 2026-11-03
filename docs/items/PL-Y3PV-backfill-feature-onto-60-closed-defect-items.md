@@ -3,10 +3,12 @@ id: PL-Y3PV
 title: Backfill feature: onto 60 closed defect items whose title names the mechanism of a feature that already exists
 priority: P3
 effort: S
-status: ready
+status: done
 classes: housekeeping
 touches: docs/items
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1995
 payoff: the defects-by-feature report counts 60 closed defects under the feature that already names their mechanism, so its no-feature row falls from 160 to 100
 verify: grep -q '^feature: bash-guard-bound$' docs/items/PL-0X0G-*.md && grep -q '^feature: api-credit-runs$' docs/items/PL-29DJ-*.md && grep -q '^feature: reader-checks$' docs/items/PL-GZXY-*.md && grep -q '^feature: line-ends$' docs/items/PL-139L-*.md && grep -q '^feature: front-matter-round-trip$' docs/items/PL-5B39-*.md && grep -q '^feature: prose-renders-as-written$' docs/items/PL-DSMK-*.md && grep -q '^feature: effort-trial$' docs/items/PL-8MZ9-*.md
 ---
