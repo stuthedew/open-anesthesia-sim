@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/push-check-guard.sh`, the checks run before a push (`PL-PLSJ`).
+"""Tests for the push-check guard, `.claude/hooks/push_check_guard.py` (`PL-PLSJ`).
 
 The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
 check --verify` (`PL-S1BG`) in the working tree a `git push` runs from, and
@@ -23,7 +23,9 @@ import pytest
 from docket.gitargv import TAKES_A_WORD, subcommand_of
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "push-check-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "push-check-guard"
 
 PASS = 'print("branch-id: visible in flight - PL-K7QX")'
 DOC_ERROR = "docs/items/PL-K7QX-a.md: cites `start.md`, which does not exist"
@@ -96,7 +98,7 @@ def _output(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one Bash call, or `None` if it printed nothing."""
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)})
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,

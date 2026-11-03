@@ -855,7 +855,3 @@ def decide(payload: str) -> str:
         "short is the largest adherence lever this project has."
     )
     return hook_input.deny("gate-status-guard", "status-swallowed", reason, payload)
-
-
-if __name__ == "__main__":
-    hook_input.run(decide)

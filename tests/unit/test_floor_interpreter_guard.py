@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/floor-interpreter-guard.sh`, the bare-interpreter refusal.
+"""Tests for the floor-interpreter guard, `.claude/hooks/floor_interpreter_guard.py`.
 
 Two interpreters are in play in this repository and both halves are deliberate.
 `src/` and `tests/` target 3.14; `tools/`, `.claude/hooks/`, `bin/docket` and
@@ -31,10 +31,13 @@ import json
 import subprocess
 from pathlib import Path
 
+import guard as entry_point
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "floor-interpreter-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "floor-interpreter-guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 TRIGGER = REPO / "src" / "anesthesia_sim" / "app_metadata.py"
 
@@ -43,7 +46,7 @@ def _decision(command: str, *, tool: str = "Bash") -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one tool call, or `None` if it stayed quiet."""
     payload = json.dumps({"tool_name": tool, "tool_input": {"command": command}})
     result = subprocess.run(
-        ["bash", str(HOOK)], input=payload, capture_output=True, text=True, timeout=20
+        ["bash", str(HOOK), GUARD], input=payload, capture_output=True, text=True, timeout=20
     )
     assert result.returncode == 0, result.stderr
     if not result.stdout.strip():
@@ -615,7 +618,8 @@ def test_the_hook_is_wired_under_the_bash_matcher() -> None:
         if entry.get("matcher") == "Bash"
         for hook in entry["hooks"]
     ]
-    assert any("floor-interpreter-guard.sh" in command for command in commands)
+    assert 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-bash' in commands
+    assert GUARD in [guard.name for guard in entry_point.GROUPS["pre-bash"]]
 
 
 def test_a_call_longer_than_an_environment_variable_holds_is_still_judged() -> None:

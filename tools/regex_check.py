@@ -17,9 +17,9 @@ gives the reason. The comment goes at the end of one of the statement's lines,
 or in the comment lines directly above the statement. `GUIDANCE` is what a
 session reads when this check or the edit hook stops it.
 
-**`--screen` refuses the edit that writes such a call.** It is the
-`PreToolUse` hook on an `Edit`, `MultiEdit` or `Write`, run through
-`.claude/hooks/regex-guard.sh`. It works out what a Python file in the
+**`screen` refuses the edit that writes such a call.** It is the
+`regex-guard`, which `.claude/hooks/guard.py` runs before an `Edit`,
+`MultiEdit` or `Write` (`PL-9KSJ`). It works out what a Python file in the
 checkout would hold after the edit. Where that text holds a call that the file
 did not hold before, with no reason, it refuses the edit and prints `GUIDANCE`.
 The session then writes the code another way, or sends the edit again with
@@ -34,7 +34,8 @@ hold, where the edit fails on its own. Where it could not check, it lets the
 edit through with a note the session reads, so that a blind or broken hook is
 not taken for a pass (`PL-9KSJ`). That covers a text that does not parse,
 which includes a file using syntax newer than the bare `python3` running the
-hook, and any error in the hook itself.
+hook. An error in the hook itself is reported by `guard.py`, as every
+guard's is.
 
 Each refusal is logged through `hook_input.deny`, as every guard's is. A
 refusal here is the stop the owner asked for, which a session answers by
@@ -394,7 +395,7 @@ def analyze(root: Path, baseline: Baseline = GRANDFATHERED_REGEX) -> Report:
     found: dict[str, Counter[tuple[str, str]]] = {}
 
     # Imported here rather than at the top, because importing it takes about
-    # 0.1 s and `--screen` runs before every edit of any file.
+    # 0.1 s and `screen` runs before every edit of any file.
     from docket.vcs import Unlisted, tracked_under
 
     try:
@@ -462,7 +463,7 @@ def format_report(report: Report) -> str:
 #: The guard's name in the log of refusals that `hook_input.deny` keeps.
 GUARD_NAME = "regex-guard"
 
-#: The file endings `--screen` reads as Python source.
+#: The file endings `screen` reads as Python source.
 PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
 
 
@@ -584,20 +585,6 @@ def screen(payload: str) -> str | None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
-
-    if "--screen" in arguments:
-        payload = sys.stdin.read()
-
-        try:
-            output = screen(payload)
-        # Any failure at all is reported as a note rather than passed silently.
-        except Exception as error:
-            output = unchecked(f"the hook failed ({type(error).__name__}: {error})")
-
-        if output is not None:
-            print(output)
-
-        return 0
 
     return run_report(arguments, __doc__ or "", analyze, format_report)
 

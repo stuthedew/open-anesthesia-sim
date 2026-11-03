@@ -21,7 +21,7 @@ import os
 import stat
 import sys
 import tempfile
-from collections.abc import Callable
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -127,25 +127,60 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
                 stream.write(line + "\n")
         except OSError:
             pass
-    decision = {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": reason,
-    }
-    return json.dumps({"hookSpecificOutput": decision})
+    return output("PreToolUse", refusals=[reason])
 
 
-def run(decide: Callable[[str], str]) -> None:
-    """Hand a guard the payload Claude Code sent on standard input, and print what it decides.
+def output(event: str, *, refusals: Sequence[str] = (), notes: Sequence[str] = ()) -> str:
+    """The hook output for `event` that refuses the call and adds context, or "" for neither.
 
-    Each guard written in Python is started through this, from the `.sh` that
-    `.claude/settings.json` runs (`PL-S3TF`). `decide` takes the payload and
-    returns the hook's output: a refusal from `deny`, a note, or "" to let the
-    call through. The payload comes on standard input, where the guards once
-    took it from an environment variable, which Linux refuses past 128 KiB, so
-    a long heredoc switched every Bash guard off (`PL-B5K1`).
+    The reasons in `refusals` are joined into one refusal, and `notes` into
+    one `additionalContext`, each with a blank line between. This is the one
+    place a hook's output is built, and `verdict` the one place it is read, so
+    `guard.py` can merge what several guards return (`PL-9KSJ`). The fields are
+    the ones https://code.claude.com/docs/en/hooks § "PreToolUse decision
+    control" documents, read 2026-11-03.
     """
-    sys.stdout.write(decide(sys.stdin.read()))
+    fields = {"hookEventName": event}
+    if refusals:
+        fields["permissionDecision"] = "deny"
+        fields["permissionDecisionReason"] = "\n\n".join(refusals)
+    if notes:
+        fields["additionalContext"] = "\n\n".join(notes)
+    return json.dumps({"hookSpecificOutput": fields}) if len(fields) > 1 else ""
+
+
+class Verdict(NamedTuple):
+    """What one hook's output says: the reason it refuses the call, and the note it adds."""
+
+    #: The reason for refusing the call, or `None` where it does not refuse.
+    refusal: str | None
+    #: The context it adds for the session, or `None` where it adds none.
+    note: str | None
+
+
+def verdict(text: str) -> Verdict:
+    """What `text`, one hook's output, says; "" says nothing.
+
+    Raises `ValueError` where `text` is not output `output` could have built:
+    not JSON, a key other than `hookSpecificOutput`, or a decision other than
+    a refusal. A guard that prints something else has failed, and `guard.py`
+    says so.
+    """
+    if not text:
+        return Verdict(None, None)
+    parsed = json.loads(text)
+    fields = parsed.get("hookSpecificOutput") if isinstance(parsed, dict) else None
+    if not isinstance(fields, dict) or set(parsed) != {"hookSpecificOutput"}:
+        raise ValueError(f"it printed {text[:200]!r}, which is not a hook's JSON")
+    decision = fields.get("permissionDecision")
+    if decision not in (None, "deny"):
+        raise ValueError(f"it returned the decision {decision!r}, where only a refusal is merged")
+    reason = fields.get("permissionDecisionReason") if decision == "deny" else None
+    note = fields.get("additionalContext")
+    return Verdict(
+        (reason if isinstance(reason, str) else "") if decision == "deny" else None,
+        note if isinstance(note, str) and note else None,
+    )
 
 
 #: The mode a file `write_atomically` creates is given: readable by all,

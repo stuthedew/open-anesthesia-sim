@@ -1,4 +1,4 @@
-"""`.claude/hooks/regex-guard.sh` must refuse an edit that adds a regular expression with no reason.
+"""The regex guard must refuse an edit that adds a regular expression with no reason.
 
 The hook is the stop `PL-7JYV` asked for, so the failure that matters is an
 edit it lets through when it should refuse: a tool it reads wrongly, or a
@@ -19,14 +19,16 @@ from pathlib import Path
 import pytest
 import regex_check
 
-HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "regex-guard.sh"
+HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "regex-guard"
 
 
 def _decision(tool: str, tool_input: Mapping[str, object], checkout: Path) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one call in `checkout`, or `None` for none."""
     payload = json.dumps({"tool_name": tool, "tool_input": tool_input})
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,
@@ -116,22 +118,6 @@ def test_what_the_hook_cannot_judge_is_let_through(tmp_path: Path) -> None:
     assert "was not checked" in note["additionalContext"]
 
 
-def test_a_failure_inside_the_hook_is_reported_and_not_passed_silently(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    def broken(payload: str) -> str | None:
-        raise RuntimeError("simulated")
-
-    monkeypatch.setattr(regex_check, "screen", broken)
-    monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
-
-    assert regex_check.main(["--screen"]) == 0
-    note = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
-
-    assert "permissionDecision" not in note
-    assert "the hook failed (RuntimeError: simulated)" in note["additionalContext"]
-
-
 def test_a_file_outside_the_checkout_is_let_through(tmp_path: Path) -> None:
     checkout = tmp_path / "checkout"
     checkout.mkdir()
@@ -140,26 +126,3 @@ def test_a_file_outside_the_checkout_is_let_through(tmp_path: Path) -> None:
 
     assert _decision("Write", {"file_path": str(scratch), "content": regex}, checkout) is None
     assert _decision("Write", {"file_path": str(checkout / "a.py"), "content": regex}, checkout)
-
-
-def test_a_hook_whose_python_cannot_start_says_so(tmp_path: Path) -> None:
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    fake = bin_dir / "python3"
-    fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    fake.chmod(0o755)
-    payload = json.dumps({"tool_name": "Write", "tool_input": {"file_path": "a.py"}})
-
-    result = subprocess.run(
-        ["bash", str(HOOK)],
-        input=payload,
-        capture_output=True,
-        text=True,
-        timeout=60,
-        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
-        check=False,
-    )
-
-    assert result.returncode == 0
-    note = json.loads(result.stdout)["hookSpecificOutput"]
-    assert "the hook could not start" in note["additionalContext"]

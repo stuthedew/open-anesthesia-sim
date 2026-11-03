@@ -956,7 +956,7 @@ def test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script() -> No
         for entry in settings["hooks"]["PreToolUse"]
         for hook in entry["hooks"]
     }
-    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh"'
+    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp'
     matcher = re.compile(commands[command])
     for tool in (
         "mcp__github__create_pull_request",
@@ -968,7 +968,7 @@ def test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script() -> No
     assert not matcher.search("Bash")
 
     ran = subprocess.run(
-        ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
+        ["bash", str(REPO / ".claude" / "hooks" / "guard.sh"), "pr-body-email-guard"],
         input=_call("mcp__github__create_pull_request", body="me@example.com"),
         capture_output=True,
         text=True,
@@ -986,7 +986,7 @@ def test_a_pull_request_call_the_guard_lets_through_names_the_read_back() -> Non
     never a decision, so the call goes ahead.
     """
     ran = subprocess.run(
-        ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
+        ["bash", str(REPO / ".claude" / "hooks" / "guard.sh"), "pr-body-email-guard"],
         input=_call("mcp__github__update_pull_request", body="Plain body."),
         capture_output=True,
         text=True,

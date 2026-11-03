@@ -6,10 +6,11 @@ or behind a wrapper `shell_split.WRAPPERS` names, that is handed `src` or
 below it. It reads a tree there as parsed when it is the script the
 interpreter runs, one of the interpreter's own options, a word after a module
 run with `-m` that names a directory or Python source, or after a `-c`
-string, or a file redirected onto the interpreter's input. It also refuses `compileall` or `py_compile` run with
-`-m` on `.`. Inside a `-c` string it reads only a tree written with its
-slash, and only a path that names a directory or Python source: a last part
-with no suffix, or one ending in `.py`, `.pyi` or `.pyw`. Code that opens
+string, or a file redirected onto the interpreter's input. It also refuses
+`compileall` or `py_compile` run with `-m` on `.`. Inside a `-c` string it
+reads only a tree written with its slash, and only a path that names a
+directory or Python source: a last part with no suffix, or one ending in
+`.py`, `.pyi` or `.pyw`. Code that opens
 `src/anesthesia_sim/data/agents/sevoflurane.json` parses no 3.14 source
 (`PL-7LCY`). The words after a script are that script's own `argv`, which the
 interpreter never parses, so it does not read them (`PL-CDZ8`).
@@ -176,7 +177,8 @@ def bare_call_at_a_tree(command: str) -> str | None:
             # A module is handed its words, and parses one only where it names a
             # directory or Python source, as a `-c` string is read below: `python3
             # -m json.tool` on an agent data file parses no 3.14 source (`PL-SMM1`).
-            read = arguments[:after] + [word for word in arguments[after:] if not NOT_SOURCE.search(word)]
+            sources = [word for word in arguments[after:] if not NOT_SOURCE.search(word)]
+            read = arguments[:after] + sources
         else:
             read = arguments
         # A redirection is no argument, since bash lifts it out wherever it
@@ -236,7 +238,3 @@ def decide(payload: str) -> str:
     if call is None or bare_call_at_a_tree(call.command) is None:
         return ""
     return hook_input.deny("floor-interpreter-guard", "floor-interpreter", REASON, payload)
-
-
-if __name__ == "__main__":
-    hook_input.run(decide)

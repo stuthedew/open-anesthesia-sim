@@ -66,8 +66,9 @@ would, at the cost of a fetch and a worktree per post (project owner,
 2026-10-24, ratified, over building that now). Nobody has seen that failure.
 
 **Fails open only where it cannot read the call**: a payload that is not
-JSON, or an error in the hook itself. A guard that breaks a thread's replies
-costs more than the round it saves. A `bin/docket` that is missing, times out
+JSON, or an error in the hook itself, which `guard.py` reports as a note
+naming the error (`PL-9KSJ`). A guard that breaks a thread's replies costs
+more than the round it saves. A `bin/docket` that is missing, times out
 or exits with a status it does not define falls back to the coordinator's
 check, which refuses only an ask. `OWNER_ASK_GUARD_ARM` names a Python script
 run in place of `arm` for the tests, and is set nowhere else. `NO_ASK`,
@@ -321,29 +322,19 @@ def refusal(text: str, root: Path) -> str | None:
     )
 
 
-def main() -> int:
+def decide(payload: str) -> str:
+    """The refusal of a Projects call in `payload` that asks the owner too early, or ""."""
     try:
-        payload = json.loads(sys.stdin.read())
+        call = json.loads(payload)
     except ValueError:
-        return 0
-    if not isinstance(payload, dict):
-        return 0
-    tool_name = str(payload.get("tool_name", ""))
-    text = message_text(tool_name, payload.get("tool_input"))
+        return ""
+    if not isinstance(call, dict):
+        return ""
+    tool_name = str(call.get("tool_name", ""))
+    text = message_text(tool_name, call.get("tool_input"))
     if not text:
-        return 0
+        return ""
     reason = refusal(text, hook_input.project_root())
     if reason is None:
-        return 0
-    sys.stdout.write(
-        hook_input.deny("owner_ask_guard", "bare-read-ask", reason, json.dumps(payload))
-    )
-    return 0
-
-
-if __name__ == "__main__":
-    try:
-        sys.exit(main())
-    # A broken guard must never block a reply.
-    except Exception:
-        sys.exit(0)
+        return ""
+    return hook_input.deny("owner_ask_guard", "bare-read-ask", reason, payload)

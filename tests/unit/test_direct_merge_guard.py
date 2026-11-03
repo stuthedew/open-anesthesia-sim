@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/direct-merge-guard.sh`, the gate on a session's own merge (`PL-NXRJ`).
+"""Tests for the direct-merge guard, `.claude/hooks/direct_merge_guard.py` (`PL-NXRJ`).
 
 A session merges by arming auto-merge, and squash-merges a pull request GitHub
 will not arm because it is already green and current only while the base
@@ -28,7 +28,9 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "direct-merge-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "direct-merge-guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 BASH = shutil.which("bash") or "bash"
 
@@ -76,7 +78,7 @@ def _decision(payload: str, api: Path, path: str | None = None) -> dict[str, str
     if path is not None:
         env["PATH"] = path
     result = subprocess.run(
-        [BASH, str(HOOK)],
+        [BASH, str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,
@@ -125,7 +127,7 @@ def test_the_hook_is_wired_on_every_mcp_tool() -> None:
     matchers = [
         entry.get("matcher", "")
         for entry in json.loads(SETTINGS.read_text())["hooks"]["PreToolUse"]
-        if any("direct-merge-guard.sh" in hook["command"] for hook in entry["hooks"])
+        if any(hook["command"] == 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp' for hook in entry["hooks"])
     ]
     assert len(matchers) == 1
     (matcher,) = matchers
@@ -275,8 +277,12 @@ def test_a_failed_python3_step_is_refused(tmp_path: Path) -> None:
     api = _github(tmp_path / "api", {"main": "everyone"})
     assert "python3" in _refusal(_decision(MERGE_CALL, api, path=str(tools)))
     # Every MCP call reaches the hook, so a failed step must not block the rest.
+    # It goes through with a note that nothing checked it (`PL-9KSJ`).
     read = json.dumps({"tool_name": "mcp__github__pull_request_read", "tool_input": MERGE_INPUT})
-    assert _decision(read, api, path=str(tools)) is None
+    note = _decision(read, api, path=str(tools))
+    assert note is not None
+    assert "permissionDecision" not in note
+    assert "python3" in note["additionalContext"]
 
 
 def test_another_tool_is_let_through(tmp_path: Path) -> None:
@@ -312,8 +318,18 @@ def test_a_payload_naming_no_tool_that_mentions_a_merge_is_refused(
 
 @pytest.mark.parametrize("payload", ["", "not json", "{}"], ids=["empty", "not-json", "no-name"])
 def test_a_payload_naming_no_tool_and_no_merge_is_let_through(payload: str, tmp_path: Path) -> None:
-    """Every MCP call reaches the hook, so it refuses an unjudged call only if it names a merge."""
-    assert _decision(payload, _github(tmp_path, {"main": "everyone"})) is None
+    """Every MCP call reaches the hook, so it refuses an unjudged call only if it names a merge.
+
+    One that is not JSON at all goes through with a note that it was not read
+    (`PL-9KSJ`).
+    """
+    decision = _decision(payload, _github(tmp_path, {"main": "everyone"}))
+    if payload == "{}":
+        assert decision is None
+    else:
+        assert decision is not None
+        assert "permissionDecision" not in decision
+        assert "not a JSON object" in decision["additionalContext"]
 
 
 def test_a_merge_call_longer_than_an_environment_variable_holds_is_judged(tmp_path: Path) -> None:

@@ -401,7 +401,3 @@ def decide(payload: str) -> str:
         "out unchecked, with `git push --no-verify`."
     )
     return hook_input.deny("push-check-guard", "checks-failed", reason, payload)
-
-
-if __name__ == "__main__":
-    hook_input.run(decide)

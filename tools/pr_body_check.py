@@ -25,9 +25,9 @@ recovered), and none of the 39 after it. In its first day the record produced
 four items of its own (`PL-F6MM`, `PL-K9XQ`, `PL-7VWK`, `PL-X2XP`). The files
 it wrote stay, with their `recorded:` header.
 
-**`--screen` keeps an email address out of a body before GitHub has it**
-(`PL-7K31`). `.claude/hooks/pr-body-email-guard.sh` runs it as the
-PreToolUse hook on every MCP call. It reads each GitHub call that carries a
+**`screen` keeps an email address out of a body before GitHub has it**
+(`PL-7K31`). It is the `pr-body-email-guard`, which `.claude/hooks/guard.py`
+runs through `decide` before every MCP call (`PL-9KSJ`). It reads each GitHub call that carries a
 title or a body, whatever the tool is called (`PL-NZJG`), and `screen` says why
 it refuses. It lives here because the body it guards is the one this file
 recovers.
@@ -857,23 +857,22 @@ def read_back(payload: str) -> str | None:
     return json.dumps({"hookSpecificOutput": note})
 
 
+def decide(payload: str) -> str:
+    """The hook output for an MCP call: `screen`'s refusal, else `read_back`'s note, else "".
+
+    `.claude/hooks/guard.py` runs this as the `pr-body-email-guard` on every
+    MCP call (`PL-9KSJ`).
+    """
+    return screen(payload) or read_back(payload) or ""
+
+
 def main(argv: list[str]) -> int:
     """Run the mode `argv` names.
 
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
     `--anchors` exits 1 where it fails, because `make check` rests on it.
-    `--screen` is the PreToolUse hook on every MCP call: it reads the call
-    from stdin and prints a refusal where `screen` finds one, or else the
-    note `read_back` gives, and exits 0 either way, as a hook that decides
-    must.
     """
-    if "--screen" in argv:
-        payload = sys.stdin.read()
-        output = screen(payload) or read_back(payload)
-        if output is not None:
-            print(output)
-        return 0
     ref = default_branch_ref()
     if "--anchors" in argv:
         return anchors(ref)

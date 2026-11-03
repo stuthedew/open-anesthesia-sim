@@ -272,7 +272,3 @@ def decide(payload: str) -> str:
         reason = "Refused: " + refusal.why + "\n\n" + ROUTE
         return hook_input.deny("direct-merge-guard", refusal.rule, reason, payload)
     return ""
-
-
-if __name__ == "__main__":
-    hook_input.run(decide)
