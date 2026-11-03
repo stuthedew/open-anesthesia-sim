@@ -3,12 +3,14 @@ id: PL-0W6J
 title: owner_ask_guard.py refused a progress checklist that quoted the hold it now lets through: wait for your read, inside quote marks in a sentence naming a PR
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: owner-ask-refusals
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1973
 payoff: a progress line that quotes the hold it reports on reaches the owner without a rewording
 verify: grep -q 'def test_a_quoted_hold_in_a_progress_line_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7
@@ -32,3 +34,5 @@ same way is the question.
 **Done when.** The message quoted above passes the guard as a row in `tests/unit/test_owner_ask_guard.py`. An unquoted "wait for your read" in a message that names a pull request is still refused.
 
 **Generator check.** The fact is `PL-GPJ7`'s: whether a sentence makes the claim a hard gate checks, when the gate recognises it by wording. This item is a member of `PL-ZCF9`, the successor head filed in the same triage pass (`reenters: PL-GPJ7`).
+
+**Fixed under `PL-ZCF9`, 2026-11-03.** The message above now passes the guard by the quotation rule: the hold lies wholly inside quote marks that name no pull request. Its row is in `tests/unit/test_owner_ask_guard.py`, beside other phrasings in the same context and the rows just outside the rule that are still refused. `PL-ZCF9`'s brief says why the fix covers the context rather than this one phrasing.
