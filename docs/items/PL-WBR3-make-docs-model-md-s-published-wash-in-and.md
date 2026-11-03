@@ -45,3 +45,14 @@ decided split. The mechanism that let the history and padding accumulate,
 `tools/model_rewrite.py lost` prints. The owner reads it only where
 `PL-ZTZF`'s rule sends it: a changed value, equation, code span or citation,
 or a sentence whose meaning needs their judgment.
+
+**Second prose review (2026-11-03).** After part 5 merged, the review ran again under the
+rules that `PL-556C` changed. It read 47 units and rewrote 29, and every rewrite was kept. The
+facts the rewrites moved out of the main text went into a note for developers at the end of
+each of the five sections. The main text no longer says who supplied the full-text copies of
+the Yasuda papers and of Carpenter 1989: the project owner supplied them, and they were read
+on 2026-09-13. The reviewer asked three questions, answered in the text: "biased upward at
+both ends" lost "at both ends", since the sentence before it already gives both ends; "neither
+quantity" now says that neither paper reports its alveolar ventilation; and "zero by
+construction" now reads "at or near zero" by the apparatus's design, matching the inferred,
+unreported inspired fraction stated earlier in the section.
