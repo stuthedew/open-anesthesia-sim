@@ -4,10 +4,12 @@ title: The plain-writing rule gives every kind of text one vague reader, so no w
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: S
-status: ready
+status: done
 feature: reader-tested-prose
-touches: .claude/rules/plain-writing.md, tools/new_prose.py, tests/unit/test_new_prose.py
+touches: .claude/rules/plain-writing.md, tools/new_prose.py, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md, docs/resident-instructions.md
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1957
 payoff: every writer and reviewer knows who a paragraph is for, and what that reader knows and will do with it
 verify: grep -q 'What they do not know' .claude/rules/plain-writing.md && grep -q 'def test_each_unit_names_its_reader' tests/unit/test_new_prose.py
 ---

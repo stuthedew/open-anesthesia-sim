@@ -4,7 +4,7 @@ title: No writing step asks what a paragraph's reader should take from it and do
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: M
-status: blocked
+status: ready
 feature: reader-tested-prose
 touches: .claude/rules/plain-writing.md, docs/items/PL-ZT47-docs-model-md-still-reads-as-machine-written.md, tools/model_rewrite.py, tests/unit/test_model_rewrite.py
 blocked-by: PL-R7Q6
