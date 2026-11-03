@@ -102,11 +102,6 @@ from open_pull_requests import (  # noqa: E402
     repo_slug,
 )
 
-#: Seconds for one git call, longer than `vcs.GIT_TIMEOUT` because `ls-remote`
-#: touches the network; it answered in 0.6 s for 839 pull refs when this was
-#: written.
-REMOTE_TIMEOUT = 30.0
-
 #: The exit status `git_runner` reports for a call git gave no status or no
 #: readable output for, as a shell reports a command it could not run.
 DID_NOT_ANSWER = 127
@@ -156,7 +151,7 @@ def git_runner(root: Path) -> Runner:
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
 
     def run(args: list[str]) -> Git:
-        call = call_git(args, root, timeout=REMOTE_TIMEOUT, env=env)
+        call = call_git(args, root, env=env)
         if call.code is None:
             return Git(DID_NOT_ANSWER, "", call.reason)
         try:
