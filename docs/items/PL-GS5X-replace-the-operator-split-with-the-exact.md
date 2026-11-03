@@ -196,3 +196,31 @@ to 12 (save, replay, comparison, forking) stop needing a snapshot-interval
 design at all.
 
 Nothing above changes what a reviewer sees when they open `core/`.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "Independent-solution test", when `PL-70B2` took the decision history out of that section:
+
+**One safety disclosure this section used to carry is now withdrawn.** The
+split applied its transfers in order. So each compartment was driven across
+the interval by an upstream value that the same step had already moved. The
+resulting bias had opposite signs at the two ends of the transfer chain. The
+circuit read below the independent solution and the tissues read above it. So
+a *difference* between two readouts carried the sum of two displacements. That
+difference was the least accurate thing the interface displayed, at up to 1.8
+times the error in either reading it was taken from. That was true of the
+split and is not true of the exact step. The exact step drives no compartment
+from an already-moved value and leaves no bias with a sign. A gradient between
+two compartments is now no less accurate than either reading it is taken from.
+The withdrawn claim is recorded here rather than deleted because it was also
+published in § "Displayed precision" below. A reader comparing versions needs
+to know which way it went.
+
+**The withdrawn claim about gaps between readouts, moved from `docs/MODEL.md`
+on 2026-11-03.** § "What the last digit does not cover, and what it still
+does" once said, before this item withdrew it on 2026-09-06: "The error is a
+systematic sequencing bias rather than noise, and its sign is opposite at the
+two ends of the transfer chain. A *difference* between two of the six readouts
+therefore carries the sum of two displacements, up to 1.8 times the error in
+either reading alone, worst measured at 0.030 percentage points, so the
+numeric gap between two readouts is the least certain thing on the display."
+The plain-English rewrite (`PL-70B2`) replaced the struck-through text with
+one sentence saying the warning was withdrawn and why.

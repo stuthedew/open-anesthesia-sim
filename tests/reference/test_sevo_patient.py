@@ -50,20 +50,21 @@ STEP_REFINEMENT_HORIZON_S = 60.0
 # The largest allowed gap in a fraction after 60 s between runs at two
 # supported steps.
 #
-# The gate takes two gaps for each fraction: the first between 0.1 s and
-# 0.05 s, and the second between 0.05 s and 0.025 s. With the exact step, these
-# gaps come from floating-point rounding, not from error in the method. The
-# bound was set on 2026-09-06 at about twelve times the worst gap measured
-# then, 8.1e-16 in the alveolar fraction. That measurement reported four
-# values, and no record names the fourth. This test has compared the same
-# three fractions since the exact step landed (#376). A new measurement on
-# 2026-11-01 found the worst gap in those three fractions to be 3.4e-16, in
-# the alveolar fraction. The bound now allows about thirty times that gap.
-# The second gap for each fraction is larger than the first rather than half
-# of it, because the finer run takes more steps and rounding accumulates once
-# per step. The bound leaves room for another machine's rounding. It is still
-# about three orders of magnitude below the 1.4e-11 that a genuinely
-# first-order method would show at these steps.
+# The test takes two gaps for each fraction: between 0.1 s and 0.05 s, and
+# between 0.05 s and 0.025 s. The model solves its equations exactly over each
+# step, so these gaps come from floating-point rounding, not from error in the
+# method. The bound was set on 2026-09-06 at about twelve times the worst gap
+# measured then, 8.1e-16 in the alveolar fraction. That measurement reported
+# four values, and no record names the fourth. This test has compared the same
+# three fractions since the exact solution landed (#376). On 2026-11-01 the
+# worst gap in those three was 3.4e-16, in the alveolar fraction, so the bound
+# now allows about thirty times that gap. The second gap for each fraction is
+# larger than the first rather than half of it, because the finer run takes
+# more steps and rounding accumulates once per step. The bound leaves room for
+# another machine's rounding. It is still more than eight orders of magnitude
+# below the gaps of up to 1.8e-6 that Euler's method, a simple approximate
+# method, shows at these steps (measured 2026-11-03 with the derivative in
+# tests/reference/test_coupled_dynamics.py).
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
 
 # The largest allowed gap in a fraction after the same 60 s between a run at
