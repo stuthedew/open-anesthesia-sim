@@ -10283,22 +10283,23 @@ arithmetic for every shipped agent.
 One step of the MAC readout is therefore 0.02 percentage points of sevoflurane,
 0.012 of isoflurane and 0.06 of desflurane. For each agent, that is larger than
 one step of the percent readout beside it.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` enforces this
-for every agent. The three figures above have no test yet (`PL-19W8`).
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` checks for
+every agent that it is never smaller. The three figures above have no test yet
+(`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
 Near a MAC rounding boundary, the MAC digit can still change while the
 percent digit does not. For sevoflurane, 0.029% and 0.031% both read `0.03%`,
-while the MAC readout goes from `0.01 ×MAC` to `0.02 ×MAC`. Such a change is
-real, but smaller than 0.01 percentage points, and the readouts do not show
-its size. `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks
+while the MAC readout goes from `0.01 ×MAC` to `0.02 ×MAC`. The concentration
+did change, but by less than 0.01 percentage points, and neither readout shows
+by how much. `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks
 this for all three agents.
 
 Converting the percent readout's step into MAC would give each agent a different
 step. The last digit of the MAC readout would then stand for a different amount
 for each agent. So the MAC readout uses the same step, measured in MAC, for every
-agent. "Why the resolution is uniform rather than per-compartment" below rejects
-the same problem across compartments.
+agent. § "Why the resolution is uniform rather than per-compartment" below does
+the same for compartments.
 
 The below-resolution form applies to the MAC line for the same reason it
 applies to the percent line, and it matters more there, not less. A
