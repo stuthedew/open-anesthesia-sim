@@ -5216,7 +5216,11 @@ arithmetic above about the refilling queue is unchanged. `PL-G8TR` is already
 on this list for the same file and the same message, so whoever takes either
 item should take both.
 
+<!-- absent: .claude/hooks/no-prune-guard.sh -->
+
 - PL-J3TV (S) `.claude/hooks/no-prune-guard.sh` still prints the pre-`PL-K2C8` three-command restart recipe, so the incomplete version survives in the louder of the two places
+
+<!-- absent: .claude/hooks/no-prune-guard.sh -->
 
 **And two from the stranded-branch and triage pass** (2026-09-21). `PL-NGBM`
 and `PL-T441` are the two halves of `count-input-addressing` that apply to the

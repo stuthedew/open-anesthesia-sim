@@ -1,9 +1,9 @@
 """How bash splits a command line, for the four Bash guard hooks to share.
 
-`gate-status-guard.sh`, `floor-interpreter-guard.sh`, `no-prune-guard.sh` and
-`push-check-guard.sh` each decide on a command string before it runs, so each
+`gate-status-guard.sh`, `floor-interpreter-guard.sh`, `push-check-guard.sh` and
+`gh_write_guard.py` each decide on a command string before it runs, so each
 has to know where one
-command ends and the next begins. Each used to spell that itself - two
+command ends and the next begins. The first guards each spelled that themselves - two
 `shlex.shlex(punctuation_chars=True)` lexers behind a newline substitution, and
 a regex - and each copy read some shape differently from bash. A `)` glued to
 the `;` after it hid the separator (`PL-63TT`), a backslash-newline read as one
@@ -44,9 +44,8 @@ the descriptor written against it - a number or a `{name}` with no space before
 a `<` or `>` operator, unquoted - so `timeout 5>x make check` hands `timeout` no
 duration, where `timeout 5 >x` and `timeout '5'>x` do. And `commands`
 finds every command a string runs, those inside `( )` and `$( )` included, for
-a guard that must see one wherever bash would run it. `no-prune-guard.sh` read
-that with a regex of its own, which took a `;` inside quotes for a separator
-(`PL-WGFY`).
+a guard that must see one wherever bash would run it. A guard that found one
+with a regex of its own took a `;` inside quotes for a separator (`PL-WGFY`).
 
 **So is which program a command runs**, by `program_words`, because a program
 that runs another is not the one a guard is looking for: `timeout 600 make
@@ -175,7 +174,7 @@ NEEDS_QUOTES = re.compile(r"[\s'\"\\&|;()<>#]")
 # What bash makes new words from after a guard has read these: a `$` opens a
 # parameter or a substitution, a backtick a substitution and a `{` a brace
 # expansion, so a word holding one is not yet the word the command is handed.
-# `no-prune-guard.sh` and `push-check-guard.sh` each held a copy (`PL-ZXCN`).
+# Two guards each held a copy before this one (`PL-ZXCN`).
 EXPANDS = re.compile(r"[$`{]")
 
 

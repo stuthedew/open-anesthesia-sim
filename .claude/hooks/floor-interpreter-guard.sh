@@ -79,8 +79,8 @@
 #
 # Fails open in every error path - no python3, an unreadable payload, a command
 # bash itself would refuse, `shell_split.py` missing from beside it - like
-# `no-prune-guard.sh` beside it. A guard that breaks the session costs more than
-# the round it saves.
+# `gate-status-guard.sh` beside it. A guard that breaks the session costs more
+# than the round it saves.
 set -uo pipefail
 
 payload=$(cat)

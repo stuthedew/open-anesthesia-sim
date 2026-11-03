@@ -1,0 +1,96 @@
+#!/bin/sh
+# open-anesthesia-sim git hook: installed from .claude/hooks/git/ by stop_hook_patch.py.
+#
+# Check a push from a session's clone at the moment git is about to send it
+# (`PL-1ZZ0`). Git runs this hook with the remote's name and address as its
+# arguments, and one line on standard input for each ref it will send: the
+# local ref, the local value, the remote ref and the remote's current value.
+# A non-zero exit stops the push before anything reaches the remote.
+#
+# **1. A push that deletes a branch on the remote is refused** (`PL-M2NV`). A
+# branch nobody merged can be the only copy of an item captured on it. Git
+# names a deletion by a local value of all zeros, which covers `--delete`, a
+# `:<branch>` refspec and `--prune`. A `--mirror` push is the exception: git
+# 2.43.0 leaves the deletions it makes out of this list, measured on 2026-11-03
+# against a scratch remote, which lost two branches to a mirror push this hook
+# was never told about. A mirror push also sends every remote-tracking ref as
+# a ref of the remote, and every session's clone holds `origin/main`, so a push
+# that writes a ref under `refs/remotes/` on the remote is refused as a mirror
+# push, whatever command or setting made it one.
+#
+# **2. A push whose new commits hold an email address is refused** (`PL-7K31`).
+# A pushed commit is public as soon as GitHub has it. The commits read are the
+# ones no remote-tracking ref already holds. Their author and committer, their
+# message, and each line a commit other than a merge adds are screened by
+# `tools/pr_body_check.py --screen-push`, the same rule that screens a GitHub
+# call's fields. A merge's own changes are left out, because they are lines
+# its parents already hold. Where the screen cannot run, the push goes ahead
+# with a warning, as the other email guards fail open.
+#
+# **Only an agent's push is checked.** Claude Code sets `CLAUDECODE` in the
+# environment of every command it runs, and git hands that environment to its
+# hooks, so the project owner's own push from the same clone is left alone.
+#
+# **What goes unread.** A push with `--no-verify`, which skips this hook, and
+# a mirror push from a clone with no remote-tracking ref.
+#
+# Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
+# the next session start.
+
+[ -n "${CLAUDECODE:-}" ] || exit 0
+
+refused=
+tips=
+while read -r local_ref local_oid remote_ref remote_oid; do
+    case $local_oid in
+    *[!0]*) ;;
+    *)
+        refused="$refused
+    $remote_ref (deleted)"
+        continue
+        ;;
+    esac
+    case $remote_ref in
+    refs/remotes/*) refused="$refused
+    $remote_ref (a mirror push writes this clone's remote-tracking refs)" ;;
+    esac
+    tips="$tips $local_oid"
+done
+
+if [ -n "$refused" ]; then
+    python3 .claude/hooks/hook_input.py --log git-ref-guard delete-remote-ref >/dev/null 2>&1
+    cat >&2 <<EOF
+Refused: this push would change these refs on the remote, and nothing was sent:
+$refused
+
+A branch nobody merged can be the only copy of an item captured on it, so a
+session's push may not delete one, and a mirror push deletes every branch this
+clone lacks (PL-M2NV). To push this branch, name it, with no --prune, --mirror
+or deletion:
+
+    git push -u origin <branch>
+
+Deleting branches on the remote is left to the branch sweep and the project
+owner. \`python3 tools/branch_sweep.py\` names any branch the daily sweep keeps,
+and .claude/skills/docket/modes/capture.md says how to hand one to the owner.
+EOF
+    exit 1
+fi
+
+[ -n "$tips" ] || exit 0
+if ! grep -q -- '--screen-push' tools/pr_body_check.py 2>/dev/null; then
+    echo "warning: this checkout's tools/pr_body_check.py has no --screen-push, so the push was not screened for email addresses" >&2
+    exit 0
+fi
+
+# Each commit opens with a NUL, so the screen can tell where one ends.
+# shellcheck disable=SC2086 # each tip is one word, and the list must split.
+git log -p -U0 --no-color --no-ext-diff --no-textconv \
+    --format='%x00%H%n%an <%ae>%n%cn <%ce>%n%B' $tips --not --remotes |
+    python3 tools/pr_body_check.py --screen-push
+status=$?
+case $status in
+0 | 1) exit $status ;;
+esac
+echo "warning: the email screen could not run (exit $status), so the push was not screened for email addresses" >&2
+exit 0

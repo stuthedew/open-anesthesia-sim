@@ -61,6 +61,8 @@ of the repository's hooks (`PL-CR81`), so its guards refuse nothing.
   are. This costs nothing, but it cannot tell a guard that blocks nothing from
   one that blocks often.
 
+<!-- absent: no-prune-guard.sh -->
+
 **Recommendation:** the local log copied at record time. It is the only route
 that produces the count this item exists for, and its cost is small and paid
 once. The choice is the owner's because it is a new mechanism in the workflow
@@ -94,7 +96,7 @@ own hook".** From a read-only review of the repository's regular expressions,
 filed at the owner's request. Two of the four Bash guards guard an effect that
 git itself sees, whatever the command's spelling:
 
-- `no-prune-guard.sh` stops the deletion of remote-tracking refs. Git's
+- The prune guard stops the deletion of remote-tracking refs. Git's
   `reference-transaction` hook, added in git 2.28.0, receives each reference
   update as its old value, new value and ref name. A non-zero exit in the
   "preparing" or "prepared" state aborts the whole transaction
