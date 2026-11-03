@@ -4,11 +4,13 @@ title: No writing step asks what a paragraph's reader should take from it and do
 priority: P1
 owner-priority: P1, 2026-11-02
 effort: M
-status: ready
+status: done
 feature: reader-tested-prose
 touches: .claude/rules/plain-writing.md, docs/items/PL-ZT47-docs-model-md-still-reads-as-machine-written.md, tools/model_rewrite.py, tests/unit/test_model_rewrite.py, docs/resident-instructions.md, docs/apparatus.md, docs/maintainer.md, .claude/skills/pull-request/SKILL.md, docs/items/PL-FYGJ-nothing-tests-the-prose-review-against-the.md
 blocked-by: PL-R7Q6
 added: 2026-11-02
+closed: 2026-11-03
+pr: 1958
 payoff: each paragraph carries what its reader needs, and each chosen value says what it does, why, and how to change it, from a record
 verify: grep -q 'git log -S' .claude/rules/plain-writing.md
 ---
