@@ -7878,11 +7878,13 @@ contains the regression test for a case that the accounting check passed with
 every propagator entry wrong.
 
 **What is left open, stated plainly.** A caller writing Python against
-`core/` can still construct `BreathingCircuit(circuit_volume_l=10_000.0)` or
-`AlveolarCompartment(gas_volume_l=1e-6)`. `SimulationController` still takes a
-`circuit_volume_l` argument at construction. Those values are outside the
-verified domain, and nothing refuses them. They are not a live setting that a
-run can be steered with, and they cannot be reached from the interface at all.
+`core/` can still build either volume anywhere in the numerical envelope, from
+0.01 to 10 000 L, by passing a `CompartmentVolume`. So a 10 000 L circuit or a
+0.01 L alveolar compartment is accepted. `SimulationController` still takes a
+`circuit_volume_l` argument at construction. Such values are outside the
+verified domain, and only the numerical envelope bounds them. They are not a
+live setting that a run can be steered with, and they cannot be reached from
+the interface at all.
 They are a value chosen once, by a caller who has gone to the trouble of
 building the model directly. `BreathingCircuit.set_circuit_volume` remains for
 the same reason. It is how the parameter gets to the circuit, and it is where
