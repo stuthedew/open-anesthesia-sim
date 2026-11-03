@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: ready
 feature: reader-tested-prose
-touches: docs/prose-review/prompt.md, tools/rejected_prose.py, .claude/skills/docket/modes/close-out.md
+touches: docs/prose-review, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - apparatus for the prose review, ranked through its generator PL-H76S rather than by the release gate, as that head's other members were
 added: 2026-11-03
 payoff: the prose review's rewrites stop handing writers text longer than what the owner rejected, so its advice no longer repeats the fault it flags

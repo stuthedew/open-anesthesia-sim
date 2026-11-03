@@ -302,7 +302,8 @@ page and decides which file a session reads.
    know, what the reader would take from the unit, whether the unit lets the
    reader do what the reader table says they will do, and each sentence that
    the takeaway does not need. It then writes `[N] keep`, or `[N] rewrite`
-   with the new text.
+   with new text for the reader the unit serves, no longer than the text it
+   replaces, and a list of the facts it moved and where each went.
 
    The prompt asks what the named reader would take from the text, because a
    reviewer told to imagine a newcomer still reads with its own vocabulary
@@ -310,8 +311,12 @@ page and decides which file a session reads.
    point you wrote down before writing the paragraph, as
    `.claude/rules/plain-writing.md` asks. A term the reviewer lists, a
    takeaway that misses your point, or a reader who cannot do what the table
-   says means a rewrite: apply the reviewer's or write your own. Move or cut
-   each sentence that the fourth answer lists. Reject any rewrite that drops
+   says means a rewrite: apply the reviewer's or write your own. Keep either
+   one no longer than the text it replaces, counted in words. On the first
+   run of the test set below, four of the reviewer's five rewrites were longer
+   than the paragraph the owner had rejected (`PL-CWRZ`). Move or cut each
+   sentence that the fourth answer lists, and put each fact the reviewer
+   moved in the place it names. Reject any rewrite that drops
    or changes a value, a unit, a condition, an identifier or a citation, and
    keep the original sentence there, because the safety-critical standard
    applies to what a docstring states. Accept a restated number only after
@@ -340,11 +345,13 @@ page and decides which file a session reads.
    **A change to the prompt is tested on the set before it lands.** Run
    `python3 tools/rejected_prose.py show`, give its whole output to one fresh
    reviewer as above, save the reply to a file, and run `python3
-   tools/rejected_prose.py record FILE`. The review must flag every entry. If
-   it keeps one, change the prompt and run the set again. `python3
+   tools/rejected_prose.py record FILE`. The review must flag every entry,
+   and no rewrite may have more words than its entry allows. If it keeps one
+   or writes a longer one, change the prompt and run the set again. `python3
    tools/rejected_prose.py check`, in `make check` and CI, refuses a branch
    whose prompt, or whose reader rows for a file the set holds, have no run,
-   or have a run that kept an entry.
+   or have a run that kept an entry or rewrote one at more words than it
+   allows.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a
