@@ -1,10 +1,12 @@
-"""`tools/rejected_prose.py` must refuse a prompt change that no run of the rejected set has tested.
+"""`tools/rejected_prose.py` must refuse a prompt change that no run of the test set has tested.
 
 The set holds paragraphs the owner rejected after the close-out prose review
-passed them (`PL-FYGJ`). These tests pin what an entry must hold, how a
-reviewer's verdicts and rewrites are read, and when `check` refuses: no run for
-the current prompt and readers, a run that kept an entry, a run whose rewrite
-has more words than its entry allows (`PL-CWRZ`), and a kind above its cap.
+passed them (`PL-FYGJ`), and paragraphs he named gold standards (`PL-556C`). These tests
+pin what an entry must hold, how a reviewer's verdicts and rewrites are read,
+and when `check` refuses: no run for the current prompt and readers, a run that
+kept a rejected entry or flagged a gold-standard one, a run whose rewrite has more
+words than its entry allows (`PL-CWRZ`), a gold-standard entry that no run read or
+that repeats another entry's text, and a kind above its cap.
 """
 
 from __future__ import annotations
@@ -15,17 +17,22 @@ from pathlib import Path
 
 import new_prose
 import pytest
-import rejected_prose
 from new_prose import MIN_WORDS, reader_table
 from rejected_prose import (
     CAP_PER_KIND,
+    FAILURE_KINDS,
+    GOLD_DIR,
+    GOLD_KIND,
     REJECTED_DIR,
     ROOT,
     RUNS_DIR,
     check,
+    digest,
+    expected_verdict,
     main,
     parse_entry,
     prose_words,
+    read_set,
     readers_digest,
     record,
     rewrites,
@@ -42,6 +49,8 @@ READERS = """\
 TABLE = reader_table(READERS)
 PROMPT = "Review the prose below.\n"
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
+#: A paragraph the owner named a gold standard, which differs from every rejected one.
+KEPT = " ".join(["plain"] * MIN_WORDS)
 
 
 def _words(count: int) -> str:
@@ -77,18 +86,35 @@ def _entry(
     )
 
 
-def _root(tmp_path: Path, entries: dict[str, str]) -> Path:
-    """A tree holding `entries` in the set's folder, by file name."""
-    folder = tmp_path / REJECTED_DIR.relative_to(ROOT)
-    folder.mkdir(parents=True)
-    for name, text in entries.items():
-        (folder / name).write_text(text, encoding="utf-8")
+def _gold(*, named: str = "2026-11-05", paragraph: str = KEPT) -> str:
+    """A gold-standard entry's text, with every required section."""
+    return (
+        f"---\nfile: docs/MODEL.md\nnamed: {named}\n---\n\n"
+        f"## Paragraph\n\n```text\n{paragraph}\n```\n\n"
+        '## The owner\'s words\n\n"Good" (2026-11-05).\n\n## Where it came from\n\nA test.\n'
+    )
+
+
+def _root(tmp_path: Path, entries: dict[str, str], gold: dict[str, str] | None = None) -> Path:
+    """A tree holding `entries` in the rejected folder and `gold` in the gold-standard one."""
+    for directory, files in ((REJECTED_DIR, entries), (GOLD_DIR, gold or {})):
+        folder = tmp_path / directory.relative_to(ROOT)
+        folder.mkdir(parents=True)
+        for name, text in files.items():
+            (folder / name).write_text(text, encoding="utf-8")
     return tmp_path
+
+
+def _in_order(root: Path, by_name: dict[str, str]) -> list[str]:
+    """The verdict `by_name` gives each entry, in the order `show` numbers the entries."""
+    entries, problems = read_set(root, TABLE)
+    assert problems == []
+    return [by_name[entry.name] for entry in entries]
 
 
 def _run(root: Path, name: str, reply: str, *, prompt: str = PROMPT) -> None:
     """Record `reply` as the run `name`, against the entries `root` holds now."""
-    entries, problems = rejected_prose.read_entries(root / REJECTED_DIR.relative_to(ROOT), TABLE)
+    entries, problems = read_set(root, TABLE)
     assert problems == []
     folder = root / RUNS_DIR.relative_to(ROOT)
     folder.mkdir(parents=True, exist_ok=True)
@@ -99,7 +125,7 @@ def _run(root: Path, name: str, reply: str, *, prompt: str = PROMPT) -> None:
 def test_an_entry_records_its_kind_file_date_and_paragraph() -> None:
     entry = parse_entry("jargon-2026-11-02-a.md", _entry(paragraph="  " + PARAGRAPH), TABLE)
 
-    assert (entry.kind, entry.file, entry.rejected.isoformat()) == (
+    assert (entry.kind, entry.file, entry.judged.isoformat()) == (
         "jargon",
         "docs/MODEL.md",
         "2026-11-02",
@@ -343,16 +369,14 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     assert "not recorded: [1] rewrite has no closed fenced block" in capsys.readouterr().err
     assert not (root / RUNS_DIR.relative_to(ROOT)).exists()
 
+    first, second = sorted(["jargon-2026-11-02-a.md", "jargon-2026-11-02-b.md"], key=digest)
     reply.write_text(_reply("rewrite", "keep", words=MIN_WORDS + 1), encoding="utf-8")
     assert main(["record", str(reply)], root=root) == 0
     out = capsys.readouterr().out
-    assert f"rewrote jargon-2026-11-02-a.md in {MIN_WORDS + 1} words, more than the" in out
-    assert "kept jargon-2026-11-02-b.md: change the prompt" in out
+    assert f"rewrote {first} in {MIN_WORDS + 1} words, more than the" in out
+    assert f"kept {second}: change the prompt" in out
     (written,) = (root / RUNS_DIR.relative_to(ROOT)).glob("*.json")
-    assert json.loads(written.read_text(encoding="utf-8"))["entries"] == [
-        "jargon-2026-11-02-a.md",
-        "jargon-2026-11-02-b.md",
-    ]
+    assert json.loads(written.read_text(encoding="utf-8"))["entries"] == [first, second]
     assert main(["check"], root=root) == 1
 
     assert main(["show"], root=root) == 0
@@ -432,3 +456,145 @@ def test_a_rewrite_that_does_not_parse_as_its_file_is_named(tmp_path: Path) -> N
     assert problem.startswith(
         "runs/one.json's rewrite of jargon-2026-11-02-a.md does not parse as src/pkg/m.py"
     )
+
+
+def test_a_gold_standard_entry_is_named_for_a_kind_that_no_failure_has() -> None:
+    """The start of an entry's name is what says, in a run's record, which verdict it needs."""
+    assert GOLD_KIND not in FAILURE_KINDS
+    assert expected_verdict(f"{GOLD_KIND}-2026-11-05-a.md") == "keep"
+    assert all(expected_verdict(f"{kind}-2026-11-02-a.md") == "rewrite" for kind in FAILURE_KINDS)
+
+
+def test_a_gold_standard_entry_records_its_file_date_and_paragraph() -> None:
+    entry = parse_entry("gold-2026-11-05-a.md", _gold(), TABLE, gold=True)
+
+    assert (entry.kind, entry.file, entry.judged.isoformat()) == (
+        GOLD_KIND,
+        "docs/MODEL.md",
+        "2026-11-05",
+    )
+    assert entry.lines == (KEPT,)
+
+
+@pytest.mark.parametrize(
+    ("name", "text", "reason"),
+    [
+        ("gold-2026-11-05-a.md", _entry(), "exactly file, named"),
+        ("jargon-2026-11-05-a.md", _gold(), "its name must be gold-2026-11-05-SLUG.md"),
+        ("gold-2026-11-05-a.md", _gold(named="soon"), "named 'soon' is not a date"),
+        (
+            "gold-2026-11-05-a.md",
+            _gold() + "\n## Accepted rewrite\n\n```text\nA plainer paragraph.\n```\n",
+            "and must be Paragraph, The owner's words, Where it came from",
+        ),
+    ],
+)
+def test_a_malformed_gold_standard_entry_is_refused_with_its_reason(
+    name: str, text: str, reason: str
+) -> None:
+    with pytest.raises(ValueError) as raised:
+        parse_entry(name, text, TABLE, gold=True)
+    assert reason in str(raised.value)
+    assert not str(raised.value).endswith("optionally Accepted rewrite")
+
+
+def test_a_rejected_entry_may_not_claim_the_gold_kind() -> None:
+    with pytest.raises(ValueError) as raised:
+        parse_entry("gold-2026-11-02-a.md", _entry(kind=GOLD_KIND), TABLE)
+    assert "kind 'gold' is not one of" in str(raised.value)
+
+
+def test_show_mixes_the_two_folders_and_leaves_out_an_accepted_rewrite(tmp_path: Path) -> None:
+    """Neither a unit's position nor a second version of it tells the reviewer its verdict."""
+    rewrite = "A plainer paragraph that the owner accepted."
+    sections = (
+        "## The owner's words\n\nNo.\n\n## Where it came from\n\nA test.\n\n"
+        f"## Accepted rewrite\n\n```text\n{rewrite}\n```\n"
+    )
+    root = _root(
+        tmp_path,
+        {f"jargon-2026-11-02-{n}.md": _entry(sections=sections) for n in range(4)},
+        {f"gold-2026-11-05-{n}.md": _gold() for n in range(4)},
+    )
+    entries, _ = read_set(root, TABLE)
+
+    assert [entry.name for entry in entries] == sorted(
+        [entry.name for entry in entries], key=digest
+    )
+    assert [entry.kind for entry in entries] != sorted(entry.kind for entry in entries)
+    shown = show(PROMPT, entries, TABLE)
+    assert rewrite not in shown
+    assert GOLD_KIND not in shown
+
+
+def test_a_run_that_flagged_a_gold_standard_entry_fails(tmp_path: Path) -> None:
+    """A review that flags every paragraph it reads no longer passes the set."""
+    root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()}, {"gold-2026-11-05-a.md": _gold()})
+    _run(root, "everything.json", _reply("rewrite", "rewrite"))
+
+    assert check(root, PROMPT, TABLE) == [
+        "runs/everything.json flagged gold-2026-11-05-a.md, which the owner named a gold "
+        "standard: change the prompt so the review keeps text that serves its reader, then run "
+        "the set again"
+    ]
+
+
+def test_a_run_that_keeps_the_gold_standard_and_flags_the_rejected_passes(tmp_path: Path) -> None:
+    root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()}, {"gold-2026-11-05-a.md": _gold()})
+    order = _in_order(root, {"jargon-2026-11-02-a.md": "rewrite", "gold-2026-11-05-a.md": "keep"})
+    _run(root, "one.json", _reply(*order))
+
+    assert check(root, PROMPT, TABLE) == []
+
+
+def test_a_new_gold_standard_entry_needs_a_run_of_the_current_prompt(tmp_path: Path) -> None:
+    """A rejected entry is a known miss, but a gold standard is untested until a run reads it."""
+    root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
+    _run(root, "before.json", _reply("rewrite"))
+    (root / GOLD_DIR.relative_to(ROOT) / "gold-2026-11-05-a.md").write_text(
+        _gold(), encoding="utf-8"
+    )
+
+    assert check(root, PROMPT, TABLE) == [
+        "no run of the current prompt and readers read gold-2026-11-05-a.md: run the set, "
+        "because nobody knows whether the current prompt keeps a gold-standard paragraph "
+        "until a run reads it"
+    ]
+    order = _in_order(root, {"jargon-2026-11-02-a.md": "rewrite", "gold-2026-11-05-a.md": "keep"})
+    _run(root, "after.json", _reply(*order))
+    assert check(root, PROMPT, TABLE) == []
+
+
+def test_a_gold_standard_entry_that_repeats_another_entry_is_refused(tmp_path: Path) -> None:
+    rewrite = _words(MIN_WORDS + 5)
+    sections = (
+        "## The owner's words\n\nNo.\n\n## Where it came from\n\nA test.\n\n"
+        f"## Accepted rewrite\n\n```text\n{rewrite}\n```\n"
+    )
+    root = _root(
+        tmp_path,
+        {"jargon-2026-11-02-a.md": _entry(sections=sections)},
+        {
+            "gold-2026-11-05-a.md": _gold(paragraph="  " + PARAGRAPH),
+            "gold-2026-11-05-b.md": _gold(paragraph=rewrite),
+        },
+    )
+
+    assert sorted(p for p in check(root, PROMPT, TABLE) if "repeats" in p) == [
+        "gold-2026-11-05-a.md repeats the paragraph that jargon-2026-11-02-a.md records as "
+        "rejected: record a paragraph in one entry only",
+        "gold-2026-11-05-b.md repeats the accepted rewrite in jargon-2026-11-02-a.md: record "
+        "a paragraph in one entry only",
+    ]
+
+
+def test_the_gold_standard_entries_share_the_cap_of_a_kind(tmp_path: Path) -> None:
+    gold = {f"gold-2026-11-06-{n}.md": _gold(named="2026-11-06") for n in range(CAP_PER_KIND)}
+    gold["gold-2026-11-05-0.md"] = _gold()
+    root = _root(tmp_path, {}, gold)
+    _run(root, "one.json", _reply(*["keep"] * len(gold)))
+
+    assert check(root, PROMPT, TABLE) == [
+        f"kind gold holds {CAP_PER_KIND + 1} entries, more than {CAP_PER_KIND}: delete the "
+        "oldest, gold-2026-11-05-0.md, which git history keeps"
+    ]
