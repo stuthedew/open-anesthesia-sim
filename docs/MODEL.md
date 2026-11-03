@@ -2907,30 +2907,28 @@ below the three tiers.
    reports the value, its dispersion, and its reference conditions. Strum and
    Eger's sevoflurane blood:gas determination (0.686 ± 0.047 at 37 °C, n=19)
    and Yasuda, Targ and Eger's human tissue:blood coefficients are examples
-   of this tier. Both are already cited in this project's agent files.
+   of this tier.
 2. **Secondary synthesis.** A review, textbook, monograph or consensus
-   document that collects primary measurements without making one. It is
-   legitimate for finding the primary source. It is also legitimate for
-   recording what the field conventionally quotes. That is a real fact about
-   what the reader expects, and it is the reason isoflurane's textbook 1.4 is
-   worth naming. It is not the authority for a stored value on its own
-   strength, because the rounding, and the choice between measurements that
-   disagree, happened somewhere the reader cannot see. It can be adopted only
-   on the recorded decision described below.
-3. **Reference implementation.** Another simulator's parameter set, meaning the
-   numbers that a working program was built to run on. Gas Man is this
-   project's reference implementation. The tier is useful in two ways. It
-   defines the behavior of a widely used teaching tool, so this
-   implementation can be compared against it. It also supplies a complete,
-   internally consistent set, where the primary literature supplies
-   scattered measurements made in different laboratories on different
-   cohorts. **It is still not a source of measurements.** A parameter set is
-   assembled to make a program behave. Nobody can recover from the program
-   which measurement each number descends from, or what was adjusted to make
-   the set consistent. **The program's behavior has itself been compared with
-   measurements in patients**, and the agreement is materially worse during
-   wash-in than during maintenance. § "Known limitations" gives the figures
-   and the limits they set.
+   document that collects primary measurements without making one. It is a
+   good way to find the primary source, and to record the figure the field
+   usually quotes, such as the textbook blood:gas coefficient of 1.4 for
+   isoflurane. It cannot by itself be the authority for a stored value,
+   because the rounding, and the choice between measurements that disagree,
+   happened where the reader cannot see. It can be adopted only on the
+   recorded decision described below.
+3. **Reference implementation.** Another simulator's parameter set: the
+   numbers a working program was built to run on. Gas Man is this project's
+   reference implementation. It is useful in two ways. It defines the behavior
+   of a widely used teaching tool, so this simulator can be compared with it.
+   It also supplies a complete, internally consistent set, where the primary
+   literature supplies scattered measurements made in different laboratories
+   on different cohorts. **It is still not a source of measurements.** A
+   parameter set is assembled to make a program behave. Nobody can recover
+   from the program which measurement each number descends from, or what was
+   adjusted to make the set consistent. **The program's behavior has itself
+   been compared with measurements in patients**, and the agreement is
+   materially worse during wash-in than during maintenance. § "Known
+   limitations" gives the figures and the limits they set.
 
 **A lower tier may be adopted, but never silently.** The ranking above says
 which tier a reader may trust without examining it. It does not forbid storing
@@ -2950,8 +2948,8 @@ every such value carries all three today:
   preference to an available primary source rather than for want of one.
   The three blood:gas coefficients are the worked example. Primary
   measurements exist for all three, and the project owner decided on
-  2026-09-03 to keep the Gas Man values and label them. The paragraph below on
-  the agent files gives each value's difference from its measurement.
+  2026-09-03 to keep the Gas Man values and label them. Each value's
+  difference from its measurement is given later in this section.
 
 That bar is higher than the one a tier-1 citation clears. Only two reasons are
 admissible. The work of finding a primary source is not one of them:
@@ -2968,28 +2966,26 @@ admissible. The work of finding a primary source is not one of them:
    being modelled**, and replacing it would mean mixing primary measurements
    from different laboratories and cohorts. This is the argument for tier 3
    given above. The three blood:gas coefficients are the worked example. Eger,
-   Strum and Eger, Lerman et al., and Esper et al. 2015 did measure these
-   quantities in this population, so the first reason does not cover them.
-   But one laboratory's blood:gas figure, placed in a Gas Man tissue set,
-   makes the trajectory a hybrid of two parameter sets with different origins.
-   This document makes the same objection below against dividing a Gas Man
-   trajectory by a Mapleson MAC. Here the objection applies one level down, to
-   the parameters.
+   Strum and Eger, Lerman et al., and Esper et al. 2015 did measure them in
+   this population, so the first reason does not cover them. But one
+   laboratory's blood:gas figure, placed among Gas Man's tissue values, would
+   make the simulated curve a mix of two parameter sets with different
+   origins. The same objection applies, later in this document, to dividing a
+   Gas Man curve by a MAC taken from Mapleson.
 
-The second reason is the narrower of the two. It is available only where the
-entry cites the primary measurements with their measured values and records
-the difference from the stored value, so the reader can see what the choice
-costs. For the three blood:gas coefficients the stored values sit 0.9% to
-26.3% below the measured ones. The paragraph below on the agent files gives
-each difference, the date of the decision, and the planned route to a primary
-coefficient set. That route would remove this reason for these three.
+The second reason is the narrower of the two. It applies only where the entry
+cites the primary measurements with their values and records how far the
+stored value differs, so the reader can see what the choice costs. For the
+three blood:gas coefficients the stored values sit 0.9% to 26.3% below the
+measured ones. Later in this section, each difference is given, with the date
+of the decision and the planned route to measured coefficients for all three,
+which would remove this reason for them.
 
 Where a primary measurement *is* available and simply has not been adopted,
-the entry says so in those words, and the value **carries no adopted
-primary**. That is a statement about the `adopted` field rather than about the
-citation. A stored value can name a source and declare its tier while no
-measurement of that quantity supports it. That is the ordinary case here, and
-it is the reason the field exists.
+the entry says so in those words, and its `adopted` field records that no
+primary measurement backs the value. A stored value can name a source and
+state its tier while no measurement of that quantity supports it. That is
+the ordinary case here, and it is why the `adopted` field exists.
 
 **Full texts held on hand are in `docs/references/`, and holding one changes
 nothing about its tier.** They are kept so that a claim can be checked against
@@ -3002,37 +2998,36 @@ individual number in it, the review is a tier-2 synthesis.
 **Republication does not promote a value between tiers.** A peer-reviewed
 paper that prints a reference implementation's parameter table is still a
 tier-3 citation. Both of this project's tier-3 citations are of that kind, and
-neither measured a coefficient. De Wolf et al. 2012
-is a Gas Man simulation study, and its Table 1 is the parameter set it fed to
-Gas Man. Weber et al. 2021 is a Gas Man simulation study that describes the
-product's standard 70 kg patient. The two do not even agree on what that set
-holds. Weber et al.'s Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane
-and 1.1% isoflurane. De Wolf et al. state 2.0% and 1.2%, which are the values
-stored on De Wolf's authority. Yet every partition coefficient the two print
-is the same. Each agent file's De Wolf note gives the figures, read on
-2026-10-12 from PMC's XML record of PMC7943506. Citing either paper as though
-the value had been measured is the error this section guards against.
+neither measured a coefficient. De Wolf et al. 2012 is a Gas Man simulation
+study, and its Table 1 is the parameter set it fed to Gas Man. Weber et al. 2021
+is a Gas Man simulation study that describes the product's standard 70 kg
+patient. The two do not even agree on what that set holds. Weber et al.'s
+Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane. De
+Wolf et al. state 2.0% and 1.2%, which are the values stored on De Wolf's
+authority. Yet every partition coefficient the two print is the same. Citing
+either paper as though the value had been measured is the error this section
+guards against.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- not-restated: 70 kg -->
 
-**Where this project stands.** Of the 49 rows in the provenance table below,
-16 are tier 3, four are tier 2, 27 are tier 1, and two adopt no source of any
-tier. **Nine of the twelve partition coefficients are Yasuda, Targ and Eger's
-human measurements.** These nine are all of the tissue:gas values. They were
-adopted on 2026-09-13, after the stored values were checked against that
+**Where this project stands.** Of the 49 rows in the table of stored values
+below, 27 are tier 1, 16 are tier 3, four are tier 2, and two adopt no source
+of any tier. **Nine of the twelve partition coefficients are Yasuda, Targ and
+Eger's human measurements.** These nine are all of the tissue:gas values,
+adopted on 2026-09-13 after the stored values were checked against that
 paper's Table 1. The other three, the blood:gas coefficients, are the Gas Man
-set as published by De Wolf et al., and they remain tier 3. Ten of the eleven
-physiologic parameters in
+set as published by De Wolf et al., and remain tier 3. Ten of the eleven
+reference-patient parameters in
 `src/anesthesia_sim/data/patients/reference_adult.json` come from the Gas Man
 default patient. The three `mac_percent` values are the MAC values that De Wolf
 et al. state they used in their Gas Man simulations. Two tier-2 sources are
-cited alongside them but not adopted: Mapleson's 1996 meta-analysis and the
+cited beside them but not adopted: Mapleson's 1996 meta-analysis and the
 age-related iso-MAC charts built on it. The two rows that adopt no source are
-the machine parameters in
-`src/anesthesia_sim/data/machines/reference_circle_system.json`. One is a
-circuit volume that departs deliberately from the published Gas Man figure.
-The other is a default fresh gas flow with no published counterpart at all.
+the anesthesia machine values in
+`src/anesthesia_sim/data/machines/reference_circle_system.json`: a circuit
+volume that departs deliberately from the published Gas Man figure, and a
+default fresh gas flow with no published counterpart.
 
 **The thirty-one rows that adopt a source other than Gas Man are of six kinds.**
 
@@ -3060,16 +3055,14 @@ The other is a default fresh gas flow with no published counterpart at all.
    the standard atomic weights, not measured on the agent. So no tier-1 source
    exists for one (§ "Agent amount").
 
-**Recompute these counts with `python3 tools/source_tier_counts.py`, rather
-than adjusting them by hand as rows arrive.** The command computes the counts
-from each `sources` entry's `authority_for`, file by file and in total, and it
-names the source behind every row.
+**Recompute these counts with `python3 tools/source_tier_counts.py` rather
+than by hand.** It counts each `sources` entry's `authority_for` list, per file
+and in total, and names the source behind every row.
 
-No check reads these counts, so they can go stale silently.
-`check_provenance` decides whether a documented key holds the stated value,
-never what tier its source carries. The command prints the counts but does not
-compare them with this paragraph. Whoever changes a count must check that the
-sentence around it is still true.
+No check compares these counts with this paragraph, so they can go stale
+silently. `check_provenance` confirms that a documented key holds its stated
+value, but not which tier its source has. Whoever changes a count must check
+that the sentence around it is still true.
 
 Of all the stored values, `mac_percent` is the only one used as a divisor for
 a displayed value. It is tier 3, from De Wolf et al.'s Gas Man set. It is the
@@ -3077,19 +3070,18 @@ divisor of the second display unit, so its tier affects a displayed clinical val
 well as a starting dial position. § "Delivery-limit and MAC parameters" states
 what that costs, and § "Known limitations" records it.
 
-Every `sources` entry in every data file names its tier. The three agent files
-cite the primary blood:gas measurements alongside their tier-3 blood:gas
-values: Strum and Eger for sevoflurane, Eger for desflurane, Lerman et al. 1984
-for isoflurane, and Esper et al. 2015 for all three. (Their tissue:gas values
-are Yasuda et al.'s, adopted as primary, as listed above.) Each entry records
-the measured value, the fact that it was **not adopted**, and how much the
-stored number differs from it. Against the older blood:gas measurements the
-stored values are sevoflurane −5.2%, isoflurane −11.0% and desflurane −0.9%,
-so isoflurane is the widest gap. Esper et al. 2015 measured all three agents
-in 120 surgical patients at 37 °C. Against its means the stored values are
-sevoflurane −12.2%, isoflurane −10.3% and desflurane −26.3%. That makes
-desflurane the widest gap in the project, at about 3.8 of Esper's SDs. The
-paper was read from its abstract only.
+Every `sources` entry in every data file names its tier. Each agent's data file
+cites the primary blood:gas measurements beside its tier-3 blood:gas value:
+Strum and Eger for sevoflurane, Eger for desflurane, Lerman et al. 1984 for
+isoflurane, and Esper et al. 2015 for all three. (Their tissue:gas values are
+Yasuda et al.'s, adopted as primary, as listed above.) Each entry records the
+measured value, the fact that it was **not adopted**, and how far the stored
+number differs from it. Against the older measurements the stored values are
+sevoflurane −5.2%, isoflurane −11.0% and desflurane −0.9%. Esper et al. 2015
+measured all three agents in 120 surgical patients at 37 °C. Against its means
+the stored values are sevoflurane −12.2%, isoflurane −10.3% and desflurane
+−26.3%, so desflurane has the widest gap in the project, about 3.8 of Esper's
+standard deviations. Esper et al. was read from its abstract only.
 
 The Gas Man study that prints this parameter set notes the gap in its own
 footnote: its blood/gas coefficients "differ from them observed by Esper et
@@ -3219,9 +3211,9 @@ paragraphs below report the reading of each at its source.
 - **26.** *Recommendations of the International Commission on Radiological
   Protection*, p. 151. Report of Committee II on Permissible Dose for Internal
   Radiation. Pergamon Press, Oxford, 1960. — Not indexed by PubMed, which does
-  not cover monographs. It is also unreachable from here: `www.icrp.org`,
-  `journals.sagepub.com` and `doi.org` each returned nothing through the egress
-  proxy on 2026-09-10.
+  not cover monographs. It could not be reached from this project's build
+  machine on 2026-09-10: `www.icrp.org`, `journals.sagepub.com` and `doi.org`
+  each returned nothing.
 
 References 9, 19 and 20 are **uptake-and-distribution models**. A model
 consumes organ volumes and blood flows. It does not measure them. So none of
@@ -3417,8 +3409,8 @@ the relation in three steps. Neither of its two constants is a cardiac-output me
   citation is unresolved.
 - **Figure 2.4, page 19** is the arithmetic. kg^(3/4) × 10 gives O₂ use in
   ml/min. O₂ use ÷ 5 gives cardiac output in dl/min, and the figure annotates
-  that divisor as "(a–v)DO₂ = 5 ml/dl". The figure also draws the composed edge
-  directly, kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min, which is page 59's constant.
+  that divisor as "(a–v)DO₂ = 5 ml/dl". The figure also draws the two steps
+  combined, kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min, which is page 59's constant.
 
 <!-- not-restated: 2.4 -->
 
@@ -3481,11 +3473,11 @@ that **for models of inhaled anaesthetics** the two venous pools may be
 combined, "in which case it would be marginally more accurate to make the
 arterial pool 799 ml (15.4% of the total blood volume) and the combined venous
 pool 1222 ml (23.6%)". That combined pool is the same object as $`V_v`$ here:
-one well-stirred venous pool that carries tissue return. Their Appendix
+one well-mixed venous pool that carries tissue return. Their Appendix
 derives it from the ICRP (1975) blood distribution rather than measuring it,
-and that is what keeps it at tier 2. **It was adopted on 2026-09-07, on the
-project owner's decision.** `venous_pool_volume_l` is 1.222 L. The key says
-"pool" because "venous blood volume" would suggest the physiologic venous
+so it is tier 2. **It was adopted on 2026-09-07, on the project owner's
+decision.** The stored value, `venous_pool_volume_l`, is 1.222 L. It is called
+a pool because "venous blood volume" would suggest the physiologic venous
 blood volume, which this is not. At the stored 5.0 L/min cardiac output, the
 mixed-venous time constant is 14.7 s, against 12.0 s at Gas Man's 1.0 L.
 <!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
@@ -3532,28 +3524,25 @@ replacement for Gas Man's default.
   measurement *alongside* a tier-3 number does not source that number. A file
   that looks sourced while its number came from somewhere else is worse than
   one that cites nothing, because it stops the reader checking.
-- Where no primary source has been adopted, record that as an open gap rather
-  than as a settled citation. "No primary source has been adopted for this
-  value" is a legitimate provenance state for an educational simulator, and
-  one that can later be fixed. A tier-3 citation presented as settled is
-  neither.
+- Where no primary source has been adopted, record it as an open gap. "No
+  primary source has been adopted for this value" is a legitimate provenance
+  state for an educational simulator, and one that can later be fixed. A
+  tier-3 citation presented as settled is neither legitimate nor marked for fixing.
 
-The same applies to an answer given in conversation. Answering "where does
-this constant come from?" with Gas Man, or with a paper that reports Gas Man's
-table, states a tier-3 provenance as though it were a measurement.
+Saying that a constant comes from Gas Man, or from a paper that reprints Gas
+Man's table, presents a tier-3 source as though it were a measurement.
 
-**The first and third of those rules are part of the schema, and
+**The first and third of those rules are part of the data-file format, and
 `make check` enforces them.** Each family of data file (agent, patient and
-machine) has its own `schema_version`. Each is checked against its own
-supported window of versions in `src/anesthesia_sim/core/parameters.py`, so a
-schema change affects only the family it applies to. Version 2 gave every
-`sources` entry two required fields, and let a data file carry one optional
-top-level string. Version 3 added a third required field to each entry.
-Version 4, for agent files alone, added each agent's `molar_mass_g_mol` and
-`liquid_density` (§ "Agent amount"). The agent window accepts version 4 alone,
-and the patient and machine windows accept version 3 alone. The fields are
-given as a list rather than a table, because the checker treats the first
-table in this section as the provenance table below:
+machine) has its own `schema_version`, checked against that family's
+supported versions in `src/anesthesia_sim/core/parameters.py`, so a format
+change affects only its own family. Version 2 gave every `sources` entry two
+required fields and allowed one optional top-level string. Version 3 added a
+third required field to each entry. Version 4, for agent files alone, added
+`molar_mass_g_mol` and `liquid_density` (§ "Agent amount"). Agent files must
+be version 4, and patient and machine files version 3. The fields are a list,
+because the checker reads the first table in this section as the provenance
+table below:
 
 - `tier`, on each `sources` entry: `primary`, `secondary` or
   `reference-implementation`. It says which of the three tiers above the
@@ -3561,10 +3550,9 @@ table in this section as the provenance table below:
 - `adopted`, on each `sources` entry: whether this file names that source as
   the authority for a value it stores.
 - `authority_for`, on each `sources` entry since version 3: the dotted key
-  paths of the stored values for which this source is the authority. The paths
-  are spelled as the provenance table spells them. The list is empty exactly
-  when `adopted` is false. It records which source each stored value rests on,
-  and the per-row counts under § "Source hierarchy" are computed from it.
+  paths of the stored values that rest on this source, spelled as the
+  provenance table spells them. The list is empty exactly when `adopted` is
+  false. The per-row counts under § "Source hierarchy" are computed from it.
 - `provenance_gap`, optional and top level: why no primary source has been
   adopted, in a file where none has been.
 
@@ -3578,78 +3566,71 @@ table in this section as the provenance table below:
 - A file with no entry that is both `primary` and `adopted` records a
   non-empty `provenance_gap`.
 
-Each rule fails the build rather than raising an advisory, because none of
-them needs any context to decide. `src/anesthesia_sim/core/parameters.py`
-validates the vocabulary and the `authority_for` rules when it loads a file.
-So a bad entry fails when the file is read, rather than when the checker next
-runs.
+Each rule is an error that stops the build, not a warning, because none of
+them needs judgment to decide. `src/anesthesia_sim/core/parameters.py` also
+checks the vocabulary and the `authority_for` rules when it loads a file, so a
+bad entry fails as soon as the file is read.
 
 **`tier` and `adopted` are two fields because one field alone would decide
 nothing.** Every agent file cites primary measurements that it has explicitly
-*not* adopted. So does the reference patient, which cites five. A check that
-read the tier alone would therefore report all four of this project's data
-files as primary-sourced, although the reference patient adopts no primary
-source at all and many of the table's rows are tier 3 (the counts are under
-§ "Where this project stands" above). A tier-only report would be the failure
-that the second rule above exists to prevent. So the check has to read the
-adoption rather than the citation list. As things stand, the three agent files each declare
-two adopted primary sources, for `mac_awake` and for the vaporizer maximum.
-`src/anesthesia_sim/data/patients/reference_adult.json` declares none and
-carries the gap.
+*not* adopted, and so does the reference patient, which cites five. A check
+that read the tier alone would report all four of this project's data files as
+primary-sourced, although the reference patient adopts no primary source and
+many of the table's rows are tier 3 (§ "Where this project stands" above gives
+the counts). That is the failure the second rule above exists to prevent, so
+the check reads the adoption and not the citation list. Today each agent file
+declares two adopted primary sources, for `mac_awake` and for the vaporizer
+maximum. `src/anesthesia_sim/data/patients/reference_adult.json` declares
+none and records the gap.
 
 **What the check does not decide is whether a citation labelled `primary`
 really is one.** That needs somebody who has read the paper. A tool that
-guessed at it, by author, by journal or by a keyword denylist on a product
-name, would look authoritative and be wrong. The tool checks that a claim was
-made and is well-formed. A reviewer checks that the claim is true. The
-provenance table below works on the same split: the checker decides that a
-documented key exists and has the stated value, never that the value is
-right.
+guessed, from the author, the journal or a product name in the title, would
+look authoritative and be wrong. The tool checks that a claim was made and is
+well-formed, and a reviewer checks that the claim is true. The provenance
+table below works the same way: the checker confirms that a documented key
+exists and holds the stated value, never that the value is right.
 
 The following table records the values selected for v0.1.0. Each value is
 loaded from a versioned data file and validated against its schema, rather
 than hardcoded. Full citations, definitions and reference conditions are
 recorded as `sources` entries in that file, not duplicated here.
 
-Each row names the file and, beside it, the exact JSON key path that the row
-documents. So a row is traceable to one stored value, rather than to a file
-that happens to contain a matching number. `tools/doc_check.py` (run by
-`make check` and CI) checks the table against the data files in both
-directions. Every row must name a key that the file contains and state the
-value stored there. Every numeric parameter in every data file must have
-exactly one row. A derived row states the stored value beside the derived one.
-The tissue:blood coefficients are computed at load time from the tissue:gas
-and blood:gas values, so their rows name the stored tissue:gas key and show
-the division.
+Each row names the file and the exact JSON key path of the value it documents,
+so a row traces to one stored value, not to a file that happens to contain a
+matching number. `tools/doc_check.py` (run by `make check` and CI) checks the
+table against the data files in both directions. Every row must name a key
+that the file contains and state the value stored there, and every numeric
+parameter in every data file must have exactly one row. A derived row states
+the stored value beside the derived one. The tissue:blood coefficients are
+computed when a file is loaded, from the tissue:gas and blood:gas values, so
+their rows name the stored tissue:gas key and show the division.
 
-Both directions start from a data file. So that check cannot see a constant
-that never entered a data file, such as a field default on a `core/`
-dataclass.
+Both directions start from a data file, so that check cannot see a constant
+that never entered one, such as a field default on a `core/` dataclass.
 `test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
-screens for such a constant. It reads every numeric field default on a `core/`
-dataclass through `dataclasses.fields()`, so it also reads a default spelled as
-a named constant. It requires each default to appear in this table's
-Selected-value column. It does not screen zero or the whole of a field's own
-scale (1, or 100 for a percent), because those values carry no scientific
-content. The test is a screen and not a proof, because it matches values
-rather than names. A new constant equal to one the table already selects
-passes. And 6.0 is selected for both the circuit and the vessel-rich tissue.
+looks for such a constant. It reads every numeric field default on a `core/`
+dataclass through `dataclasses.fields()`, including one written as a named
+constant, and requires each to appear in this table's Selected-value column.
+It skips zero and a field's full scale (1, or 100 for a percent), which carry
+no scientific content. It matches values, not names, so it can miss a
+constant: a new one equal to a value the table already selects passes, and 6.0
+is selected for both the circuit and the vessel-rich tissue.
 
-The table is not the only place these values appear. Some prose restates one
-of them: the reference adult's alveolar volume and ventilation, and each
-agent's blood:gas coefficient, vaporizer maximum and MAC. Where it does, the
-sentence carries a marker that names the file and the key it restates. The
-marker is an HTML comment, so it is invisible in the rendered document:
+The table is not the only place these values appear. Some prose restates one:
+the reference adult's alveolar volume and ventilation, and each agent's
+blood:gas coefficient, vaporizer maximum and MAC. Each such sentence carries a
+hidden marker, an HTML comment that names the file and key it restates:
 
 ```text
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 ```
 
-`doc_check.py` enforces both halves of that link. It checks the key against
-the data file, and it checks the stated value against the paragraph that the
-marker sits under. So neither the file nor the sentence can change without the
-other. Without the markers, editing a data file would force an update to this
-table but leave the surrounding prose quietly wrong.
+`doc_check.py` checks both sides of that link: the key against the data file,
+and the stated value against the paragraph the marker sits under. So neither
+the file nor the sentence can change without the other. Without the markers,
+editing a data file would force an update to this table but leave the prose
+around it quietly wrong.
 
 Some figures are *derived* from several stored values, and no file holds
 them. Such a figure carries a `derived:` marker that names its inputs instead.
@@ -3689,29 +3670,32 @@ coincides with one carries a `not-restated:` marker that lists it:
 ```
 
 The check never decides which kind a figure is. `2.5` appears in this document
-as an alveolar volume in litres, as a tolerance in seconds and as a flow in
-litres per minute. `2%` is sevoflurane's MAC in one sentence and a dial
-setting in the next. Binding each figure to a key by its value would be
-confidently wrong in the places a reader trusts most. So the writer says which
-kind it is, and the check enforces only that somebody did. A marker ties a
-figure only to a value that the marker names, in that value's unit. So a
-marker for the 6 L circuit does not clear desflurane's 6% MAC in the same
-paragraph. The check recognizes a unit written as a word, such as "seconds".
-It also recognizes a time in milliseconds, minutes or hours, which it converts
-to seconds. It recognizes a unit spelled in lower case, such as "l/min". In a
-list joined by slashes, such as "6/33/14.5 L", it reads each number with the
-list's unit. In math, it reads a symbol given a number with `=` or `\approx`,
-such as $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends
-the span or comes before a comma, a semicolon or `\quad`. It reads no other
-number in math, because most numbers in an equation are exponents and
-coefficients that only happen to equal a stored value. It also does not read a
-math span that is split across two lines. A marker under a list covers the
-whole list, because a marker cannot be placed
-inside a list item. A `not-restated:` marker fails if it lists a figure that
-its paragraph no longer contains. So the declaration cannot outlive its
-sentence. A number that equals no stored value, such as a flow-sweep point or
-a worked example, needs no marker.
-<!-- not-restated: 6 L, 6 %, 33 L, 14.5 L, 2.5 L -->
+as an alveolar volume in litres, a tolerance in seconds and a flow in litres
+per minute, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
+the next. Binding a figure to a key by its value would be confidently wrong
+where a reader trusts most. So the writer says which kind it is, and the check
+enforces only that somebody did. A marker covers only the values it names, in
+their units, so a marker for the 6 L circuit does not clear desflurane's 6%
+MAC in the same paragraph. The check reads:
+<!-- not-restated: 6 L, 6 % -->
+
+- a unit written as a word, such as "seconds", and a time in milliseconds,
+  minutes or hours, which it converts to seconds;
+- a unit in lower case, such as "l/min";
+- each number in a list joined by slashes, such as "6/33/14.5 L", with the
+  list's unit;
+- in math, a symbol given a number with `=` or `\approx`, such as
+  $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends the span
+  or comes before a comma, a semicolon or `\quad`.
+<!-- not-restated: 6 L, 33 L, 14.5 L, 2.5 L -->
+
+It reads no other number in math, because most are exponents and coefficients
+that only happen to equal a stored value, and it skips a math span split
+across two lines. A marker under a list covers the whole list, because a
+marker cannot sit inside a list item. A `not-restated:` marker fails if its
+paragraph no longer contains a figure it lists, so the declaration cannot
+outlive its sentence. A number that equals no stored value, such as a
+flow-sweep point or a worked example, needs no marker.
 
 | Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
@@ -3900,16 +3884,15 @@ found. Fukuda et al. moved only the fresh gas inlet, with the machine and the
 volume held fixed. The inspired/delivered ratio of both isoflurane and
 sevoflurane rose significantly at low flow (*J Anesth* 2006;20(4):268–73).
 $`F_I/F_D`$ is what the circuit equation above computes. So a real machine
-changed it through a property that this model does not represent. The survey
-sets out the consequence for the planned machine abstraction. What it means
-here is that a future per-machine `circuit_volume_l` reproduces part of an
-inter-machine difference, and must not be described as reproducing all of it.
-`docs/machine-abstraction.md` records the decision that follows. The model does
-not represent internal topology. It also refuses to fold topology into an
-effective volume, because that would attribute to volume a difference that
-volume did not cause. `ROADMAP.md`'s planned-milestone item 39 states the
-condition under which the decision not to represent internal topology is
-revisited.
+changed it through a property, the layout of its internal gas paths, that this
+model does not represent. A future per-machine circuit volume
+(`circuit_volume_l`) will therefore reproduce only part of the difference
+between machines, and must not be described as reproducing all of it. The
+model will not fold that layout into an effective volume either, because that
+would attribute to volume a difference that volume did not cause.
+`docs/machine-survey.md` sets out the consequence for modelling several
+machines, `docs/machine-abstraction.md` records the decision, and
+`ROADMAP.md`'s planned-milestone item 39 states when it is revisited.
 
 **A search for the flow row's source found a recommendation, not a
 convention.** `docs/machine-survey.md` § "(a2)" looked for a startup fresh gas
