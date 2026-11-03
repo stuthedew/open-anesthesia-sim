@@ -206,3 +206,11 @@ already carries it. `AGREEMENT_TOLERANCE_SD` is unchanged, as step 4 says.
 The three that still passed are vessel-rich tissue:gas x0.40, which the
 elimination sign catches rather than the band. The 35 new cases add about
 90 s of CPU to the suite, run across the xdist workers.
+
+**Moved from docs/MODEL.md on 2026-11-02.** From § "What the published-data gate can and cannot resolve", when `PL-WBR3` took the decision history out of that section:
+
+Before the early points joined the gate, the same search on 2026-10-17 put
+blood:gas at −14% / +5% for sevoflurane, −11% / +12% for isoflurane and
+−3% / +10% for desflurane. It put the vessel-rich group at −22% to −46% below
+and +24% to +55% above.
+<!-- not-restated: 5 % -->
