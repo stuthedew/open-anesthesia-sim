@@ -44,8 +44,9 @@ records itself.
 `root-cause-of:`, and a sweep can be recorded another way. No other item
 misreads the same fact.
 
-**The generator pause does not hold this.** On 2026-11-03, `bin/docket
-generators` marks no workflow-lane head "still generating". The work is also on
+**The generator pause does not hold this.** Since #1987 merged on 2026-11-03,
+`bin/docket generators` marks `PL-9KSJ` and `PL-1ZZ0`, two guard heads, "still
+generating", so the pause is on. The work is on
 `subprojects/docket/src/docket/inflow.py`, which `docket.toml` lists in
 `generator_paths`. It fixes a defect in the existing machinery that finds
 generators, which the pause never holds, even while a head is live.
