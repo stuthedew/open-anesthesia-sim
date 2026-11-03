@@ -20,6 +20,7 @@ on the command text alone.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -1158,3 +1159,36 @@ ARM_WHOLE = (
 @pytest.mark.parametrize("command", ARM_WHOLE)
 def test_bin_docket_arm_read_whole_or_named_in_text_is_allowed(command: str) -> None:
     assert _decision(command) is None
+
+
+@pytest.mark.parametrize(
+    ("command", "rule"),
+    [
+        ("make check 2>&1 | tail -45", "status-swallowed:make check"),
+        ("uv run pytest -q tests/x.py; echo done", "status-swallowed:pytest"),
+        ("python3 tools/doc_check.py check | tail", "status-swallowed:tools/doc_check.py"),
+    ],
+)
+def test_a_logged_refusal_names_the_gate_it_read(command: str, rule: str, tmp_path: Path) -> None:
+    """The refusal log says which gate was refused, and never the command (`PL-8RGF`).
+
+    A count of `status-swallowed` alone could not tell a refused gate from a
+    command the guard took for one, so the verdicts on the guards would have
+    read a false refusal as a block.
+    """
+    log = tmp_path / "blocks.tsv"
+    payload = json.dumps(
+        {"session_id": "cse_a", "tool_name": "Bash", "tool_input": {"command": command}}
+    )
+    result = subprocess.run(
+        ["bash", str(HOOK)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        env={**os.environ, "HOOK_BLOCK_LOG": str(log)},
+    )
+    assert json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+    (line,) = log.read_text(encoding="utf-8").splitlines()
+    assert line.split("\t")[3] == rule
+    assert "tests/x.py" not in line

@@ -3,12 +3,14 @@ id: PL-8RGF
 title: PL-SG93's refusal log counts a false refusal and each retry as a block, and its brief says Projects threads run no guard though thread files hold 45 of 118 logged lines, so the keep-or-retire verdicts due 2026-11-23 would read friction as value
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: defect-review-2026-10
 touches: docs/items/PL-SG93-the-bash-guard-hooks-account-for-74-defects.md, tools/hook_blocks.py, tests/unit/test_hook_blocks.py, .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/hook-blocks/README.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1993
 payoff: the guard verdicts due 2026-11-23 rest on refusals judged true or false, not on a count inflated by false refusals and retries
 verify: ! grep -qF 'runs no guard at all' docs/items/PL-SG93-*.md && ! grep -qF 'Projects threads add nothing to the count' docs/items/PL-SG93-*.md && grep -q 'def test_count_reports_a_burst_once' tests/unit/test_hook_blocks.py
 ---
@@ -26,3 +28,5 @@ verify: ! grep -qF 'runs no guard at all' docs/items/PL-SG93-*.md && ! grep -qF 
 **Done when.** `PL-SG93`'s brief no longer says that Projects threads run no guard. `python3 tools/hook_blocks.py count` reports a burst of refusals from one session, guard and rule within 2 minutes as one, or shows bursts apart, with a test in `tests/unit/test_hook_blocks.py`. The gate-status guard's logged rule names the gate it read, never the command text. `PL-SG93`'s "What is left" tells the verdict session to judge a sample of each guard's refusals as true or false before reading a count as value. All of it lands before 2026-11-23.
 
 **Generator check.** One-off measurement-quality defect in `PL-SG93`'s method.
+
+**Built, 2026-11-03.** `PL-SG93`'s brief no longer says that Projects threads run no guard, and its new section "Judge a sample before reading a count as value" tells the verdict session to judge up to ten bursts per guard as true or false. `python3 tools/hook_blocks.py count` now prints bursts beside refusals: a refusal less than 120 seconds after the one before it, from the same guard and rule in the same session, joins its burst. On the 125 tracked lines that gives 99 bursts. The gate-status guard logs its rule as `status-swallowed:<gate>`, with the gate's name as the guard read it and never the command. Lines logged before the change keep `status-swallowed`, so `count` lists them on a line of their own.
