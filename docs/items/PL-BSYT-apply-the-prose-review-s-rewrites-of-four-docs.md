@@ -3,7 +3,7 @@ id: PL-BSYT
 title: Apply the prose review's rewrites of four docs/MODEL.md Displayed-precision and Agent-amount paragraphs, which use count, glyph position, floor and placeholder in private senses
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md

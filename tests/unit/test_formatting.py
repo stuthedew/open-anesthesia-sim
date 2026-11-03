@@ -391,10 +391,12 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
 
     This is the property that the derivation in the test above exists to
     guarantee, stated as a reader meets it. For every shipped agent, one count
-    of the MAC line is at least one count of the percent line above it. If
-    that failed, a reader could watch the MAC digit move while the percent
-    digit stayed still. The reader could then conclude that the model resolves
-    a difference that it does not.
+    of the MAC line is at least one count of the percent line above it. So
+    over a full step the MAC figure never resolves a finer difference than the
+    percent figure. This compares step sizes only. The two readouts still
+    round at different boundaries, so near a MAC rounding boundary the MAC
+    digit can change while the percent digit does not.
+    `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` pins that case.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -404,6 +406,54 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
         assert one_mac_count_in_percentage_points >= CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, (
             f"{agent_id}: the MAC line resolves finer than the percent line"
         )
+
+
+def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
+    """Show the MAC readout changing while the percent readout beside it does not.
+
+    `docs/MODEL.md` § "Displayed precision" says this can happen, and this test
+    holds that sentence to the formatter. Each readout changes halfway between
+    two of its displayed values: the percent readout at 0.025%, 0.035% and so
+    on, and the MAC readout at 0.015 MAC, 0.025 MAC and so on. In percent, the
+    MAC boundaries depend on the agent's MAC, so they do not line up with the
+    percent boundaries. Each row straddles the MAC boundary at 0.015 MAC by
+    0.001 percentage points on either side, which stays inside one percent
+    step.
+
+    The expected strings were worked by hand from the stored MAC values:
+
+    - Sevoflurane, MAC 2.0%: 0.029% is 0.0145 MAC and 0.031% is 0.0155 MAC.
+      Both percents read 0.03%.
+    - Isoflurane, MAC 1.2%: 0.017% is 0.0142 MAC and 0.019% is 0.0158 MAC.
+      Both percents read 0.02%.
+    - Desflurane, MAC 6.0%: 0.089% is 0.0148 MAC and 0.091% is 0.0152 MAC.
+      Both percents read 0.09%.
+
+    The test also checks that each stored MAC is still the value the hand
+    calculation used, and that the table covers every shipped agent, so a new
+    agent or a changed MAC fails here rather than leaving the example stale.
+    """
+
+    # agent: (MAC used in the hand calculation, lower percent, upper percent,
+    #         percent readout for both, MAC readout below, MAC readout above)
+    cases = {
+        "sevoflurane": (2.0, 0.029, 0.031, "0.03%", "0.01 ×MAC", "0.02 ×MAC"),
+        "isoflurane": (1.2, 0.017, 0.019, "0.02%", "0.01 ×MAC", "0.02 ×MAC"),
+        "desflurane": (6.0, 0.089, 0.091, "0.09%", "0.01 ×MAC", "0.02 ×MAC"),
+    }
+
+    assert set(cases) == set(AGENT_DATA_FILENAMES)
+    for agent_id, (mac, lower, upper, percent_text, mac_below, mac_above) in cases.items():
+        mac_percent = load_agent_parameters(agent_id).mac_percent
+        assert mac_percent == mac, f"{agent_id}: the stored MAC moved; rework the example"
+
+        lower_fraction = fraction_from_percent(Percent(lower))
+        upper_fraction = fraction_from_percent(Percent(upper))
+
+        assert format_percent(lower_fraction) == percent_text
+        assert format_percent(upper_fraction) == percent_text
+        assert format_mac_multiple(lower_fraction, mac_percent) == mac_below
+        assert format_mac_multiple(upper_fraction, mac_percent) == mac_above
 
 
 def test_one_mac_of_every_agent_reads_as_one() -> None:
