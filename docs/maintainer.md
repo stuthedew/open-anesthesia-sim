@@ -1060,9 +1060,10 @@ EOF
 
 Changes to the environment reach new threads, not the ones already running,
 and saving the script rebuilds the environment's cache. To check that it
-worked, ask a new thread to run `uv run pytest --version | head -1`. The
-repository's `gate-status-guard.sh` refuses that command when the hooks are
-loaded. If the thread prints a pytest version instead, the hooks are still off,
+worked, ask a new thread to run `uv run pytest -q
+tests/unit/test_line_splits.py | tail -1`. The repository's
+`gate-status-guard.sh` refuses that command when the hooks are loaded. If the
+thread prints a test count instead, the hooks are still off,
 and the thread should record that in `PL-CR81`.
 
 A plugin may replace this setup script. Plugins added in **Project settings >

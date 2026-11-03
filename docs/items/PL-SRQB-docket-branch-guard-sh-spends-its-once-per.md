@@ -3,12 +3,14 @@ id: PL-SRQB
 title: docket-branch-guard.sh spends its once-per-session claim question on a detached HEAD or main, where branch_id_check --hint is silent, so the first edit on a new work branch is never asked
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-review-2026-11
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: a session that starts on main is still told to claim an item at its first edit on the work branch it then creates
 verify: grep -q 'def test_hint_on_a_detached_head_is_not_asked' tests/unit/test_branch_id_check.py
 ---

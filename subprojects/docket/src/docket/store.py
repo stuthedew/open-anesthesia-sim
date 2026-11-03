@@ -59,10 +59,9 @@ def cited_ids(text: str, own: str) -> frozenset[str]:
     """The ids an item's file names other than its own, anywhere in the file.
 
     The one reading of which items an item cites, for
-    `tools/generator_check.py`'s citation signal and `tools/item_reads.py`'s
-    traversal count (`PL-86H3`). The front matter counts: an id named only in
-    `root-cause-of:` or `blocked-by:` is the strongest citation an item makes,
-    and the body-only reading in `item_reads` missed it.
+    `tools/generator_check.py`'s citation signal (`PL-86H3`). The front matter
+    counts: an id named only in `root-cause-of:` or `blocked-by:` is the
+    strongest citation an item makes, and a body-only reading misses it.
     """
     return frozenset(CITED_ID_RE.findall(text)) - {own}
 

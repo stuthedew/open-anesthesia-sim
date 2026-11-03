@@ -29,12 +29,11 @@ from pathlib import Path
 
 import pytest
 from docket import vcs
-from docket.store import ID_RE
+from docket.store import ID_RE, cited_ids
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
 import generator_check
-import item_reads
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -488,15 +487,16 @@ def test_a_shallow_clone_credits_no_commit_with_filing(
     assert "shallow" in vcs.filed_with_work(frozenset({"PL-8888"}), clone).declined
 
 
-def test_an_id_named_only_in_root_cause_of_is_cited_by_both_readers(repo: Path) -> None:
+def test_an_id_named_only_in_root_cause_of_is_cited(repo: Path) -> None:
     """Which items an item cites is `docket.store.cited_ids`' reading (`PL-86H3`).
 
-    `generator_check` read the whole file and `item_reads` the body only, so an
-    id named only in `root-cause-of:` counted for one and not the other.
+    `generator_check` once read the whole file and a second reader the body
+    only, so an id named only in `root-cause-of:` counted for one and not the
+    other.
     """
     _write(repo, "PL-8888", touches="src/a.py", status="ready")
     head = _write(repo, "PL-BBBB", touches="src/a.py", status="ready", root_cause_of="PL-8888")
     _commit(repo, "PL-8888, PL-BBBB: capture two findings")
 
     assert generator_check.citations(repo, {"PL-8888", "PL-BBBB"})["PL-8888"] == 1
-    assert item_reads.citations(head, "PL-BBBB") == {"PL-8888"}
+    assert cited_ids(head.read_text(encoding="utf-8"), "PL-BBBB") == {"PL-8888"}
