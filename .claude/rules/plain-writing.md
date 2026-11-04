@@ -24,12 +24,12 @@ should understand each sentence the first time they read it (project owner,
 | `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
 | Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
 | Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
-| Item briefs, commit messages and pull request titles | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
 
 The two `README.md` rows are the readers that `README.md` § "What it is for"
-names. `tools/new_prose.py` reads this table and prints each unit's readers
-for the close-out prose review, so a new row reaches the review with no other
-change.
+names. `tools/new_prose.py` reads this table. It reviews a changed file only
+where a row names it, and gives the copy editor each passage's readers, so a
+new row reaches the review with no other change.
 
 **Write what the reader needs to act on, and stop.** Find the reader and what
 they will do with the text in the table above. Put what they see first, then
@@ -138,7 +138,8 @@ idiom of the code you are working in. Much of the existing prose here breaks
 the points above, so do not copy its sentences. Write each sentence you add or
 change plainly, even when the text around it is dense. Rewriting sentences you
 did not need to touch is work for its own item, in the `prose-quality`
-feature.
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
 
 This rule decides how a text is worded and ordered, and what it leaves out. The
 safety-critical standard in `CLAUDE.md` and

@@ -244,12 +244,13 @@ def test_a_reply_without_one_verdict_per_unit_is_refused(reply: str, reason: str
     assert reason in str(raised.value)
 
 
-def test_show_gives_the_reviewer_the_prompt_and_the_paragraph_only() -> None:
+def test_show_gives_the_reviewer_the_rule_and_the_paragraph_only() -> None:
+    """The copy editor loads no project rule, so `show` must open with the writing rule."""
     entry = parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE)
 
-    shown = show(PROMPT, [entry], TABLE)
+    shown = show([entry], TABLE)
 
-    assert shown.startswith(PROMPT)
+    assert shown.startswith(new_prose.RULE.read_text(encoding="utf-8").rstrip("\n"))
     assert "Readers of docs/MODEL.md:\n  - A clinician.\n" in shown
     assert f"[1] docs/MODEL.md, rows 1-1, paragraph, {MIN_WORDS} words, for: A clinician" in shown
     assert f"    1 > {PARAGRAPH}" in shown
@@ -380,7 +381,7 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     assert main(["check"], root=root) == 1
 
     assert main(["show"], root=root) == 0
-    assert capsys.readouterr().out.startswith(PROMPT)
+    assert capsys.readouterr().out.startswith(READERS.rstrip("\n"))
 
 
 def test_rewrites_takes_the_first_block_after_each_rewrite_verdict() -> None:
@@ -522,7 +523,7 @@ def test_show_mixes_the_two_folders_and_leaves_out_an_accepted_rewrite(tmp_path:
         [entry.name for entry in entries], key=digest
     )
     assert [entry.kind for entry in entries] != sorted(entry.kind for entry in entries)
-    shown = show(PROMPT, entries, TABLE)
+    shown = show(entries, TABLE)
     assert rewrite not in shown
     assert GOLD_KIND not in shown
 

@@ -1,10 +1,10 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives a fresh
-reviewer the prompt in `docs/prose-review/prompt.md` and each long paragraph a
-branch changed in the simulator, and the reviewer judges each one for its named
-reader. The owner is the only clinician who reads this project's prose. When the
-owner rejects a paragraph that the review passed, the paragraph becomes an entry
+Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives the
+copy-editor agent, whose prompt is `.claude/agents/copy-editor.md`, each long
+passage a branch changed, and the agent judges each one for its named reader.
+The owner is the only clinician who reads this project's prose. When the owner
+rejects a paragraph that the review passed, the paragraph becomes an entry
 in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
 set, and it must flag every entry, so the review cannot pass again a kind of text
 the owner has already turned down (`PL-FYGJ`, from `PL-H76S`'s design round).
@@ -47,7 +47,8 @@ gold-standard paragraph.
 
 Three commands:
 
-- `show` prints what the reviewer is given. First comes the prompt, then the
+- `show` prints what the reviewer is given. First comes the text of
+  `.claude/rules/plain-writing.md`, as `tools/new_prose.py` prints it, then the
   readers of each entry's file, then each entry's paragraph as a numbered unit
   in `tools/new_prose.py`'s format, with every row marked `>`. It prints the
   paragraph without its kind or the owner's words, so the reviewer judges it as
@@ -260,7 +261,7 @@ def _units(path: str, lines: Sequence[str]) -> list[Unit]:
     refuses the text.
     """
     source = "\n".join(lines) + "\n"
-    if path not in new_prose.DOCUMENTS:
+    if not new_prose.is_document(path):
         source = textwrap.dedent(source)
     try:
         return new_prose.units_of(path, source)
@@ -396,19 +397,17 @@ def repeats(entries: Sequence[Entry]) -> list[str]:
     ]
 
 
-def show(prompt: str, entries: Sequence[Entry], table: Sequence[Reader]) -> str:
-    """What the reviewer is given: the prompt, the readers, then each entry as a numbered unit."""
+def show(entries: Sequence[Entry], table: Sequence[Reader]) -> str:
+    """What the reviewer is given: the rule, the readers, then each entry as a numbered unit."""
     out = [
-        prompt.rstrip("\n"),
-        "",
         f"{len(entries)} document paragraphs of {MIN_WORDS} words or more. Rows marked > are "
         "the unit. Judge each unit for the readers its header names, as the list below "
-        "describes them.",
+        "describes them."
     ]
     out += reader_lines(table, (entry.file for entry in entries))
     for number, entry in enumerate(entries, start=1):
         out += new_prose.unit_lines(number, entry.unit, excerpt(entry.lines, entry.unit), table)
-    return "\n".join(out)
+    return new_prose.with_rule("\n".join(out))
 
 
 def verdicts(reply: str, count: int) -> list[str]:
@@ -608,7 +607,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
         "check", help="fail on a bad entry, a full kind, or a missing or failed run"
     )
     args = parser.parse_args(argv)
-    table = new_prose.reader_table(new_prose.RULE.read_text(encoding="utf-8"))
+    table = new_prose.rule_table()
     prompt = new_prose.PROMPT.read_text(encoding="utf-8")
     if args.command == "check":
         problems = check(root, prompt, table)
@@ -626,7 +625,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     if problems:
         return 1
     if args.command == "show":
-        print(show(prompt, entries, table))
+        print(show(entries, table))
         return 0
     reply = args.reply.read_text(encoding="utf-8")
     now = datetime.now(UTC)
