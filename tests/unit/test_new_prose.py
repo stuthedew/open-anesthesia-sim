@@ -251,9 +251,13 @@ def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
     A bare `python3` is the tools interpreter, held to a 3.11 floor, and `src/`
     targets 3.14. Under the bare one the count exits 2 on any branch that
     changes a file written in newer syntax, such as the PEP 758 `except` in
-    `app_metadata.py`, and `arm` then holds correct work (`PL-Q508`).
+    `app_metadata.py`, and `arm` then holds correct work (`PL-Q508`). The
+    setting is empty while the copy editor is paused (`PL-HJFX`), and must
+    take this form when it comes back.
     """
     command = load(ROOT).prose_count_command.split()
+    if not command:
+        return
     assert command[:3] == ["uv", "run", "python"]
     assert "tools/new_prose.py" in command
 
