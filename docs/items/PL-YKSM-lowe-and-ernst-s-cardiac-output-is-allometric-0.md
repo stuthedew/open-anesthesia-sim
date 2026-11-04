@@ -328,3 +328,7 @@ the recording and the scaling is milestone 30's to build as a package.
 `PL-MMWX` carries recording that obligation in milestone 30's own entry, so a
 session scoping it does not have to reach `docs/MODEL.md` to find the
 constraint.
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Known limitations", the cardiac-output note, when `PL-9331` took the decision history out of that section:
+
+> **The fixed value is kept, on the project owner's decision of 2026-09-08** (`PL-YKSM`). The reason is structural rather than a preference between those two numbers. The asymmetry is still worth stating, because the number being declined is the weaker of the two.

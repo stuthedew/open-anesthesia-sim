@@ -11927,7 +11927,7 @@ percent by another.
 **The delivered-concentration control is where that assumption does the most
 work.** The control is a vaporizer dial rather than a modeled gas state. It is
 `app/control_record.py`'s `ControlInput.DELIVERED`, and its recorded changes
-carry the unit *percent of 1 atm* (`PL-NJPB`). A dial position means a partial pressure,
+carry the unit *percent of 1 atm*. A dial position means a partial pressure,
 the quantity that produces the anesthetic effect, only once the ambient
 pressure is known. At 760 mmHg it means the *same* partial pressure whichever
 class of vaporizer the dial belongs to. That is why this model needs no
@@ -12012,25 +12012,19 @@ This model does not model:
 - dosing recommendations; or
 - patient-specific clinical predictions.
 
-**Three of those bullets are one constraint, not three omissions**
-(`PL-L2F2`). Nitrous oxide, simultaneous gases, and concentration or
+**Three of those bullets are one constraint, not three omissions.** Nitrous oxide, simultaneous gases, and concentration or
 second-gas effects look like three independent features to be added, and they
 are not. All three are blocked by the fixed alveolar volume that
 "Alveolar gas" and "Assumptions" declare, and lifting that constraint unblocks
-all three at once. The distinction is worth stating because the shortcut it
-rules out looks reasonable. A session scoping nitrous oxide from this list
-alone would plan it as a second agent object beside the volatile agent, and
-would meet the coupling late. It would then be tempted into a partial fix
-whose $`F_A`$ curve is plausible but wrong by tens of percent through
-induction. "Alveolar gas" carries the arithmetic that separates the two
+all three at once. A partial fix whose $`F_A`$ curve is plausible would be
+wrong by tens of percent through induction. "Alveolar gas" carries the arithmetic that separates the two
 cases, and the two standard formulations that lift the constraint.
 
 **Lung tissue and pulmonary blood are an omitted store worth about a fifth of
 the fast pool.** The gas-exchange boundary here is the alveolar gas
 compartment. Arterial blood is taken to carry that compartment's partial
 pressure unchanged. Nothing represents the lung's own tissue, or the pulmonary
-blood in transit through it. The store was sized on round physiologic figures
-while working on `PL-73G7`: 1 kg of lung tissue at a tissue:blood ratio of
+blood in transit through it. The store was sized on round physiologic figures: 1 kg of lung tissue at a tissue:blood ratio of
 1.2, and 1.8 L of pulmonary and arterial blood. On those figures the store is
 worth 20.1% of desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of
 isoflurane's.
@@ -12038,15 +12032,12 @@ isoflurane's.
 The store is invisible in the wash-in direction, which is why nothing before
 the open-circuit diagnostic surfaced it. It equilibrates fully within about
 thirty minutes, so it does not appear in $`F_A/F_I`$ at all. It acts only
-early in an elimination. The figures stay where they were measured.
-"Desflurane's residual, and why the parameter file was not changed" weighs
-them against the other candidate explanations of one specific disagreement,
-and a second copy here would be a second thing to keep true. This list carries
-the magnitude, because a reader sizing what the model leaves out should not
-have to find it inside an argument about one agent.
+early in an elimination. "Desflurane's residual, and why the parameter file
+was not changed" weighs these figures against the other explanations of one
+disagreement.
 
 **The vessel-poor group is left out because it takes up almost no agent, and
-Eger's own model leaves it out for that reason** (`PL-NX4H`). Eger grouped the
+Eger's own model leaves it out for that reason.** Eger grouped the
 body's tissues into four groups by their capacity and their blood flow:
 vessel-rich, muscle, fat and vessel-poor. His later five-compartment model
 keeps the first three. It deletes the vessel-poor group "because its
@@ -12116,7 +12107,7 @@ rather than a defect. Second, the coefficients above **overstate** the effect
 during a case. Equilibration is nowhere near complete in the hours an
 anesthetic lasts, and the paper says so directly. What the model cannot show
 is the early lag that a real circuit adds for sevoflurane and isoflurane,
-relative to the curve drawn here (`PL-LS3H`). Adding a wall term is not
+relative to the curve drawn here. Adding a wall term is not
 planned. It would be a second gas store with its own time constant, and no
 teaching objective in `ROADMAP.md` asks for one.
 
@@ -12231,8 +12222,7 @@ themselves.
 future feature. It carries it as an *option* that a user would turn on, not as
 a change to what a run does by default. The evidence above argues for that
 choice, since an overlay may state its own uncertainty where a model's default
-behaviour cannot. `PL-8GV5` records how this was decided. The measurements
-here are a session's, and the direction is the project owner's (2026-09-13).
+behaviour cannot.
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
@@ -12249,7 +12239,7 @@ displays the divisor for exactly this reason. Moving all parameters to
 primary sources is `ROADMAP.md`'s planned-milestone item 31.
 
 **Two omissions bound the supported run length, and a third bounds the tail
-inside it** (`PL-YD2V`). The first two are metabolism, in the list above, and
+inside it**. The first two are metabolism, in the list above, and
 the fat group's flow, in the note below. Both are negligible over a case, and
 neither is negligible over days. That is why a run is supported to 24 hours,
 and why the step past that limit is refused rather than taken. "Supported run
@@ -12274,12 +12264,12 @@ seventh hour to the twenty-first, by about a third at the widest point. For
 desflurane the tail is below them from 3.4 to 15.3 hours, by about half at the
 widest point, near 8 hours. The shipped tail is above the curves before and
 after that span. § "Supported run length" records why that leaves
-the number where it is (`PL-KK1Q`).
+the number where it is.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The fat group's flow is twice a resting depot measurement, and is where
 human washout fits put it. The two human sources do not agree about which way
-the fat trace errs** (`PL-HBH2`). The fat flow fraction is tier 3, like every
+the fat trace errs**. The fat flow fraction is tier 3, like every
 other parameter in the reference patient, and `reference_adult.json` carries
 both comparisons. Heinonen et al. used positron emission tomography to
 measure resting subcutaneous adipose perfusion in the thigh of six healthy
@@ -12331,13 +12321,10 @@ much agent fat has taken up by the end of a case. That amount sets the slow
 tail of washout, and it moves by up to something close to a factor of two. A
 learner may read the fat trace as a physiologic prediction rather than as this
 parameter set's behaviour. That learner should treat its fat loading as
-uncertain by about that much, with the direction unsettled. It should not be
-read as an over-estimate, which is what this paragraph said while it weighed
-the PET measurement alone. The measurement is not adopted, nothing was changed,
-and the gap is recorded instead.
+uncertain by about that much, with the direction unsettled. The PET measurement is not adopted.
 
 **Fat fills here only through its own blood supply, and human washout finds a
-second, faster fat-like store that this model does not have** (`PL-WMCJ`).
+second, faster fat-like store that this model does not have**.
 Every tissue group exchanges agent with the blood flowing through it and with
 nothing else (§ "Tissue uptake and return"). So no agent passes directly from a
 lean tissue into fat lying against it. Gas Man omits that route too and says
@@ -12396,20 +12383,20 @@ derived from that structure rather than from a run:
   (§ "Supported run length"). All else equal, leaving the store out makes the
   modelled tail fall faster, and it does. The shipped tail was measured against
   the mean curves themselves (§ "The first 24 hours of elimination against the
-  published mean curves", `PL-KK1Q`). It runs below them from about the seventh
+  published mean curves"). It runs below them from about the seventh
   hour until about the twenty-first. At the widest, near hour 13, it is a third
   below. For desflurane it is below from 3.4 to 15.3 hours, and by half. With
   the apparatus taken away, the model's tissue return alone is a third to a
   half of the mean curve between hours 8 and 13. In the shipped condition the
   gap starts later than the third hour. The reason is that the rebreathing
   circuit and the muscle group's slow return hold the tail above the curve
-  until the seventh hour (`PL-95NW`). The size is known to about a factor of
+  until the seventh hour. The size is known to about a factor of
   two, which is the fourth compartment's own between-subject spread.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Eger and Saidman's review draws the same compartment, and names a fourth
-bias** (`PL-FBY3`). Their Table 3 (p. 1024) gives intertissue diffusion a group
+bias**. Their Table 3 (p. 1024) gives intertissue diffusion a group
 of its own, "a subset of the FG". That group is 2.9 L, where the fat group is
 14.5 L. Its time constants are 230, 412 and 396 minutes for desflurane,
 sevoflurane and isoflurane, against bulk fat's 1,226, 2,198 and 2,114. Those
@@ -12551,7 +12538,7 @@ value:
   `docs/references/README.md` carries their entries.
 
 **The tissue:gas coefficients rest on one laboratory's means, and other
-laboratories disagree with them by up to 150% in some tissues** (`PL-H536`).
+laboratories disagree with them by up to 150% in some tissues**.
 The stored values are Gas Man's. They differ from Yasuda, Targ and Eger's
 means in seven of the nine cells, by up to 9% in isoflurane's fat coefficient,
 70.0 against 64.2 (§ "Parameter provenance" has the table).
@@ -12569,7 +12556,7 @@ values were 50% to 75% greater. The authors could not explain the
 differences.
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 
-A third published set agrees less well (`PL-VPF8`). Baker and Farmery's 2011
+A third published set agrees less well. Baker and Farmery's 2011
 review prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986
 beside the set that matches this model (Table 2, p. 572). On the tissue:blood
 scale, that set puts sevoflurane's fat coefficient at 71.7, 37% above this
@@ -12642,10 +12629,8 @@ derivation step by step. The second figure comes from Cattermole et al. Their
 the weight band this file's patient sits in. So the stored 5.0 is not bracketed
 by two comparable observations. One side is a human measurement and the other
 is an interspecies extrapolation. A reader who weighed them equally would be
-weighing them wrongly. **The fixed value is kept, on the project owner's
-decision of 2026-09-08** (`PL-YKSM`). The reason is structural rather than a
-preference between those two numbers. The asymmetry is still worth stating,
-because the number being declined is the weaker of the two.
+weighing them wrongly. **The fixed value is kept for the structural reason
+that follows.**
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
@@ -12703,15 +12688,13 @@ carries no condition. So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
 trace on the chart are untouched by it, and so is the release gate's relative
 residual. It affects a reader only where an amount leaves the unit. That is the
 liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28. Since `PL-KZ99`, `core/liquid_agent.py` is where an amount leaves
+item 28. `core/liquid_agent.py` is where an amount leaves
 the unit, and nothing on screen reads it yet. It converts a delivered or
 exhausted amount exactly and reads a store 5.8 % high, and its docstring says
 so. There it biases the split between stored and exhausted agent, not the
 delivered total, and the delivered total is the figure that means cost.
 Removing this limitation would need a gas-phase model that carries explicit
-conditions per compartment. That is well outside the current milestone. It is
-recorded here so that a reader sizing the model does not have to reconstruct
-it.
+conditions per compartment. That is well outside the current milestone.
 
 **The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
 is the third gas-phase condition, and the only one the document fixed without
@@ -12896,12 +12879,9 @@ stored value, because there is no stored value for them to support:
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**Two of those five are owner-attested rather than checkable, and this note
-says which.** `docs/references/` cannot hold them. The repository is public,
-so a file placed there is redistributed rather than read privately.
-`docs/references/README.md` § "Redistribution" is the rule that follows from
-this. Two publisher-copyright full texts were removed on 2026-09-06 for
-exactly that reason (`PL-SHG5`). Any reader can reach the three journal
+**Two of those five are owner-attested rather than checkable.**
+`docs/references/` cannot hold them, because the repository is public
+(`docs/references/README.md` § "Redistribution"). Any reader can reach the three journal
 articles above through their DOI or PMID, and the Weiskopf figures were
 re-read against the full text on 2026-09-08. The Datex-Ohmeda specification
 sheet and the Boumphrey and Marshall article cannot be checked that way. Both
@@ -12970,8 +12950,7 @@ simulator displays most: the first minutes of the $`F_A/F_I`$ rise, which is
 the canonical teaching curve of inhaled-anesthetic uptake
 (see § "Model boundary"). So "agrees with Gas Man" may not be read as
 "agrees with a patient" anywhere in a case, and least of all in the first
-fifteen minutes. Since 2026-10-18, this model's own first minutes have been
-compared with the published human curves, in
+fifteen minutes. This model's own first minutes are compared with the published human curves in
 § "The early wash-in curve against the published figures". That comparison
 measures this implementation, which the study above does not. It finds
 desflurane rising faster than its cohort.
@@ -13012,16 +12991,6 @@ weakest.
 
 
 ## Release gate
-
-**Every release passes this gate. It does not belong to one version.** The gate
-was first written for v0.1.0, and the line that introduces the criteria kept
-that version for four releases while new entries were added to the gate. The
-most recent entry is the published wash-in validation, which arrived in the
-v0.3.0 window. Several criteria also name agents and cohorts that did not exist
-until v0.2.0. A heading that names a version is a second statement that someone
-has to keep true. `PL-C1KK`, one section over, records that failure. The
-criteria below were already written for any release, so the line that
-introduces them is what changed (`PL-8PZ1`).
 
 A release is complete only when:
 
