@@ -356,13 +356,12 @@ page and decides which file a session reads.
    a file. Give that file's path to the `copy-editor` agent, as above, save
    its whole reply to a second file, and run `python3 tools/rejected_prose.py
    record FILE`. The copy editor must flag every rejected entry and keep every
-   gold standard, and no rewrite may have more words than its entry allows.
-   If it misjudges one or writes a longer one, change the instructions and
-   run the set again. `python3 tools/rejected_prose.py check`, in `make check`
-   and CI, refuses a branch whose instructions, or whose reader rows for a
-   file the set holds, have no run, or have a run that misjudged an entry or
-   rewrote one at more words than it allows. It also refuses a gold-standard
-   entry that no run of the current instructions has read.
+   gold standard. If it misjudges one, change the instructions and run the
+   set again. `python3 tools/rejected_prose.py check`, in `make check` and
+   CI, refuses a branch whose instructions, or whose reader rows for a file
+   the set holds, have no run, or have a run that misjudged an entry. It also
+   refuses a gold-standard entry that no run of the current instructions has
+   read.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a

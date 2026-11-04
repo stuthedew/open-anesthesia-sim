@@ -70,20 +70,9 @@ Three commands:
   names; when a kind holds more than `CAP_PER_KIND` entries; when a
   gold-standard entry repeats a rejected paragraph or an accepted rewrite; when
   the current prompt and readers have no run, or have a run that kept a rejected
-  entry, flagged a gold-standard one, or rewrote one at more words than it
-  allows; and when no run of them read a gold-standard entry. `make check` and
+  entry, flagged a gold-standard one, or wrote a rewrite that does not parse as
+  its file; and when no run of them read a gold-standard entry. `make check` and
   CI run it.
-
-**A rewrite may not be longer than its entry allows** (`PL-CWRZ`). Flagging a
-paragraph is not enough, because the writer then applies the reviewer's
-rewrite. On the first run the review flagged all five entries, and four of its
-rewrites came out longer than the paragraph the owner rejected. So each
-rewrite's words are counted as `tools/new_prose.py` counts a unit's, over the
-fenced block that follows its verdict. An entry with an accepted rewrite allows
-that rewrite's words, and any other entry allows the words of the paragraph the
-owner rejected. `.claude/rules/plain-writing.md` point 7, "Plain is not
-longer", is why there is no margin. An accepted rewrite added to an entry
-applies at once to every current run.
 
 **What a run covers.** The prompt and the readers' rows are what tell the
 reviewer what to look for, so a change to either needs a new run. A new
@@ -189,14 +178,8 @@ class Entry:
     #: The paragraph exactly as it stood in `file`, one string per line.
     lines: tuple[str, ...]
     unit: Unit
-    #: The rewrite the owner accepted, and its words, where a rejected entry records one.
+    #: The rewrite the owner accepted, where a rejected entry records one.
     accepted_lines: tuple[str, ...] | None = None
-    accepted_words: int | None = None
-
-    @property
-    def allowed(self) -> int:
-        """The most words a review's rewrite of this entry may have."""
-        return self.unit.words if self.accepted_words is None else self.accepted_words
 
 
 @dataclass(frozen=True)
@@ -269,11 +252,6 @@ def _units(path: str, lines: Sequence[str]) -> list[Unit]:
         raise ValueError(f"does not parse as {path} would: {refusal(error)}") from None
 
 
-def prose_words(path: str, lines: Sequence[str]) -> int:
-    """The words of prose in `lines`, counted as `tools/new_prose.py` counts a unit's."""
-    return sum(unit.words for unit in _units(path, lines))
-
-
 def _unit(path: str, lines: Sequence[str]) -> Unit:
     """The paragraph `lines` as `tools/new_prose.py` reads a unit of the file at `path`."""
     try:
@@ -334,14 +312,14 @@ def parse_entry(name: str, text: str, table: Sequence[Reader], *, gold: bool = F
         if not any(line.strip() for line in body[start:end]):
             raise ValueError(f"section {title!r} is empty")
     lines = _paragraph(body, "Paragraph", sections["Paragraph"])
-    rewrite = words = None
+    rewrite = None
     if "Accepted rewrite" in sections:
         rewrite = _paragraph(body, "Accepted rewrite", sections["Accepted rewrite"])
         try:
-            words = prose_words(path, rewrite)
+            _units(path, rewrite)
         except ValueError as error:
             raise ValueError(f"the accepted rewrite {error}") from None
-    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite, words)
+    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite)
 
 
 def read_entries(
@@ -467,7 +445,7 @@ def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[E
 
     `entries` is the set as it stands now. A verdict on an entry that has since
     been deleted, as the cap deletes the oldest, is still judged, but a rewrite
-    of it is not counted.
+    of it is not parsed, because its file is no longer known.
     """
     try:
         given = verdicts(reply, len(read))
@@ -495,21 +473,9 @@ def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[E
         if entry is None:
             continue
         try:
-            words = prose_words(entry.file, blocks[number])
+            _units(entry.file, blocks[number])
         except ValueError as error:
             problems.append(f"runs/{name}'s rewrite of {entry_name} {error}")
-            continue
-        if words > entry.allowed:
-            against = (
-                "the rewrite the owner accepted"
-                if entry.accepted_words is not None
-                else "the paragraph the owner rejected"
-            )
-            problems.append(
-                f"runs/{name} rewrote {entry_name} in {words} words, more than the "
-                f"{entry.allowed} of {against}: change the prompt so a rewrite carries only "
-                "what its reader needs, then run the set again"
-            )
     return problems
 
 

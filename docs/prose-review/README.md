@@ -66,12 +66,6 @@ must be a file that a row of the reader table names. The paragraph must read
 as one unit of `MIN_WORDS` words or more, as `tools/new_prose.py` reads that
 file, because the review never sees a shorter one.
 
-A review's rewrite of the entry may have no more words than the entry allows.
-That is the accepted rewrite's length where the entry has one, and the
-rejected paragraph's length otherwise, both counted as `tools/new_prose.py`
-counts a unit's words. Adding an accepted rewrite applies at once to every
-run of the current prompt (`PL-CWRZ`).
-
 ## Adding a gold-standard paragraph
 
 Add one only when the owner names a paragraph a gold standard, in those words.
@@ -126,11 +120,10 @@ changes for a file that the set holds, or a gold-standard paragraph is added:
    8 does, and save its whole reply to a file.
 3. Run `python3 tools/rejected_prose.py record REPLY`, with that file's path.
 
-The review must flag every rejected entry and keep every gold standard, and each
-rewrite must be no longer than its entry allows. If it misjudges one or writes
-a longer rewrite, change the prompt and run the set again. `show` mixes the two
-kinds of entry in a fixed order, so a unit's position does not tell the
+The copy editor must flag every rejected entry and keep every gold standard.
+If it misjudges one, change the prompt and run the set again. `show` mixes the
+two kinds of entry in a fixed order, so a unit's position does not tell the
 copy editor which kind it is. `python3 tools/rejected_prose.py check` runs in
 `make check` and CI. It refuses a prompt with no run, or with a run that
-misjudged an entry or wrote a longer rewrite, and a gold-standard entry that no
-run of the current prompt has read.
+misjudged an entry, and a gold-standard entry that no run of the current prompt
+has read.

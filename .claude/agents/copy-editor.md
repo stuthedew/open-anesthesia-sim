@@ -22,7 +22,11 @@ readers, return four things:
    against their "Does not know" line. Quote each one.
 2. What this reader would take from the passage, in at most two sentences.
 3. Whether the passage lets this reader do what their "Will" line says. If it
-   does not, say what is missing.
+   does not, say what is missing. Judge from the rows in the file alone, and
+   never assume that a section you cannot see gives a missing fact. Where the
+   passage gives a chosen value, such as a limit or a tolerance, the reader
+   who would change it needs what the value does, why it is this number and
+   what changing it would do, in the passage or in a row marked "|".
 4. Each sentence, or words in one, that could go with every fact kept, and
    why. There are three reasons and no others. It repeats a fact that another
    sentence gives, and you quote that sentence. It uses more words than its
