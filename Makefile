@@ -224,7 +224,7 @@ check: sync
 # `origin/main` stays a literal, read against `vcs.default_base` (`PL-9KLN`).
 # It is the ref that answers first there on any clone with a remote, and no
 # `bin/docket` command prints that answer for `make` to pass.
-# `.claude/hooks/push-check-guard.sh` asks `vcs.default_base` itself and hands
+# `.claude/hooks/push_check_guard.py` asks `vcs.default_base` itself and hands
 # a session the argv it ran, which is this one wherever this literal is right
 # (`PL-ZXCN`).
 	bin/docket check --verify --verify-base origin/main

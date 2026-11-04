@@ -86,7 +86,7 @@ put to the owner at once, with a recommendation.
 - Run `uv run pytest -q tests/unit/test_line_splits.py | tail -1` as the
   first command. A Projects thread does not load `.claude/` (`PL-CR81`), and
   only the setup script in `docs/maintainer.md` gives it the repository's
-  hooks. When the hooks are loaded, `gate-status-guard.sh` refuses that
+  hooks. When the hooks are loaded, the gate-status guard refuses that
   command. When it prints a test count instead, the thread has no guard hooks
   and no session-start digest.
   It then says so in its first reply and records it in `PL-CR81`.

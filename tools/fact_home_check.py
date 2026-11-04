@@ -159,7 +159,7 @@ HOMES: tuple[Home, ...] = (
             "`call_git` in `docket.vcs` is the one runner - it decodes a path as written, "
             "times out, and `_run_git` and `read_git` read its exit by one classification, "
             "which tells a silent repository from an empty answer - and every tool reaches "
-            "docket, as `push-check-guard.sh` does on a push (`PL-ZXCN`); `_git` in "
+            "docket, as `push_check_guard.py` does on a push (`PL-ZXCN`); `_git` in "
             "`stop_hook_patch.py` is the runner of a hook that imports no docket"
         ),
         remedy=(

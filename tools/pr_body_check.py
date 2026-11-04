@@ -25,14 +25,14 @@ recovered), and none of the 39 after it. In its first day the record produced
 four items of its own (`PL-F6MM`, `PL-K9XQ`, `PL-7VWK`, `PL-X2XP`). The files
 it wrote stay, with their `recorded:` header.
 
-**`--screen` keeps an email address out of a body before GitHub has it**
-(`PL-7K31`). `.claude/hooks/pr-body-email-guard.sh` runs it as the
-PreToolUse hook on every MCP call. It reads every field of each call that
-names a GitHub repository, whatever the tool or the field is called
-(`PL-NZJG`, `PL-D16Y`), and `screen` says why it refuses. `--screen-push`
-applies the same rule to the commits a `git push` would publish, for the git
-hook `.claude/hooks/git/pre-push` (`PL-1ZZ0`). It lives here because the body
-it guards is the one this file recovers.
+**`screen` keeps an email address out of a body before GitHub has it**
+(`PL-7K31`). It is the `pr-body-email-guard`, which `.claude/hooks/guard.py`
+runs through `decide` before every MCP call (`PL-9KSJ`). It reads every field
+of each call that names a GitHub repository, whatever the tool or the field is
+called (`PL-NZJG`, `PL-D16Y`), and `screen` says why it refuses.
+`--screen-push` applies the same rule to the commits a `git push` would
+publish, for the git hook `.claude/hooks/git/pre-push` (`PL-1ZZ0`). It lives
+here because the body it guards is the one this file recovers.
 
 **What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,
 which says the file is a historical record nobody maintains (`PL-TDBT`), then
@@ -976,16 +976,38 @@ def read_back(payload: str) -> str | None:
     return json.dumps({"hookSpecificOutput": note})
 
 
+def decide(payload: str) -> str:
+    """The hook output for an MCP call: `screen`'s refusal, else `read_back`'s note, else "".
+
+    `.claude/hooks/guard.py` runs this as the `pr-body-email-guard` on every
+    MCP call (`PL-9KSJ`). It is wired on every MCP tool, not on the GitHub
+    tools by name, because the GitHub server owns its tool names and changes
+    them without notice. It has already folded its issue tools into one
+    `issue_write`, and a matcher that named the old tools would have stopped
+    this guard silently (`PL-NZJG`). A call that names no repository by
+    `owner` and `repo`, such as a Projects thread's post or an email, is not
+    read. `.claude/rules/apparatus-standard.md` § "The floor" has the rule, in
+    its paragraph on a guard keyed on names that another system owns.
+
+    Text sent to GitHub another way is screened where it is sent. `gh` in Bash
+    is kept to reads by `.claude/hooks/gh_write_guard.py`, so its writes come
+    back to an MCP call (`PL-3986`). A commit reaches GitHub by `git push`, and
+    the `pre-push` hook in `.claude/hooks/git/` screens a session's new
+    commits with `screen_push` (`PL-1ZZ0`).
+
+    A payload `screen` cannot read is let through, since a false refusal
+    blocks correct work.
+    """
+    return screen(payload) or read_back(payload) or ""
+
+
 def main(argv: list[str]) -> int:
     """Run the mode `argv` names.
 
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
     `--anchors` exits 1 where it fails, because `make check` rests on it.
-    `--screen` is the PreToolUse hook on every MCP call: it reads the call
-    from stdin and prints a refusal where `screen` finds one, or else the
-    note `read_back` gives, and exits 0 either way, as a hook that decides
-    must. `--screen-push` is the email half of the git `pre-push` hook in
+    `--screen-push` is the email half of the git `pre-push` hook in
     `.claude/hooks/git/`: it reads the log that hook hands it, prints a
     refusal and exits 1 where `screen_push` finds an address, and exits 0
     where it finds none.
@@ -1007,12 +1029,6 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 1
-    if "--screen" in argv:
-        payload = sys.stdin.read()
-        output = screen(payload) or read_back(payload)
-        if output is not None:
-            print(output)
-        return 0
     ref = default_branch_ref()
     if "--anchors" in argv:
         return anchors(ref)

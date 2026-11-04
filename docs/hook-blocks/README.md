@@ -15,8 +15,8 @@ and the rule that refused, separated by tabs. The command is never logged,
 because a command can carry a token. Since 2026-11-03 the gate-status guard's
 rule names the gate it read, as `status-swallowed:make check`, so a refused gate
 can be told from a command the guard only took for one. A guard run by hand, with no session id in
-its input, is not logged. `pr-body-email-guard.sh` refuses through
-`tools/pr_body_check.py --screen`, which logs its refusals through
+its input, is not logged. The email guard refuses through `screen` in
+`tools/pr_body_check.py`, which logs its refusals through
 `hook_input.deny` as well, under the rule `email-address` (`PL-HHKC`).
 
 The counts are a floor, and the floor is lowest for the guards that fire after

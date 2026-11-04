@@ -2,8 +2,8 @@
 
 **Why** (`PL-3986`, `PL-1ZZ0`). `gh` is installed in the cloud container with
 `GH_TOKEN` set, so `gh pr merge`, `gh api .../merge` and `gh pr create --body`
-reach the actions that `direct-merge-guard.sh` and `pr-body-email-guard.sh`
-exist to check, and neither guard reads a Bash call. Teaching each guard
+reach the actions that the merge guard and the email guard exist to check,
+and neither guard reads a Bash call. Teaching each guard
 `gh`'s commands would add one more reader of a grammar GitHub owns and
 extends, which is how the guards came to judge a request by its spelling
 rather than its action. So a session changes GitHub through the GitHub MCP
@@ -27,10 +27,12 @@ one: after `&&`, in a pipe or a subshell, inside `$( )`, behind a wrapper such
 as `timeout` or `env`, and named by its path.
 
 **Fails closed on `gh`, unlike the Bash guards that read a command's words.**
-Where this hook cannot judge a call, because reading it raised an error, the
-call is refused only if one of its words is `gh` or ends in `/gh`. A broken
-guard then costs a `gh` call a retry, and lets nothing through to GitHub
-unread.
+Where `judge` cannot judge a call, because it raised an error or ran past its
+deadline, `guard.py` asks `unjudged`, which refuses the call only if one of
+its words is `gh` or ends in `/gh` (`PL-9KSJ`). A broken guard then costs a
+`gh` call a retry, and lets nothing through to GitHub unread. Where this
+module itself will not load, or `python3` will not start, the call goes
+through with a note that nothing checked it, as it did before `guard.py`.
 
 **What goes unread.** `gh` named through a variable, an alias or a function;
 `gh` run by a script, by `bash -c` or by a wrapper `shell_split.py` does not
@@ -42,11 +44,6 @@ Standard library only, beside the shell reader the Bash guards share.
 """
 
 from __future__ import annotations
-
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import hook_input
 
@@ -208,29 +205,26 @@ def names_gh(command: str) -> bool:
     )
 
 
-def unjudged(payload: str, error: BaseException) -> str | None:
-    """The refusal for a call this hook could not read, where its text names `gh`."""
+def decide(payload: str) -> str:
+    """The hook output for a Bash call: `judge`'s refusal, or "" to let it through.
+
+    `.claude/hooks/guard.py` runs this as the `gh-write-guard` before every
+    Bash call (`PL-9KSJ`).
+    """
+    return judge(payload) or ""
+
+
+def unjudged(payload: str, why: str) -> str | None:
+    """The reason to refuse a call `judge` could not judge, where its text names `gh`.
+
+    `why` says what stopped `judge`. `guard.py` asks this and logs the
+    refusal. A call that names no `gh` returns `None`, so it goes through
+    with a note instead.
+    """
     call = hook_input.bash_call(payload)
     if call is None or not names_gh(call.command):
         return None
-    reason = (
-        f"Refused: this hook could not read the command ({type(error).__name__}: {error}), "
+    return (
+        f"Refused: the gh-write-guard hook could not read the command ({why}), "
         f"and the command names `gh`, which may change something on GitHub.\n\n{REMEDY}"
     )
-    return hook_input.deny(GH_GUARD, "unjudged", reason, payload)
-
-
-def main() -> int:
-    """Read the payload from stdin and print a refusal where one is due; always exit 0."""
-    payload = sys.stdin.read()
-    try:
-        verdict = judge(payload)
-    except Exception as error:  # a broken reader must not pass a gh call unread
-        verdict = unjudged(payload, error)
-    if verdict is not None:
-        sys.stdout.write(verdict)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

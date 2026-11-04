@@ -1,0 +1,864 @@
+"""Refuse a gate command whose exit status the command throws away, as a `PreToolUse` hook on Bash.
+
+**What it promises** (`PL-61FT`). The gates "What counts as a gate" names
+below, spelled as this repository writes them to be run - in the `Makefile`,
+the workflows, a skill or `README.md`, or a remedy this hook prints - and as
+sessions have been seen writing them: bare or by path, through a bare `uv
+run` or a wrapper `shell_split.WRAPPERS` names, as the module a Python
+interpreter runs (`python3 -m docket check`), after a `cd`, an assignment,
+a redirection or a reserved word, and in every list, group and compound the
+tests pin. A path's form, an option's order, a count or a target does not
+make a spelling new, and a line a program's usage admits is not one anybody
+writes. Every remedy it prints is admitted, and runs the gate as the refused
+command ran it. A spelling outside that which it
+misreads is a known gap, not a defect: a row of `KNOWN_GAPS` in
+`tests/unit/test_gate_status_guard.py`, held to the verdict it gets today,
+and filed as an item only once a session is seen writing it. A false refusal
+is worked when a session meets one, and never probed for.
+
+A shell pipeline reports the status of its **last** stage. `make check 2>&1 |
+tail -45` therefore exits with `tail`'s status, and `tail` succeeds on any
+input, so a red tree arrives at the session as exit 0. Nothing in the harness
+distinguishes that from a green one: a non-zero exit is flagged, and an exit 0
+is not, so the one signal a session reads is the one the pipe replaced.
+
+`PL-2JRC` is what that costs. The session ran exactly that command, read exit
+0, and reported `make check` green in the commit message and in the body of
+`#880`. The tree it pushed was red. The correction is the block that body now
+opens with, and `PL-D0W8` is this hook.
+
+**Prose could not have caught it, and the reason is specific rather than
+general.** The rule has to fire at the moment a command is written, which is
+not preceded by a read, so no path-scoped rule reaches it; and it has to fire
+inside exploration subagents, which carry none of the main session's resident
+context but do run these hooks. `permissionDecisionReason` is shown to the
+model (https://code.claude.com/docs/en/hooks, read 2026-09-16), so the
+refusal arrives at the one moment the wrong conclusion would have formed.
+The guard against deleting remote-tracking refs made the same move out of ten
+resident lines (`PL-JK0M`), and git's own hooks carry it now (`PL-82J5`). The
+resident set does not grow to pay for this one.
+
+**The remedy is one token, which is what keeps this from being routed
+around.** `set -o pipefail` makes a pipeline report its rightmost non-zero
+stage, so `tail` still trims the output and a red gate still arrives non-zero.
+The session keeps the short output it piped for - `CLAUDE.md` asks it to
+summarize rather than to load - and loses nothing. A guard whose remedy costs
+context would be a guard sessions learn to work around.
+
+**And each remedy runs the gate the refused command ran** (`PL-ZS13`). They
+were spelled from the gate's name, so `python3 tools/doc_check.py check |
+head -40` was offered `set -o pipefail; tools/doc_check.py 2>&1 | tail -45`,
+which exits 126, since no `tools/` script is executable, and `uv run pytest
+-q t.py | tail` was offered bare `pytest`, over the whole suite. A remedy
+that fails when copied costs the retry the refusal was meant to be the whole
+price of. `shell_split.command_line` spells the gate's command back - its
+assignments, a wrapper, `uv run` or the interpreter, and its arguments - and
+the sentence saying which gate fired still names it alone. The one gate it
+cannot spell back is one run with an unquoted substitution, and there the
+lines name the gate and say so.
+
+**Reading `$?` counts as keeping the status, and the first live firing is why.**
+It refused `make check > /tmp/gate.log 2>&1; echo "exit=$?"` on the `;`, which
+is correct by the separator and wrong about the command: that `echo` *is* the
+reader, and it puts the verdict in the output in words rather than in an exit
+code. `CLAUDE.md` retires a check that fires without changing a decision, so
+the exemption is the fix rather than a concession - restricted to the segment
+immediately after the separator, since anything in between replaces `$?` with
+its own status, and never after `&`, where `$?` is the background launch.
+
+**So does reading `PIPESTATUS` after the pipeline, and a session writing it is
+why** (`PL-1DW7`). The array holds "a list of exit status values from the
+processes in the most-recently-executed foreground pipeline" (Bash Reference
+Manual § 5.2), so `make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"`
+prints `make`'s own status, and it was refused at the `|`, since the `tail`
+after it holds no `$?`. A gate opening its pipeline now keeps its status
+where the command after that pipeline's `;` reads the first stage's, with
+`pipefail` or without: `${PIPESTATUS[0]}`, the bare name, which is an array's
+first element, or `[@]` or `[*]`, which are all of them. That command has to
+run whatever the pipeline returned, so not behind `&&`, `||` or `&`, nor
+after `then`, `do`, `else` or `elif`; and no subshell may close between the
+two, since after `(make check | tail)` the array holds the subshell's status.
+bash 5.2.21 printed each verdict the tests pin.
+
+**A group is read the way bash runs it, and a false refusal is why.** `{ set
+-o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }` keeps the status and
+was refused twice over (`PL-1SFZ`): the `{` hid the `set` from the one reader
+of a segment's head that did not strip it, and the `;` that ends the group
+read as handing the status on. The scoping is bash's and not a looser one,
+because crediting a `set` to everything after it would pass `(set -o
+pipefail; make check) | tail`, where the `set` dies with its subshell and the
+outer pipe loses the status exactly as `PL-2JRC`'s did.
+
+**An `if` or a loop is read the way bash runs it too, once the gate inside is
+visible** (`PL-0X0G`). Until then a reserved word read as the command's name,
+so `for f in a; do make check | tail; done` and `time make check | tail`
+passed as commands named `do` and `time`. Seen, a gate ending an `if` branch
+leaves with the `if`, whose status is the last command it ran (`help if`); a
+gate ending the test of an `if`, `while` or `until` is read by it, as `$?`
+is; and a gate ending a loop body is refused, because the next pass replaces
+its status and a red pass before a green one exits 0 (`help for`). Each is a
+group for `pipefail` as `{ }` is, and the walk steps over one whole after a
+`&&`: in `make check && if true; then echo; fi; git status` the `then` reads
+`true`, and the `;` after `fi` loses the gate's status.
+
+**After `&&` the walk steps over the whole pipeline, because `|` binds
+tighter than `&&`** (`PL-0FGH`). An and-list joins pipelines, not commands -
+"AND and OR lists are sequences of one or more pipelines separated by the
+control operators `&&` and `||`" (Bash Reference Manual § 3.2.4) - so a
+failing gate skips every stage of the pipeline after its `&&`, and `make
+doc-check > log 2>&1 && git push | grep -v remote` exits with `make`'s
+status. The walk stepped over `git push` alone and read the `|` after it as
+the gate's, so the `&&` the deny message below recommends was refused as
+soon as a session piped a later step. What follows the skipped pipeline
+decides, as it would straight after the gate, and a `|` after a group the
+gate is inside is still the group's: `( make check && git status ) | head`
+loses the status. bash 5.2.21 gave each exit the tests pin.
+
+**An `||` fallback that fails too keeps the status, and only one that
+provably does** (`PL-KQ4Q`). Every fallback used to read as one that
+succeeds, so `make check || exit 1`, the ordinary way to stop on a red gate,
+was refused for losing what it keeps. A fallback now passes where it is
+`exit` with no argument as its first command, which returns the failure that
+ran it (`help exit`); `exit N`, N a literal that is not 0 modulo 256, as its
+first command or as the last of a `{ }` or `( )` group run after a `;`; or
+`false`, alone or last in such a group. An `exit` ends the shell running it,
+so the walk stops there, unless that shell is a subshell - a `( )`, or a
+group, `if` or loop piped or backgrounded - where it resumes at the
+subshell's end: `( make check || exit 1 ); git status` loses the status at
+the `;`. After `false` it resumes where the fallback ends. Nothing else is
+read, and all of it is refused as before - a variable (`exit $code`),
+`return`, `! true`, `/bin/false`, an `if`, a loop or a nested group ending
+the fallback, a last command run behind `&&`, `||`, `|` or `&` - because a
+false refusal costs a retry, where a guess costs a red tree reported green.
+bash 5.2.21 gave every exit the tests pin.
+
+**What counts as a gate is a list, not an inference.** The guarded commands
+are the ones whose exit status *is* the evidence a session reports:
+`make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket
+check|verify`, `pytest`, `mypy`, `ruff`, and `tools/*_check.py`. Deciding by
+inference - anything that "looks like a check" - is the judgment half
+`CLAUDE.md` refuses to script, and a wrong guess here blocks a session. The
+`_check.py` suffix is the one pattern rather than a name, because 16 of
+`tools/`'s 22 scripts carry it and a check added later would otherwise arrive
+unguarded. Run through an interpreter, the check is its script - the first
+argument past the interpreter's options - and never a file handed to that
+script to read (`PL-6X0C`).
+
+**`bin/docket arm` is refused into any pipe, a separate rule** (`PL-TLPH`).
+It is not a gate, and its status is not what a pipe loses there: a filter
+drops the lines that say what to do. On `#1612` and `#1676` a session ran
+`bin/docket arm 2>&1 | head -2`, missed the line saying to send the owner
+nothing, and sent a bare read ask. Listing it as a gate would not have helped,
+since the remedy above keeps the status and still cuts the output. So any
+pipe after it is refused, directly or around a group, with or without
+`pipefail`, and the remedy is to run it alone. A copy written to a file and
+read back short is a known gap; `.claude/hooks/owner_ask_guard.py` refuses
+the ask that such a read would send.
+
+**A dry run is no gate run** (`PL-RC4S`). `make -n check` - `-n` spelled
+`--just-print`, `--dry-run` or `--recon` too - prints each recipe and runs
+none, so a pipe after it loses no status a gate produced, and a session
+auditing a copy of the `Makefile` was refused for one. make reads `-n`
+anywhere before a `--`, after a target and inside a run of short options,
+but not as the value of an option that takes one: `make -o -n check` runs
+the gate, treating a file named `-n` as old. GNU make 4.3 gave each verdict
+the tests pin. It still runs a recipe line that opens with `+` or names
+`$(MAKE)` (manual § 5.7.1), and the tests hold the tracked `Makefile` to
+neither but a bare sub-make, which inherits the `-n` and runs dry too.
+
+**Guarding only `make check` was considered and refused.** It is the observed
+instance; the fault is that a verification command's status can be discarded,
+and `uv run pytest -q 2>&1 | tail -20` reproduces it one command down. The
+`Makefile`'s own `--no-cache` comment settles this shape of question the same
+way: a fix that "treats the instance rather than the fault" leaves the next
+spelling to find it again.
+
+**A gate reached through a wrapper is the gate** (`PL-TRMN`). `timeout 600
+make check | tail -5` loses `make`'s status exactly as the bare pipe does, and
+it is how a long suite gets spelled; this file left it unmatched as
+unobserved, and it was observed. `shell_split.program_words` reads past
+`timeout`, `env`, `nice`, `nohup`, `xargs`, `command` and `exec`, each by its
+own grammar, so reading past one refuses nothing the bare command would not.
+`uv run` is read past here rather than there, because it is how this project
+spells most of the list and the floor guard must not read past it. Still
+unmatched on purpose, and each a known gap: a gate built out of a variable,
+and a wrapper that list does not name.
+
+**So is a gate written around a redirection** (`PL-K9QL`). Bash lifts a
+redirection out of a command wherever it stands, so `2>/dev/null make check |
+tail` runs `make`, and `bin/docket 2>/dev/null check | tail` hands it `check`;
+read as words, the first took `2` for the command and the second `2` for the
+subcommand, and both lost the status unrefused. `shell_split.py` takes a
+redirection out of the words for every guard that reads a command through it.
+
+**And a `set` run by `command` or `builtin` is the `set`** (`PL-9RSP`). Both
+run the builtin in this shell, so `command set -o pipefail; make check 2>&1 |
+tail` keeps the status, and it was refused as setting nothing. A `set` behind
+`timeout`, `env` or `exec` is still refused, since each of those looks for a
+program named `set`; `shell_split.builtin_words` reads past the two alone.
+
+**Where one command ends is `shell_split.py`'s answer, not this file's.** The
+four Bash guards import it, so a shape one of them read differently from bash
+- a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline
+(`PL-R5RF`), a command after a heredoc's terminator (`PL-39LD`) - is read
+right by all three at once (`PL-PVW2`). It keeps a quoted argument whole, so
+the `|` inside `git commit -m "... | tail ..."` reads as the text it is, and
+it removes a heredoc's body, which is document content: this repository writes
+prose *about* the hazard through heredocs routinely, and blocking that would be
+the guard eating its own documentation. A `$( )` or a backquote in the body of
+a delimiter with no quoted part is the exception, a command bash runs
+(`PL-P95F`).
+
+Fails open in every error path - no python3, an unreadable payload, a command
+bash itself would refuse, `shell_split.py` missing from beside it - like the
+two guards beside it. A guard that breaks the session costs more than the
+round it saves.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+import hook_input
+import shell_split
+
+# isort: split
+# `shell_split` has put the `src` of docket on the path.
+from docket.digits import whole_number
+
+COMPOUND = ("if", "while", "until", "for", "select")
+# The words that end a group, and every group end a command can start after.
+ENDS = ("}", "fi", "done")
+CLOSERS = (")",) + ENDS
+
+MAKE_GATES = ("check", "test", "docket", "doc-check", "prebuild", "pr-title")
+DOCKET_GATES = ("check", "verify")
+DIRECT = ("pytest", "mypy", "ruff")
+# The options with which a direct gate reports on itself and judges nothing,
+# so no verdict rides its exit status: `ruff --version | head -1` and `pytest
+# --collect-only -q | tail -3` are not gates (`PL-9PPJ`). `-V` is the version
+# in all three.
+NO_VERDICT = ("--version", "-V", "--collect-only", "--co", "--help", "-h")
+# The commands that print a word of their own, so a gate followed by `&& echo
+# PASS || echo FAIL` states its verdict in the output, as `|| echo $?` does.
+ANNOUNCERS = ("echo", "printf")
+
+
+def base(token: str) -> str:
+    return token.rsplit("/", 1)[-1]
+
+
+def strip_prefixes(tokens: list[str]) -> list[str]:
+    """Drop what runs ahead of the program: grouping, assignments, a wrapper, a `uv run`.
+
+    `gate` and `sets_pipefail` both start from `shell_split.command_words`,
+    so they cannot disagree about where a command starts - which they did, and
+    a `set` opening a group went unseen (`PL-1SFZ`). `gate` then reads past a
+    wrapper to the program it runs (`PL-TRMN`), and `sets_pipefail` reads past
+    only `command` and `builtin`, which run the `set` builtin in this shell
+    (`PL-9RSP`): `timeout 5 set -o pipefail` runs `set` as a program, which is
+    not found.
+    """
+    rest = shell_split.program_words(tokens)
+    if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
+        rest = shell_split.program_words(rest[2:])
+    return rest
+
+
+def check_script(arguments: list[str]) -> str | None:
+    """The `tools/` check an interpreter runs with these arguments, or None.
+
+    Only its script, which `shell_split.python_operand` finds past the
+    options of the interpreter, and which Python runs and hands every later argument
+    to (`PL-6X0C`): read as any argument named like a check, a scratch script
+    handed a check or its test to read was refused as running it. `-c` and `-m`
+    run no script file and `-` reads one from stdin, so none of them runs a
+    check here.
+    """
+    kind, script, after = shell_split.python_operand(arguments)
+    if kind != "file":
+        return None
+    if base(script).endswith("_check.py"):
+        return script
+    if base(script) == "dead_ends.py" and "check" in arguments[after:]:
+        return script + " check"
+    return None
+
+
+#: The long spellings of `-n` in GNU make 4.3 (`make --help`), and the options
+#: that take a value: the short ones in the next word or the rest of their run,
+#: the long ones in the next word unless glued on with `=`. `-j`, `-l` and `-O`
+#: take the rest of their run alone, or digits in the next word.
+DRY_RUN = ("--just-print", "--dry-run", "--recon")
+MAKE_VALUED = "CEfIoW"
+MAKE_GLUED = "jlO"
+MAKE_VALUED_LONG = (
+    "--directory",
+    "--eval",
+    "--file",
+    "--makefile",
+    "--include-dir",
+    "--old-file",
+    "--assume-old",
+    "--what-if",
+    "--new-file",
+    "--assume-new",
+)
+
+
+def runs_dry(arguments: list[str]) -> bool:
+    """True where make reads `-n` in these arguments, so it runs no recipe (`PL-RC4S`).
+
+    An option is read anywhere before `--`, as make reads one after a target
+    too, and a word an option takes as its value is no option: `make -o -n
+    check` runs the gate. An abbreviated long option is not read, so a dry run
+    spelled `--just` is still refused.
+    """
+    index = 0
+    while index < len(arguments):
+        word = arguments[index]
+        index += 1
+        if word == "--":
+            return False
+        if word in DRY_RUN:
+            return True
+        if word.startswith("--"):
+            if word in MAKE_VALUED_LONG:
+                index += 1
+            continue
+        if not word.startswith("-"):
+            continue
+        for position, flag in enumerate(word[1:], 1):
+            if flag == "n":
+                return True
+            if flag in MAKE_GLUED:
+                break
+            if flag in MAKE_VALUED:
+                if position == len(word) - 1:
+                    index += 1
+                break
+    return False
+
+
+def gate(segment: list[str]) -> str | None:
+    """The gate command this segment invokes, spelled for the message, or None."""
+    rest = strip_prefixes(segment)
+    found = shell_split.invocation(rest) if rest else None
+    if found is None:
+        return None
+    # The program by name, or the module a Python interpreter runs: `python3 -m
+    # docket check` runs the docket gate `check`, as `verify` reads it (`PL-RHPK`).
+    name, at = found
+    head = " ".join(rest[:at]) if at > 1 else rest[0]
+    arguments = rest[at:]
+    if name == "make":
+        if runs_dry(arguments):
+            return None
+        named = [a for a in arguments if a in MAKE_GATES]
+        return "make " + named[0] if named else None
+    if name == "docket" and arguments and arguments[0] in DOCKET_GATES:
+        return head + " " + arguments[0]
+    if name in DIRECT:
+        return None if any(word in NO_VERDICT for word in arguments) else name
+    if shell_split.is_python(name):
+        return check_script(arguments)
+    if name.endswith("_check.py"):
+        return head
+    return None
+
+
+def sets_pipefail(segment: list[str]) -> bool:
+    """True for `set -o pipefail` in any of its spellings, false for `set +o`.
+
+    A `set` run by `command` or `builtin` is one of them (`PL-9RSP`).
+    """
+    rest = shell_split.builtin_words(segment)
+    if not rest or rest[0] != "set" or "pipefail" not in rest[1:]:
+        return False
+    flag = rest[rest.index("pipefail") - 1]
+    return flag.startswith("-") and flag.endswith("o")
+
+
+@dataclass
+class Group:
+    """A group, `if` or loop a segment runs inside, and the segment that ends it.
+
+    `subshell` says whether it runs in a subshell.
+
+    Both are filled in where it ends, because a separator after its end can
+    make it a subshell.
+    """
+
+    closes: int | None
+    subshell: bool
+
+
+def pipefail_by_separator(
+    segments: list[list[str]], separators: list[str | None]
+) -> tuple[list[bool], list[int], list[list[Group]]]:
+    """Whether `pipefail` holds at each separator, how deep it is, and which shell runs it.
+
+    A `set` lasts as long as the shell it runs in. `( ... )` and a
+    substitution are subshells, and so is a command, `{ ...; }` group, `if`
+    or loop that is piped or backgrounded, so a `set` inside one ends where it
+    does. A group, `if` or loop run on its own is this shell, and its `set`
+    outlives it.
+
+    The depth is how many groups, `if`s and loops are open at each separator,
+    which is where the walk below reads one of them ending. Last come the
+    groups each segment runs inside, innermost last, each as the segment that
+    ends it and whether it is a subshell. Both are filled in where it ends,
+    because a separator after its end can make it one.
+    """
+    state = False
+    groups: list[tuple[bool, Group]] = []
+    held: list[bool] = []
+    depth: list[int] = []
+    inside: list[list[Group]] = []
+    for index, segment in enumerate(segments):
+        piped = index > 0 and separators[index - 1] == "|"
+        forked = separators[index] in ("|", "&")
+        rest = shell_split.command_words(segment)
+        opened = segment[: len(segment) - len(rest)]
+        # `for` and `select` open a loop with a name after them, not a command.
+        opened += rest[:1] if rest[:1] in (["for"], ["select"]) else []
+        for opener in opened:
+            if opener in ("(", "{") or opener in COMPOUND:
+                # A group takes the pipe into it; its first command does not.
+                groups.append((state, Group(None, opener == "(" or piped)))
+                piped = False
+        inside.append([group for _, group in groups])
+        if sets_pipefail(rest) and not piped and not forked:
+            state = True
+        for position, token in enumerate(rest):
+            # A `(` or `)` the splitter read as an operator; a quoted one is a word.
+            if isinstance(token, shell_split.Operator):
+                if token == "(":
+                    groups.append((state, Group(None, True)))
+                elif token == ")" and groups:
+                    state, group = groups.pop()
+                    group.closes = index
+            # `}`, `fi` and `done` are words, and end a group only where a
+            # command could start.
+            elif token in ENDS and groups and (position == 0 or rest[position - 1] in CLOSERS):
+                before, group = groups.pop()
+                group.closes, group.subshell = index, group.subshell or forked
+                if group.subshell:
+                    state = before
+        held.append(state)
+        depth.append(len(groups))
+    return held, depth, inside
+
+
+# A read of the first stage of a pipeline out of `PIPESTATUS` (`PL-1DW7`):
+# `${PIPESTATUS[0]}`, the bare name, which names the first element of an
+# array, or `[@]` and `[*]`, which are all of them.
+# regex: the read can sit anywhere inside a word, in four spellings, and the
+# bare name must end at a word boundary, which a string search would test by
+# hand at each place the name occurs.
+FIRST_STAGE = re.compile(r"\$(?:PIPESTATUS\b|\{PIPESTATUS(?:\[[0@*]\])?\})")
+# The words opening a command that runs only on the answer of the one before
+# it, or not at all after it: a branch, a loop body, a later branch of an `if`.
+CONDITIONAL = (["then"], ["do"], ["else"], ["elif"])
+
+
+#: The most digits an `exit N` is read with. A longer literal is read as one
+#: that may exit 0, as a variable is.
+EXIT_DIGITS = 9
+
+
+def exits_red(words: list[str]) -> bool:
+    """True for `exit N` with an N that bash exits non-zero on.
+
+    `exit N` leaves with N modulo 256, N read in base 10 (bash 5.2.21). Only a
+    literal counts, an optional sign and then digits, since a variable can hold
+    0. The digits are read by `docket.digits`, the one reader of a whole number.
+    """
+    if len(words) != 2 or words[0] != "exit":
+        return False
+    literal = words[1]
+    unsigned = literal[1:] if literal[:1] in ("+", "-") else literal
+    value = whole_number(unsigned) if len(unsigned) <= EXIT_DIGITS else None
+    return value is not None and value % 256 != 0
+
+
+def bare(segment: list[str]) -> list[str]:
+    """`segment` without the `{` or `(` opening it or a `)` ending it."""
+    words = list(segment)
+    while words[:1] in (["{"], ["("]):
+        words.pop(0)
+    while words and words[-1] == ")" and isinstance(words[-1], shell_split.Operator):
+        words.pop()
+    return words
+
+
+def runs_arm(segment: list[str]) -> bool:
+    """True where this segment runs `bin/docket arm`, read as `gate` reads a gate (`PL-TLPH`)."""
+    rest = strip_prefixes(segment)
+    found = shell_split.invocation(rest) if rest else None
+    if found is None or found[0] != "docket":
+        return False
+    return [word for word in rest[found[1] :] if not word.startswith("-")][:1] == ["arm"]
+
+
+# `bin/docket arm` is refused into any pipe, `pipefail` or not (`PL-TLPH`). Its
+# exit status is not what is lost: a filter drops the lines that say what to
+# do. On #1612 and #1676 a session read it through `head` and missed the line
+# saying to send the owner nothing.
+ARM_TRUNCATED = (
+    "This command pipes the output of `bin/docket arm` into another command, which "
+    "can drop the lines that say what to do. On #1612 and #1676 a session ran "
+    "`bin/docket arm 2>&1 | head -2`, missed the line saying to send the owner "
+    "nothing, and sent the owner a bare read ask (PL-TLPH). `set -o pipefail` does "
+    "not help here, because the status is not what is lost.\n\n"
+    "Run it on its own and read every line it prints. Its output is a few lines:\n\n"
+    "    bin/docket arm\n\n"
+    "To ask only what may be sent to the owner, `bin/docket arm --owner-ask` prints "
+    "one line and exits 0 when an ask is recorded, or 3 when nothing may be sent."
+)
+
+
+class Walk:
+    """A command cut into its segments, with what the walk over them reads of each."""
+
+    def __init__(self, cut: list[tuple[list[str], str | None]]) -> None:
+        self.segments = [words for words, _ in cut]
+        self.separators = [separator for _, separator in cut]
+        self.pipefail, self.depth, self.inside = pipefail_by_separator(
+            self.segments, self.separators
+        )
+
+    def ends(self, start: int, deepest: int) -> int | None:
+        """The first segment from `start` that leaves `deepest` or fewer groups open, or None.
+
+        That is where a command opening an `if`, a loop or a group finishes, past
+        the separators of its own that the walk would otherwise read as the next.
+        None is a construct bash would refuse as unfinished.
+        """
+        for index in range(start, len(self.segments)):
+            if self.depth[index] <= deepest:
+                return index
+        return None
+
+    def pipeline_end(self, start: int, deepest: int) -> int | None:
+        """The segment ending the pipeline that `start` opens, `deepest` groups in, or None.
+
+        A stage that is a group, an `if` or a loop is stepped over whole, as
+        `ends` steps over one. A `|` after a segment that closes a group around
+        the pipeline pipes that group, in a pipeline outside this one, so this
+        one ends there. None is a construct bash would refuse as unfinished.
+        """
+        end = self.ends(start, deepest)
+        while end is not None and self.separators[end] == "|" and self.depth[end] == deepest:
+            end = self.ends(end + 1, deepest)
+        return end
+
+    def pipestatus_read(self, start: int) -> int | None:
+        """The segment ending the pipeline `start` opens, or None.
+
+        It is None unless the command after the pipeline reads the status of
+        its first stage.
+
+        It has to be the command straight after the `;` ending the pipeline, which
+        runs whatever the pipeline returned. A stage that is a group is stepped
+        over whole, as the walk below steps over it, and a pipeline ending
+        shallower than it started has closed a subshell around the gate, whose
+        status is all the array then holds.
+        """
+        if start > 0 and self.separators[start - 1] == "|":
+            return None
+        end = self.pipeline_end(start, self.depth[start])
+        if end is None or self.separators[end] != ";" or self.depth[end] != self.depth[start]:
+            return None
+        reader = self.segments[end + 1]
+        if reader[:1] in CONDITIONAL or not any(FIRST_STAGE.search(word) for word in reader):
+            return None
+        return end
+
+    def fallback(self, start: int, end: int) -> tuple[str, int] | None:
+        """What the command an `||` runs, `start` to `end`, does with the failure that ran it.
+
+        `("exit", k)`: an `exit` in segment `k` ends the shell running it, with a
+        status that is not 0. `("false", k)`: segment `k` ends with a status that
+        is not 0, and the separators after it decide the rest. None: anything
+        else, which may exit 0.
+        """
+        first = bare(self.segments[start])
+        # With no argument `exit` returns the last status (`help exit`), which
+        # straight after the `||` is the failure that ran it.
+        if first == ["exit"] or exits_red(first):
+            # A pipeline stage or a background job is a subshell of its own.
+            if self.separators[start] in ("|", "&"):
+                return ("false", start)
+            return ("exit", start)
+        # Otherwise the last command decides, where it runs whatever came before
+        # it: the fallback itself, or the last of a group after a `;`. A bare
+        # `exit` there returns the status of the command before it.
+        if end == start:
+            last, where = first, start
+        elif (
+            self.segments[end][:1] == ["}"]
+            and self.separators[end - 1] == ";"
+            and (end - 1 == start or self.separators[end - 2] == ";")
+        ):
+            last, where = bare(self.segments[end - 1]), end - 1
+        elif self.segments[end][-1:] == [")"] and self.separators[end - 1] == ";":
+            last, where = bare(self.segments[end]), end
+        else:
+            return None
+        if last == ["false"]:
+            return ("false", end)
+        if exits_red(last):
+            return ("exit", where)
+        return None
+
+    def leaves(self, segment: int) -> int | None:
+        """The segment ending the subshell an `exit` in `segment` leaves, or None for the string."""
+        for group in reversed(self.inside[segment]):
+            if group.subshell:
+                return group.closes
+        return None
+
+    def output_piped(self, index: int) -> bool:
+        """Whether the output of segment `index` goes into a pipe, itself or through a group."""
+        if self.separators[index] == "|":
+            return True
+        return any(
+            group.closes is not None and self.separators[group.closes] == "|"
+            for group in self.inside[index]
+        )
+
+
+def announces(walk: Walk, start: int) -> bool:
+    """Whether segments `start` and the one after it are `A || B`, each printing a word.
+
+    Each must be an `echo` or `printf` of its own, outside any group, so
+    whichever runs says which way the command before them went.
+    """
+    if start + 1 >= len(walk.segments) or walk.separators[start] != "||":
+        return False
+    return all(
+        (shell_split.command_words(walk.segments[at])[:1] or [""])[0] in ANNOUNCERS
+        and walk.depth[at] == walk.depth[start - 1]
+        for at in (start, start + 1)
+    )
+
+
+def swallowed(walk: Walk) -> tuple[str, str, str | None] | None:
+    """The first gate in `walk` whose status is lost, what loses it, and how to run it again."""
+    for index, segment in enumerate(walk.segments):
+        name = gate(segment)
+        if name is None:
+            continue
+        # Everything to the right decides whether this status survives. `&&` is the
+        # one separator that propagates it - a failing gate short-circuits the rest
+        # and the string exits non-zero. `|` propagates it only under pipefail, in
+        # the shell that runs that pipe. `;` and `&` hand the status to whatever
+        # runs next, and `||` to a fallback, which loses it unless it fails too.
+        lost = None
+        at = index
+        read = walk.pipestatus_read(index)
+        while at < len(walk.segments):
+            separator = walk.separators[at]
+            following = at + 1
+            after = walk.segments[following] if following < len(walk.segments) else []
+            if separator is None:
+                break
+            # `gate && echo PASS || echo FAIL` prints one word on a green gate and
+            # another on a red one, so the verdict is in the output (`PL-9PPJ`).
+            if separator == "&&" and announces(walk, following):
+                break
+            if separator == "&&" or (separator == "|" and walk.pipefail[at]):
+                # The status travels to the end of a pipeline: under `pipefail`
+                # the rest of this one, and after `&&` the whole of the next, since
+                # `|` binds tighter than `&&` and a failing gate skips every stage
+                # of it (`PL-0FGH`). An `if`, a loop or a group ends only where it
+                # closes: in `make check && if true; then echo; fi; git status` the
+                # `;` after `true` belongs to the `if`, and the one after `fi`
+                # loses the status.
+                end = walk.pipeline_end(following, walk.depth[at])
+                if end is None:
+                    break
+                at = end
+                continue
+            if separator == ";":
+                # A `;` before the `}` or `)` that ends a group hands the status to
+                # nothing: the group exits with it, and the separator after the
+                # group decides the rest. `{ make check; }` keeps it; `{ make
+                # check; } | tail` loses it at the `|`. An `if` exits with the last
+                # command it ran (`help if`), so its `fi` is read the same way.
+                if after[:1] in ([")"], ["}"], ["fi"]):
+                    at = following
+                    continue
+                # Once a branch has run, the rest of its `if` does not, so the
+                # status leaves at the `fi` that ends it. An `if` with no `fi` is
+                # one bash refuses, and the guard fails open on it as on any other.
+                if after[:1] in (["else"], ["elif"]):
+                    end = walk.ends(following, walk.depth[at] - 1)
+                    if end is None:
+                        break
+                    at = end
+                    continue
+                # A gate ending the test of an `if`, `while` or `until` is read by
+                # it, as `$?` is below: the construct branches on the verdict.
+                if after[:1] in (["then"], ["do"]):
+                    break
+                # A gate ending a loop body is not, because the next pass replaces
+                # its status and only the last pass reaches the exit (`help for`,
+                # `help while`): a red pass before a green one exits 0.
+                if after[:1] == ["done"]:
+                    lost = "done"
+                    break
+            if separator == "||":
+                # A fallback that fails too hands the failure on (`PL-KQ4Q`). An
+                # `exit` ends the shell running it, so the walk stops there, or
+                # resumes where that shell ends if it is a subshell; after
+                # `false` it resumes where the fallback ends.
+                end = walk.ends(following, walk.depth[at])
+                if end is None:
+                    break
+                ran = walk.fallback(following, end)
+                if ran is not None:
+                    kind, at = ran
+                    if kind == "exit":
+                        left = walk.leaves(at)
+                        if left is None:
+                            break
+                        at = left
+                    continue
+            # Unless the next thing the string does is *read* the status. `make
+            # check > /tmp/gate.log 2>&1; echo "exit=$?"` prints the verdict into
+            # the output, which is the same guarantee the exit code gives and a
+            # plainer one; `s=$?` captures it into a variable. Either way the
+            # status has survived and the walk is over; what runs after a capture
+            # is not this hook to police. Only the segment immediately after this
+            # separator counts, because anything in between replaces `$?` with its
+            # own status, and `&` is excluded outright: after a background launch
+            # `$?` is the launch, never the gate.
+            if separator != "&" and any("$?" in token for token in after):
+                break
+            # Or reads it out of `PIPESTATUS` after the pipeline the gate opens
+            # (`PL-1DW7`). From the gate itself, or from the end of its pipeline
+            # when `pipefail` carried the walk there, that pipeline is the one the
+            # array holds; from anywhere else the walk has reached, it may not be.
+            if read is not None and at in (index, read):
+                break
+            lost = separator
+            break
+        if lost is not None:
+            return name, lost, shell_split.command_line(segment)
+    return None
+
+
+UNSPELLED_NOTE = (
+    "These lines name the gate alone, because the command runs it with a "
+    "substitution this guard does not spell back: write its arguments back "
+    "in.\n\n"
+)
+
+LOSS = {
+    "|": (
+        "A pipeline reports its LAST stage, and `tail`, `head`, `grep` and "
+        "`tee` all succeed on any input"
+    ),
+    ";": "The status of whatever runs after the `;` is what the string exits with",
+    "&": "The gate is backgrounded, so the string exits before it has an answer",
+    "||": (
+        "Where the `||` fallback succeeds, its status replaces that of the gate, "
+        "and nothing shows this fallback fails too (one ending in `exit 1` or "
+        "`false` would)"
+    ),
+    "done": (
+        "The next pass of the loop replaces its status, and only the last pass reaches the exit"
+    ),
+}
+
+# A refusal of a command that visibly sets `pipefail` reads as the guard being
+# wrong - the lesson `PL-1SFZ` was filed against - so it says why this one is
+# right.
+UNREACHED = (
+    "The command does set `pipefail`, but not in the shell that runs this "
+    "pipe. A `set` lasts as long as the shell it runs in: inside `( ... )`, or "
+    "inside a `{ ...; }` group, `if` or loop that is piped or backgrounded, it "
+    "ends with the group, and after the pipeline it comes too late.\n\n"
+)
+
+
+def decide(payload: str) -> str:
+    """The refusal of a gate in `payload` whose status is lost or whose output is cut, or ""."""
+    call = hook_input.bash_call(payload)
+    if call is None:
+        return ""
+    cut = shell_split.segments(call.command)
+    if cut is None:
+        return ""
+    walk = Walk(cut)
+    segments = walk.segments
+    if any(
+        runs_arm(segment) and walk.output_piped(index) for index, segment in enumerate(segments)
+    ):
+        return hook_input.deny("gate-status-guard", "arm-piped", ARM_TRUNCATED, payload)
+
+    found = swallowed(walk)
+    if found is None:
+        return ""
+    offender, swallowed_by, rerun = found
+
+    # Every remedy below runs the gate as the refused command ran it, since that is
+    # the line a session copies (PL-ZS13): spelled from the name, a check run
+    # through python3 came back as a script that is not executable. The name still
+    # says which gate fired.
+    spelled = rerun if rerun is not None else offender
+    unreached = swallowed_by == "|" and any(sets_pipefail(s) for s in segments)
+
+    # The spellings below keep one pass of a loop, so a loop is told how to keep
+    # every pass.
+    looped = (
+        "Inside a loop, read the status on every pass, before `done` - `"
+        + spelled
+        + '; echo "exit=$?"; done` prints each verdict - or run the gate once '
+        "over all its targets.\n\n"
+    )
+
+    reason = (
+        "This command runs `" + offender + "` and then throws its exit status "
+        "away. " + LOSS.get(swallowed_by, "The status is discarded") + ", so a RED "
+        "tree arrives here as exit 0 and nothing else in the output is read as a "
+        "verdict.\n\n"
+        + (UNREACHED if unreached else "")
+        + (looped if swallowed_by == "done" else "")
+        + "That is not hypothetical. `PL-2JRC` ran `make check 2>&1 | tail -45`, "
+        "read exit 0, and reported the gate green in its commit message and in the "
+        "body of `#880`. The tree it pushed was red, and the correction is the "
+        "block that body now opens with. `PL-D0W8` is this refusal.\n\n"
+        + (UNSPELLED_NOTE if rerun is None else "")
+        + "Two spellings keep the status. The first is the one you want - the output "
+        "is just as short:\n\n"
+        "    set -o pipefail; " + spelled + " 2>&1 | tail -45\n\n"
+        "    " + spelled + " > /tmp/gate.log 2>&1      # then read the file in a "
+        "second call\n\n"
+        "`set -o pipefail` makes a pipeline report its rightmost non-zero stage, "
+        "so `tail` still trims the output and a red gate still exits non-zero. It "
+        "is one token, it costs no context, and it is never wrong to add. Two more "
+        "spellings are accepted, where the sequencing suits: `&&`, which "
+        "short-circuits on failure (`" + spelled + " > /tmp/gate.log 2>&1 && tail -45 "
+        "/tmp/gate.log`), "
+        "and reading the status straight out into the output "
+        "(`" + spelled + ' > /tmp/gate.log 2>&1; echo "exit=$?"`).\n\n'
+        "Guarded because their exit status IS the evidence a session reports: "
+        "`make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket "
+        "check|verify`, `pytest`, `mypy`, `ruff`, and `tools/*_check.py`. "
+        "Everything else pipes freely - `bin/docket next | head -30` and `git log "
+        "| head` are untouched.\n\n"
+        "Do not answer this by dropping the pipe and reading the whole run. The "
+        "output is thousands of tokens of passing checks, and keeping the session "
+        "short is the largest adherence lever this project has."
+    )
+    # The logged rule names the gate it read, such as `status-swallowed:make check`,
+    # so the session that judges the refusals can tell a refused gate from a
+    # command the guard took for one. The command itself is never logged,
+    # because it can carry a token, and the name of the gate is only the words
+    # that `gate` read (`PL-8RGF`).
+    logged = "status-swallowed:" + " ".join(offender.split())
+    return hook_input.deny("gate-status-guard", logged, reason, payload)

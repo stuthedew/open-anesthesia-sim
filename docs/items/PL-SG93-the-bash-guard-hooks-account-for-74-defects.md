@@ -64,6 +64,8 @@ files named `claude-project-thread-*` (`PL-8RGF`).
   one that blocks often.
 
 <!-- absent: no-prune-guard.sh -->
+<!-- absent: no-prune-guard.sh -->
+<!-- absent: direct-merge-guard.sh -->
 
 **Recommendation:** the local log copied at record time. It is the only route
 that produces the count this item exists for, and its cost is small and paid
@@ -84,6 +86,8 @@ for it.
 - `pr-body-email-guard`: `email-address`, logged since `PL-HHKC` (#1802), below.
 
 `bin/docket record N` now runs `docket.toml`'s new `record_command` once it has written the number, and this repository sets it to `python3 tools/hook_blocks.py copy`. That copies each line no file under `docs/hook-blocks/` holds yet into `docs/hook-blocks/<branch>.tsv`, named for the branch being recorded. Only that branch writes its file, so two branches' copies do not conflict at merge, and `count` counts a line held in two files once. Times are to the microsecond, so two refusals in one second stay two lines. A payload with no session id is a guard run by hand and is not logged. `pr-body-email-guard.sh` refused through `tools/pr_body_check.py --screen` and logged nothing until `PL-HHKC` made `screen` refuse through `deny` (#1802, merged 2026-10-25, two hours after this build). `python3 tools/hook_blocks.py count` prints each guard's and rule's refusals and sessions. The test suite points `HOOK_BLOCK_LOG` at a temporary file, so the guard tests' refusals stay out of the real log.
+
+<!-- absent: pr-body-email-guard.sh -->
 
 **The log is an outbox, not a second source** (project owner, 2026-10-25, ratified, over deleting each line from the local log once it is copied). The project owner asked whether a local log diverges from the single-source-of-truth principle. The tracked files under `docs/hook-blocks/` are the source, and `count` reads only them. The local log only holds lines until a record copies them, and a copied line never changes, so the two can differ only by lines not yet copied. Deleting copied lines would lose them whenever the record commit is never pushed. His answer: "That's fine. Keep".
 
@@ -107,6 +111,8 @@ git itself sees, whatever the command's spelling:
   on every push and refuses it with a non-zero exit. `git push --no-verify`
   bypasses it, as `git push -h` says.
 
+<!-- absent: push-check-guard.sh -->
+
 `floor-interpreter-guard.sh` and `gate-status-guard.sh` have no git-side
 equivalent. Moving the first two means a spelling the guard misreads no
 longer lets the effect through. It does not retire `docket.shell`, which
@@ -116,6 +122,10 @@ warns that "Bash permission patterns that try to constrain command arguments
 are fragile" (https://code.claude.com/docs/en/permissions). So, when each
 guard's verdict is recorded, first ask whether its effect can be enforced
 where it happens.
+
+<!-- absent: floor-interpreter-guard.sh -->
+<!-- absent: floor-interpreter-guard.sh -->
+<!-- absent: gate-status-guard.sh -->
 
 **Judge a sample before reading a count as value** (`PL-8RGF`, 2026-11-03). A
 count alone cannot tell a refusal that prevented an error from one that blocked

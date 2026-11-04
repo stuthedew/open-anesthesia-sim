@@ -3,11 +3,10 @@ id: PL-5R11
 title: push-check-guard.sh tells a session to push work in progress with git push --no-verify, which also skips the pre-push hook's refusal of branch deletions and its email screen of the new commits
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: guards-keyed-on-the-action
-touches: .claude/hooks/push-check-guard.sh, .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
-blocked-by: PL-S3TF
+touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane guard defect, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: a work-in-progress push that skips the checks still has its commits screened for an email address and cannot delete a remote branch
@@ -24,6 +23,8 @@ refuses a push that deletes a remote branch and screens the pushed commits for
 an email address. So the one push the guard sends unchecked is also the one
 push nothing screens for an address, and a commit is public once GitHub has
 it.
+
+<!-- absent: push-check-guard.sh -->
 
 **Why it matters.** An address in a work-in-progress commit is as public as
 one in a pull request. The exemption was written when the only `pre-push`
