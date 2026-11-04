@@ -95,8 +95,15 @@ the smallest, because a paragraph you cut needs no sentence edit.
      elsewhere. Name that place. A rule addressed to the people who write or
      change the text, such as how to word, mark or cite a statement, is
      another reader's: give this reader what the rule guarantees them, and
-     move the rule itself. In `docs/MODEL.md` it is the note for
-     developers at the end of the section, and you move the fact there yourself
+     move the rule itself. A rule stated as a fact about the text, such as
+     "each entry names its test or says `no test yet`", is still a rule for
+     writers, and so is what happens when a writer breaks it, such as which
+     check fails. Where a section sets out such rules, a reader who does not
+     write the text needs a few sentences: which statements they can rely
+     on, how to tell a statement that nothing checks or one that records a
+     past date, and how a missing test is declared. In `docs/MODEL.md` the
+     rules' place is the note for developers at the end of the section, and
+     you move the fact there yourself
      when that note is in the ">" rows. The note runs from "**For
      developers.**" to the next heading, so open only its first paragraph with
      those words. Elsewhere the place is the item, the commit message or a code
@@ -266,7 +273,8 @@ the smallest, because a paragraph you cut needs no sentence edit.
      repeats a word or a fact of the first, cut or reword one of them, unless
      the word is a term the text must keep. "Common settings exceed the
      ceiling. Sevoflurane's 8% is a common induction setting" uses "common"
-     twice for one point.
+     twice for one point. The same holds inside one sentence: "a statement
+     may state a number" repeats its verb's root.
    - No sentence shows one of the writing rule's five patterns: a tautological
      aside, a contrast nobody claimed, narration about the text itself, a
      defensive scope statement, or a paragraph grown into an essay.
