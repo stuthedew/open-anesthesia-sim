@@ -167,6 +167,29 @@ def passage_count(request: str) -> int:
     return len(numbers)
 
 
+def marked_rows(lines: Sequence[str]) -> dict[int, list[str]]:
+    """The text of each passage's rows marked `>`, by the passage's number.
+
+    A passage's rows are the first unbroken run of rows marked `>` after its
+    header. Rows marked `|` and other lines before the run are passed over.
+    """
+    found: dict[int, list[str]] = {}
+    current: int | None = None
+    for line in lines:
+        number = passage_number(line)
+        if number is not None:
+            current = number
+            continue
+        if current is None:
+            continue
+        row = read_row(line)
+        if row is not None and row[1] == ">":
+            found.setdefault(current, []).append(row[2])
+        elif current in found:
+            current = None
+    return found
+
+
 def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
     """The request for the second read: `request` with each passage in `blocks` edited.
 
@@ -179,6 +202,7 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
     marked `>`.
     """
     head, lines = prose_of(request)
+    marked = marked_rows(lines)
     out: list[str] = []
     before: dict[int, list[str]] = {}
     shift = 0
@@ -200,17 +224,13 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
             shift = 0
             out.append(line)
         elif row[1] == ">" and waiting is not None:
-            end = index
-            was: list[str] = []
-            while end < len(lines) and (later := read_row(lines[end])) and later[1] == ">":
-                was.append(later[2])
-                end += 1
+            was = marked[waiting]
             block = blocks[waiting]
             before[waiting] = was
             out += [row_line(row[0] + shift + k, ">", text) for k, text in enumerate(block)]
             shift += len(block) - len(was)
             waiting = None
-            index = end
+            index += len(was)
             continue
         else:
             out.append(row_line(row[0] + shift, *row[1:]) if shift else line)

@@ -731,6 +731,31 @@ def passage_number(line: str) -> int | None:
     return whole_number(number)
 
 
+def passage_place(line: str) -> str | None:
+    """The file and section that the passage header `line` names before its span, or `None`."""
+    if passage_number(line) is None:
+        return None
+    rest = line.partition("] ")[2]
+    match = ROWS_SPAN_RE.search(rest)
+    return None if match is None else rest[: match.start()]
+
+
+#: What opens the line that heads the readers of a file, or of a kind of text.
+READERS_OF = "Readers of "
+
+
+def readers_heading(name: str) -> str:
+    """The line that heads the readers of `name`, a file or a kind of text, in a request."""
+    return f"{READERS_OF}{name}:"
+
+
+def read_readers_heading(line: str) -> str | None:
+    """The name in a line that `readers_heading` wrote, or `None` for any other line."""
+    if not (line.startswith(READERS_OF) and line.endswith(":")):
+        return None
+    return line.removeprefix(READERS_OF).removesuffix(":")
+
+
 def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
     """The unit's rows marked `>`, with `CONTEXT_ROWS` rows of code each side marked `|`."""
     start = max(1, unit.first - CONTEXT_ROWS)
@@ -756,7 +781,7 @@ def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
     """For each file in `paths`, in order and once, the full row of each of its readers."""
     out: list[str] = []
     for path in dict.fromkeys(paths):
-        out += ["", f"Readers of {path}:", *describe(readers_of(table, path))]
+        out += ["", readers_heading(path), *describe(readers_of(table, path))]
     return out
 
 
@@ -1010,7 +1035,7 @@ def draft_report(path: Path, kind: str, table: Sequence[Reader]) -> str | None:
             "One draft follows, as passage 1. Every row is marked >, and you may rewrite all "
             "of them. Judge it for the readers below, as the list describes them.",
             "",
-            f"Readers of {kind}:",
+            readers_heading(kind),
             *describe(readers),
             "",
             f"[1] {rows_span(path.name, 1, len(lines))}. Draft: {words} words. "

@@ -39,7 +39,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.config import load as load_config  # noqa: E402
 
 import copy_edit  # noqa: E402
-from new_prose import passage_number, read_row  # noqa: E402
+from new_prose import passage_number, passage_place, read_readers_heading  # noqa: E402
 from rejected_prose import rewrites  # noqa: E402
 
 #: The role `docket.toml`'s `[models]` table is asked about.
@@ -50,8 +50,6 @@ PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
 TASK = f"Judge the pairs in {copy_edit.REQUEST_NAME}."
 #: The seed for the order of A and B, so that a run can be repeated exactly.
 SEED = 20261104
-#: The line that opens the readers of one file in a request.
-READERS_OF = "Readers of "
 #: Deletes the emphasis and code marks a verdict line may carry.
 EMPHASIS = str.maketrans("", "", "*_`")
 # regex: a verdict line in the judge's free prose, which its instructions ask
@@ -71,14 +69,19 @@ class Pair:
 
 
 def readers_blocks(lines: Sequence[str]) -> dict[str, str]:
-    """Each "Readers of X:" block in a request's prose, by X, up to the first passage header."""
+    """Each block of readers in a request's prose, by the file or kind it names.
+
+    A block runs from the line `new_prose.readers_heading` wrote to the next
+    blank line. Only the lines before the first passage header are read.
+    """
     blocks: dict[str, list[str]] = {}
     current: list[str] | None = None
     for line in lines:
         if passage_number(line) is not None:
             break
-        if line.startswith(READERS_OF) and line.endswith(":"):
-            current = blocks.setdefault(line.removeprefix(READERS_OF).removesuffix(":"), [line])
+        name = read_readers_heading(line)
+        if name is not None:
+            current = blocks.setdefault(name, [line])
         elif current is not None and line.strip():
             current.append(line)
         else:
@@ -86,36 +89,30 @@ def readers_blocks(lines: Sequence[str]) -> dict[str, str]:
     return {name: "\n".join(rows) for name, rows in blocks.items()}
 
 
-def originals_of(lines: Sequence[str]) -> tuple[dict[int, list[str]], dict[int, str]]:
-    """Each passage's first run of rows marked `>`, and the file and section its header names."""
-    originals: dict[int, list[str]] = {}
+def places_of(lines: Sequence[str]) -> dict[int, str]:
+    """The file and section that each passage's header names, by the passage's number."""
     places: dict[int, str] = {}
-    current: int | None = None
     for line in lines:
-        number = passage_number(line)
-        if number is not None:
-            current = number
-            places[number] = line.partition("] ")[2].partition(", rows ")[0]
-            continue
-        row = read_row(line)
-        if row is None:
-            current = None
-        elif current is not None and row[1] == ">":
-            originals.setdefault(current, []).append(row[2])
-        elif current in originals:
-            current = None
-    return originals, places
+        number, place = passage_number(line), passage_place(line)
+        if number is not None and place is not None:
+            places[number] = place
+    return places
 
 
 def pairs_of(name: str, request: str, reply: str) -> list[Pair]:
     """The pairs that `reply` makes of the passages in `request`, one for each it rewrote."""
     _, lines = copy_edit.prose_of(request)
     readers = readers_blocks(lines)
-    originals, places = originals_of(lines)
+    originals, places = copy_edit.marked_rows(lines), places_of(lines)
     try:
         edits = rewrites(reply)
     except ValueError as error:
         raise copy_edit.Refused(f"{name}: the reply cannot be read: {error}") from error
+    strays = sorted(set(edits) - (set(originals) & set(places)))
+    if strays:
+        raise copy_edit.Refused(
+            f"{name}: the reply rewrites passages {strays}, which the request lacks"
+        )
     out: list[Pair] = []
     for number in sorted(edits):
         where = places[number]
