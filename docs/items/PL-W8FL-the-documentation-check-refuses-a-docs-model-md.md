@@ -12,7 +12,7 @@ added: 2026-11-03
 closed: 2026-11-04
 pr: 2006
 payoff: a docs/MODEL.md paragraph can tell a clinician what a readout means without test names and item ids in it, because the developer note below it may carry them
-verify: grep -q 'def test_a_developer_note_holds_the_numeric_paragraphs_above_it' tests/unit/test_doc_check.py
+verify: grep -q 'def test_a_developer_note_holds_the_passage_directly_above_it' tests/unit/test_doc_check.py
 ---
 
 **Problem.** In a `docs/MODEL.md` section that is held by its numeric paragraphs, such as § "Displayed precision", `_holds_its_figures` in `tools/doc_check.py` passes a paragraph only when the paragraph itself names a test, cites a source, gives a date, or says ``no test yet (`PL-XXXX`)``. A test named in the "**For developers.**" note below the paragraph does not count. `.claude/rules/plain-writing.md` sends test names and numerical detail to that note. So the rule and the check contradict each other, and the check wins because it fails the build. The clinician then meets 60-character test names and item ids in the middle of the paragraph that tells them what a readout means. `docs/MODEL.md` held 257 test names and 176 item ids on 2026-11-03.
