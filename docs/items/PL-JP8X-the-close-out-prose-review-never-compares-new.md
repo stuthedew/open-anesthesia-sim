@@ -3,12 +3,14 @@ id: PL-JP8X
 title: The close-out prose review never compares new text with the text it replaced in the document, so a branch can double a passage's length and pass: on PL-ZDZ0 the owner rejected the rewrite of a 163-word Displayed-precision passage three times as too long (first at about 210 words) before a 100-word version, and no review round flagged the length
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: reader-first-prose
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, tools/model_rewrite.py, tests/unit/test_model_rewrite.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md, docs/maintainer.md, docs/items/PL-22T5-close-out-s-prose-review-reads-only-the.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2014
 payoff: a passage that doubled, or lost a value, a test name or an item id, is named before the owner reads it
 verify: grep -q 'def test_a_passage_that_grew_and_lost_a_number_is_reported' tests/unit/test_new_prose.py
 ---
