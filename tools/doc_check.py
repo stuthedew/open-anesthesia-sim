@@ -4115,15 +4115,18 @@ def _unit_figures(prose: Sequence[str], raw: Sequence[str]) -> list[tuple[str, s
 def _holds_its_figures(member: str) -> bool:
     """Whether a numeric paragraph carries a form that ties its figures to something.
 
-    `member` is the paragraph and, after it, each marker that speaks for it,
-    as `_numeric_paragraph_members` gives them. Four forms hold the whole
+    `member` is the paragraph, then each marker that speaks for it, then the
+    forms by which a note for developers below it holds it, as
+    `_numeric_paragraph_members` gives them. Four forms hold the whole
     paragraph, and each is a syntax the writer adds on purpose. The first is
     a test named in a code span, read by `_names_a_test` exactly as the other
     families read it. The second is a published source in a form
     `PUBLISHED_SOURCE_RE` reads. The third is an ISO date, which makes the
     paragraph a record under clause 4. The fourth, the declared-none form, is
     `check_bound_families`' own. A date or a source inside a code span does
-    not count, because a code span quotes text rather than citing it.
+    not count, because a code span quotes text rather than citing it. A note
+    holds the paragraph only by the first form or the fourth, because
+    `_note_holding_forms` copies no other into the member.
 
     A marker holds only the figures it ties (`PL-TCD3`, project owner,
     2026-11-02, ratified, over letting any marker hold the whole paragraph).
@@ -4151,6 +4154,30 @@ def _holds_its_figures(member: str) -> bool:
 #: A numeric paragraph's kind. Its declared-none form is a test's, so the one
 #: absence it may declare is a test still owed.
 FIGURE_ENTITY = _entity_kind("test", _holds_its_figures)
+
+#: How a note for developers opens. `.claude/rules/plain-writing.md` sends a
+#: `docs/MODEL.md` section's test names and numerical detail to a paragraph
+#: that opens this way, so that the paragraphs a clinician reads need not
+#: carry them.
+DEVELOPER_NOTE_OPENING = "**For developers.**"
+
+
+def _note_holding_forms(note: str, kind: EntityKind) -> list[str]:
+    """The forms by which a note for developers holds the numeric paragraphs above it.
+
+    Two forms do. One is a test named in a code span, as `_named_tests` reads
+    it, and it comes back as a code span with no line break in it. The other
+    is `kind`'s declared-none form, and it comes back as the note writes it.
+    A date or a published source in the note holds only the note itself, so
+    neither comes back (`PL-W8FL`). A note with neither form holds nothing,
+    and the list is empty.
+    """
+    tests = [f"`{name}`" for _, name in _named_tests(note)]
+    owed = [
+        note[match.start() : match.end()]
+        for match in _statement_matches(kind.declares_none, note, PROSE)
+    ]
+    return tests + owed
 
 
 def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
@@ -4180,6 +4207,18 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     inside a list item is read as the paragraph it is, and not as an
     indented code block whose figures state nothing.
 
+    A note for developers below a paragraph holds it too, so the paragraph a
+    clinician reads need not name its test itself (`PL-W8FL`). A note is a
+    top-level paragraph that opens with `DEVELOPER_NOTE_OPENING`. It holds
+    the run of numeric paragraphs directly above it that carry no form of
+    their own, and none below it. The run stops at a heading, at the
+    previous note, and at a paragraph that `_holds_itself`. So a note added
+    to a long section holds only the passage written with it, and not every
+    older paragraph back to the heading. The forms by which it holds them,
+    from `_note_holding_forms`, follow the markers in each member it holds.
+    A note is never held by the next one, so its own figures need its own
+    forms.
+
     The heading is one `markdown` reads, so a `#` line inside a fence opens no
     section, as for `_list_members` (`PL-0Y7J`).
     """
@@ -4204,16 +4243,50 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
         for index in sorted(_marker_lines(lines))
         if opening.end <= index < end and PROSE_MARKER_RE.match(lines[index].strip())
     ]
-    for block in read_blocks(lines).blocks:
-        if block.kind != PARAGRAPH or not opening.end <= block.start < end:
-            continue
+    paragraphs = [
+        block
+        for block in read_blocks(lines).blocks
+        if block.kind == PARAGRAPH and opening.end <= block.start < end
+    ]
+    notes = [
+        block
+        for block in paragraphs
+        if block.depth == 0 and lines[block.start].startswith(DEVELOPER_NOTE_OPENING)
+    ]
+    members = []
+    for block in paragraphs:
         if not _unit_figures(prose[block.start : block.end], lines[block.start : block.end]):
             continue
         held = [
             marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
         ]
         paragraph = textwrap.dedent("\n".join(lines[block.start : block.end]))
-        yield block.start + 1, "\n".join([paragraph, *held])
+        members.append((block, "\n".join([paragraph, *held])))
+    bounds = [h.line for h in found if opening.end <= h.line < end] + [n.start for n in notes]
+    from_notes: dict[int, list[str]] = {}
+    for note in notes:
+        forms = _note_holding_forms("\n".join(lines[note.start : note.end]), family.kind)
+        for block, member in reversed([pair for pair in members if pair[0].end <= note.start]):
+            if (
+                not forms
+                or block in notes
+                or any(block.end <= line < note.start for line in bounds)
+                or _holds_itself(member, family.kind)
+            ):
+                break
+            from_notes[block.start] = forms
+    for block, member in members:
+        yield block.start + 1, "\n".join([member, *from_notes.get(block.start, [])])
+
+
+def _holds_itself(member: str, kind: EntityKind) -> bool:
+    """Whether a member carries a form of its own, so no note below it speaks for it.
+
+    A member that names its entity, or declares that it has none, is held by
+    that form alone. So a note's test cannot hide a paragraph's own
+    declared-none form from the queue, and a note's reach stops there.
+    """
+    return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
 # Every family bound by clause 2 today. **An entry arrives with the annotation
@@ -4272,8 +4345,9 @@ BOUND_FAMILIES = (
         members=_numeric_paragraph_members,
         promise=(
             "every paragraph stating a number with a unit names the test that computes it, "
-            "cites its published source, or is dated, unless a provenance: or derived: "
-            "marker ties each of its numbers with a unit"
+            "itself or in the For-developers note below it, cites its published source, "
+            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
+            "with a unit"
         ),
     ),
 )
@@ -4371,8 +4445,8 @@ def check_bound_families(root: Path, report: Report) -> None:
                 report.errors.append(
                     f"{where} declares no {family.kind.noun} yet against "
                     f"`{declared.group(1)}`, which is {owed.status}; the link that item "
-                    f"forward-referenced is owed now, so the {family.kind.noun} goes here "
-                    "or another open item takes the debt"
+                    f"forward-referenced is owed now, so the {family.kind.noun} is named where "
+                    "that declaration stands, or another open item takes the debt"
                 )
 
 
