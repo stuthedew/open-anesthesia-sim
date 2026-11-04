@@ -141,6 +141,7 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
     log_refusal(guard, rule, session_of(payload))
     return output("PreToolUse", refusals=[reason])
 
+
 def output(event: str, *, refusals: Sequence[str] = (), notes: Sequence[str] = ()) -> str:
     """The hook output for `event` that refuses the call and adds context, or "" for neither.
 

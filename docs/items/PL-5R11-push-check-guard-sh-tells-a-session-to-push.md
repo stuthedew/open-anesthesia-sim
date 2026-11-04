@@ -17,6 +17,8 @@ an email address. So the one push the guard sends unchecked is also the one
 push nothing screens for an address, and a commit is public once GitHub has
 it.
 
+<!-- absent: push-check-guard.sh -->
+
 **Why it matters.** An address in a work-in-progress commit is as public as
 one in a pull request. The exemption was written when the only `pre-push`
 work was the checks, which a work-in-progress push may skip.

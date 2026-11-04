@@ -2,7 +2,8 @@
 
 **Why** (`PL-3986`, `PL-1ZZ0`). `gh` is installed in the cloud container with
 `GH_TOKEN` set, so `gh pr merge`, `gh api .../merge` and `gh pr create --body`
-reach the actions that the merge guard and the email guard exist to check, and neither guard reads a Bash call. Teaching each guard
+reach the actions that the merge guard and the email guard exist to check,
+and neither guard reads a Bash call. Teaching each guard
 `gh`'s commands would add one more reader of a grammar GitHub owns and
 extends, which is how the guards came to judge a request by its spelling
 rather than its action. So a session changes GitHub through the GitHub MCP

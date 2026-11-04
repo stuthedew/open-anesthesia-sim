@@ -132,11 +132,11 @@ def _tools_on_path() -> None:
         sys.path.insert(0, str(TOOLS))
 
 
-
 #: Seconds the guard waits for each of its two reads of GitHub. Both reads
 #: together must finish inside the deadline `guard.py` gives this guard, which
 #: the entry point's test checks (`PL-KJN6`, `PL-9KSJ`).
 READ_TIMEOUT_S = 15
+
 
 def record(path: str) -> object:
     """One record from the GitHub API, read without a token.

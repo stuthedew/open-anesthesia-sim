@@ -8,16 +8,11 @@ edit that adds no new call, costs a session a retry each time it happens.
 
 from __future__ import annotations
 
-import io
 import json
 import os
 import subprocess
-import sys
 from collections.abc import Mapping
 from pathlib import Path
-
-import pytest
-import regex_check
 
 HOOK = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / "guard.sh"
 #: The guard these tests run alone, through the entry point every guard shares.

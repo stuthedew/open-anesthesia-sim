@@ -127,7 +127,10 @@ def test_the_hook_is_wired_on_every_mcp_tool() -> None:
     matchers = [
         entry.get("matcher", "")
         for entry in json.loads(SETTINGS.read_text())["hooks"]["PreToolUse"]
-        if any(hook["command"] == 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp' for hook in entry["hooks"])
+        if any(
+            hook["command"] == 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp'
+            for hook in entry["hooks"]
+        )
     ]
     assert len(matchers) == 1
     (matcher,) = matchers
