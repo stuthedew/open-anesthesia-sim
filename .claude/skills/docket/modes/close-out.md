@@ -267,112 +267,89 @@ page and decides which file a session reads.
    problem - and say in the reply what you found and what you left.
 
 7. **Sort the survivors that step 5's audit printed, where the diff changes a
-   function that mutmut mutates.** Those are the modules that the
-   `only_mutate` globs in `pyproject.toml`'s `[tool.mutmut]` table name:
+   function that mutmut mutates.** Those functions are in the modules named by
+   the `only_mutate` globs in the `[tool.mutmut]` table of `pyproject.toml`:
    `core/` and seven presentation modules. The audit's mutation check runs
    `make mutate`'s tool on the functions that the branch changed, so there is
-   no second run to make. A survivor on a changed line has already refused the
-   audit, and one on a line the branch did not change is named in its notes.
-   Sort each survivor as `docs/mutation-testing.md` § "Read a survivor" says,
-   and list each one with its kind in the pull request body.
-   `uv run --group mutation mutmut show NAME` prints a survivor's diff while
-   `mutants/` is left from the run. Write the test that kills a real gap in
-   this change, and file an item for a gap that is not this change's. A
-   survivor on a line the branch did not change never holds the pull request
-   (project owner, 2026-10-17, ratified, over a whole-tree mutation score as a
-   target, `PL-Y1PS`).
+   no second run to make. Sort each survivor as `docs/mutation-testing.md`
+   § "Read a survivor" says, and list each one with its kind in the pull
+   request body. `uv run --group mutation mutmut show NAME` prints a
+   survivor's diff while `mutants/` is left from the run. Write the test that
+   kills a real gap in this change, and file an item for a gap that is not
+   this change's. A survivor on a changed line has already made the audit
+   refuse the branch. One on a line the branch did not change is named in the
+   audit's notes and never holds the pull request (project owner, 2026-10-17,
+   ratified, over a whole-tree mutation score as a target, `PL-Y1PS`).
 
-8. **Have a fresh reviewer read the branch's new long prose in the simulator,
-   before step 5's audit**, because the rewrites change files that the audit
-   and `make check` read. Run `uv run python tools/new_prose.py`. It prints each
-   docstring and comment of 30 words or more that the branch added or changed
-   in `src/` or in a file under `tests/` that imports the simulator, with its
-   rows and the code around it. It also prints each changed paragraph and table
-   row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Each unit
-   names its readers from the table in `.claude/rules/plain-writing.md`
-   (`PL-R7Q6`). Where it prints none, go to the comparison at the end of
-   this step. Otherwise start one subagent, `general-purpose` at the session's own
-   effort level (`docs/maintainer.md`, 2026-10-19), and give it the tool's
-   whole output and nothing else. The output opens with the reviewer's prompt,
-   whose one home is `docs/prose-review/prompt.md`, so no prompt is copied by
-   hand. The prompt tells the reviewer to open nothing, so it costs one turn
-   (project owner, 2026-10-18, ratified, over a review on every branch and
-   over no review, `PL-PRCS`). For each unit and each of its readers, the
-   reviewer returns each word, symbol or number that the reader would not
-   know, what the reader would take from the unit, whether the unit lets the
-   reader do what the reader table says they will do, and each sentence that
-   could go with every fact kept, with its reason. It then writes `[N] keep`,
-   or `[N] rewrite` with new text for the reader the unit serves, no longer
-   than the text it replaces, and a list of the facts it moved and where each
-   went.
+8. **Have the copy editor edit the prose that the branch changed, before step
+   5's audit**, because its edits change files that the audit and `make check`
+   read. Do this step on every branch. Save the output of
+   `python3 tools/new_prose.py` to a file in the scratchpad. It prints each
+   passage of 30 words or more that the branch changed (project owner,
+   2026-10-18, ratified, over a review on every branch and over no review,
+   `PL-PRCS`). It takes them from every file that a row of the reader table in
+   `.claude/rules/plain-writing.md` names, each with that row's readers. A
+   Markdown passage comes inside its whole section, and a docstring or comment
+   comes with the code around it. The rows marked `>` are the ones the copy
+   editor may rewrite: the changed paragraphs, and the paragraph or table row
+   on each side of them. Where it prints no passage, go to the comparison at
+   the end of this step. Otherwise start the `copy-editor` agent and give it
+   the file's path and nothing else. It loads none of the resident
+   instructions and opens no other file. On its first branch it read 29
+   passages in four reads of that file and 179,031 tokens (`PL-22T5`). Its
+   instructions, `.claude/agents/copy-editor.md`, say what it returns: for
+   each passage, `[N] keep`, or `[N] rewrite` with the new text and each cut
+   with its reason.
 
-   The prompt asks what the named reader would take from the text, because a
-   reviewer told to imagine a newcomer still reads with its own vocabulary
-   (`PL-1XC7`, from `PL-H76S`'s design round). Compare each takeaway with what
-   the reader needs to act on, which `.claude/rules/plain-writing.md` puts
-   first. A term the reviewer lists, a
-   takeaway that misses your point, or a reader who cannot do what the table
-   says means a rewrite: apply the reviewer's or write your own. Keep either
-   one no longer than the text it replaces, counted in words. On the first
-   run of the test set below, four of the reviewer's five rewrites were longer
-   than the paragraph the owner had rejected (`PL-CWRZ`). Move or cut each
-   sentence that the fourth answer lists, and put each fact the reviewer
-   moved in the place it names. Reject any rewrite that drops
-   or changes a value, a unit, a condition, an identifier or a citation, and
+   **Apply each rewrite as it stands.** Revert one edit only where it lost or
+   changed a value, a unit, a condition, an identifier or a citation, and
    keep the original sentence there, because the safety-critical standard
    applies to what a docstring states. Accept a restated number only after
-   checking that its value is unchanged. Say in the pull request body how many
-   units the reviewer read, how many it rewrote and how many rewrites you
-   rejected. Record the same three counts as a trailer in the last paragraph
-   of the commit that applies the rewrites, or of the next commit where there
-   were none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm`
-   holds a simulator branch whose long prose was added after the newest such
-   trailer, as `uv run python tools/new_prose.py --count` counts it
-   (`PL-W04Z`).
-   `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
-   2026-10-19: long prose from the branch that ran it was awkward in 22% of
-   blind verdicts, against 58% from branches that skipped it, so it is kept.
+   checking that its value is unchanged. Put each fact that the copy editor
+   moved in the place it names. Say in the pull request body how many
+   passages it read, how many it rewrote and how many edits you reverted.
+   Record the same three counts as a trailer in the last paragraph of the
+   commit that applies the rewrites, or of the next commit where there were
+   none: `Prose-review: read N, rewrote M, rejected K`, where K counts the
+   reverted edits. `bin/docket arm` holds a branch that waits on the owner's
+   review where long prose was added after the newest such trailer, as
+   `python3 tools/new_prose.py --count` counts it (`PL-W04Z`). `PL-PRCS`
+   records what the step costs. On 2026-10-19 `PL-J6CK` measured what the
+   prose review that the copy editor replaced bought: long prose from the
+   branch that ran it was awkward in 22% of blind verdicts, against 58% from
+   branches that skipped it, so the step is kept.
 
-   **Then compare the branch with the default branch, after any rewrites are
-   applied: `uv run python tools/new_prose.py --compare`** (`PL-JP8X`). It
-   prints each run of paragraphs, docstrings or comments that the branch
-   changed, with its words on the default branch and now. Then it lists each
-   number, code span, item id, citation, equation and "no test yet"
-   declaration that a changed file held at the fork and holds fewer times now.
-   Put back each one that an edit dropped by mistake. For each passage that
-   grew, name in the pull request body the facts its added words carry,
-   because growth that adds no fact is how prose over-explains (`PL-J1ZM`).
+   **Then compare the branch with the default branch, after the rewrites are
+   applied: `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints
+   each run of paragraphs, docstrings or comments that the branch changed,
+   with its words on the default branch and now. Then it lists each number,
+   code span, item id, citation, equation, date and "no test yet" declaration
+   that a changed file held at the fork and holds fewer times now. Put back
+   each one that an edit dropped by mistake. For each passage that grew, name
+   in the pull request body the facts its added words carry, because growth
+   that adds no fact is how prose over-explains (`PL-J1ZM`).
 
    **When the owner rejects a paragraph that this review passed, add it to
    the review's test set in `docs/prose-review/rejected/`.** The owner is the
    only clinician who reads this prose, so each such rejection is a failure
    the review must not repeat. Write one entry under the kind of failure it
    fits, or add a kind to `tools/rejected_prose.py` with its meaning, as
-   `docs/prose-review/README.md` says. A rejection that the review already
-   flagged adds nothing. A kind holds at most the number of entries the tool
-   sets, and a new miss of a full kind replaces the oldest (project owner,
-   2026-11-03, `PL-FYGJ`).
+   `docs/prose-review/README.md` says (project owner, 2026-11-03, `PL-FYGJ`).
 
    **When the owner names a paragraph a gold standard, in those words, add it
-   to `docs/prose-review/gold/`.** Quote his words. The review must keep each
-   gold-standard entry, so a review that flags every paragraph fails the set
-   (project owner, 2026-11-03, ratified, `PL-556C`). A paragraph he calls
-   acceptable, or says needs no change, stays out, because the review must
-   stay free to improve it (project owner, 2026-11-03). A gold-standard entry
-   needs a run of the current prompt, as below, because nobody knows whether
-   that prompt keeps it until a run reads it.
+   to `docs/prose-review/gold/`**, as `docs/prose-review/README.md` says, and
+   quote the owner's words. The review must keep each gold-standard entry, so
+   a review that flags every paragraph fails the set (project owner,
+   2026-11-03, ratified, `PL-556C`).
 
-   **A change to the prompt is tested on the set before it lands.** Run
-   `python3 tools/rejected_prose.py show`, give its whole output to one fresh
-   reviewer as above, save the reply to a file, and run `python3
-   tools/rejected_prose.py record FILE`. The review must flag every rejected
-   entry and keep every gold standard, and no rewrite may have more words than
-   its entry allows. If it misjudges one or writes a longer one, change the
-   prompt and run the set again. `python3 tools/rejected_prose.py check`, in
-   `make check` and CI, refuses a branch whose prompt, or whose reader rows
-   for a file the set holds, have no run, or have a run that misjudged an
-   entry or rewrote one at more words than it allows. It also refuses an
-   gold-standard entry that no run of the current prompt has read.
+   **A change to the copy editor's instructions, or to a reader row for a file
+   that the set holds, is tested on the set before it lands**, as
+   `docs/prose-review/README.md` § "Running the set" says.
+   `python3 tools/rejected_prose.py check`, in `make check` and CI, refuses a
+   branch whose instructions or reader rows have no run, or have a run that
+   misjudged an entry. It also refuses a gold-standard entry that no run of
+   the current instructions has read, because nobody knows whether they keep
+   it until a run reads it.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
    6's review, step 8's prose review and step 5's audit**, because a fix for a

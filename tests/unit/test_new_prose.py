@@ -1,9 +1,12 @@
-"""`tools/new_prose.py` must print the long simulator prose a branch changed, and nothing else.
+"""`tools/new_prose.py` must print the long prose a branch changed, inside its section.
 
-The close-out reviewer opens no file, so a unit this tool leaves out is never
-reviewed and nothing says so. These tests pin which files count as the
-simulator's, which units count as changed, the word threshold, and the line
-that names a file the tool could not read.
+The copy-editing agent, `.claude/agents/copy-editor.md`, reads only this
+tool's output, so a passage this tool leaves out is never reviewed and nothing
+says so. These tests pin which files the reader table in
+`.claude/rules/plain-writing.md` names, which paragraphs, table rows,
+docstrings and comments count as changed, the word threshold, which rows the
+agent may rewrite, and the lines that name a file the tool did not review or
+could not read.
 """
 
 from __future__ import annotations
@@ -16,7 +19,6 @@ import pytest
 from docket.config import load
 from new_prose import (
     MIN_WORDS,
-    PROMPT,
     ROOT,
     RULE,
     Unit,
@@ -27,6 +29,7 @@ from new_prose import (
     prose_units,
     reader_table,
     readers_of,
+    reviews_of,
 )
 
 LONG = " ".join(["word"] * MIN_WORDS)
@@ -114,14 +117,18 @@ def test_a_new_file_has_every_long_unit_printed(repo: Path) -> None:
     ]
 
 
-def test_a_test_file_is_the_simulators_only_when_it_imports_the_product(repo: Path) -> None:
+def test_a_file_is_read_only_where_a_row_of_the_reader_table_names_it(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rule = repo / ".git" / "rule.md"
+    rule.write_text(READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
     _write(repo, "tests/unit/test_tool.py", "import json\n" + SOURCE)
-    _write(repo, "tests/unit/test_sim.py", "import anesthesia_sim\n" + SOURCE)
-    _write(repo, "tools/script.py", SOURCE)
+    _write(repo, "src/pkg/fresh.py", SOURCE)
 
     found = branch_prose(repo, "main")
 
-    assert {unit.path for unit in found.units} == {"tests/unit/test_sim.py"}
+    assert {unit.path for unit in found.units} == {"src/pkg/fresh.py"}
 
 
 def test_a_file_that_will_not_parse_is_named_and_not_read(repo: Path) -> None:
@@ -151,7 +158,7 @@ def test_main_says_so_when_nothing_long_changed(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     assert capsys.readouterr().out.startswith(
-        "No docstring, comment or document paragraph of 30 words or more"
+        "No passage of 30 words or more changed in a file that the reader table names"
     )
 
 
@@ -162,13 +169,16 @@ def test_main_numbers_each_unit_with_its_rows(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    prompt = PROMPT.read_text(encoding="utf-8")
-    assert out.startswith(prompt)
-    assert out[len(prompt) :].startswith(
-        "\n3 docstrings, comments and document paragraphs of 30 words or more changed"
+    rule = RULE.read_text(encoding="utf-8").rstrip("\n")
+    assert out.startswith(rule)
+    assert out[len(rule) :].startswith(
+        "\n\nThe writing rule ends here, and the prose to review follows.\n\n"
+        "3 passages of 30 words or more changed"
     )
-    assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words" in out
-    assert "[3] src/pkg/fresh.py, rows 13-13, comment" in out
+    assert "src/pkg/fresh.py, rows 1-5:\n" in out
+    assert f"[1] src/pkg/fresh.py, rows 1-1. Changed text: new, {MIN_WORDS} words." in out
+    assert "[3] src/pkg/fresh.py, rows 13-13." in out
+    assert f"   13 >     # {LONG}\n   14 |     return y" in out
 
 
 def _commit(repo: Path, message: str) -> str:
@@ -375,7 +385,10 @@ def test_each_unit_names_its_reader(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words, for: A developer" in out
+    assert (
+        f"[1] src/pkg/fresh.py, rows 1-1. Changed text: new, {MIN_WORDS} words. For: A developer"
+        in out
+    )
     assert (
         "\n".join(
             [
@@ -390,18 +403,22 @@ def test_each_unit_names_its_reader(
     )
 
 
-def test_a_unit_whose_file_no_row_names_stops_the_report(
-    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_a_passage_in_a_file_no_row_names_is_listed_as_not_reviewed(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    rule = tmp_path / "rule.md"
+    """A file nobody has named a reader for is said to be unreviewed, never passed over."""
+    rule = repo / ".git" / "rule.md"
     rule.write_text(READERS.replace("Code in `src/`", "Code in `lib/`"), encoding="utf-8")
     monkeypatch.setattr(new_prose, "RULE", rule)
     _write(repo, "src/pkg/fresh.py", SOURCE)
 
-    assert main(["--root", str(repo), "--base", "main"]) == 1
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "no row of the reader table in rule.md names src/pkg/fresh.py" in captured.err
+    assert main(["--root", str(repo), "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("No passage of 30 words or more changed")
+    assert out.endswith(
+        "Not reviewed, because no row of the reader table in rule.md names it:\n"
+        "  src/pkg/fresh.py\n"
+    )
 
 
 @pytest.mark.parametrize(
@@ -411,6 +428,12 @@ def test_a_unit_whose_file_no_row_names_stops_the_report(
         "tests/unit/test_patient.py",
         "docs/MODEL.md",
         "README.md",
+        "docs/items/PL-22T5-close-out-s-prose-review-reads-only-the.md",
+        ".claude/rules/plain-writing.md",
+        ".claude/agents/copy-editor.md",
+        "tools/new_prose.py",
+        "subprojects/docket/src/docket/arming.py",
+        "CLAUDE.md",
     ],
 )
 def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: str) -> None:
@@ -485,7 +508,7 @@ def test_hunks_parted_by_a_blank_line_are_one_passage_and_by_a_paragraph_two(
 
     out = _compare(precise, capsys)
 
-    assert "1 passages of the simulator's files changed their prose" in out
+    assert "1 passages of the reviewed files changed their prose" in out
     assert "rows 5-7: 15 words on main, 16 now, 1 more" in out
 
     model.write_text(first.replace("its own scale.", "a scale of its own."), encoding="utf-8")
@@ -506,7 +529,7 @@ def test_a_reflowed_paragraph_is_not_a_changed_passage(
     )
     (precise / "docs/MODEL.md").write_text(reflowed, encoding="utf-8")
 
-    assert "No passage of the simulator's files changed its prose" in _compare(precise, capsys)
+    assert "No passage of the reviewed files changed its prose" in _compare(precise, capsys)
 
 
 def test_a_removed_paragraph_is_named_with_its_words_on_the_base(
@@ -539,3 +562,105 @@ def test_a_python_file_is_compared_by_its_prose_alone(
     assert "src/pkg/limits.py, rows 2-2: 4 words on main, 5 now, 1 more" in out
     assert "gone  LIMIT  (fork line 2: Clip `x` at `LIMIT`.)" in out
     assert "gone  7" not in out
+
+
+@pytest.mark.parametrize("kind", ["replies", "pull request titles and bodies"])
+def test_the_rule_names_a_reader_for_each_kind_of_draft(kind: str) -> None:
+    """Close-out and the reply rule pass these words to `--kind`."""
+    assert any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
+
+
+#: A document whose first section holds four long paragraphs.
+SECTIONS = f"""\
+# Model
+
+## Displayed precision
+
+{LONG} first.
+
+{LONG} second.
+
+{LONG} third.
+
+{LONG} fourth.
+
+## Next
+
+{LONG} other.
+"""
+
+
+@pytest.fixture
+def sectioned(repo: Path) -> Path:
+    """`repo` with `SECTIONS` committed as `docs/MODEL.md` on `main`, and `work` checked out."""
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "docs/MODEL.md", SECTIONS)
+    _commit(repo, "add the model document")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "main")
+    return repo
+
+
+def _review(repo: Path, capsys: pytest.CaptureFixture[str]) -> str:
+    assert main(["--root", str(repo), "--base", "main"]) == 0
+    return capsys.readouterr().out
+
+
+def test_a_changed_paragraph_is_shown_in_its_whole_section_with_one_neighbour_each_side(
+    sectioned: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The copy editor reads the section, and may rewrite the change and the unit on each side."""
+    changed = SECTIONS.replace("third.", "third, changed.")
+    (sectioned / "docs/MODEL.md").write_text(changed, encoding="utf-8")
+
+    out = _review(sectioned, capsys)
+
+    assert 'docs/MODEL.md § "Displayed precision", rows 3-12:\n    3 | ## Displayed' in out
+    assert ("[1] docs/MODEL.md, rows 7-11. Changed text: 31 words on main, 32 now, 1 more.") in out
+    assert f"    5 | {LONG} first.\n    6 | \n" in out
+    assert f"    7 > {LONG} second.\n    8 > \n    9 > {LONG} third, changed." in out
+    assert f"   11 > {LONG} fourth.\n   12 | \n" in out
+    assert "other." not in out.partition("The writing rule ends here")[2]
+
+
+def test_two_changes_that_would_share_a_neighbour_are_one_passage(
+    sectioned: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    changed = SECTIONS.replace("first.", "first, changed.").replace("third.", "third, changed.")
+    (sectioned / "docs/MODEL.md").write_text(changed, encoding="utf-8")
+
+    out = _review(sectioned, capsys)
+
+    assert "[1] docs/MODEL.md, rows 5-11. Changed text: 62 words on main, 64 now, 2 more." in out
+    assert "[2]" not in out
+
+
+def test_front_matter_is_not_read_as_a_heading() -> None:
+    """Read as Markdown, the closing `---` of front matter underlines a heading."""
+    source = f"---\nid: PL-K7QX\ntitle: A title\n---\n\n{LONG}\n"
+
+    (review,) = reviews_of("docs/items/PL-K7QX.md", None, source, "")
+
+    assert (review.section, review.first, review.top) == ("", 1, 6)
+
+
+def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rule = tmp_path / "rule.md"
+    rule.write_text(READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    draft = tmp_path / "reply.md"
+    draft.write_text("Line one.\n\nLine two.\n", encoding="utf-8")
+
+    assert main(["--draft", str(draft), "--kind", "replies"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(READERS.rstrip("\n"))
+    shown = out.partition("The writing rule ends here")[2]
+    assert "Readers of replies:\n  - The owner.\n" in shown
+    assert "A developer" not in shown
+    assert "[1] reply.md, rows 1-3. Draft: 4 words. For: The owner\n" in shown
+    assert "    1 > Line one.\n    2 > \n    3 > Line two." in shown
+
+    assert main(["--draft", str(draft), "--kind", "sonnets"]) == 1
+    assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err

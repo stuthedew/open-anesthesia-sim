@@ -1,12 +1,13 @@
 """`tools/rejected_prose.py` must refuse a prompt change that no run of the test set has tested.
 
-The set holds paragraphs the owner rejected after the close-out prose review
-passed them (`PL-FYGJ`), and paragraphs he named gold standards (`PL-556C`). These tests
-pin what an entry must hold, how a reviewer's verdicts and rewrites are read,
-and when `check` refuses: no run for the current prompt and readers, a run that
-kept a rejected entry or flagged a gold-standard one, a run whose rewrite has more
-words than its entry allows (`PL-CWRZ`), a gold-standard entry that no run read or
-that repeats another entry's text, and a kind above its cap.
+The prompt is the copy-editing agent's instructions, `.claude/agents/copy-editor.md`.
+The test set holds paragraphs that the project owner rejected after a review
+passed them (`PL-FYGJ`), and paragraphs the owner named gold standards, which
+a review must keep (`PL-556C`). These tests pin what an entry must hold, how
+the agent's verdicts and rewrites are read, and when `check` refuses: no run
+for the current prompt and reader rows, a run that kept a rejected entry or
+flagged a gold-standard one, a gold-standard entry that no run read or that
+repeats another entry's text, and a kind of failure above its cap.
 """
 
 from __future__ import annotations
@@ -31,7 +32,6 @@ from rejected_prose import (
     expected_verdict,
     main,
     parse_entry,
-    prose_words,
     read_set,
     readers_digest,
     record,
@@ -141,8 +141,8 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
     )
     entry = parse_entry("jargon-2026-11-02-a.md", _entry(sections=sections), TABLE)
 
-    assert (entry.accepted_words, entry.allowed) == (3, 3)
-    assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).allowed == MIN_WORDS
+    assert entry.accepted_lines == ("A plainer paragraph.",)
+    assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).accepted_lines is None
 
 
 @pytest.mark.parametrize(
@@ -244,12 +244,13 @@ def test_a_reply_without_one_verdict_per_unit_is_refused(reply: str, reason: str
     assert reason in str(raised.value)
 
 
-def test_show_gives_the_reviewer_the_prompt_and_the_paragraph_only() -> None:
+def test_show_gives_the_reviewer_the_rule_and_the_paragraph_only() -> None:
+    """The copy editor loads no project rule, so `show` must open with the writing rule."""
     entry = parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE)
 
-    shown = show(PROMPT, [entry], TABLE)
+    shown = show([entry], TABLE)
 
-    assert shown.startswith(PROMPT)
+    assert shown.startswith(new_prose.RULE.read_text(encoding="utf-8").rstrip("\n"))
     assert "Readers of docs/MODEL.md:\n  - A clinician.\n" in shown
     assert f"[1] docs/MODEL.md, rows 1-1, paragraph, {MIN_WORDS} words, for: A clinician" in shown
     assert f"    1 > {PARAGRAPH}" in shown
@@ -373,14 +374,14 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     reply.write_text(_reply("rewrite", "keep", words=MIN_WORDS + 1), encoding="utf-8")
     assert main(["record", str(reply)], root=root) == 0
     out = capsys.readouterr().out
-    assert f"rewrote {first} in {MIN_WORDS + 1} words, more than the" in out
+    assert first not in out
     assert f"kept {second}: change the prompt" in out
     (written,) = (root / RUNS_DIR.relative_to(ROOT)).glob("*.json")
     assert json.loads(written.read_text(encoding="utf-8"))["entries"] == [first, second]
     assert main(["check"], root=root) == 1
 
     assert main(["show"], root=root) == 0
-    assert capsys.readouterr().out.startswith(PROMPT)
+    assert capsys.readouterr().out.startswith(READERS.rstrip("\n"))
 
 
 def test_rewrites_takes_the_first_block_after_each_rewrite_verdict() -> None:
@@ -402,49 +403,6 @@ def test_a_rewrite_verdict_with_no_closed_block_is_refused(reply: str) -> None:
     with pytest.raises(ValueError) as raised:
         rewrites(reply)
     assert str(raised.value) == "[1] rewrite has no closed fenced block"
-
-
-def test_prose_words_counts_only_the_prose_a_unit_holds() -> None:
-    """Quotes, indent, comment marks and headings are not words, as the listing tool counts."""
-    docstring = ['    """Return the dose.', "", '    Two more words."""']
-
-    assert prose_words("src/pkg/m.py", docstring) == 6
-    assert prose_words("src/pkg/m.py", ["    # A comment of six words here."]) == 6
-    assert prose_words("docs/MODEL.md", ["## A heading", "", "First paragraph here."]) == 3
-
-
-def test_a_rewrite_longer_than_its_entry_allows_fails(tmp_path: Path) -> None:
-    """Flagging is not enough: the writer applies the rewrite, so it may not grow the text."""
-    root = _root(tmp_path, {"length-2026-11-02-a.md": _entry(kind="length")})
-    _run(root, "equal.json", _reply("rewrite", words=MIN_WORDS))
-    assert check(root, PROMPT, TABLE) == []
-
-    _run(root, "longer.json", _reply("rewrite", words=MIN_WORDS + 1))
-    assert check(root, PROMPT, TABLE) == [
-        f"runs/longer.json rewrote length-2026-11-02-a.md in {MIN_WORDS + 1} words, more than "
-        f"the {MIN_WORDS} of the paragraph the owner rejected: change the prompt so a rewrite "
-        "carries only what its reader needs, then run the set again"
-    ]
-
-
-def test_an_accepted_rewrite_sets_how_long_a_rewrite_may_be(tmp_path: Path) -> None:
-    def accepted(words: int) -> str:
-        return _entry(
-            sections="## The owner's words\n\nNo.\n\n## Where it came from\n\nA.\n\n"
-            f"## Accepted rewrite\n\n```text\n{_words(words)}\n```\n"
-        )
-
-    shorter = _root(tmp_path / "shorter", {"jargon-2026-11-02-a.md": accepted(MIN_WORDS - 10)})
-    _run(shorter, "one.json", _reply("rewrite", words=MIN_WORDS - 9))
-    assert check(shorter, PROMPT, TABLE) == [
-        f"runs/one.json rewrote jargon-2026-11-02-a.md in {MIN_WORDS - 9} words, more than the "
-        f"{MIN_WORDS - 10} of the rewrite the owner accepted: change the prompt so a rewrite "
-        "carries only what its reader needs, then run the set again"
-    ]
-
-    longer = _root(tmp_path / "longer", {"jargon-2026-11-02-a.md": accepted(MIN_WORDS + 10)})
-    _run(longer, "one.json", _reply("rewrite", words=MIN_WORDS + 10))
-    assert check(longer, PROMPT, TABLE) == []
 
 
 def test_a_rewrite_that_does_not_parse_as_its_file_is_named(tmp_path: Path) -> None:
@@ -522,7 +480,7 @@ def test_show_mixes_the_two_folders_and_leaves_out_an_accepted_rewrite(tmp_path:
         [entry.name for entry in entries], key=digest
     )
     assert [entry.kind for entry in entries] != sorted(entry.kind for entry in entries)
-    shown = show(PROMPT, entries, TABLE)
+    shown = show(entries, TABLE)
     assert rewrite not in shown
     assert GOLD_KIND not in shown
 

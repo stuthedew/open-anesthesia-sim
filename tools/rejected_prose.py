@@ -1,25 +1,25 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives a fresh
-reviewer the prompt in `docs/prose-review/prompt.md` and each long paragraph a
-branch changed in the simulator, and the reviewer judges each one for its named
-reader. The owner is the only clinician who reads this project's prose. When the
-owner rejects a paragraph that the review passed, the paragraph becomes an entry
+Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives the
+copy-editor agent, whose prompt is `.claude/agents/copy-editor.md`, each long
+passage a branch changed, and the agent judges each one for its named reader.
+The owner is the only clinician who reads this project's prose. When the owner
+rejects a paragraph that the review passed, the paragraph becomes an entry
 in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
-set, and it must flag every entry, so the review cannot pass again a kind of text
-the owner has already turned down (`PL-FYGJ`, from `PL-H76S`'s design round).
-When the owner names a paragraph a gold standard, in those words, it becomes
-an entry in `docs/prose-review/gold/`, and the review must keep it. Without
-those entries, a review that flagged every paragraph would pass (`PL-556C`). A
-paragraph he finds acceptable, or says needs no change, stays out. A rewrite
-could still improve it, and the review must stay free to propose one (project
-owner, 2026-11-03).
+set, and the agent must flag every rejected entry, so the review cannot pass
+again a kind of text the owner has already turned down (`PL-FYGJ`, from
+`PL-H76S`'s design round). When the owner names a paragraph a gold standard, in
+those words, it becomes an entry in `docs/prose-review/gold/`, and the review
+must keep it. Without those entries, a review that flagged every paragraph
+would pass (`PL-556C`). A paragraph the owner finds acceptable, or says needs
+no change, stays out. A rewrite could still improve it, and the review must
+stay free to propose one (project owner, 2026-11-03).
 
 **An entry** is one Markdown file named `KIND-DATE-SLUG.md`. Its front matter
-gives `kind`, one of `FAILURE_KINDS`; `file`, the document the paragraph came
-from, which decides its readers through the table in
-`.claude/rules/plain-writing.md`; and `rejected`, the date of the owner's
-rejection. Its body has three sections and may have a fourth, as
+gives three fields. `kind` is one of `FAILURE_KINDS`. `file` is the document
+the paragraph came from, which decides its readers through the table in
+`.claude/rules/plain-writing.md`. `rejected` is the date of the owner's
+rejection. The entry's body has three sections and may have a fourth, as
 `REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them. The paragraph sits in a
 fenced block, exactly as it stood in its file. It must read as one unit of
 `MIN_WORDS` words or more, as `tools/new_prose.py` reads that file, because the
@@ -45,9 +45,10 @@ owner, 2026-11-03). The gold-standard entries count as one more kind under the
 same cap. The same bound then applies to the chance that the review flags a
 gold-standard paragraph.
 
-Three commands:
+The tool has three commands.
 
-- `show` prints what the reviewer is given. First comes the prompt, then the
+- `show` prints what the reviewer is given. First comes the text of
+  `.claude/rules/plain-writing.md`, as `tools/new_prose.py` prints it, then the
   readers of each entry's file, then each entry's paragraph as a numbered unit
   in `tools/new_prose.py`'s format, with every row marked `>`. It prints the
   paragraph without its kind or the owner's words, so the reviewer judges it as
@@ -66,23 +67,12 @@ Three commands:
   tool is the only writer of those records.
 - `check` exits 1 when an entry does not parse, names a kind that
   `FAILURE_KINDS` does not hold, or names a file that no row of the reader table
-  names; when a kind holds more than `CAP_PER_KIND` entries; when a
-  gold-standard entry repeats a rejected paragraph or an accepted rewrite; when
-  the current prompt and readers have no run, or have a run that kept a rejected
-  entry, flagged a gold-standard one, or rewrote one at more words than it
-  allows; and when no run of them read a gold-standard entry. `make check` and
-  CI run it.
-
-**A rewrite may not be longer than its entry allows** (`PL-CWRZ`). Flagging a
-paragraph is not enough, because the writer then applies the reviewer's
-rewrite. On the first run the review flagged all five entries, and four of its
-rewrites came out longer than the paragraph the owner rejected. So each
-rewrite's words are counted as `tools/new_prose.py` counts a unit's, over the
-fenced block that follows its verdict. An entry with an accepted rewrite allows
-that rewrite's words, and any other entry allows the words of the paragraph the
-owner rejected. `.claude/rules/plain-writing.md` point 7, "Plain is not
-longer", is why there is no margin. An accepted rewrite added to an entry
-applies at once to every current run.
+  names. It also exits 1 when a kind holds more than `CAP_PER_KIND` entries, or
+  when a gold-standard entry repeats a rejected paragraph or an accepted
+  rewrite. It exits 1 when the current prompt and readers have no run, or have
+  a run that kept a rejected entry, flagged a gold-standard one, or wrote a
+  rewrite that does not parse as its file. Last, it exits 1 when no run of them
+  read a gold-standard entry. `make check` and CI run it.
 
 **What a run covers.** The prompt and the readers' rows are what tell the
 reviewer what to look for, so a change to either needs a new run. A new
@@ -188,14 +178,8 @@ class Entry:
     #: The paragraph exactly as it stood in `file`, one string per line.
     lines: tuple[str, ...]
     unit: Unit
-    #: The rewrite the owner accepted, and its words, where a rejected entry records one.
+    #: The rewrite the owner accepted, where a rejected entry records one.
     accepted_lines: tuple[str, ...] | None = None
-    accepted_words: int | None = None
-
-    @property
-    def allowed(self) -> int:
-        """The most words a review's rewrite of this entry may have."""
-        return self.unit.words if self.accepted_words is None else self.accepted_words
 
 
 @dataclass(frozen=True)
@@ -260,17 +244,12 @@ def _units(path: str, lines: Sequence[str]) -> list[Unit]:
     refuses the text.
     """
     source = "\n".join(lines) + "\n"
-    if path not in new_prose.DOCUMENTS:
+    if not new_prose.is_document(path):
         source = textwrap.dedent(source)
     try:
         return new_prose.units_of(path, source)
     except UNTOKENIZABLE as error:
         raise ValueError(f"does not parse as {path} would: {refusal(error)}") from None
-
-
-def prose_words(path: str, lines: Sequence[str]) -> int:
-    """The words of prose in `lines`, counted as `tools/new_prose.py` counts a unit's."""
-    return sum(unit.words for unit in _units(path, lines))
 
 
 def _unit(path: str, lines: Sequence[str]) -> Unit:
@@ -333,14 +312,14 @@ def parse_entry(name: str, text: str, table: Sequence[Reader], *, gold: bool = F
         if not any(line.strip() for line in body[start:end]):
             raise ValueError(f"section {title!r} is empty")
     lines = _paragraph(body, "Paragraph", sections["Paragraph"])
-    rewrite = words = None
+    rewrite = None
     if "Accepted rewrite" in sections:
         rewrite = _paragraph(body, "Accepted rewrite", sections["Accepted rewrite"])
         try:
-            words = prose_words(path, rewrite)
+            _units(path, rewrite)
         except ValueError as error:
             raise ValueError(f"the accepted rewrite {error}") from None
-    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite, words)
+    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite)
 
 
 def read_entries(
@@ -396,19 +375,17 @@ def repeats(entries: Sequence[Entry]) -> list[str]:
     ]
 
 
-def show(prompt: str, entries: Sequence[Entry], table: Sequence[Reader]) -> str:
-    """What the reviewer is given: the prompt, the readers, then each entry as a numbered unit."""
+def show(entries: Sequence[Entry], table: Sequence[Reader]) -> str:
+    """What the reviewer is given: the rule, the readers, then each entry as a numbered unit."""
     out = [
-        prompt.rstrip("\n"),
-        "",
         f"{len(entries)} document paragraphs of {MIN_WORDS} words or more. Rows marked > are "
         "the unit. Judge each unit for the readers its header names, as the list below "
-        "describes them.",
+        "describes them."
     ]
     out += reader_lines(table, (entry.file for entry in entries))
     for number, entry in enumerate(entries, start=1):
         out += new_prose.unit_lines(number, entry.unit, excerpt(entry.lines, entry.unit), table)
-    return "\n".join(out)
+    return new_prose.with_rule("\n".join(out))
 
 
 def verdicts(reply: str, count: int) -> list[str]:
@@ -464,11 +441,11 @@ def rewrites(reply: str) -> dict[int, tuple[str, ...]]:
 
 
 def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[Entry]) -> list[str]:
-    """Each way the run called `name` fails the entries it `read`, from its `reply`.
+    """Each problem with how the run named `name` judged the entries it `read`, from its `reply`.
 
-    `entries` is the set as it stands now. A verdict on an entry that has since
-    been deleted, as the cap deletes the oldest, is still judged, but a rewrite
-    of it is not counted.
+    `entries` is the set as it stands now. A verdict on an entry deleted since,
+    such as the oldest entry of a kind that reached its cap, is still judged. A
+    rewrite of it is not parsed, because its file is no longer known.
     """
     try:
         given = verdicts(reply, len(read))
@@ -496,21 +473,9 @@ def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[E
         if entry is None:
             continue
         try:
-            words = prose_words(entry.file, blocks[number])
+            _units(entry.file, blocks[number])
         except ValueError as error:
             problems.append(f"runs/{name}'s rewrite of {entry_name} {error}")
-            continue
-        if words > entry.allowed:
-            against = (
-                "the rewrite the owner accepted"
-                if entry.accepted_words is not None
-                else "the paragraph the owner rejected"
-            )
-            problems.append(
-                f"runs/{name} rewrote {entry_name} in {words} words, more than the "
-                f"{entry.allowed} of {against}: change the prompt so a rewrite carries only "
-                "what its reader needs, then run the set again"
-            )
     return problems
 
 
@@ -582,8 +547,9 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     ]
     if entries and not current:
         problems.append(
-            "no run of the set used the current prompt and readers: run `show`, give its whole "
-            "output to one fresh general-purpose reviewer, save the reply, and run `record` on it"
+            "no run of the set used the current prompt and readers: save the output of `show` to "
+            "a file, give its path to the copy-editor agent, save its whole reply, and run "
+            "`record` on it"
         )
     for run in current:
         problems += run_problems(run.name, run.reply, run.entries, entries)
@@ -608,7 +574,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
         "check", help="fail on a bad entry, a full kind, or a missing or failed run"
     )
     args = parser.parse_args(argv)
-    table = new_prose.reader_table(new_prose.RULE.read_text(encoding="utf-8"))
+    table = new_prose.rule_table()
     prompt = new_prose.PROMPT.read_text(encoding="utf-8")
     if args.command == "check":
         problems = check(root, prompt, table)
@@ -626,7 +592,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     if problems:
         return 1
     if args.command == "show":
-        print(show(prompt, entries, table))
+        print(show(entries, table))
         return 0
     reply = args.reply.read_text(encoding="utf-8")
     now = datetime.now(UTC)
