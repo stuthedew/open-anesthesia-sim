@@ -3,11 +3,11 @@ id: PL-BSYT
 title: Apply the prose review's rewrites of four docs/MODEL.md Displayed-precision and Agent-amount paragraphs, which use count, glyph position, floor and placeholder in private senses
 priority: P2
 effort: S
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
-blocked-by: PL-ZDZ0
+blocked-by: PL-ZDZ0, PL-W8FL, PL-43GT, PL-22T5, PL-JP8X
 added: 2026-11-03
 payoff: a clinician can read how precisely the concentration, MAC and agent-amount readouts are shown without decoding private terms, and so judge how far to trust them
 verify: ! grep -qF 'drag label' docs/MODEL.md && ! grep -qF 'The parameter spread gives the same answer' docs/MODEL.md && ! grep -qF 'coarse in the allowed' docs/MODEL.md
@@ -37,3 +37,5 @@ The reviewer also proposed moving each test name to a "**For developers.**" note
 **Checked 2026-11-03.** `PL-ZDZ0` rewrote the second of the four paragraphs (the MAC-step paragraph) through close-out's prose review: it now says "step" and "MAC readout", and "One count of the MAC line" is gone. It also rewrote the paragraph after it, which began "The unit conversion does not preserve information across agents", without "glyph position". Proposal 2 above is therefore done. Proposals 1, 3 and 4 still apply, and "glyph position" is still in the two later paragraphs this item does not cover.
 
 **Checked 2026-11-03, on the claim about test names.** The brief above says `tools/doc_check.py` holds a numeric paragraph by the test it names, so a test name must stay in the paragraph. On `PL-ZDZ0`, removing the test name from the MAC-step paragraph left `make doc-check` passing, so for that paragraph the claim was false. Try each removal before keeping a name on this ground.
+
+**Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again. Its rewrites came from the prose review that the copy editor replaces, so compare them with the copy editor's before applying any. `PL-J1ZM` already holds an approved rewrite of the MAC passage of § "Displayed precision".
