@@ -479,7 +479,8 @@ needed a decision.
 citation merges on green** (project owner, 2026-11-02, ratified, over holding
 each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
-citation and number that the rewrite dropped or added. The rewrite is
+citation, number and "no test yet" declaration that the rewrite dropped or
+added. The rewrite is
 housekeeping when it added none, and when each one it dropped is history moved
 to an item or a duplicate that the document still holds. A number rewritten in
 the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.

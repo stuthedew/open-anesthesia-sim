@@ -91,11 +91,29 @@ def test_facts_reads_each_kind_once() -> None:
     assert ("code", "tests/unit/test_alveolar.py") in found
     assert ("item id", "PL-B2B2") in found
     assert ("item id", "PL-F5F5") in found
+    assert ("declaration", "no test yet (`PL-C3C3`)") in found
+    assert ("declaration", "no test yet (`PL-D4D4`)") in found
+    assert ("item id", "PL-C3C3") not in found
     assert ("date", "2026-10-03") in found
     assert ("citation", "10.1213/00000539-199103000-00007") in found
     assert ("citation", "pp. 161-162") in found
     numbers = {text for kind, text in found if kind == "number"}
     assert numbers == {"6 L/min"}
+
+
+def test_a_declaration_rewritten_as_untested_reads_as_lost() -> None:
+    """A trial copy editor rewrote this form as "are untested", which the document check misses.
+
+    `tools/doc_check.py` reads only the declared-none form as a member that has
+    no test, so the rewrite loses a fact, not history (`PL-J1ZM`).
+    """
+    before = "These rows have no test\nyet (`PL-C3C3`).\n"
+
+    gone = gone_facts(before, "These rows are untested.\n", "")
+
+    assert [(item.kind, item.text, item.line) for item in gone] == [
+        ("declaration", "no test yet (`PL-C3C3`)", 1)
+    ]
 
 
 def test_a_number_keeps_its_sign_exponent_and_unit_and_a_list_ordinal_is_not_one() -> None:
@@ -285,8 +303,8 @@ def test_lost_reads_the_fork_and_a_new_item_file(
 
     assert main(["--root", str(tmp_path), "lost", "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert "2 equations, code spans, citations and numbers" in out
+    assert "2 equations, declarations, code spans, citations and numbers" in out
     assert "1 of them were added to an item file" in out
     assert "  gone  pp. 161-162  (fork line 21:" in out
     assert "  moved 6 L/min  (fork line 15:" in out
-    assert "0 equations, code spans, citations and numbers are held more times" in out
+    assert "0 equations, declarations, code spans, citations and numbers are held more times" in out

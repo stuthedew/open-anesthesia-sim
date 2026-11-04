@@ -290,8 +290,8 @@ page and decides which file a session reads.
    rows and the code around it. It also prints each changed paragraph and table
    row of that length in `docs/MODEL.md` and `README.md` (`PL-ZT47`). Each unit
    names its readers from the table in `.claude/rules/plain-writing.md`
-   (`PL-R7Q6`). Where it prints none, this step is done.
-   Otherwise start one subagent, `general-purpose` at the session's own
+   (`PL-R7Q6`). Where it prints none, go to the comparison at the end of
+   this step. Otherwise start one subagent, `general-purpose` at the session's own
    effort level (`docs/maintainer.md`, 2026-10-19), and give it the tool's
    whole output and nothing else. The output opens with the reviewer's prompt,
    whose one home is `docs/prose-review/prompt.md`, so no prompt is copied by
@@ -332,6 +332,16 @@ page and decides which file a session reads.
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
+
+   **Then compare the branch with the default branch, after any rewrites are
+   applied: `uv run python tools/new_prose.py --compare`** (`PL-JP8X`). It
+   prints each run of paragraphs, docstrings or comments that the branch
+   changed, with its words on the default branch and now. Then it lists each
+   number, code span, item id, citation, equation and "no test yet"
+   declaration that a changed file held at the fork and holds fewer times now.
+   Put back each one that an edit dropped by mistake. For each passage that
+   grew, name in the pull request body the facts its added words carry,
+   because growth that adds no fact is how prose over-explains (`PL-J1ZM`).
 
    **When the owner rejects a paragraph that this review passed, add it to
    the review's test set in `docs/prose-review/rejected/`.** The owner is the

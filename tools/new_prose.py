@@ -68,6 +68,25 @@ merge of the default branch brings in, because that prose is not in the
 branch's own diff from the fork. The count is one line holding a whole number.
 Exits 2, printing the unread files to standard error, when a changed file will
 not parse, because a count that skipped a file is not a count.
+
+**`--compare` sets each passage the branch changed beside the text it
+replaced, and lists the facts the branch removed** (`PL-JP8X`). A passage is
+the units that one hunk of the diff reaches, widened to whole paragraphs,
+table rows, docstrings or comments on both sides, and hunks parted only by
+blank lines make one passage. It is printed with its words on the default
+branch and now, whatever its length, unless only its spacing changed. A whole
+section is not the passage, because `docs/MODEL.md` § "Displayed precision"
+runs to about 8,000 words, where a growth of 50 would not show. Then, for each
+file, it lists each equation, "no test yet" declaration, code span, citation,
+number, item id and date that the file held at the fork and holds fewer times
+now, read as `tools/model_rewrite.py` reads a fact. A Python file's facts are
+read from its prose alone, on the rows where it stands. Facts are counted per
+file, so a fact moved to another section, such as the note for developers,
+prints nothing, and one the branch added to an item file is marked `moved`.
+On `PL-ZDZ0` a passage grew from 163 words to about 210 and no review round
+said so, and a trial copy editor rewrote a "no test yet" declaration as
+"untested" (`PL-J1ZM`). This mode reads the working tree, and exits as the
+default mode does.
 """
 
 from __future__ import annotations
@@ -84,7 +103,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import SOURCE, TESTS, imports_product  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import PARAGRAPH, TABLE, tables  # noqa: E402
+from docket.markdown import PARAGRAPH, TABLE, headings, tables  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
 from docket.release import code_spans  # noqa: E402
@@ -99,6 +118,14 @@ from docket.vcs import (  # noqa: E402
 
 import doc_check  # noqa: E402
 from diff_mutation import changed_rows  # noqa: E402
+from model_rewrite import (  # noqa: E402
+    Gone,
+    added_facts,
+    added_to_items,
+    gone_facts,
+    pair_restated,
+    report_gone,
+)
 
 #: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
 #: short and long units here.
@@ -245,6 +272,16 @@ def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
     ]
 
 
+def may_review(path: str) -> bool:
+    """Whether the file at `path` is a reviewed document, or a Python file under `src/` or `tests/`.
+
+    A Python file is then the simulator's only where `is_simulator_file` says so.
+    """
+    if path in DOCUMENTS:
+        return True
+    return PurePosixPath(path).suffix == ".py" and path.startswith((SOURCE, TESTS))
+
+
 @dataclass
 class Found:
     """What the branch changed in the simulator's prose, and what could not be read."""
@@ -271,9 +308,7 @@ def branch_prose(root: Path, base: str, *, committed: bool = False) -> Found:
     unread: list[str] = []
     for path in paths:
         document = path in DOCUMENTS
-        if not document and PurePosixPath(path).suffix != ".py":
-            continue
-        if not document and not (path.startswith(SOURCE) or path.startswith(TESTS)):
+        if not may_review(path):
             continue
         if not committed and not (root / path).is_file():
             continue
@@ -292,6 +327,13 @@ def branch_prose(root: Path, base: str, *, committed: bool = False) -> Found:
     return Found(against, units, unread)
 
 
+def text_at(root: Path, rev: str, path: str) -> str | None:
+    """The file at `path` as commit `rev` holds it, or `None` where `rev` holds no such file."""
+    if not listed_paths(read_git(["ls-tree", "-z", "--name-only", rev, "--", path], root)):
+        return None
+    return read_git(["show", f"{rev}:{path}"], root)
+
+
 def unreviewed(root: Path, found: Found, since: str | None) -> list[Unit]:
     """The units in `found` whose text is not a unit of the same file at commit `since`.
 
@@ -303,14 +345,212 @@ def unreviewed(root: Path, found: Found, since: str | None) -> list[Unit]:
     reviewed: dict[str, set[str]] = {}
     for path in {unit.path for unit in found.units}:
         reviewed[path] = set()
-        if not listed_paths(read_git(["ls-tree", "-z", "--name-only", since, "--", path], root)):
+        before = text_at(root, since, path)
+        if before is None:
             continue
         try:
-            before = read_git(["show", f"{since}:{path}"], root)
             reviewed[path] = {unit.text for unit in units_of(path, before)}
         except UNTOKENIZABLE:
             pass
     return [unit for unit in found.units if unit.text not in reviewed[unit.path]]
+
+
+@dataclass(frozen=True)
+class Passage:
+    """A run of prose the branch changed, beside the prose it replaced at the fork."""
+
+    path: str
+    #: The heading of the document section it stands in, "" before the first
+    #: heading and in a Python file.
+    section: str
+    before: tuple[Unit, ...]
+    after: tuple[Unit, ...]
+
+    @property
+    def words_before(self) -> int:
+        return sum(unit.words for unit in self.before)
+
+    @property
+    def words_after(self) -> int:
+        return sum(unit.words for unit in self.after)
+
+    def rows(self) -> str:
+        """The rows it spans now, or at the fork where nothing of it is left."""
+        units = self.after or self.before
+        return f"rows {units[0].first}-{max(unit.last for unit in units)}"
+
+
+def touched(units: Sequence[Unit], first: int, count: int) -> set[int]:
+    """The indices of `units` that a hunk's range of `count` rows from row `first` reaches.
+
+    An empty range stands after row `first`, as git writes it, so it reaches
+    only a unit that holds both that row and the next.
+    """
+    if not count:
+        return {at for at, unit in enumerate(units) if unit.first <= first < unit.last}
+    last = first + count - 1
+    return {at for at, unit in enumerate(units) if unit.first <= last and unit.last >= first}
+
+
+def changed_passages(path: str, before: str | None, after: str | None, patch: str) -> list[Passage]:
+    """Each run of prose that `patch` changes, widened to whole units on both sides.
+
+    `patch` is a `-U0` diff from `before` to `after`. Two hunks make one
+    passage where the rows between them hold only blank lines and rows of
+    the units they reach, so a paragraph split in two, or edited in two places,
+    is one passage. A hunk that reaches no unit, such as a change to code, is
+    left out. A file new on the branch, or removed by it, is one passage.
+    """
+    old = units_of(path, before) if before is not None else []
+    new = units_of(path, after) if after is not None else []
+    if before is None or after is None:
+        return [Passage(path, "", tuple(old), tuple(new))] if old or new else []
+    lines = split_lines(after)
+    sections = (headings(split_lines(before)), headings(lines)) if path in DOCUMENTS else ([], [])
+    groups: list[tuple[set[int], set[int], int]] = []
+    for hunk in doc_check.HUNK_RE.finditer(patch):
+        start, size = int(hunk.group(3)), int(hunk.group(4) or 1)
+        reached_old = touched(old, int(hunk.group(1)), int(hunk.group(2) or 1))
+        reached_new = touched(new, start, size)
+        if not reached_old and not reached_new:
+            continue
+        top, bottom = (start, start + size - 1) if size else (start + 1, start)
+        if groups:
+            held_old, held_new, end = groups[-1]
+            covered = {
+                row
+                for at in held_new | reached_new
+                for row in range(new[at].first, new[at].last + 1)
+            }
+            gap = range(end + 1, top)
+            if held_old & reached_old or all(
+                row in covered or not lines[row - 1].strip() for row in gap
+            ):
+                groups[-1] = (held_old | reached_old, held_new | reached_new, bottom)
+                continue
+        groups.append((reached_old, reached_new, bottom))
+    found = []
+    for reached_old, reached_new, _ in groups:
+        passage = Passage(
+            path,
+            "",
+            tuple(old[at] for at in sorted(reached_old)),
+            tuple(new[at] for at in sorted(reached_new)),
+        )
+        if (
+            " ".join(unit.text for unit in passage.before).split()
+            == " ".join(unit.text for unit in passage.after).split()
+        ):
+            continue
+        marks, units = (
+            (sections[1], passage.after) if passage.after else (sections[0], passage.before)
+        )
+        titles = [mark.title for mark in marks if mark.line < units[0].first]
+        found.append(Passage(path, titles[-1] if titles else "", passage.before, passage.after))
+    return found
+
+
+def fact_text(path: str, source: str | None) -> str:
+    """The text whose facts are counted: a document whole, or a Python file's prose.
+
+    A Python file's prose keeps the rows it stands on, and every other row is
+    blank, so each fact is placed on the file's own row and no number in code
+    is read.
+    """
+    if source is None:
+        return ""
+    if path in DOCUMENTS:
+        return source
+    rows = [""] * len(split_lines(source))
+    for unit in prose_units(path, source):
+        for offset, line in enumerate(unit.text.split("\n")[: unit.last - unit.first + 1]):
+            rows[unit.first - 1 + offset] = line
+    return "\n".join(rows)
+
+
+@dataclass
+class Comparison:
+    """Each changed passage beside its form at the fork, and each file's removed facts."""
+
+    base: str
+    against: str
+    passages: list[Passage]
+    gone: dict[str, list[Gone]]
+    unread: list[str]
+
+
+def compare(root: Path, base: str) -> Comparison:
+    """The passages the branch changed and the facts it removed, from the fork to the working tree.
+
+    A passage counts as changed when its words differ, so text reflowed onto
+    other lines is not a change.
+    """
+    fork, against = doc_check._diff_from(root, base)
+    moved = added_to_items(root, fork)
+    found = Comparison(base, against, [], {}, [])
+    for path in doc_check._changed_paths(root, fork):
+        if not may_review(path):
+            continue
+        before = text_at(root, fork, path)
+        after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
+        try:
+            if path not in DOCUMENTS and not any(
+                text is not None and is_simulator_file(path, ast.parse(text, filename=path))
+                for text in (before, after)
+            ):
+                continue
+            patch = read_git(["diff", "-U0", fork, "--", path], root)
+            found.passages += changed_passages(path, before, after, patch)
+            old_facts, new_facts = fact_text(path, before), fact_text(path, after)
+        except UNTOKENIZABLE as error:
+            found.unread.append(f"{path}: {refusal(error)}")
+            continue
+        gone = gone_facts(old_facts, new_facts, moved)
+        found.gone[path] = pair_restated(
+            old_facts, new_facts, gone, added_facts(old_facts, new_facts)
+        )[0]
+    return found
+
+
+def passage_line(passage: Passage, base: str) -> str:
+    """One line naming a changed passage, with its words at the fork and now."""
+    where = passage.path
+    if passage.section:
+        where += f' § "{passage.section}"'
+    before, after = passage.words_before, passage.words_after
+    if not passage.before:
+        return f"{where}, {passage.rows()}: new, {after} words"
+    if not passage.after:
+        return f"{where}, {passage.rows()} on {base}: removed, {before} words"
+    change = after - before
+    more = f"{change} more" if change > 0 else f"{-change} fewer" if change else "the same count"
+    return f"{where}, {passage.rows()}: {before} words on {base}, {after} now, {more}"
+
+
+def compare_report(found: Comparison) -> str:
+    """The changed passages and their words, each file's removed facts, and the files not read."""
+    out: list[str] = []
+    if found.passages:
+        out += [
+            f"{len(found.passages)} passages of the simulator's files changed their prose, "
+            f"against {found.against}. Each is the paragraphs, docstrings or comments the "
+            "branch changed, with their words before and after.",
+            "",
+        ]
+        out += [f"  {passage_line(passage, found.base)}" for passage in found.passages]
+    else:
+        out.append(
+            f"No passage of the simulator's files changed its prose, against {found.against}."
+        )
+    for path, gone in found.gone.items():
+        if gone:
+            out += ["", *report_gone(gone, found.against, path)]
+    if found.gone and not any(found.gone.values()):
+        out += ["", f"These files hold every fact they held on {found.base}, as often."]
+    if found.unread:
+        out += ["", "Not read, because Python would not parse the file:"]
+        out += [f"  {line}" for line in found.unread]
+    return "\n".join(out)
 
 
 def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
@@ -389,7 +629,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to run in")
     parser.add_argument("--base", help="branch to diff against; the default branch by default")
-    parser.add_argument(
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--compare",
+        action="store_true",
+        help="print each changed passage's words on the base and now, and each fact the "
+        "branch removed",
+    )
+    modes.add_argument(
         "--count",
         nargs="?",
         const="",
@@ -407,7 +654,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
     try:
-        if args.count is not None:
+        if args.compare:
+            print(compare_report(compare(root, base)))
+        elif args.count is not None:
             found = branch_prose(root, base, committed=True)
             if found.unread:
                 for line in found.unread:

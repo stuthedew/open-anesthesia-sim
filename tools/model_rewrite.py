@@ -14,8 +14,10 @@ citation. This tool answers the two questions that part asks of the tree.
 - `lost` compares the document at the commit where the branch forked from the
   default branch with the working tree. It prints each equation, code span,
   number and citation that the fork held more often than the working tree
-  does, with the line where the fork held it. A fact the branch added to a
-  file under the item store is marked `moved`. A number is read with its
+  does, with the line where the fork held it. The declared-none form is a
+  fact of its own, so "no test yet (`PL-XXXX`)" rewritten as "untested" reads
+  as lost. A fact the branch added to a file under the item store is marked
+  `moved`. A number is read with its
   sign, its exponent and its unit, so a changed unit or mantissa reads as a
   lost value, and the ordinal of a numbered list is not read. Facts are
   counted and not placed, so two values swapped within a sentence print
@@ -99,8 +101,11 @@ SECTION_LEVEL = 2
 #: The marker of a numbered list item, whose ordinal is not a value.
 LIST_ORDINAL_RE = re.compile(r"^[ \t]*\d+\.(?=[ \t])", re.M)
 
-#: The kinds `lost` prints one by one, in the order it prints them.
-FACT_KINDS = ("equation", "code", "citation", "number")
+#: The kinds `lost` prints one by one, in the order it prints them. A
+#: declaration is the form ``no test yet (`PL-XXXX`)``, which
+#: `tools/doc_check.py` requires where a member has no test, so its id is not
+#: history to remove.
+FACT_KINDS = ("equation", "declaration", "code", "citation", "number")
 #: The kinds `lost` only counts, because removing them is the point.
 HISTORY_KINDS = ("item id", "date")
 
@@ -155,8 +160,10 @@ def cited_ids(lines: Sequence[str], start: int, end: int) -> list[Cited]:
 def facts(text: str) -> Iterable[tuple[str, str, int]]:
     """Each fact in a Markdown `text` as its kind, its text and its 1-based line.
 
-    An equation is read before the code spans, and both before the numbers, so
-    a number inside an equation or a code span counts once, as part of it.
+    An equation is read first, then a declaration, then the code spans, and all
+    three before the numbers, so a number inside an equation or a code span,
+    and the id inside a declaration, counts once, as part of it. A declaration
+    that wraps is read with each gap as one space.
     """
     starts = [0]
     starts += [index + 1 for index, character in enumerate(text) if character == "\n"]
@@ -184,6 +191,10 @@ def facts(text: str) -> Iterable[tuple[str, str, int]]:
     scanned = "".join(blank)
     for match in INLINE_MATH_RE.finditer(scanned):
         yield "equation", match.group(1), line_of(match.start())
+        take(match)
+    scanned = "".join(blank)
+    for match in doc_check.TEST_ENTITY.declares_none.finditer(scanned):
+        yield "declaration", " ".join(match.group().split()), line_of(match.start())
         take(match)
     scanned = "".join(blank)
     for match in CODE_RE.finditer(scanned):
@@ -266,7 +277,7 @@ class Added:
 
 
 def added_facts(before: str, after: str) -> list[Added]:
-    """The equations, code spans, citations and numbers that `after` holds more often than `before`.
+    """The facts of `FACT_KINDS` that `after` holds more often than `before`.
 
     A rewrite that adds a value, or restates one in a new place, changes what
     the specification says as surely as one that drops a value. `gone_facts`
@@ -399,16 +410,16 @@ def report_ids(lines: Sequence[str], titles: Sequence[str]) -> tuple[int, list[s
     return (1 if out else 0), out
 
 
-def report_gone(gone: Sequence[Gone], against: str) -> list[str]:
-    """The lines `lost` prints: the facts by kind, then the history it counts."""
+def report_gone(gone: Sequence[Gone], against: str, path: str = MODEL_DOC) -> list[str]:
+    """The lines `lost` prints for the file at `path`: the facts by kind, then the history."""
     facts_gone = [item for item in gone if item.kind in FACT_KINDS]
     moved = sum(item.moved for item in facts_gone)
     restated = sum(bool(item.restated_as) for item in facts_gone)
     out = [
-        f"{MODEL_DOC} against {against}: {len(facts_gone)} equations, code spans, citations "
-        f"and numbers are held fewer times than at the fork, and {moved} of them were added "
-        f"to an item file. {restated} of them are restated in another form with the same "
-        "value."
+        f"{path} against {against}: {len(facts_gone)} equations, declarations, code spans, "
+        f"citations and numbers are held fewer times than at the fork, and {moved} of them "
+        f"were added to an item file. {restated} of them are restated in another form with "
+        "the same value."
     ]
     for kind in FACT_KINDS:
         rows = sorted((item for item in facts_gone if item.kind == kind), key=lambda g: g.line)
@@ -434,7 +445,8 @@ def report_added(added: Sequence[Added]) -> list[str]:
     restating = sum(bool(item.restates) for item in added)
     out = [
         "",
-        f"{len(added)} equations, code spans, citations and numbers are held more times than "
+        f"{len(added)} equations, declarations, code spans, citations and numbers are held "
+        "more times than "
         f"at the fork. {restating} of them restate a dropped number with the same value.",
     ]
     for kind in FACT_KINDS:
