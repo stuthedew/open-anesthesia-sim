@@ -439,39 +439,38 @@ The modeled system contains:
 6. one fat tissue group.
 
 **Perfusion-limited exchange.** Agent moves between blood and alveolar gas,
-and between blood and each tissue group, by perfusion-limited exchange. Blood
-leaves the lung or the tissue at equilibrium with it, so the barrier between
-them never limits how fast agent moves. The rate is then set by the blood
-flow, the agent's blood:gas partition coefficient and the difference in
-partial pressure, as the uptake equations in § "Governing equations" show. In
-diffusion-limited exchange, which this model does not represent, blood leaves
-before it has equilibrated, and the barrier limits the rate. The term
-describes the exchange between blood and the lung or a tissue, not the blood
-itself. Jones and Rowland-Yeo
-call the two tissue cases perfusion rate-limited and permeability
-rate-limited, and give the first as typical of small lipophilic molecules,
-which the volatile agents are (Jones HM, Rowland-Yeo K. Basic concepts in
-physiologically based pharmacokinetic modeling in drug discovery and
-development. *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63,
-doi:10.1038/psp.2013.41). Yasuda et al. assumed perfusion-limited delivery to
-the tissues when they fitted sevoflurane and isoflurane kinetics in volunteers
-(*Anesth Analg* 1991;72:316-24, p. 319).
+and between blood and each tissue group, by perfusion-limited exchange. The
+term describes that exchange, not the blood itself. Blood leaves the lung or
+the tissue at equilibrium with it, so the barrier between them never limits
+how fast agent moves. The rate is set by the blood flow, the agent's blood:gas
+partition coefficient and the difference in partial pressure, as the uptake
+equations in § "Governing equations" show. In diffusion-limited exchange,
+which this model does not represent, blood leaves before it has equilibrated,
+and the barrier limits the rate. Jones and Rowland-Yeo call the two tissue
+cases perfusion rate-limited and permeability rate-limited, and give the first
+as typical of small lipophilic molecules, which the volatile agents are
+(Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
+pharmacokinetic modeling in drug discovery and development.
+*CPT Pharmacometrics Syst Pharmacol* 2013;2:e63, doi:10.1038/psp.2013.41).
+Yasuda et al. assumed perfusion-limited delivery to the tissues when they
+fitted sevoflurane and isoflurane kinetics in volunteers (*Anesth Analg*
+1991;72:316-24, p. 319).
 
-Arterial blood is not a separate mixing compartment. The model treats the
-lung's exchange with blood as perfusion-limited, so blood leaving the alveolar
-capillaries equilibrates instantly with alveolar gas. The model also has no
-shunt and only one alveolar compartment, so it has no ventilation-perfusion
-mismatch. All arterial blood has therefore passed through that exchange.
-Arterial partial pressure, as a fraction, is defined as $`F_a \equiv F_A`$,
-with no arterial volume, mixing delay, or value of its own. In patients, the
-arterial partial pressure runs below the end-tidal one during administration,
-as Carpenter and Eger measured (§ "Desflurane's residual, and why the
-parameter file was not changed"). So this identity is a deliberate
-simplification of the model, not a property of the agents. It matches the
-perfusion-limited mammillary structure of the Gas Man simulator, the source of
-this project's sevoflurane and patient parameters. Gas Man computes four
-compartments: alveolar gas and the vessel-rich, muscle, and fat groups. It
-displays arterial tension without tracking it as a compartment. See:
+Arterial blood is not a separate mixing compartment. The model has no shunt
+and only one alveolar compartment, so it has no ventilation-perfusion mismatch,
+and all arterial blood has passed through the lung's perfusion-limited exchange
+with alveolar gas. Arterial partial pressure, as a fraction, is therefore
+defined as $`F_a \equiv F_A`$, with no arterial volume, mixing delay, or value
+of its own. In patients, the arterial partial pressure runs below the
+end-tidal one during administration, as Carpenter and Eger measured
+(§ "Desflurane's residual, and why the parameter file was not changed"), so
+this identity is a deliberate simplification of the model and not a property
+of the agents. It matches the structure of the Gas Man simulator, the source
+of this project's sevoflurane and patient parameters. In Gas Man too, each
+tissue group exchanges agent only with blood, by perfusion-limited exchange.
+Gas Man computes four compartments: alveolar gas and the vessel-rich, muscle,
+and fat groups. It displays arterial partial pressure without tracking it as a
+compartment. See:
 
 - Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
   Technology in Anesthesia. <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
@@ -1004,7 +1003,7 @@ column to be understood has a defect.
 | $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
 | $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see § "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
 | $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
-| $`F_a`$ | Arterial partial-pressure-equivalent fraction, defined as $`F_a \equiv F_A`$ (§ "Model boundary"). It is not an independent state | dimensionless | — no attribute: the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction, defined as $`F_a \equiv F_A`$ (§ "Model boundary") | dimensionless | — the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
 | $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
@@ -1595,12 +1594,12 @@ whole step.
 
 ### Arterial blood
 
-The lung's exchange with blood is perfusion-limited, and the model has no
-shunt and one alveolar compartment. So all arterial blood has equilibrated
-instantaneously with alveolar gas, and $`F_a \equiv F_A`$ at every instant
-(see § "Model boundary"). There is no separate arterial amount balance, capacity, or
-time constant. Every equation below that references $`F_a`$ uses the current
-alveolar fraction $`F_A`$ directly.
+In this model, $`F_a \equiv F_A`$ at every instant. The lung's exchange with
+blood is perfusion-limited, and the model has no shunt and one alveolar
+compartment, so all arterial blood has equilibrated with alveolar gas (see
+§ "Model boundary"). There is no equation for an arterial amount of agent, and
+no arterial capacity or time constant. Every equation below that contains
+$`F_a`$ uses the current alveolar fraction $`F_A`$ in its place.
 
 ### Tissue uptake and return
 
@@ -3864,15 +3863,11 @@ those settings as reflecting clinical conditions. That range contains 4, 5 and
 as one is the same error that the De Wolf entry guards against for its 1 L/min
 elsewhere in this section.
 
-There is no "arterial blood-pool volume" row. Arterial blood is not a
-compartment and has no state of its own (see § "Model boundary"). The code derives the
-tissue:blood coefficients at load time, as tissue:gas divided by blood:gas, in
-the `AgentParameters` properties in `core/parameters.py`. The data file does
-not store them a second time. The tissue-blood partition-coefficient tests in
-`tests/unit/test_parameters.py` guard this derivation.
+There is no "arterial blood-pool volume" row, because arterial blood has no
+volume of its own in this model (see § "Model boundary").
 
-**The division is the literature's own operation, and one published table
-reproduces its results.** Eger and Saidman state the operation in these words:
+**Dividing tissue:gas by blood:gas is the literature's own operation, and one
+published table reproduces its results.** Eger and Saidman state the operation in these words:
 "a tissue/blood partition coefficient for a given anesthetic is calculated by
 dividing a tissue/gas partition coefficient by the blood/gas partition
 coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger computed
@@ -3955,7 +3950,10 @@ from a profile that omits it starts at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
 in `core/circuit.py`
 (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
 `test_the_flow_default_matches_the_shipped_machine_file` fails if the constant
-and the file's value ever differ.
+and the file's value ever differ. The tissue:blood coefficients are computed in
+the `AgentParameters` properties in `core/parameters.py`, and the tissue-blood
+partition-coefficient tests in `tests/unit/test_parameters.py` guard that
+division.
 
 ### v0.2.0: isoflurane and desflurane
 
@@ -8821,14 +8819,13 @@ imply a standard meaning that it does not have, and "Displayed precision"
 refuses that on grounds of interpretability. The chart already shows the
 comparison continuously, on the axis the reader is looking at.
 
-Arterial concentration is deliberately **not** in this list. In this model,
-arterial blood holds no independent state: $`F_a \equiv F_A`$ (see § "Model
-boundary"). A separate arterial readout would
-therefore display the alveolar number a second time under a different name.
-That would present a definitional identity as though it were an independently
-modeled quantity. Earlier revisions of this document required an arterial
-readout. That requirement dates from before the arterial simplification was
-made explicit. It is withdrawn, rather than satisfied by a duplicate label.
+Arterial concentration is deliberately **not** in this list. In this model, the
+arterial fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
+§ "Model boundary"). A separate arterial readout would therefore show the
+alveolar number a second time under a different name, as though the model
+computed an arterial value of its own. Earlier revisions of this document
+required an arterial readout. That requirement dates from before this
+simplification was made explicit, and it is withdrawn.
 
 Showing which agent is running is a required output, not a convenience. A
 correct concentration attributed to the wrong agent is a presentation failure.
@@ -11812,10 +11809,9 @@ for the reason § "Displayed precision" gives for the readouts.
 This model assumes:
 
 - every modeled compartment is perfectly mixed;
-- each tissue group's exchange with blood is perfusion-limited, and the group
-  exchanges agent only with the blood flowing through it. No agent passes directly from one tissue group to
-  another, which is the intertissue diffusion that "Known limitations" lists
-  as omitted;
+- each tissue group exchanges agent only with the blood flowing through it, so
+  no agent passes directly from one tissue group to another. "Known limitations"
+  lists that route, intertissue diffusion, as omitted;
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
@@ -11875,13 +11871,12 @@ level. A model that adds ambient pressure will need one.
 
 ## Known limitations
 
-This model does not model:
+This model does not represent:
 
-- a separate arterial blood-mixing compartment. The lung's exchange with blood
-  is perfusion-limited, and the model omits shunt and ventilation-perfusion
-  mismatch (both below). So arterial blood carries the alveolar partial
-  pressure at every instant, as in the Gas Man reference simulator's
-  mammillary structure (see § "Model boundary");
+- a separate arterial blood-mixing compartment. Arterial blood carries the
+  alveolar partial pressure at every instant (see § "Model boundary"), because
+  the lung's exchange with blood is perfusion-limited and the model omits shunt
+  and ventilation-perfusion mismatch (both below);
 - lung tissue and pulmonary blood. No compartment represents either, and
   together they are a store worth about a fifth of every agent's fast pool
   (sized below);
