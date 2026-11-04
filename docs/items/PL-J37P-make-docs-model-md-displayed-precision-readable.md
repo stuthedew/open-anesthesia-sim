@@ -3,11 +3,13 @@ id: PL-J37P
 title: Make docs/MODEL.md § "Displayed precision" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P1
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-040-stop-displaying-more-decimals-than-the-model.md, docs/items/PL-0M7K-test-displayed-ordering-reverses-only-at-a.md, docs/items/PL-X9KD-re-derive-displayed-precision-and-the-supported.md, docs/items/PL-Z4K6-decide-whether-seven-readout-columns-on-a-1366.md
 added: 2026-11-02
+closed: 2026-11-04
+pr: 2022
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Displayed precision"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -48,3 +50,5 @@ or a sentence whose meaning needs their judgment.
 **Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
 
 **Checked 2026-11-04, from `PL-BSYT`'s copy-editor pass.** The copy editor proposed moving the residual lines' replay protocol (the 81 runs, the v0.5.21 and v0.5.22 replay, the 2,511 samples), the six-decimal history under `PL-TG60`, the v0.7.0 scoping sentence and every test and code name in this section into one "**For developers.**" note at the section's end. `PL-BSYT` kept each test name beside its paragraph instead. The documentation check accepts a note only for the run of paragraphs directly above it, so a single note at the end cannot hold the first paragraph. The moves are this item's work. Check that `PL-TG60`, `PL-B396` and `PL-2881` record the history before cutting it here.
+
+**Closed, 2026-11-04.** The history pass moved what the cited items did not already hold to `PL-040`, `PL-X9KD`, `PL-0M7K` and `PL-Z4K6`, under dated "Moved from docs/MODEL.md" paragraphs. The rewrite split the section into eleven subsections, moved test and code names into a note for developers at the end of each, and stated each repeated figure once. One sentence changed meaning, to remove a contradiction: the paragraph saying a change of decimal count changes only what a reader sees now also says it changes which settings a slider can reach, as the paragraph on the two counts that set the slider steps already said. The section went from 8,142 words on `main` to 6,732, counting tables, markers and notes for developers. The copy editor ran as a `general-purpose` agent given `.claude/agents/copy-editor.md`'s text, because a Projects thread cannot start the agent by name (`PL-TQ4J`). It read 8 passages and rewrote 8, and no edit was reverted. Its four queries: "over a held hour" means an hour with the settings held constant (the reference test's held run); "the readouts where a reader is least able to notice" was left as written; the 1320 px figure for a maximized 1366 px screen is the readout region's width, and the claim that a 1280 px screen opens on seven columns may predate the region's split (`PL-LKX7`); the six PL-040 readings carry no sample times, which the record cannot restore. `tools/model_rewrite.py lost` lists no added value, and every dropped figure is history now held by an item, or a duplicate that the section still states.
