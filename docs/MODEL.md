@@ -11868,45 +11868,42 @@ for the reason § "Displayed precision" gives for the readouts.
 
 ## Assumptions
 
-Version v0.1.0 assumes:
+This model assumes:
 
 - every modeled compartment is perfectly mixed;
 - each tissue group is perfusion limited, and exchanges agent only with the
   blood flowing through it. No agent passes directly from one tissue group to
-  another. That direct route is the intertissue diffusion that "Known
-  limitations" records as omitted;
+  another, which is the intertissue diffusion that "Known limitations" lists
+  as omitted;
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
 - the alveolar gas volume is constant. Uptake removes agent from the
   compartment without removing volume from it, and no inspired flow replaces
-  the gas that left. This is the assumption that excludes nitrous oxide,
-  simultaneous gases, and the concentration and second-gas effects. "Alveolar
-  gas" measures what the assumption costs and what lifting it would take;
+  the gas taken up. This assumption excludes nitrous oxide, simultaneous
+  gases, and the concentration and second-gas effects. "Alveolar gas"
+  measures what it costs and what lifting it would take;
 - inspired gas is circuit gas. One gas-phase state, $`F_I`$, lies between the
   vaporizer and the alveoli, because there is one perfectly mixed circuit with
   no dead space and no separate limbs (see § "Model boundary");
 - the breathing system is a semi-closed circle whose surplus gas valve is
-  passing gas. An equal exhaust outflow matches the fresh-gas inflow at every
-  instant. This is what lets one $`\dot V_F`$ be both the delivery rate and
-  the removal rate (see § "Breathing circuit");
+  passing gas. Exhaust outflow equals fresh-gas inflow at every instant, so
+  one $`\dot V_F`$ is both the delivery rate and the removal rate (see
+  § "Breathing circuit");
 - inspired gas reaches the alveoli undiluted by water vapour. Real alveolar
-  gas is saturated at body temperature, and nothing here represents that, so
-  the circuit's dry gas enters the alveolar compartment unchanged. This is the
-  third gas-phase condition, beside the temperature and pressure bullets
-  below. The reference condition names it ("dry"), but the model does not
-  examine it anywhere. "Known limitations" sizes it at 47/760 and measures
-  what correcting it would cost;
+  gas is saturated at body temperature, and the modeled alveoli hold no
+  water, so the circuit's dry gas enters the alveolar compartment unchanged.
+  The word "dry" in the reference condition refers to this. "Known
+  limitations" sizes it at 47/760 and measures what correcting it would cost;
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect agent kinetics;
-- temperature is constant. Every gas volume the model stores is carried at
-  the one reference condition that "Agent amount" states: 20 °C and
-  760 mmHg, dry. No equation here converts between ambient and body
-  conditions. "Known limitations" sizes what that costs;
-- ambient pressure is constant, and it is one atmosphere, 760 mmHg. Every
+- temperature is constant. Every stored gas volume is at the one reference
+  condition that "Agent amount" states: 20 °C and 760 mmHg, dry. No equation
+  converts between ambient and body conditions. "Known limitations" sizes
+  what that costs;
+- ambient pressure is constant at one atmosphere, 760 mmHg. Every
   concentration in this model is a fraction of that pressure, so the model is
-  specified at sea level and nowhere else. The note below this list says what
-  that gains and what it costs;
+  specified at sea level and nowhere else (see the note below this list);
 - there is no metabolism;
 - there is no chemical degradation;
 - there is no anesthetic reaction with circuit materials;
@@ -11914,59 +11911,55 @@ Version v0.1.0 assumes:
 - settings remain constant within each numerical step; and
 - the selected reference patient does not change physiologically during a run.
 
-**What one atmosphere buys, and why nothing in the model is wrong today.** A
-gas-phase fraction and a partial pressure differ only by a factor of the
-ambient pressure. Fixing that pressure at 760 mmHg therefore makes the two
-interchangeable. $`F_A = 0.02`$ is 15.2 mmHg, and no statement in this
-document has to say which of the two it means. The rest of the specification
-is built on that identity. On its strength, "Concentrations" stores every
-state as a dimensionless fraction, the interface displays each one as a
-percent of one atmosphere, and $`\mathrm{MAC}_\%`$ divides one sea-level
-percent by another.
+**At one atmosphere, a fraction and a partial pressure are interchangeable.**
+They differ only by a factor of the ambient pressure, so with that pressure
+fixed at 760 mmHg, $`F_A = 0.02`$ is 15.2 mmHg. The rest of the specification
+relies on this. "Concentrations" stores every state as a dimensionless
+fraction, the interface displays each one as a percent of one atmosphere, and
+$`\mathrm{MAC}_\%`$ divides one sea-level percent by another.
 
-**The delivered-concentration control is where that assumption does the most
-work.** The control is a vaporizer dial rather than a modeled gas state. It is
-`app/control_record.py`'s `ControlInput.DELIVERED`, and its recorded changes
-carry the unit *percent of 1 atm*. A dial position means a partial pressure,
-the quantity that produces the anesthetic effect, only once the ambient
-pressure is known. At 760 mmHg it means the *same* partial pressure whichever
-class of vaporizer the dial belongs to. That is why this model needs no
-device-class parameter, and why no equation, stored value or displayed number
-here is wrong. Away from 760 mmHg the two classes diverge, and they diverge in
-opposite directions. That is a limit on where this model applies rather than
-a defect in it, and § "Known limitations" below records it. A later reader
-should not "fix" this.
+**The delivered-concentration control depends on it most.** The control is a
+vaporizer dial, not a modeled gas state. It is `app/control_record.py`'s
+`ControlInput.DELIVERED`, and its recorded changes carry the unit *percent of
+1 atm*. A dial position means a partial pressure, the quantity that produces
+the anesthetic effect, only once the ambient pressure is known. At 760 mmHg it
+means the same partial pressure whichever class of vaporizer the dial belongs
+to. So the model needs no device-class parameter, and no equation, stored
+value or displayed number here is wrong at sea level. Away from 760 mmHg the
+two classes diverge in opposite directions, which limits where the model
+applies. § "Known limitations" below describes it.
+
+**For developers.** The sea-level identity is a limit on where the model
+applies. Do not "fix" it by adding a device-class parameter.
 
 ## Known limitations
 
 This model does not model:
 
 - a separate arterial blood-mixing compartment. Arterial blood is
-  flow-limited and equals alveolar gas at every instant, which matches the Gas
-  Man reference simulator's mammillary structure (see § "Model boundary");
+  flow-limited and equals alveolar gas at every instant, as in the Gas Man
+  reference simulator's mammillary structure (see § "Model boundary");
 - lung tissue and pulmonary blood. No compartment represents either, and
   together they are a store worth about a fifth of every agent's fast pool
-  (the note below this list sizes it);
+  (sized below);
 - a vessel-poor tissue group. Bone, cartilage, ligament, tendon and the other
   tissues with little or no blood flow have no compartment, and none of the
-  three tissue groups stands for them. The note below this list gives the
-  reason, which is the one the field gives;
+  three tissue groups stands for them (the reason is below);
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added
   in v0.2.0; see § "Parameter provenance");
 - nitrous oxide;
 - simultaneous gases;
 - concentration or second-gas effects;
-- absorption of agent by the breathing circuit's own plastics and rubber. The
-  note below this list measures it, and the size of the effect depends
-  strongly on the agent;
+- absorption of agent by the breathing circuit's own plastics and rubber,
+  whose size depends strongly on the agent (measured below);
 - vaporizer interlocks;
 - switching between volatile agents;
 - direct anesthetic injection;
 - automated end-tidal control;
 - closed-circuit operation, or any machine mode that shuts the surplus gas
-  valve. In this model the exhaust runs whenever fresh gas runs. A closed
-  circuit is a different conservation statement, not this one with the
-  exhaust turned down ("Breathing circuit" argues this and sizes the gap);
+  valve. Here the exhaust runs whenever fresh gas runs. A closed circuit
+  needs a different conservation statement ("Breathing circuit" argues this
+  and sizes the gap);
 - dead space;
 - airway sampling delay;
 - multiple alveolar units;
@@ -11974,14 +11967,13 @@ This model does not model:
 - ventilation-perfusion mismatch;
 - diffusion limitation;
 - intertissue diffusion, which is agent passing directly from a lean tissue
-  into fat lying against it. This is a route between two tissues, not the
-  blood-to-tissue limitation above. The note below this list measures what it
-  leaves out of the fat compartment;
+  into fat lying against it. It is a route between two tissues, separate from
+  the blood-to-tissue diffusion limitation above (measured below);
 - uncertainty in the tissue:gas partition coefficients. Each is carried as
   an exact value. The stored values are Gas Man's, which differ from the one
   laboratory's means behind them by up to 9%. Other laboratories report values
-  for the same tissue that differ by up to 150%, and the note below this list
-  says which tissues that reaches;
+  for the same tissue that differ by up to 150% (below, with the tissues it
+  reaches);
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -11990,14 +11982,13 @@ This model does not model:
 - hypothermia;
 - alveolar humidification. Real alveolar gas is saturated with water vapour
   at 47 mmHg, and the modeled alveolus holds none, so no inspired fraction is
-  diluted when it reaches the alveolus. The note below this list sizes it,
-  and measures what correcting it would cost;
+  diluted when it reaches the alveolus (sized below, with what correcting it
+  would cost);
 - the difference between ambient and body conditions. Every gas volume is
   carried at the single reference condition that "Agent amount" fixes, and no
-  ambient-to-body correction is applied anywhere (the note below this list
-  sizes it);
+  ambient-to-body correction is applied anywhere (sized below);
 - altitude, or any ambient pressure other than the 760 mmHg fixed under
-  § "Assumptions". The notes below this list say what that excludes;
+  § "Assumptions" (what that excludes is below);
 - age-dependent MAC;
 - individual variation in awakening concentration. The chart's MAC-awake band
   is a population value at one standard deviation, never a threshold for the
@@ -12012,51 +12003,49 @@ This model does not model:
 - dosing recommendations; or
 - patient-specific clinical predictions.
 
-**Three of those bullets are one constraint, not three omissions.** Nitrous oxide, simultaneous gases, and concentration or
-second-gas effects look like three independent features to be added, and they
-are not. All three are blocked by the fixed alveolar volume that
-"Alveolar gas" and "Assumptions" declare, and lifting that constraint unblocks
-all three at once. A partial fix whose $`F_A`$ curve is plausible would be
-wrong by tens of percent through induction. "Alveolar gas" carries the arithmetic that separates the two
-cases, and the two standard formulations that lift the constraint.
+**Three of those bullets are one constraint, not three omissions.** Nitrous
+oxide, simultaneous gases, and concentration or second-gas effects are all
+blocked by the fixed alveolar volume that "Alveolar gas" and "Assumptions"
+declare. Lifting that constraint unblocks all three at once. Adding nitrous
+oxide without lifting it would give an $`F_A`$ curve that looks plausible but
+is wrong by tens of percent through induction. "Alveolar gas" gives the
+arithmetic, and the two standard formulations that lift the constraint.
 
 **Lung tissue and pulmonary blood are an omitted store worth about a fifth of
-the fast pool.** The gas-exchange boundary here is the alveolar gas
-compartment. Arterial blood is taken to carry that compartment's partial
-pressure unchanged. Nothing represents the lung's own tissue, or the pulmonary
-blood in transit through it. The store was sized on round physiologic figures: 1 kg of lung tissue at a tissue:blood ratio of
-1.2, and 1.8 L of pulmonary and arterial blood. On those figures the store is
-worth 20.1% of desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of
+the fast pool.** The gas-exchange boundary is the alveolar gas compartment,
+and arterial blood carries that compartment's partial pressure unchanged.
+Nothing represents the lung's own tissue, or the pulmonary blood in transit
+through it. On round physiologic figures, 1 kg of lung tissue at a
+tissue:blood ratio of 1.2 and 1.8 L of pulmonary and arterial blood, the store
+is worth 20.1% of desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of
 isoflurane's.
 
-The store is invisible in the wash-in direction, which is why nothing before
-the open-circuit diagnostic surfaced it. It equilibrates fully within about
-thirty minutes, so it does not appear in $`F_A/F_I`$ at all. It acts only
-early in an elimination. "Desflurane's residual, and why the parameter file
-was not changed" weighs these figures against the other explanations of one
-disagreement.
+The store equilibrates fully within about thirty minutes, so it does not
+appear in $`F_A/F_I`$ during wash-in. It acts only early in an elimination.
+"Desflurane's residual, and why the parameter file was not changed" weighs
+these figures against the other explanations of one disagreement.
 
 **The vessel-poor group is left out because it takes up almost no agent, and
-Eger's own model leaves it out for that reason.** Eger grouped the
-body's tissues into four groups by their capacity and their blood flow:
-vessel-rich, muscle, fat and vessel-poor. His later five-compartment model
-keeps the first three. It deletes the vessel-poor group "because its
-contribution to uptake is considered insignificant", and adds a lung
-compartment and an intertissue-diffusion compartment instead. That is
-Carpenter et al. 1986, as Hendrickx and De Wolf report it on p. 163. Eger and
-Saidman's review gives the physiological reason. The group is "made up of
-ligaments, tendons, cartilage, bone, and other avascular tissues", and it
-"does not contribute to uptake because of its minimal or absent perfusion"
-(p. 1023). Gas Man, the reference implementation, also carries exactly three
-tissue groups, in the Workbook's Model Parameters table on p. 168.
+Eger's own model leaves it out for that reason.** Eger grouped the body's
+tissues into four groups by their capacity and their blood flow: vessel-rich,
+muscle, fat and vessel-poor. His later five-compartment model keeps the first
+three. It deletes the vessel-poor group "because its contribution to uptake is
+considered insignificant", and adds a lung compartment and an
+intertissue-diffusion compartment instead (Carpenter et al. 1986, as Hendrickx
+and De Wolf report it on p. 163). Eger and Saidman give the physiological
+reason. The group is "made up of ligaments, tendons, cartilage, bone, and
+other avascular tissues", and it "does not contribute to uptake because of its
+minimal or absent perfusion" (p. 1023). Gas Man, the reference
+implementation, also carries exactly three tissue groups (the Workbook's Model
+Parameters table, p. 168).
 
 So the three groups here are Eger's five-compartment model without its lung
-and intertissue-diffusion compartments, and the bullets on lung tissue and on
-intertissue diffusion record those two omissions. The three groups hold 6.0,
-33.0 and 14.5 L, which is 53.5 L in a 70 kg reference patient. Read that total
-as the sum of three compartments, not as a statement of body composition. The
-rest of the body, the vessel-poor tissues among it, is not a store that this
-model fills or empties.
+and intertissue-diffusion compartments, the two omissions that the bullets on
+lung tissue and on intertissue diffusion record. The three groups hold 6.0,
+33.0 and 14.5 L, which is 53.5 L in a 70 kg reference patient. That total is
+the sum of three compartments, not a body composition. The rest of the body,
+the vessel-poor tissues among it, is not a store that this model fills or
+empties.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
 <!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
 <!-- provenance: data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5 -->
@@ -12064,22 +12053,20 @@ model fills or empties.
 <!-- derived: 53.5 L from data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6, tissue_groups.muscle.volume_l = 33, tissue_groups.fat.volume_l = 14.5 -->
 
 Nothing in this project measures what the omission costs. The case that it is
-small is the perfusion argument above: a tissue that receives almost no blood
-receives almost no agent over the length of any case this simulator teaches.
-Hendrickx and De Wolf's p. 163 and Eger and Saidman's p. 1023 were read in
-full text from the private reference corpus on 2026-10-25. Carpenter et al.'s
-full text has not been read here, so the deletion is attributed to them only as
-Hendrickx and De Wolf report it. The intertissue-diffusion note below gives the
-full citation of all four sources.
+small is the perfusion argument: a tissue that receives almost no blood
+receives almost no agent over any case this simulator teaches. Hendrickx and
+De Wolf's p. 163 and Eger and Saidman's p. 1023 were read in full text.
+Carpenter et al.'s full text has not been read, so the deletion is attributed
+to them only as Hendrickx and De Wolf report it. The intertissue-diffusion
+note below gives the full citation of all four sources.
 
 **The circuit's own walls absorb agent, and the model's circuit is inert.**
-`BreathingCircuit` solves an ideal, well-mixed volume whose walls do nothing.
-Agent enters with fresh gas and leaves with the exhaust. Targ, Yasuda and Eger
-measured what a real circuit does (*Anesth Analg* 1989 Aug;69(2):218–25, PMID
-2764290). Their study is the companion of the tissue paper that this
-project's coefficients come from. Their Table 1 gives plastic/gas and
-rubber/gas partition coefficients after 6–9 weeks' equilibration, in the
-order desflurane, sevoflurane, isoflurane, halothane:
+`BreathingCircuit` solves an ideal, well-mixed volume whose walls hold no
+agent. Agent enters with fresh gas and leaves with the exhaust. Targ, Yasuda
+and Eger measured what a real circuit holds (*Anesth Analg* 1989
+Aug;69(2):218–25, PMID 2764290), in the companion to the tissue paper that
+this project's coefficients come from. Their Table 1 gives plastic/gas and
+rubber/gas partition coefficients after 6–9 weeks' equilibration:
 
 | component | desflurane | sevoflurane | isoflurane | halothane |
 | --- | ---: | ---: | ---: | ---: |
@@ -12092,77 +12079,68 @@ order desflurane, sevoflurane, isoflurane, halothane:
 
 The ranking held at every equilibration time from 7.5 min to 9 weeks. So
 **the inert circuit is most nearly true for desflurane and least for
-halothane**. The size of this omission depends on which agent is loaded. That
-is unusual on this list, and it is why the dependence is stated rather than
-left implied. The same study measured washin and washout in a real circuit at
-0.5–5 L/min inflow, and compared them with the ideal exponential. It found
-that desflurane's curves "closely approximated the maximal possible
-theoretical rates", while the more soluble agents lagged.
+halothane**, and this omission's size depends on which agent is loaded. The
+same study measured washin and washout in a real circuit at 0.5–5 L/min
+inflow, against the ideal exponential. Desflurane's curves "closely
+approximated the maximal possible theoretical rates", while the more soluble
+agents lagged.
 <!-- not-restated: 5 L/min -->
 
-A reader should take two things from that, and no more. First, the authors'
-own conclusion is that this absorption "should not hinder induction of or
-recovery from anesthesia" for desflurane, so the simplification is defensible
-rather than a defect. Second, the coefficients above **overstate** the effect
-during a case. Equilibration is nowhere near complete in the hours an
-anesthetic lasts, and the paper says so directly. What the model cannot show
-is the early lag that a real circuit adds for sevoflurane and isoflurane,
-relative to the curve drawn here. Adding a wall term is not
-planned. It would be a second gas store with its own time constant, and no
-teaching objective in `ROADMAP.md` asks for one.
+The authors conclude that for desflurane this absorption "should not hinder
+induction of or recovery from anesthesia". The coefficients above
+**overstate** the effect during a case, because equilibration is nowhere near
+complete in the hours an anesthetic lasts, as the paper says. What the model
+cannot show is the early lag that a real circuit adds for sevoflurane and
+isoflurane. A wall term is not planned. It would be a second gas store with
+its own time constant, and no teaching objective in `ROADMAP.md` asks for one.
 
 **Desflurane's five-minute washout disagrees with the published human
 measurement, and no admissible parameter closes it.** As a diagnostic, the
 model was run with the rebreathing circuit removed. It then reproduces the
 published $`F_A/F_{A0}`$ at five minutes for sevoflurane and for both
-isoflurane cohorts. It washes desflurane out 2.33 published standard
-deviations too *fast*. This is the one place in this repository where a
-comparison against a human measurement fails in the direction that overstates
-recovery. A learner who took desflurane's early washout as a physiologic
-prediction would expect a faster fall than Yasuda's volunteers showed.
-"Desflurane's residual, and why the parameter file was not changed" carries
-what was ruled out. The candidates ruled out were the tissue and blood
-solubilities, the operating point, the fast capacity this model omits, a
-non-ideal lung, and both readings of the published apparatus (circuit-style rebreathing, and the
-50 ml of series dead space that its methods section actually describes).
-End-tidal sampling bias was also ruled out, on the evidence of a human
-measurement of the end-tidal gradient. That gradient runs the other way with
-solubility and reverses sign through an elimination. One hypothesis is left,
-and this project cannot test it: the published value itself. The disagreement
-is recorded rather than corrected, because every value that would close it is
+isoflurane cohorts, but washes desflurane out 2.33 published standard
+deviations too *fast*. It is the one comparison in this repository against a
+human measurement that fails in the direction that overstates recovery. A
+learner who took desflurane's early washout as a physiologic prediction would
+expect a faster fall than Yasuda's volunteers showed. "Desflurane's residual,
+and why the parameter file was not changed" gives what was ruled out: the
+tissue and blood solubilities, the operating point, the fast capacity this
+model omits, a non-ideal lung, and both readings of the published apparatus
+(circuit-style rebreathing, and the 50 ml of series dead space that its
+methods section describes). End-tidal sampling bias was ruled out by a human
+measurement of the end-tidal gradient, which runs the other way with
+solubility and reverses sign through an elimination. The one hypothesis left
+is the published value itself, which this project cannot test. The
+disagreement is left uncorrected, because every value that would close it is
 outside what the human measurements support.
 
-**Dead space is an omission with a known exchange rate, which is unusual on
-this list.** The model ventilates the alveolar compartment continuously and
-has no tidal structure, so it represents neither anatomic nor apparatus dead
-space. But a *series* dead space is exactly equivalent to a reduction in
-alveolar ventilation. Over one breath, the dead-space volume re-enters the
-alveoli at $`F_A`$ and leaves at $`F_A`$, which nets to nothing. So a dead
-space $`V_D`$ at rate $`f`$ is worth $`\dot V_A - V_D f`$ and nothing else.
-"Desflurane's residual, and why the parameter file was not changed" carries
-the derivation and the measurement that used it. This has two consequences
-for a reader. First, the alveolar ventilation control already *is* the
-dead-space control, provided the value entered is a true alveolar ventilation
-rather than a minute ventilation. The interface names the control
-"Alveolar ventilation" for that reason. A user who enters a minute ventilation
-there has overstated gas exchange by the whole of the dead space. Second,
-what this model cannot represent is not dead space but **parallel**
-inhomogeneity. That means unequal ventilation-perfusion ratios across
-alveolar units, which the next three bullets name and which no single
-ventilation figure reproduces.
+**Dead space is an omission with a known exchange rate.** The model
+ventilates the alveolar compartment continuously and has no tidal structure,
+so it represents neither anatomic nor apparatus dead space. A *series* dead
+space is exactly equivalent to a reduction in alveolar ventilation. Over one
+breath, the dead-space volume re-enters the alveoli at $`F_A`$ and leaves at
+$`F_A`$, which nets to nothing. So a dead space $`V_D`$ at rate $`f`$ is worth
+$`\dot V_A - V_D f`$ and nothing else ("Desflurane's residual, and why the
+parameter file was not changed" gives the derivation). Two things follow for
+a reader. First, the alveolar ventilation control already is the dead-space
+control, provided the value entered is a true alveolar ventilation. The
+interface names the control "Alveolar ventilation" for that reason, and a
+minute ventilation entered there overstates gas exchange by the whole of the
+dead space. Second, what this model cannot represent is **parallel**
+inhomogeneity: unequal ventilation-perfusion ratios across alveolar units.
+The bullets on multiple alveolar units, shunt and ventilation-perfusion
+mismatch name it, and no single ventilation figure reproduces it.
 
 **Cardiac output and the three perfusion fractions are held fixed under
 anesthesia, and a real anesthetic moves them.** $`Q`$ and each
 $`\text{perfusion fraction}_i`$ are constant for the whole of a run. $`Q`$ is
-a user control, and nothing else can change it. The three fractions are not a
-control at all. A volatile anesthetic is itself a cardiovascular depressant.
-So the model holds fixed exactly the quantities that its own subject matter
-acts on, and the consequence falls on the curve a learner is reading. The
-tissue time constants are $`\tau_i = V_i\lambda_{i:b}/Q_i`$, so a flow that
-fell under anesthesia would *lengthen* every tissue's equilibration for as
-long as the agent was being given. That direction runs against the intuition
-that more agent means faster equilibration. That is why it is stated here
-rather than left to the "hemodynamic response" bullet above.
+a user control, and nothing else changes it. The three fractions are not a
+control at all. A volatile anesthetic is itself a cardiovascular depressant,
+so the model holds fixed the quantities its own subject acts on. The tissue
+time constants are $`\tau_i = V_i\lambda_{i:b}/Q_i`$, so a flow that fell
+under anesthesia would *lengthen* every tissue's equilibration for as long as
+the agent was given. That runs against the intuition that more agent means
+faster equilibration.
 
 **It is not modeled because the human volunteer data do not describe a
 function this model could carry.** Three studies measured healthy volunteers
@@ -12171,17 +12149,16 @@ who were anesthetized without surgery, each against their own awake baseline:
 - Weiskopf RB, Cahalan MK, Eger EI 2nd, Yasuda N, Rampil IJ, Ionescu P,
   Lockhart SH, Johnson BH, Freire B, Kelley S. *Cardiovascular actions of
   desflurane in normocarbic volunteers.* Anesth Analg 1991;73(2):143-56.
-  PMID 1854029. The study gave desflurane alone at 0.83, 1.24 and 1.66 MAC to
-  12 men. **Cardiac index did not change**, although stroke volume index fell
-  and filling pressure rose at every concentration. This is myocardial
-  depression with cardiac output maintained.
+  PMID 1854029. Desflurane alone at 0.83, 1.24 and 1.66 MAC, in 12 men.
+  **Cardiac index did not change**, although stroke volume index fell and
+  filling pressure rose at every concentration. This is myocardial depression
+  with cardiac output maintained.
 - Cahalan MK, Weiskopf RB, Eger EI 2nd, Yasuda N, Ionescu P, Rampil IJ,
   Lockhart SH, Freire B, Peterson NA. *Hemodynamic effects of
   desflurane/nitrous oxide anesthesia in volunteers.* Anesth Analg
   1991;73(2):157-64. PMID 1854030, doi:10.1213/00000539-199108000-00008. The
-  study used the **same** volunteers, in the same crossover, with 60% nitrous
-  oxide carrying 0.5 MAC of the total. Cardiac index now fell
-  dose-dependently.
+  **same** volunteers, in the same crossover, with 60% nitrous oxide carrying
+  0.5 MAC of the total. Cardiac index now fell dose-dependently.
 - Malan TP Jr, DiNardo JA, Isner RJ, Frink EJ Jr, Goldberg M, Fenster PE,
   Brown EA, Depa R, Hammond LC, Mata H. *Cardiovascular effects of sevoflurane
   compared with those of isoflurane in volunteers.* Anesthesiology
@@ -12194,153 +12171,143 @@ who were anesthetized without surgery, each against their own awake baseline:
 
 <!-- not-restated: 0.5 MAC -->
 
-Read together, these studies show three things. The *sign* of the
-cardiac-output change depends on the carrier gas. The dose-response is **not
-monotonic**. And the effect changes with time at a fixed dose, and with the
-mode of ventilation. This model has no second gas, no ventilation mode, no
-surgical stimulus and no pharmacodynamic layer of any kind, so it could carry
-none of those dependencies. It could only carry a monotonic, time-invariant
-$`Q(\text{dose})`$, and the literature above does not show that relationship.
-Teaching one would be worse than holding the flow fixed and saying so. The
-case for modeling regional flow is weaker still. The measurements this
-project could find of how anesthesia redistributes flow between the
-vessel-rich, muscle and fat groups are largely from animals. The note below
-on the fat group's perfusion gives what the human record supports, even at
-rest.
+Together these studies show that the *sign* of the cardiac-output change
+depends on the carrier gas, that the dose-response is **not monotonic**, and
+that the effect changes with time at a fixed dose and with the mode of
+ventilation. This model has no second gas, no ventilation mode, no surgical
+stimulus and no pharmacodynamic layer, so it could carry none of those
+dependencies. It could carry only a monotonic, time-invariant
+$`Q(\text{dose})`$, which the studies above do not show. Teaching one would be
+worse than holding the flow fixed and saying so. The case for modeling
+regional flow is weaker still. The measurements this project could find of how
+anesthesia redistributes flow between the vessel-rich, muscle and fat groups
+are largely from animals. The note below on the fat group's perfusion gives
+what the human record supports, even at rest.
 
 **What a learner gets instead is the control.** Cardiac output is on the
-interface, so a learner can reach the lesson by moving it and watching. The
-lesson is that a higher output carries more agent away from the lung, stores
-more of it and slows the rise of $`F_A`$. Moving the control is also how the
-model's own directional gates assert this
+interface, so a learner can move it and watch: a higher output carries more
+agent away from the lung, stores more of it and slows the rise of $`F_A`$.
+The model's own directional gates assert this the same way
 (`tests/reference/test_sevo_patient.py`). What is absent is the *automatic*
-coupling from the agent to the flow, and a reader should supply that
-themselves.
+coupling from the agent to the flow, which the reader has to supply.
 
-**This is the model's current position, not a closed question.**
-`ROADMAP.md`'s planned-milestone item 35 carries the coupling as a possible
-future feature. It carries it as an *option* that a user would turn on, not as
-a change to what a run does by default. The evidence above argues for that
-choice, since an overlay may state its own uncertainty where a model's default
-behaviour cannot.
+`ROADMAP.md`'s planned-milestone item 35 carries that coupling as a possible
+future option that a user would turn on, with a run's default behaviour
+unchanged. The evidence above favours an option, since an overlay may state
+its own uncertainty where a model's default behaviour cannot.
 
-**The MAC divisor is a limitation of the display, and a named one.** The
-second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
-and MAC parameters" measures the gap. Against Mapleson's age-40
-meta-analytic values, the stored sevoflurane MAC is 10% low and the stored
-desflurane MAC is 10% high. A sevoflurane-versus-desflurane comparison in MAC
-multiples is therefore displaced by about 22% purely by the choice of MAC
-source. The direction is consistent within an agent and does not change any
-curve's shape or timing. It rescales one agent's MAC axis against another's.
-But the gap is larger than either source's own confidence limits. A reader
-comparing two agents at "1 MAC" is comparing two doses that the primary
-literature would not call equipotent to that precision. The interface
-displays the divisor for exactly this reason. Moving all parameters to
-primary sources is `ROADMAP.md`'s planned-milestone item 31.
+**The MAC divisor is a named limitation of the display.** The second display
+unit divides by a tier-3 `mac_percent`, and "Delivery-limit and MAC
+parameters" measures the gap. Against Mapleson's age-40 meta-analytic values,
+the stored sevoflurane MAC is 10% low and the stored desflurane MAC is 10%
+high. A sevoflurane-versus-desflurane comparison in MAC multiples is therefore
+displaced by about 22% by the choice of MAC source alone. The shift is
+consistent within an agent and changes no curve's shape or timing. It
+rescales one agent's MAC axis against another's. The gap is larger than
+either source's own confidence limits, so two agents at "1 MAC" are not
+equipotent to that precision by the primary literature. The interface
+displays the divisor for this reason. Moving all parameters to primary sources
+is `ROADMAP.md`'s planned-milestone item 31.
 
 **Two omissions bound the supported run length, and a third bounds the tail
-inside it**. The first two are metabolism, in the list above, and
-the fat group's flow, in the note below. Both are negligible over a case, and
-neither is negligible over days. That is why a run is supported to 24 hours,
-and why the step past that limit is refused rather than taken. "Supported run
-length" argues for the number and gives the measured extent of sevoflurane's
-metabolism. A longer run is not merely unvalidated. It increasingly displays
+inside it.** The first two are metabolism, in the list above, and the fat
+group's flow, in the note below. Both are negligible over a case and not over
+days. So a run is supported to 24 hours, and the step past that limit is
+refused. "Supported run length" argues for the number and gives the measured
+extent of sevoflurane's metabolism. A longer run would increasingly display
 what this model leaves out. The fat flow counts against the number on its
-depot reading, the reading on which the stored figure runs about twice too
-high. On the washout reading the stored figure is at or a little below the
-truth, and the note leaves the direction unsettled. So inside the span, the
-fat flow's effect on the tail is an uncertainty of up to about a factor of two
-in the fat trace's loading, rather than a bias one way. The
-intertissue-diffusion note after it describes the third omission. Human
-washout needs a fourth compartment that this model lacks. That compartment
-carries the largest term in the measured curve from about hour 2-3 of
-elimination to about hour 21-29. So inside the supported span, the tail is
-already missing its largest measured component. All else equal, the tail
-falls faster than the measurement from about the third hour. Neither omission
-moves the 24 hours by itself, and the measured gap does not either.
-§ "The first 24 hours of elimination against the published mean
-curves" puts the shipped tail below the published mean curves from about the
-seventh hour to the twenty-first, by about a third at the widest point. For
-desflurane the tail is below them from 3.4 to 15.3 hours, by about half at the
-widest point, near 8 hours. The shipped tail is above the curves before and
-after that span. § "Supported run length" records why that leaves
-the number where it is.
+depot reading, on which the stored figure runs about twice too high. On the
+washout reading the stored figure is at or a little below the truth, and the
+note leaves the direction unsettled. So inside the span, the fat flow makes
+the fat trace's loading uncertain by up to about a factor of two, with no
+known direction. The third omission is in the intertissue-diffusion note.
+Human washout needs a fourth compartment that this model lacks, and that
+compartment carries the largest term in the measured curve from about hour
+2-3 of elimination to about hour 21-29. So all else equal, the modelled tail
+falls faster than the measurement from about the third hour. Neither omission,
+and not the measured gap either, moves the 24 hours by itself. § "The first 24
+hours of elimination against the published mean curves" puts the shipped tail
+below the published mean curves from about the seventh hour to the
+twenty-first, by about a third at the widest point. For desflurane the tail is
+below them from 3.4 to 15.3 hours, by about half at the widest point, near 8
+hours. The shipped tail is above the curves before and after that span.
+§ "Supported run length" gives the reason that leaves the number where it is.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The fat group's flow is twice a resting depot measurement, and is where
-human washout fits put it. The two human sources do not agree about which way
-the fat trace errs**. The fat flow fraction is tier 3, like every
-other parameter in the reference patient, and `reference_adult.json` carries
-both comparisons. Heinonen et al. used positron emission tomography to
-measure resting subcutaneous adipose perfusion in the thigh of six healthy
-young women. Their measurement is close to half what the stored fraction
-implies. The file's note gives both figures and the volume-to-mass conversion
-between them. This model is validated against two Yasuda 1991 papers. Both
-fit a five-compartment mammillary model to each volunteer's data and read the
-slowest compartment as fat. Both estimate its blood flow as that
-compartment's tissue/blood partition coefficient times its fitted rate
-constant (*Anesth Analg* p. 319). For sevoflurane and isoflurane they found
-2.4 ± 0.6 and 2.2 ± 0.5 mL per 100 mL of tissue per minute (Table 5, p. 322).
-For desflurane and isoflurane they found 2.1 ± 0.4 and 2.2 ± 0.2 (Table 5,
-p. 496). These figures are mean ± SD, at the fat:blood coefficients of
-Yasuda, Targ and Eger 1989. The stored fraction implies 2.07, which is 0.06 of
-the 5.0 L/min default cardiac output flowing into 14.5 L. The comparison
-rests on no fitted volume, because flow per unit of tissue is the partition
-coefficient over the time constant. This model's own stored fat solubilities
-(fat:gas over blood:gas) are 52 for sevoflurane, 54 for isoflurane and 31 for
-desflurane. At those values, the fitted fat-group time constants of
-2,120, 2,130, 1,340 and 2,090 minutes (Table 4 of each paper) give
-2.5, 2.5, 2.3 and 2.6. The intertissue-diffusion note below tabulates the same
-fact from the other side. This model's fat time constant is within one
-standard deviation of the fitted fat group's in three cohorts, and a little
-longer than it in all four. Read as evidence about the fat group's flow, the
-PET measurement puts the stored figure at about twice the truth. The washout
+human washout fits put it. The two human sources disagree about which way the
+fat trace errs.** The fat flow fraction is tier 3, like every other parameter
+in the reference patient, and `reference_adult.json` carries both comparisons.
+Heinonen et al. measured resting subcutaneous adipose perfusion in the thigh of
+six healthy young women by positron emission tomography (PET). Their figure is
+close to half what the stored fraction implies, and the file's note gives both
+figures and the volume-to-mass conversion between them. The two Yasuda 1991
+papers this model is validated against each fit a five-compartment mammillary
+model to each volunteer's data, and read the slowest compartment as fat. Both
+estimate its blood flow as that compartment's tissue/blood partition
+coefficient times its fitted rate constant (*Anesth Analg* p. 319). For
+sevoflurane and isoflurane they found 2.4 ± 0.6 and 2.2 ± 0.5 mL per 100 mL
+of tissue per minute (Table 5, p. 322). For desflurane and isoflurane they
+found 2.1 ± 0.4 and 2.2 ± 0.2 (Table 5, p. 496). These are mean ± SD, at the
+fat:blood coefficients of Yasuda, Targ and Eger 1989.
+<!-- not-restated: 2.4, 2.1 -->
+
+The stored fraction implies 2.07: 0.06 of the 5.0 L/min default cardiac
+output, flowing into 14.5 L. Flow per unit of tissue is the partition
+coefficient over the time constant, so the comparison needs no fitted volume.
+This model's stored fat solubilities (fat:gas over blood:gas) are 52 for
+sevoflurane, 54 for isoflurane and 31 for desflurane. At those values, the
+fitted fat-group time constants of 2,120, 2,130, 1,340 and 2,090 minutes
+(Table 4 of each paper) give 2.5, 2.5, 2.3 and 2.6. This model's fat time
+constant is within one standard deviation of the fitted fat group's in three
+cohorts, and a little longer than it in all four (the intertissue-diffusion
+note below tabulates it). Read as evidence about the fat group's flow, the PET
+measurement puts the stored figure at about twice the truth, and the washout
 fits put it at or a little below the truth.
 <!-- derived: 2.07 from data/patients/reference_adult.json tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5.0, tissue_groups.fat.volume_l = 14.5 -->
 <!-- derived: 52 for sevoflurane from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
 <!-- derived: 31 for desflurane from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
-<!-- not-restated: 2.4, 2.1 -->
 
-Neither settles it, and for different reasons. The PET figure is one depot in
-one small cohort, awake and at rest. It is set against a whole-body lumped
-compartment, and the differences between depots within such a compartment are
-real (the Frayn and Karpe entry in the same file). The fitted compartment is an
-assignment rather than an anatomy. As the caution below says, what a fit
-establishes is a time constant. The fitted compartment's volume is a third to
-two fifths of the fat this model stores. The analysis "only accounts for about 25 L of the
-body volume" (*Anesth Analg* p. 323). The same paper's flow estimates ran too
-small for the vessel-rich group and too large for muscle, compared with known
-values (p. 323). The volunteers breathed nitrous oxide throughout. The terminal
-time constant was fitted over days on which they had left the hospital and
-exceeded basal activity between samples (p. 319). Both sources support this
-much. The fat group's time constant is long compared with any simulated case,
-whichever flow is right. So the fat compartment stays far from equilibrium, and
-no displayed curve reaches a wrong endpoint. What moves with the flow is how
-much agent fat has taken up by the end of a case. That amount sets the slow
-tail of washout, and it moves by up to something close to a factor of two. A
-learner may read the fat trace as a physiologic prediction rather than as this
-parameter set's behaviour. That learner should treat its fat loading as
-uncertain by about that much, with the direction unsettled. The PET measurement is not adopted.
+Neither settles it, for different reasons. The PET figure is one depot in one
+small cohort, awake and at rest, set against a whole-body lumped compartment,
+and the depots within such a compartment really do differ (the Frayn and Karpe
+entry in the same file). The fitted compartment is an assignment, not an
+anatomy, because what a fit establishes is a time constant (see the cautions
+below). Its volume is a third to two fifths of the fat this model stores, and
+the analysis "only accounts for about 25 L of the body volume" (*Anesth Analg*
+p. 323). The same paper's flow estimates ran too small for the vessel-rich
+group and too large for muscle, compared with known values (p. 323). The
+volunteers breathed nitrous oxide throughout. The terminal time constant was
+fitted over days on which they had left the hospital and exceeded basal
+activity between samples (p. 319).
+
+Both sources support this much. The fat group's time constant is long
+compared with any simulated case, whichever flow is right, so the fat
+compartment stays far from equilibrium and no displayed curve reaches a wrong
+endpoint. What moves with the flow is how much agent fat has taken up by the
+end of a case. That amount sets the slow tail of washout, and it moves by up
+to about a factor of two. A learner who reads the fat trace as a physiologic
+prediction should treat its fat loading as uncertain by about that much, in
+an unsettled direction. The PET measurement is not adopted.
 
 **Fat fills here only through its own blood supply, and human washout finds a
-second, faster fat-like store that this model does not have**.
-Every tissue group exchanges agent with the blood flowing through it and with
-nothing else (§ "Tissue uptake and return"). So no agent passes directly from a
-lean tissue into fat lying against it. Gas Man omits that route too and says
-so: "Inter-tissue diffusion may occur between fat and muscle; this effect has
-been ignored in the Gas Man model" (Workbook, Appendix B, p. 170). Carpenter et
-al. needed a fifth compartment to fit human washout in 27 of 36 data sets. The
-time constant of that compartment "lies between the time constants predicted
-for muscle and fat". This model is validated against two Yasuda papers. Both
-found five compartments in every washout they fitted. And, "following the
-suggestion of Carpenter et al.", both interpreted the fourth as "a layer of fat
-that receives anesthetic from adjacent vessel-rich organs by intertissue
+second, faster fat-like store that this model does not have.** Every tissue
+group exchanges agent only with the blood flowing through it (§ "Tissue uptake
+and return"), so no agent passes directly from a lean tissue into fat lying
+against it. Gas Man omits that route too: "Inter-tissue diffusion may occur
+between fat and muscle; this effect has been ignored in the Gas Man model"
+(Workbook, Appendix B, p. 170). Carpenter et al. needed a fifth compartment to
+fit human washout in 27 of 36 data sets, with a time constant that "lies
+between the time constants predicted for muscle and fat". Both Yasuda papers
+found five compartments in every washout they fitted. "Following the
+suggestion of Carpenter et al.", both interpreted the fourth as "a layer of
+fat that receives anesthetic from adjacent vessel-rich organs by intertissue
 diffusion" (*Anesth Analg* p. 320, *Anesthesiology* p. 493). The first paper
-computes the volume of that compartment on the assumption that it is fat
-(p. 319). The table below gives their mammillary time constants and estimated
-volumes (Tables 4 and 5 of each paper), as mean ± SD. It sets them beside this
-model's fat group at the default cardiac output:
+computes that compartment's volume on the assumption that it is fat
+(p. 319). The table gives their mammillary time constants and estimated
+volumes (Tables 4 and 5 of each paper, mean ± SD), beside this model's fat
+group at the default cardiac output:
 
 | Cohort | Fourth compartment: time constant (min) | Fourth compartment: volume (L) | Fat group: time constant (min) | Fat group: volume (L) | This model's fat group: time constant (min) |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -12350,85 +12317,81 @@ model's fat group at the default cardiac output:
 | Desflurane, Anesthesiology 1991;74:489-98 | 273 ± 88 | 6 ± 3 | 1,340 ± 230 | 5 ± 3 | 1,496 |
 
 **So the fat trace is the fitted fat group, and the fourth compartment is what
-is missing.** This model's $`\tau_i = V_i\lambda_{i:b}/Q_i`$ for fat is within
-one standard deviation of the fitted fat group's time constant in three
-cohorts. In the fourth cohort it is 2.2 standard deviations above it. It is 5.5
-to 6.8 times the fourth compartment's time constant. Nothing in this model has
-a time constant on that compartment's scale, because the muscle group
-equilibrates in 85 to 135 minutes. So whatever the compartment is, it has no
-counterpart in this model. Leaving it out biases three things. Each bias is
-derived from that structure rather than from a run:
+is missing.** This model's fat $`\tau_i = V_i\lambda_{i:b}/Q_i`$ is within one
+standard deviation of the fitted fat group's time constant in three cohorts,
+and 2.2 standard deviations above it in the fourth. It is 5.5 to 6.8 times the
+fourth compartment's time constant. The muscle group equilibrates in 85 to 135
+minutes, so nothing in this model has a time constant on the fourth
+compartment's scale. Leaving that compartment out biases three things. Each
+bias is derived from that structure, not from a run:
 
 - **Fat holds too little agent.** Suppose the fourth compartment is fat at
-  this model's stored fat solubility. Fill it and the fat group from a constant
-  arterial partial pressure. Then it takes up 0.9 to 2.2 times as much agent as
-  this model's whole fat group over any case from half an hour to four hours.
-  Within the studies' own fits, it takes up 2.6 to 5.6 times as much as the
-  fitted fat group. The two ranges differ because the fitted volumes are too
-  small. The analysis "only accounts for about 25 L of the body volume"
-  (*Anesth Analg* p. 323). So the size is an order of magnitude and no more.
-  The missing store is as large as the modelled fat group's uptake or larger.
-  It is not a small correction to it.
+  this model's stored fat solubility, and fill it and the fat group from a
+  constant arterial partial pressure. Over any case from half an hour to four
+  hours, it then takes up 0.9 to 2.2 times as much agent as this model's whole
+  fat group. Within the studies' own fits, it takes up 2.6 to 5.6 times as much
+  as the fitted fat group. The two ranges differ because the fitted volumes are
+  too small (the analysis "only accounts for about 25 L of the body volume",
+  *Anesth Analg* p. 323). So the size is known to an order of magnitude only:
+  the missing store is as large as the modelled fat group's uptake, or larger.
 - **The fat trace draws the slow fat alone.** On the fitted time constants,
   fat lying against well-perfused tissue is four to six and a half times higher
-  than the trace, as a fraction of the arterial partial pressure. That holds
-  throughout a case of that length. After an hour, that fat is at 13 to 20% of
-  arterial, against the trace's 2.3 to 3.9%. It still stays below the lean
-  tissue feeding it, because agent moves down that gradient into the fat.
-- **The late washout loses its largest measured term.** The published mean
-  hybrid coefficients are in Tables 1 and 2 of each paper. On them, after a
-  30-minute administration, the fourth compartment's term becomes the largest
-  in the measured washout at 1.8 to 3.1 hours. It stays the largest until 20.7
-  to 29.4 hours. That is inside the 24 hours that a run is supported for
-  (§ "Supported run length"). All else equal, leaving the store out makes the
-  modelled tail fall faster, and it does. The shipped tail was measured against
-  the mean curves themselves (§ "The first 24 hours of elimination against the
-  published mean curves"). It runs below them from about the seventh
-  hour until about the twenty-first. At the widest, near hour 13, it is a third
-  below. For desflurane it is below from 3.4 to 15.3 hours, and by half. With
-  the apparatus taken away, the model's tissue return alone is a third to a
-  half of the mean curve between hours 8 and 13. In the shipped condition the
-  gap starts later than the third hour. The reason is that the rebreathing
-  circuit and the muscle group's slow return hold the tail above the curve
-  until the seventh hour. The size is known to about a factor of
+  than the trace, as a fraction of the arterial partial pressure, throughout a
+  case of that length. After an hour, that fat is at 13 to 20% of arterial,
+  against the trace's 2.3 to 3.9%. It still stays below the lean tissue
+  feeding it, because agent moves down that gradient into the fat.
+- **The late washout loses its largest measured term.** On the published mean
+  hybrid coefficients (Tables 1 and 2 of each paper), after a 30-minute
+  administration the fourth compartment's term becomes the largest in the
+  measured washout at 1.8 to 3.1 hours. It stays the largest until 20.7 to
+  29.4 hours, inside the 24 hours that a run is supported for (§ "Supported
+  run length"). Leaving the store out makes the modelled tail fall faster, and
+  it does. Against the mean curves themselves (§ "The first 24 hours of
+  elimination against the published mean curves"), the shipped tail runs below
+  them from about the seventh hour until about the twenty-first, and a third
+  below at the widest, near hour 13. For desflurane it is below from 3.4 to
+  15.3 hours, by half. With the apparatus taken away, the model's tissue return
+  alone is a third to a half of the mean curve between hours 8 and 13. In the
+  shipped condition the gap starts later than the third hour, because the
+  rebreathing circuit and the muscle group's slow return hold the tail above
+  the curve until the seventh hour. The size is known to about a factor of
   two, which is the fourth compartment's own between-subject spread.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Eger and Saidman's review draws the same compartment, and names a fourth
-bias**. Their Table 3 (p. 1024) gives intertissue diffusion a group
-of its own, "a subset of the FG". That group is 2.9 L, where the fat group is
+bias.** Their Table 3 (p. 1024) gives intertissue diffusion a group of its
+own, "a subset of the FG". That group is 2.9 L, where the fat group is
 14.5 L. Its time constants are 230, 412 and 396 minutes for desflurane,
 sevoflurane and isoflurane, against bulk fat's 1,226, 2,198 and 2,114. Those
-figures are the Yasuda fits, cited as such. Each lies within one standard
-deviation of the matching fitted compartment in every cohort above. So they
-restate the table rather than add to it. The fourth bias is in the lean tissues
-that feed the store. Part of the intestine, liver, kidney and heart, and part
-of the muscle and skin, "are slower to reach equilibrium because anesthetic is
-continuously lost to adjacent fat". And 50 minutes into desflurane, "[w]ere it
-not for losses by intertissue diffusion, the desflurane partial pressure in the
-MG would reach 74% of the partial pressure delivered to it from the lungs"
-(p. 1025). On that reading, this model's muscle trace runs ahead of the tissue
-it represents. Yasuda et al. suggest that the route may also enlarge the
-apparent delivery to muscle from the vessel-rich organs beside it (*Anesth
-Analg* p. 323). That acts the other way, and nothing here says which effect
-wins. The brain is spared. The review draws it apart from the rest of the
-vessel-rich group "for reasons related to intertissue diffusion" (p. 1022).
-This model has no effect-site compartment and parameterises its vessel-rich
-group as brain (§ "v0.2.0: isoflurane and desflurane"). So the vessel-rich
-trace is the one a learner takes to be the brain, and it is the one this bias
-spares. A route added later that drew its loss from that group would slow it,
-contrary to the review.
+figures are the Yasuda fits, cited as such, and each lies within one standard
+deviation of the matching fitted compartment in the table above. The fourth
+bias is in the lean tissues that feed the store. Part of the intestine, liver,
+kidney and heart, and part of the muscle and skin, "are slower to reach
+equilibrium because anesthetic is continuously lost to adjacent fat". And
+50 minutes into desflurane, "[w]ere it not for losses by intertissue
+diffusion, the desflurane partial pressure in the MG would reach 74% of the
+partial pressure delivered to it from the lungs" (p. 1025). On that reading,
+this model's muscle trace runs ahead of the tissue it represents. Yasuda et
+al. suggest that the route may also enlarge the apparent delivery to muscle
+from the vessel-rich organs beside it (*Anesth Analg* p. 323). That acts the
+other way, and nothing here says which effect wins. The brain is spared. The
+review draws it apart from the rest of the vessel-rich group "for reasons
+related to intertissue diffusion" (p. 1022). This model has no effect-site
+compartment and parameterises its vessel-rich group as brain (§ "v0.2.0:
+isoflurane and desflurane"). So the trace that a learner takes to be the brain
+is the one this bias spares. A route added later that drew its loss from that
+group would slow it, contrary to the review.
 <!-- not-restated: 14.5 L -->
 
-**Eger and Saidman put the effect on late recovery rather than on emergence**,
-in the review whose title names the route. Agent stored this way "returns to
-the circulation to delay recovery in normal-weight and obese patients,
-particularly with more soluble anesthetics. However, the increased anesthetic in
-fat occurs at a lower partial pressure and thus might not influence emergence
-materially" (p. 1032). That is the direction described above: what the model
-misses is the tail, not the early fall. The review's emphasis is obesity, which
-this model's one reference adult does not represent.
+**Eger and Saidman put the effect on late recovery, not on emergence.** Agent
+stored this way "returns to the circulation to delay recovery in normal-weight
+and obese patients, particularly with more soluble anesthetics. However, the
+increased anesthetic in fat occurs at a lower partial pressure and thus might
+not influence emergence materially" (p. 1032). That matches the direction
+above: what the model misses is the tail, not the early fall. The review's
+emphasis is obesity, which this model's one reference adult does not
+represent.
 
 **Two cautions keep this a limitation rather than a missing parameter.** The
 first is that the route and its size rest on different evidence. The route has
@@ -12437,29 +12400,29 @@ perirenal fat sampled against the kidney held 20 and 35 times the
 concentration of fat sampled far from it. Its tension was "comparable to the
 arterial tension instead of to the very low tension to be expected if the fat
 had received halothane only from its own blood supply" (Allott et al.,
-p. 289). Eger and Saidman cite that as the direct demonstration (their ref 8).
-Even so, they call their own group's washout fits "the most convincing
+p. 289). Eger and Saidman cite that as the direct demonstration (their ref 8),
+though they call their own group's washout fits "the most convincing
 evidence" (p. 1025). The size has not been measured that way. Their
 "approximately 30% of the anesthetic taken up" and their time constants of 200
-to 400 minutes (p. 1025) cite Carpenter et al. and the two Yasuda papers. Eger
-is an author of every one of those papers, so the figures restate the fits
-rather than confirm them. Allott et al.'s own case for lean tissue losing agent
-to fat "depends almost entirely on the improved fit to femoral venous tensions"
-(p. 290). And what a fit establishes is a time constant, not an anatomy. The
-Yasuda authors write that intertissue diffusion is what "we believe provides
-the explanation for the fourth compartment" (*Anesth Analg* p. 323). Hendrickx
-and De Wolf quote Hull as saying that assigning a tissue to a fitted
+to 400 minutes (p. 1025) cite Carpenter et al. and the two Yasuda papers.
+Eger is an author of every one of those papers, so the figures restate the
+fits rather than confirm them. Allott et al.'s own case for lean tissue losing
+agent to fat "depends almost entirely on the improved fit to femoral venous
+tensions" (p. 290). And a fit establishes a time constant, not an anatomy.
+The Yasuda authors write that intertissue diffusion is what "we believe
+provides the explanation for the fourth compartment" (*Anesth Analg* p. 323).
+Hendrickx and De Wolf quote Hull as saying that assigning a tissue to a fitted
 compartment is "ill-founded because parameters of the fit to the uptake data
 contain no information that might support such assumptions". They add that
-compartment parameters related to cardiac output and demographics in no
-straightforward way. So, they conclude, correlating them with tissue volumes and
-blood flows "should be done with care, if at all" (*Modern Anesthetics*, pp. 165–66). The
-second caution concerns the fat-perfusion note above, which leaves the
-direction of the fat group's own error unsettled. On its PET reading, the fat
-group already holds too much agent, which acts the other way from this
-omission. On its washout reading, the fat group holds about what the fitted fat
-group would. Nothing here measures whether the two cancel, and neither may be
-read as correcting the other.
+compartment parameters relate to cardiac output and demographics in no
+straightforward way, and conclude that correlating them with tissue volumes
+and blood flows "should be done with care, if at all" (*Modern Anesthetics*,
+pp. 165–66). The second caution is that the fat-perfusion note above leaves
+the direction of the fat group's own error unsettled. On its PET reading, the
+fat group already holds too much agent, which acts against this omission. On
+its washout reading, the fat group holds about what the fitted fat group
+would. Nothing here measures whether the two cancel, and neither may be read
+as correcting the other.
 
 **Nothing in `ROADMAP.md` plans a fourth tissue compartment, and the one paper
 here that approximated the route warns against the shortcut.** Allott et al.
@@ -12474,57 +12437,56 @@ only general solution is to build a more elaborate model which incorporates
 direct representations of metabolism (which would be straightforward) and
 intercompartment diffusion (which would be more complex)" (p. 290).
 
-The time constants in the last column, the ratios and the crossing times were
-computed on 2026-09-26 from the published means above and this model's stored
-parameters. The sources follow, and none of them is the authority for a stored
-value:
+The time constants in the table's last column, the ratios and the crossing
+times were computed from the published means above and this model's stored
+parameters. None of the sources below is the authority for a stored value:
 
 - Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
   Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
   humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
-  doi:10.1213/00000539-199103000-00007. **Full text**, read from the private
-  reference corpus 2026-09-26: the compartment assumptions on p. 319, the
-  interpretation on p. 320, Tables 1, 2 and 4 on p. 321, Table 5 on p. 322,
-  and the volume and muscle remarks on p. 323. It studied seven volunteers,
-  with 30 minutes' administration and six to seven days' elimination.
+  doi:10.1213/00000539-199103000-00007. **Full text**, from the private
+  reference corpus: the compartment assumptions on p. 319, the interpretation
+  on p. 320, Tables 1, 2 and 4 on p. 321, Table 5 on p. 322, and the volume
+  and muscle remarks on p. 323. Seven volunteers, with 30 minutes'
+  administration and six to seven days' elimination.
 - Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
   Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
   Anesthesiology 1991;74(3):489-98. PMID 2001028,
   doi:10.1097/00000542-199103000-00017. **Full text**, a scan with no text
-  layer, read as page images from the private reference corpus 2026-09-26: the
+  layer, read as page images from the private reference corpus: the
   interpretation on p. 493, Table 1 on p. 494, Table 2 on p. 495, Tables 4 and
-  5 on p. 496. It studied eight volunteers, with 30 minutes' administration and
-  five to seven days' elimination.
+  5 on p. 496. Eight volunteers, with 30 minutes' administration and five to
+  seven days' elimination.
 - Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
   *Pharmacokinetics of inhaled anesthetics in humans: measurements during and
   after the simultaneous administration of enflurane, halothane, isoflurane,
   methoxyflurane, and nitrous oxide.* Anesth Analg 1986;65(6):575-82. PMID
-  3706798; PubMed records no DOI. **Abstract read**, through PubMed
-  2026-09-26: nine patients, 2 hours' administration. The abstract does not
-  name intertissue diffusion. The Yasuda papers credit that reading to this
-  paper, whose full text has not been read here.
+  3706798; PubMed records no DOI. **Abstract read**, through PubMed: nine
+  patients, 2 hours' administration. The abstract does not name intertissue
+  diffusion. The Yasuda papers credit that reading to this paper, whose full
+  text has not been read.
 - Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
   including intertissue diffusion to and from fat.* Anesth Analg
   2005;100(4):1020-33. PMID 15781517, doi:10.1213/01.ANE.0000146961.70058.A1.
-  **Full text**, read from the private reference corpus 2026-09-27: the brain
-  drawn apart on p. 1022, Table 3 on p. 1024, the lean-tissue losses, the
-  evidence and the 30% share on p. 1025, and recovery on p. 1032. It is
-  a review, which is how PubMed classifies it, so it is tier 2 under § "Source
-  hierarchy". Its figures need more caution than most reviews' do, because the
-  paper says they "illustrate concepts but are not necessarily precise
-  (quantitative) reflections of the kinetics" (p. 1020).
+  **Full text**, from the private reference corpus: the brain drawn apart on
+  p. 1022, Table 3 on p. 1024, the lean-tissue losses, the evidence and the
+  30% share on p. 1025, and recovery on p. 1032. PubMed classifies it as a
+  review, so it is tier 2 under § "Source hierarchy". Its figures need more
+  caution than most reviews' do, because the paper says they "illustrate
+  concepts but are not necessarily precise (quantitative) reflections of the
+  kinetics" (p. 1020).
 - Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
   dog: comparison of theory and measurement in individuals.* Br J Anaesth
   1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,
-  read from the private reference corpus 2026-09-27: the design on p. 279,
-  Table I on p. 281, and the discussion on pp. 289-90. Seven dogs were given 1%
-  halothane for 80 minutes. The perirenal-fat samples are from two further dogs
-  of another series (p. 289). The paper is Eger and Saidman's ref 8, and it has
-  no author in common with their refs 3-7.
+  from the private reference corpus: the design on p. 279, Table I on p. 281,
+  and the discussion on pp. 289-90. Seven dogs were given 1% halothane for
+  80 minutes. The perirenal-fat samples are from two further dogs of another
+  series (p. 289). The paper is Eger and Saidman's ref 8, and it has no author
+  in common with their refs 3-7.
 - Perl W, Rackow H, Salanitre E, Wolf GL, Epstein RM. *Intertissue diffusion
   effect for inert fat-soluble gases.* J Appl Physiol 1965;20(4):621-7. PMID
-  5838712, doi:10.1152/jappl.1965.20.4.621. The Workbook lists it as reference 32
-  and prints the year as 1964. It is also Eger and Saidman's ref 9, which
+  5838712, doi:10.1152/jappl.1965.20.4.621. The Workbook lists it as reference
+  32 and prints the year as 1964. It is also Eger and Saidman's ref 9, which
   they credit with suggesting the effect "40 yr ago" (p. 1025). Allott et al.
   credit a 1963 chapter of Perl's with first suggesting it "on theoretical
   grounds" (p. 289). PubMed returns "[Abstract not available]". Neither text
@@ -12533,42 +12495,40 @@ value:
   JFA, De Wolf A, *Special aspects of pharmacokinetics of inhalation
   anesthesia*, Handb Exp Pharmacol 2008;(182):159-86, PMID 18175091,
   doi:10.1007/978-3-540-74806-9_8, pp. 163 and 165-66. Both were read from the
-  private reference corpus on 2026-09-26, and Hendrickx and De Wolf's
-  pp. 165-66 were read again on 2026-09-27. Both are tier 3, and
-  `docs/references/README.md` carries their entries.
+  private reference corpus. Both are tier 3, and `docs/references/README.md`
+  carries their entries.
 
 **The tissue:gas coefficients rest on one laboratory's means, and other
-laboratories disagree with them by up to 150% in some tissues**.
-The stored values are Gas Man's. They differ from Yasuda, Targ and Eger's
-means in seven of the nine cells, by up to 9% in isoflurane's fat coefficient,
-70.0 against 64.2 (§ "Parameter provenance" has the table).
-Hendrickx and De Wolf state the general case: "Tissue solubilities vary up to
-150% between authors (Yasuda et al. 1989), and the tissue homogenates used to
-determine these coefficients may not represent in vivo conditions" (p. 165).
-The 150% is not spread evenly across the tissues this model uses. Yasuda, Targ
-and Eger, whose measurements the agent files' values rest on, compare their
-own values with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
-sevoflurane, isoflurane and halothane were similar to theirs for brain and for
-fat, except halothane's fat coefficient, which was 65% greater. They were 115%
-to 150% greater for kidney and 10% to 30% less for muscle. Those values are
-Fiserova-Bergerova, Tichy and Di Carlo 1984, Yasuda's ref 8. Lowe's isoflurane
-values were 50% to 75% greater. The authors could not explain the
+laboratories disagree with them by up to 150% in some tissues.** The stored
+values are Gas Man's. They differ from Yasuda, Targ and Eger's means in seven
+of the nine cells, by up to 9% in isoflurane's fat coefficient, 70.0 against
+64.2 (§ "Parameter provenance" has the table). Hendrickx and De Wolf state the
+general case: "Tissue solubilities vary up to 150% between authors (Yasuda et
+al. 1989), and the tissue homogenates used to determine these coefficients may
+not represent in vivo conditions" (p. 165). The 150% is not spread evenly
+across the tissues this model uses. Yasuda, Targ and Eger, whose measurements
+the agent files' values rest on, compare their values with two other
+laboratories on p. 373. Fiserova-Bergerova et al.'s values for sevoflurane,
+isoflurane and halothane were similar to theirs for brain and for fat, except
+halothane's fat coefficient, which was 65% greater. They were 115% to 150%
+greater for kidney and 10% to 30% less for muscle. Those values are
+Fiserova-Bergerova, Tichy and Di Carlo 1984, Yasuda's ref 8. Lowe's
+isoflurane values were 50% to 75% greater. The authors could not explain the
 differences.
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 
-A third published set agrees less well. Baker and Farmery's 2011
-review prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986
-beside the set that matches this model (Table 2, p. 572). On the tissue:blood
-scale, that set puts sevoflurane's fat coefficient at 71.7, 37% above this
-model's 52.3. It puts isoflurane's muscle coefficient at 1.71, 51% below this
-model's 3.46. Its vessel-rich figures are 28% above this model's for both
-agents. The set's own blood:gas values, 0.6 for sevoflurane and 1.4 for
-isoflurane, move these gaps in opposite directions for the two agents. So the
-tissue:gas scale, which is what the agent files store, gives a fairer
-comparison. On that scale the set's sevoflurane fat coefficient is 26% above
-this model's and its isoflurane muscle coefficient 47% below. Its vessel-rich
-coefficient is 18% above for sevoflurane and 38% above for isoflurane. The set
-may not be a measurement.
+A third published set agrees less well. Baker and Farmery's 2011 review
+prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986 beside
+the set that matches this model (Table 2, p. 572). On the tissue:blood scale,
+that set puts sevoflurane's fat coefficient at 71.7, 37% above this model's
+52.3, and isoflurane's muscle coefficient at 1.71, 51% below this model's
+3.46. Its vessel-rich figures are 28% above this model's for both agents. The
+set's own blood:gas values, 0.6 for sevoflurane and 1.4 for isoflurane, move
+these gaps in opposite directions for the two agents, so the tissue:gas scale
+that the agent files store gives the fairer comparison. On that scale the
+set's sevoflurane fat coefficient is 26% above this model's and its isoflurane
+muscle coefficient 47% below. Its vessel-rich coefficient is 18% above for
+sevoflurane and 38% above for isoflurane. The set may not be a measurement.
 According to its PubMed abstract, the 1986 paper measured coefficients only
 for water-soluble solvents such as acetone and the alcohols. It then fitted
 equations that predict any substance's tissue coefficients from its blood:gas
@@ -12579,155 +12539,147 @@ measured and which predicted. The set has no desflurane values.
 So for sevoflurane and isoflurane, Yasuda's brain and fat values, which this
 model's vessel-rich and fat groups store as Gas Man's figures, were reproduced
 by one other laboratory, in 1984. The 1986 set does not reproduce them, and it
-may be a prediction rather than a measurement. Yasuda, Targ and Eger make no such comparison for
-desflurane. The 150% is the kidney, which this
-model does not parameterise on its own (§ "Parameter provenance" records that
-the vessel-rich group is Yasuda's brain value). Muscle is where the model's
+may be a prediction rather than a measurement. Yasuda, Targ and Eger make no
+such comparison for desflurane. The 150% is the kidney, which this model does
+not parameterise on its own (§ "Parameter provenance" records that the
+vessel-rich group is Yasuda's brain value). Muscle is where the model's
 coefficient is least certain, on two counts. The other laboratories disagree
-with it in both directions. Fiserova-Bergerova's two sets put muscle lower.
-Lowe's isoflurane values were 50% to 75% greater than Yasuda's, and Yasuda
-does not break that difference down by tissue. Yasuda's own muscle
-measurements also spread the most. Their
-standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03), 45% for
-isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35), against 17% to
-19% for fat. Eger and Saidman's Table 1 makes the same point from the
-literature as a whole. Their best figure for sevoflurane muscle is 1.7, with
-1.1 to 2.4 as the range across the studies they cite (p. 1022), where the
-agent file stores 2.4. A muscle group's time constant is proportional to its
-tissue:gas coefficient. So taking 1.7 in place of 2.4 would shorten the
-sevoflurane muscle time constant by 29%. That is the size of change a
-coefficient's provenance can make to the intermediate part of every wash-in
-and washout curve this simulator draws.
+with it in both directions: Fiserova-Bergerova's two sets put muscle lower,
+and Lowe's isoflurane values were higher by a margin that Yasuda does not
+break down by tissue. And Yasuda's own muscle measurements spread the most.
+Their standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03),
+45% for isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35),
+against 17% to 19% for fat. Eger and Saidman's Table 1 makes the same point
+from the literature as a whole. Their best figure for sevoflurane muscle is
+1.7, with 1.1 to 2.4 as the range across the studies they cite (p. 1022),
+where the agent file stores 2.4. A muscle group's time constant is
+proportional to its tissue:gas coefficient, so 1.7 in place of 2.4 would
+shorten the sevoflurane muscle time constant by 29%. That is how much a
+coefficient's provenance can move the intermediate part of every wash-in and
+washout curve this simulator draws.
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
 <!-- derived: 29% from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
 <!-- not-restated: 1.1 -->
 
-This is a limit on what the model can claim rather than a defect to fix.
-Every stored coefficient lies within one standard deviation of its cited
-measurement. A learner should read the muscle and fat traces as one
-well-measured parameter set, and not as the only set the literature
-supports. Yasuda, Targ and Eger's p. 373, Eger and
-Saidman's Table 1 and Baker and Farmery's Table 2 were read in full text from
-the private reference corpus on 2026-10-25, and Hendrickx and De Wolf's p. 165
-on the same day. Fiserova-Bergerova and Diaz 1986 was read as its PubMed
+This limits what the model can claim. Every stored coefficient lies within
+one standard deviation of its cited measurement. A learner should read the
+muscle and fat traces as one well-measured parameter set, not the only set
+the literature supports. Yasuda, Targ and Eger's p. 373, Eger and Saidman's
+Table 1, Baker and Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were
+read in full text. Fiserova-Bergerova and Diaz 1986 was read as its PubMed
 abstract only (PMID 3721592), and the 1984 paper not at all. The Yasuda, Targ
 and Eger citation is in § "Parameter provenance".
 
 **Cardiac output does not scale with the patient, and the reference weight is
-a label rather than an input.** `default_cardiac_output_l_min` is a stored
-5.0 L/min. No equation reads `weight_kg`, so editing the weight changes nothing
-this model computes. Two published figures sit either side of the stored value,
+a label, not an input.** `default_cardiac_output_l_min` is a stored 5.0 L/min.
+No equation reads `weight_kg`, so editing the weight changes nothing this
+model computes. Two published figures sit either side of the stored value,
 **and they are not evidence of the same kind.** The first is Lowe and Ernst's
-own cardiac-output relation. It is the upstream source that the Gas Man
-Workbook names, and it has now been read at the source. It gives
-$`0.2M^{3/4}`$, which is 4.84 L/min at 70 kg. It is **derived rather than
-measured**. It is Brody's 1945 interspecies oxygen-consumption allometry
-divided by an arteriovenous oxygen content difference that is assumed constant
-across mammals. The section § "Parameter provenance" above carries the
-derivation step by step. The second figure comes from Cattermole et al. Their
-686 subjects in the 50–75 kg band give a **measured** median of 5.51 L/min, in
-the weight band this file's patient sits in. So the stored 5.0 is not bracketed
-by two comparable observations. One side is a human measurement and the other
-is an interspecies extrapolation. A reader who weighed them equally would be
-weighing them wrongly. **The fixed value is kept for the structural reason
-that follows.**
+cardiac-output relation, the upstream source that the Gas Man Workbook names,
+read at the source. It gives $`0.2M^{3/4}`$, which is 4.84 L/min at 70 kg. It
+is **derived, not measured**: Brody's 1945 interspecies oxygen-consumption
+allometry divided by an arteriovenous oxygen content difference that is
+assumed constant across mammals (§ "Parameter provenance" gives the
+derivation). The second is Cattermole et al.'s **measured** median of
+5.51 L/min, from 686 subjects in the 50–75 kg band that this patient sits in.
+So one side of the stored 5.0 is a human measurement and the other an
+interspecies extrapolation, and a reader should not weigh them equally.
+**The fixed value is kept for the structural reason that follows.**
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 A time constant is $`V_i \lambda_{i:b} / Q_i`$, and this model stores
 compartment volumes as fixed litres. So scaling only the flow would make
-$`\tau \propto M^{-3/4}`$. A heavier patient would then equilibrate *faster*
-and a lighter one more slowly. That is an artifact of scaling one half of a
-coupled pair, not a physiologic prediction. Measured at the shipped
-sevoflurane coefficients, a 20 kg child under a weight-scaled cardiac output
-alone would equilibrate about 2.6 times more slowly than the reference adult.
-That is the opposite of the direction in which paediatric inhalational uptake
-runs. (Salanitre and Rackow's *Anesthesiology* 1969;30(4):388–94 study of
-pulmonary exchange in infants and children is the classic reference for that
-direction. Its PubMed record was retrieved here, but its text has not been
-read, so no figure is taken from it.) Doing half of the scaling is therefore
-worse than doing none of it. Adopting the relation on the one patient that
-exists would have lengthened every time constant by 3.32% and changed nothing
-else.
+$`\tau \propto M^{-3/4}`$: a heavier patient would equilibrate *faster* and a
+lighter one more slowly. That is an artifact of scaling one half of a coupled
+pair. At the shipped sevoflurane coefficients, a 20 kg child under a
+weight-scaled cardiac output alone would equilibrate about 2.6 times more
+slowly than the reference adult, which is the opposite of the direction in
+which paediatric inhalational uptake runs. (Salanitre and Rackow's
+*Anesthesiology* 1969;30(4):388–94 study of pulmonary exchange in infants and
+children is the classic reference for that direction. Its PubMed record was
+retrieved, but its text has not been read, so no figure is taken from it.)
+Half of the scaling is therefore worse than none of it. Adopting the relation
+for the one patient that exists would have lengthened every time constant by
+3.32% and changed nothing else.
 
-**What follows from that is narrower than "the weight is unused".** This model
-describes one 70 kg adult. It is not a paediatric, obese, or otherwise
-weight-varying model, and no field in the interface makes it one. A run is that
-adult's run, whatever value the reference weight shows. Weight-varying
-physiology is `ROADMAP.md`'s planned-milestone item 30, and it is a package.
-Compartment volumes, alveolar volume, alveolar ventilation, the perfusion
-fractions and MAC by age should move together, or none of them should move.
+**So this model describes one 70 kg adult.** It is not a paediatric, obese,
+or otherwise weight-varying model, and no field in the interface makes it one.
+A run is that adult's run, whatever value the reference weight shows.
+Weight-varying physiology is `ROADMAP.md`'s planned-milestone item 30, as a
+package. Compartment volumes, alveolar volume, alveolar ventilation, the
+perfusion fractions and MAC by age should move together, or none of them
+should move.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **One reference condition, where the model physically has two.** "Agent
 amount" fixes the amount unit at 20 °C and 760 mmHg, dry. Nothing here
 converts between conditions, so a litre in the circuit and a litre in the
-alveoli are added as equals. As volumes of gas they are not the same quantity
-of agent. $`V_C`$ is a circuit volume at ambient temperature, and $`\dot V_F`$
-is a flow at the common gas outlet. So $`M_C`$, $`M_{\mathrm{delivered}}`$ and
-$`M_{\mathrm{exhausted}}`$ are at the stated condition and are exact there.
-$`V_A`$ is an alveolar gas volume at body temperature. The partition
-coefficients that build $`M_v`$ and $`M_i`$ were measured at 37 °C. So those
-three are natively 37 °C quantities carried under a 20 °C label. The two
-conditions meet in the ventilation term. That term moves $`\dot V_A`$ litres
-out of the circuit and the same $`\dot V_A`$ litres into the alveoli. In the
-alveoli, warming ambient gas to body temperature would expand it by the
-molar-volume ratio.
+alveoli are added as equals, though as volumes of gas they are not the same
+quantity of agent. $`V_C`$ is a circuit volume at ambient temperature, and
+$`\dot V_F`$ is a flow at the common gas outlet. So $`M_C`$,
+$`M_{\mathrm{delivered}}`$ and $`M_{\mathrm{exhausted}}`$ are at the stated
+condition and are exact there. $`V_A`$ is an alveolar gas volume at body
+temperature, and the partition coefficients that build $`M_v`$ and $`M_i`$
+were measured at 37 °C. So those three are natively 37 °C quantities carried
+under a 20 °C label. The two conditions meet in the ventilation term, which
+moves $`\dot V_A`$ litres out of the circuit and the same $`\dot V_A`$ litres
+into the alveoli. In the alveoli, warming ambient gas to body temperature
+would expand it by the molar-volume ratio.
 
-**The size of it is 5.8 %, and it applies to the stores rather than to
-conservation.** Every term is exact in the model's own arithmetic. The
-mass-balance identity closes to 1e-13 L whatever condition the unit names. So
-this is a statement about what the litres *mean*, not about agent going
-missing. Read as amounts of substance, the alveolar, venous and tissue stores
-hold 5.5 % fewer moles than their 20 °C label implies, so the label
-overstates them by 5.8 %. The ratio behind both figures is 25.450/24.055. The fresh-gas terms are unaffected.
+**The size is 5.8 %, and it applies to the stores, not to conservation.**
+Every term is exact in the model's own arithmetic, and the mass-balance
+identity closes to 1e-13 L whatever condition the unit names. So no agent goes
+missing, and the question is what the litres *mean*. Read as amounts of
+substance, the alveolar, venous and tissue stores hold 5.5 % fewer moles than
+their 20 °C label implies, so the label overstates them by 5.8 %. The ratio
+behind both figures is 25.450/24.055. The fresh-gas terms are unaffected.
 
-**It is invisible in everything the simulator shows today, which is why it has
-cost nothing so far.** A partial-pressure fraction is dimensionless and
-carries no condition. So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
-trace on the chart are untouched by it, and so is the release gate's relative
-residual. It affects a reader only where an amount leaves the unit. That is the
-liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28. `core/liquid_agent.py` is where an amount leaves
-the unit, and nothing on screen reads it yet. It converts a delivered or
-exhausted amount exactly and reads a store 5.8 % high, and its docstring says
-so. There it biases the split between stored and exhausted agent, not the
-delivered total, and the delivered total is the figure that means cost.
-Removing this limitation would need a gas-phase model that carries explicit
-conditions per compartment. That is well outside the current milestone.
+**It is invisible in everything the simulator shows today.** A
+partial-pressure fraction is dimensionless and carries no condition. So
+$`F_A`$, $`F_A/F_I`$, the MAC multiple, every trace on the chart and the
+release gate's relative residual are untouched by it. It reaches a reader only
+where an amount leaves the unit, as the liquid-equivalent consumption figure
+planned under § "Planned milestones" item 28 will. `core/liquid_agent.py` is
+where an amount leaves the unit, and nothing on screen reads it yet. It
+converts a delivered or exhausted amount exactly and reads a store 5.8 % high,
+and its docstring says so. There it biases the split between stored and
+exhausted agent, but not the delivered total, which is the figure that means
+cost. Removing this limitation would need a gas-phase model that carries
+explicit conditions per compartment, which is well outside the current
+milestone.
 
 **The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
-is the third gas-phase condition, and the only one the document fixed without
-examining it. "Agent amount" states the reference condition as 20 °C and
-760 mmHg, *dry*. The note above works through the temperature half. This note
-covers the water that the word *dry* excludes. Alveolar gas is fully saturated
-at body temperature. So of the 760 mmHg available, 47 mmHg is water and
-713 mmHg is left to everything else. Agent leaving the circuit is dry. It is
-warmed and humidified on reaching the alveoli. A dry inspired fraction $`F_I`$
-therefore occupies $`F_I \times 713`$ mmHg rather than $`F_I \times 760`$.
-That is a dilution of 47/760, or 6.2 % of an atmosphere, before any uptake has
-occurred. Equivalently, the undiluted figure is 6.6 % above the humidified
-one, which is 47/713. The alveolar equation carries $`\dot V_A(F_I - F_A)`$
-with no such factor, so $`F_I`$ arrives undiluted.
+is the third gas-phase condition, beside temperature and pressure. "Agent
+amount" states the reference condition as 20 °C and 760 mmHg, *dry*. Alveolar
+gas is fully saturated at body temperature, so of the 760 mmHg available,
+47 mmHg is water and 713 mmHg is left to everything else. Agent leaves the
+circuit dry, and is warmed and humidified on reaching the alveoli. A dry
+inspired fraction $`F_I`$ therefore occupies $`F_I \times 713`$ mmHg rather
+than $`F_I \times 760`$. That is a dilution of 47/760, or 6.2 % of an
+atmosphere, before any uptake has occurred. Equivalently, the undiluted figure
+is 6.6 % above the humidified one, which is 47/713. The alveolar equation
+carries $`\dot V_A(F_I - F_A)`$ with no such factor, so $`F_I`$ arrives
+undiluted.
 
-**The 47 mmHg is computed rather than quoted.** The saturation pressure of
-water at 37.0 °C is 47.12 mmHg on the IAPWS-95 formulation (Wagner W,
-Pruß A. *The IAPWS Formulation 1995 for the Thermodynamic Properties of
-Ordinary Water Substance for General and Scientific Use.* J Phys Chem Ref Data
-2002;31(2):387–535, doi:10.1063/1.1461829). The formulation's saturation
-equation reproduces both the triple-point pressure and the normal boiling point
-to better than one part in a million. The conventional 47 of the alveolar gas
-equation is that value rounded, and the two agree to 0.3 %. It was computed on
-2026-09-19. Nothing in the tree stores it, because no equation here reads it.
+**The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
+47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
+Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance
+for General and Scientific Use.* J Phys Chem Ref Data 2002;31(2):387–535,
+doi:10.1063/1.1461829). The formulation's saturation equation reproduces both
+the triple-point pressure and the normal boiling point to better than one
+part in a million. The conventional 47 of the alveolar gas equation is that
+value rounded, and the two agree to 0.3 %. Nothing in the tree stores it,
+because no equation here reads it.
 
-**Why the factor is not applied, measured rather than argued.** The governing
-equations are linear in $`F_I`$. The section "Published wash-in and
-elimination validation test" rests on the same property. So introducing the
-factor on the inspired term multiplies every computed $`F_A/F_I`$ by 713/760
-exactly. $`F_A/F_I`$ is the one quantity this model is validated against, and
-the validation does not survive the factor. At the shipped defaults, the four
-published wash-in cohorts sit comfortably inside their spread. With the factor,
-three of the four fall outside it:
+**Why the factor is not applied, by measurement.** The governing equations
+are linear in $`F_I`$, the property that "Published wash-in and elimination
+validation test" also rests on. So applying the factor to the inspired term
+multiplies every computed $`F_A/F_I`$ by exactly 713/760. $`F_A/F_I`$ is the
+one quantity this model is validated against, and the validation does not
+survive the factor. At the shipped defaults, the four published wash-in
+cohorts each sit within one standard deviation of their published mean. With
+the factor, all four fall outside it:
 
 | Cohort | Modeled $`F_A/F_I`$ | Now | With the factor | Then |
 | --- | --- | --- | --- | --- |
@@ -12738,7 +12690,7 @@ three of the four fall outside it:
 
 <!-- not-restated: 0.31 -->
 
-This was measured on 2026-09-19 through `_wash_in_ratio` in
+This was measured through `_wash_in_ratio` in
 `tests/reference/test_published_wash_in_and_elimination.py`, against the
 published means and standard deviations that the module itself holds.
 
@@ -12747,47 +12699,44 @@ $`F_A/F_I`$ is a ratio of two analyser readings taken from real airways. So
 whatever humidification does to alveolar agent is already inside the measured
 0.850, and a model that reproduces that number has already absorbed it. The
 same is true one level down. The stored coefficients are tissue:gas and
-blood:gas ratios equilibrated at 37 °C. How much water the gas phase held in
-those determinations is recorded nowhere that this project has read. Suppose a
-factor were applied to $`F_I`$ alone, against coefficients whose own gas-phase
-basis is unknown here. Nobody could show that the factor moves the model
-toward the phenomenon rather than away from it. To correct this properly, the
-coefficients and the inspired term must be re-referenced together. That is
-the same per-compartment gas-phase model that the note above names, and it is
-well outside the current milestone. A later reader should not "fix" it by
-inserting 713/760.
+blood:gas ratios equilibrated at 37 °C, and how much water the gas phase held
+in those determinations is recorded nowhere that this project has read. A
+factor applied to $`F_I`$ alone, against coefficients whose own gas-phase
+basis is unknown here, could not be shown to move the model toward the
+phenomenon rather than away from it. A proper correction re-references the
+coefficients and the inspired term together. That needs the same
+per-compartment gas-phase model that the note above names, which is well
+outside the current milestone.
 
-**What it costs a reader, and what it does not.** Modelling the alveoli as dry
-does not affect the displayed percent or the MAC multiple. One
-reason covers both: $`F_A`$ here is anchored to a measured end-tidal quantity
-rather than to a computed dry-gas fraction. The rows above are end-tidal
-measurements. MAC is defined on the end-tidal concentration too ("MAC
+**What it costs a reader.** Dry alveoli do not affect the displayed percent
+or the MAC multiple, because $`F_A`$ here is anchored to a measured end-tidal
+quantity, not to a computed dry-gas fraction. The rows above are end-tidal
+measurements, and MAC is defined on the end-tidal concentration too ("MAC
 multiples as a display unit"). So a model fitted to the first and divided by
-the second compares like with like, whatever water the sampled gas held. What
-the omission does cost is mechanistic, and it sets a limit on what the
-simulator can be asked. There is no water anywhere in this model. So nothing
-here distinguishes a dry circuit from a humidified one. No question about
-airway humidification has an answer in it, whether it concerns an HME, a
-heated humidifier or the difference between them.
+the second compares like with like, whatever water the sampled gas held. The
+cost is mechanistic, and it limits what the simulator can be asked. There is
+no water anywhere in this model, so nothing here distinguishes a dry circuit
+from a humidified one. No question about airway humidification has an answer
+in it, whether it concerns an HME, a heated humidifier or the difference
+between them.
 
 **Ambient pressure is not modelled, and away from one atmosphere the
 delivered-concentration dial stops meaning one partial pressure.**
-§ "Assumptions" above fixes ambient pressure at 760 mmHg and says what that
-identity gains. This section states what it costs: this model is specified
-for sea level. Take a user in Denver (about 630 mmHg) or Mexico City (about
-585 mmHg) who sets 6% desflurane in this simulator and 6% on the
+§ "Assumptions" above fixes ambient pressure at 760 mmHg, so this model is
+specified for sea level. Take a user in Denver (about 630 mmHg) or Mexico City
+(about 585 mmHg) who sets 6% desflurane in this simulator and 6% on the
 corresponding real device. That user is not delivering the same anesthetic,
-and nothing else in the simulator says so. The reason is that the
-delivered-concentration control is a vaporizer dial. This project's three
-agents are drawn from two classes of vaporizer, and the two classes respond to
-falling ambient pressure in opposite directions.
+and nothing else in the simulator says so. The delivered-concentration control
+is a vaporizer dial, and this project's three agents are drawn from two
+classes of vaporizer that respond to falling ambient pressure in opposite
+directions.
 <!-- not-restated: 6 % -->
 
 **Variable bypass — sevoflurane and isoflurane here.** This class includes
 the Dräger Vapor 2000, Sevotec 5, Isotec 5 and Penlon Sigma Delta. Fresh gas
 is split between a bypass channel and a vaporizing chamber. The gas leaving
-the chamber is saturated at the agent's saturated vapour pressure, which is
-set by temperature and not by ambient pressure. The dial sets the splitting
+the chamber is saturated at the agent's saturated vapour pressure, which
+temperature sets and ambient pressure does not. The dial sets the splitting
 ratio. So as ambient pressure falls, the output rises in volumes percent while
 the delivered *partial pressure* is approximately preserved, and the dial
 needs no altitude correction. Boumphrey and Marshall give the approximation as
@@ -12797,20 +12746,19 @@ That is 2.026 kPa of isoflurane either way.
 <!-- not-restated: 2 % -->
 
 **Gas–vapour blender — desflurane here.** This class includes the Tec 6 and
-Tec 6 Plus. Desflurane needs this class at all because it boils at 22.8 °C.
-The sump is kept at about 39 °C, which fixes desflurane's vapour pressure at
-about 1460 mmHg. That temperature was chosen so that the resulting pressure
-would clear the vaporizer's own internal resistances. Pure vapour is injected
-into the fresh gas stream. A differential pressure transducer keeps the vapour
-circuit at the fresh-gas circuit's pressure, so the two flows stay in the
-fixed *ratio* that the dial sets. Andrews and Johnston describe it: "The
-pressure in the vapor circuit is electronically regulated to equal the
-pressure in the fresh gas circuit… vaporizer output is constant because the
-amount of flow through each circuit is proportional". Output is therefore a
-constant volumes percent, and the delivered partial pressure falls with
-ambient pressure. Datex-Ohmeda states the consequence for the operator
-directly: "Decreased atmospheric pressure, with altitude, does not
-significantly affect the concentration of agent delivered (V/V), but
+Tec 6 Plus. Desflurane needs it because it boils at 22.8 °C. The sump is kept
+at about 39 °C, which fixes desflurane's vapour pressure at about 1460 mmHg,
+a pressure chosen to clear the vaporizer's own internal resistances. Pure
+vapour is injected into the fresh gas stream. A differential pressure
+transducer keeps the vapour circuit at the fresh-gas circuit's pressure, so
+the two flows stay in the fixed *ratio* that the dial sets. Andrews and
+Johnston describe it: "The pressure in the vapor circuit is electronically
+regulated to equal the pressure in the fresh gas circuit… vaporizer output is
+constant because the amount of flow through each circuit is proportional".
+Output is therefore a constant volumes percent, and the delivered partial
+pressure falls with ambient pressure. Datex-Ohmeda states the consequence for
+the operator directly: "Decreased atmospheric pressure, with altitude, does
+not significantly affect the concentration of agent delivered (V/V), but
 decreases the partial pressure of the agent in the ratio of the atmospheric
 pressure to the calibrated pressure of 760 mm Hg. To compensate for the
 reduction of vapor pressure output at altitude, the rotary valve must be
@@ -12820,41 +12768,35 @@ advanced to maintain the required agent partial pressure."
 partial pressure, which convention quotes as a percentage of one atmosphere.
 So at reduced ambient pressure, the percentage needed to reach it rises while
 the partial pressure does not. James and White proposed MAPP, minimum alveolar
-*partial pressure*, in place of MAC on exactly this ground. This is a further
-sense in which the unit described under § "MAC multiples as a display unit"
-is a sea-level unit rather than a universal one.
+*partial pressure*, in place of MAC on exactly this ground. So the unit
+described under § "MAC multiples as a display unit" is a sea-level unit too.
 
-**No correction factor is stored, and the $`1/P`$ form above must not become
-one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the dilute-vapour
-limit of the flow-splitting physics. The fuller form is
+**No correction factor is stored, and the $`1/P`$ form above is only
+approximate.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
+dilute-vapour limit of the flow-splitting physics. The fuller form is
 $`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$, which reduces to
 $`k\,\mathrm{SVP}/P`$ only where $`\mathrm{SVP} \ll P`$. Isoflurane's
 saturated vapour pressure is about 240 mmHg at 20 °C, which is not small
 against 760. Carrying the denominator through gives a delivered partial
-pressure that *overshoots* rather than holds steady. On that arithmetic alone
-it is about 16% high at 585 mmHg, against the flat line that the $`1/P`$ form
-predicts. The direction of each class's response is not in doubt, and neither
-is the contrast between the two. The magnitude of the variable-bypass
-compensation is approximate. That is why this section says *approximately*
-preserved, and why no number is stored anywhere for it. An implementation of
-ambient pressure should derive the variable-bypass case from the agent's
-saturated vapour pressure rather than from the $`1/P`$ shortcut. It would owe
-each agent's SVP a source of its own, and none is stored today.
+pressure that *overshoots* rather than holds steady: on that arithmetic alone,
+about 16% high at 585 mmHg, where the $`1/P`$ form predicts a flat line. The
+direction of each class's response is not in doubt, and neither is the
+contrast between the two. The size of the variable-bypass compensation is
+approximate, which is why this section says *approximately* preserved and no
+number is stored for it.
 
-**Sources for the notes above** follow. None of them is the authority for any
-stored value, because there is no stored value for them to support:
+**Sources for the notes above.** None of them is the authority for a stored
+value:
 
 - Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
   design considerations and performance evaluation. *Br J Anaesth*
   1994;72:474–479. Primary, and the authority for every figure attributed to
   it here: the 22.8 °C boiling point, the 39 °C sump, the 1460 mmHg that the
   sump fixes and why that pressure was chosen, and the ±15% relative (or
-  ±0.5% absolute) output accuracy. The project owner supplied it. It was read
-  at the source on 2026-09-06 and re-read against the full text on
-  2026-09-08. The full text states the 1460 mmHg twice, once for the sump and
-  once for the regulator that reduces it to the fresh-gas pressure. The paper
-  says nothing about ambient pressure or altitude, so it is not the source for
-  that behaviour.
+  ±0.5% absolute) output accuracy. Read in full text. It states the 1460 mmHg
+  twice, once for the sump and once for the regulator that reduces it to the
+  fresh-gas pressure. It says nothing about ambient pressure or altitude, so
+  it is not the source for that behaviour.
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338–1341. Primary. It is the source of the flow-ratio mechanism
   quoted above, which appears in the abstract.
@@ -12866,54 +12808,49 @@ stored value, because there is no stored value for them to support:
 - Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
   © 2000 Datex-Ohmeda Division, Instrumentarium Corp. A manufacturer
   statement, quoted above. It also gives the 1–18% concentration range that
-  `max_delivered_concentration_percent` carries for desflurane. The project
-  owner supplied it, and it was read in full on 2026-09-06.
+  `max_delivered_concentration_percent` carries for desflurane. Read in full.
   **Owner-attested**: see the note below.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under § "Source hierarchy". It
   is a secondary synthesis, taken here for the shape of the explanation and
   the worked example, and never as the authority for a number. Its "Altitude"
-  section describes both classes side by side. The project owner supplied it,
-  and it was read in full on 2026-09-06. **Owner-attested**: see the note
-  below.
+  section describes both classes side by side. Read in full.
+  **Owner-attested**: see the note below.
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 **Two of those five are owner-attested rather than checkable.**
 `docs/references/` cannot hold them, because the repository is public
-(`docs/references/README.md` § "Redistribution"). Any reader can reach the three journal
-articles above through their DOI or PMID, and the Weiskopf figures were
-re-read against the full text on 2026-09-08. The Datex-Ohmeda specification
-sheet and the Boumphrey and Marshall article cannot be checked that way. Both
-were read in a working session from copies that the project owner supplied,
-and nothing in this repository can re-open either. So three things rest on
-that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range
-beside it, and the worked example attributed to Boumphrey and Marshall.
-Nothing stored depends on any of them. A reader who wants to verify one has to
-reach the document itself.
+(`docs/references/README.md` § "Redistribution"). Any reader can reach the
+three journal articles above through their DOI or PMID. The Datex-Ohmeda
+specification sheet and the Boumphrey and Marshall article cannot be checked
+that way. Both were read from copies that the project owner supplied, and
+nothing in this repository can re-open either. So three things rest on that
+reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range beside
+it, and the worked example attributed to Boumphrey and Marshall. Nothing
+stored depends on any of them. A reader who wants to verify one has to reach
+the document itself.
 <!-- not-restated: 18 % -->
 
-**Gas Man's own agreement with patients is phase-dependent, and wash-in is its
-worst phase.** Both this model's parameter set and its compartment structure
-descend from Gas Man. That lineage is ranked tier 3 under
-§ "Source hierarchy". Its worth there rests on fixing the behavior of a widely
-taught teaching tool as something that this implementation can be compared
-against. A prospective in-patient study has since measured how closely that behavior
-tracks real end-expired sevoflurane. The result depends on the point in the
-case at which the question is asked. Twenty-eight ASA I–II adults undergoing
-gynecologic or urologic surgery were maintained on sevoflurane in O₂/air.
-Fourteen were on a Dräger Zeus and fourteen on a Getinge FLOW-i. Fresh gas
-flow was re-randomised every fifteen minutes over 0.2 to 6 L/min, and the
-vaporizer setting was left to the anesthesiologist. Each case was then re-run
-in Gas Man on that patient's weight and the same flows, vaporizer settings and
-minute ventilation. Cardiac output was left at the Gas Man default, Brody's
-formula. That is the same 1945 interspecies relation that the cardiac-output
-note above records this model as carrying. Over the whole hour, Gas Man
-tracked both workstations to within 10% on two measures of measured against
-predicted: the median signed percentage error and the median absolute
-percentage error. It drifted by −0.96%/h [−1.14, −0.88] on the FLOW-i and
-−0.57%/h [−0.85, −0.16] on the Zeus. Split into the study's two phases, that
-agreement does not hold:
+**Gas Man's own agreement with patients depends on the phase of the case, and
+wash-in is its worst phase.** This model's parameter set and its compartment
+structure both descend from Gas Man, a lineage ranked tier 3 under § "Source
+hierarchy". Its worth there is that it fixes the behaviour of a widely taught
+teaching tool for this implementation to be compared against. A prospective
+in-patient study measured how closely that behaviour tracks real end-expired
+sevoflurane. Twenty-eight ASA I–II adults undergoing gynecologic or urologic
+surgery were maintained on sevoflurane in O₂/air, fourteen on a Dräger Zeus
+and fourteen on a Getinge FLOW-i. Fresh gas flow was re-randomised every
+fifteen minutes over 0.2 to 6 L/min, and the vaporizer setting was left to
+the anesthesiologist. Each case was then re-run in Gas Man with that
+patient's weight and the same flows, vaporizer settings and minute
+ventilation. Cardiac output was left at the Gas Man default, Brody's formula,
+which is the 1945 interspecies relation that the cardiac-output note above
+declines to adopt. Over the whole hour, Gas Man tracked both workstations to
+within 10% on two measures of measured against predicted: the median signed
+percentage error and the median absolute percentage error. It drifted by
+−0.96%/h [−1.14, −0.88] on the FLOW-i and −0.57%/h [−0.85, −0.16] on the
+Zeus. Split into the study's two phases, that agreement does not hold:
 
 | Workstation | Phase | Median performance error | Median absolute performance error |
 | --- | --- | --- | --- |
@@ -12930,64 +12867,66 @@ The brackets are the published interquartile ranges, and they carry more of
 the finding than the medians do. A quarter of FLOW-i patients were tracked
 worse than 51% through the first fifteen minutes, against worse than 10% over
 the last forty-five. The two metrics are Varvel's. This project has not read
-Varvel at source, so the metrics are taken as the study states them. The authors' own
-conclusion is that Gas Man predicts end-expired sevoflurane "with better
-relative performance for simulating maintenance than wash-in". Their stated
-warrant is the wash-in and maintenance periods *combined*, rather than the
+Varvel, so the metrics are taken as the study states them. The authors
+conclude that Gas Man predicts end-expired sevoflurane "with better relative
+performance for simulating maintenance than wash-in". They state that
+conclusion for the wash-in and maintenance periods *combined*, not for the
 wash-in alone.
 
-**What that bounds here, and what it does not.** The study is not a
-measurement of this implementation. Nothing in this project has ever been
-compared against a Gas Man trajectory. The comparisons under
-§ "Required tests" are against published human data, and no figure in the
-table above is a tolerance that anything here must meet. What the study bounds
-is what the lineage is worth. Caveat 2 under
+**What that bounds here.** The study measures Gas Man, not this
+implementation, and nothing in this project has been compared against a Gas
+Man trajectory. The comparisons under § "Required tests" are against published
+human data, and no figure in the table above is a tolerance that anything here
+must meet. What the study bounds is what the lineage is worth. Caveat 2 under
 § "Published wash-in and elimination validation test" says that passing shows
-this implementation reproducing its parameter set's *intent*. Passing does not
-show that the set is independently right. The study measures how much that
-intent is worth in patients. It is worth least in the phase that the
-simulator displays most: the first minutes of the $`F_A/F_I`$ rise, which is
-the canonical teaching curve of inhaled-anesthetic uptake
-(see § "Model boundary"). So "agrees with Gas Man" may not be read as
-"agrees with a patient" anywhere in a case, and least of all in the first
-fifteen minutes. This model's own first minutes are compared with the published human curves in
-§ "The early wash-in curve against the published figures". That comparison
-measures this implementation, which the study above does not. It finds
-desflurane rising faster than its cohort.
+this implementation reproducing its parameter set's *intent*, not that the set
+is independently right. The study measures what that intent is worth in
+patients, and it is worth least in the phase that the simulator displays most:
+the first minutes of the $`F_A/F_I`$ rise, which is the canonical teaching
+curve of inhaled-anesthetic uptake (see § "Model boundary"). So "agrees with
+Gas Man" may not be read as "agrees with a patient" anywhere in a case, and
+least of all in the first fifteen minutes. § "The early wash-in curve against
+the published figures" compares this model's own first minutes with the
+published human curves, and finds desflurane rising faster than its cohort.
 
 **Nor is the gap necessarily the patient model's.** The two workstations ran
-the same protocol, the same simulator and the same cardiac-output default.
-They differ in how they deliver agent into the circle. Their wash-in median
-absolute errors differ by a factor of about 1.6. That is suggestive and no
+the same protocol, the same simulator and the same cardiac-output default,
+and differ in how they deliver agent into the circle. Their wash-in median
+absolute errors differ by a factor of about 1.6, which is suggestive and no
 more. The fourteen patients on each workstation are different patients, so
-the contrast is between groups rather than within one group. The
-interquartile ranges behind it, [8, 51] against [6, 32], overlap across most
-of their length. The study does not decompose the error, and this document
-does not claim that it can be decomposed. Nor is the phase split itself free
-of the metric. A percentage error is at its most sensitive when the
-denominator is small and rising, which is the wash-in's own condition. The
-Methods are unread here, so how much either effect accounts for is
-unestablished. The direction is nonetheless the one that this project's own
-circuit already predicts. The apparatus lag $`\tau_C = V_C/\dot V_F`$ is "the
-part of the inspired curve a learner is most likely to attribute to uptake"
-(see § "Parameter provenance"). `docs/machine-survey.md` arrives at the same
-conclusion from the machine side. One perfectly mixed circuit is least like a
-real workstation exactly where Gas Man's published agreement with patients is
-weakest.
+the contrast is between groups, and the interquartile ranges behind it,
+[8, 51] against [6, 32], overlap across most of their length. The study does
+not decompose the error. The phase split may also come partly from the metric:
+a percentage error is at its most sensitive when the denominator is small and
+rising, which is the wash-in's own condition. With the Methods unread, how
+much either effect accounts for is unknown. The direction is the one this
+project's own circuit predicts. The apparatus lag $`\tau_C = V_C/\dot V_F`$ is
+"the part of the inspired curve a learner is most likely to attribute to
+uptake" (see § "Parameter provenance"). `docs/machine-survey.md` reaches the
+same conclusion from the machine side: one perfectly mixed circuit is least
+like a real workstation exactly where Gas Man's published agreement with
+patients is weakest.
 
 - Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of Gas Man
   simulations of sevoflurane in O2/air over a wide fresh gas flow range. *J Clin
   Monit Comput* 2022;36(6):1881–1890. PMID 35318567;
   [DOI 10.1007/s10877-022-00842-0](https://doi.org/10.1007/s10877-022-00842-0).
-  **Abstract read**, through the PubMed record on 2026-09-19 and re-read there
-  on 2026-09-20. The abstract is where every figure above is stated. PubMed
-  returns no PMC identifier for the paper, so there is no PubMed Central full
-  text. `docs/machine-survey.md` records that a check of the project owner's
-  private reference corpus on 2026-09-20 did not find it either. Its Methods,
-  its Varvel definitions and its per-patient data are therefore unread here.
-  That is why this note quotes the study's phase split and does not restate
-  its metrics' definitions. It is the authority for nothing stored in this
-  project.
+  **Abstract read**, through the PubMed record, and every figure above is
+  stated there. PubMed returns no PMC identifier for the paper, so there is no
+  PubMed Central full text, and `docs/machine-survey.md` records that the
+  project owner's private reference corpus did not hold it either. Its
+  Methods, its Varvel definitions and its per-patient data are therefore
+  unread, which is why this note quotes the study's phase split and does not
+  restate its metrics' definitions. It is the authority for nothing stored in
+  this project.
+
+**For developers.** Two corrections look natural and are wrong. Do not insert
+713/760 on the inspired term to model humidification: the coefficients and the
+inspired term must be re-referenced together, as the double-counting note
+says. Do not store the $`1/P`$ form as an altitude correction either. An
+implementation of ambient pressure should derive the variable-bypass case from
+each agent's saturated vapour pressure, and would owe each agent's SVP a
+source of its own. None is stored today.
 
 
 ## Release gate
@@ -12999,8 +12938,8 @@ A release is complete only when:
 - v0.0.2 circuit reference tests still pass;
 - unit, integration, invariant, and independent reference tests pass;
 - the published wash-in validation passes for every agent and cohort (the
-  elimination comparison in the same module is a regression pin, not a claim
-  of agreement, and is deliberately not a release gate);
+  elimination comparison in the same module only guards against regression,
+  makes no claim of agreement, and is not part of this gate);
 - mass balance closes within the documented tolerance;
 - supported step sizes pass convergence and nonnegativity tests;
 - deterministic replay passes;
