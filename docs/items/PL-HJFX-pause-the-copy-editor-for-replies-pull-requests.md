@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: housekeeping
-feature: prose-quality
+feature: copy-editor
 touches: .claude/rules/instruction-writing.md, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/close-out.md, docket.toml, tests/unit/test_new_prose.py
 deferred-from: v0.7.0 - a workflow change the owner ordered, closed in the change that files it
 added: 2026-11-04
