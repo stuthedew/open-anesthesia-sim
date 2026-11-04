@@ -32,21 +32,21 @@ should understand each sentence the first time they read it (project owner,
 
 The two `README.md` rows are the readers that `README.md` § "What it is for"
 names. `docs/releases/` has no row, because `bin/docket release` writes each
-note from item titles, and an edit there would part a note from its item.
-`tools/new_prose.py` reads this table. It prints a changed file's passages for
-the copy editor only where a row names the file, each with that row's readers,
-so a new row brings the files it names into the review with no other change.
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
 
 **Write what the reader needs to act on, and stop.** Find the reader and what
 they will do with the text in the table above. Put what they see first, then
-what it means for them, then why, and give the why only where they act on it.
-Move each reason, derivation, test name and piece of history that they do not
-act on to where its own reader looks, or cut it. Decision history goes in the
-item. In `docs/MODEL.md`, the rest goes in a note for developers at the end of
-the same section, a paragraph that opens with "**For developers.**" That note
-may name the tests for the paragraphs directly above it (`PL-W8FL`). The detail
-stays in that document, because the document must specify the numerical method
-(`PL-TZ7R`).
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`).
 
 **Give a chosen value its reason from a record.** Where a docstring or a
 comment gives a chosen value, such as a tolerance or a limit, say what the
