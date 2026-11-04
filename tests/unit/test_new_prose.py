@@ -441,7 +441,6 @@ def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: s
     assert readers_of(reader_table(RULE.read_text(encoding="utf-8")), path)
 
 
-
 #: The product document that the reader table leaves out on purpose. The rule's
 #: paragraph under the table gives the reason: `bin/docket release` writes each
 #: note from item titles.
@@ -468,6 +467,7 @@ def test_no_row_names_the_release_notes() -> None:
     """A release note edited by the copy editor would no longer match its item's title."""
     table = reader_table(RULE.read_text(encoding="utf-8"))
     assert not readers_of(table, "docs/releases/v0.6.14.md")
+
 
 #: A document whose first section holds a value, for the `--compare` tests.
 PRECISION = """\
