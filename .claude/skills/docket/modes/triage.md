@@ -49,6 +49,22 @@ different branch than the one the mark named. So read the mark as "somebody may
 be in this file" rather than as the identity of who: skipping is still right, and
 the branch named is where to look first rather than the whole answer.
 
+**Claim the ids this pass will answer before spending anything on them**
+(`PL-JP35`). The marks above show only what has been pushed, and a pass pushes
+nothing until it has answers to commit. So two passes started minutes apart
+each find the same items unmarked. On 2026-11-03 a session and a Projects
+thread triaged the same 17 items within six minutes. Three of the session's
+agents used about 620,000 tokens, most of it on items the thread had already
+answered. So once you have read the marks, run `bin/docket claim` with every
+id you are taking and the `--trailer` lines your commits end with. Do this
+before you work on any of them or send an agent. The claim is pushed at once,
+and every other session's `bin/docket triage` then marks those ids
+`IN FLIGHT`. Where it exits 4, the
+claim is only in this checkout, so run the command its message prints. The
+claim is all or nothing. Where another branch holds one of the ids first, it
+exits 3, names that id and writes nothing. Leave that id to the other branch,
+and claim the rest.
+
 **Then read the marks again before every push, for the ids this pass answered**
 (`PL-XJ22`). The marks above are read when the pass starts, and a claim made
 while it runs reaches `origin` only afterwards, so both answers head for `main`
@@ -58,13 +74,24 @@ merged between 2026-09-24 and 2026-10-11 met one: #1124 committed its answer for
 that branch's finished fix closed unmerged; #1278 restored `main`'s copies of
 `PL-DHGC` and `PL-W560` only because its session re-read on its own. So run
 `bin/docket flight`, which fetches first, immediately before each push - an
-item-only branch arms auto-merge at its first, so nothing later asks. For any
+item-only branch arms auto-merge at its first push with no open claim, so
+nothing later asks. For any
 answered id it lists on a branch other than this one, restore `origin/main`'s
 copy (`git checkout origin/main -- <path>`), commit that, and name the branch
 in the reply as for a skip. `flight` keeps one row per item, a claim ahead of
 any status move and the earliest move ahead of later ones, so a second pass
 that answered after this one is not in it, nor is a file edited with no status
 move; `bin/docket show <id>` prints every branch on one item.
+
+**Last, yield every id the pass leaves open, before the push that arms the
+branch.** Dropping or blocking an item ends this branch's claim on it. Leaving
+it at `ready` or `needs-decision` does not, and `bin/docket arm` will not arm a
+branch while any claim on it is open. So run `bin/docket yield` with those ids
+and the same `--trailer` lines. Ending the claim leaves no gap: once pushed,
+the status the pass wrote keeps each item marked in flight until the branch
+merges. `claim` opened the pull request as a draft, so the push that arms it
+also rewrites its title and body and marks it ready, as
+`.claude/skills/pull-request/SKILL.md` says.
 
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs

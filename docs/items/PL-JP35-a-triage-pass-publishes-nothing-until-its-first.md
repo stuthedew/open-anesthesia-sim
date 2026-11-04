@@ -3,12 +3,14 @@ id: PL-JP35
 title: A triage pass publishes nothing until its first push, so two passes started minutes apart cannot see each other: on 2026-11-03 a Projects thread pushed triage of 17 guard items at 16:21 CST, six minutes after this session sent agents to triage the same items, and list_sessions lists no Projects thread
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, session-cost
 feature: claim-record
-touches: .claude/skills/docket/modes/triage.md
+touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/render.py
 deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the workflow lane, not safety or science
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2010
 payoff: a second triage pass sees which ids a first pass has taken before either spends anything on them
 verify: grep -qF 'Claim the ids this pass will answer' .claude/skills/docket/modes/triage.md
 reenters: PL-MB2W
@@ -75,6 +77,6 @@ closed, so it is recorded `reenters: PL-MB2W`. It is the second such filing,
 after `PL-XJ22`, one short of the three that would make it a generator.
 
 **Done when.** `.claude/skills/docket/modes/triage.md` tells a pass to claim the
-ids it will answer before it reads a brief or sends an agent, to claim the rest
+ids it will answer before it works on any of them or sends an agent, to claim the rest
 when one id is refused, and to yield the ids it leaves open before the push
 that arms the branch.
