@@ -131,3 +131,33 @@ copy editor which kind it is. `python3 tools/rejected_prose.py check` runs in
 `make check` and CI. It refuses a prompt with no run, or with a run that
 misjudged an entry. It also refuses a gold-standard entry that no run of the
 current prompt has read.
+
+## Judging edits blind
+
+Run this once the copy editor's instructions have settled, on sections that
+they were not tuned on. It shows whether a reader who does not know which
+version is the edit prefers the edit (`PL-HGZS`):
+
+1. For each section, make a directory named for it, such as `reset/`.
+2. In that directory, save the output of
+   `python3 tools/new_prose.py --section FILE --heading "HEADING"` as
+   `request.txt`.
+3. Run `python3 tools/copy_edit.py DIR/request.txt` and save its whole reply
+   as `DIR/reply.txt`.
+4. Run `python3 tools/prose_judge.py OUTDIR reset/request.txt
+   reset/reply.txt ...`, with every section's request and reply.
+
+The judge is `.claude/agents/prose-judge.md`. `tools/prose_judge.py` runs it
+as `tools/copy_edit.py` runs the copy editor: alone, with Read as its one tool.
+For each passage the copy editor rewrote, the judge gets the two versions as
+A and B, in an order drawn from a fixed seed, and the readers of the file.
+It is not told which version is the edit.
+
+The tool prints one line for each passage: `edit` where the judge chose the
+copy editor's version, `original` where it chose the text before the edit, and
+`same` where it found no difference that matters to the reader. `OUTDIR` keeps
+the judge's request and reply, `key.json`, which says which version was the
+edit, and `result.json`, which holds each verdict against the key. Read in
+full each passage that the edit lost, and each fact the judge found in only
+one version, before the copy editor returns to use. A word count decides no
+verdict.
