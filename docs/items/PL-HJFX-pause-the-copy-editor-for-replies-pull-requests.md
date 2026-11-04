@@ -10,6 +10,7 @@ touches: .claude/rules/instruction-writing.md, .claude/skills/pull-request/SKILL
 deferred-from: v0.7.0 - a workflow change the owner ordered, closed in the change that files it
 added: 2026-11-04
 closed: 2026-11-04
+pr: 2033
 payoff: no reply, pull request or branch waits on a copy editor that passes verbose text
 verify: grep -qF 'THE COPY EDITOR IS PAUSED' .claude/rules/instruction-writing.md
 ---
