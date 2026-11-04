@@ -32,7 +32,10 @@
 # hooks, so the project owner's own push from the same clone is left alone.
 #
 # **What goes unread.** A push with `--no-verify`, which skips this hook, and
-# a mirror push from a clone with no remote-tracking ref.
+# a mirror push from a clone with no remote-tracking ref. The push guard
+# (`push_check_guard.py`) refuses a session's `--no-verify` push, and a
+# work-in-progress push that skips its checks is written
+# `PUSH_CHECKS=skip git push`, which this hook still screens (`PL-5R11`).
 #
 # Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
 # the next session start.

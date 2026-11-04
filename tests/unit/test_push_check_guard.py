@@ -125,8 +125,10 @@ def test_a_push_whose_doc_check_fails_is_refused(project: Path) -> None:
     reason = decision["permissionDecisionReason"]
     assert "`doc_check` failed (`python3 tools/doc_check.py check` re-runs it)" in reason
     assert DOC_ERROR in reason
-    # The bypass is offered for the one push CI never sees.
-    assert "git push --no-verify" in reason
+    # The bypass is offered for the one push CI never sees, and it leaves the
+    # pre-push hook's screens to run (`PL-5R11`).
+    assert "PUSH_CHECKS=skip git push -u origin <branch>" in reason
+    assert "--no-verify" not in reason
 
 
 def test_a_push_whose_branch_id_check_fails_is_refused(project: Path) -> None:
@@ -320,7 +322,8 @@ NOT_SENDING = (
     "git push origin -- :claude/x",
     "git push --dry-run origin claude/x",
     "git push -n origin claude/x",
-    "git push --no-verify -u origin claude/x",
+    "PUSH_CHECKS=skip git push -u origin claude/x",
+    "cd . && PUSH_CHECKS=skip git push -u origin claude/x",
 )
 
 
@@ -532,3 +535,47 @@ def test_a_refusal_also_names_a_check_that_gave_no_answer(project: Path) -> None
     reason = decision["permissionDecisionReason"]
     assert DOC_ERROR in reason
     assert "`branch_id_check` (exited 1: RuntimeError: boom)" in reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    (
+        "git push --no-verify -u origin claude/x",
+        "PUSH_CHECKS=skip git push --no-verify -u origin claude/x",
+        "git push --verify --no-verify",
+        "git status && git push --no-verify",
+    ),
+)
+def test_a_push_that_skips_the_pre_push_hook_is_refused(project: Path, command: str) -> None:
+    """`--no-verify` skips the hook's deletion refusal and email screen, so it is refused.
+
+    `PL-5R11`.
+
+    The checks pass here, so the refusal is for the flag alone.
+    """
+    _stub(project)
+    decision = _decision(command, cwd=project, project=project)
+    assert decision is not None, command
+    assert decision["permissionDecision"] == "deny"
+    reason = decision["permissionDecisionReason"]
+    assert "`--no-verify` skips the `pre-push` git hook" in reason
+    assert "PUSH_CHECKS=skip git push -u origin <branch>" in reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    (
+        "git push --no-verify --verify -u origin claude/x",
+        "git push origin -- --no-verify",
+        "env PUSH_CHECKS=skip git push -u origin claude/x",
+        "export PUSH_CHECKS=skip; git push -u origin claude/x",
+    ),
+)
+def test_a_push_that_runs_the_hook_without_the_exemption_is_checked(
+    project: Path, command: str
+) -> None:
+    """A push that runs the hook, or spells the exemption otherwise, is checked as any other."""
+    _stub(project, doc=DOC_FAILS)
+    decision = _decision(command, cwd=project, project=project)
+    assert decision is not None, command
+    assert "`doc_check` failed" in decision["permissionDecisionReason"]

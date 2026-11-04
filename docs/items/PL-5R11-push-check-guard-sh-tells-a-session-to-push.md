@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: guards-keyed-on-the-action
-touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
+touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, .claude/hooks/shell_split.py, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane guard defect, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: a work-in-progress push that skips the checks still has its commits screened for an email address and cannot delete a remote branch
