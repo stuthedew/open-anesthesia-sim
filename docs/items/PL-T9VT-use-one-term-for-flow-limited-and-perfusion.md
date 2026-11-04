@@ -29,3 +29,5 @@ verify: ! grep -q -i -E 'flow-limited|perfusion limited' docs/MODEL.md && grep -
 **Blind review, 2026-11-04.** Both passes found that the first definition said blood flow alone sets the rate, which the uptake equations contradict, and that the arterial sentences gave perfusion limitation as the whole reason for $`F_a \equiv F_A`$, which also needs the model's omission of shunt and ventilation-perfusion mismatch. Both were fixed on this branch.
 
 **Generator check.** The fact is the name and meaning of the model's exchange assumption. No head's `misread:` states it, and no other open item misreads it. `.claude/rules/plain-writing.md` point 3 already requires a term to be defined where it first appears, so no new rule is owed. This is a one-off.
+
+**Answered 2026-11-04.** The project owner read the new definition and the arterial reasoning and said: "Merge for now. Reworking copy editor so will probably revisit but not worth fixing more while copy editor issues still needing to be fixed." (project owner, 2026-11-04). So the wording may be revisited once the copy-editor rework under `PL-J1ZM` lands.
