@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: guards-say-when-they-cannot-check
-touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-branch-guard.sh, .claude/hooks/direct-merge-guard.sh, .claude/hooks/pr-body-email-guard.sh, .claude/hooks/regex-guard.sh, .claude/hooks/hook_input.py, tests/unit/test_no_prune_guard.py
+touches: .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-branch-guard.sh, .claude/hooks/direct-merge-guard.sh, .claude/hooks/pr-body-email-guard.sh, .claude/hooks/regex-guard.sh, .claude/hooks/hook_input.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: a guard that breaks says so in the session, instead of reading as a pass while the action it guards goes through
@@ -22,6 +22,8 @@ misread: Whether a guard actually read and checked the call it let through
 `PYTHONPATH`, `no-prune-guard.sh` given `git fetch --prune` exited 0 with empty
 stdout and empty stderr. The same call without the poisoned path is refused.
 So a crash inside a guard reads to the session exactly as a pass.
+
+<!-- absent: no-prune-guard.sh -->
 
 **Why it matters.** The guards exist for actions a session cannot take back: a
 pruned ref, a merge, an email address published on GitHub. A guard that has

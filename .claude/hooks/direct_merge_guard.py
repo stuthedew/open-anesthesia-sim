@@ -76,9 +76,11 @@ contains "merge" in any case. Every call the script would take for a merge
 contains it, so no merge gets through unjudged, and the other MCP calls, such
 as a Projects thread's posts, are not blocked with it.
 
-**Known gap**: a merge made another way - `gh pr merge`, or a REST call from
-Bash - meets no hook. While the base binds admins GitHub holds it to the same
-checks, and `CLAUDE.md`'s merge bullet covers the rest.
+**Known gap**: a merge sent from Bash meets this guard only through `gh`,
+whose writes `gh_write_guard.py` refuses outright, so every `gh` merge is
+turned back to the MCP call this guard reads (`PL-3986`). A REST call from
+another client that carries the token, such as `curl` with `$GH_TOKEN`, meets
+no hook. While the base binds admins GitHub holds it to the same checks.
 """
 
 from __future__ import annotations

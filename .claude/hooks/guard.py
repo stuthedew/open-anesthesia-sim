@@ -16,9 +16,11 @@ failure path is written once:
 
 - A guard that raises, or that does not finish within its `deadline_s`, lets
   the call through, and the note it leaves names the guard and the error.
-- A guard whose `closed_on` says the call is one it must judge refuses the
-  call instead. The merge guard is the one such guard: a merge that nothing
-  judged would land on `main` unchecked (`PL-NXRJ`).
+- A guard with an `unjudged` rule refuses the call instead where that rule
+  gives a reason. Two guards have one. The merge guard refuses a call that
+  mentions a merge, since a merge that nothing judged would land on `main`
+  unchecked (`PL-NXRJ`). The gh guard refuses a Bash call that names `gh`,
+  since `gh` can write to GitHub (`PL-3986`).
 - A guard that prints something other than a hook's JSON is read as one that
   crashed.
 
@@ -88,6 +90,22 @@ MERGE_UNJUDGED = (
 )
 
 
+def merge_unjudged(payload: str, why: str) -> str | None:
+    """The reason to refuse a call the merge guard could not judge, where it mentions a merge."""
+    return MERGE_UNJUDGED + why + "." if mentions_merge(payload) else None
+
+
+def gh_unjudged(payload: str, why: str) -> str | None:
+    """The gh guard's own `unjudged` rule, imported only when it is needed.
+
+    Where `gh_write_guard.py` will not load, the error reaches `judged`, which
+    lets the call through with a note, as the guard did before `PL-9KSJ`.
+    """
+    import gh_write_guard
+
+    return gh_write_guard.unjudged(payload, why)
+
+
 @dataclass(frozen=True)
 class Guard:
     """One guard: where its rule lives, how long it may take, and what its failure does."""
@@ -100,10 +118,10 @@ class Guard:
     function: str = "decide"
     #: Seconds the guard may take before it is stopped and the call goes through.
     deadline_s: int = 10
-    #: Where this says the call must be judged, a guard that could not judge it
-    #: refuses the call, giving `closed_reason` and then what stopped it.
-    closed_on: Callable[[str], bool] | None = None
-    closed_reason: str = ""
+    #: For a call the guard could not judge, this takes the call and what
+    #: stopped the guard, and returns the reason to refuse the call, or `None`
+    #: to let it through with a note.
+    unjudged: Callable[[str, str], str | None] | None = None
 
 
 #: Every guard, by the group `.claude/settings.json` wires it in. A group runs
@@ -118,6 +136,7 @@ GROUPS: dict[str, tuple[Guard, ...]] = {
     "pre-bash": (
         Guard("floor-interpreter-guard", "floor_interpreter_guard"),
         Guard("gate-status-guard", "gate_status_guard"),
+        Guard("gh-write-guard", "gh_write_guard", unjudged=gh_unjudged),
         # Past the 100 seconds the guard gives its checks (`DEADLINE`).
         Guard("push-check-guard", "push_check_guard", deadline_s=110),
     ),
@@ -127,8 +146,7 @@ GROUPS: dict[str, tuple[Guard, ...]] = {
             "direct-merge-guard",
             "direct_merge_guard",
             deadline_s=40,
-            closed_on=mentions_merge,
-            closed_reason=MERGE_UNJUDGED,
+            unjudged=merge_unjudged,
         ),
         Guard("pr-body-email-guard", "pr_body_check"),
         # Past the 45 seconds it gives `bin/docket arm` (`ARM_TIMEOUT_S`).
@@ -210,10 +228,13 @@ def judged(guards: tuple[Guard, ...], payload: str) -> tuple[list[str], list[str
             if found.note is not None:
                 notes.append(found.note)
             continue
-        if guard.closed_on is not None and guard.closed_on(payload):
-            reason = guard.closed_reason + why + "."
-            # Through `deny`, so the refusal is logged as every guard's is.
-            hook_input.deny(guard.name, "unjudged", reason, payload)
+        try:
+            reason = guard.unjudged(payload, why) if guard.unjudged is not None else None
+        except Exception as error:
+            reason = None
+            why = f"{why}, and its rule for a call it cannot judge failed too ({_error(error)})"
+        if reason is not None:
+            hook_input.log_refusal(guard.name, "unjudged", hook_input.session_of(payload))
             refusals.append(reason)
         else:
             notes.append(unchecked(guard.name, why))

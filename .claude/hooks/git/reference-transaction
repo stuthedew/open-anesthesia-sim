@@ -1,0 +1,81 @@
+#!/bin/sh
+# open-anesthesia-sim git hook: installed from .claude/hooks/git/ by stop_hook_patch.py.
+#
+# Refuse any deletion of a remote-tracking ref in a session's clone (`PL-82J5`,
+# `PL-1ZZ0`). Git runs this hook with each ref a command is about to change, one
+# line each: the old value, the new value and the ref's name. A deletion's new
+# value is all zeros. In the `prepared` state a non-zero exit aborts the whole
+# change, so git fails having changed no ref.
+#
+# **Why here and not on the command's words.** A stale `origin/<branch>` ref can
+# be the only surviving copy of an item captured on a branch nobody merged, and
+# `bin/docket stranded` is what recovers it. The Bash guard this replaces read
+# each command's words to find a prune, and every spelling its model of bash and
+# git lacked deleted refs unread: its own table listed ten (`PL-61FT`, `PL-82J5`).
+# This hook sees what git is about to do, so the spelling does not matter.
+# Measured with git 2.43.0 on 2026-11-03: `fetch --prune`, `-c fetch.prune=true
+# fetch`, `pull --prune`, `remote update --prune`, `remote prune`, `branch -dr`,
+# `update-ref -d`, `update-ref --stdin`, `remote remove` and `remote rename` were
+# all refused with every ref intact, while a commit, a local branch's deletion,
+# `pack-refs --all` and `gc` ran as before.
+#
+# **Only an agent's git is refused.** Claude Code sets `CLAUDECODE` in the
+# environment of every command it runs, and git hands that environment to its
+# hooks. The project owner's own git in the same clone is left alone, which is
+# the scope the Bash guard had.
+#
+# **What goes unread.** A command that switches hooks off, such as `-c
+# core.hooksPath=/dev/null`, and a file removed by hand under `.git/refs` or
+# rewritten in `.git/packed-refs`. `git remote rename` renames the remote's
+# settings before it moves any ref, so a refused rename leaves the settings
+# renamed and every ref where it was.
+#
+# Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
+# the next session start.
+
+[ "$1" = prepared ] || exit 0
+[ -n "${CLAUDECODE:-}" ] || exit 0
+
+refs=
+while read -r old new ref; do
+    case $new in
+    *[!0]*) ;;
+    *)
+        case $ref in
+        refs/remotes/*) refs="$refs
+    $ref" ;;
+        esac
+        ;;
+    esac
+done
+[ -n "$refs" ] || exit 0
+
+python3 .claude/hooks/hook_input.py --log git-ref-guard delete-tracking-ref >/dev/null 2>&1
+
+cat >&2 <<EOF
+Refused: this command would delete these remote-tracking refs, and git has changed no ref:
+$refs
+
+A remote-tracking ref can be the only surviving copy of an item captured on a
+branch nobody merged, so no command in a session may delete one (PL-82J5).
+Run \`bin/docket stranded\` to see what such refs hold.
+
+- To fetch, leave out the prune: \`git fetch origin\`. If you did not ask for a
+  prune, a setting did. \`git config --show-origin --get-regexp prune\` names
+  it, and \`git config --unset <name>\` clears it.
+- To restart a branch whose pull request has merged, move the branch, carry
+  over any commit the merge did not take, and push. The push moves the stale
+  ref, so it needs no deleting:
+
+      git fetch origin main
+      git checkout -B <branch> origin/main
+      git cherry-pick <commit>
+      git push -u origin <branch>
+
+  Where the remote still holds the old branch, git rejects that push as
+  behind it. Push with \`--force-with-lease\` then, which replaces it.
+
+- To point a remote somewhere else, keep it and its refs:
+  \`git remote set-url <name> <url>\`.
+EOF
+exit 1

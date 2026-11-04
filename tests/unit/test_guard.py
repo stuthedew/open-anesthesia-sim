@@ -44,10 +44,6 @@ ENTRY = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" '
 #: The hooks `.claude/settings.json` may wire without the entry point, and why.
 #: A new hook that judges a tool call goes through `guard.sh` instead.
 EXEMPT = {
-    'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/no-prune-guard.sh"': (
-        "PL-1ZZ0 deletes it, moving its rule into git's own hooks; "
-        "drop this entry when that branch merges"
-    ),
     'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/webfetch-quote-note.sh"': (
         "it prints a fixed note and runs no Python, so it has no check that can fail"
     ),
@@ -225,6 +221,20 @@ def test_a_crashing_merge_guard_refuses_a_merge(monkeypatch: pytest.MonkeyPatch)
     (refusal,) = refusals
     assert refusal.startswith("Refused: the direct-merge-guard hook could not judge")
     assert "the rule has a bug in it" in refusal
+
+
+@pytest.mark.parametrize(("command", "refused"), [("gh pr merge 1", True), ("git status", False)])
+def test_a_crashing_gh_guard_refuses_only_a_call_that_names_gh(
+    command: str, refused: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken gh guard must not let a `gh` write through, nor block every other call."""
+    (gh_guard,) = entry_point.selected("gh-write-guard") or ()
+    _crash(monkeypatch, gh_guard)
+    call = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+    refusals, notes = entry_point.judged((gh_guard,), call)
+    assert bool(refusals) is refused
+    assert bool(notes) is not refused
+    assert "the rule has a bug in it" in (refusals or notes)[0]
 
 
 def test_a_guard_that_prints_something_else_is_taken_for_one_that_crashed(

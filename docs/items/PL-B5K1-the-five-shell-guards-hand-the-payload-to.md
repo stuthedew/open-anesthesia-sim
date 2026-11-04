@@ -21,6 +21,8 @@ same `git fetch --prune` alone is refused. The guard puts the payload in an
 environment variable for `python3 -c`, and Linux refuses an `exec` whose single
 argument or variable passes 128 KiB (`MAX_ARG_STRLEN`), so Python never starts.
 
+<!-- absent: no-prune-guard.sh -->
+
 **Why it matters.** A long command is ordinary when a session writes a file
 through a heredoc, and the guard that protects irreversible ref deletions then
 passes whatever follows it.

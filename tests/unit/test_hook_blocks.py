@@ -61,7 +61,9 @@ def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
                 "owner": "o",
                 "repo": "r",
                 "title": "t",
-                "body": "Asked by a.person@example.org.",
+                # Joined here: an address under a reserved test domain is admitted,
+                # and this file's own text must hold none that is not (`PL-1ZZ0`).
+                "body": "Asked by a.person" + "@" + "clinic.org.",
             },
         }
     )
@@ -78,7 +80,7 @@ def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
     (line,) = log.read_text(encoding="utf-8").split("\n")[:-1]
     _, session, guard, rule = line.split("\t")
     assert (session, guard, rule) == ("cse_abc", "pr-body-email-guard", "email-address")
-    assert "example.org" not in line
+    assert "clinic.org" not in line
 
 
 def test_every_python_refusal_is_built_by_deny() -> None:

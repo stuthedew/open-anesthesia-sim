@@ -10,7 +10,7 @@ touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: guard code is linted, type-checked and held to one source of truth like every other Python file, so defects like a second GitHub client stop accumulating unseen
-verify: ! grep -qF "python3 -c" .claude/hooks/docket-branch-guard.sh && ! grep -qF "python3 -c '" .claude/hooks/no-prune-guard.sh
+verify: test -f .claude/hooks/docket_branch_guard.py && ! grep -lF "python3 -c '" .claude/hooks/guard.sh .claude/hooks/webfetch-quote-note.sh
 ---
 
 **Problem.** About 1,430 lines of guard Python live inside python3 -c strings in .claude/hooks/*.sh, where ruff, mypy and tools/fact_home_check.py never read them; direct-merge-guard.sh builds a second GitHub API client there, and three guards import json unused

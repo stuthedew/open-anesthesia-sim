@@ -61,12 +61,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/no-prune-guard.sh\""
-          },
-          {
-            "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" pre-bash",
-            "timeout": 135
+            "timeout": 145
           }
         ]
       },

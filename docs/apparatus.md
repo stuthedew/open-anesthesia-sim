@@ -714,18 +714,20 @@ the safety check runs before allow rules are evaluated. So the directory is the
 guard, and a hook put anywhere else is silently left outside it.
 `stop_hook_patch.py` sat in `tools/` until `PL-W4H9`. That is exactly the gap
 the item names: a script that rewrites another hook, editable without review.
-`docket-digest.sh`, `no-prune-guard.sh` and `webfetch-quote-note.sh` are
-documented where their behavior is, in their own headers.
+`docket-digest.sh` and `webfetch-quote-note.sh` are documented where their
+behavior is, in their own headers. So are the two git hooks in
+`.claude/hooks/git/`, which `stop_hook_patch.py` installs rather than
+`.claude/settings.json` wiring them.
 
 Every other check on a tool call starts at `guard.sh` (`PL-9KSJ`).
 `.claude/settings.json` wires it once for each set of tools, with the name of a
 group: `pre-edit`, `pre-bash`, `pre-mcp` or `post-bash`. `guard.sh` starts
 `guard.py` with the call on standard input, and `guard.py` runs every guard of
 the group on it from one Python start. `GROUPS` in `guard.py` lists each
-group's guards and the module that holds each rule. Six of those modules sit
-beside it: `floor_interpreter_guard.py`, `gate_status_guard.py`,
-`push_check_guard.py`, `direct_merge_guard.py`, `docket_branch_guard.py` and
-`owner_ask_guard.py`. The other two are `tools/regex_check.py` and
+group's guards and the module that holds each rule. Seven of those modules
+sit beside it: `floor_interpreter_guard.py`, `gate_status_guard.py`,
+`gh_write_guard.py`, `push_check_guard.py`, `direct_merge_guard.py`,
+`docket_branch_guard.py` and `owner_ask_guard.py`. The other two are `tools/regex_check.py` and
 `tools/pr_body_check.py`. The linter, the type checker and the
 one-source-of-truth check read all of them (`PL-S3TF`). The call arrives on
 standard input because an environment variable carried it before, and Linux
@@ -735,9 +737,10 @@ refuses one past 128 KiB, so a long heredoc switched the guards off
 A guard that crashes, or runs past its deadline in `GROUPS`, lets the call
 through, and `guard.py` adds a note that names the guard and the error. Each
 guard used to fail in silence, so a broken guard looked like one that had
-checked the call and found nothing wrong (`PL-9KSJ`). The merge guard is the
-exception: when it cannot judge a call that mentions a merge, the call is
-refused (`PL-NXRJ`). `guard.sh` gives the same note, or the same refusal, when
+checked the call and found nothing wrong (`PL-9KSJ`). Two guards refuse
+instead. When the merge guard cannot judge a call that mentions a merge, the
+call is refused (`PL-NXRJ`). When the gh guard cannot judge a Bash call that
+names `gh`, that call is refused (`PL-3986`). `guard.sh` gives the same note, or the same refusal, when
 `python3` is missing or dies before `guard.py` decides.
 `tests/unit/test_guard.py` fails any hook in `.claude/settings.json` that does
 not start at `guard.sh`, unless the test names the hook with its reason.
@@ -751,7 +754,7 @@ where one shell command ends (`PL-PVW2`). The parsing itself is done by
 docket's `subprojects/docket/src/docket/shell.py`, which `shell_split.py` finds
 from its own location. It is the one lexer that docket and the guards share
 (`PL-JNYL`). Docket also decides which word of a git call is its command.
-`no-prune-guard.sh` and `push_check_guard.py` read
+`push_check_guard.py` reads
 `subprojects/docket/src/docket/gitargv.py`, the same table that `docket.vcs`
 reads. Once the push guard has found a push, it reads the default base and
 git's results through `docket.vcs` (`PL-ZXCN`). So the code that decides what
@@ -767,7 +770,10 @@ machine: the time, the session id, the guard's name and the rule that refused,
 never the command (`PL-SG93`). The email guard refuses through `screen` in
 `tools/pr_body_check.py`, which calls `deny` too, and
 `tests/unit/test_hook_blocks.py` fails any other Python file that builds a
-refusal of its own (`PL-HHKC`). `bin/docket record` runs `tools/hook_blocks.py copy` as
+refusal of its own (`PL-HHKC`). The two git hooks cannot answer Claude Code,
+so each refuses by its exit status and logs through
+`python3 .claude/hooks/hook_input.py --log`, and the screen of a push's
+commits logs through `log_refusal`, as `deny` does. `bin/docket record` runs `tools/hook_blocks.py copy` as
 `docket.toml`'s `record_command`, which copies the lines the repository lacks
 into `docs/hook-blocks/<branch>.tsv`. `python3 tools/hook_blocks.py count`
 prints each guard's refusals from those files, which is what a keep, simplify
@@ -803,6 +809,15 @@ offline, instead of trading it for a network call at every `Stop`. The hook
 only ever widens the refspec, and it neither fetches nor prunes. So it cannot
 destroy a ref that `bin/docket stranded` needs. `PL-3SGR` and `PL-483K` are
 the two reproductions.
+
+The third thing it does is install the git hooks in `.claude/hooks/git/` into
+the clone's hooks directory (`PL-1ZZ0`). `reference-transaction` refuses a
+session's command that would delete a remote-tracking ref, and `pre-push`
+refuses a session's push that deletes a branch on the remote or carries an
+email address in its new commits. Each checks what git is about to do, so the
+spelling of the command does not matter. A hook of the same name that this
+repository did not write is left in place, and the session is told it is
+unguarded.
 
 ## Third-party text (`tests/unit/markdown-specs/`)
 
