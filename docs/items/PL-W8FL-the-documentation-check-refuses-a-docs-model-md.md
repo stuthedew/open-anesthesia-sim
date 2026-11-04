@@ -3,12 +3,14 @@ id: PL-W8FL
 title: The documentation check refuses a docs/MODEL.md paragraph whose test is named in the For-developers note below it, so every clinician paragraph that states a number must carry a test name or an item id; the prose review proposed moving them out on PL-BSYT and PL-ZDZ0 and was turned down for this reason
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: reader-first-prose
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 deferred-from: v0.7.0 - captured after the freeze; it changes which paragraphs a documentation check accepts, not a displayed value
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2006
 payoff: a docs/MODEL.md paragraph can tell a clinician what a readout means without test names and item ids in it, because the developer note below it may carry them
 verify: grep -q 'def test_a_developer_note_holds_the_numeric_paragraphs_above_it' tests/unit/test_doc_check.py
 ---

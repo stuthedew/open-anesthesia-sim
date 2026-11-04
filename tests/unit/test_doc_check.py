@@ -8011,21 +8011,97 @@ def test_a_numeric_paragraph_declaring_no_test_yet_is_resolved_against_the_queue
         "### Displayed precision\n\nFat reads 0.0% for 19.3 minutes, no test yet (`PL-8888`).\n"
     )
     for status, expected in (("ready", 0), ("done", 1)):
-        root = tmp_path / status
-        (root / "docs" / "items").mkdir(parents=True)
-        (root / doc_check.MODEL).write_text(document, encoding="utf-8")
-        (root / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
-        (root / "docs" / "items" / "PL-8888-demo.md").write_text(
-            f"---\nid: PL-8888\ntitle: Demo\npriority: P2\neffort: S\n"
-            f"status: {status}\nadded: 2026-09-06\n---\n\n"
-            "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
-            encoding="utf-8",
-        )
-        report = doc_check.Report()
-        doc_check.check_bound_families(root, report)
+        report = _check_numeric_family(tmp_path / status, document, status)
 
         assert len(report.errors) == expected, report.errors
         assert report.declined == []
+
+
+def _check_numeric_family(root: Path, document: str, status: str) -> doc_check.Report:
+    """Run `check_bound_families` over `document` as `docs/MODEL.md`, beside one item.
+
+    The item is `PL-8888`, at `status`, so a declared-none form naming it
+    passes while it is open and fails once it is closed. The caller sets
+    `BOUND_FAMILIES` to the family it is about.
+    """
+    (root / "docs" / "items").mkdir(parents=True)
+    (root / doc_check.MODEL).write_text(document, encoding="utf-8")
+    (root / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
+    (root / "docs" / "items" / "PL-8888-demo.md").write_text(
+        f"---\nid: PL-8888\ntitle: Demo\npriority: P2\neffort: S\n"
+        f"status: {status}\nadded: 2026-09-06\n---\n\n"
+        "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
+        encoding="utf-8",
+    )
+    report = doc_check.Report()
+    doc_check.check_bound_families(root, report)
+    return report
+
+
+NOTE_HELD_DOCUMENT = "\n".join(
+    [
+        "### Displayed precision",
+        "",
+        "The sevoflurane step is 0.02 %, and the MAC step is 0.01 MAC.",  # line 3
+        "",
+        "- A list entry at 0.06 %.",  # line 5
+        "",
+        "**For developers.** Dividing 0.02 % by 2 % gives 0.01 MAC, and",  # line 7
+        "`test_the_mac_resolution_is_derived_from_the_percent_",
+        "resolution` repeats it.",
+        "",
+        "A paragraph below the first note at 4 L/min.",  # line 11
+        "",
+        "**For developers.** Measured 2026-11-03 at 2 L, naming no test.",  # line 13
+        "",
+        "A paragraph above a heading at 5 L.",  # line 15
+        "",
+        "#### A deeper heading",
+        "",
+        "A paragraph under the deeper heading at 3 L.",  # line 19
+        "",
+        "**For developers.** The 3 L figure has no test yet (`PL-8888`).",  # line 21
+        "",
+        "### The next section",
+        "",
+        "A paragraph at 9 L that belongs to another section.",
+        "",
+    ]
+)
+
+
+def test_a_developer_note_holds_the_numeric_paragraphs_above_it_and_none_below() -> None:
+    """Regression for `PL-W8FL`: a test named in the note below a paragraph did not hold it.
+
+    The note on line 7 holds each paragraph above it, the list entry among
+    them, through a test name that wraps across a line. It holds nothing
+    below it. The note on line 13 carries only a date, which holds the note
+    itself and not the paragraph above it. Nothing is held across a heading,
+    so line 15 is not. Before `PL-W8FL`, only lines 7 and 13 were held.
+    """
+    members = dict(doc_check._numeric_paragraph_members(NOTE_HELD_DOCUMENT, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert sorted(members) == [3, 5, 7, 11, 13, 15, 19, 21]
+    assert held == {3, 5, 7, 13}
+
+
+@pytest.mark.parametrize(("status", "refused"), [("ready", [11, 15]), ("done", [11, 15, 19, 21])])
+def test_a_developer_note_declaring_no_test_yet_holds_the_paragraph_above_it_while_owed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str, refused: list[int]
+) -> None:
+    """A note's declared-none form holds the paragraph above it, as the paragraph's own would.
+
+    So line 19 passes with the note on line 21 while `PL-8888` is open, and
+    both fail once it is closed. Lines 11 and 15 fail either way, because no
+    note holds them.
+    """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_numeric_family(),))
+
+    report = _check_numeric_family(tmp_path, NOTE_HELD_DOCUMENT, status)
+
+    assert sorted(int(error.split(":")[1]) for error in report.errors) == refused, report.errors
+    assert report.declined == []
 
 
 @pytest.mark.reads_item_store

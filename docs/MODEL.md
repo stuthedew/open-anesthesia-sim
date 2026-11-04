@@ -365,7 +365,10 @@ carry one of these: a test in code format, the declared-none form, a date, or a
 published source cited by a DOI, a PubMed id, an ISBN or a journal locator such
 as "Anesth Analg 1991;72:316-324". An author and a year alone, such as "Mapleson
 1963", does not count, because no pattern can tell it from a phrase such as
-"Until 2026". A paragraph with none of these passes only if a marker covers each
+"Until 2026". The test or the declared-none form may instead be in the note for
+developers below the paragraph. That note covers every paragraph above it, back
+to the previous heading or note. A date or a source in the note covers only the
+note. A paragraph with none of these passes only if a marker covers each
 of its numbers with a unit. A `provenance:` marker covers a value the paragraph
 asserts, in that value's unit. A `derived:` marker covers a figure the paragraph
 computed, in the unit it writes, and each input it asserts. A `not-restated:`
