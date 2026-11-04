@@ -64,6 +64,15 @@ retire this hook. Retire the half a fix covers rather than widening a match: a
 fix that writes `CORRECTED` leaves this hook silent, and any other form makes
 it print `UNPATCHED` at every session start.
 
+**The third repair puts git's own hooks in the clone** (`PL-1ZZ0`).
+`install_git_hooks` copies `.claude/hooks/git/reference-transaction` and
+`.claude/hooks/git/pre-push` into the hooks directory git reads. The first
+refuses any command that deletes a remote-tracking ref, and the second a push
+that deletes a branch on the remote or publishes an email address. Each checks
+what git is about to do, where the Bash guard before them read the command's
+words. It belongs here for the same reason as the other two: it repairs the
+clone, and a session start is the one moment before any command runs.
+
 **Silent on the path it takes every session.** Standard output from a
 SessionStart hook enters the session's context and is resent on every turn, so
 a line announcing the ordinary success would cost tokens in every session
@@ -153,7 +162,8 @@ def widen_fetch_refspec(run: Callable[[list[str]], tuple[int, str]]) -> str:
     Only ever widens. A refspec that already covers every branch is left
     alone, and nothing here fetches or prunes - `PL-HKF4` came within one
     `git fetch --prune` of destroying the only copy of an item captured on an
-    unmerged branch, and `.claude/hooks/no-prune-guard.sh` refuses that call.
+    unmerged branch, and the `reference-transaction` hook `install_git_hooks`
+    puts in this clone refuses it.
     """
     status, output = run(["config", "--get-all", "remote.origin.fetch"])
     if status != 0:
@@ -165,6 +175,82 @@ def widen_fetch_refspec(run: Callable[[list[str]], tuple[int, str]]) -> str:
         return "its fetch refspec could not be cleared"
     status, _ = run(["config", "--add", "remote.origin.fetch", WIDE_REFSPEC])
     return "" if status == 0 else "its fetch refspec could not be widened"
+
+
+#: The git hooks this repository installs in a session's clone, each read from
+#: `.claude/hooks/git/` beside this file (`PL-1ZZ0`).
+GIT_HOOKS = ("reference-transaction", "pre-push")
+
+#: The words every hook in `GIT_HOOKS` opens with, by which an installed hook
+#: is known as this repository's own, so a hook somebody else wrote there is
+#: never overwritten.
+GIT_HOOK_MARK = "open-anesthesia-sim git hook"
+
+#: An installed git hook's mode: git runs a hook only when it is executable.
+GIT_HOOK_MODE = 0o755
+
+#: Printed only when a git hook could not be installed, because a session
+#: without them can delete the only copy of an item and nothing else says so.
+NO_GIT_HOOKS = """\
+This session could not install the repository's git hooks ({reason}), so
+nothing in it refuses a command that deletes a remote-tracking ref or a push
+that deletes a branch on the remote. Do not run `git fetch --prune`, `git
+remote prune`, `git branch -dr` or a push with `--prune`, `--mirror` or
+`--delete`: a stale ref can be the only copy of an item captured on a branch
+nobody merged, which `bin/docket stranded` recovers.
+"""
+
+
+def _ours(hook: str) -> bool:
+    """Whether `hook`, an installed hook's text, carries `GIT_HOOK_MARK` on its second line."""
+    lines = hook.split("\n", 2)
+    return len(lines) > 1 and GIT_HOOK_MARK in lines[1]
+
+
+def install_git_hooks(run: Callable[[list[str]], tuple[int, str]], root: Path) -> str:
+    """Install the hooks `GIT_HOOKS` names into the clone at `root`, from beside this file.
+
+    Returns a reason when one could not be installed, and `""` when every one
+    is in place. `run` runs git in `root`, injected so the tests drive real git
+    in a temporary clone.
+
+    **Why git's own hooks** (`PL-1ZZ0`). A guard that reads a Bash command's
+    words is only as complete as its model of bash and git, and the Bash
+    guard these replace listed ten spellings in its own table that deleted
+    refs unread (`PL-82J5`). Git calls
+    `reference-transaction` with the refs a command is about to change, and
+    `pre-push` with the refs a push is about to send, so each refuses the
+    deletion itself whatever command made it.
+    Each hook's header says what it refuses and what goes unread.
+
+    The hooks directory is the one git reads, which `core.hooksPath` can move,
+    so a linked worktree shares its clone's hooks. A hook already there is
+    replaced only where it opens with `GIT_HOOK_MARK`. Installed everywhere
+    this session-start hook runs, the owner's own computer included, each hook
+    acts only on a command an agent runs, which it tells by the `CLAUDECODE`
+    variable Claude Code sets.
+    """
+    status, output = run(["rev-parse", "--git-path", "hooks"])
+    if status != 0 or not output.strip():
+        return "git did not name this clone's hooks directory"
+    hooks = root / output.strip()
+    source = Path(__file__).resolve().parent / "git"
+    problems: list[str] = []
+    for name in GIT_HOOKS:
+        target = hooks / name
+        try:
+            text = (source / name).read_text(encoding="utf-8")
+            current = target.read_text(encoding="utf-8") if target.exists() else None
+            if current is not None and not _ours(current):
+                problems.append(f"`{target}` holds a hook of its own")
+                continue
+            if current == text and target.stat().st_mode & 0o111:
+                continue
+            hooks.mkdir(parents=True, exist_ok=True)
+            write_atomically(target, text, GIT_HOOK_MODE)
+        except (OSError, UnicodeDecodeError) as error:
+            problems.append(f"`{target}` could not be written: {error}")
+    return "; ".join(problems)
 
 
 def _git(args: list[str]) -> tuple[int, str]:
@@ -199,7 +285,7 @@ def main(argv: list[str]) -> int:
 
 
 def repair(argv: list[str]) -> int:
-    """Both halves: correct the harness script, then widen this clone's refspec."""
+    """Each repair: correct the harness script, widen the refspec, install the git hooks."""
     status = main(argv)
     try:
         reason = widen_fetch_refspec(_git)
@@ -207,6 +293,12 @@ def repair(argv: list[str]) -> int:
         reason = f"git could not be run ({error})"
     if reason:
         print(NARROW_REFSPEC.format(reason=reason))
+    try:
+        reason = install_git_hooks(_git, project_root())
+    except (OSError, subprocess.SubprocessError) as error:
+        reason = f"git could not be run ({error})"
+    if reason:
+        print(NO_GIT_HOOKS.format(reason=reason))
     return status
 
 

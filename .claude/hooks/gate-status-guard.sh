@@ -36,8 +36,9 @@
 # context but do run these hooks. `permissionDecisionReason` is shown to the
 # model (https://code.claude.com/docs/en/hooks, read 2026-09-16), so the
 # refusal arrives at the one moment the wrong conclusion would have formed.
-# `no-prune-guard.sh` beside this one made the same move out of ten resident
-# lines (`PL-JK0M`); the resident set does not grow to pay for this one.
+# The guard against deleting remote-tracking refs made the same move out of ten
+# resident lines (`PL-JK0M`), and git's own hooks carry it now (`PL-82J5`); the
+# resident set does not grow to pay for this one.
 #
 # **The remedy is one token, which is what keeps this from being routed
 # around.** `set -o pipefail` makes a pipeline report its rightmost non-zero

@@ -27,10 +27,12 @@ it wrote stay, with their `recorded:` header.
 
 **`--screen` keeps an email address out of a body before GitHub has it**
 (`PL-7K31`). `.claude/hooks/pr-body-email-guard.sh` runs it as the
-PreToolUse hook on every MCP call. It reads each GitHub call that carries a
-title or a body, whatever the tool is called (`PL-NZJG`), and `screen` says why
-it refuses. It lives here because the body it guards is the one this file
-recovers.
+PreToolUse hook on every MCP call. It reads every field of each call that
+names a GitHub repository, whatever the tool or the field is called
+(`PL-NZJG`, `PL-D16Y`), and `screen` says why it refuses. `--screen-push`
+applies the same rule to the commits a `git push` would publish, for the git
+hook `.claude/hooks/git/pre-push` (`PL-1ZZ0`). It lives here because the body
+it guards is the one this file recovers.
 
 **What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,
 which says the file is a historical record nobody maintains (`PL-TDBT`), then
@@ -194,6 +196,7 @@ bare checkout with no virtualenv can run it.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -220,7 +223,7 @@ from docket.vcs import (  # noqa: E402
     resolved,
     subject_pull_request,
 )
-from hook_input import deny  # noqa: E402
+from hook_input import deny, log_refusal  # noqa: E402
 
 from open_pull_requests import GITHUB_API, api_request, repo_slug  # noqa: E402
 
@@ -739,14 +742,35 @@ def anchors(ref: str | None) -> int:
 #: digits, so it is not one.
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 
-#: The one address a pull request may carry: the `Co-authored-by` trailer
-#: `CLAUDE.md` requires on every commit names it, and it is no person's.
-ALLOWED_EMAILS = frozenset({"noreply@anthropic.com"})
+#: The addresses GitHub text may carry, because each is nobody's own. The
+#: `Co-authored-by` trailer `CLAUDE.md` requires on every commit names the
+#: first. GitHub commits a merge made on its website as the second. The third
+#: is the user of GitHub's SSH address for a repository,
+#: `git@github.com:owner/name`, which publishes no one's address (`PL-D16Y`).
+ALLOWED_EMAILS = frozenset({"noreply@anthropic.com", "noreply@github.com", "git@github.com"})
 
-#: The fields of a GitHub call whose text GitHub publishes at once: a pull
-#: request's or an issue's title, and the body of either, of a comment or of a
-#: review.
-PUBLISHED_FIELDS = ("title", "body")
+#: The domains whose addresses are nobody's own, each with the domains below
+#: it. GitHub gives every account an address under the first, and writes it
+#: as the author of a squash merge made on its website, so `main`'s history
+#: is full of `<login>@users.noreply.github.com` (`PL-D16Y`). The rest are
+#: reserved for examples and tests, so no person can hold an address under
+#: one: the second-level names in RFC 2606 § 3 and the top-level names in
+#: § 2 (https://www.rfc-editor.org/rfc/rfc2606, read 2026-11-03). This
+#: repository's tests use them for every address they need.
+ALLOWED_DOMAINS = (
+    "users.noreply.github.com",
+    "example.com",
+    "example.net",
+    "example.org",
+    "example",
+    "invalid",
+    "localhost",
+    "test",
+)
+
+#: The fields `read_back` needs before it notes a call: a pull request's title
+#: or its description.
+DESCRIPTION_FIELDS = ("title", "body")
 
 #: The fields by which a GitHub call names its repository. Every GitHub tool
 #: that publishes text takes both, and a Projects thread's post or an email
@@ -770,15 +794,41 @@ READ_BACK_NOTE = (
 #: guard's and `PL-SG93`'s counts can see it (`PL-HHKC`).
 GUARD = "pr-body-email-guard"
 
+#: Why an address may not be published, which every refusal of this screen
+#: gives, whichever route the text was taking.
+WHY_NO_ADDRESS = (
+    "GitHub publishes text as soon as it has it, keeps a description's edit history "
+    "after an address is removed, and the squash merge copies a pull request's body into "
+    "`main`'s history. Remove the address, or name the person by their GitHub login "
+    "(`PL-7K31`)."
+)
 
-def _published_call(payload: str) -> tuple[str, dict[str, object]] | None:
-    """The tool name and arguments of a call that would publish text on GitHub.
 
-    That is a call that names a repository by `REPOSITORY_FIELDS` and carries
-    a string in one of `PUBLISHED_FIELDS`. The tool's name is not read,
-    because the GitHub server owns it and changes it without notice
-    (`PL-NZJG`). Anything else, including a payload that cannot be read, is
-    `None`.
+def admitted(address: str) -> bool:
+    """Whether `address` is one GitHub text may carry, by `ALLOWED_EMAILS` and `ALLOWED_DOMAINS`."""
+    address = address.lower()
+    if address in ALLOWED_EMAILS:
+        return True
+    domain = address.rsplit("@", 1)[-1]
+    return any(domain == name or domain.endswith("." + name) for name in ALLOWED_DOMAINS)
+
+
+def addresses(text: str) -> list[str]:
+    """Each email address in `text` that could be a person's, once, in the order found."""
+    found: list[str] = []
+    for address in EMAIL_RE.findall(text):
+        if not admitted(address) and address not in found:
+            found.append(address)
+    return found
+
+
+def _github_call(payload: str) -> tuple[str, dict[str, object]] | None:
+    """The tool name and arguments of a call to GitHub, or `None`.
+
+    A call to GitHub is one that names a repository by `REPOSITORY_FIELDS`.
+    The tool's name is not read, because the GitHub server owns it and
+    changes it without notice (`PL-NZJG`). Anything else, including a payload
+    that cannot be read, is `None`.
     """
     try:
         call = json.loads(payload)
@@ -792,9 +842,24 @@ def _published_call(payload: str) -> tuple[str, dict[str, object]] | None:
         return None
     if not all(isinstance(arguments.get(field), str) for field in REPOSITORY_FIELDS):
         return None
-    if not any(isinstance(arguments.get(field), str) for field in PUBLISHED_FIELDS):
-        return None
     return (tool if isinstance(tool, str) else ""), arguments
+
+
+def _strings(value: object, where: str) -> list[tuple[str, str]]:
+    """Every string inside `value`, each with the path of fields that leads to it."""
+    if isinstance(value, str):
+        return [(where, value)]
+    if isinstance(value, dict):
+        return [
+            found
+            for key, item in value.items()
+            for found in _strings(item, f"{where}.{key}" if where else str(key))
+        ]
+    if isinstance(value, list):
+        return [
+            found for at, item in enumerate(value) for found in _strings(item, f"{where}[{at}]")
+        ]
+    return []
 
 
 def screen(payload: str) -> str | None:
@@ -805,35 +870,86 @@ def screen(payload: str) -> str | None:
     removed, and the squash merge copies a pull request's body into `main`'s
     history. So the only point at which an address can be kept out is before
     the call (`PL-7K31`, found when `#1480` opened with the owner's address).
-    Every MCP call reaches this screen, and it reads the ones
-    `_published_call` picks out, whatever the tool is called (`PL-NZJG`). The
-    result is the JSON for the hook to print, which names each address found,
-    or `None` to let the call through. A refusal is logged to the guards'
-    refusal log, as every guard's is. A payload that cannot be read is let
-    through, because a false refusal blocks correct work.
+    Every MCP call reaches this screen, and it reads each one `_github_call`
+    picks out, whatever the tool is called (`PL-NZJG`).
+
+    **Every string the call carries is read, whatever its field is called**
+    (`PL-D16Y`, `PL-1ZZ0`). The screen read only a title and a body, so a
+    merge's `commit_message`, which becomes the squash commit on `main`, and
+    the file content of `push_files` published an address unread. A field
+    GitHub does not publish, such as a branch name, holds no address, so
+    reading it costs nothing.
+
+    The result is the JSON for the hook to print, which names each address
+    and the field it was found in, or `None` to let the call through. A
+    refusal is logged to the guards' refusal log, as every guard's is. A
+    payload that cannot be read is let through, because a false refusal
+    blocks correct work.
     """
-    published = _published_call(payload)
-    if published is None:
+    call = _github_call(payload)
+    if call is None:
         return None
-    _, arguments = published
+    _, arguments = call
     found: list[str] = []
-    for field in PUBLISHED_FIELDS:
-        text = arguments.get(field)
-        if isinstance(text, str):
-            for address in EMAIL_RE.findall(text):
-                if address.lower() not in ALLOWED_EMAILS and address not in found:
-                    found.append(address)
+    fields: list[str] = []
+    for where, text in _strings(arguments, ""):
+        for address in addresses(text):
+            if address not in found:
+                found.append(address)
+            if where not in fields:
+                fields.append(where)
     if not found:
         return None
     reason = (
-        "Refused: this call's title or body holds the email address(es) "
+        "Refused: this call holds the email address(es) "
         + ", ".join(f"`{address}`" for address in found)
-        + ". GitHub publishes a body as soon as it is sent and keeps it in the edit "
-        "history after it is removed, and the squash merge copies a pull request's body "
-        "into `main`'s history. Remove the address, or name the person by their GitHub "
-        "login, and send the call again (`PL-7K31`)."
+        + ", in "
+        + ", ".join(f"`{field}`" for field in fields)
+        + ". "
+        + WHY_NO_ADDRESS
+        + " Then send the call again."
     )
     return deny(GUARD, "email-address", reason, payload)
+
+
+def screen_push(log: str) -> list[str]:
+    """Where each email address sits in the commits a push is about to publish (`PL-1ZZ0`).
+
+    `log` is what `.claude/hooks/git/pre-push` hands over: `git log -p -U0`
+    of the commits no remote-tracking ref holds, each commit opening with a
+    NUL and then its hash, its author, its committer and its message. A
+    commit's diff begins at its first `diff --git` line. In the diff, only a
+    line the commit adds is read, so a line it removes or a file's name is
+    not. A merge's changes are not in `log` at all, because `git log -p`
+    shows none for a merge. Each result line names the address, the commit
+    and where in it the address is, and an empty list lets the push through.
+    """
+    found: list[str] = []
+    for commit in log.split("\0")[1:]:
+        lines = commit.split("\n")
+        sha = lines[0][:12]
+        place = "its author or committer"
+        in_diff = False
+        for at, line in enumerate(lines[1:]):
+            if line.startswith("diff --git "):
+                in_diff = True
+                place = "its changes"
+                continue
+            if in_diff:
+                if line.startswith("+++ "):
+                    place = "lines it adds to `" + line[4:].removeprefix("b/") + "`"
+                if not line.startswith("+") or line.startswith("+++ "):
+                    continue
+                text = line[1:]
+            else:
+                if at == 2:
+                    place = "its message"
+                text = line
+            for address in addresses(text):
+                entry = f"`{address}` in commit {sha}, {place}"
+                if entry not in found:
+                    found.append(entry)
+    return found
 
 
 def read_back(payload: str) -> str | None:
@@ -841,15 +957,18 @@ def read_back(payload: str) -> str | None:
 
     The server can rewrite a pull request's title or body and still return
     success, so a session reads it back. The note goes on a call that
-    `_published_call` picks out and whose tool name contains `pull_request`,
-    except the tools in `NO_READ_BACK`. A pull request tool renamed without
+    `_github_call` picks out, that carries a string in one of
+    `DESCRIPTION_FIELDS`, and whose tool name contains `pull_request`, except
+    the tools in `NO_READ_BACK`. A pull request tool renamed without
     `pull_request` in its name gets no note. That loses a reminder and refuses
     nothing, so the name is read here and not in `screen`.
     """
-    published = _published_call(payload)
-    if published is None:
+    call = _github_call(payload)
+    if call is None:
         return None
-    tool, _ = published
+    tool, arguments = call
+    if not any(isinstance(arguments.get(field), str) for field in DESCRIPTION_FIELDS):
+        return None
     name = tool.rsplit("__", 1)[-1]
     if "pull_request" not in name or name in NO_READ_BACK:
         return None
@@ -866,8 +985,28 @@ def main(argv: list[str]) -> int:
     `--screen` is the PreToolUse hook on every MCP call: it reads the call
     from stdin and prints a refusal where `screen` finds one, or else the
     note `read_back` gives, and exits 0 either way, as a hook that decides
-    must.
+    must. `--screen-push` is the email half of the git `pre-push` hook in
+    `.claude/hooks/git/`: it reads the log that hook hands it, prints a
+    refusal and exits 1 where `screen_push` finds an address, and exits 0
+    where it finds none.
     """
+    if "--screen-push" in argv:
+        found = screen_push(sys.stdin.read())
+        if not found:
+            return 0
+        log_refusal(GUARD, "email-address-push", os.environ.get("CLAUDE_CODE_SESSION_ID", ""))
+        print(
+            "Refused: the commits this push would publish hold an email address, and nothing "
+            "was sent:\n\n"
+            + "\n".join(f"    {entry}" for entry in found)
+            + "\n\n"
+            + WHY_NO_ADDRESS
+            + " Rewrite each commit that holds one, with `git commit --amend` for the last "
+            "commit, or `git reset --soft` to the commit before an earlier one and a new "
+            "commit, and push again.",
+            file=sys.stderr,
+        )
+        return 1
     if "--screen" in argv:
         payload = sys.stdin.read()
         output = screen(payload) or read_back(payload)

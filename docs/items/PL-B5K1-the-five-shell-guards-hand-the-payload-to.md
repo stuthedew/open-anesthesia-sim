@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: guards-say-when-they-cannot-check
-touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-branch-guard.sh, tests/unit/test_no_prune_guard.py
+touches: .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-branch-guard.sh
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: a long heredoc no longer switches off every Bash guard for the command that follows it
@@ -20,6 +20,8 @@ fetch --prune`, handed to `no-prune-guard.sh`, exited 0 with no output. The
 same `git fetch --prune` alone is refused. The guard puts the payload in an
 environment variable for `python3 -c`, and Linux refuses an `exec` whose single
 argument or variable passes 128 KiB (`MAX_ARG_STRLEN`), so Python never starts.
+
+<!-- absent: no-prune-guard.sh -->
 
 **Why it matters.** A long command is ordinary when a session writes a file
 through a heredoc, and the guard that protects irreversible ref deletions then

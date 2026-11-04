@@ -1,8 +1,8 @@
 """Tests for `docket.gitargv`: which word of a git call is its command.
 
-One table, read by `docket.vcs` and by the Bash guards under `.claude/hooks/`
-(`PL-ZXCN`), so these pin the reading itself; `tests/unit/test_no_prune_guard.py`
-and `tests/unit/test_push_check_guard.py` pin that the guards read it.
+One table, read by `docket.vcs` and by the Bash guard under `.claude/hooks/`
+that finds a push (`PL-ZXCN`), so these pin the reading itself, and
+`tests/unit/test_push_check_guard.py` pins that the guard reads it.
 """
 
 from __future__ import annotations

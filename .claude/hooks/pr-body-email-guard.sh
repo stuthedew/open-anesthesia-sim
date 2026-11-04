@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook on every MCP tool: refuse a call that would publish an email
-# address on GitHub in a title or a body (`PL-7K31`).
+# address on GitHub in any field it sends (`PL-7K31`, `PL-D16Y`).
 #
 # A body is public as soon as GitHub has it. Removing an address later leaves
 # it in the description's edit history, and the squash merge copies the body
@@ -11,14 +11,21 @@
 # and changes them without notice. It has already folded its issue tools into
 # one `issue_write`. A matcher naming `create_pull_request` and
 # `update_pull_request` would stop this guard silently after such a change. So
-# `.claude/settings.json` wires it on `^mcp__.*$`, and `screen` reads every call
-# that names a repository by `owner` and `repo` and carries a `title` or a
-# `body`. That covers a pull request, an issue, a comment and a review, whatever
-# the tool is called. A call that names no repository, such as a Projects
-# thread's post or an email, is not read. What goes unchecked is GitHub text
-# sent in a field with another name, or by a call that names its repository
-# another way. `.claude/rules/apparatus-standard.md` § "The floor" has the rule,
-# in its paragraph on a guard keyed on names that another system owns.
+# `.claude/settings.json` wires it on `^mcp__.*$`, and `screen` reads every
+# string in every call that names a repository by `owner` and `repo`, nested
+# ones included. That covers a title, a body, a merge's commit message and a
+# pushed file's content, whatever the tool or the field is called. A call that
+# names no repository, such as a Projects thread's post or an email, is not
+# read. What goes unchecked is GitHub text sent by a call that names its
+# repository another way. `.claude/rules/apparatus-standard.md` § "The floor"
+# has the rule, in its paragraph on a guard keyed on names that another system
+# owns.
+#
+# **Text sent another way is screened where it is sent.** `gh` in Bash is kept
+# to reads by `gh_write_guard.py`, so its writes come back to the MCP call this
+# hook reads (`PL-3986`). A commit reaches GitHub by `git push`, and the
+# `pre-push` hook in `.claude/hooks/git/` screens a session's new commits with
+# the same rule (`PL-1ZZ0`).
 #
 # The rule is `screen` in `tools/pr_body_check.py`, which recovers the bodies
 # this guard protects. This script is only the entry point, kept here so that
@@ -35,7 +42,7 @@
 # renamed without `pull_request` in its name gets no note, and nothing is
 # refused for that.
 #
-# **Fails open, like the Bash guards.** A payload `screen` cannot read is let
+# **Fails open, like most of the Bash guards.** A payload `screen` cannot read is let
 # through, and so is a python3 that is missing or fails, which prints nothing,
 # since a false refusal blocks correct work.
 set -uo pipefail
