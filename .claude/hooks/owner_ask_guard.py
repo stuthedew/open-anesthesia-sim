@@ -62,7 +62,9 @@ or exits with a status it does not define falls back to the coordinator's
 check, which refuses only an ask. `OWNER_ASK_GUARD_ARM` names a Python script
 run in place of `arm` for the tests, and is set nowhere else. `NO_ASK`,
 `EXIT` and `renders_owner_ask` are read from `docket.arming`, found through
-`shell_split.py` as the Bash guards find it.
+`shell_split.py` as the Bash guards find it. They are imported only for a
+message this hook reads, since `guard.py` runs it before every MCP call and
+`docket` takes most of a guard's start-up time (`PL-NDY5`).
 
 Standard library only, since a hook runs before any virtualenv is known.
 """
@@ -79,10 +81,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import hook_input
 import shell_split  # noqa: F401 - puts docket's src on sys.path
-
-# isort: split
-from docket.arming import EXIT, NO_ASK, renders_owner_ask
-from docket.lines import split_lines
 
 #: The prefix of every Projects tool. The hook is wired on all of them.
 PROJECTS_TOOL = "mcp__hearthbot__"
@@ -158,10 +156,17 @@ ASKS = tuple(
 #: open rather than be cut off.
 ARM_TIMEOUT_S = 45
 
-#: The exit statuses of `arm --owner-ask` that answer the question: 0 for a
-#: recorded ask, `NO_ASK` for a hold for the owner's read with none, and the
-#: statuses of its other answers. Any other status means `arm` itself failed.
-ANSWERED = frozenset({0, NO_ASK, *EXIT.values()})
+
+def answered() -> frozenset[int]:
+    """The exit statuses of `arm --owner-ask` that answer the question.
+
+    They are 0 for a recorded ask, `NO_ASK` for a hold for the owner's read
+    with none, and the statuses of its other answers. Any other status means
+    `arm` itself failed.
+    """
+    from docket.arming import EXIT, NO_ASK
+
+    return frozenset({0, NO_ASK, *EXIT.values()})
 
 
 def every_string(value: object) -> list[str]:
@@ -228,8 +233,10 @@ def owner_ask(root: Path) -> tuple[int, str] | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    if done.returncode not in ANSWERED:
+    if done.returncode not in answered():
         return None
+    from docket.lines import split_lines
+
     lines = [
         line.strip() for line in split_lines(done.stdout.decode("utf-8", "replace")) if line.strip()
     ]
@@ -264,6 +271,8 @@ def refusal(text: str, root: Path) -> str | None:
     `arm --owner-ask` renders. Any other message, such as a progress note,
     goes through without `arm` being asked.
     """
+    from docket.arming import NO_ASK, renders_owner_ask
+
     phrase = asked(text)
     posed = renders_owner_ask(squeezed(text))
     if phrase is None and not posed:

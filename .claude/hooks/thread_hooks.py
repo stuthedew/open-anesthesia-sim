@@ -36,8 +36,11 @@ On 2026-10-26 one moved from the checkout to its parent, and every copied hook
 then looked for its script in a directory that did not exist. The guard on
 `post_message` failed, so the thread could not reply at all (`PL-TNY6`).
 
-Outside a Projects thread it does nothing: an ordinary cloud session loads
+Outside a Projects thread it copies nothing: an ordinary cloud session loads
 `.claude/settings.json` itself, and a second copy would run every hook twice.
+It says so only where the entrypoint is one it does not know. A Projects
+thread is recognized by its entrypoint alone, so a renamed one would leave the
+thread working without any guard, and believing it had them (`PL-KW5K`).
 It exits 0 on every path, since a session start that fails helps no one.
 
 Standard library only, since a hook runs before any virtualenv is known.
@@ -54,7 +57,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from hook_input import PROJECTS_ENTRYPOINT, write_atomically
+from hook_input import LOADS_PROJECT_SETTINGS, PROJECTS_ENTRYPOINT, write_atomically
 
 #: The command the setup script binds to `SessionStart`. It tests for this
 #: file first, so a checkout from before this hook, or a session with no
@@ -77,6 +80,17 @@ COMMAND_FAILED = (
     "thread_hooks.py: the repository's SessionStart command `{command}` failed ({reason})."
 )
 
+
+#: What a session start prints when the entrypoint is neither a Projects
+#: thread's nor one known to load the repository's settings itself.
+UNKNOWN_ENTRYPOINT = (
+    "thread_hooks.py: this session's CLAUDE_CODE_ENTRYPOINT is {entrypoint}, which is "
+    "neither a Projects thread's (`{projects}`) nor one known to load "
+    "`.claude/settings.json` itself, so the repository's hooks were not copied into the "
+    "user settings. If this is a Projects thread, it is running without the repository's "
+    "guards: add the value to `PROJECTS_ENTRYPOINT` or `LOADS_PROJECT_SETTINGS` in "
+    "`.claude/hooks/hook_input.py` (`PL-KW5K`).\n"
+)
 
 #: What a session start prints when the user settings cannot be written.
 COULD_NOT_WRITE = (
@@ -277,8 +291,11 @@ def _source_of(payload: str) -> str:
 
 def main(payload: str, *, entrypoint: str | None, root: Path, user_path: Path) -> str:
     """Bring the user settings up to date, and return what the session start prints."""
-    if entrypoint != PROJECTS_ENTRYPOINT:
+    if entrypoint in LOADS_PROJECT_SETTINGS:
         return ""
+    if entrypoint != PROJECTS_ENTRYPOINT:
+        shown = "not set" if entrypoint is None else f"`{entrypoint}`"
+        return UNKNOWN_ENTRYPOINT.format(entrypoint=shown, projects=PROJECTS_ENTRYPOINT)
     project = _read_json(root / ".claude" / "settings.json")
     project_hooks = project.get("hooks") if project else None
     if not isinstance(project_hooks, dict):

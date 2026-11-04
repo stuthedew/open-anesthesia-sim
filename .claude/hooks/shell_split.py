@@ -184,10 +184,16 @@ class Command(list[str]):
     wrapper says otherwise (`PL-G8TR`).
     """
 
-    def __init__(self, words: list[str], wrappers: tuple[str, ...] = ()) -> None:
+    def __init__(
+        self, words: list[str], wrappers: tuple[str, ...] = (), assignments: tuple[str, ...] = ()
+    ) -> None:
         super().__init__(words)
         # Each wrapper's name, bare, outermost first: `timeout 5 xargs git` gives both.
         self.wrappers = wrappers
+        # Each `NAME=value` written ahead of the command word, which bash puts
+        # in the environment of that one command. One handed to a wrapper,
+        # as in `env NAME=value git`, is not among them.
+        self.assignments = assignments
 
 
 # The operators that end a command - docket's `HEADS` but a subshell's `(` -
@@ -333,12 +339,16 @@ def program_words(segment: list[str]) -> Command:
     one refusing an option it does not know stops there - or runs a string this
     does not read, as `env -S` does.
     """
+    head = _lift(_past_openers(segment))[0]
     rest, _ = _lift(command_words(segment))
+    assignments = tuple(
+        word for word in head[: len(head) - len(rest)] if isinstance(word, Assignment)
+    )
     wrappers: list[str] = []
     while rest and basename(rest[0]) in WRAPPERS:
         wrappers.append(basename(rest[0]))
         rest = _run_by(rest, WRAPPERS)
-    return Command(rest, tuple(wrappers))
+    return Command(rest, tuple(wrappers), assignments)
 
 
 def builtin_words(segment: list[str]) -> list[str]:

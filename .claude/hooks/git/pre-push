@@ -22,7 +22,7 @@
 # A pushed commit is public as soon as GitHub has it. The commits read are the
 # ones no remote-tracking ref already holds. Their author and committer, their
 # message, and each line a commit other than a merge adds are screened by
-# `tools/pr_body_check.py --screen-push`, the same rule that screens a GitHub
+# `tools/email_screen.py --screen-push`, the same rule that screens a GitHub
 # call's fields. A merge's own changes are left out, because they are lines
 # its parents already hold. Where the screen cannot run, the push goes ahead
 # with a warning, as the other email guards fail open.
@@ -32,7 +32,10 @@
 # hooks, so the project owner's own push from the same clone is left alone.
 #
 # **What goes unread.** A push with `--no-verify`, which skips this hook, and
-# a mirror push from a clone with no remote-tracking ref.
+# a mirror push from a clone with no remote-tracking ref. The push guard
+# (`push_check_guard.py`) refuses a session's `--no-verify` push, and a
+# work-in-progress push that skips its checks is written
+# `PUSH_CHECKS=skip git push`, which this hook still screens (`PL-5R11`).
 #
 # Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
 # the next session start.
@@ -78,8 +81,8 @@ EOF
 fi
 
 [ -n "$tips" ] || exit 0
-if ! grep -q -- '--screen-push' tools/pr_body_check.py 2>/dev/null; then
-    echo "warning: this checkout's tools/pr_body_check.py has no --screen-push, so the push was not screened for email addresses" >&2
+if ! grep -q -- '--screen-push' tools/email_screen.py 2>/dev/null; then
+    echo "warning: this checkout's tools/email_screen.py has no --screen-push, so the push was not screened for email addresses" >&2
     exit 0
 fi
 
@@ -87,7 +90,7 @@ fi
 # shellcheck disable=SC2086 # each tip is one word, and the list must split.
 git log -p -U0 --no-color --no-ext-diff --no-textconv \
     --format='%x00%H%n%an <%ae>%n%cn <%ce>%n%B' $tips --not --remotes |
-    python3 tools/pr_body_check.py --screen-push
+    python3 tools/email_screen.py --screen-push
 status=$?
 case $status in
 0 | 1) exit $status ;;

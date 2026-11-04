@@ -51,7 +51,7 @@ def _pinned_to(root: Path, command: str) -> dict[str, object]:
 
 
 def _start(
-    root: Path, user_path: Path, source: str = "startup", entrypoint: str = "remote_projects"
+    root: Path, user_path: Path, source: str = "startup", entrypoint: str | None = "remote_projects"
 ) -> str:
     return thread_hooks.main(
         json.dumps({"source": source}), entrypoint=entrypoint, root=root, user_path=user_path
@@ -181,8 +181,8 @@ def test_a_copied_hook_finds_the_checkout_after_the_working_directory_moves(tmp_
     assert (result.returncode, result.stdout) == (0, "found the checkout")
 
 
-@pytest.mark.parametrize("entrypoint", ["remote_desktop", "cli", None])
-def test_outside_a_project_thread_it_writes_nothing(tmp_path: Path, entrypoint: str | None) -> None:
+@pytest.mark.parametrize("entrypoint", ["remote_desktop", "cli"])
+def test_outside_a_project_thread_it_writes_nothing(tmp_path: Path, entrypoint: str) -> None:
     """Those sessions load `.claude/settings.json` themselves.
 
     A copy in the user settings would run each hook twice.
@@ -190,6 +190,25 @@ def test_outside_a_project_thread_it_writes_nothing(tmp_path: Path, entrypoint: 
     user_path = tmp_path / "home" / ".claude" / "settings.json"
 
     assert _start(_checkout(tmp_path), user_path, entrypoint=entrypoint) == ""
+    assert not user_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("entrypoint", "shown"), [("remote_threads", "`remote_threads`"), (None, "not set")]
+)
+def test_an_unknown_entrypoint_says_the_hooks_were_not_copied(
+    tmp_path: Path, entrypoint: str | None, shown: str
+) -> None:
+    """A renamed Projects entrypoint would leave a thread with no guards, so it is said (`PL-KW5K`).
+
+    Nothing is written, since the session may load the repository's settings itself.
+    """
+    user_path = tmp_path / "home" / ".claude" / "settings.json"
+
+    printed = _start(_checkout(tmp_path), user_path, entrypoint=entrypoint)
+
+    assert printed.startswith(f"thread_hooks.py: this session's CLAUDE_CODE_ENTRYPOINT is {shown},")
+    assert "the repository's hooks were not copied" in printed
     assert not user_path.exists()
 
 
