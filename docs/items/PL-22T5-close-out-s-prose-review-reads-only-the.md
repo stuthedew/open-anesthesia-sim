@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: reader-first-prose
-touches: tools/new_prose.py, docs/prose-review/prompt.md, .claude/skills/docket/modes/close-out.md, .claude/rules/plain-writing.md, .claude/agents/copy-editor.md, docs/prose-review
+touches: tools/new_prose.py, tools/rejected_prose.py, tests/unit/test_new_prose.py, tests/unit/test_rejected_prose.py, docs/prose-review/prompt.md, docs/prose-review, .claude/agents/copy-editor.md, .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, docs/apparatus.md, docs/resident-instructions.md, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
 payoff: a fix branch can shorten the passage it touches, and every cut arrives with its reason, so sections stop growing between rewrites

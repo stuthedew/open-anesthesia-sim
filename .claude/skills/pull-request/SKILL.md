@@ -43,6 +43,16 @@ carry the number (`PL-86DN`). For that work, opening the pull request means
 rewriting its placeholder title and body and marking it ready. Where `claim`
 said it opened none, open it as a draft yourself before any work.
 
+**The title and body go through the copy editor before the pull request is
+marked ready** (project owner, 2026-11-04, `PL-J1ZM`), because the squash
+merge makes them the commit on `main`. Write them to a file in the
+scratchpad, the title on the first line, and leave out the `🤖 Generated
+with` lines. Save the output of `python3 tools/new_prose.py --draft FILE
+--kind "pull request titles and bodies"` to a second file, and give that
+file's path to the `copy-editor` agent. Publish its rewrite with the
+`🤖 Generated with` lines added back. Revert an edit only where it lost or
+changed a value, a unit, a condition, an identifier or a citation.
+
 ## Run the blind review passes before a simulator pull request is ready
 
 **A simulator pull request is not marked ready or armed until its blind

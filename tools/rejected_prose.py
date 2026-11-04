@@ -11,7 +11,7 @@ the owner has already turned down (`PL-FYGJ`, from `PL-H76S`'s design round).
 When the owner names a paragraph a gold standard, in those words, it becomes
 an entry in `docs/prose-review/gold/`, and the review must keep it. Without
 those entries, a review that flagged every paragraph would pass (`PL-556C`). A
-paragraph he finds acceptable, or says needs no change, stays out. A rewrite
+paragraph the owner finds acceptable, or says needs no change, stays out. A rewrite
 could still improve it, and the review must stay free to propose one (project
 owner, 2026-11-03).
 
@@ -581,8 +581,9 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     ]
     if entries and not current:
         problems.append(
-            "no run of the set used the current prompt and readers: run `show`, give its whole "
-            "output to one fresh general-purpose reviewer, save the reply, and run `record` on it"
+            "no run of the set used the current prompt and readers: save the output of `show` to "
+            "a file, give its path to the copy-editor agent, save its whole reply, and run "
+            "`record` on it"
         )
     for run in current:
         problems += run_problems(run.name, run.reply, run.entries, entries)

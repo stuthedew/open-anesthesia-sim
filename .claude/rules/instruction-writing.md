@@ -12,8 +12,9 @@ answer for every rule below; do not re-open it without a new carrier to name.
 
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
-rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block and
-rule 15's clock times apply to every reply of any kind. Never mention these
+rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block,
+rule 15's clock times and rule 16's copy edit apply to every reply of any
+kind. Never mention these
 rules, "phases," or "closed loops" in the output itself.
 
 1. PLAN FIRST. For tasks over ~5 steps, open with a one-line overview of
@@ -247,3 +248,12 @@ rules, "phases," or "closed loops" in the output itself.
     daylight saving, so convert with a command rather than by hand:
     `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
     2026-09-27, `PL-R852`).
+
+16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. A reply
+    that asks the owner to decide, or that runs over 150 words, goes through
+    the copy editor first (project owner, 2026-11-04, `PL-J1ZM`). Write the
+    draft to a file in the scratchpad. Save the output of `python3
+    tools/new_prose.py --draft FILE --kind replies` to a second file, give
+    that file's path to the `copy-editor` agent, and send its rewrite.
+    Revert an edit only where it lost or changed a value, a unit, a
+    condition, an identifier or a citation.

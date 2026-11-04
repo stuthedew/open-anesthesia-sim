@@ -789,6 +789,30 @@ in the scope line. It retires only if the zone replies are read in changes.
 Moving the conversion into the tools would spare the command and not the
 rule, since git and GitHub print UTC as well.
 
+## Rule 16, copy-edit a decision request or a long reply, added 2026-11-04
+
+On 2026-11-04 a session's closing block twice asked the owner to "approve,
+change or reject the four-part design in my last reply", and the owner had to
+ask what the decision was. The owner decided that a reply which asks for a
+decision, or runs over 150 words, goes through the `copy-editor` agent before
+it is sent, the same agent that edits a branch's prose at close-out
+(`PL-J1ZM` part 3, `PL-22T5`).
+
+**The carrier test.** No check or hook reads a reply before it is sent, so
+disposition 1 cannot hold it. A long reply can come in any session, at no
+skill's trigger, so disposition 2 cannot. A reply is not preceded by a read,
+which rules out a `paths:` scope. Resident is what is left.
+
+**Why nothing is cut.** No resident sentence said to review a reply before
+sending it. Rule 13 asks that a decision request fit on one screen, which is
+a property of the reply and stays, since the copy editor cuts only repeated,
+wordy or misplaced sentences and sets no length.
+
+**What it costs and what should retire it.** About 580 characters, with the
+scope line. It retires if the harness gains a hook that can hand a reply to
+the agent before it is sent, or if the owner judges edited replies no better
+than unedited ones.
+
 ## `## Compact Instructions`, added 2026-10-01
 
 Compaction is the routine reset since `PL-YJG1`, and it writes its summary
