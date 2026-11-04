@@ -7075,7 +7075,7 @@ the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 **`PL-SP6H` joined this list on 2026-11-04, after the freeze.** It is classed
 `safety`. The agent cost View shows the delivered total in millilitres of
 liquid to 0.1 mL, and in long runs at a high delivered concentration that
-step is finer than the figure's uncertainty. The hazard is live, so
+step is finer than the figure's uncertainty supports. The hazard is live, so
 § "Deferred from this gate" admits the item rather than deferring it. Its
 fix waits on the project owner's answer to the question in its brief.
 

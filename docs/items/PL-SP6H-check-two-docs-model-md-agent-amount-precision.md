@@ -8,7 +8,7 @@ classes: defect, safety
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-11-04
-payoff: every precision the agent-amount totals show is backed by arithmetic that matches the figures it cites, and none shows a last digit finer than its uncertainty
+payoff: every precision the agent-amount totals show is backed by arithmetic that matches the figures it cites, and none shows a last digit finer than its uncertainty supports
 ---
 
 **Problem.** Check two docs/MODEL.md agent-amount precision claims against the figures they cite: 0.1 L is said to lie between a quarter of an SD and six SDs, but the quoted 0.016-0.23 L shifts give about 0.43 SD at the coarse end; and 0.1 mL of delivered liquid is said to lie inside the density's band, though at 8% and 10 L/min over 24 h one step is about a thirtieth of an SD
@@ -21,7 +21,7 @@ payoff: every precision the agent-amount totals show is backed by arithmetic tha
 
 The first two sentences date from `6ce8e6991` (`PL-BZR4`, 2026-10-25) and the third from `2330f33f6` (`PL-0S0V`, 2026-10-26).
 
-**Why it matters.** `docs/MODEL.md` is the specification that justifies each displayed precision. The first two are wrong figures under correct conclusions. The third is a precision the section's own rule refuses: in long high-flow runs, the delivered total in millilitres of liquid shows a last digit finer than its uncertainty, which is the false precision the safety-critical standard forbids. The 2026-10-27 decision to show 0.1 mL rather than whole millilitres rested on that sentence.
+**Why it matters.** `docs/MODEL.md` is the specification that justifies each displayed precision. The first two are wrong figures under correct conclusions. The third is a precision the section's own rule refuses: in long high-flow runs, the delivered total in millilitres of liquid shows a last digit finer than its uncertainty supports, which is the false precision the safety-critical standard forbids. The 2026-10-27 decision to show 0.1 mL rather than whole millilitres rested on that sentence.
 
 **Decision needed.** Which resolution should the delivered total in millilitres of liquid take, now that 0.1 mL is finer than the derivation admits beyond about 1,300 mL of sevoflurane liquid? The answer changes what a learner sees and reopens a ratified decision on a measurement, so it is the owner's.
 
