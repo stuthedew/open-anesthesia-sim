@@ -6,11 +6,11 @@ effort: M
 status: ready
 classes: defect
 feature: copy-editor
-touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py
+touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py
 deferred-from: v0.7.0 - a workflow-lane generator, ranked by its generator tier rather than by the gate
 added: 2026-11-04
 payoff: a passage the copy editor passes is one its reader can act on without padding, so the rewrites it reviews stop growing
-verify: grep -qi 'do without' .claude/agents/copy-editor.md
+verify: grep -qi 'do without' .claude/agents/copy-editor.md && grep -q 'def section_report' tools/new_prose.py && grep -q '^## Judging edits blind' docs/prose-review/README.md
 root-cause-of: PL-HRPK, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0
 generator: live - the copy editor reviews every rewrite, and its only cut keeps every fact, so each rewrite it passes can grow
 misread: that a passage the copy editor passed is plain enough for its reader

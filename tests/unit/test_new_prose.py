@@ -698,6 +698,99 @@ def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passa
     assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err
 
 
+#: A model document whose section holds a subsection, for the whole-section mode.
+NESTED = f"""\
+---
+title: front matter
+---
+
+# Model
+
+## Displayed precision
+
+{LONG} first.
+
+### Readouts
+
+{LONG} second.
+
+## Next
+
+{LONG} other.
+
+"""
+
+
+@pytest.fixture
+def nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A repository root holding `NESTED` as `docs/MODEL.md`, read against `READERS`."""
+    rule = tmp_path / "rule.md"
+    rule.write_text(READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(tmp_path, "docs/MODEL.md", NESTED)
+    return tmp_path
+
+
+def test_section_prints_a_section_and_its_subsections_as_one_passage_to_rewrite(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The copy editor may rewrite the whole section, so it can fold a repeat across paragraphs."""
+    argv = ["--root", str(nested), "--section", "docs/MODEL.md", "--heading", "Displayed precision"]
+
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    shown = out.partition("The writing rule ends here")[2]
+    assert "Readers of docs/MODEL.md:\n  - A clinician.\n" in shown
+    assert "  - A forker.\n" in shown
+    assert "The owner" not in shown
+    assert (
+        '[1] docs/MODEL.md § "Displayed precision", rows 7-13. Whole section: 67 words. '
+        "For: A clinician; A forker\n"
+    ) in shown
+    assert f"    7 > ## Displayed precision\n    8 > \n    9 > {LONG} first." in shown
+    assert f"   13 > {LONG} second." in shown
+    assert "other." not in shown
+    assert "|" not in shown.partition("[1]")[2]
+
+
+def test_section_without_a_heading_prints_the_whole_document_below_its_front_matter(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["--root", str(nested), "--section", "docs/MODEL.md"]) == 0
+
+    shown = capsys.readouterr().out.partition("The writing rule ends here")[2]
+    assert "[1] docs/MODEL.md, rows 5-17. Whole document: 102 words." in shown
+    assert "    5 > # Model\n" in shown
+    assert f"   17 > {LONG} other." in shown
+    assert "title: front matter" not in shown
+
+
+@pytest.mark.parametrize(
+    ("asked", "reason"),
+    [
+        (["--section", "docs/MODEL.md", "--heading", "Nowhere"], "0 headings read 'Nowhere'"),
+        (["--section", "src/step.py"], "src/step.py is not a Markdown file"),
+    ],
+)
+def test_section_refuses_a_heading_it_cannot_find_and_a_file_that_is_not_markdown(
+    nested: Path, capsys: pytest.CaptureFixture[str], asked: list[str], reason: str
+) -> None:
+    assert main(["--root", str(nested), *asked]) == 1
+
+    assert reason in capsys.readouterr().err
+
+
+def test_section_refuses_a_file_that_no_reader_row_names(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(nested, "docs/OTHER.md", NESTED)
+
+    assert main(["--root", str(nested), "--section", "docs/OTHER.md"]) == 1
+
+    assert "no row of the reader table names docs/OTHER.md" in capsys.readouterr().err
+
+
 #: A reader table with a row for string literals in an interface package, for
 #: the string-unit tests (`PL-Q98K`).
 STRING_READERS = READERS.replace(

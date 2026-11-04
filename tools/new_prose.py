@@ -63,6 +63,16 @@ before it is sent.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
 when no row's first cell contains WORDS.
 
+**`--section FILE [--heading TEXT]` prints one Markdown section, or the whole
+file, as passage 1, with every row open to rewrite.** A changed passage may be
+rewritten only with the unit beside it, so a fact that two paragraphs of a
+section both give, or a paragraph in the wrong place, needs a review of the
+whole section. A section runs from its heading to the next heading of the same
+or a higher level, so it holds its subsections. The section rewrites that wait
+on the copy editor, and the copy editor's own tests, use this mode (project
+owner, 2026-11-04, `PL-HGZS`). It exits 1 when the file is not Markdown, no row
+of the reader table names it, or the heading text does not name one section.
+
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
 recorded as a `Prose-review:` trailer, and it runs this tool through
@@ -953,6 +963,68 @@ def draft_report(path: Path, kind: str, table: Sequence[Reader]) -> str | None:
     )
 
 
+def whole_bounds(lines: Sequence[str], heading: str | None) -> tuple[int, int]:
+    """The first and last rows of the section headed `heading`, or of the whole document.
+
+    A section runs from its heading to the row before the next heading of the
+    same or a higher level, so it holds its subsections. The whole document
+    starts below any front matter. Trailing blank rows are left out. Raises
+    `ValueError` where no heading, or more than one, has the text `heading`.
+    """
+    marks = headings(lines)
+    first, last = 1, len(lines)
+    if heading is None:
+        while first <= last and not lines[first - 1].strip():
+            first += 1
+    else:
+        found = [index for index, mark in enumerate(marks) if mark.title == heading.strip()]
+        if len(found) != 1:
+            rows = ", ".join(str(marks[index].line + 1) for index in found)
+            raise ValueError(
+                f"{len(found)} headings read {heading!r}" + (f", at rows {rows}" if rows else "")
+            )
+        mark = marks[found[0]]
+        first = mark.line + 1
+        later = (other for other in marks[found[0] + 1 :] if other.level <= mark.level)
+        last = next((other.line for other in later), len(lines))
+    while last > first and not lines[last - 1].strip():
+        last -= 1
+    return first, last
+
+
+def section_report(root: Path, path: str, heading: str | None, table: Sequence[Reader]) -> str:
+    """The section of the Markdown file at `path` headed `heading`, or the whole file, as passage 1.
+
+    Every row is marked `>`, so the copy editor may rewrite the section as a
+    whole: merge paragraphs that repeat a fact, and move a passage to where its
+    reader looks for it (project owner, 2026-11-04, `PL-HGZS`). Raises
+    `ValueError` where the file is not Markdown, no row of `table` names it, or
+    `heading` does not name one section.
+    """
+    if not is_document(path):
+        raise ValueError(f"{path} is not a Markdown file")
+    readers = readers_of(table, path)
+    if not readers:
+        raise ValueError(f"no row of the reader table names {path}")
+    lines = markdown_lines((root / path).read_text(encoding="utf-8"))
+    first, last = whole_bounds(lines, heading)
+    words = sum(len(line.split()) for line in lines[first - 1 : last])
+    what, where = ("section", f'{path} § "{heading.strip()}"') if heading else ("document", path)
+    shown = split_lines((root / path).read_text(encoding="utf-8"))
+    return "\n".join(
+        [
+            f"One whole {what} follows, as passage 1. Every row is marked >, and you may "
+            f"rewrite all of them. Edit the {what} as a whole, then paragraph by paragraph, for "
+            "the readers below.",
+            *reader_lines(table, [path]),
+            "",
+            f"[1] {where}, rows {first}-{last}. Whole {what}: {words} words. "
+            f"For: {'; '.join(reader.who for reader in readers)}",
+            *(f"{row:>5} > {shown[row - 1]}" for row in range(first, last + 1)),
+        ]
+    )
+
+
 def with_rule(text: str) -> str:
     """`text` after the plain-writing rule, which the copy editor does not otherwise have."""
     rule = RULE.read_text(encoding="utf-8").rstrip("\n")
@@ -990,12 +1062,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="with --draft, words from the first cell of the reader rows the draft is for, "
         "such as 'replies' or 'pull request'",
     )
+    modes.add_argument(
+        "--section",
+        metavar="FILE",
+        help="print the Markdown file FILE, or its section that --heading names, as one "
+        "passage that the copy editor may rewrite whole",
+    )
+    parser.add_argument(
+        "--heading",
+        help="with --section, the exact text of the heading whose section to print, "
+        "subsections included",
+    )
     args = parser.parse_args(argv)
     if (args.draft is None) != (args.kind is None):
         parser.error("--draft and --kind go together")
+    if args.heading is not None and args.section is None:
+        parser.error("--heading needs --section")
     root = args.root.resolve()
     try:
         table = rule_table()
+        if args.section is not None:
+            try:
+                text = section_report(root, args.section, args.heading, table)
+            except ValueError as error:
+                print(f"new_prose: no answer: {error}", file=sys.stderr)
+                return 1
+            print(with_rule(text))
+            return 0
         if args.draft is not None:
             text = draft_report(args.draft, args.kind, table)
             if text is None:
