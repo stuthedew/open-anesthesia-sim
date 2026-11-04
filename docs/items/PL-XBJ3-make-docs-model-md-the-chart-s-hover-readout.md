@@ -3,10 +3,11 @@ id: PL-XBJ3
 title: Make docs/MODEL.md § "The chart's hover readout: what the tooltip may show" through § "The compartment schematic: what its heights, amounts and share bar assert" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
+blocked-by: PL-HGZS
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "The chart's hover readout: what the tooltip may show" "A preview of an unapplied setting" "A cost at the reader's price" "The compartment schematic: what its heights, amounts and share bar assert"
