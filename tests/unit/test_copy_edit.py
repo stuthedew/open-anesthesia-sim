@@ -135,11 +135,14 @@ def test_the_second_request_holds_the_edit_numbered_from_the_passage_s_first_row
 
     second = copy_edit.second_request(request, {1: ("One line now.",)})
 
-    prose = second.partition(copy_edit.RULE_END)[2]
+    prose, heading, before = second.partition(copy_edit.RULE_END)[2].partition(
+        f"\n{copy_edit.BEFORE}:\n"
+    )
     assert prose.startswith(f"\n\n{copy_edit.SECOND_READ}\n")
     assert "[1] draft.md, rows 1-1. Draft: 7 words." in prose
-    assert prose.endswith("\n    1 > One line now.")
+    assert prose.endswith("\n    1 > One line now.\n")
     assert "Third line." not in prose
+    assert before.split("\n")[-4:] == ["First long line.", "Second line.", "Third line.", "```"]
 
 
 def test_rows_after_an_edit_are_renumbered_through_the_listing() -> None:
@@ -162,7 +165,8 @@ def test_rows_after_an_edit_are_renumbered_through_the_listing() -> None:
 
     second = copy_edit.second_request(request, {1: ("New one.", "New two.", "New three.")})
 
-    assert second.partition(copy_edit.RULE_END)[2].split("\n")[4:] == [
+    prose = second.partition(copy_edit.RULE_END)[2].partition(f"\n{copy_edit.BEFORE}:")[0]
+    assert prose.split("\n")[4:] == [
         'doc.md § "Part", rows 10-16:',
         "[1] doc.md, rows 10-12. Changed text: 40 words now. For: A reader",
         "   10 > New one.",
@@ -177,7 +181,9 @@ def test_rows_after_an_edit_are_renumbered_through_the_listing() -> None:
         "other.md, rows 3-4:",
         "    3 | Elsewhere.",
         "    4 | Still elsewhere.",
+        "",
     ]
+    assert "Passage 2" not in second.partition(f"\n{copy_edit.BEFORE}:")[2]
 
 
 def test_an_excerpt_s_code_rows_on_each_side_stay_and_shift() -> None:
@@ -193,11 +199,14 @@ def test_an_excerpt_s_code_rows_on_each_side_stay_and_shift() -> None:
 
     second = copy_edit.second_request(request, {1: ('    """New text."""',)})
 
-    assert second.split("\n")[-4:] == [
+    prose, _, before = second.partition(f"\n{copy_edit.BEFORE}:\n")
+    assert '    """Old' in before
+    assert prose.split("\n")[-5:] == [
         "[1] src/a.py, rows 5-5, docstring, 40 words, for: A developer",
         "    4 | def f():",
         '    5 >     """New text."""',
         "    6 |     return 1",
+        "",
     ]
 
 
@@ -329,3 +338,10 @@ def test_a_first_read_that_rewrites_nothing_is_the_whole_reply(
 
     assert reply == "[1] keep\n\nIt serves its reader."
     assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 1
+
+
+def test_the_copy_editor_s_instructions_name_the_second_read_s_opening() -> None:
+    """The agent file says what to do with a second read, so it must quote the line's opening."""
+    opening = copy_edit.SECOND_READ.partition(".")[0]
+
+    assert f'"{opening}."' in copy_edit.PROMPT.read_text(encoding="utf-8")

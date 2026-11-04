@@ -29,6 +29,15 @@ A passage comes in one of three shapes, and its header says which:
 - A whole section or document, with every row marked ">". Edit it as a whole.
 - A draft reply or pull request body, with every row marked ">".
 
+A request whose prose opens with "Second read." holds text that has had one
+copy edit. Edit it by the same steps, as an editor's second pass over their
+own work: fix each sentence that still breaks a step, and each slip that the
+first edit made. Leave each choice of the first edit that follows the steps.
+The text before the first edit follows the passages. In step 7, compare your
+edit with that text for its facts and claims: put back a fact that the first
+edit lost, and correct a claim that it changed. Do not put back the earlier
+wording.
+
 A file can have more than one reader. Edit each paragraph for the reader it
 serves where it stands. In `docs/MODEL.md`, a paragraph above a note that opens
 "**For developers.**" serves the clinician, and the note serves the developer.
@@ -95,25 +104,41 @@ the smallest, because a paragraph you cut needs no sentence edit.
      was reached, belongs in the item that the text names beside it, never in
      the note for developers. Cut it and name that item. Keep in the note a
      reason a developer needs before changing the design, such as why an
-     alternative fails. Where no item id holds a decision, keep its short tag,
-     such as "(project owner, 2026-09-14)", beside the decision it records.
+     alternative fails. Keep a decision's tag whole beside the decision it
+     records, such as "(project owner, 2026-10-26, ratified, over 1e-9 sized
+     from the rounding)", or cut it whole where the item it names holds the
+     decision. Never shorten it: without "ratified", the tag records a
+     different kind of decision.
      When you move a paragraph's detail, leave in this reader's text the
      sentence they need from it, such as what the detail guarantees them.
      Edit what you move as you edit the rest, for its new reader, and cut
-     what repeats once it is there.
+     what repeats once it is there. A reason you move into the note names
+     the fact it explains in a few words, and does not state that fact
+     again: "The 2 px floor is there because ..." rather than "Preview
+     curves are never thinner than 2 px, because ..." when the paragraph
+     above already says so.
    - **Wordy.** It uses more words than its fact needs. Shorten it in step 5.
 
    Never cut a fact this reader needs to act correctly: a value with its unit,
    a condition, an exception, a limitation of the model, a warning, a "no test
-   yet" declaration, a citation that backs a value, or a decision the owner
-   must make. When you cannot tell whether the reader needs a fact, keep it.
+   yet" declaration, a citation that backs a value, a record of how a source
+   was read (its route, pages, date and item), or a decision the owner must
+   make. A date that says when a value was measured, read or checked stays
+   beside that value, because without it the value reads as true today:
+   "(measured 2026-09-06)" moves only with the figures it dates. When you
+   cannot tell whether the reader needs a fact, keep it.
 
    Then fix the order. Put each paragraph's point in its first sentence. Give
    the reader what they see first, then what it means for them, then why. In a
    whole section, the first paragraph says what the section means for its
    reader.
    Merge paragraphs that make the same point, split a paragraph that makes two,
-   and put each passage where its reader will look for it.
+   and put each passage where its reader will look for it. A paragraph that
+   collects the points left over once the others have moved usually makes
+   several. "A section joins the check's list once its fix is merged. The
+   check cannot judge a claim made in words. A statement outside the checked
+   sections is caught at review" is three points: put each beside the
+   paragraph it adds to, or give it a paragraph of its own.
 
 5. **Line-edit your draft, one sentence at a time.** Once the structure is
    settled, go through your draft from its first sentence to its last,
@@ -137,6 +162,21 @@ the smallest, because a paragraph you cut needs no sentence edit.
      words the reader can infer. Replace a phrase with a word where one word
      will do. Do not use the same word or say the same thing in two
      neighbouring sentences, unless the word is a term the text must keep.
+   - Make each "it", "this", "that" and "they" point at a noun that the
+     reader can find in the same sentence or the one before, as the writing
+     rule's sixth point asks. "It is the volume of liquid that would give
+     that much vapour" leaves the reader asking how much vapour. The same
+     holds for "the same", "also" and "too": once the sentence it compared
+     with has moved, "Gas Man has the same structure" leaves the reader
+     asking the same as what.
+   - Make each sentence make sense without the code names in it, as the
+     writing rule's fifth point asks of item ids. Say in words what the named
+     thing is or does, and give the name after it as a pointer: "the list of
+     sections that the check reads (`check_bound_families`)", not
+     "`check_bound_families`'s table". Treat a phrase that the file coined in
+     the same way. Where "an assertion that names nothing" stands away from
+     the heading that explains it, say what it means: "a statement that names
+     no test, file or value".
    - Use each word in its everyday sense, as the writing rule's third point
      asks. Where the text gives a word a private sense, such as a sentence that
      "holds" a rule or an item that "owes" a link, say plainly what happens.
@@ -179,12 +219,29 @@ the smallest, because a paragraph you cut needs no sentence edit.
    is not ready, so its verdict is "rewrite", and its block holds the best text
    you can give without the missing fact.
 
+   Query, too, a statement that the file itself contradicts, and leave the
+   statement as it stands, because only its author knows which side is
+   right. "`check_gate_counts` applies clause 3 in code: it calls a frozen
+   count 'a dated fact that must never change'" points at clause 3, the fixed
+   form for a missing link, but quotes the rule of clause 4, about dated
+   statements.
+
 7. **Check your edit against the original before you return it.** Read the two
    side by side, sentence by sentence.
    - Every fact the reader needs is still there, with the same value, unit and
      condition, and the edit claims neither more nor less than the original.
      Where you shorten a list of alternatives, such as the ways a rule can be
-     met, keep every alternative or say that others exist.
+     met, keep every alternative or say that others exist. A sentence merged
+     from two is the likeliest to claim more: "the price per millilitre stored
+     for that agent" says that the store holds a value the section says it
+     derives. "Hovering over a preview shows nothing" claims more than "the
+     hover never takes a value from a preview". Where you replace a pointer
+     such as "for the same reason" with the claim it points at, copy that
+     claim with its qualifiers: "a pass does not show that the parameter set
+     is independently right" does not become "a passing test cannot show that
+     a stored value is right". Keep a term that the file uses in a defined
+     sense, such as "adopted as the authority for a stored value", because a
+     looser phrase claims something else.
    - Each value, unit, item id, citation and code span that stays is unchanged.
      A "no test yet" declaration keeps those words, because the documentation
      check reads them. Each heading keeps its text, because other files cite a
@@ -201,7 +258,10 @@ the smallest, because a paragraph you cut needs no sentence edit.
    - Read every sentence of your edit aloud as this reader, including each
      sentence you did not change. Rewrite any sentence they would not
      understand on first reading, any whose clauses stack or whose subject sits
-     far from its verb, and any that uses a term they do not know.
+     far from its verb, and any that uses a term they do not know. Rewrite,
+     too, any phrase that a careful writer would not say, such as
+     "§ "Supported simulation step" gives why the step is set at the limit"
+     for "explains why".
    - Read each sentence together with the one before it. Where the second
      repeats a word or a fact of the first, cut or reword one of them, unless
      the word is a term the text must keep. "Common settings exceed the

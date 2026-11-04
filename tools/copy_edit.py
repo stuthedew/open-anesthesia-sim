@@ -70,6 +70,8 @@ from rejected_prose import rewrites, unmarked, verdicts  # noqa: E402
 ROLE = "copy-editor"
 #: The name the request takes inside the copy editor's empty directory.
 REQUEST_NAME = "request.txt"
+#: What the copy editor is asked to do with the request.
+TASK = f"Copy-edit the passages in {REQUEST_NAME}."
 #: A read that takes longer than this is stopped, and each of the two reads
 #: has its own limit. The longest copy edit measured so far read 29 passages
 #: in about 15 minutes (`PL-22T5`), so 40 minutes leaves room for a larger
@@ -80,10 +82,14 @@ COPY_EDIT_TIMEOUT_S = 40 * 60
 QUIET_ENV = {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 #: The line that opens the prose of a second read's request. The copy editor's
 #: instructions say what to do with a request that holds it.
+#: The heading under which a second read's request gives each edited passage
+#: as it stood before the first read, so that a fact the first read lost or
+#: changed can be found. One edit read alone cannot show that (`PL-HGZS`).
+BEFORE = "Before the first edit"
 SECOND_READ = (
-    "Second read. The rows marked > are the text after one copy edit. The text "
-    "before that edit is not shown, and each header's word counts are the "
-    "counts before it."
+    "Second read. The rows marked > are the text after one copy edit, and each "
+    "header's word counts are the counts before it. The text before that edit "
+    f'follows the passages, under "{BEFORE}".'
 )
 
 
@@ -99,12 +105,14 @@ def instructions(prompt: str) -> str:
     return match.group(2).lstrip("\n")
 
 
-def claude_argv(claude: str, system_prompt: Path, model: str, effort: str) -> list[str]:
-    """The `claude -p` command that runs the copy editor on `REQUEST_NAME`."""
+def claude_argv(
+    claude: str, system_prompt: Path, model: str, effort: str, task: str = TASK
+) -> list[str]:
+    """The `claude -p` command that does `task` with `REQUEST_NAME`, by default a copy edit."""
     return [
         claude,
         "-p",
-        f"Copy-edit the passages in {REQUEST_NAME}.",
+        task,
         "--model",
         model,
         "--effort",
@@ -165,14 +173,16 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
     `blocks` maps a passage's number to the rows the first read gave it. The
     passage's rows marked `>` give way to those rows, numbered from the first
     of them. Each row, header and section title after them in the same listing
-    is renumbered to follow. `SECOND_READ` opens the prose. Raises `Refused`
-    where a passage in `blocks` has no rows marked `>`.
+    is renumbered to follow. `SECOND_READ` opens the prose, and after the last
+    passage, under `BEFORE`, each edited passage's rows stand as the first read
+    was given them. Raises `Refused` where a passage in `blocks` has no rows
+    marked `>`.
     """
     head, lines = prose_of(request)
     out: list[str] = []
+    before: dict[int, list[str]] = {}
     shift = 0
     waiting: int | None = None
-    placed: set[int] = set()
     index = 0
     while index < len(lines):
         line = lines[index]
@@ -191,21 +201,27 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
             out.append(line)
         elif row[1] == ">" and waiting is not None:
             end = index
+            was: list[str] = []
             while end < len(lines) and (later := read_row(lines[end])) and later[1] == ">":
+                was.append(later[2])
                 end += 1
             block = blocks[waiting]
+            before[waiting] = was
             out += [row_line(row[0] + shift + k, ">", text) for k, text in enumerate(block)]
-            shift += len(block) - (end - index)
-            placed.add(waiting)
+            shift += len(block) - len(was)
             waiting = None
             index = end
             continue
         else:
             out.append(row_line(row[0] + shift, *row[1:]) if shift else line)
         index += 1
-    missing = sorted(set(blocks) - placed)
+    missing = sorted(set(blocks) - set(before))
     if missing:
         raise Refused(f"passages {missing} have no rows marked > to replace")
+    out += ["", f"{BEFORE}:"]
+    for number in sorted(before):
+        out += ["", f"Passage {number}, the rows marked > as the first read was given them:"]
+        out += fenced(before[number])
     return f"{head}\n\n{SECOND_READ}" + "\n".join(fitted_titles(out))
 
 
@@ -294,16 +310,26 @@ def merge(first: str, second: str, count: int) -> str:
 
 
 def read_once(
-    text: str, claude: str, prompt: str, model: str, effort: str, env: Mapping[str, str]
+    text: str,
+    claude: str,
+    prompt: str,
+    model: str,
+    effort: str,
+    env: Mapping[str, str],
+    task: str = TASK,
 ) -> tuple[str, str]:
-    """One run of the copy editor on the request `text`: its reply and its counts."""
+    """One run of `claude -p` on the request `text`: its reply and its counts.
+
+    `prompt` is the system prompt and `task` what it is asked to do. The run
+    starts in an empty directory that holds only the request.
+    """
     with tempfile.TemporaryDirectory() as held, tempfile.TemporaryDirectory() as work:
         system_prompt = Path(held) / "copy-editor.md"
         system_prompt.write_text(prompt, encoding="utf-8")
         (Path(work) / REQUEST_NAME).write_text(text, encoding="utf-8")
         try:
             done = subprocess.run(
-                claude_argv(claude, system_prompt, model, effort),
+                claude_argv(claude, system_prompt, model, effort, task),
                 cwd=work,
                 env={**env, **QUIET_ENV},
                 stdin=subprocess.DEVNULL,
