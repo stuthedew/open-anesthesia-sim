@@ -48,3 +48,5 @@ or a sentence whose meaning needs their judgment.
 **Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
 
 **Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
+
+**Owner's review, 2026-11-04.** Five sentences changed what they say, so the pull request waits for the owner to read them. Four correct an error: the humidification table now says all four cohorts fall outside one standard deviation with the factor, the Gas Man note says the cardiac-output note declines Brody's relation, the lung-store paragraph says the store takes up agent early in wash-in, and the lead-in says "This model assumes". The fifth rewords the arterial-blood bullet to say the lung is perfusion limited and arterial blood carries the alveolar partial pressure.
