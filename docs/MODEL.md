@@ -10148,21 +10148,22 @@ runs it, and `tests/unit/test_contrast_check.py` pins the figures. Run it with
 ### Displayed precision
 
 Every modeled concentration and relative partial pressure, in all six
-compartments, is displayed at a fixed resolution of **0.01 percentage
-points**, which is two decimals of a percent. The delivered-agent setting uses
-the same resolution, in the readout beside its slider and in the label shown
-while the slider is dragged, so the value a reader dials and the values it
-produces are read at one scale. A positive value that would round
-to `0.00%` is displayed as `<0.01%` rather than as zero.
+compartments, is displayed at a fixed resolution of
+**0.01 percentage points**, which is two decimals of a percent. The
+delivered-agent setting uses the same resolution, in the readout beside its
+slider and in the label shown while the slider is dragged, so the setting a
+reader dials and the values it produces are read at one scale. A positive value
+that would round to `0.00%` is displayed as `<0.01%` rather than as zero.
 `test_format_percent_uses_the_documented_display_resolution` enforces the
 resolution, and `test_format_percent_marks_a_value_below_the_resolution`
 enforces the `<0.01%` form.
 
-This is a recorded decision (PL-040), not a formatting convention, because
-displayed precision is a claim about what the model can support. Earlier
-revisions displayed three decimals. They were reduced to two while the operator
-split shipped, on the ground that the third decimal and part of the second were
-smaller than the solver's own error.
+The decimal count is not a formatting convention. Displayed precision is a
+claim about what the model can support, so the count is a decision recorded in
+`PL-040`. Earlier versions displayed three decimals. They were reduced to two
+while the model was solved by an approximate method, the operator split,
+because the third decimal and part of the second were smaller than that
+method's own error.
 
 **That ground is gone, and the decision is re-derived here rather than
 inherited** (`PL-X9KD`, 2026-09-06). `PL-GS5X` replaced the split with an exact
@@ -10607,27 +10608,27 @@ decade and over keeping the sign, `PL-3PJZ`). The residual lines are a
 numerical diagnostic. Their job is to make a residual of order 10⁻¹² L visible
 against amounts of order 1 to 100 L. No fixed decimal count can do that.
 
-**The decade is the only digit a passing residual has.** A passing residual is
-the rounding left over from summing the initial, delivered, exhausted and stored
-amounts. So its mantissa and its sign are set by the order in which the
-arithmetic ran, not by anything modelled. A correct change in the last bits
-redraws them. `PL-2MD9`'s change to the propagator is the measurement.
+**A residual line shows only the power of ten that the residual is less
+than.** A residual that passes its check is the rounding left over from summing the initial, delivered, exhausted and stored
+amounts. Its digits and its sign are set by the order in which the arithmetic
+ran, not by anything modelled, and a correct change to the code that alters
+only the last binary digits of that arithmetic redraws them. `PL-2MD9`'s change to the propagator is the measurement.
 `PL-KXW1` records an 81-run protocol: three agents, three dial pairs, three
 cardiac outputs and three fresh gas flows. Each run is forked at minute 30
 with the dial set back, and its branch is played for 30 minutes. The protocol
 was replayed on the v0.5.21 tag and on v0.5.22 on 2026-10-03. A branch's residual moved by up
 to 5.9 times between the two trees. There were 2,511 branch samples. The two
 trees' residuals read differently at four significant digits on 1,975 of them,
-at two on 634, at one on 154, and at the decade on 22. Those 22 are the
+at two on 634, at one on 154, and at the power of ten on 22. Those 22 are the
 samples where the two trees' residuals fall on either side of a power of ten.
 Every residual was below 2.1 × 10⁻¹¹ L, and every check passed in both trees.
 A run's own path, which `PL-2MD9` left bit-identical, read identically in
-every form. So each line prints `<1e-13 L`. This is the smallest power of ten
-that the magnitude lies strictly below, computed from the float's exact value.
-Here `<` means what it means on the amounts. The sign is dropped along with the
-mantissa, so both lines read alike. The sign means something only in a check that fails.
+every form. So each line prints the smallest power of ten that the residual's
+size is less than, such as `<1e-13 L`, which means less than 10⁻¹³ L. The power
+of ten is computed from the float's exact value. The `<` means the same as it
+does on the amounts. Neither line shows a sign, so both lines read alike. The sign means something only in a check that fails.
 Then the run halts, and the failure notice prints the signed values to six
-figures. Exactly zero reads `0 L`. `format_agent_residual` defines the form.
+figures. A residual of exactly zero reads `0 L`. `format_agent_residual` defines the form.
 `test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
 `test_format_agent_residual_drops_the_sign_the_rounding_chose`,
 `test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten`
@@ -10648,29 +10649,25 @@ and 0.19 L, isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L. The
 blood:gas coefficient dominates throughout. These shifts were measured at
 1 MAC with the reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L therefore lies
 between a quarter of an SD and six SDs across the whole supported span. That is
-inside the band the readouts' derivation admits. A count of 0.01 L, by
-contrast, falls to a fiftieth of an SD by 24 h. Until `PL-TG60`, the panel
+inside the band the readouts' derivation admits. A count of 0.01 L
+would fall to a fiftieth of an SD by 24 h. Until `PL-TG60`, the panel
 printed six decimals. They asserted a millilitre of a quantity that the
 parameters place only to within a decilitre. This section justified the six
 decimals by saying that the amounts made the residual visible. That
-justification did not hold. A residual twelve orders of magnitude below the
-last printed digit is visible only on the lines that print its order of
-magnitude. Delivered agent carries no parameter uncertainty, because it is the
+justification did not hold. Delivered agent carries no parameter uncertainty, because it is the
 dial times the flow times the time. It takes the same resolution so that the
 three amounts read at one scale. The panel states the unit as this document
 states it, litres of equivalent pure agent gas, because a bare "L" beside an
 anaesthetic agent invites a reader to take it as litres of liquid.
 `AGENT_AMOUNT_DISPLAY_PRECISION` stores the count, `format_agent_volume`
-defines the form, and `test_agent_amounts_precision` pins both. Precision in
-this interface is set by what each number is for, and the rule above governs
-the clinical readouts.
+defines the form, and `test_agent_amounts_precision` pins both.
 <!-- not-restated: 0.18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 0.01 L -->
 
-**An agent amount's precision is derived for the amount in a unit, not for the
-amount alone** (`PL-0S0V`, 2026-10-27). The derivation above is about the
-litre of vapour, and it does not carry over to another unit. v0.7.0 is
+**An agent amount's precision is derived for the amount in one unit, and does
+not carry over to another unit** (`PL-0S0V`, 2026-10-27). The derivation above
+is for litres of vapour. v0.7.0 is
 scoped to show the delivered total in millilitres of liquid on the agent cost
 View (`PL-B396`), and each compartment's amount in millilitres of vapour on
 the compartment schematic (`PL-2881`). Both are built now. So
@@ -10702,10 +10699,10 @@ the model resolve a difference in one unit that it does not resolve in the
 other. One step of the litre display, 0.1 L of vapour, is 0.55 mL of
 sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane at the
 20 °C reference of § "Agent amount". The smallest power of ten at or above all
-three is 1 mL. The partition coefficients give the same answer. One published
-SD of a coefficient moves the exhausted total at 24 h by 0.19 L of sevoflurane
-vapour, 0.18 L of isoflurane and 0.23 L of desflurane, as derived above for
-the litre display. In liquid that is 1.04, 0.92 and 1.10 mL. One step of 1 mL is therefore
+three is 1 mL. The partition coefficients give the same answer. At 24 h, the
+one-SD shifts derived above for the litre display, 0.19 L of sevoflurane
+vapour, 0.18 L of isoflurane and 0.23 L of desflurane, are 1.04, 0.92 and
+1.10 mL of liquid. One step of 1 mL is therefore
 about one SD, and a step of 0.1 mL would be a tenth of one.
 `test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
 repeats the conversion for every shipped agent from the stored molar mass and
@@ -10715,22 +10712,22 @@ density.
 **The delivered total in millilitres of liquid is shown to a tenth** (project
 owner, 2026-10-27, ratified, over whole millilitres). The delivered agent is
 the dial times the flow times the time, so no partition coefficient makes it
-uncertain. Both totals are gas at room temperature, so the conversion to
-liquid at the 20 °C reference is exact for them. That leaves one uncertainty
-in the delivered figure in liquid: the measured density's, whose SD is
-0.0008, 0.0006 and 0.0004 g/mL for sevoflurane, isoflurane and desflurane. One
-SD moves the figure by 0.1 mL only once it holds about 190 mL of sevoflurane,
-250 mL of isoflurane or 366 mL of desflurane. At Gas Man's Exercise 14-1,
+uncertain. The delivered and exhausted totals are both gas at room
+temperature, so their conversion to liquid at the 20 °C reference is exact.
+That leaves one uncertainty in the delivered figure in liquid, which is the
+measured density's. Its SD is 0.0008, 0.0006 and 0.0004 g/mL for sevoflurane,
+isoflurane and desflurane. One SD moves the figure by 0.1 mL only once it
+holds about 190 mL of sevoflurane, 250 mL of isoflurane or 366 mL of
+desflurane. Above those volumes the last digit is finer than one SD of the
+density. At 2% sevoflurane and 2 L/min, 190 mL takes about 14.5 h, and at the
+dial's maximum of 8% and 10 L/min it takes 43 min. At Gas Man's Exercise 14-1,
 39.4 mL of isoflurane, one SD is 0.016 mL. So 0.1 mL lies inside the band that
 the density spans across the supported settings, as 0.1 L does for the
-partition coefficients above. Above those volumes the last digit is finer than
-one SD of the density. At 2% sevoflurane and 2 L/min, 190 mL takes about
-14.5 h. At the dial's maximum of 8% and 10 L/min, it takes 43 min. The tenth
-also lets a reader multiply the delivered figure by the price per millilitre
-beside it and get the cost, as § "A cost at the reader's price" asks. The
-delivered total's litre count stays at 0.1 L, which is coarser than the
-delivered amount supports. The one-sided bound allows that, and it keeps the
-accounting panel's three totals on one scale.
+partition coefficients above. The tenth also lets a reader multiply the
+delivered figure by the price per millilitre beside it and get the cost, as
+§ "A cost at the reader's price" asks. The delivered total in litres stays at
+0.1 L, coarser than the delivered amount supports, which the one-sided bound
+allows.
 `test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth`
 computes the three volumes from the stored densities.
 <!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
@@ -10855,44 +10852,45 @@ Relative to the amount, the shift is narrow. In venous blood and the three
 tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
 it is below 3%, because the dial sets them and a coefficient barely moves
 them. Two significant figures put the last digit at 1% to 10% of the amount.
-Measured, one count lies between a tenth of one SD, in desflurane's venous
+As measured, one count lies between a tenth of one SD, in desflurane's venous
 blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. These
-figures have no test yet (`PL-19W8`). The coarse
-end loses detail and claims nothing false, which the one-sided bound above
-allows. The fine end is finer than the readouts' seventh of an SD, but only
+figures have no test yet (`PL-19W8`). The one-sided bound above allows the
+coarse end. The fine end is finer than the readouts' seventh of an SD, but only
 in the first two minutes, while venous blood fills. Three significant figures
-would put one count at a hundredth of an SD. That is the order the readouts'
-third decimal and the totals' second decimal were refused at, a seventieth
-and a fiftieth. One figure would print fat's amount in steps of 1000 mL by
+would put one count at a hundredth of an SD. The readouts' third decimal was
+refused at a seventieth of an SD, and the totals' second decimal at a fiftieth,
+which is the same order. One significant figure would print fat's amount in steps of 1000 mL by
 24 h. So two is the finest count the parameters support, and it is the count
 chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The readouts' uniform resolution does not carry over to the schematic's
-compartment amounts, for two reasons. § "Why the resolution is uniform rather
-than per-compartment" rests first on the parameters' uncertainty being
-absolute across the row of readouts. For the amounts it is relative, as above.
-It rests second on the readouts being read as one set, side by side or
-stacked, where different numbers of decimals would put different magnitudes at
-the same digit position. The schematic's amounts are labels on separate
-containers, each followed by its unit, and the schematic compares amounts on
-the share bar, along one scale. A positive amount that would round to
-0.00 mL reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`
+compartment amounts, because neither of its two grounds applies to them. The
+first ground in § "Why the resolution is uniform rather than per-compartment"
+is that the parameters' uncertainty is absolute across the row of readouts.
+For the amounts it is relative, as above. The second is that the readouts are
+read as one set, side by side or stacked, where different numbers of decimals
+would put different magnitudes at the same digit position. The schematic's
+amounts are labels on separate containers, each followed by its unit, and the
+schematic compares amounts along one scale, on the share bar.
+
+A positive amount that would round to 0.00 mL reads `<0.01 mL vapour`, and
+exactly zero reads `0 mL vapour`
 (`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
 A limit finer than 0.01 mL would print four or more decimals for a moment's
 worth of agent. The 0.01 mL limit is a provisional choice made for legibility.
-It can only make an amount coarser than the two-figure rule would show it, so
-it loses detail and adds no precision of its own.
+It can only make an amount coarser than the two-figure rule would show it,
+which the one-sided bound allows.
 
-**A compartment's share is shown in whole percent.** One SD of a coefficient
-moves a compartment's share by at most 1.2 percentage points, in isoflurane's
-muscle at 24 h, which has no test yet (`PL-19W8`). So one count of 1 percentage point lies between 0.8 SD and
+**A compartment's share is shown in whole percent.** A positive share below
+0.5% reads `<1%`, so a compartment that holds agent never reads as holding
+none. A share of 99.5% or more that is not the whole reads `>99%`, so no
+compartment reads as holding all of the agent while another holds some. In a
+desflurane run, the circuit holds more than 99.5% of the agent for about its
+first second. One SD of a coefficient moves a compartment's share by at most
+1.2 percentage points, in isoflurane's muscle at 24 h. This figure has no test
+yet (`PL-19W8`). So one count of 1 percentage point lies between 0.8 SD and
 more than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
-A positive share below 0.5% reads `<1%`, so a compartment that holds agent
-never reads as holding none. A share of 99.5% or more that is not the whole
-reads `>99%`, so no compartment reads as holding all of the agent while
-another holds some. In a desflurane run, the circuit holds more than 99.5% of
-the agent for about its first second.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### The chart's hover readout: what the tooltip may show

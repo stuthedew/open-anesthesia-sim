@@ -46,3 +46,5 @@ or a sentence whose meaning needs their judgment.
 **Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
 
 **Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
+
+**Checked 2026-11-04, from `PL-BSYT`'s copy-editor pass.** The copy editor proposed moving the residual lines' replay protocol (the 81 runs, the v0.5.21 and v0.5.22 replay, the 2,511 samples), the six-decimal history under `PL-TG60`, the v0.7.0 scoping sentence and every test and code name in this section into one "**For developers.**" note at the section's end. `PL-BSYT` kept each test name beside its paragraph instead. The documentation check accepts a note only for the run of paragraphs directly above it, so a single note at the end cannot hold the first paragraph. The moves are this item's work. Check that `PL-TG60`, `PL-B396` and `PL-2881` record the history before cutting it here.
