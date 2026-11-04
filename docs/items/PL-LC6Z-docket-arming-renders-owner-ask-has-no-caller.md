@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: owner-ask-by-state
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, tools/regex_baseline.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04

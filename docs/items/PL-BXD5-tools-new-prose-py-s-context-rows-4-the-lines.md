@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: reader-first-prose
+milestone: v0.6.15
 touches: tools/new_prose.py
 added: 2026-11-04
 closed: 2026-11-04

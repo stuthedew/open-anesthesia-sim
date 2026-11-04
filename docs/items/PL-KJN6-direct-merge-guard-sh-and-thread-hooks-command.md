@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: guard-review-2026-11
+milestone: v0.6.15
 touches: .claude/hooks/thread_hooks.py, .claude/hooks/direct-merge-guard.sh, docs/apparatus.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

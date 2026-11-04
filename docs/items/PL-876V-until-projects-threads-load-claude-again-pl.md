@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: projects-trial
+milestone: v0.6.15
 touches: .claude/skills/docket/modes/coordinator.md
 added: 2026-10-25
 closed: 2026-11-03

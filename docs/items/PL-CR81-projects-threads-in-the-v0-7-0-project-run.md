@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: projects-trial
+milestone: v0.6.15
 touches: docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-8Z38-report-to-anthropic-that-projects-threads-on.md, docs/items/PL-876V-until-projects-threads-load-claude-again-pl.md
 added: 2026-10-25
 closed: 2026-11-03

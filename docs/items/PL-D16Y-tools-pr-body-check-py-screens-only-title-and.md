@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guards-keyed-on-the-action
+milestone: v0.6.15
 touches: tools/pr_body_check.py, .claude/hooks/pr-body-email-guard.sh, tests/unit/test_pr_body_check.py, tests/unit/test_hook_blocks.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

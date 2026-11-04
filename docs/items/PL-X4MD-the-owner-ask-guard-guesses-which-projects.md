@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 feature: owner-ask-by-state
+milestone: v0.6.15
 touches: .claude/hooks/owner_ask_guard.py, .claude/hooks/hook_input.py, .claude/hooks/guard.py, .claude/hooks/gate_status_guard.py, subprojects/docket/src/docket/arming.py, tests/unit/test_owner_ask_guard.py, tests/unit/test_guard.py, tools/regex_baseline.py, docs/maintainer.md, docs/resident-instructions.md, docs/apparatus.md
 added: 2026-11-04
 closed: 2026-11-04

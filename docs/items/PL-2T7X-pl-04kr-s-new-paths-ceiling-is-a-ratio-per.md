@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: convergence-visibility
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-2T7X-pl-04kr-s-new-paths-ceiling-is-a-ratio-per.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only release-report fix with no effect on what a learner sees, worked and closed on its own branch
 added: 2026-11-03

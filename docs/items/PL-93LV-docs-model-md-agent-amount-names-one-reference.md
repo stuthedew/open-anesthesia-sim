@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.6.15
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-27

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: review-hold
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, tests/unit/test_owner_ask_guard.py, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md
 added: 2026-11-02
 closed: 2026-11-02

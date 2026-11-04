@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: convergence-visibility
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/README.md, tools/generator_check.py, .claude/skills/docket/modes/triage.md, docs/items/PL-K88Z-inventory-every-second-copy-of-a-shared-fact.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03

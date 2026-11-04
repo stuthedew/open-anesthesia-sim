@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guards-say-when-they-cannot-check
+milestone: v0.6.15
 touches: .claude/hooks/guard.sh, .claude/hooks/guard.py, .claude/hooks/hook_input.py, .claude/hooks/floor_interpreter_guard.py, .claude/hooks/gate_status_guard.py, .claude/hooks/push_check_guard.py, .claude/hooks/direct_merge_guard.py, .claude/hooks/docket_branch_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_gate_status_guard.py, tests/unit/test_push_check_guard.py, tests/unit/test_direct_merge_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

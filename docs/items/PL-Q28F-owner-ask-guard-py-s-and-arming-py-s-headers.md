@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: guard-code-structure
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, .claude/hooks/owner_ask_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane code-structure change, not safety or science, and no learner sees it
 added: 2026-11-03

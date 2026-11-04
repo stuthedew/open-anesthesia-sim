@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: guards-say-when-they-cannot-check
+milestone: v0.6.15
 touches: docs/items/PL-ZCF9-owner-ask-guard-py-recognises-a-read-or-merge.md, docs/items/PL-9KSJ-every-guard-hook-fails-open-without-a-trace.md
 added: 2026-11-03
 closed: 2026-11-03

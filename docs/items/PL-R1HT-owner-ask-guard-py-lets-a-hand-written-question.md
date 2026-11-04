@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: owner-ask-by-state
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-11-03
 closed: 2026-11-03

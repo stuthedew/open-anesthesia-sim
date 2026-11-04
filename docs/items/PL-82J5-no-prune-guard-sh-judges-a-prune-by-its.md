@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: guards-keyed-on-the-action
+milestone: v0.6.15
 touches: .claude/hooks/git/reference-transaction, .claude/hooks/git/pre-push, .claude/hooks/stop_hook_patch.py, .claude/hooks/hook_input.py, tests/unit/test_git_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: prose-quality
+milestone: v0.6.15
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md, docs/resident-instructions.md, docs/apparatus.md, docket.toml, tools/new_prose.py, tools/model_rewrite.py, tests/unit/test_new_prose.py, tests/unit/test_model_rewrite.py
 added: 2026-11-02
 closed: 2026-11-02

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: reader-first-prose
+milestone: v0.6.15
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, tools/model_rewrite.py, tests/unit/test_model_rewrite.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md, docs/maintainer.md, docs/items/PL-22T5-close-out-s-prose-review-reads-only-the.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03

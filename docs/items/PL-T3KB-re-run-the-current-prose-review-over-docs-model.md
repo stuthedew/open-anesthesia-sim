@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.15
 touches: docs/MODEL.md
 added: 2026-11-03
 closed: 2026-11-03

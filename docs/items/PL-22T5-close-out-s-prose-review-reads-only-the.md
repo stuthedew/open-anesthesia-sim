@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: reader-first-prose
+milestone: v0.6.15
 touches: tools/new_prose.py, tools/rejected_prose.py, tests/unit/test_new_prose.py, tests/unit/test_rejected_prose.py, docs/prose-review/prompt.md, docs/prose-review, .claude/agents/copy-editor.md, .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, docs/apparatus.md, docs/resident-instructions.md, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
