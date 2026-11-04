@@ -725,7 +725,7 @@ def test_string_units_reads_every_literal_but_docstrings_and_f_string_pieces() -
     ]
 
 
-def test_a_long_interface_string_is_printed_for_its_own_reader(
+def test_a_long_interface_string_literal_is_printed_for_its_own_reader(
     repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The notice goes to the learner, and the docstring beside it to the developer."""

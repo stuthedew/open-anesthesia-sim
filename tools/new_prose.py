@@ -10,28 +10,24 @@ its full context. On its first branch the copy editor read 29 passages in four
 reads of this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
 **Which files are read.** A Markdown or Python file is read when a row of the
-rule's reader table names it, itself or by its directory, so the table decides
-what is reviewed (`PL-22T5`). A changed file that holds a passage to review
-and that no row names is listed under "Not reviewed", because nobody has said
-who reads it.
+rule's reader table names the file or its directory (`PL-22T5`). A changed file
+that holds a passage to review and that no row names is listed under "Not
+reviewed", because nobody has said who reads it.
 
-**What a unit is.** In a Python file, a unit is a docstring, as
-`docket.python.docstrings` decides, a run of comment lines, as
-`doc_check._python_comments` joins them, or any other string literal, an
-f-string counted whole. A string literal is reviewed only where a reader row
-for string literals names its file, and a docstring or comment only where
-another row does, so an interface notice and the docstring beside it are
-judged for different readers (`PL-Q98K`). In a Markdown file, it is a paragraph
-or a table row, as `docket.markdown` reads the blocks once the YAML front
-matter is blanked row for row. A paragraph inside a list item or a block quote
-is a unit of its own. A table row is a unit because one cell can carry a whole
-essay. A fence, an HTML comment and a heading are not prose to review
+**What a unit is.** In a Python file, a unit is a docstring, a run of comment
+lines, or any other string literal. `docket.python.docstrings` decides which
+strings are docstrings, `doc_check._python_comments` joins comment lines into
+runs, and an f-string counts as one unit. In a Markdown file, a unit is a
+paragraph or a table row, as `docket.markdown` reads the blocks once the YAML
+front matter is blanked row for row. A paragraph inside a list item or a block
+quote is a unit of its own. A table row is a unit because one cell can carry a
+whole essay. A fence, an HTML comment and a heading are not prose to review
 (`PL-ZT47`).
 
-**Which lines changed.** The diff runs from the commit where the branch forked
-from the default branch to the working tree, and includes files that git does
-not track yet, as `tools/diff_mutation.py` reads it. A file that is new on the
-branch has every line changed.
+**Which lines changed.** The tool reads the diff as `tools/diff_mutation.py`
+reads it, from the commit where the branch forked from the default branch to
+the working tree, including files that git does not track yet. A file that is
+new on the branch has every line changed.
 
 **What is reviewed.** Each passage that `changed_passages` finds is reviewed
 when it has `MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure,
@@ -50,14 +46,17 @@ alone, with `CONTEXT_ROWS` rows of code on each side.
 **Who reads each passage.** `.claude/rules/plain-writing.md` holds a table that
 names the readers of each kind of text: what each knows, what each does not
 know, and what each will do with the text. The table's first column names files
-in code spans, where a span ending in "/" is a directory. The report lists the
-readers of every file it prints a passage from, and each passage names its
-readers, so the copy editor judges it for the reader it is for (`PL-R7Q6`).
+in code spans, where a span ending in "/" is a directory. A string literal is
+reviewed only where a reader row for string literals names its file, and a
+docstring or comment only where another row does, so an interface notice and
+the docstring beside it are judged for different readers (`PL-Q98K`). The
+report lists the readers of every file it prints a passage from, and names
+under each passage the readers to judge it for (`PL-R7Q6`).
 
-Exits 0 when it read the diff, whether or not it printed a passage. A changed
-file that will not parse is named in a "Not read" line, so a partial result is
-never given as a whole one. Exits 1 when the diff could not be read or the
-default branch is unknown.
+The tool exits 0 when it read the diff, whether or not it printed a passage,
+and exits 1 when the diff could not be read or the default branch is unknown. A
+changed file that will not parse is named in a "Not read" line, so a partial
+result is never given as a whole one.
 
 **`--draft FILE --kind WORDS` prepares a reply or a pull request body for review
 before it is sent.** It prints the rule, the reader rows whose first cell
@@ -66,26 +65,26 @@ when no row's first cell contains WORDS.
 
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
-recorded as a `Prose-review:` trailer, and it runs this through `docket.toml`'s
-`prose_count_command` (`PL-W04Z`). It counts long units rather than passages,
-so a passage of several short paragraphs is reviewed and not counted. This
-mode reads the committed branch, from the fork to `HEAD`, because `arm` judges
-commits and not the working tree.
-`--count REV` names the commit that carries the newest record. A unit then
-counts only when its text is not a unit of the same file at `REV`, so a code
-fix after the review needs no second review, while a new or reworded long unit
-does. Comparing texts rather than diffing from `REV` keeps out the prose that a
-merge of the default branch brings in, because that prose is not in the
+recorded as a `Prose-review:` trailer, and it runs this tool through
+`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts long units
+rather than passages, so a passage of several short paragraphs is reviewed and
+not counted. It reads the committed branch, from the fork to `HEAD`, because
+`arm` judges commits and not the working tree.
+`--count REV` names the commit that carries the newest `Prose-review:` trailer.
+A unit then counts only when its text is not a unit of the same file at `REV`, so
+a code fix after the review needs no second review, while a new or reworded long
+unit does. Comparing texts rather than diffing from `REV` keeps out the prose
+that a merge of the default branch brings in, because that prose is not in the
 branch's own diff from the fork. The count is one line holding a whole number.
-Exits 2, printing the unread files to standard error, when a changed file will
-not parse, because a count that skipped a file is not a count.
+It exits 2, printing the unread files to standard error, when a changed file
+will not parse, because a count that skipped a file is not a count.
 
 **`--compare` sets each passage the branch changed beside the text it
 replaced, and lists the facts the branch removed** (`PL-JP8X`). A passage is
 the units that one hunk of the diff touches, widened to whole paragraphs,
 table rows, docstrings or comments on both sides. Hunks parted only by blank
-lines make one passage. It is printed with its words on the default branch and
-now, whatever its length, unless only its spacing changed. A whole section is
+lines make one passage. It is printed with its word count on the default branch
+and now, whatever its length, unless only its spacing changed. A whole section is
 not the passage, because a growth of 50 words would not show in a section as
 long as `docs/MODEL.md` § "Displayed precision". Then, for each file, it
 lists each equation, "no test yet" declaration, code span, citation, number,
@@ -144,8 +143,8 @@ MIN_WORDS = 30
 #: The kind of a unit that is a string literal in code, other than a docstring.
 STRING_KIND = "string"
 #: The words that mark a reader row as one for string literals. Such a row
-#: reads only string units, and every other row reads every other kind, so a
-#: notice in the interface and the docstring beside it take different readers.
+#: applies only to string units, and every other row applies to every other kind,
+#: so an interface notice and the docstring beside it get different readers.
 STRING_ROW_WORDS = "string literals"
 #: The rule whose table names the readers of each kind of text.
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
@@ -300,12 +299,12 @@ def string_text(node: ast.Constant | ast.JoinedStr) -> str:
 
 
 def string_units(path: str, source: str) -> list[Unit]:
-    """Every string literal in `source` that is not a docstring, in the order they start.
+    """Return every string literal in `source` that is not a docstring, in the order they start.
 
     An f-string is one unit, and the string pieces inside it are not units of
     their own. Strings that Python joins because they stand side by side are
-    one literal, and so one unit. Raises one of `UNTOKENIZABLE` where Python
-    refuses `source`.
+    one literal, and so one unit. Raises one of `UNTOKENIZABLE` when Python
+    cannot parse `source`.
     """
     tree = ast.parse(source, filename=path)
     skipped = {id(node) for node in docstrings(tree)}
@@ -345,11 +344,11 @@ def document_units(path: str, source: str) -> list[Unit]:
 
 
 def units_of(path: str, source: str) -> list[Unit]:
-    """The prose units of the file at `path`: a document's paragraphs, or a Python file's.
+    """Return the prose units of the file at `path`.
 
-    A Python file's units are its docstrings and comments and its string
-    literals, in the order they start. Which of them a review reads is
-    `read_by`'s to decide.
+    A document's units are its paragraphs. A Python file's units are its
+    docstrings, comments and string literals, in the order they start.
+    `read_by` decides which of them a review reads.
     """
     if is_document(path):
         return document_units(path, source)
@@ -551,12 +550,12 @@ def changed_passages(path: str, before: str | None, after: str | None, patch: st
 
 
 def fact_text(path: str, source: str | None, *, strings: bool = False) -> str:
-    """The text whose facts are counted: a document whole, or a Python file's prose.
+    """Return the text whose facts are counted, a whole document or a Python file's prose.
 
     A Python file's prose keeps the rows it stands on, and every other row is
-    blank, so each fact is placed on the file's own row and no number in code
-    is read. With `strings`, its string literals count as prose too, so a
-    refusal message that loses the value it names is reported.
+    blank, so each fact stays on its own row of the file and no number in code
+    is read. When `strings` is true, the file's string literals count as prose
+    too, so a refusal message that loses the value it names is reported.
     """
     if source is None:
         return ""
