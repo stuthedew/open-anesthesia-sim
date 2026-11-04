@@ -173,6 +173,7 @@ from .vcs import (
     ClosureReport,
     CutsInFlight,
     FailingPullRequests,
+    FilingParents,
     FilingReport,
     FlightReport,
     GitRunner,
@@ -202,6 +203,7 @@ from .vcs import (
     filed_here,
     filed_with_work,
     files_in_flight,
+    filing_parents,
     find_cut,
     find_root,
     gone_paths,
@@ -1972,6 +1974,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("impairs-generators", "impairs_generators"),
     ("reenters", "reenters"),
     ("no-successor", "no_successor"),
+    ("sweep", "sweep"),
 )
 
 
@@ -4175,7 +4178,9 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Partially advances: {', '.join(ready.partial_features)}")
     print(f"{current} -> {version}\n")
     print(notes)
-    missed = _missed_expectations(items, config, args.today or date.today())
+    missed = _missed_expectations(
+        items, config, args.today or date.today(), _sweep_filing(args, items)
+    )
     if missed:
         print(missed)
 
@@ -5001,9 +5006,10 @@ def cmd_inflow(args: argparse.Namespace) -> int:
 
     `trend` reports what was closed; this reports what was filed, so "is the
     accumulation slowing?" has an answer other than a session scripting it over
-    the whole store (`PL-WXKD`). It reads only the store, so it asks git
-    nothing. Refuses without `workflow_paths`, as `trend` does and for the same
-    reason: with no boundary declared, no filing is an apparatus filing.
+    the whole store (`PL-WXKD`). It reads the store, and asks git which item's
+    work filed each item only where some item records `sweep:` (`PL-CJGH`).
+    Refuses without `workflow_paths`, as `trend` does and for the same reason:
+    with no boundary declared, no filing is an apparatus filing.
 
     `--lane product` counts the product filings triage's generator check asks
     about instead, so a product head whose fix did not hold is listed as an
@@ -5017,13 +5023,37 @@ def cmd_inflow(args: argparse.Namespace) -> int:
         )
         return 1
     report = analyze_inflow(
-        items, config, by=args.by, today=args.today or date.today(), lane=args.lane
+        items,
+        config,
+        by=args.by,
+        today=args.today or date.today(),
+        lane=args.lane,
+        filing=_sweep_filing(args, items),
     )
     print(render.format_inflow(report))
     return 0
 
 
-def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> str:
+def _sweep_filing(args: argparse.Namespace, items: Sequence[Item]) -> FilingParents | None:
+    """Which items' work filed each item, read only where some item records `sweep:`.
+
+    `inflow` needs the answer only to count a sweep's filings apart, so a store
+    with no sweep asks git nothing. The history is `HEAD`'s, the copy of the
+    store that `_load` reads.
+    """
+    if not any(item.sweep for item in items):
+        return None
+    inv = _invocation(args)
+    if inv.git is None:
+        return FilingParents(
+            declined="`--no-git` was given, so git was not asked which commit filed each item"
+        )
+    return filing_parents(inv.root, "HEAD", inv.tracked, runner=inv.git)
+
+
+def _missed_expectations(
+    items: Sequence[Item], config: Config, today: date, filing: FilingParents | None = None
+) -> str:
     """What a cut says about apparatus inflow: the predictions it broke, or nothing.
 
     Silent when every prediction holds, which is the report the owner asked
@@ -5037,7 +5067,7 @@ def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> 
     """
     if not config.workflow_paths:
         return ""
-    lines = missed_inflow(analyze_inflow(items, config, today=today), today)
+    lines = missed_inflow(analyze_inflow(items, config, today=today, filing=filing), today)
     if not lines:
         return ""
     return "\n".join(
@@ -6370,6 +6400,9 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--misread", metavar="FACT")
     setter.add_argument("--impairs-generators", metavar="WHY")
+    setter.add_argument(
+        "--sweep", metavar="WHAT", help="record that this item's work is a deliberate sweep"
+    )
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"
     )

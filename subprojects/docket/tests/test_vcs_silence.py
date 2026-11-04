@@ -65,6 +65,7 @@ from docket.vcs import (
     filed_here,
     filed_with_work,
     files_in_flight,
+    filing_parents,
     find_cut,
     gone_paths,
     is_shallow,
@@ -454,6 +455,13 @@ READS: tuple[Read, ...] = (
         "filed_with_work",
         lambda r, g: filed_with_work(frozenset({"PL-F1LD"}), r, runner=g),
         _findings("filings"),
+    ),
+    Read(
+        # Every item the fixture's history added, each with the ids its filing
+        # commit leads with: `PL-F1LD`'s own capture among them (`PL-CJGH`).
+        "filing_parents",
+        lambda r, g: filing_parents(r, "HEAD", "docs/items", runner=g),
+        lambda a: frozenset(a.parents.items()),
     ),
     Read(
         "cut_window",
