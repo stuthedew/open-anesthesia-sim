@@ -430,3 +430,39 @@ def test_the_older_totals_form_counts_its_passes_and_splits_nothing() -> None:
 def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) -> None:
     with pytest.raises(ValueError, match=re.escape(reason)):
         arming.parse_blind_review(value)
+
+
+ASK_REVIEW_VALUE = (
+    "changed - the uptake step is reworded | question - should this merge, since it "
+    "touches the uptake model? | checked - every figure still matches its source | "
+    "reply - Merge it"
+)
+
+
+def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -> None:
+    """A copy of the guard refusals made after the question leaves the question in force.
+
+    `docket record` copies the refusals a branch met into `docket.toml`'s
+    `record_dir`. That copy is a record, like an item file, so an `Owner-ask`
+    made before it still says what to ask. Read as worked change, it made the
+    gate ask for the question again (`PL-1XQP`).
+    """
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(
+        git, "Owner-read: needed - a change to the uptake model", f"Owner-ask: {ASK_REVIEW_VALUE}"
+    )
+    _change(root, git, "docs/hook-blocks/claude-prose.tsv", "refused\n")
+
+    def ask(record_dir: str) -> arming.Verdict:
+        return arming.arm(
+            root,
+            items_dir="docs/items",
+            record_dir=record_dir,
+            now=NOW,
+            fetch=False,
+            owner_ask=True,
+        )
+
+    assert ask("docs/hook-blocks").sendable is not None
+    assert ask("").unasked

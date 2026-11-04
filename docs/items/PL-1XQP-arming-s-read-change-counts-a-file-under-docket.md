@@ -3,12 +3,14 @@ id: PL-1XQP
 title: arming's _read_change counts a file under docket.toml's record_dir (the copied guard refusals) as worked change, so a bin/docket record run after an Owner-ask or Owner-read record makes that record stop covering the branch; it should exclude vcs.queue_records' directories as in_queue does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-refusal-log
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_arming.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2016
 payoff: copying a branch's guard refusals after its question for the owner is recorded no longer makes the merge gate ask for the question again
 verify: grep -q 'def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force' subprojects/docket/tests/test_arming.py
 ---
