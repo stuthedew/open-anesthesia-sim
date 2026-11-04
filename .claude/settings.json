@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/no-prune-guard.sh\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/gh_write_guard.py\""
           },
           {
             "type": "command",
