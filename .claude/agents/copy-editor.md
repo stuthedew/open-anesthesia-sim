@@ -188,7 +188,12 @@ the smallest, because a paragraph you cut needs no sentence edit.
    - Each value, unit, item id, citation and code span that stays is unchanged.
      A "no test yet" declaration keeps those words, because the documentation
      check reads them. Each heading keeps its text, because other files cite a
-     section by its heading.
+     section by its heading. A reference to another section keeps the file's
+     form, § "Heading", so that the check finds it.
+   - A hidden marker, such as `<!-- provenance: ... = 0.31 -->`, stays under
+     the paragraph that states its number. Where you move the number to
+     another paragraph, move its marker with it. Where you cut the number,
+     cut its marker.
    - Each change has one of the reasons above. Undo any change that has none.
    - The edit is shorter than the original, unless an added word carries a fact
      the reader needs and the original lacked. Name each such fact under the
@@ -219,8 +224,9 @@ indentation, the same comment markers, quotes or Markdown, and the same line
 wrapping. Where the rows wrap, wrap at the width the original rows use, and
 never past 100 characters. Where
 each paragraph is one line, as in an item file, keep it one line. A table row
-stays on one line, however long. Change no code, and keep each fence, HTML
-comment and heading as it is. Where the text holds a fenced block, open and
+stays on one line, however long. Change no code, and keep the words of each
+fence, HTML comment and heading as they are. A marker moves only with its
+number, as step 7 says. Where the text holds a fenced block, open and
 close your block with more backticks than any fence inside it.
 
 Under the block, list one to a line:
