@@ -59,7 +59,9 @@ put to the owner at once, with a recommendation.
   the previous one merged. Two chains that share a file never run at once
   (`bin/docket concurrent ID`).
 - **Check `bin/docket flight` before starting any thread**, and start nothing
-  another session already claims.
+  another session already claims. It also lists each open pull request that
+  waits on the owner's read with no question recorded. Send each such thread
+  back to record its `Owner-ask:` before it messages the owner (`PL-52SV`).
 - **Say which model the thread runs on.** The model is the one the `[models]`
   table in `docket.toml` chooses, which `bin/docket show ID` prints on its
   `model:` line. A thread on Opus carries `ultracode` in its brief (project

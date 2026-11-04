@@ -13418,3 +13418,84 @@ def test_closing_an_item_with_no_pull_request_open_writes_no_number_and_says_so(
     assert f"`pr:` not written: no pull request is open on {ARM_BRANCH}" in out
     assert "bin/docket record N" in out
     assert "pr:" not in (root / "docs" / "items" / "PL-B1B1-held.md").read_text(encoding="utf-8")
+
+
+# --- flight: pull requests waiting on the owner with no question (`PL-52SV`) --
+
+#: A second thread's branch in the `flight` tests below, which records its question.
+ASKED_BRANCH = "claude/asked-b2c3d4"
+
+
+def _two_waiting_branches(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
+    """Two pushed branches that each wait on the owner's read, only one with its question.
+
+    The checkout is left on `main`, as the coordinator's is, so neither answer
+    can come from `HEAD`.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    git("checkout", "-qb", ASKED_BRANCH, "main")
+    _put(git, root, "AGENTS.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:02:00+00:00")
+    git("push", "-q", "-u", "origin", ASKED_BRANCH)
+    git("checkout", "-q", "main")
+    return root, git
+
+
+def test_owner_ask_on_answers_for_a_branch_that_is_not_checked_out(tmp_path: Path) -> None:
+    """The remote's copy is read, so the coordinator's checkout on `main` gets each answer."""
+    root, _ = _two_waiting_branches(tmp_path)
+    now = datetime.fromisoformat(ARM_NOW)
+
+    unasked = arming.owner_ask_on(root, ARM_BRANCH, items_dir="docs/items", now=now)
+    asked = arming.owner_ask_on(root, ASKED_BRANCH, items_dir="docs/items", now=now)
+    base = arming.owner_ask_on(root, "main", items_dir="docs/items", now=now)
+    gone = arming.owner_ask_on(root, "claude/never-pushed", items_dir="docs/items", now=now)
+
+    assert unasked.unasked
+    assert unasked.code == arming.NO_ASK
+    assert not asked.unasked
+    assert asked.sendable is not None
+    assert asked.sendable.startswith("Which view opens first?")
+    assert base.answer == arming.NOT_HELD
+    assert gone.answer == arming.UNKNOWN
+    assert "refs/remotes/origin/claude/never-pushed is not in this checkout" in gone.unread[0]
+
+
+def test_flight_names_a_pull_request_waiting_on_the_owner_with_no_question(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The coordinator sees the gap before the thread messages the owner (`PL-52SV`).
+
+    Both branches wait on the owner's read, and only the one with no
+    `Owner-ask` record is listed. A third open pull request whose branch is not
+    in the checkout is said as unread, never as "none waits".
+    """
+    root, _ = _two_waiting_branches(tmp_path)
+    _forge(root, f'printf "{ARM_BRANCH} 41\\n{ASKED_BRANCH} 42\\nclaude/elsewhere-z9y8x7 43\\n"')
+
+    assert main(["--items", str(root / "docs" / "items"), "--now", ARM_NOW, "flight"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    at = lines.index("1 pull request waits on the owner's read with no question recorded:")
+    assert lines[at + 1] == f"  {ARM_BRANCH}  #41"
+    assert lines[at + 2] == render.UNASKED_MEANS
+    assert f"  {ASKED_BRANCH}  #42" not in lines
+    unread = lines.index("Whether these open pull requests wait on the owner could not be read:")
+    assert lines[unread + 1].startswith("  claude/elsewhere-z9y8x7: ")
+
+
+def test_flight_says_nothing_of_the_owner_when_no_pull_request_waits(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, _ = _two_waiting_branches(tmp_path)
+    _forge(root, f'printf "{ASKED_BRANCH} 42\\n"')
+
+    assert main(["--items", str(root / "docs" / "items"), "--now", ARM_NOW, "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "with no question recorded" not in out
+    assert "could not be read:" not in out
