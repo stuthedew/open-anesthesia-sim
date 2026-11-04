@@ -7077,7 +7077,7 @@ the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 liquid to 0.1 mL, and in long runs at a high delivered concentration that
 step is finer than the figure's uncertainty supports. The hazard is live, so
 § "Deferred from this gate" admits the item rather than deferring it. Its
-fix waits on the project owner's answer to the question in its brief.
+fix is whole millilitres, which the project owner chose on 2026-11-04.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
