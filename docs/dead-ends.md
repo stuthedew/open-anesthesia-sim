@@ -79,6 +79,7 @@ have to rediscover by building the thing.
 - **A pull request template to make filing more reliable** — refuted 2026-09-20: the four-path search runs whether one exists or not, GitHub applies no template to an API-created body, and the harness reads one as layout and ignores its rules. 30 of 30 recent bodies already carry the id, the rationale and the verification claim. `PL-NDQD`
 - **A cheaper model or lower effort for a subagent** — refused by the owner 2026-10-19: price, even zero, never justifies a setting that may be less correct. Reopen only on a measurement that it is no less correct at that task. `PL-2D28`
 - **Working out a fact by hand where the repository already holds it** — refuted: a second regex or hand-written test of one predicate gave three heads 22, 15 and 26 items (PL-PVW2, PL-KGYT, PL-5DZ8), and sweeps alone never stopped them. Read the module that owns the fact, and make a check refuse the next copy. `PL-4S6C`
+- **A word count or word limit as the fix for verbose writing** — refused by the owner 2026-11-04, after sessions proposed it more than once: a target is met by cutting a fact the reader needs (a prototype aiming at 110 words cut "above zero" from a display condition), and it says nothing about what repeats. Cut each sentence for a named reason instead: it repeats a fact, uses more words than its fact needs, or belongs to another reader. `PL-J1ZM`
 
 ## Retired
 
