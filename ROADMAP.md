@@ -7073,10 +7073,10 @@ capture rather than deferring it. `PL-R4Y2`'s triage placed them, and deferred
 the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 
 **`PL-SP6H` joined this list on 2026-11-04, after the freeze.** It is classed
-`safety`. The agent cost View shows the delivered total in millilitres of
+`safety`. The agent cost View showed the delivered total in millilitres of
 liquid to 0.1 mL, and in long runs at a high delivered concentration that
-step is finer than the figure's uncertainty supports. The hazard is live, so
-§ "Deferred from this gate" admits the item rather than deferring it. Its
+step was finer than the figure's uncertainty supports. The hazard was live, so
+§ "Deferred from this gate" admitted the item rather than deferring it. Its
 fix is whole millilitres, which the project owner chose on 2026-11-04.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence

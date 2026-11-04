@@ -3,11 +3,13 @@ id: PL-SP6H
 title: Check two docs/MODEL.md agent-amount precision claims against the figures they cite: 0.1 L is said to lie between a quarter of an SD and six SDs, but the quoted 0.016-0.23 L shifts give about 0.43 SD at the coarse end; and 0.1 mL of delivered liquid is said to lie inside the density's band, though at 8% and 10 L/min over 24 h one step is about a thirtieth of an SD
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
+touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, tests/unit/test_agent_cost.py, tests/integration/test_agent_cost_view.py, ROADMAP.md
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2024
 payoff: every precision the agent-amount totals show is backed by arithmetic that matches the figures it cites, and none shows a last digit finer than its uncertainty supports
 verify: ! grep -qF 'is shown to a tenth' docs/MODEL.md && grep -qF 'def test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres' tests/unit/test_formatting.py
 ---
@@ -39,3 +41,7 @@ The first two sentences date from `6ce8e6991` (`PL-BZR4`, 2026-10-25) and the th
 **Generator check.** Stock of `PL-B6YV`'s fact, whether a `docs/MODEL.md` sentence about what the model computes matches what it computes. All three sentences were written before that head closed on 2026-11-02, so this is not a re-entry. The litre shifts carry the declared gap to `PL-19W8`, which counts the claims found wrong in this section and should count these three.
 
 **Done when** (2026-11-04, decided form). The two litre figures read about two-fifths of an SD and about a twentieth, in the litre paragraph and in the compartment-amount paragraph. `AGENT_AMOUNT_DISPLAY_PRECISION` gives the delivered total in millilitres of liquid no decimals, so the agent cost View shows it in whole millilitres, and the precision table in `docs/MODEL.md` reads 0 decimals and 1 mL for it. The paragraph headed "The delivered total in millilitres of liquid is shown to a tenth" and the comment beside the constant give the new step's reason: at 8% sevoflurane and 10 L/min for 24 h, 1 mL is about 0.3 SD, so it is never finer than a seventh of an SD in the supported span. Both record this decision with its date and kind. The hazard row that promises a cost is shown beside the two numbers it multiplied, and `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, whose 39.4 mL of isoflurane now reads 39 mL, are checked against the new step, and the row says how a volume rounded to the millilitre relates to the cost beside it. `test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres` replaces the test that pins a tenth, and `test_agent_amounts_precision` pins the new count.
+
+**Built 2026-11-04.** The delivered total in millilitres of liquid now shows whole millilitres on the agent cost View: 39.4 mL reads 39 mL, 0.0 mL reads 0 mL, and a trace below half a millilitre reads `<1 mL of liquid`. The work reached two test files and `ROADMAP.md` beyond the first `touches`. `tests/unit/test_agent_cost.py` and `tests/integration/test_agent_cost_view.py` pinned the tenth in the drawn text, and the gate paragraph that admitted this item said in the present tense that the View shows 0.1 mL. The cost paragraph's worked example now shows that its two figures multiply to USD 7.98 beside a cost of USD 8.07, and the cost hazard row says why. `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named` is renamed `test_the_delivered_agent_is_shown_at_its_derived_precision_with_its_unit_named`, and the hazard row that cites it follows.
+
+**Regression test, run against the code before the fix.** `.venv/bin/python -m pytest -q tests/unit/test_formatting.py -k whole_millilitres` failed with `assert (1, 1) == (0, 0)` on the precision count, before `_FINEST_DERIVED_DECIMALS` gave the delivered liquid total 0 decimals. It passes after.

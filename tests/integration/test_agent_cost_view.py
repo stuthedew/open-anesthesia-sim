@@ -188,7 +188,7 @@ def test_the_view_is_registered_under_its_kind() -> None:
 def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """Isoflurane at 1.5 % and 2 L/min for 40 min delivers 1.2 L of vapour, or 6.1 mL of liquid.
+    """Isoflurane at 1.5 % and 2 L/min for 40 min delivers 1.2 L of vapour, or 6 mL of liquid.
 
     The expected text is worked out here, from the inputs and the transcribed
     constants, and written in this test's own format.
@@ -207,8 +207,8 @@ def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
     (panel,) = cost_view.panels
 
     assert vapour_l == pytest.approx(1.2)
-    assert panel.amount_text.text() == f"{_liquid_ml('isoflurane', vapour_l):.1f} mL of liquid"
-    assert panel.amount_text.text() == "6.1 mL of liquid"
+    assert panel.amount_text.text() == f"{_liquid_ml('isoflurane', vapour_l):.0f} mL of liquid"
+    assert panel.amount_text.text() == "6 mL of liquid"
     assert panel.label_text.text() == "Isoflurane delivered"
     assert panel.caption_text.text().startswith("Liquid used by the vaporizer")
     assert panel.name_text.text() == "At 40m of simulated time"
@@ -384,7 +384,7 @@ def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
 
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
-        assert cost_view.panels[0].amount_text.text() == "2.2 mL of liquid"
+        assert cost_view.panels[0].amount_text.text() == "2 mL of liquid"
 
     monkeypatch.undo()
     view.present(False)
@@ -416,7 +416,7 @@ def test_a_mouse_wheel_over_the_selector_changes_nothing_until_it_has_focus(
 
     assert selector.focusPolicy() == Qt.FocusPolicy.StrongFocus
     assert selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
-    assert cost_view.panels[0].amount_text.text() == "0.0 mL of liquid"
+    assert cost_view.panels[0].amount_text.text() == "0 mL of liquid"
 
 
 def test_a_session_with_no_data_directory_keeps_no_choice_and_says_so() -> None:
@@ -447,7 +447,7 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
 
     _enter_price(cost_view, "sevoflurane", "240.34", "250", "USD", date(2008, 3, 5))
 
-    assert cost_view.panels[0].amount_text.text() == "2.2 mL of liquid"
+    assert cost_view.panels[0].amount_text.text() == "2 mL of liquid"
     assert cost_view.panels[0].cost_text.text().startswith("USD ")
 
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -505,8 +505,8 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     branch_ml = _liquid_ml("sevoflurane", 0.02 * 4.0 * 1.0 + 0.08 * 4.0 * 3.0)
     assert first.name_text.text().startswith("Run 1, at ")
     assert second.name_text.text().startswith("Run 2, at ")
-    assert first.amount_text.text() == f"{trunk_ml:.1f} mL of liquid"
-    assert second.amount_text.text() == f"{branch_ml:.1f} mL of liquid"
+    assert first.amount_text.text() == f"{trunk_ml:.0f} mL of liquid"
+    assert second.amount_text.text() == f"{branch_ml:.0f} mL of liquid"
 
     # The trunk's Reset ends the comparison, then an agent change and a run of
     # 5 min convert with desflurane's own factor.
@@ -530,7 +530,7 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     flow_l_min = float(run.controller.snapshot().fresh_gas_flow_l_min)
     desflurane_ml = _liquid_ml("desflurane", dial_percent / 100.0 * flow_l_min * 5.0)
     assert alone.label_text.text() == "Desflurane delivered"
-    assert alone.amount_text.text() == f"{desflurane_ml:.1f} mL of liquid"
+    assert alone.amount_text.text() == f"{desflurane_ml:.0f} mL of liquid"
     assert alone.name_text.text() == "At 5m of simulated time"
 
 
@@ -650,7 +650,7 @@ def test_the_displayed_cost_reproduces_gas_man_s_printed_costs(
     assert abs(drawn_usd() - printed_at_60_min) <= allowed(printed_at_60_min)
     assert _cost_line(cost_view) == f"USD {liquid_ml * usd_per_ml:.2f}"
     assert panel.working_text.text() == (
-        f"{liquid_ml:.1f} mL of liquid x USD 0.2047 per mL of liquid"
+        f"{liquid_ml:.0f} mL of liquid x USD 0.2047 per mL of liquid"
     )
     assert (
         panel.price_text.text() == "Your price: USD 20.47 for 100 mL of liquid, as of 2008-03-05."
@@ -755,7 +755,7 @@ def test_the_cost_s_working_stays_in_liquid_when_the_amounts_are_shown_in_vapour
     (panel,) = cost_view.panels
     assert panel.amount_text.text() == "2.1 L vapour"
     assert panel.working_text.text().startswith(
-        f"{_liquid_ml('isoflurane', 2.08):.1f} mL of liquid x"
+        f"{_liquid_ml('isoflurane', 2.08):.0f} mL of liquid x"
     )
 
 

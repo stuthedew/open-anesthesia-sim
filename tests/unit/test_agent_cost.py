@@ -135,18 +135,21 @@ def test_the_delivered_agent_is_the_dial_times_the_flow_times_the_time_in_liquid
 
     assert delivered_liquid_ml(snapshot) == pytest.approx(liquid_ml, rel=1e-9)
     assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == (
-        f"{liquid_ml:.1f} mL of liquid"
+        f"{liquid_ml:.0f} mL of liquid"
     )
     assert shown.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == f"{vapour_l:.1f} L vapour"
 
 
-def test_sevoflurane_at_2_percent_and_4_l_min_for_an_hour_is_26_3_ml_of_liquid() -> None:
-    """A worked case: 4.8 L of vapour is 4800 / 182.8 = 26.3 mL of liquid sevoflurane."""
+def test_sevoflurane_at_2_percent_and_4_l_min_for_an_hour_is_26_ml_of_liquid() -> None:
+    """A worked case: 4.8 L of vapour is 4800 / 182.8 = 26.3 mL of liquid sevoflurane.
+
+    The View shows it as 26 mL, in whole millilitres.
+    """
 
     shown = delivered_shown(_run("sevoflurane", 2.0, 4.0, 60.0))
 
     assert shown.label == "Sevoflurane delivered"
-    assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "26.3 mL of liquid"
+    assert shown.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "26 mL of liquid"
     assert shown.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "4.8 L vapour"
     assert shown.instant == "1h"
 
@@ -167,9 +170,9 @@ def test_a_run_that_has_delivered_nothing_shows_zero_and_a_trace_shows_below_res
     controller.advance(SIMULATION_STEP_S)
     trace = delivered_shown(controller.snapshot())
 
-    assert start.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "0.0 mL of liquid"
+    assert start.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "0 mL of liquid"
     assert start.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "0.0 L vapour"
-    assert trace.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "<0.1 mL of liquid"
+    assert trace.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "<1 mL of liquid"
     assert trace.amount_in(AgentAmountUnit.LITRES_OF_VAPOUR) == "<0.1 L vapour"
 
 
@@ -267,20 +270,26 @@ def test_only_the_agent_cost_module_converts_vapour_to_liquid() -> None:
 @pytest.mark.parametrize(
     ("amount", "unit", "expected"),
     [
-        (0.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.0 mL of liquid"),
-        (0.04, AgentAmountUnit.MILLILITRES_OF_LIQUID, "<0.1 mL of liquid"),
-        (0.06, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0.1 mL of liquid"),
-        (26.26, AgentAmountUnit.MILLILITRES_OF_LIQUID, "26.3 mL of liquid"),
-        (240.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "240.0 mL of liquid"),
+        (0.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "0 mL of liquid"),
+        (0.04, AgentAmountUnit.MILLILITRES_OF_LIQUID, "<1 mL of liquid"),
+        (0.4, AgentAmountUnit.MILLILITRES_OF_LIQUID, "<1 mL of liquid"),
+        (0.6, AgentAmountUnit.MILLILITRES_OF_LIQUID, "1 mL of liquid"),
+        (26.26, AgentAmountUnit.MILLILITRES_OF_LIQUID, "26 mL of liquid"),
+        (39.42, AgentAmountUnit.MILLILITRES_OF_LIQUID, "39 mL of liquid"),
+        (240.0, AgentAmountUnit.MILLILITRES_OF_LIQUID, "240 mL of liquid"),
         (0.0, AgentAmountUnit.LITRES_OF_VAPOUR, "0.0 L vapour"),
         (0.04, AgentAmountUnit.LITRES_OF_VAPOUR, "<0.1 L vapour"),
         (4.8, AgentAmountUnit.LITRES_OF_VAPOUR, "4.8 L vapour"),
     ],
 )
-def test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named(
+def test_the_delivered_agent_is_shown_at_its_derived_precision_with_its_unit_named(
     amount: float, unit: AgentAmountUnit, expected: str
 ) -> None:
-    """A tenth is the precision `docs/MODEL.md` § "Displayed precision" derives in both units."""
+    """Show whole millilitres of liquid and tenths of a litre of vapour.
+
+    These are the precisions that `docs/MODEL.md` § "Displayed precision"
+    derives for the delivered agent in each unit.
+    """
 
     assert format_delivered_agent(amount, unit) == expected
 
@@ -342,7 +351,7 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
     assert expected_usd == pytest.approx(2.17, abs=0.005)
     assert cost.cost == f"USD {expected_usd:.2f}"
     assert cost.label == "Cost of the isoflurane, at your price"
-    assert cost.working == (f"{liquid_ml:.1f} mL of liquid x USD 0.2047 per mL of liquid")
+    assert cost.working == (f"{liquid_ml:.0f} mL of liquid x USD 0.2047 per mL of liquid")
     assert cost.price == ("Your price: USD 20.47 for 100 mL of liquid, as of 2008-03-05.")
     assert cost.rounded == COST_ROUNDED_TEXT
 
@@ -351,7 +360,7 @@ def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() ->
     """Run `docs/MODEL.md`'s desflurane case, 6 % at 1 L/min for 60 min at USD 115.13 per 240 mL.
 
     The cost is 3600 / 209.7 x 115.13 / 240 = USD 8.23. The figures shown
-    beside it, 17.2 mL and USD 0.4797 per mL, multiply to USD 8.25. So the
+    beside it, 17 mL and USD 0.4797 per mL, multiply to USD 8.15. So the
     readout says that the figures are rounded.
     """
 
@@ -362,8 +371,8 @@ def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() ->
 
     assert f"{liquid_ml * 115.13 / 240.0:.2f}" == "8.23"
     assert cost.cost == "USD 8.23"
-    assert cost.working == "17.2 mL of liquid x USD 0.4797 per mL of liquid"
-    assert f"{17.2 * 0.4797:.2f}" == "8.25"
+    assert cost.working == "17 mL of liquid x USD 0.4797 per mL of liquid"
+    assert f"{17 * 0.4797:.2f}" == "8.15"
     assert cost.rounded == COST_ROUNDED_TEXT
 
 
@@ -397,7 +406,7 @@ def test_a_run_that_has_delivered_nothing_costs_zero_at_a_set_price() -> None:
     cost = cost_shown(delivered_shown(snapshot), _priced(_GAS_MAN_ISOFLURANE))
 
     assert cost.cost == "USD 0"
-    assert cost.working.startswith("0.0 mL of liquid x")
+    assert cost.working.startswith("0 mL of liquid x")
 
 
 def test_no_cost_is_shown_until_the_reader_sets_a_price() -> None:
