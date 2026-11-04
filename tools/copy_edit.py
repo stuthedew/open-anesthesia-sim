@@ -24,6 +24,19 @@ the second read's text where it rewrote the passage, else the first read's,
 else `[N] keep`. Both reads' notes follow. When the first read rewrites
 nothing, there is no second read.
 
+Before the reply is printed, `check_code` compares each rewrite with the rows
+it replaces. A rewrite that changes code, a fenced block, an HTML comment or a
+heading, or writes a code name the passage does not hold, is refused and
+printed as `[N] keep`, with the reason under "Code check:". A code name that a
+rewrite dropped is listed there too (project owner, 2026-11-04, `PL-HGZS`).
+
+**A whole document is reviewed in two parts** (project owner, 2026-11-04,
+`PL-HGZS`). `--structure FILE` runs the structure read, which rewrites
+nothing: one read of a short document, or one read per chapter of a long one
+and then one read of all the chapters' outlines. `--sections FILE` then
+line-edits each section alone, each with its two reads. `tools/new_prose.py`
+builds every one of those requests.
+
 The model and effort are the ones `docket.toml`'s `[models]` table chooses
 for the role `copy-editor`. The runs are billed to the account that `claude`
 signs in with, as an Agent call would be.
@@ -37,13 +50,18 @@ reply does not give each passage one verdict.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Mapping, Sequence
+import tokenize
+from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,18 +69,26 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import FENCE  # noqa: E402
+from docket.markdown import FENCE, headings  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
 from docket.model import FRONT_MATTER_RE  # noqa: E402
+from docket.release import code_spans  # noqa: E402
 
 from new_prose import (  # noqa: E402
     PROMPT,
     RULE_END,
+    Part,
+    outline_report,
+    part_reports,
     passage_number,
+    passage_place,
     read_row,
     read_span,
     respan,
     row_line,
+    rule_table,
+    structure_reports,
+    with_rule,
 )
 from rejected_prose import rewrites, unmarked, verdicts  # noqa: E402
 
@@ -295,14 +321,150 @@ def fenced(rows: Sequence[str]) -> list[str]:
     return [fence, *rows, fence]
 
 
-def merge(first: str, second: str, count: int) -> str:
+@dataclass(frozen=True)
+class CodeCheck:
+    """What a rewrite did to code: each change that refuses it, and each code name it dropped.
+
+    The copy editor may change prose and nothing else. Its instructions say so,
+    and this check enforces it on what it returns, so that no session applies a
+    rewrite that changed code (project owner, 2026-11-04, `PL-HGZS`).
+    """
+
+    refused: tuple[str, ...] = ()
+    dropped: tuple[str, ...] = ()
+
+
+#: Python tokens that are prose or layout, which a copy edit may change. Every
+#: other token is code and must come back as it was. A string literal is prose
+#: here because the units the copy editor edits include docstrings and the
+#: string literals a learner reads.
+PROSE_TOKENS = frozenset(
+    {
+        tokenize.COMMENT,
+        tokenize.STRING,
+        tokenize.FSTRING_MIDDLE,
+        tokenize.NL,
+        tokenize.NEWLINE,
+        tokenize.INDENT,
+        tokenize.DEDENT,
+        tokenize.ENDMARKER,
+    }
+)
+# regex: an HTML comment, which a Markdown file uses for its provenance markers
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+
+
+def python_code(rows: Sequence[str]) -> list[tuple[int, str]] | list[str]:
+    """The code in Python `rows`: its tokens other than prose, or failing that, its code lines.
+
+    An excerpt can start inside an indented block, so it may not tokenize. Then
+    the code is each line that holds no quote and no `#`, which is code alone.
+    """
+    try:
+        return [
+            (token.type, token.string)
+            for token in tokenize.generate_tokens(io.StringIO("\n".join(rows) + "\n").readline)
+            if token.type not in PROSE_TOKENS
+        ]
+    except (tokenize.TokenError, SyntaxError):
+        return sorted(line.strip() for line in rows if line.strip() and not set("\"'#") & set(line))
+
+
+def markdown_code(rows: Sequence[str]) -> tuple[Counter[str], Counter[str], list[str], list[str]]:
+    """The fenced blocks, HTML comments, headings and code-span contents of Markdown `rows`."""
+    blocks = [block for block in read_markdown(rows).blocks if block.kind == FENCE]
+    inside = {row for block in blocks for row in range(block.start, block.end)}
+    fences = Counter("\n".join(rows[block.start : block.end]) for block in blocks)
+    prose = "\n".join(line for row, line in enumerate(rows) if row not in inside)
+    comments = Counter(HTML_COMMENT_RE.findall(prose))
+    titles = [f"{'#' * mark.level} {mark.title}" for mark in headings(rows)]
+    spans = [found["content"].strip() for found in code_spans(prose)]
+    return fences, comments, titles, spans
+
+
+def check_code(
+    path: str, before: Sequence[str], seen: Sequence[str], after: Sequence[str]
+) -> CodeCheck:
+    """What the rewrite `after` of the rows `before` did to code, in the file at `path`.
+
+    `seen` is every row of the passage, the read-only rows included, so a code
+    name the copy editor took from any of them is not a new name. A rewrite is
+    refused where it changes Python code, a fenced block, an HTML comment or a
+    heading, or writes a code name that the passage does not hold.
+    """
+    refused: list[str] = []
+    if path.endswith(".py") and python_code(before) != python_code(after):
+        refused.append("it changed code outside the docstrings, comments and strings")
+    old_fences, old_comments, old_titles, old_spans = markdown_code(before)
+    new_fences, new_comments, new_titles, new_spans = markdown_code(after)
+    if not path.endswith(".py"):
+        if old_fences != new_fences:
+            refused.append("it changed, added or removed a fenced block")
+        if old_comments != new_comments:
+            refused.append("it changed, added or removed an HTML comment")
+        if old_titles != new_titles:
+            refused.append("it changed, added or removed a heading")
+    # A code name the passage already holds anywhere, inside a longer code
+    # span, a source comment or the prose, is one the copy editor took from
+    # the text, not one it made up.
+    known = " ".join(" ".join(seen).split())
+    added = sorted({span for span in new_spans if " ".join(span.split()) not in known})
+    if added:
+        refused.append(
+            "it wrote code names the passage does not hold: "
+            + ", ".join(f"`{span}`" for span in added)
+        )
+    dropped = tuple(sorted({span for span in old_spans if span not in new_spans}))
+    return CodeCheck(tuple(refused), dropped)
+
+
+def passage_texts(request: str) -> dict[int, tuple[str, list[str], list[str]]]:
+    """Each passage's file, its rows marked `>`, and all its rows, by the passage's number."""
+    found: dict[int, tuple[str, list[str], list[str]]] = {}
+    current: int | None = None
+    for line in prose_of(request)[1]:
+        number = passage_number(line)
+        if number is not None:
+            place = passage_place(line) or ""
+            path = place.partition(" § ")[0].rstrip(", ").strip()
+            found[number] = (path, [], [])
+            current = number
+            continue
+        row = read_row(line)
+        if current is None or row is None:
+            continue
+        found[current][2].append(row[2])
+        if row[1] == ">":
+            found[current][1].append(row[2])
+    return found
+
+
+def code_report(request: str) -> Callable[[int, Sequence[str]], CodeCheck]:
+    """A check of one passage's rewrite against the code in `request`'s text of that passage."""
+    texts = passage_texts(request)
+
+    def check(number: int, rows: Sequence[str]) -> CodeCheck:
+        path, before, seen = texts[number]
+        return check_code(path, before, seen, rows)
+
+    return check
+
+
+def merge(
+    first: str,
+    second: str,
+    count: int,
+    check: Callable[[int, Sequence[str]], CodeCheck] | None = None,
+) -> str:
     """One reply from the two reads' replies, `first` and `second`, for `count` passages.
 
     Each passage gets one verdict: the second read's text where it rewrote the
-    passage, else the first read's text, else `[N] keep`. The notes of both
-    reads follow, so that every cut, move and query either read made is kept.
-    Raises `Refused` where either reply does not give each passage one verdict,
-    or a rewrite has no text.
+    passage, else the first read's text, else `[N] keep`. `check`, where given,
+    refuses a rewrite that changed code, which then becomes `[N] keep` with the
+    reason under "Code check:", and lists each code name a rewrite dropped. The
+    notes of both reads follow, so that every cut, move and query either read
+    made is kept. Raises `Refused` where either reply does not give each
+    passage one verdict, or a rewrite has no text.
     """
     found: list[dict[int, tuple[str, ...]]] = []
     for name, reply in (("first", first), ("second", second)):
@@ -313,12 +475,23 @@ def merge(first: str, second: str, count: int) -> str:
             raise Refused(f"the {name} read's reply cannot be read: {error}") from error
     once, twice = found
     out: list[str] = []
+    checked: list[str] = []
     for number in range(1, count + 1):
         rows = twice.get(number, once.get(number))
-        if rows is None:
+        result = CodeCheck() if rows is None or check is None else check(number, rows)
+        for reason in result.refused:
+            checked.append(f"- Passage {number}: the rewrite was refused, because {reason}.")
+        for span in result.dropped:
+            checked.append(
+                f"- Passage {number}: the rewrite no longer names `{span}`. "
+                "Check that its reader does not need it."
+            )
+        if rows is None or result.refused:
             out += [f"[{number}] keep", ""]
         else:
             out += [f"[{number}] rewrite", "", *fenced(rows), ""]
+    if checked:
+        out += ["Code check:", "", *checked, ""]
     out += ["Notes from the first read:", "", notes(first), ""]
     out += ["Notes from the second read:", "", notes(second)]
     reply = "\n".join(out)
@@ -364,16 +537,32 @@ def read_once(
     return reply_of(done.stdout.decode("utf-8"))
 
 
-def run(
-    request: Path,
-    root: Path = ROOT,
-    env: Mapping[str, str] | None = None,
-    reads: Path | None = None,
-) -> tuple[str, str]:
-    """Run the copy editor twice on the file at `request`, and return its reply and the counts.
+@dataclass(frozen=True)
+class Editor:
+    """How to run the copy editor: the `claude` program, its prompt, model and effort."""
 
-    Where `reads` names a directory, each read's request and reply are also
-    written there, so that what the second read changed can be judged alone.
+    claude: str
+    prompt: str
+    model: str
+    effort: str
+    env: Mapping[str, str]
+
+    def read(self, asked: str, name: str, reads: Path | None) -> tuple[str, str]:
+        """One read of the request `asked`, kept under `name` in `reads` where it is given."""
+        reply, counts = read_once(
+            asked, self.claude, self.prompt, self.model, self.effort, self.env
+        )
+        if reads is not None:
+            reads.mkdir(parents=True, exist_ok=True)
+            (reads / f"{name}-request.txt").write_text(asked, encoding="utf-8")
+            (reads / f"{name}-reply.txt").write_text(reply, encoding="utf-8")
+        return reply, counts
+
+
+def editor(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
+    """The copy editor that `docket.toml` and its agent file set up.
+
+    Raises `Refused` where `claude` is missing or no model is chosen.
     """
     claude = shutil.which("claude")
     if claude is None:
@@ -383,18 +572,16 @@ def run(
         raise Refused(f"{root / 'docket.toml'} has no [models] table, so no model is chosen")
     choice = table.choose({"role": ROLE})
     prompt = instructions(PROMPT.read_text(encoding="utf-8"))
-    environment = os.environ if env is None else env
-    text = request.read_text(encoding="utf-8")
+    return Editor(claude, prompt, choice.model, choice.effort, os.environ if env is None else env)
 
-    def once(name: str, asked: str) -> tuple[str, str]:
-        reply, counts = read_once(asked, claude, prompt, choice.model, choice.effort, environment)
-        if reads is not None:
-            reads.mkdir(parents=True, exist_ok=True)
-            (reads / f"{name}-request.txt").write_text(asked, encoding="utf-8")
-            (reads / f"{name}-reply.txt").write_text(reply, encoding="utf-8")
-        return reply, counts
 
-    first, first_counts = once("first", text)
+def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str]:
+    """Run the copy editor twice on the request `text`, and return its reply and the counts.
+
+    Where `reads` names a directory, each read's request and reply are also
+    written there, so that what the second read changed can be judged alone.
+    """
+    first, first_counts = editor.read(text, "first", reads)
     try:
         blocks = rewrites(first)
     except ValueError as error:
@@ -402,20 +589,119 @@ def run(
     if not blocks:
         return first, first_counts
     count = passage_count(text)
-    second, second_counts = once("second", second_request(text, blocks))
+    second, second_counts = editor.read(second_request(text, blocks), "second", reads)
     both = f"{first_counts}; second read: {second_counts.removeprefix('copy_edit: ')}"
-    return merge(first, second, count), both
+    return merge(first, second, count, code_report(text)), both
+
+
+def run(
+    request: Path,
+    root: Path = ROOT,
+    env: Mapping[str, str] | None = None,
+    reads: Path | None = None,
+) -> tuple[str, str]:
+    """Run the copy editor twice on the file at `request`, and return its reply and the counts."""
+    return edit(request.read_text(encoding="utf-8"), editor(root, env), reads)
+
+
+def where(path: str, part: Part) -> str:
+    """The file, section and rows of `part`, as a heading line of the printed reply."""
+    section = f' § "{part.title}"' if part.title else ""
+    return f"{path}{section}, rows {part.first}-{part.last}"
+
+
+def structure(
+    path: str, root: Path = ROOT, env: Mapping[str, str] | None = None, reads: Path | None = None
+) -> tuple[str, str]:
+    """The first part of a document's review: its structure read, and the counts.
+
+    A document `new_prose.chapters` keeps whole is read once. A longer one is
+    read a chapter at a time, and each chapter's reverse outline then goes to
+    one read of the whole document's outline, which finds what crosses
+    chapters. Raises `Refused` where a read rewrites a row, or a chapter read
+    gives no outline.
+    """
+    try:
+        pieces = structure_reports(root, path, rule_table())
+    except ValueError as error:
+        raise Refused(str(error)) from error
+    reader = editor(root, env)
+    replies: list[tuple[Part, str]] = []
+    counts: list[str] = []
+    for index, (part, request) in enumerate(pieces, start=1):
+        reply, count = reader.read(with_rule(request), f"chapter-{index:02}", reads)
+        if rewrites(reply):
+            raise Refused(f"the structure read of {where(path, part)} rewrote rows")
+        replies.append((part, reply))
+        counts.append(count.removeprefix("copy_edit: "))
+    if len(pieces) == 1:
+        return replies[0][1], f"copy_edit: {counts[0]}"
+    outlines = []
+    for part, reply in replies:
+        outline = reply.partition("\nOutline:")[2]
+        if not outline.strip():
+            raise Refused(f"the structure read of {where(path, part)} gave no outline")
+        outlines.append((part, unmarked(outline)))
+    whole, count = reader.read(
+        with_rule(outline_report(path, rule_table(), outlines)), "outline", reads
+    )
+    counts.append(count.removeprefix("copy_edit: "))
+    out = [f"Structure read of {path} in {len(pieces)} chapters.", ""]
+    for index, (part, reply) in enumerate(replies, start=1):
+        out += [f"Chapter {index} of {len(pieces)}: {where(path, part)}", "", unmarked(reply), ""]
+    out += ["The whole document:", "", unmarked(whole)]
+    return "\n".join(out), "copy_edit: " + "; ".join(counts)
+
+
+def sections(
+    path: str, root: Path = ROOT, env: Mapping[str, str] | None = None, reads: Path | None = None
+) -> tuple[str, str]:
+    """The second part of a document's review: each section line-edited alone, and the counts.
+
+    Each section is its own request, read twice, with its reply under a line
+    that names the section and its rows.
+    """
+    try:
+        parts = part_reports(root, path, rule_table())
+    except ValueError as error:
+        raise Refused(str(error)) from error
+    reader = editor(root, env)
+    out: list[str] = []
+    counts: list[str] = []
+    for index, (part, request) in enumerate(parts, start=1):
+        kept = None if reads is None else reads / f"section-{index:03}"
+        reply, count = edit(with_rule(request), reader, kept)
+        out += [f"Section {index} of {len(parts)}: {where(path, part)}", "", reply, ""]
+        counts.append(count.removeprefix("copy_edit: "))
+    return "\n".join(out).rstrip("\n"), "copy_edit: " + "; ".join(counts)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
-    parser.add_argument("request", type=Path, help="the file tools/new_prose.py wrote")
+    modes = parser.add_mutually_exclusive_group(required=True)
+    modes.add_argument("request", type=Path, nargs="?", help="the file tools/new_prose.py wrote")
+    modes.add_argument(
+        "--structure",
+        metavar="FILE",
+        help="the first part of a document's review: read the Markdown file FILE for its "
+        "structure, and rewrite nothing",
+    )
+    modes.add_argument(
+        "--sections",
+        metavar="FILE",
+        help="the second part: line-edit each section of the Markdown file FILE alone",
+    )
     parser.add_argument(
         "--reads", type=Path, help="a directory to write each read's request and reply into"
     )
     args = parser.parse_args(argv)
     try:
-        reply, counts = run(args.request, reads=args.reads)
+        if args.structure is not None:
+            reply, counts = structure(args.structure, reads=args.reads)
+        elif args.sections is not None:
+            reply, counts = sections(args.sections, reads=args.reads)
+        else:
+            reply, counts = run(args.request, reads=args.reads)
     except (Refused, OSError) as error:
         print(f"copy_edit: no reply: {error}", file=sys.stderr)
         return 1

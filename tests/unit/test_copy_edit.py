@@ -345,3 +345,175 @@ def test_the_copy_editor_s_instructions_name_the_second_read_s_opening() -> None
     opening = copy_edit.SECOND_READ.partition(".")[0]
 
     assert f'"{opening}."' in copy_edit.PROMPT.read_text(encoding="utf-8")
+
+
+def test_a_docstring_rewrite_passes_the_code_check() -> None:
+    before = ["def f():", '    """Old text."""', "    return 1"]
+    after = ["def f():", '    """New text."""', "    return 1"]
+
+    assert copy_edit.check_code("src/a.py", before, before, after) == copy_edit.CodeCheck()
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (["x = 1  # Old note."], ["x = 2  # New note."]),
+        (
+            ["def f():", '    """Text."""', "    return 1"],
+            ["def g():", '    """Text."""', "    return 1"],
+        ),
+        # An excerpt that starts inside a block does not tokenize, so its code lines are compared.
+        (["        x = 1", "    y = 2"], ["        x = 1", "    y = 3"]),
+    ],
+)
+def test_a_rewrite_that_changes_python_code_is_refused(before: list[str], after: list[str]) -> None:
+    found = copy_edit.check_code("src/a.py", before, before, after)
+
+    assert found.refused == ("it changed code outside the docstrings, comments and strings",)
+
+
+@pytest.mark.parametrize(
+    ("after", "reason"),
+    [
+        (["Text.", "", "```", "y = 2", "```"], "it changed, added or removed a fenced block"),
+        (["Text, 5 mL.", ""], "it changed, added or removed a fenced block"),
+        (["Text.", "", "```", "x = 1", "```", "<!-- marker -->"], "an HTML comment"),
+        (["## A heading", "", "```", "x = 1", "```"], "a heading"),
+    ],
+)
+def test_a_markdown_rewrite_that_changes_a_block_comment_or_heading_is_refused(
+    after: list[str], reason: str
+) -> None:
+    before = ["Text.", "", "```", "x = 1", "```"]
+
+    found = copy_edit.check_code("docs/MODEL.md", before, before, after)
+
+    assert any(reason in refused for refused in found.refused)
+
+
+def test_a_new_code_name_is_refused_and_a_dropped_one_is_listed() -> None:
+    before = ["The check (`check_a`) reads `docs/x.md`."]
+    seen = [*before, "The list `check_b` reads."]
+
+    renamed = copy_edit.check_code("docs/MODEL.md", before, seen, ["The check reads `docs/y.md`."])
+    borrowed = copy_edit.check_code("docs/MODEL.md", before, seen, ["The check (`check_b`) reads."])
+
+    assert renamed.refused == ("it wrote code names the passage does not hold: `docs/y.md`",)
+    assert renamed.dropped == ("check_a", "docs/x.md")
+    assert borrowed.refused == ()
+
+
+def test_a_merge_turns_a_rewrite_that_changed_code_into_keep_with_the_reason(
+    tmp_path: Path,
+) -> None:
+    request = request_of(
+        "[1] src/a.py, rows 1-1, comment, 4 words, for: A developer",
+        new_prose.row_line(1, ">", "x = 1  # Old note."),
+    )
+    first = "[1] rewrite\n\n```\nx = 2  # New note.\n```\n"
+
+    reply = copy_edit.merge(first, "[1] keep", 1, copy_edit.code_report(request))
+
+    assert reply.startswith("[1] keep\n")
+    assert (
+        "- Passage 1: the rewrite was refused, because it changed code outside the "
+        "docstrings, comments and strings."
+    ) in reply
+
+
+#: A document longer than one chapter when the limit is 40 words.
+DOCUMENT = (
+    "# Model\n\n## One\n\n"
+    + " ".join(["first"] * 30)
+    + "\n\n## Two\n\n"
+    + " ".join(["second"] * 30)
+    + "\n"
+)
+
+
+@pytest.fixture
+def document(tmp_path: Path) -> Path:
+    """A root holding `DOCUMENT` as `docs/MODEL.md` and a `docket.toml` with a models table."""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "MODEL.md").write_text(DOCUMENT, encoding="utf-8")
+    (tmp_path / "docket.toml").write_text(
+        '[models]\ndefault = { model = "claude-opus-5-5", effort = "high" }\n', encoding="utf-8"
+    )
+    return tmp_path
+
+
+def test_a_short_document_s_structure_read_is_one_read(
+    two_reads: Path, document: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(["[1] keep\n\nStructure: no change."]))
+
+    reply, _ = copy_edit.structure("docs/MODEL.md", root=document)
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    assert len(asked) == 1
+    assert new_prose.STRUCTURE_READ in asked[0]
+    assert reply == "[1] keep\n\nStructure: no change."
+
+
+def test_a_long_document_is_read_a_chapter_at_a_time_then_as_one_outline(
+    two_reads: Path, document: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(new_prose, "REQUEST_LIMIT_WORDS", 40)
+    chapter = "[1] keep\n\nStructure: no change.\n\nOutline:\n- rows {}: the {} point."
+    monkeypatch.setenv(
+        "FAKE_REPLIES",
+        json.dumps([chapter.format(5, "first"), chapter.format(9, "second"), "[1] keep\n\nFine."]),
+    )
+
+    reply, counts = copy_edit.structure("docs/MODEL.md", root=document)
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    assert [request.count(new_prose.CHAPTER_READ) for request in asked] == [1, 1, 0]
+    assert new_prose.OUTLINE_READ in asked[2]
+    assert "  - rows 9: the second point." in asked[2]
+    assert reply.startswith("Structure read of docs/MODEL.md in 2 chapters.")
+    assert 'Chapter 2 of 2: docs/MODEL.md § "Two", rows 7-9' in reply
+    assert reply.endswith("The whole document:\n\nPassage 1 keep\n\nFine.")
+    assert counts.count("read 10 tokens") == 3
+
+
+def test_a_chapter_read_without_an_outline_is_refused(
+    two_reads: Path, document: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(new_prose, "REQUEST_LIMIT_WORDS", 40)
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(["[1] keep\n\nFine."] * 2))
+
+    with pytest.raises(copy_edit.Refused, match='§ "One", rows 1-5 gave no outline'):
+        copy_edit.structure("docs/MODEL.md", root=document)
+
+
+def test_a_structure_read_that_rewrites_rows_is_refused(
+    two_reads: Path, document: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(["[1] rewrite\n\n```\nNew.\n```\n"]))
+
+    with pytest.raises(copy_edit.Refused, match="rewrote rows"):
+        copy_edit.structure("docs/MODEL.md", root=document)
+
+
+def test_each_section_is_line_edited_alone_under_a_line_that_names_it(
+    two_reads: Path, document: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(["[1] keep\n\nFine."] * 2))
+
+    reply, _ = copy_edit.sections("docs/MODEL.md", root=document)
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    assert len(asked) == 2
+    assert "first first" in asked[0] and "second" not in asked[0].partition("[1]")[2]
+    assert reply == (
+        'Section 1 of 2: docs/MODEL.md § "One", rows 3-5\n\n[1] keep\n\nFine.\n\n'
+        'Section 2 of 2: docs/MODEL.md § "Two", rows 7-9\n\n[1] keep\n\nFine.'
+    )
+
+
+def test_the_copy_editor_s_instructions_name_each_structure_read_s_opening() -> None:
+    text = copy_edit.PROMPT.read_text(encoding="utf-8")
+
+    for opening in (new_prose.STRUCTURE_READ, new_prose.CHAPTER_READ, new_prose.OUTLINE_READ):
+        assert f'"{opening.partition(".")[0]}."' in text

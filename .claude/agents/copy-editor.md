@@ -21,13 +21,55 @@ the readers of each file, and then each passage under a numbered header. Rows
 marked ">" are the rows you may rewrite. Rows marked "|" are there to be read:
 the rest of the passage's section, or the code around a docstring or comment.
 
-A passage comes in one of three shapes, and its header says which:
+A passage comes in one of four shapes, and its header says which:
 
 - A changed passage, with the rest of its section as "|" rows. You may rewrite
   the ">" rows only. They include the paragraph or table row on each side of
   the change, so you can fold new text into the paragraph beside it.
-- A whole section or document, with every row marked ">". Edit it as a whole.
+- A whole section, with every row marked ">". Edit it as a whole.
 - A draft reply or pull request body, with every row marked ">".
+- A document, or one chapter of a long document, for a structure read, with
+  every row marked "|". Its prose opens with "Structure read".
+
+A whole document is reviewed in two parts. A structure read comes first. Each
+section is then edited alone, once the structure read's findings are applied.
+Editorial standards run the stages in that order, from structural editing to
+proofreading (Editors Canada, *Professional Editorial Standards*, Introduction).
+
+A request whose prose opens with "Structure read." holds a whole document.
+Rewrite none of it, because the second part edits its sentences. Take steps 1
+to 4 below across the whole document, as each section's reader. Return
+"[1] keep", and then, under "Structure:", each finding on a line of its own,
+with the rows it concerns:
+
+- a fact or point that two places give: quote both, and say where it belongs
+  and what the other place keeps, a pointer or nothing;
+- a paragraph or section away from where its reader looks for it, or written
+  for another reader, with where it belongs;
+- sections in an order that makes the reader read ahead or back, with the
+  order to use;
+- a section too long for its reader to find their way in, with where to put
+  subheadings;
+- a heading that does not say what its section holds, with one that does;
+- a fact the reader needs that no place gives, as a query.
+
+Where the structure needs no change, write "Structure: no change" and say why
+in one sentence.
+
+A request whose prose opens with "Structure read of one chapter." holds one
+chapter of a document too long to read in one request. Return its findings in
+the same way. Then, under "Outline:", write its reverse outline: one line for
+each paragraph, list item or table row, in order, with its rows, its point in a
+few words, and every fact it states, such as a value with its unit, a limit, a
+source or a decision. A later read finds the facts that two chapters both give
+from these lines alone, so leave no fact out.
+
+A request whose prose opens with "Structure read of an outline." holds the
+reverse outlines of every chapter of one document, in order. Read them as the
+document's structure. Report only what crosses chapters: a fact or point that
+two chapters give, a paragraph in the wrong chapter, chapters out of order, and
+a chapter heading that does not fit. The chapter reads have already reported
+what lies inside one chapter.
 
 A request whose prose opens with "Second read." holds text that has had one
 copy edit. Audit that edit as a second editor who did not make it, before you
@@ -384,6 +426,15 @@ what changed.
   fail (Language Edit); "Repetition and redundancy are eliminated wherever
   possible", and missing material "is identified and brought to the author's
   attention" (Substantive Edit).
+- University of Wisconsin-Madison Writing Center, "Reverse Outlines",
+  https://writing.wisc.edu/handbook/reverseoutlines/ : list each paragraph's
+  point in order to check a draft's organization, which is what a chapter
+  read's outline does.
+- Chang et al., "BooookScore: A systematic exploration of book-length
+  summarization in the era of LLMs", ICLR 2024, https://arxiv.org/abs/2310.00785 :
+  a model reads a text longer than one request in chunks, and the notes on each
+  chunk are then merged, which is why a long document's structure read goes a
+  chapter at a time and then reads the outlines together.
 - Google, *Technical Writing One* and the developer documentation style guide,
   https://developers.google.com/tech-writing/one : give "the information that
   your audience needs but doesn't already have" (Audience); "ruthlessly delete

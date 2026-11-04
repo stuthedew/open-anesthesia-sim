@@ -754,23 +754,105 @@ def test_section_prints_a_section_and_its_subsections_as_one_passage_to_rewrite(
     assert "|" not in shown.partition("[1]")[2]
 
 
-def test_section_without_a_heading_prints_the_whole_document_below_its_front_matter(
+def test_section_without_a_heading_is_refused_and_names_the_two_part_review(
     nested: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert main(["--root", str(nested), "--section", "docs/MODEL.md"]) == 0
+    """A whole document is never line-edited in one request (project owner, 2026-11-04)."""
+    with pytest.raises(SystemExit) as stopped:
+        main(["--root", str(nested), "--section", "docs/MODEL.md"])
 
-    shown = capsys.readouterr().out.partition("The writing rule ends here")[2]
-    assert "[1] docs/MODEL.md, rows 5-17. Whole document: 102 words." in shown
-    assert "    5 > # Model\n" in shown
-    assert f"   17 > {LONG} other." in shown
-    assert "title: front matter" not in shown
+    assert stopped.value.code == 2
+    assert "tools/copy_edit.py --structure FILE, then --sections FILE" in capsys.readouterr().err
+
+
+def test_each_section_s_own_rows_are_one_part_and_a_heading_alone_is_none() -> None:
+    lines = new_prose.markdown_lines(NESTED)
+
+    assert new_prose.own_parts(lines) == [
+        new_prose.Part("Displayed precision", 7, 9),
+        new_prose.Part("Readouts", 11, 13),
+        new_prose.Part("Next", 15, 17),
+    ]
+
+
+def test_a_document_within_the_limit_is_one_chapter() -> None:
+    lines = new_prose.markdown_lines(NESTED)
+
+    assert new_prose.chapters(lines, limit=1000) == [new_prose.Part("", 5, 17)]
+
+
+def test_a_longer_document_splits_by_level_and_keeps_every_row_once() -> None:
+    """A heading with no text of its own goes with its first subsection, and no row is lost."""
+    lines = new_prose.markdown_lines(NESTED)
+
+    found = new_prose.chapters(lines, limit=40)
+
+    assert found == [
+        new_prose.Part("Displayed precision", 5, 9),
+        new_prose.Part("Readouts", 11, 13),
+        new_prose.Part("Next", 15, 17),
+    ]
+
+
+def test_a_section_with_no_subsection_is_cut_into_runs_of_whole_blocks() -> None:
+    lines = new_prose.markdown_lines(f"# Long\n\n{LONG}\n\n```\ncode\n\nmore\n```\n\n{LONG}\n")
+
+    found = new_prose.chapters(lines, limit=MIN_WORDS + 5)
+
+    assert found == [
+        new_prose.Part("Long (run 1 of 2)", 1, 9),
+        new_prose.Part("Long (run 2 of 2)", 11, 11),
+    ]
+
+
+def test_a_structure_read_marks_every_row_read_only(nested: Path) -> None:
+    [(part, request)] = new_prose.structure_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert part == new_prose.Part("", 5, 17)
+    assert request.startswith(new_prose.STRUCTURE_READ + "\n")
+    assert "[1] docs/MODEL.md, rows 5-17. Whole document: 102 words." in request
+    assert "    5 | # Model" in request
+    assert " > " not in request.partition("[1]")[2]
+
+
+def test_a_long_document_s_structure_read_is_one_request_per_chapter(
+    nested: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(new_prose, "REQUEST_LIMIT_WORDS", 40)
+
+    found = new_prose.structure_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert [part.title for part, _ in found] == ["Displayed precision", "Readouts", "Next"]
+    assert all(request.startswith(new_prose.CHAPTER_READ) for _, request in found)
+    assert '[1] docs/MODEL.md § "Readouts", rows 11-13. Whole section' in found[1][1]
+
+
+def test_each_section_is_a_request_of_its_own_rows_to_rewrite(nested: Path) -> None:
+    found = new_prose.part_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert [part.title for part, _ in found] == ["Displayed precision", "Readouts", "Next"]
+    first = found[0][1].partition("[1]")[2]
+    assert f"    9 > {LONG} first." in first
+    assert "second." not in first
+
+
+def test_the_outline_request_indents_each_chapter_s_outline_under_its_place(nested: Path) -> None:
+    outlines = [(new_prose.Part("Readouts", 11, 13), "rows 13: a point.\n\nrows 14: another.")]
+
+    text = new_prose.outline_report("docs/MODEL.md", new_prose.rule_table(), outlines)
+
+    assert text.startswith(new_prose.OUTLINE_READ + "\n")
+    assert "[1] docs/MODEL.md, the outlines of its 1 chapters. For: A clinician; A forker" in text
+    assert text.endswith(
+        'Chapter: docs/MODEL.md § "Readouts", rows 11-13\n  rows 13: a point.\n  rows 14: another.'
+    )
 
 
 @pytest.mark.parametrize(
     ("asked", "reason"),
     [
         (["--section", "docs/MODEL.md", "--heading", "Nowhere"], "0 headings read 'Nowhere'"),
-        (["--section", "src/step.py"], "src/step.py is not a Markdown file"),
+        (["--section", "src/step.py", "--heading", "X"], "src/step.py is not a Markdown file"),
     ],
 )
 def test_section_refuses_a_heading_it_cannot_find_and_a_file_that_is_not_markdown(
@@ -786,7 +868,7 @@ def test_section_refuses_a_file_that_no_reader_row_names(
 ) -> None:
     _write(nested, "docs/OTHER.md", NESTED)
 
-    assert main(["--root", str(nested), "--section", "docs/OTHER.md"]) == 1
+    assert main(["--root", str(nested), "--section", "docs/OTHER.md", "--heading", "Next"]) == 1
 
     assert "no row of the reader table names docs/OTHER.md" in capsys.readouterr().err
 

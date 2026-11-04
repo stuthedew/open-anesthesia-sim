@@ -63,15 +63,25 @@ before it is sent.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
 when no row's first cell contains WORDS.
 
-**`--section FILE [--heading TEXT]` prints one Markdown section, or the whole
-file, as passage 1, with every row open to rewrite.** A changed passage may be
-rewritten only with the unit beside it, so a fact that two paragraphs of a
-section both give, or a paragraph in the wrong place, needs a review of the
-whole section. A section runs from its heading to the next heading of the same
-or a higher level, so it holds its subsections. The section rewrites that wait
-on the copy editor, and the copy editor's own tests, use this mode (project
-owner, 2026-11-04, `PL-HGZS`). It exits 1 when the file is not Markdown, no row
-of the reader table names it, or the heading text does not name one section.
+**`--section FILE --heading TEXT` prints one Markdown section as passage 1,
+with every row open to rewrite.** A changed passage may be rewritten only with
+the unit beside it, so a fact that two paragraphs of a section both give, or a
+paragraph in the wrong place, needs a review of the whole section. A section
+runs from its heading to the next heading of the same or a higher level, so it
+holds its subsections. The section rewrites that wait on the copy editor, and
+the copy editor's own tests, use this mode (project owner, 2026-11-04,
+`PL-HGZS`). It exits 1 when the file is not Markdown, no row of the reader
+table names it, or the heading text does not name one section.
+
+**A whole document is reviewed in two parts** (project owner, 2026-11-04,
+`PL-HGZS`), and `tools/copy_edit.py` runs both. The first is a structure read,
+from `structure_reports`, with every row marked `|`: the copy editor lists the
+facts given in two places, the passages in the wrong place and the sections out
+of order, and rewrites nothing. A document longer than `REQUEST_LIMIT_WORDS`
+is read a chapter at a time, as `chapters` splits it. Once the findings are
+applied, the second part line-edits each section alone, from `part_reports`.
+There a section is its own rows, from its heading to the next heading of any
+level, so no row is edited twice.
 
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
@@ -169,6 +179,34 @@ PROMPT = ROOT / ".claude" / "agents" / "copy-editor.md"
 #: editor's instructions name it, and `tools/copy_edit.py` finds the passages
 #: below it.
 RULE_END = "The writing rule ends here, and the prose to review follows."
+#: A whole document is reviewed in two parts: a structure read, and then a line
+#: edit of each section alone (project owner, 2026-11-04, `PL-HGZS`). These
+#: lines open the prose of a structure read's request, and the copy editor's
+#: instructions say what to do with each. A document of at most
+#: `REQUEST_LIMIT_WORDS` words is read whole. A longer one is read a chapter
+#: at a time, and each chapter read ends with a reverse outline, which
+#: `tools/copy_edit.py` hands to one read of the whole document's outline.
+STRUCTURE_READ = (
+    "Structure read. One whole document follows, as passage 1. Every row is marked |, "
+    "so rewrite none of it."
+)
+CHAPTER_READ = (
+    "Structure read of one chapter. One chapter of a longer document follows, as passage "
+    "1. Every row is marked |, so rewrite none of it, and end with its outline."
+)
+OUTLINE_READ = (
+    "Structure read of an outline. The reverse outlines of every chapter of one document "
+    "follow, in order, as passage 1. Report only what crosses chapters."
+)
+#: The most words one request of a document's review holds, for a structure
+#: read or a line edit. A longer document is read a chapter at a time, a longer
+#: chapter is split into its subsections, and a longer section with none is cut
+#: into runs of whole blocks. The figure is the largest section the copy editor's debug had
+#: read on 2026-11-04 (5,801 words, `PL-HGZS`). A model reads a long request
+#: less closely even when it finds the passage it needs (Du et al., 2025,
+#: https://arxiv.org/abs/2510.05381), so a higher figure trades close reading
+#: for fewer runs, and a lower one the reverse.
+REQUEST_LIMIT_WORDS = 6000
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
     "Kind of text",
@@ -1074,8 +1112,89 @@ def whole_bounds(lines: Sequence[str], heading: str | None) -> tuple[int, int]:
     return first, last
 
 
-def section_report(root: Path, path: str, heading: str | None, table: Sequence[Reader]) -> str:
-    """The section of the Markdown file at `path` headed `heading`, or the whole file, as passage 1.
+@dataclass(frozen=True)
+class Part:
+    """One section's own rows in a document: its heading's text and its first and last row.
+
+    `title` is empty for the rows above the document's first heading.
+    """
+
+    title: str
+    first: int
+    last: int
+
+
+def own_parts(lines: Sequence[str]) -> list[Part]:
+    """Each section's own rows, in order, for a line edit of one section at a time.
+
+    A section's own rows run from its heading to the row before the next heading
+    of any level, so no row is in two parts. The rows above the first heading,
+    below any front matter, are a part of their own. A part that holds nothing
+    but its heading and blank rows is left out, since it has no prose to edit.
+    Trailing blank rows are left out.
+    """
+    marks = headings(lines)
+    starts = [(mark.title, mark.line + 1, mark.end) for mark in marks]
+    top, _ = whole_bounds(lines, None)
+    if not starts or top < starts[0][1]:
+        starts.insert(0, ("", top, top - 1))
+    found: list[Part] = []
+    for index, (title, first, heading_end) in enumerate(starts):
+        last = starts[index + 1][1] - 1 if index + 1 < len(starts) else len(lines)
+        while last > first and not lines[last - 1].strip():
+            last -= 1
+        if any(lines[row - 1].strip() for row in range(heading_end + 1, last + 1)):
+            found.append(Part(title, first, last))
+    return found
+
+
+def readers_or_refusal(path: str, table: Sequence[Reader]) -> list[Reader]:
+    """The rows of `table` that name the Markdown file at `path`.
+
+    Raises `ValueError` where the file is not Markdown or no row names it.
+    """
+    if not is_document(path):
+        raise ValueError(f"{path} is not a Markdown file")
+    readers = readers_of(table, path)
+    if not readers:
+        raise ValueError(f"no row of the reader table names {path}")
+    return readers
+
+
+def whole_passage(
+    path: str,
+    shown: Sequence[str],
+    lines: Sequence[str],
+    span: tuple[int, int],
+    title: str | None,
+    mark: str,
+    table: Sequence[Reader],
+) -> list[str]:
+    """The readers list and passage 1: rows `span` of the file at `path`, each marked `mark`.
+
+    `title` names the section, or is `None` for the whole document. `lines` are
+    the rows with the front matter blank, which the word count reads, and
+    `shown` the rows as the file holds them.
+    """
+    first, last = span
+    words = sum(len(line.split()) for line in lines[first - 1 : last])
+    if title is None:
+        what, where = "document", path
+    else:
+        what = "section"
+        where = f'{path} § "{title.strip()}"' if title else path
+    readers = readers_of(table, path)
+    return [
+        *reader_lines(table, [path]),
+        "",
+        f"[1] {rows_span(where, first, last)}. Whole {what}: {words} words. "
+        f"For: {'; '.join(reader.who for reader in readers)}",
+        *(row_line(row, mark, shown[row - 1]) for row in range(first, last + 1)),
+    ]
+
+
+def section_report(root: Path, path: str, heading: str, table: Sequence[Reader]) -> str:
+    """The section of the Markdown file at `path` headed `heading`, as passage 1.
 
     Every row is marked `>`, so the copy editor may rewrite the section as a
     whole: merge paragraphs that repeat a fact, and move a passage to where its
@@ -1083,26 +1202,214 @@ def section_report(root: Path, path: str, heading: str | None, table: Sequence[R
     `ValueError` where the file is not Markdown, no row of `table` names it, or
     `heading` does not name one section.
     """
-    if not is_document(path):
-        raise ValueError(f"{path} is not a Markdown file")
-    readers = readers_of(table, path)
-    if not readers:
-        raise ValueError(f"no row of the reader table names {path}")
-    lines = markdown_lines((root / path).read_text(encoding="utf-8"))
-    first, last = whole_bounds(lines, heading)
-    words = sum(len(line.split()) for line in lines[first - 1 : last])
-    what, where = ("section", f'{path} § "{heading.strip()}"') if heading else ("document", path)
-    shown = split_lines((root / path).read_text(encoding="utf-8"))
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    span = whole_bounds(lines, heading)
     return "\n".join(
         [
-            f"One whole {what} follows, as passage 1. Every row is marked >, and you may "
-            f"rewrite all of them. Edit the {what} as a whole, then paragraph by paragraph, for "
-            "the readers below.",
+            "One whole section follows, as passage 1. Every row is marked >, and you may "
+            "rewrite all of them. Edit the section as a whole, then paragraph by paragraph, "
+            "for the readers below.",
+            *whole_passage(path, split_lines(source), lines, span, heading, ">", table),
+        ]
+    )
+
+
+def part_reports(root: Path, path: str, table: Sequence[Reader]) -> list[tuple[Part, str]]:
+    """Each section's own rows in the Markdown file at `path`, as a request of its own.
+
+    This is the second part of a document's review: once the structure read's
+    findings are applied, each section is line-edited alone, because the copy
+    editor reads a short request more closely than a long one (project owner,
+    2026-11-04, `PL-HGZS`). A section longer than `REQUEST_LIMIT_WORDS` is cut
+    into runs by `fits`. Each request marks every row of its part `>`.
+    Raises `ValueError` where the file is not Markdown or no row of `table`
+    names it.
+    """
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    shown = split_lines(source)
+    return [
+        (
+            part,
+            "\n".join(
+                [
+                    "One section follows, as passage 1, without its subsections. Every row is "
+                    "marked >, and you may rewrite all of them. Edit the section as a whole, "
+                    "then paragraph by paragraph, for the readers below.",
+                    *whole_passage(
+                        path, shown, lines, (part.first, part.last), part.title, ">", table
+                    ),
+                ]
+            ),
+        )
+        for whole in own_parts(lines)
+        for part in fits(lines, whole, REQUEST_LIMIT_WORDS)
+    ]
+
+
+def words_in(lines: Sequence[str], part: Part) -> int:
+    """How many words the rows of `part` hold."""
+    return sum(len(line.split()) for line in lines[part.first - 1 : part.last])
+
+
+def has_prose(lines: Sequence[str], marks: Sequence[Heading], part: Part) -> bool:
+    """Whether `part` holds a row with text that is not a heading."""
+    heading_rows = {row for mark in marks for row in range(mark.line + 1, mark.end + 1)}
+    rows = range(part.first, part.last + 1)
+    return any(lines[row - 1].strip() and row not in heading_rows for row in rows)
+
+
+def trimmed(lines: Sequence[str], title: str, first: int, last: int) -> Part:
+    """The part from row `first` to row `last`, less its trailing blank rows."""
+    while last > first and not lines[last - 1].strip():
+        last -= 1
+    return Part(title, first, last)
+
+
+def fits(lines: Sequence[str], part: Part, limit: int) -> list[Part]:
+    """`part`, or where it holds more than `limit` words, its runs of whole blocks.
+
+    A section with no subsection to split at can still be longer than one
+    request should be. It is cut at blank rows outside a fenced block, into
+    runs of at most `limit` words where a block allows, and each run's title
+    says which run of how many it is.
+    """
+    if words_in(lines, part) <= limit:
+        return [part]
+    runs: list[tuple[int, int]] = []
+    start, words, fence = part.first, 0, ""
+    for row in range(part.first, part.last + 1):
+        line = lines[row - 1]
+        opening = line.lstrip()[:3]
+        if opening in ("```", "~~~") and len(line) - len(line.lstrip()) < 4:
+            fence = "" if fence == opening else (fence or opening)
+        if not line.strip() and not fence and words > limit // 2 and row > start:
+            ahead = sum(len(lines[later - 1].split()) for later in range(row, part.last + 1))
+            block_end = next(
+                (later for later in range(row + 1, part.last + 1) if not lines[later - 1].strip()),
+                part.last + 1,
+            )
+            block = sum(len(lines[later - 1].split()) for later in range(row, block_end))
+            if words + block > limit and ahead:
+                runs.append((start, row - 1))
+                start, words = row + 1, 0
+                continue
+        words += len(line.split())
+    runs.append((start, part.last))
+    pieces = [trimmed(lines, part.title, first, last) for first, last in runs if first <= last]
+    if len(pieces) == 1:
+        return pieces
+    return [
+        Part(f"{part.title} (run {index} of {len(pieces)})", piece.first, piece.last)
+        for index, piece in enumerate(pieces, start=1)
+    ]
+
+
+def chapters(lines: Sequence[str], limit: int | None = None) -> list[Part]:
+    """The pieces a structure read takes one at a time: the whole document, or its chapters.
+
+    A document of at most `limit` words, by default `REQUEST_LIMIT_WORDS`, is
+    one piece. A longer one splits into
+    its own rows above its first heading of the next level and one piece for
+    each section at that level, and a piece still longer than `limit` splits
+    the same way. A section with no subsection left is cut into runs of whole
+    blocks by `fits`. Rows above the first subsection that hold only a heading
+    go with that subsection, so every row of the document is in one piece.
+    """
+    limit = REQUEST_LIMIT_WORDS if limit is None else limit
+    marks = headings(lines)
+    top, bottom = whole_bounds(lines, None)
+
+    def split(part: Part, head: int) -> list[Part]:
+        # `head` is the row of the part's own heading, or the row before the
+        # part where it has none. Rows above it hold only the headings of
+        # sections that had no text of their own.
+        if not has_prose(lines, marks, part):
+            return []
+        if words_in(lines, part) <= limit:
+            return [part]
+        inner = [mark for mark in marks if head < mark.line + 1 <= part.last]
+        if not inner:
+            return fits(lines, part, limit)
+        level = min(mark.level for mark in inner)
+        kids = [mark for mark in inner if mark.level == level]
+        found = split(trimmed(lines, part.title, part.first, kids[0].line), head)
+        for index, kid in enumerate(kids):
+            last = kids[index + 1].line if index + 1 < len(kids) else part.last
+            # A heading with no text of its own goes with its first subsection,
+            # so that the structure read still sees it.
+            first = part.first if index == 0 and not found else kid.line + 1
+            found += split(trimmed(lines, kid.title, first, last), kid.end)
+        return found
+
+    return split(trimmed(lines, "", top, bottom), top - 1)
+
+
+def structure_reports(root: Path, path: str, table: Sequence[Reader]) -> list[tuple[Part, str]]:
+    """The first part of a document's review: its structure read, as one request or one per chapter.
+
+    Every row is marked `|`, because a structure read rewrites nothing: it
+    finds facts given twice, passages in the wrong place and sections out of
+    order, and the line edit of each section follows once its findings are
+    applied (project owner, 2026-11-04, `PL-HGZS`). A document that `chapters`
+    keeps whole is one request that opens with `STRUCTURE_READ`. Otherwise each
+    chapter is a request that opens with `CHAPTER_READ`. Raises `ValueError`
+    where the file is not Markdown or no row of `table` names it.
+    """
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    shown = split_lines(source)
+    pieces = chapters(lines)
+    whole = len(pieces) == 1
+    return [
+        (
+            piece,
+            "\n".join(
+                [
+                    STRUCTURE_READ if whole else CHAPTER_READ,
+                    *whole_passage(
+                        path,
+                        shown,
+                        lines,
+                        (piece.first, piece.last),
+                        None if whole else piece.title,
+                        "|",
+                        table,
+                    ),
+                ]
+            ),
+        )
+        for piece in pieces
+    ]
+
+
+def outline_report(path: str, table: Sequence[Reader], outlines: Sequence[tuple[Part, str]]) -> str:
+    """The reverse outlines of the chapters of the file at `path`, as passage 1 of one request.
+
+    Each chapter read of a long document ends with its outline, one line for
+    each paragraph's point and facts. This request hands them all to one read
+    that finds what crosses chapters: a fact two chapters give, a paragraph in
+    the wrong chapter, and chapters out of order (`PL-HGZS`). Each outline row
+    is indented, so that no row reads as a passage header.
+    """
+    readers = readers_of(table, path)
+    body: list[str] = []
+    for part, outline in outlines:
+        section = f' § "{part.title}"' if part.title else ""
+        body += [f"Chapter: {path}{section}, rows {part.first}-{part.last}"]
+        body += [f"  {line}" for line in split_lines(outline.strip()) if line.strip()]
+    return "\n".join(
+        [
+            OUTLINE_READ,
             *reader_lines(table, [path]),
             "",
-            f"[1] {rows_span(where, first, last)}. Whole {what}: {words} words. "
+            f"[1] {path}, the outlines of its {len(outlines)} chapters. "
             f"For: {'; '.join(reader.who for reader in readers)}",
-            *(row_line(row, ">", shown[row - 1]) for row in range(first, last + 1)),
+            *body,
         ]
     )
 
@@ -1147,7 +1454,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     modes.add_argument(
         "--section",
         metavar="FILE",
-        help="print the Markdown file FILE, or its section that --heading names, as one "
+        help="print the section of the Markdown file FILE that --heading names as one "
         "passage that the copy editor may rewrite whole",
     )
     parser.add_argument(
@@ -1158,8 +1465,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if (args.draft is None) != (args.kind is None):
         parser.error("--draft and --kind go together")
-    if args.heading is not None and args.section is None:
-        parser.error("--heading needs --section")
+    if (args.heading is None) != (args.section is None):
+        parser.error(
+            "--section and --heading go together; review a whole document with "
+            "tools/copy_edit.py --structure FILE, then --sections FILE"
+        )
     root = args.root.resolve()
     try:
         table = rule_table()
