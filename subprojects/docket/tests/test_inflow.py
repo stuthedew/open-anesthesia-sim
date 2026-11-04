@@ -7,6 +7,7 @@ filings are counted apart from the inflow the question is about.
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
@@ -18,6 +19,7 @@ from docket.config import Config
 from docket.inflow import UNBANDED, analyze, missed
 from docket.model import LANE_PRODUCT, Item, reentry_faults
 from docket.render import format_inflow
+from docket.vcs import FilingParents
 
 CONFIG = Config(
     items_dir="docs/items",
@@ -37,6 +39,7 @@ def _item(
     reenters: tuple[str, ...] = (),
     classes: tuple[str, ...] = ("defect",),
     no_successor: tuple[str, ...] = (),
+    sweep: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -57,6 +60,7 @@ def _item(
         root_cause_of=root_cause_of,
         reenters=reenters,
         no_successor=no_successor,
+        sweep=sweep,
     )
 
 
@@ -492,3 +496,163 @@ def test_the_release_report_never_reads_the_product_lane() -> None:
 
     assert report.periods
     assert missed(report, date(2026, 9, 21)) == ()
+
+
+# `PL-CJGH`: a sweep recorded only by `sweep:`, which no head's `root-cause-of:`
+# names. `PL-SWP0` is the sweep, open from 2026-09-02 to 09-04; the fix three
+# of its findings re-enter shipped before it.
+SWEPT_FIX = _item("PL-FX00", date(2026, 8, 20), touches=("src/a.py",), closed=date(2026, 8, 25))
+SWEEP = _item(
+    "PL-SWP0",
+    date(2026, 9, 2),
+    touches=("src/a.py",),
+    closed=date(2026, 9, 4),
+    sweep="inventories every reader of one fact and files each finding",
+    classes=("planning",),
+)
+
+
+def _sweep_store() -> tuple[list[Item], FilingParents]:
+    found = [
+        _item(f"PL-0SW{n}", date(2026, 9, 3), reenters=("PL-FX00",), priority="P1")
+        for n in (1, 2, 3)
+    ]
+    items = [
+        SWEPT_FIX,
+        SWEEP,
+        *found,
+        _item("PL-0RD1", date(2026, 9, 3), reenters=("PL-FX00",)),  # another item's capture
+        _item("PL-0LT1", date(2026, 9, 6)),  # a correction under the sweep's id, after it closed
+    ]
+    filing = FilingParents(
+        parents={
+            **{item.identifier: frozenset({"PL-SWP0"}) for item in found},
+            "PL-0RD1": frozenset({"PL-WRK1"}),
+            "PL-0LT1": frozenset({"PL-SWP0"}),
+        }
+    )
+    return items, filing
+
+
+def test_a_sweep_s_filings_are_counted_apart_from_inflow() -> None:
+    """A week spent finding instances on purpose is not a week of rising inflow.
+
+    `PL-K88Z`'s inventory was recorded only by its feature, so its 9 filings in
+    the week of 2026-10-19 counted as ordinary inflow and its 5 re-entries as
+    fixes failing.
+    """
+    items, filing = _sweep_store()
+
+    (period,) = analyze(items, CONFIG, today=date(2026, 9, 7), filing=filing).periods
+
+    assert (period.filed, period.by_head, period.by_sweep) == (2, 0, 3)
+    assert period.reentries == 1
+    assert period.priorities == {"P2": 2}
+    assert period.total == 5
+
+
+def test_a_sweep_s_filings_leave_the_three_filings_list() -> None:
+    """Three findings re-entering one fix are what the sweep was asked to find."""
+    items, filing = _sweep_store()
+
+    swept = analyze(items, CONFIG, today=date(2026, 9, 7), filing=filing)
+    unswept = analyze(
+        [replace(item, sweep="") for item in items], CONFIG, today=date(2026, 9, 7), filing=filing
+    )
+
+    assert swept.reentered == {}
+    assert unswept.reentered == {"PL-FX00": ("PL-0RD1", "PL-0SW1", "PL-0SW2", "PL-0SW3")}
+
+
+def test_a_filing_a_head_also_names_is_counted_once_under_the_head() -> None:
+    head = _item("PL-HD01", date(2026, 9, 2), root_cause_of=("PL-0SW1", "PL-0SW2", "PL-0SW3"))
+    items, filing = _sweep_store()
+
+    (period,) = analyze([*items, head], CONFIG, today=date(2026, 9, 7), filing=filing).periods
+
+    assert (period.by_head, period.by_sweep) == (3, 0)
+
+
+def test_a_sweep_git_could_not_attribute_says_so() -> None:
+    """The floor: a column nobody could read prints `?`, and the report says why."""
+    items, _ = _sweep_store()
+    shallow = FilingParents(declined="the checkout is a shallow clone")
+
+    report = analyze(items, CONFIG, today=date(2026, 9, 7), filing=shallow)
+    shown = format_inflow(report)
+
+    (period,) = report.periods
+    assert (period.filed, period.by_sweep) == (5, 0)
+    assert report.sweeps_unread == "the checkout is a shallow clone"
+    assert "      ?" in shown.splitlines()[1]
+    assert "  the checkout is a shallow clone." in shown
+    assert analyze(items, CONFIG, today=date(2026, 9, 7)).sweeps_unread
+
+
+def test_a_store_with_no_sweep_needs_no_attribution() -> None:
+    report = analyze(
+        [SWEPT_FIX, _item("PL-0RD1", date(2026, 9, 3))], CONFIG, today=date(2026, 9, 7)
+    )
+
+    assert not report.sweeps_unread
+    assert "?" not in format_inflow(report).splitlines()[1]
+
+
+def test_a_miss_says_when_a_sweep_could_not_be_told_apart() -> None:
+    """A broken prediction may be the sweep's own filings, so the cut says it could not tell."""
+    items, _ = _sweep_store()
+    shallow = FilingParents(declined="the checkout is a shallow clone")
+
+    lines = missed(
+        analyze(items, CONFIG, today=date(2026, 9, 14), filing=shallow), date(2026, 9, 14)
+    )
+    attributed = missed(
+        analyze(items, CONFIG, today=date(2026, 9, 14), filing=_sweep_store()[1]), date(2026, 9, 14)
+    )
+
+    assert any("3 P1 apparatus filing(s)" in line for line in lines)
+    assert lines[-1].endswith(
+        "could not be told apart, so these counts include them: the checkout is a shallow clone"
+    )
+    assert not any("P1" in line or "told apart" in line for line in attributed)
+
+
+def test_the_command_counts_a_sweep_from_the_commit_that_filed_its_findings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end, on real git: the commit led by the sweep's id is what attributes a filing."""
+    root = tmp_path
+    (root / "docket.toml").write_text(
+        'items_dir = "docs/items"\nworkflow_paths = ["tools", "docs/items"]\n'
+    )
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    def write(identifier: str, extra: str = "") -> None:
+        (store / f"{identifier}-x.md").write_text(
+            f"---\nid: {identifier}\ntitle: Item {identifier}\nstatus: untriaged\n"
+            f"touches: tools/x.py\nadded: 2026-09-03\n{extra}---\n\nBody.\n"
+        )
+
+    subprocess.run(["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)], check=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    write("PL-SWP0", "sweep: inventories every reader of one fact\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-SWP0: capture the sweep")
+    for identifier in ("PL-0SW1", "PL-0SW2"):
+        write(identifier)
+    git("add", "-A")
+    git("commit", "-qm", "PL-SWP0: file what the inventory found")
+    write("PL-0RD1")
+    git("add", "-A")
+    git("commit", "-qm", "PL-WRK1: capture a finding")
+
+    assert main(["inflow", "--items", str(store), "--today", "2026-09-05"]) == 0
+    row = capsys.readouterr().out.splitlines()[1].split()
+
+    # period, filed, /day, re-entry, +head, +sweep: the sweep and PL-0RD1 are ordinary
+    assert row[1] == "2" and row[5] == "2"

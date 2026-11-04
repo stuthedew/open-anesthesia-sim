@@ -91,6 +91,7 @@ from docket.vcs import (
     fetch_remote,
     filed_with_work,
     files_in_flight,
+    filing_parents,
     github_slug,
     github_token,
     gone_paths,
@@ -3466,6 +3467,52 @@ def test_a_pure_capture_commit_is_not_reported() -> None:
 
     assert report.known
     assert report.filings == {}
+
+
+# A store where `PL-RSTR` was filed by `PL-SWP1`'s work, then deleted and
+# restored by a commit led by `PL-HSKP`. Newest first, as `git log` lists them.
+REFILED_LOG = "".join(
+    (
+        "\x1eaaa2\x01PL-HSKP: restore an item a merge resolution deleted\0\n",
+        "A\0docs/items/PL-RSTR-restored.md\0",
+        "\x1eaaa1\x01PL-SWP1: inventory the readers of one fact\0\n",
+        "A\0docs/items/PL-RSTR-restored.md\0",
+        "A\0docs/items/PL-0TW0-second-finding.md\0",
+        "\x1eaaa0\x01PL-CPT1, PL-CPT2: capture two ideas\0\n",
+        "A\0docs/items/PL-CPT1-one.md\0",
+        "A\0docs/items/PL-CPT2-two.md\0",
+    )
+)
+
+
+def test_filing_parents_credits_the_commit_that_first_added_an_item() -> None:
+    """A restore adds the file again, and did not produce the item (`PL-CJGH`).
+
+    `tools/generator_check.py` kept the newest addition, so 13 items re-added
+    on `main` by 2026-11-03 credited their spawn to the commit that restored
+    them.
+    """
+    filed = filing_parents(ROOT, "HEAD", "docs/items", runner=_filing_runner("false", REFILED_LOG))
+
+    assert not filed.declined
+    assert filed.parents["PL-RSTR"] == {"PL-SWP1"}
+    assert filed.parents["PL-0TW0"] == {"PL-SWP1"}
+
+
+def test_filing_parents_gives_a_plain_capture_no_parent() -> None:
+    """A capture leads with the ids it creates, so two captured together are not each other's."""
+    filed = filing_parents(ROOT, "HEAD", "docs/items", runner=_filing_runner("false", REFILED_LOG))
+
+    assert filed.parents["PL-CPT1"] == frozenset()
+    assert filed.parents["PL-CPT2"] == frozenset()
+
+
+def test_filing_parents_declines_in_a_shallow_clone() -> None:
+    """The boundary commit adds every older file, so it would read as filing them all."""
+    filed = filing_parents(ROOT, "HEAD", "docs/items", runner=_filing_runner("true", REFILED_LOG))
+
+    assert filed.parents == {}
+    assert "shallow clone" in filed.declined
 
 
 def test_a_shallow_clone_declines_rather_than_reporting_nothing_filed() -> None:
