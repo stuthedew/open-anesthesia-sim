@@ -5507,6 +5507,22 @@ def cmd_flight(args: argparse.Namespace) -> int:
     # Asked on every run, rows or none: a stuck pull request on a branch that
     # carries no item is still worth naming (`PL-0T8L`).
     failures = _failing_pull_requests(args, inv, report)
+    # Every open pull request, whether or not its branch carries an item, since
+    # a thread can wait on the owner on any branch (`PL-52SV`). The forge is
+    # asked once, above; an unanswered lookup asks nothing here.
+    if lookup is None:
+        opened_now = None
+    elif report.branches:
+        opened_now = answer
+    else:
+        opened_now = lookup()
+    unasked = (
+        arming.unasked_pull_requests(
+            inv.root, opened_now, items_dir=inv.tracked, now=_now(args), runner=inv.git
+        )
+        if opened_now is not None and inv.tracked
+        else None
+    )
     read = _holdings(args)
     # The queue as `holdings` read it: the store this command was pointed at,
     # with the roadmap and the notes the project's settings name.
@@ -5517,7 +5533,15 @@ def cmd_flight(args: argparse.Namespace) -> int:
     here = frozenset(item.identifier for item in _load(args)[1])
     print(
         render.format_flight(
-            report, _now(args), settled, reviews, read, forgetful, here, failures=failures
+            report,
+            _now(args),
+            settled,
+            reviews,
+            read,
+            forgetful,
+            here,
+            failures=failures,
+            unasked=unasked,
         )
     )
     _say_snapshot(args)

@@ -116,7 +116,7 @@ import fnmatch
 import re
 import string
 import sys
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -1537,8 +1537,8 @@ def arm(
         )
     change = _read_change(root, where, items_dir)
     reviews = _read_reviews(root, where, change, prose_count, blind_count)
-    record, misread = _owner_read(root, where.run, where.base, change.on_list)
-    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
     claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
     behind, uncounted = _read_behind(root, where)
     unread = (
@@ -1574,6 +1574,9 @@ class _Branch:
     `ran` is the caller's runner, or plain git once a fetch has moved the refs.
     `run` wraps it and remembers every call git did not answer, so the stages
     that share it report one partial read. `unread` holds the fetch's failure.
+    `tip` is the commit every stage reads the branch at: `HEAD` for `arm`, and
+    the remote's copy where `owner_ask_on` answers for a branch that is not
+    checked out (`PL-52SV`).
     """
 
     name: str
@@ -1584,6 +1587,7 @@ class _Branch:
     run: _Silences
     unpulled: str
     unread: tuple[str, ...]
+    tip: str = "HEAD"
 
 
 def _read_branch(root: Path, *, fetch: bool, runner: Runner | None) -> _Branch | Verdict:
@@ -1665,7 +1669,7 @@ def _read_forge(
         return _Forge(unread=(*unread, said))
     if switch.state != AUTO_MERGE_OFF:
         return _Forge(unread=unread)
-    owned, misread = _switched_off_here(root, where.run, where.base, switch.at)
+    owned, misread = _switched_off_here(root, where.run, where.base, switch.at, tip=where.tip)
     return _Forge(switched_off="" if owned else switch.at, unread=(*unread, *misread))
 
 
@@ -1690,12 +1694,12 @@ class _Change:
 
 
 def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
-    """Read the net change `base...HEAD` and sort its paths."""
-    run, base = where.run, where.base
+    """Read the net change `base...tip` and sort its paths."""
+    run, base, tip = where.run, where.base, where.tip
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
     # it made outside it, which a rename would print as one path under the store.
-    changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
+    changed = run(changed_path_args("diff", "--name-only", f"{base}...{tip}", "--"), root)
     if not answered(changed):
         said = f"git would not diff {where.name} against {base}, so what a merge lands is unknown"
         return _Change(prefix, unread=(said,))
@@ -1707,13 +1711,13 @@ def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
     rest = paths - {GATE}
     moved = False
     if gate:
-        fork = run(["merge-base", base, "HEAD"], root).strip()
+        fork = run(["merge-base", base, tip], root).strip()
         held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
         moved = held.rstrip("\0") != GATE
-    tooling, unread = _tests_of_the_tooling(sorted(rest), base, root, run)
+    tooling, unread = _tests_of_the_tooling(sorted(rest), base, root, run, tip=tip)
     pinned: tuple[str, ...] = ()
     if PINS is not None and PINS in paths:
-        pinned, unpinned = _pins_changed(base, root, run)
+        pinned, unpinned = _pins_changed(base, root, run, tip=tip)
         unread = (*unread, *unpinned)
     on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
     outside = tuple(
@@ -1750,7 +1754,7 @@ def _read_reviews(
     """Count the reviews owed, where the change reaches a path that waits on a read."""
     if not change.on_list:
         return _Reviews()
-    run, span = where.run, ["HEAD", f"^{where.base}"]
+    run, span = where.run, [where.tip, f"^{where.base}"]
     unread: list[str] = []
     unreviewed = 0
     prose_since = ""
@@ -1826,7 +1830,9 @@ def _read_claims(
 
 def _read_behind(root: Path, where: _Branch) -> tuple[int, tuple[str, ...]]:
     """How many of the base's commits the branch lacks."""
-    counted = whole_number(where.run(["rev-list", "--count", f"HEAD..{where.base}"], root).strip())
+    counted = whole_number(
+        where.run(["rev-list", "--count", f"{where.tip}..{where.base}"], root).strip()
+    )
     if counted is None:
         return 0, (f"git would not count {where.base}'s commits that {where.name} lacks",)
     return counted, ()
@@ -1937,7 +1943,7 @@ def _owner_ask_answer(
     hold.
     """
     change = _read_change(root, where, items_dir)
-    record, misread = _owner_read(root, where.run, where.base, change.on_list)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
     if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
         if where.unpulled or unread:
@@ -1945,7 +1951,7 @@ def _owner_ask_answer(
                 UNKNOWN, branch=where.name, base=where.base, unpulled=where.unpulled, unread=unread
             )
         return Verdict(NOT_HELD, branch=where.name, base=where.base)
-    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
     claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
     found = _held(
         where,
@@ -1975,6 +1981,77 @@ def _owner_ask_answer(
         if unasked:
             found = replace(found, unread=(*found.unread, *unasked))
     return _settle(found)
+
+
+def owner_ask_on(
+    root: Path, branch: str, *, items_dir: str, now: datetime, runner: Runner | None = None
+) -> Verdict:
+    """`arm --owner-ask` for `branch`'s copy on the remote, whichever branch is checked out.
+
+    The coordinator's checkout is on no pull request's branch, so `arm`, which
+    reads `HEAD`, cannot say whether another thread's pull request waits on
+    the owner with no question recorded (`PL-52SV`). This answers it from the
+    remote's copy of `branch`, through the same stages `arm --owner-ask` runs,
+    so the two cannot disagree. It neither fetches nor asks the forge: the
+    caller reads the refs once for every branch, and asks this only of a pull
+    request it knows to be open.
+    """
+    ran = runner or _run_git
+    run = _Silences(ran)
+    remotes = _remotes(root, run)
+    base = default_base(root, runner=run)
+    if run.reason or not resolved(base):
+        reason = run.reason or f"no default branch could be established to compare {branch} with"
+        return Verdict(UNKNOWN, branch=branch, unread=(reason,))
+    if branch == _head_name(base, remotes):
+        return Verdict(NOT_HELD, branch=branch, base=base)
+    tip = f"refs/remotes/{REMOTE}/{branch}"
+    if not run(["rev-parse", "--verify", "--quiet", f"{tip}^{{commit}}"], root).strip():
+        reason = run.reason or f"{tip} is not in this checkout, so {branch} could not be read"
+        return Verdict(UNKNOWN, branch=branch, base=base, unread=(reason,))
+    where = _Branch(branch, base, remotes, None, ran, run, "", (), tip=tip)
+    return _owner_ask_answer(root, where, items_dir=items_dir, now=now, newest=None)
+
+
+@dataclass(frozen=True)
+class Unasked:
+    """Open pull requests that wait on the owner's read with no question recorded (`PL-52SV`).
+
+    `pulls` is each such branch with its pull request's number, or `None`
+    where the forge named the branch without one. `unread` names each open
+    pull request whose answer could not be read, so a gap is never reported
+    as "none waits".
+    """
+
+    pulls: tuple[tuple[str, int | None], ...] = ()
+    unread: tuple[str, ...] = ()
+
+
+def unasked_pull_requests(
+    root: Path,
+    opened: Mapping[str, int | None],
+    *,
+    items_dir: str,
+    now: datetime,
+    runner: Runner | None = None,
+) -> Unasked:
+    """Which of the open pull requests in `opened` wait on the owner with no question recorded.
+
+    `opened` maps each branch with an open pull request to its number, as
+    `docket flight` reads it from the forge. Each branch is answered by
+    `owner_ask_on`, so a branch is listed exactly when `arm --owner-ask` run
+    on it would exit with `NO_ASK`.
+    """
+    pulls: list[tuple[str, int | None]] = []
+    unread: list[str] = []
+    for branch in sorted(opened):
+        verdict = owner_ask_on(root, branch, items_dir=items_dir, now=now, runner=runner)
+        if verdict.unasked:
+            pulls.append((branch, opened[branch]))
+        elif verdict.answer == UNKNOWN:
+            first = verdict.unread[0] if verdict.unread else "nothing it rests on could be read"
+            unread.append(f"{branch}: {first}")
+    return Unasked(tuple(pulls), tuple(unread))
 
 
 def _newest_merge(
@@ -2017,7 +2094,9 @@ def _newest_merge(
     return pull, merged, ()
 
 
-def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[bool, tuple[str, ...]]:
+def _switched_off_here(
+    root: Path, run: Runner, base: str, at: str, *, tip: str = "HEAD"
+) -> tuple[bool, tuple[str, ...]]:
     """Whether a commit of the branch records this session switching auto-merge off at `at`.
 
     A record counts when its commit's committer date is `at` or later: a
@@ -2030,7 +2109,7 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     except ValueError:
         return False, (f"the forge's time for the switch, {at!r}, is not a time",)
     fmt = f"--format=%cI%x1f%(trailers:key={AUTO_MERGE},valueonly,unfold,separator=%x1e)"
-    for line in split_lines(run(["log", fmt, f"{base}..HEAD", "--"], root)):
+    for line in split_lines(run(["log", fmt, f"{base}..{tip}", "--"], root)):
         when, _, values = line.partition("\x1f")
         said = [value for value in values.split("\x1e") if value.strip()]
         if not any(value.partition(" - ")[0].strip().lower() == AUTO_MERGE_OFF for value in said):
@@ -2044,7 +2123,9 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     return False, ()
 
 
-def _since_change(root: Path, run: Runner, base: str, paths: Sequence[str]) -> list[str] | None:
+def _since_change(
+    root: Path, run: Runner, base: str, paths: Sequence[str], *, tip: str = "HEAD"
+) -> list[str] | None:
     """The revisions `git log` walks for a record made since the newest commit changing `paths`.
 
     With no `paths`, every commit of the branch. `None` when no commit of the
@@ -2054,9 +2135,11 @@ def _since_change(root: Path, run: Runner, base: str, paths: Sequence[str]) -> l
     owner's *Update branch* does, leaves a record standing, and a conflict
     resolved there by writing new lines does not.
     """
-    span = ["HEAD", f"^{base}"]
+    span = [tip, f"^{base}"]
     if paths:
-        for commit in split_lines(run(["log", "--format=%H", f"{base}..HEAD", "--", *paths], root)):
+        for commit in split_lines(
+            run(["log", "--format=%H", f"{base}..{tip}", "--", *paths], root)
+        ):
             parents = run(["rev-parse", f"{commit}^@"], root).split()
             if len(parents) > 1 and _merge_keeps_the_work(root, run, commit, parents, paths):
                 continue
@@ -2120,7 +2203,7 @@ def _newest_trailer(root: Path, run: Runner, span: Sequence[str], key: str) -> t
 
 
 def _owner_ask(
-    root: Path, run: Runner, base: str, paths: Sequence[str]
+    root: Path, run: Runner, base: str, paths: Sequence[str], *, tip: str = "HEAD"
 ) -> tuple[OwnerAsk | None, str]:
     """The newest `OWNER_ASK` record since the newest change to `paths`, or why it did not parse.
 
@@ -2130,7 +2213,7 @@ def _owner_ask(
     disturb it, and nor does a merge of the base that leaves the branch's own
     change as it was (`_since_change`).
     """
-    span = _since_change(root, run, base, paths)
+    span = _since_change(root, run, base, paths, tip=tip)
     if span is None:
         return None, ""
     commit, value = _newest_trailer(root, run, span, OWNER_ASK)
@@ -2143,7 +2226,7 @@ def _owner_ask(
 
 
 def _owner_read(
-    root: Path, run: Runner, base: str, paths: Sequence[str]
+    root: Path, run: Runner, base: str, paths: Sequence[str], *, tip: str = "HEAD"
 ) -> tuple[OwnerRead | None, tuple[str, ...]]:
     """The newest `OWNER_READ` record that covers `paths`, and what went unread.
 
@@ -2158,7 +2241,7 @@ def _owner_read(
     and not read, so it covers nothing: a simulator change it was meant for
     still holds, and anything else is `unknown` rather than armed.
     """
-    span = _since_change(root, run, base, paths)
+    span = _since_change(root, run, base, paths, tip=tip)
     if span is None:
         return None, ()
     commit, value = _newest_trailer(root, run, span, OWNER_READ)
@@ -2174,7 +2257,9 @@ def _owner_read(
     return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
 
 
-def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def _pins_changed(
+    base: str, root: Path, run: Runner, *, tip: str = "HEAD"
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """The pinned tests in `PINS` the change edits or deletes, and why they went unread.
 
     The file is read at the merge base and at HEAD, the two sides
@@ -2182,13 +2267,13 @@ def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], 
     will not parse here, leaves the answer unread, so `arm` never arms on a
     comparison it could not make.
     """
-    fork = run(["merge-base", base, "HEAD"], root).strip()
+    fork = run(["merge-base", base, tip], root).strip()
     if not fork:
         return (), (
-            f"git gave no merge base of {base} and HEAD, so whether the change edits a test "
+            f"git gave no merge base of {base} and {tip}, so whether the change edits a test "
             f"in {PINS} pinning the gate's answers was not read",
         )
-    sides = [run(["show", f"{rev}:{PINS}"], root) for rev in (fork, "HEAD")]
+    sides = [run(["show", f"{rev}:{PINS}"], root) for rev in (fork, tip)]
     if not all(answered(side) for side in sides):
         return (), (
             f"git would not hand over {PINS} on both sides of the change, so whether it edits "
@@ -2204,7 +2289,7 @@ def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], 
 
 
 def _tests_of_the_tooling(
-    paths: Sequence[str], base: str, root: Path, run: Runner
+    paths: Sequence[str], base: str, root: Path, run: Runner, *, tip: str = "HEAD"
 ) -> tuple[frozenset[str], tuple[str, ...]]:
     """The tests of the tooling among `paths`, and why any other test under `TESTS` went unread.
 
@@ -2225,19 +2310,19 @@ def _tests_of_the_tooling(
     ]
     if not tests:
         return frozenset(), ()
-    fork = run(["merge-base", base, "HEAD"], root).strip()
+    fork = run(["merge-base", base, tip], root).strip()
     if not fork:
         one = len(tests) == 1
         which = "the test it changes" if one else f"the {len(tests)} tests it changes"
         return frozenset(), (
-            f"git gave no merge base of {base} and HEAD, so what {which} under {TESTS} "
+            f"git gave no merge base of {base} and {tip}, so what {which} under {TESTS} "
             f"import{'s' if one else ''} was not read, and {'it' if one else 'each'} waits on "
             "the read",
         )
     tooling: set[str] = set()
     unreadable: list[str] = []
     for path in tests:
-        sides = [run(["show", f"{rev}:{path}"], root) for rev in (fork, "HEAD")]
+        sides = [run(["show", f"{rev}:{path}"], root) for rev in (fork, tip)]
         if not all(answered(side) for side in sides):
             unreadable.append(
                 f"git would not hand over {path} on both sides of the change, so whether it "
