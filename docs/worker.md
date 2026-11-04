@@ -115,7 +115,7 @@ nothing runs between the gate and your reading of its status.
 
 This applies to every command whose status is your evidence — `make check`, the
 item's own `verify:`, `pytest`, `mypy`, `ruff`, `bin/docket check`. Claude Code
-sessions have `.claude/hooks/gate-status-guard.sh` refusing the unsafe spellings
+sessions have `.claude/hooks/gate_status_guard.py` refusing the unsafe spellings
 for them; under any other harness that hook does not run, so this paragraph is
 the whole of the guard (`PL-D0W8`).
 

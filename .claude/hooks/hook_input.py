@@ -1,15 +1,19 @@
-"""What a hook reads before it decides anything: its checkout, and the Bash call it was handed.
+"""What a hook reads and writes: its checkout, the call it was handed, and its output.
 
-Every hook here acts on one checkout, and the four Bash guards
-(`floor-interpreter-guard.sh`, `gate-status-guard.sh`, `no-prune-guard.sh` and
-`push-check-guard.sh`) each read the command out of the payload Claude Code
-hands them. Each hook used to spell both itself (`PL-FB77`). The guards held
-four identical copies of the payload reading. Five hooks found the checkout,
-and they did not agree: with `CLAUDE_PROJECT_DIR` unset, four fell back to the
-directory two levels above `.claude/hooks/`, and `docket-branch-guard.sh`
-found none and exited, so it said nothing in a checkout where the others
-acted. This module is the one answer. A hook written in Python imports it, and
-one written in shell runs it as a script, which prints the checkout.
+Every hook here acts on one checkout, and each Bash guard reads the command
+out of the payload Claude Code hands it. Each hook used to spell both itself
+(`PL-FB77`). The guards held four identical copies of the payload reading.
+Five hooks found the checkout, and they did not agree: with
+`CLAUDE_PROJECT_DIR` unset, four fell back to the directory two levels above
+`.claude/hooks/`, and the branch guard found none and exited, so it said
+nothing in a checkout where the others acted. This module is the one answer.
+A hook written in Python imports it, and one written in shell runs it as a
+script, which prints the checkout.
+
+It also builds and reads a hook's output. `deny` builds a refusal and logs it,
+`output` joins the refusals and notes of several guards into one output, and
+`verdict` reads one guard's output back. `guard.py` uses the last two to run
+every guard of a call from one Python start (`PL-9KSJ`).
 
 Standard library only, since a hook runs before any virtualenv is known.
 """

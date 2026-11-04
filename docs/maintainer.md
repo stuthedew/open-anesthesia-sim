@@ -587,7 +587,7 @@ ratified) had held them, because the roadmap is where you set direction. Your
 list reopened that question, and you settled it this way (project owner,
 2026-10-03, ratified, over holding them as before, `PL-KKHD`). Second,
 `.github/workflows/` and `.claude/hooks/` joined the list. The reason is that
-`update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh` decide
+`update-armed.yml`, `tag-release.yml` and the merge guard decide
 merges and tags, as `arming.py` does. Holding them cost about one review a
 day, at recent rates (project owner, 2026-10-03, ratified, over leaving them
 armed on green, `PL-KKHD`). They left the list again under your rule of
@@ -730,7 +730,7 @@ applies to admins. A session's GitHub calls are made as you. If admins were
 exempt, a session's merge would pass the up-to-date check that `main` applies
 to everyone else. It would then land a stale branch whenever another pull
 request merged between the session's check of the branch and its merge call.
-So `.claude/hooks/direct-merge-guard.sh` asks GitHub at each merge call into
+So the merge guard, `.claude/hooks/direct_merge_guard.py`, asks GitHub at each merge call into
 this repository. It rejects the merge while **Do not allow bypassing the above
 settings** is off (`PL-S17R`, `PL-NXRJ`). A merge in another repository, such
 as the references corpus, cannot leave this repository's `main` stale, so the
@@ -1062,7 +1062,7 @@ Changes to the environment reach new threads, not the ones already running,
 and saving the script rebuilds the environment's cache. To check that it
 worked, ask a new thread to run `uv run pytest -q
 tests/unit/test_line_splits.py | tail -1`. The repository's
-`gate-status-guard.sh` refuses that command when the hooks are loaded. If the
+gate-status guard refuses that command when the hooks are loaded. If the
 thread prints a test count instead, the hooks are still off,
 and the thread should record that in `PL-CR81`.
 

@@ -1256,7 +1256,7 @@ before any push. It now points at the skill for the item-only auto-merge.
 
 **How each moment reaches the skill.**
 
-- **A push.** `.claude/hooks/push-check-guard.sh` already decides whether a
+- **A push.** `.claude/hooks/push_check_guard.py` already decides whether a
   Bash call is a push of this repository. After a push it lets through, it adds
   a note naming the skill and `bin/docket arm`. Claude Code puts a pre-tool
   hook's `additionalContext` "alongside the tool result"
@@ -1267,7 +1267,7 @@ before any push. It now points at the skill for the item-only auto-merge.
   follows a push. A claim pushed onto an armed pull request is the one case
   the note would reach too late, and `bin/docket claim` already refuses that
   push until auto-merge is off.
-- **A pull request call.** `.claude/hooks/pr-body-email-guard.sh` adds a note
+- **A pull request call.** The email guard, `tools/pr_body_check.py`, adds a note
   after a create or update call it lets through: read the body back, and the
   skill has the rest.
 - **A failed check.** It arrives as an event that names the check, so the
@@ -1361,7 +1361,7 @@ comes before.
   still applies to that sentence.
 - **Housekeeping.** The rule applies at the first edit to work that no item
   names, and that edit can be a session's first write.
-  `.claude/hooks/docket-branch-guard.sh` also fires there, when the branch
+  `.claude/hooks/docket_branch_guard.py` also fires there, when the branch
   claims nothing. The resident sentence keeps the rule, its examples, the
   exception for deleting remote branches, and a pointer.
 
@@ -1410,7 +1410,7 @@ Retiring prose builds no mechanism, so the generator pause did not apply.
 | Parameters in validated, versioned data files | `tools/literal_home_check.py` accepts a named constant in code, so it does not require a data file. | Kept |
 | Executable equations out of data files | The numeric payload types in `core/parameters.py` refuse a string where a number belongs. A new text field holding an expression would pass. | Kept, already a pointer |
 | Nothing beyond the current milestone | Nothing. | Kept |
-| § "Session and tool-use efficiency" | `tools/context_reading.py` prints the spend, and nothing enforces the reset. `.claude/hooks/push-check-guard.sh` runs `doc_check`, `branch_id_check`, the store check and four more of `make check`'s checks before a push, one of them a pytest file, but not Ruff, mypy or the rest of pytest. | Kept |
+| § "Session and tool-use efficiency" | `tools/context_reading.py` prints the spend, and nothing enforces the reset. `.claude/hooks/push_check_guard.py` runs `doc_check`, `branch_id_check`, the store check and four more of `make check`'s checks before a push, one of them a pytest file, but not Ruff, mypy or the rest of pytest. | Kept |
 | § "Prefer deterministic tooling over repeated model work", its bullets | Nothing. Each is a judgment about what to build. | Kept |
 | The same section's standard-library sentence | `tests/unit/test_tools_portability.py` | Retired, § "What was routed out" |
 | § "The queue": the two modes, the division of labour, when to involve the owner, capture, fix-now, behavior changes, read only, capturing intent, compounding friction and the docs sweep | Nothing. `tools/doc_check.py` checks a sweep's citations, not whether the sentences around them are still true. | Kept |

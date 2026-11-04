@@ -1,7 +1,7 @@
 """How bash splits a command line, for the four Bash guard hooks to share.
 
-`gate-status-guard.sh`, `floor-interpreter-guard.sh`, `no-prune-guard.sh` and
-`push-check-guard.sh` each decide on a command string before it runs, so each
+The gate-status, floor-interpreter, push-check and no-prune guards each
+decide on a command string before it runs, so each
 has to know where one
 command ends and the next begins. Each used to spell that itself - two
 `shlex.shlex(punctuation_chars=True)` lexers behind a newline substitution, and

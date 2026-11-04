@@ -130,6 +130,12 @@ def _tools_on_path() -> None:
         sys.path.insert(0, str(TOOLS))
 
 
+
+#: Seconds the guard waits for each of its two reads of GitHub. Both reads
+#: together must finish inside the deadline `guard.py` gives this guard, which
+#: the entry point's test checks (`PL-KJN6`, `PL-9KSJ`).
+READ_TIMEOUT_S = 15
+
 def record(path: str) -> object:
     """One record from the GitHub API, read without a token.
 
@@ -144,10 +150,7 @@ def record(path: str) -> object:
 
     root = os.environ.get("DIRECT_MERGE_GUARD_API") or open_pull_requests.GITHUB_API
     request = open_pull_requests.api_request(root + path, agent="direct-merge-guard")
-    # Two reads of 15 s each stay well inside the 600 s Claude Code allows a
-    # command hook by default (https://code.claude.com/docs/en/hooks, read
-    # 2026-11-03, `PL-KJN6`).
-    with urllib.request.urlopen(request, timeout=15) as response:
+    with urllib.request.urlopen(request, timeout=READ_TIMEOUT_S) as response:
         answer: object = json.load(response)
     return answer
 

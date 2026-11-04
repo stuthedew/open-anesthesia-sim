@@ -122,7 +122,7 @@ GROUPS: dict[str, tuple[Guard, ...]] = {
         Guard("push-check-guard", "push_check_guard", deadline_s=110),
     ),
     "pre-mcp": (
-        # Past its two reads of GitHub, each given 15 seconds.
+        # Past its two reads of GitHub (`READ_TIMEOUT_S` each).
         Guard(
             "direct-merge-guard",
             "direct_merge_guard",
@@ -200,7 +200,8 @@ def judged(guards: tuple[Guard, ...], payload: str) -> tuple[list[str], list[str
         try:
             found = _verdict(guard, payload)
         except TimedOut:
-            why = f"it did not finish within {guard.deadline_s} seconds"
+            unit = "second" if guard.deadline_s == 1 else "seconds"
+            why = f"it did not finish within {guard.deadline_s} {unit}"
         except (Exception, SystemExit) as error:
             why = _error(error)
         else:

@@ -9,8 +9,8 @@ This skill holds the pull request procedure that `CLAUDE.md` loaded in every
 session until `PL-S2NL` moved it here on 2026-10-24. A session needs it only at
 a push or a pull request. So `CLAUDE.md` keeps one sentence that names those
 moments, and two hooks point here when they arrive:
-`.claude/hooks/push-check-guard.sh` after a push of this repository, and
-`.claude/hooks/pr-body-email-guard.sh` after a pull request is created or
+`.claude/hooks/push_check_guard.py` after a push of this repository, and
+`tools/pr_body_check.py` after a pull request is created or
 updated. `PL-SN2Z` measured why both carriers are kept. A skill named by a
 resident sentence started on every test request that named its moment, but
 nothing measured a moment that arrives in the middle of a task, as a push does.

@@ -8,9 +8,11 @@
 # This script reports what Python cannot report itself: a `python3` that is
 # missing, or one that exits non-zero before `guard.py` has decided, as it
 # does when the standard library will not load. The call then goes through,
-# with a note saying it was not checked. The one exception is an MCP call
-# that mentions a merge, which is refused, as `mentions_merge` in `guard.py`
-# refuses it when the merge guard cannot judge it (`PL-NXRJ`).
+# with a note saying it was not checked. The one exception is a call that
+# mentions a merge and is an MCP call, or names no tool this script can read.
+# It is refused, as `mentions_merge` in `guard.py` refuses it when the merge
+# guard cannot judge it (`PL-NXRJ`). A Bash call that runs `git merge` names
+# its tool, so it still goes through.
 #
 # It uses bash's own commands for everything but `python3` and the scratch
 # file for Python's errors, so that it still reports on a machine missing
@@ -52,11 +54,15 @@ json_string() {
 
 why="$why${last:+ ($last)}"
 event=PreToolUse
-if [[ $payload =~ \"hook_event_name\"\ *:\ *\"([A-Za-z]+)\" ]]; then
+if [[ $payload =~ \"hook_event_name\"[[:space:]]*:[[:space:]]*\"([A-Za-z]+)\" ]]; then
   event=${BASH_REMATCH[1]}
 fi
+tool=""
+if [[ $payload =~ \"tool_name\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
+  tool=${BASH_REMATCH[1]}
+fi
 shopt -s nocasematch
-if [[ $payload =~ \"tool_name\"\ *:\ *\"mcp__ && $payload == *merge* ]]; then
+if [[ $payload == *merge* && ( -z $tool || $tool == mcp__* ) ]]; then
   reason="Refused: no guard could judge whether this call merges a pull request, because $why, and the call mentions a merge. A session merges by arming auto-merge (\`enable_pr_auto_merge\`) while a check is pending (\`docs/maintainer.md\`; \`PL-NXRJ\`)."
   printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": %s}}\n' \
     "$(json_string "$reason")"

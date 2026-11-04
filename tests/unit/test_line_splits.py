@@ -24,10 +24,7 @@ subject holding a raw `\\r` read as two lines however it was split afterwards.
 So a runner reads bytes, decodes git's own records with
 `docket.lines.record_text` and translates only file content with `file_text`,
 and a call that turns text mode on is refused unless `TEXT_MODE_RUNNERS` names
-it with its reason. It reads `.py` files, so the Python embedded in
-`.claude/hooks/push-check-guard.sh` is outside its reach; that file's reads are
-`rev-parse` paths and `status --porcelain` without `-z`, which git C-quotes, so
-no raw `\\r` reaches them.
+it with its reason.
 """
 
 from __future__ import annotations
