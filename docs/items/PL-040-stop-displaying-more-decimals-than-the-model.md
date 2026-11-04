@@ -45,7 +45,7 @@ fidelity and shifts its decimal count as values grow, costing scannability.
 
 The objection that two decimals erases the slow-compartment wash-in does not
 survive the numbers. Over the first hour fat reads 0.00, 0.00, 0.00, 0.01,
-0.04, 0.08 and muscle 0.00, 0.00, 0.06, 0.16, 0.62, 1.25; both are legible
+0.04, 0.08 and muscle 0.00, 0.00, 0.06, 0.16, 0.62, 1.25. Both are legible
 trends. Fat at 60 s carries 0.003% of its equilibrium load, and `0.00%` is
 the truthful statement about it at any precision this model earns.
 
