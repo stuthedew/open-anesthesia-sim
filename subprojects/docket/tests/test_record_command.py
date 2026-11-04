@@ -19,6 +19,15 @@ def test_the_setting_is_read_and_empty_by_default(tmp_path: Path) -> None:
     assert load(tmp_path).record_command == "python3 copy.py"
 
 
+def test_the_directory_it_writes_is_read_in_one_spelling(tmp_path: Path) -> None:
+    """`record_dir` names where the command writes, so the claim check can admit it (`PL-QLNX`)."""
+    assert load(tmp_path).record_dir == ""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nrecord_dir = "./docs/hook-blocks/"\n', encoding="utf-8"
+    )
+    assert load(tmp_path).record_dir == "docs/hook-blocks"
+
+
 def test_the_command_s_output_is_printed(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
