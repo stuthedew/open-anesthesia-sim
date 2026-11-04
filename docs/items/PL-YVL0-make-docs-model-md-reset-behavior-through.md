@@ -3,11 +3,10 @@ id: PL-YVL0
 title: Make docs/MODEL.md § "Reset behavior" through § "Interface boundary" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
-blocked-by: PL-ZT47, PL-W8FL, PL-43GT, PL-22T5, PL-JP8X
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Reset behavior" "Agent-change behavior" "What a branch comparison asserts, and what it does not" "Interface boundary"
@@ -45,3 +44,5 @@ decided split. The mechanism that let the history and padding accumulate,
 or a sentence whose meaning needs their judgment.
 
 **Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
+
+**Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
