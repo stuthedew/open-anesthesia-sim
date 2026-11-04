@@ -3713,6 +3713,12 @@ reported, and the number stays written. This repository uses it to copy the
 local log of guard refusals into `docs/hook-blocks/` (`PL-SG93`). The merge
 form does not run it, because it repairs a closure that has already landed.
 
+Name the directory the command writes as `record_dir` in `docket.toml`. The
+claim check then counts it as a queue record, beside the items, so a branch
+that only triages and records its number owes no claim for what the command
+copied. Without the key, such a branch fails the claim check for a file outside
+the queue (`PL-QLNX`).
+
 **Which pull request closed an item is therefore a recorded fact, and nothing
 infers it** (`PL-HMZZ`, project owner, 2026-09-25, ratified, over commit-side
 recovery and over keeping the inference and closing the head spent). It used

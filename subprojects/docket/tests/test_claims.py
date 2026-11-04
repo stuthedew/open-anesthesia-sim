@@ -1710,6 +1710,37 @@ def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> 
     assert not in_queue("src/work.py", QUEUE)
 
 
+def test_a_branch_that_records_its_number_owes_no_claim_for_the_refusals_it_copied(
+    tmp_path: Path,
+) -> None:
+    """What `docket record` copies in is a queue record, as the items are (`PL-QLNX`).
+
+    On `#1994` a triage pass recorded its number, the record command copied
+    two guard refusals into the tree, and CI refused the branch for changing a
+    file outside the queue while claiming nothing.
+    """
+    queue = dataclasses.replace(QUEUE, record_dir="docs/hook-blocks")
+    assert queue_records(queue)[-1] == "docs/hook-blocks/"
+    assert in_queue("docs/hook-blocks/claude-triage-a1b2c3.tsv", queue)
+    assert not in_queue("docs/hook-blocks.md", queue)
+
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/triage-a1b2c3")
+    repo.commit(
+        "PL-B1B1: triage", when=T0, files={"docs/items/PL-B1B1-held.md": _item("PL-B1B1", "ready")}
+    )
+    repo.commit(
+        "PL-B1B1: record the pull request",
+        when=T0,
+        files={"docs/hook-blocks/claude-triage-a1b2c3.tsv": "time\tsession\tguard\trule\n"},
+    )
+
+    assert work_outside_queue(repo.root, "main", "HEAD", queue) is False
+    assert unclaimed(repo.root, holdings(repo.root, now=T0 + HOUR), queue) == Unclaimed()
+    # The same branch, read without the key, is the refusal `#1994` met.
+    assert work_outside_queue(repo.root, "main", "HEAD", QUEUE) is True
+
+
 def test_what_arms_on_green_is_everything_but_the_owners_read_list() -> None:
     """The store, the tooling and the records arm as before, and so does every path off the list."""
     items = QUEUE.items_dir

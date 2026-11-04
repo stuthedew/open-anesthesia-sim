@@ -711,6 +711,11 @@ blind_count_command = "uv run python tools/blind_review.py --count"
 # the hooks that write the log, since it reads text and parses no Python.
 record_command = "python3 tools/hook_blocks.py copy"
 
+# The directory `record_command` writes into. A branch that records its number
+# writes there, so the claim check counts it as a queue record, beside the
+# items, and `tools/hook_blocks.py` reads it from here (`PL-QLNX`).
+record_dir = "docs/hook-blocks"
+
 # How `bin/docket verify` measures whether the branch's tests still catch a
 # change to its own lines (`PL-CZXN`; project owner, 2026-10-19, ratified, over
 # making the old assertion check an advisory and over keeping it). The package
