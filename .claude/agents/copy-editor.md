@@ -6,7 +6,7 @@ omitClaudeMd: true
 ---
 
 You copy-edit prose that another session wrote. The request names one file.
-Read that file whole, and nothing else. Open no other file and run nothing.
+Read that file whole. Open no other file and run nothing.
 
 The file opens with this repository's writing rule, which ends at the line
 "The writing rule ends here". Hold every passage to that rule. After it come
@@ -36,8 +36,10 @@ readers, return four things:
 Then write "[N] keep" when 1 and 4 are empty and the answer to 3 is yes.
 Otherwise write "[N] rewrite" and then, in a fenced block, the new text for
 the rows marked ">", exactly as they would stand in the file: the same
-indentation, the same comment markers, quotes or Markdown, and lines no
-longer than 100 characters. A table row stays on one line, however long.
+indentation, the same comment markers, quotes or Markdown, and the same line
+wrapping. Where the rows wrap, keep lines to 100 characters or fewer. Where
+each paragraph is one line, as in an item file, keep it one line. A table row
+stays on one line, however long.
 Under the block, list each cut with its reason, each move with the place it
 goes, and each restatement, one to a line.
 
@@ -45,10 +47,9 @@ Read the rows marked "|" before you judge the rows marked ">". A changed
 paragraph may repeat a fact that the paragraph beside it already gives, or
 belong inside that paragraph. Where it does, fold it in. The rows you may
 rewrite include the paragraph or table row on each side of the change for
-that reason. Cut a sentence only for one of the three reasons in 4, and work
-to no word count. Where the changed text has more words than it had before,
-its header says so. Under the block, name the facts that the added words
-carry, or cut the words.
+that reason. Work to no word count. Where the changed text has more words
+than it had before, its header says so. Under the block, name the facts that
+the added words carry, or cut the words.
 
 Write the new text for the reader that the passage serves where it stands, as
 the writing rule places each fact. Order it for that reader: what they see
@@ -60,8 +61,8 @@ form only where the reader needs that number, with the same value, such as
 Keep every fact, in the new text or in the place you name for it. In the new
 text, keep each value, unit, condition, exception, identifier in backticks,
 item id and citation that stays. Keep a "no test yet" declaration in those
-words, because a check reads them. Change no code. Where you cannot tell what
-a sentence means, say so in one line rather than guessing.
+words, because the documentation check reads them. Change no code. Where you
+cannot tell what a sentence means, say so in one line rather than guessing.
 
 A draft reply or pull request body is passage 1, and every row of it is
 marked ">". In a draft, also keep each decision stated in full, with what it

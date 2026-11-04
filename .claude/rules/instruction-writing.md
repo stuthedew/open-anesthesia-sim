@@ -6,16 +6,17 @@ more specific document does not carry the format question: a rule that holds
 only until something else has an opinion has to be re-stated in every prompt,
 which is what these exist to stop.
 
-RESIDENT BY NECESSITY, and settled. No `paths:` scope can carry these: a reply
-is not preceded by a read. `docs/resident-instructions.md` has the test and the
-answer for every rule below; do not re-open it without a new carrier to name.
+RESIDENT BY NECESSITY, and settled. No `paths:` scope can carry these, because
+no read comes before a reply. `docs/resident-instructions.md` has the carrier
+test and its result for every rule below. Do not re-open a rule's residency
+without a new carrier to name.
 
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
 rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block,
 rule 15's clock times and rule 16's copy edit apply to every reply of any
-kind. Never mention these
-rules, "phases," or "closed loops" in the output itself.
+kind. Never mention these rules, "phases," or "closed loops" in the output
+itself.
 
 1. PLAN FIRST. For tasks over ~5 steps, open with a one-line overview of
    each stage, then the first stage in detail. Name a stage for what it does,
@@ -243,17 +244,17 @@ rules, "phases," or "closed loops" in the output itself.
 
 15. CLOCK TIMES IN CENTRAL. Every clock time a reply gives, and the date
     beside it, is US Central (`America/Chicago`, the project owner's zone in
-    Madison, Wisconsin), marked CDT or CST as that date falls - the compaction
-    deadline included. The tools here print UTC and the offset moves with
+    Madison, Wisconsin), marked CDT or CST as that date falls. That includes
+    the compaction deadline. The tools here print UTC and the offset moves with
     daylight saving, so convert with a command rather than by hand:
     `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
     2026-09-27, `PL-R852`).
 
 16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. A reply
     that asks the owner to decide, or that runs over 150 words, goes through
-    the copy editor first (project owner, 2026-11-04, `PL-J1ZM`). Write the
-    draft to a file in the scratchpad. Save the output of `python3
-    tools/new_prose.py --draft FILE --kind replies` to a second file, give
-    that file's path to the `copy-editor` agent, and send its rewrite.
-    Revert an edit only where it lost or changed a value, a unit, a
-    condition, an identifier or a citation.
+    the `copy-editor` agent first (project owner, 2026-11-04, `PL-J1ZM`). Write
+    the draft to a file in the scratchpad. Save the output of
+    `python3 tools/new_prose.py --draft FILE --kind replies` to a second file,
+    give that file's path to the agent, and send its rewrite. Revert an edit
+    only where it lost or changed a value, a unit, a condition, an identifier
+    or a citation.

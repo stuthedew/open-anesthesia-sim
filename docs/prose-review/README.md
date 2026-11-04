@@ -12,7 +12,7 @@ must keep (`PL-556C`), and the before-and-after pairs that the owner approved
   owner then rejected.
 - `gold/` holds one file for each paragraph that the owner named a gold
   standard. Without them, a review that flagged every paragraph would pass.
-- `runs/` holds one record for each run of the review on that set.
+- `runs/` holds one record for each run of the review on the test set.
   `tools/rejected_prose.py` writes them, and nothing else does.
 - `examples/` holds one file for each before-and-after pair that the owner
   approved. The copy editor is shown none of them until there are three
@@ -125,5 +125,5 @@ If it misjudges one, change the prompt and run the set again. `show` mixes the
 two kinds of entry in a fixed order, so a unit's position does not tell the
 copy editor which kind it is. `python3 tools/rejected_prose.py check` runs in
 `make check` and CI. It refuses a prompt with no run, or with a run that
-misjudged an entry, and a gold-standard entry that no run of the current prompt
-has read.
+misjudged an entry. It also refuses a gold-standard entry that no run of the
+current prompt has read.

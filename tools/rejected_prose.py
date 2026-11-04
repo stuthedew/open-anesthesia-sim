@@ -6,20 +6,20 @@ passage a branch changed, and the agent judges each one for its named reader.
 The owner is the only clinician who reads this project's prose. When the owner
 rejects a paragraph that the review passed, the paragraph becomes an entry
 in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
-set, and it must flag every entry, so the review cannot pass again a kind of text
-the owner has already turned down (`PL-FYGJ`, from `PL-H76S`'s design round).
-When the owner names a paragraph a gold standard, in those words, it becomes
-an entry in `docs/prose-review/gold/`, and the review must keep it. Without
-those entries, a review that flagged every paragraph would pass (`PL-556C`). A
-paragraph the owner finds acceptable, or says needs no change, stays out. A rewrite
-could still improve it, and the review must stay free to propose one (project
-owner, 2026-11-03).
+set, and the agent must flag every rejected entry, so the review cannot pass
+again a kind of text the owner has already turned down (`PL-FYGJ`, from
+`PL-H76S`'s design round). When the owner names a paragraph a gold standard, in
+those words, it becomes an entry in `docs/prose-review/gold/`, and the review
+must keep it. Without those entries, a review that flagged every paragraph
+would pass (`PL-556C`). A paragraph the owner finds acceptable, or says needs
+no change, stays out. A rewrite could still improve it, and the review must
+stay free to propose one (project owner, 2026-11-03).
 
 **An entry** is one Markdown file named `KIND-DATE-SLUG.md`. Its front matter
-gives `kind`, one of `FAILURE_KINDS`; `file`, the document the paragraph came
-from, which decides its readers through the table in
-`.claude/rules/plain-writing.md`; and `rejected`, the date of the owner's
-rejection. Its body has three sections and may have a fourth, as
+gives three fields. `kind` is one of `FAILURE_KINDS`. `file` is the document
+the paragraph came from, which decides its readers through the table in
+`.claude/rules/plain-writing.md`. `rejected` is the date of the owner's
+rejection. The entry's body has three sections and may have a fourth, as
 `REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them. The paragraph sits in a
 fenced block, exactly as it stood in its file. It must read as one unit of
 `MIN_WORDS` words or more, as `tools/new_prose.py` reads that file, because the
@@ -45,7 +45,7 @@ owner, 2026-11-03). The gold-standard entries count as one more kind under the
 same cap. The same bound then applies to the chance that the review flags a
 gold-standard paragraph.
 
-Three commands:
+The tool has three commands.
 
 - `show` prints what the reviewer is given. First comes the text of
   `.claude/rules/plain-writing.md`, as `tools/new_prose.py` prints it, then the
@@ -67,12 +67,12 @@ Three commands:
   tool is the only writer of those records.
 - `check` exits 1 when an entry does not parse, names a kind that
   `FAILURE_KINDS` does not hold, or names a file that no row of the reader table
-  names; when a kind holds more than `CAP_PER_KIND` entries; when a
-  gold-standard entry repeats a rejected paragraph or an accepted rewrite; when
-  the current prompt and readers have no run, or have a run that kept a rejected
-  entry, flagged a gold-standard one, or wrote a rewrite that does not parse as
-  its file; and when no run of them read a gold-standard entry. `make check` and
-  CI run it.
+  names. It also exits 1 when a kind holds more than `CAP_PER_KIND` entries, or
+  when a gold-standard entry repeats a rejected paragraph or an accepted
+  rewrite. It exits 1 when the current prompt and readers have no run, or have
+  a run that kept a rejected entry, flagged a gold-standard one, or wrote a
+  rewrite that does not parse as its file. Last, it exits 1 when no run of them
+  read a gold-standard entry. `make check` and CI run it.
 
 **What a run covers.** The prompt and the readers' rows are what tell the
 reviewer what to look for, so a change to either needs a new run. A new
@@ -441,11 +441,11 @@ def rewrites(reply: str) -> dict[int, tuple[str, ...]]:
 
 
 def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[Entry]) -> list[str]:
-    """Each way the run called `name` fails the entries it `read`, from its `reply`.
+    """Each problem with how the run named `name` judged the entries it `read`, from its `reply`.
 
-    `entries` is the set as it stands now. A verdict on an entry that has since
-    been deleted, as the cap deletes the oldest, is still judged, but a rewrite
-    of it is not parsed, because its file is no longer known.
+    `entries` is the set as it stands now. A verdict on an entry deleted since,
+    such as the oldest entry of a kind that reached its cap, is still judged. A
+    rewrite of it is not parsed, because its file is no longer known.
     """
     try:
         given = verdicts(reply, len(read))

@@ -1,12 +1,13 @@
 """`tools/rejected_prose.py` must refuse a prompt change that no run of the test set has tested.
 
-The set holds paragraphs the owner rejected after the close-out prose review
-passed them (`PL-FYGJ`), and paragraphs the owner named gold standards
-(`PL-556C`). These tests pin what an entry must hold, how the copy editor's
-verdicts and rewrites are read, and when `check` refuses: no run for the
-current prompt and readers, a run that kept a rejected entry or flagged a
-gold-standard one, a gold-standard entry that no run read or that repeats
-another entry's text, and a kind above its cap.
+The prompt is the copy-editing agent's instructions, `.claude/agents/copy-editor.md`.
+The test set holds paragraphs that the project owner rejected after a review
+passed them (`PL-FYGJ`), and paragraphs the owner named gold standards, which
+a review must keep (`PL-556C`). These tests pin what an entry must hold, how
+the agent's verdicts and rewrites are read, and when `check` refuses: no run
+for the current prompt and reader rows, a run that kept a rejected entry or
+flagged a gold-standard one, a gold-standard entry that no run read or that
+repeats another entry's text, and a kind of failure above its cap.
 """
 
 from __future__ import annotations

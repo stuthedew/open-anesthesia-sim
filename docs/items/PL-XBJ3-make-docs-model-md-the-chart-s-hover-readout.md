@@ -45,6 +45,6 @@ or a sentence whose meaning needs their judgment.
 
 **Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
 
-**Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
+**Ready, 2026-11-04.** All four have closed, so the rewrite can be done now, and the copy editor edits it at close-out step 8.
 
-**Checked 2026-11-04.** Its completion test named § "Minimum displayed outputs", which runs to § "Assumptions" and so also covered the sections of `PL-J37P`, `PL-PS5H` and `PL-XT53`. It now names this item's four sections.
+**Checked 2026-11-04.** Its `verify:` command named § "Minimum displayed outputs", which runs to § "Assumptions" and so also covered the sections of `PL-J37P`, `PL-PS5H` and `PL-XT53`. It now names this item's four sections.

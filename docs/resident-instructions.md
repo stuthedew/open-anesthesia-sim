@@ -799,19 +799,19 @@ it is sent, the same agent that edits a branch's prose at close-out
 (`PL-J1ZM` part 3, `PL-22T5`).
 
 **The carrier test.** No check or hook reads a reply before it is sent, so
-disposition 1 cannot hold it. A long reply can come in any session, at no
-skill's trigger, so disposition 2 cannot. A reply is not preceded by a read,
-which rules out a `paths:` scope. Resident is what is left.
+disposition 1 cannot enforce it. A long reply can come in any session, at no
+skill's trigger, so disposition 2 cannot carry it either. A reply is not
+preceded by a read, which rules out a `paths:` scope. Resident is what is left.
 
 **Why nothing is cut.** No resident sentence said to review a reply before
-sending it. Rule 13 asks that a decision request fit on one screen, which is
-a property of the reply and stays, since the copy editor cuts only repeated,
-wordy or misplaced sentences and sets no length.
+sending it. Rule 13 asks that a decision request fit on one screen. That
+stays, because it is a property of the reply, and the copy editor cuts only
+repeated, wordy or misplaced sentences and sets no length.
 
-**What it costs and what should retire it.** About 580 characters, with the
-scope line. It retires if the harness gains a hook that can hand a reply to
-the agent before it is sent, or if the owner judges edited replies no better
-than unedited ones.
+**What it costs and what should retire it.** Rule 16 costs about 580
+characters, with its words in the scope line. Rule 16 retires if the harness
+gains a hook that can hand a reply to the agent before it is sent, or if the
+owner judges edited replies no better than unedited ones.
 
 ## `## Compact Instructions`, added 2026-10-01
 

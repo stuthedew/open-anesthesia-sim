@@ -6,8 +6,8 @@ tool's output to a file and hands that file to the copy-editor agent,
 instructions, so the output opens with the text of
 `.claude/rules/plain-writing.md`, and the agent reads that one file and
 nothing else. Each tool call a subagent makes costs another turn at its full
-starting context, so an agent that reads one file costs about two turns
-(`PL-PRCS`, `PL-22T5`).
+context. On its first branch the agent read 29 passages in four reads of
+this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
 **Which files are read.** A Markdown or Python file is read when a row of the
 rule's reader table names it, itself or by its directory, so the table decides
@@ -29,11 +29,11 @@ from the default branch to the working tree, and includes files that git does
 not track yet, as `tools/diff_mutation.py` reads it. A file that is new on the
 branch has every line changed.
 
-**What is reviewed.** Each passage that `changed_passages` finds, when it has
-`MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure, short units
-were awkward in 25% of verdicts and long ones in 61%, so the long ones are
-where a review pays (project owner, 2026-10-18, ratified, `PL-PRCS`). In a
-Markdown file, the copy editor reads the passage's whole section, from the
+**What is reviewed.** Each passage that `changed_passages` finds is reviewed
+when it has `MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure,
+short units were awkward in 25% of verdicts and long ones in 61%, so the long
+ones are where a review pays (project owner, 2026-10-18, ratified, `PL-PRCS`).
+In a Markdown file, the copy editor reads the passage's whole section, from the
 heading above it to the next heading. It may rewrite the passage and the one
 unit on each side of it inside that section, so it can fold new text into the
 paragraph beside it. It may not rewrite the rest of the section, because
@@ -50,15 +50,15 @@ in code spans, where a span ending in "/" is a directory. The report lists the
 readers of every file it prints a passage from, and each passage names its
 readers, so the copy editor judges it for the reader it is for (`PL-R7Q6`).
 
-**`--draft FILE --kind WORDS` reviews a reply or a pull request body before it
-is sent.** It prints the rule, the reader rows whose first cell contains WORDS,
-and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1 when no row's
-first cell contains WORDS.
-
 Exits 0 when it read the diff, whether or not it printed a passage. A changed
-file that will not parse is named in a "Not read" line, so a partial answer is
+file that will not parse is named in a "Not read" line, so a partial result is
 never given as a whole one. Exits 1 when the diff could not be read or the
 default branch is unknown.
+
+**`--draft FILE --kind WORDS` prepares a reply or a pull request body for review
+before it is sent.** It prints the rule, the reader rows whose first cell
+contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
+when no row's first cell contains WORDS.
 
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
@@ -78,22 +78,22 @@ not parse, because a count that skipped a file is not a count.
 
 **`--compare` sets each passage the branch changed beside the text it
 replaced, and lists the facts the branch removed** (`PL-JP8X`). A passage is
-the units that one hunk of the diff reaches, widened to whole paragraphs,
-table rows, docstrings or comments on both sides, and hunks parted only by
-blank lines make one passage. It is printed with its words on the default
-branch and now, whatever its length, unless only its spacing changed. A whole
-section is not the passage, because `docs/MODEL.md` § "Displayed precision"
-runs to about 8,000 words, where a growth of 50 would not show. Then, for each
-file, it lists each equation, "no test yet" declaration, code span, citation,
-number, item id and date that the file held at the fork and holds fewer times
-now, read as `tools/model_rewrite.py` reads a fact. A Python file's facts are
-read from its prose alone, on the rows where it stands. Facts are counted per
-file, so a fact moved to another section, such as the note for developers,
-prints nothing, and one the branch added to an item file is marked `moved`.
-On `PL-ZDZ0` a passage grew from 163 words to about 210 and no review round
-said so, and a trial copy editor rewrote a "no test yet" declaration as
-"untested" (`PL-J1ZM`). This mode reads the working tree, and exits as the
-default mode does.
+the units that one hunk of the diff touches, widened to whole paragraphs,
+table rows, docstrings or comments on both sides. Hunks parted only by blank
+lines make one passage. It is printed with its words on the default branch and
+now, whatever its length, unless only its spacing changed. A whole section is
+not the passage, because `docs/MODEL.md` § "Displayed precision" runs to about
+8,000 words, where a growth of 50 words would not show. Then, for each file, it
+lists each equation, "no test yet" declaration, code span, citation, number,
+item id and date that the file held at the fork and holds fewer times now, read
+as `tools/model_rewrite.py` reads a fact. A Python file's facts are read from
+its prose alone, on the rows where it stands. Facts are counted per file, so a
+fact moved to another section, such as the note for developers, prints
+nothing. A fact that the file lost and the branch added to an item file is
+marked `moved`. On `PL-ZDZ0` a passage grew from 163 words to about 210 and no
+review round said so, and a trial copy editor rewrote a "no test yet"
+declaration as "untested" (`PL-J1ZM`). This mode reads the working tree, and
+exits as the default mode does.
 """
 
 from __future__ import annotations
@@ -141,7 +141,8 @@ MIN_WORDS = 30
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: The copy editor's agent definition, whose body is its prompt. This file is
 #: the prompt's one home, and `tools/rejected_prose.py` tests each change to it
-#: against the paragraphs the owner rejected (`PL-FYGJ`, `PL-22T5`).
+#: against the paragraphs the owner rejected or named gold standards (`PL-FYGJ`,
+#: `PL-556C`, `PL-22T5`).
 PROMPT = ROOT / ".claude" / "agents" / "copy-editor.md"
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
@@ -154,6 +155,8 @@ READER_HEADER = (
 
 #: How many lines of code to print above and below a Python unit, so the copy
 #: editor can see what an "it" or a name points at without opening the file.
+#: A higher number lengthens the file the copy editor reads. `PL-PRCS` set it
+#: at 4 and recorded no reason for that number (`PL-22T5`).
 CONTEXT_ROWS = 4
 
 
@@ -320,10 +323,10 @@ def branch_prose(
 ) -> Found:
     """The long units changed between the fork from `base` and the working tree.
 
-    Only a file that a row of `table` names is read, and `table` is the rule's
-    own where it is not given. With `committed`, the units changed between the
-    fork and `HEAD`, read from the commits alone, so an uncommitted edit counts
-    for nothing.
+    Only a file that a row of `table` names is read, and `table` defaults to the
+    reader table in the rule. With `committed`, it returns the units changed
+    between the fork and `HEAD`, read from the commits alone, so an uncommitted
+    edit counts for nothing.
     """
     table = rule_table() if table is None else table
     fork, against = doc_check._diff_from(root, base)
@@ -511,9 +514,9 @@ class Comparison:
 def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Comparison:
     """The passages the branch changed and the facts it removed, from the fork to the working tree.
 
-    Only a file that a row of `table` names is read, and `table` is the rule's
-    own where it is not given. A passage counts as changed when its words
-    differ, so text reflowed onto other lines is not a change.
+    Only a file that a row of `table` names is read, and `table` defaults to the
+    reader table in the rule. A passage counts as changed when its words differ,
+    so text reflowed onto other lines is not a change.
     """
     table = rule_table() if table is None else table
     fork, against = doc_check._diff_from(root, base)

@@ -1,10 +1,12 @@
 """`tools/new_prose.py` must print the long prose a branch changed, inside its section.
 
-The copy editor reads only this tool's output, so a passage this tool leaves
-out is never reviewed and nothing says so. These tests pin which files the
-reader table names, which units count as changed, the word threshold, which
-rows the copy editor may rewrite, and the lines that name a file the tool did
-not review or could not read.
+The copy-editing agent, `.claude/agents/copy-editor.md`, reads only this
+tool's output, so a passage this tool leaves out is never reviewed and nothing
+says so. These tests pin which files the reader table in
+`.claude/rules/plain-writing.md` names, which paragraphs, table rows,
+docstrings and comments count as changed, the word threshold, which rows the
+agent may rewrite, and the lines that name a file the tool did not review or
+could not read.
 """
 
 from __future__ import annotations
