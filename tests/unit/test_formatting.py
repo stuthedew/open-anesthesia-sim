@@ -387,14 +387,12 @@ def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
 
 
 def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
-    """The two units are read side by side, so neither may out-claim the other.
+    """Check that no MAC step is finer than the percent step beside it.
 
-    This is the property that the derivation in the test above exists to
-    guarantee, stated as a reader meets it. For every shipped agent, one count
-    of the MAC line is at least one count of the percent line above it. If
-    that failed, a reader could watch the MAC digit move while the percent
-    digit stayed still. The reader could then conclude that the model resolves
-    a difference that it does not.
+    For every shipped agent, one step of the MAC readout, in percentage points,
+    must be at least one step of the percent readout.
+    `test_the_mac_digit_can_move_alone_at_a_rounding_boundary` covers the
+    rounding boundaries, where the MAC digit can move alone.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -404,6 +402,46 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
         assert one_mac_count_in_percentage_points >= CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, (
             f"{agent_id}: the MAC line resolves finer than the percent line"
         )
+
+
+def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
+    """Show the MAC readout changing while the percent readout beside it does not.
+
+    `docs/MODEL.md` § "Displayed precision" says this can happen. Each pair sits
+    0.001 percentage points below and above 0.015 MAC, where the MAC readout
+    changes from 0.01 to 0.02. The expected strings were worked by hand from the
+    stored MAC:
+
+    - Sevoflurane, MAC 2.0%: 0.029% and 0.031% are 0.0145 and 0.0155 MAC.
+      Both read 0.03%.
+    - Isoflurane, MAC 1.2%: 0.017% and 0.019% are 0.0142 and 0.0158 MAC.
+      Both read 0.02%.
+    - Desflurane, MAC 6.0%: 0.089% and 0.091% are 0.0148 and 0.0152 MAC.
+      Both read 0.09%.
+
+    A changed stored MAC, or an agent with no entry in `cases`, fails the test.
+    """
+
+    # agent: (MAC used in the hand calculation, lower percent, upper percent,
+    #         percent readout for both, MAC readout below, MAC readout above)
+    cases = {
+        "sevoflurane": (2.0, 0.029, 0.031, "0.03%", "0.01 ×MAC", "0.02 ×MAC"),
+        "isoflurane": (1.2, 0.017, 0.019, "0.02%", "0.01 ×MAC", "0.02 ×MAC"),
+        "desflurane": (6.0, 0.089, 0.091, "0.09%", "0.01 ×MAC", "0.02 ×MAC"),
+    }
+
+    assert set(cases) == set(AGENT_DATA_FILENAMES)
+    for agent_id, (mac, lower, upper, percent_text, mac_below, mac_above) in cases.items():
+        mac_percent = load_agent_parameters(agent_id).mac_percent
+        assert mac_percent == mac, f"{agent_id}: the stored MAC moved; rework the example"
+
+        lower_fraction = fraction_from_percent(Percent(lower))
+        upper_fraction = fraction_from_percent(Percent(upper))
+
+        assert format_percent(lower_fraction) == percent_text
+        assert format_percent(upper_fraction) == percent_text
+        assert format_mac_multiple(lower_fraction, mac_percent) == mac_below
+        assert format_mac_multiple(upper_fraction, mac_percent) == mac_above
 
 
 def test_one_mac_of_every_agent_reads_as_one() -> None:

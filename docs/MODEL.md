@@ -10280,20 +10280,11 @@ of ten at or above it.
 `test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
 arithmetic for every shipped agent.
 
-One count of the MAC line is therefore 0.02 percentage points of sevoflurane,
-0.012 of isoflurane and 0.06 of desflurane. That is coarser than the percent
-readout beside it for every agent. This property keeps the two units from
-contradicting each other. A reader must never be able to watch the MAC digit
-move while the percent digit stays still. That would assert that the model
-resolved something it does not. The unit conversion does not preserve
-information across agents. That is why the MAC resolution is uniform in MAC
-rather than being the percent resolution restated. A per-agent MAC resolution
-would put different magnitudes at the same glyph position. That is the failure
-that "Why the resolution is uniform rather than per-compartment" rejects below,
-arriving across agents instead of across compartments.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` enforces the
-property that one count of the MAC line is coarser than one count of the
-percent for every agent. The three figures above have no test yet (`PL-19W8`).
+The smallest change the MAC readout can show is therefore 0.02 percentage points
+of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane, never less than the
+percent readout's. The two readouts round separately, so the MAC value can
+occasionally change while the percent stays the same. The three per-agent
+figures have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
 The below-resolution form applies to the MAC line for the same reason it
