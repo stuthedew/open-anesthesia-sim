@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, perf
 feature: guards-say-when-they-cannot-check
-touches: tools/pr_body_check.py, .claude/hooks/guard.py, tests/unit/test_pr_body_check.py
+touches: tools/pr_body_check.py, tools/email_screen.py, .claude/hooks/guard.py, .claude/hooks/git/pre-push, tests/unit/test_pr_body_check.py, tests/unit/test_email_screen.py, docs/apparatus.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
 payoff: every MCP call is about 150 ms cheaper, and a rename inside docket can no longer switch off the email guard
