@@ -3,11 +3,11 @@ id: PL-XBJ3
 title: Make docs/MODEL.md § "The chart's hover readout: what the tooltip may show" through § "The compartment schematic: what its heights, amounts and share bar assert" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
-blocked-by: PL-ZT47
+blocked-by: PL-ZT47, PL-W8FL, PL-43GT, PL-22T5, PL-JP8X
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Minimum displayed outputs"
@@ -43,3 +43,5 @@ decided split. The mechanism that let the history and padding accumulate,
 `tools/model_rewrite.py lost` prints. The owner reads it only where
 `PL-ZTZF`'s rule sends it: a changed value, equation, code span or citation,
 or a sentence whose meaning needs their judgment.
+
+**Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
