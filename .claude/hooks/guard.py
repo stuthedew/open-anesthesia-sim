@@ -34,7 +34,11 @@ does not start here, unless that test names it with a reason.
 function that takes the call's JSON as text and returns the hook output: a
 refusal built by `hook_input.deny`, a note, or "" to let the call through.
 The guards' outputs are merged into one: a refusal from any guard refuses
-the call, and every reason and note is kept.
+the call, and every reason and note is kept. A guard may instead rewrite the
+call's input, as the owner-ask guard does (`PL-X4MD`). The rewrite goes out
+only where no guard refuses the call, and where two guards rewrite one call,
+the call goes out unchanged with a note saying so, since neither rewrite saw
+the other's.
 
 **A deadline is a backstop.** Claude Code cancels a hook at its `timeout` and
 discards its output, so a guard still running then would let the call through
@@ -58,6 +62,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from types import FrameType
+from typing import NamedTuple
 
 HOOKS = Path(__file__).resolve().parent
 TOOLS = HOOKS.parents[1] / "tools"
@@ -205,10 +210,19 @@ def unchecked(guard: str, why: str) -> str:
     return f"The {guard} hook could not check this call, so it let the call through: {why}."
 
 
-def judged(guards: tuple[Guard, ...], payload: str) -> tuple[list[str], list[str]]:
-    """The reasons for refusing the call and the notes to add, from every guard in `guards`."""
+class Judged(NamedTuple):
+    """What every guard of a group decided about one call, merged."""
+
+    refusals: list[str]
+    notes: list[str]
+    rewrite: dict[str, object] | None
+
+
+def judged(guards: tuple[Guard, ...], payload: str) -> Judged:
+    """The reasons for refusing the call, the notes to add and the rewrite, from `guards`."""
     refusals: list[str] = []
     notes: list[str] = []
+    rewrites: list[tuple[str, dict[str, object]]] = []
     for guard in guards:
         try:
             found = _verdict(guard, payload)
@@ -222,6 +236,8 @@ def judged(guards: tuple[Guard, ...], payload: str) -> tuple[list[str], list[str
                 refusals.append(found.refusal)
             if found.note is not None:
                 notes.append(found.note)
+            if found.rewrite is not None:
+                rewrites.append((guard.name, found.rewrite))
             continue
         try:
             reason = guard.unjudged(payload, why) if guard.unjudged is not None else None
@@ -233,7 +249,11 @@ def judged(guards: tuple[Guard, ...], payload: str) -> tuple[list[str], list[str
             refusals.append(reason)
         else:
             notes.append(unchecked(guard.name, why))
-    return refusals, notes
+    if len(rewrites) > 1:
+        names = ", ".join(name for name, _ in rewrites)
+        notes.append(f"The guards {names} each rewrote this call, so it went out unchanged.")
+        return Judged(refusals, notes, None)
+    return Judged(refusals, notes, rewrites[0][1] if rewrites else None)
 
 
 def main(argv: list[str]) -> int:
@@ -249,15 +269,18 @@ def main(argv: list[str]) -> int:
         event = "PreToolUse"
     guards = selected(name)
     if guards is None:
-        refusals: list[str] = []
-        notes = [unchecked(f"`{name}`", "no group or guard has that name in `guard.py`")]
+        found = Judged(
+            [], [unchecked(f"`{name}`", "no group or guard has that name in `guard.py`")], None
+        )
     else:
         # Each guard is still run on a call it cannot read, since the merge
         # guard refuses one that mentions a merge.
-        refusals, notes = judged(guards, payload)
+        found = judged(guards, payload)
         if not isinstance(call, dict):
-            notes.append(unchecked(name, "the call it was handed is not a JSON object"))
-    sys.stdout.write(hook_input.output(event, refusals=refusals, notes=notes))
+            found.notes.append(unchecked(name, "the call it was handed is not a JSON object"))
+    sys.stdout.write(
+        hook_input.output(event, refusals=found.refusals, notes=found.notes, rewrite=found.rewrite)
+    )
     return 0
 
 

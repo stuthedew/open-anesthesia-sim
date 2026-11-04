@@ -13,7 +13,6 @@ Reviewing them for a parser or string method that does the job better is
 """
 
 GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
-    ".claude/hooks/owner_ask_guard.py": {("<module>", "compile"): 1, ("plain", "sub"): 1},
     ".claude/hooks/shell_split.py": {("<module>", "compile"): 2},
     ".claude/hooks/thread_hooks.py": {("_matches", "fullmatch"): 1},
     "src/anesthesia_sim/app/agent_cost.py": {("<module>", "compile"): 1},
@@ -116,9 +115,6 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tests/unit/test_inline_reference.py": {("<module>", "compile"): 1},
     "tests/unit/test_item_store_guard.py": {("<module>", "compile"): 1},
     "tests/unit/test_makefile_reference.py": {("<module>", "compile"): 2},
-    "tests/unit/test_owner_ask_guard.py": {
-        ("test_the_hook_is_wired_on_every_projects_tool", "search"): 1
-    },
     "tests/unit/test_quality_step_order.py": {
         ("<module>", "compile"): 12,
         (

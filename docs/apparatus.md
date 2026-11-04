@@ -746,6 +746,13 @@ names `gh`, that call is refused (`PL-3986`). `guard.sh` gives the same note, or
 `tests/unit/test_guard.py` fails any hook in `.claude/settings.json` that does
 not start at `guard.sh`, unless the test names the hook with its reason.
 
+A guard may rewrite a call instead of refusing it. The owner-ask guard adds the
+recorded question to a thread's message about a pull request that waits on the
+owner's read (`PL-X4MD`). `hook_input.output` sends a rewrite as
+`updatedInput` with `permissionDecision: "allow"`, and only where no guard
+refuses the call. Where two guards rewrite one call, it goes out unchanged
+with a note, since neither rewrite saw the other's.
+
 Three Python files in the directory hold no rule of their own.
 `hook_input.py` reads the payload and builds every refusal, as the next
 paragraph says. `thread_hooks.py` copies the repository's
