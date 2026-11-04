@@ -149,41 +149,61 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
     return output("PreToolUse", refusals=[reason])
 
 
-def output(event: str, *, refusals: Sequence[str] = (), notes: Sequence[str] = ()) -> str:
-    """The hook output for `event` that refuses the call and adds context, or "" for neither.
+#: The reason given with a rewrite's `allow`, which Claude Code shows the
+#: session beside the call.
+REWRITE_REASON = "A guard rewrote this call's input; its note says what changed."
+
+
+def output(
+    event: str,
+    *,
+    refusals: Sequence[str] = (),
+    notes: Sequence[str] = (),
+    rewrite: dict[str, object] | None = None,
+) -> str:
+    """The hook output for `event` that refuses or rewrites the call and adds context, or "".
 
     The reasons in `refusals` are joined into one refusal, and `notes` into
-    one `additionalContext`, each with a blank line between. This is the one
-    place a hook's output is built, and `verdict` the one place it is read, so
-    `guard.py` can merge what several guards return (`PL-9KSJ`). The fields are
-    the ones https://code.claude.com/docs/en/hooks § "PreToolUse decision
-    control" documents, read 2026-11-03.
+    one `additionalContext`, each with a blank line between. `rewrite` is the
+    call's whole new input. It goes out as `updatedInput` with
+    `permissionDecision: "allow"`, and only where nothing refuses the call, so
+    a refusal from any guard still stops a rewritten call (`PL-X4MD`). This is
+    the one place a hook's output is built, and `verdict` the one place it is
+    read, so `guard.py` can merge what several guards return (`PL-9KSJ`). The
+    fields are the ones https://code.claude.com/docs/en/hooks § "PreToolUse
+    decision control" documents, read 2026-11-03.
     """
-    fields = {"hookEventName": event}
+    fields: dict[str, object] = {"hookEventName": event}
     if refusals:
         fields["permissionDecision"] = "deny"
         fields["permissionDecisionReason"] = "\n\n".join(refusals)
+    elif rewrite is not None:
+        fields["permissionDecision"] = "allow"
+        fields["permissionDecisionReason"] = REWRITE_REASON
+        fields["updatedInput"] = rewrite
     if notes:
         fields["additionalContext"] = "\n\n".join(notes)
     return json.dumps({"hookSpecificOutput": fields}) if len(fields) > 1 else ""
 
 
 class Verdict(NamedTuple):
-    """What one hook's output says: the reason it refuses the call, and the note it adds."""
+    """What one hook's output says: why it refuses the call, its note, and its rewrite."""
 
     #: The reason for refusing the call, or `None` where it does not refuse.
     refusal: str | None
     #: The context it adds for the session, or `None` where it adds none.
     note: str | None
+    #: The call's whole new input, or `None` where it leaves the input alone.
+    rewrite: dict[str, object] | None = None
 
 
 def verdict(text: str) -> Verdict:
     """What `text`, one hook's output, says; "" says nothing.
 
     Raises `ValueError` where `text` is not output `output` could have built:
-    not JSON, a key other than `hookSpecificOutput`, or a decision other than
-    a refusal. A guard that prints something else has failed, and `guard.py`
-    says so.
+    not JSON, a key other than `hookSpecificOutput`, a decision other than a
+    refusal or a rewrite's `allow`, or an `allow` with no `updatedInput`. A
+    guard that prints something else has failed, and `guard.py` says so.
     """
     if not text:
         return Verdict(None, None)
@@ -192,13 +212,19 @@ def verdict(text: str) -> Verdict:
     if not isinstance(fields, dict) or set(parsed) != {"hookSpecificOutput"}:
         raise ValueError(f"it printed {text[:200]!r}, which is not a hook's JSON")
     decision = fields.get("permissionDecision")
-    if decision not in (None, "deny"):
-        raise ValueError(f"it returned the decision {decision!r}, where only a refusal is merged")
+    if decision not in (None, "deny", "allow"):
+        raise ValueError(
+            f"it returned the decision {decision!r}, where only a refusal or a rewrite is merged"
+        )
+    rewrite = fields.get("updatedInput")
+    if decision == "allow" and not isinstance(rewrite, dict):
+        raise ValueError("it returned `allow` with no `updatedInput`, which only a rewrite may")
     reason = fields.get("permissionDecisionReason") if decision == "deny" else None
     note = fields.get("additionalContext")
     return Verdict(
         (reason if isinstance(reason, str) else "") if decision == "deny" else None,
         note if isinstance(note, str) and note else None,
+        rewrite if decision == "allow" and isinstance(rewrite, dict) else None,
     )
 
 

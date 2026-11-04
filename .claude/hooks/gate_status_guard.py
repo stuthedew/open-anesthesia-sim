@@ -152,8 +152,8 @@ nothing, and sent a bare read ask. Listing it as a gate would not have helped,
 since the remedy above keeps the status and still cuts the output. So any
 pipe after it is refused, directly or around a group, with or without
 `pipefail`, and the remedy is to run it alone. A copy written to a file and
-read back short is a known gap; `.claude/hooks/owner_ask_guard.py` refuses
-the ask that such a read would send.
+read back short is a known gap; `.claude/hooks/owner_ask_guard.py` attaches
+the recorded question to the message that such a read would send.
 
 **A dry run is no gate run** (`PL-RC4S`). `make -n check` - `-n` spelled
 `--just-print`, `--dry-run` or `--recon` too - prints each recipe and runs

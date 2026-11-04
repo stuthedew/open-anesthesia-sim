@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 feature: owner-ask-by-state
-touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md
+touches: .claude/hooks/owner_ask_guard.py, .claude/hooks/hook_input.py, .claude/hooks/guard.py, .claude/hooks/gate_status_guard.py, subprojects/docket/src/docket/arming.py, tests/unit/test_owner_ask_guard.py, tests/unit/test_guard.py, tools/regex_baseline.py, docs/maintainer.md, docs/resident-instructions.md, docs/apparatus.md
 added: 2026-11-04
 payoff: every Projects message about a pull request that waits on the owner arrives carrying the recorded question, or a plain line that none is recorded, and no progress note is ever refused for its wording
 verify: grep -q 'def test_an_ask_about_a_waiting_pull_request_carries_the_recorded_question' tests/unit/test_owner_ask_guard.py
