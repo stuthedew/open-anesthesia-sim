@@ -1,0 +1,27 @@
+---
+id: PL-HXF0
+title: doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
+status: untriaged
+feature: one-source-of-truth
+added: 2026-11-03
+---
+
+**Problem.** doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
+
+**Found 2026-11-03, building `PL-1ZZ0`.** In `tools/doc_check.py`,
+`_absent_paths` scopes each `absent:` marker in an item brief with
+`_marked_span`, which returns only the block directly above the marker. Under a
+list, that block is the last list item. `_marked_scope` reaches back over the
+whole list, and its docstring says a marker under a list is the only way to
+tie an earlier item, because a marker cannot stand inside a list item. The
+`provenance:` and `derived:` readers use `_marked_scope`. In
+`PL-SG93`'s brief, a marker under a two-item list did not cover the first item,
+so the check reported both a missing marker and a marker with nothing to mark.
+
+**Why it matters.** Two readers of one fact, what a marker covers, give two
+answers. A brief that names a deleted file in an earlier list item has no
+marker placement that the check accepts.
+
+**Done when.** `_absent_paths` reads the marker's scope from `_marked_scope`,
+and a test puts a deleted path in the first of two list items with the marker
+under the list and finds no error.
