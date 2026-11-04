@@ -10147,12 +10147,12 @@ runs it, and `tests/unit/test_contrast_check.py` pins the figures. Run it with
 
 ### Displayed precision
 
-Every modeled concentration and relative partial pressure is displayed at a
-fixed resolution of **0.01 percentage points**, which is two decimals of a
-percent. The resolution is the same across all six compartments. The
-delivered-agent setting uses the same resolution, both in the readout beside
-its slider and in the slider's own drag label. So the value a reader dials and
-the values it produces are read at one scale. A positive value that would round
+Every modeled concentration and relative partial pressure, in all six
+compartments, is displayed at a fixed resolution of **0.01 percentage
+points**, which is two decimals of a percent. The delivered-agent setting uses
+the same resolution, in the readout beside its slider and in the label shown
+while the slider is dragged, so the value a reader dials and the values it
+produces are read at one scale. A positive value that would round
 to `0.00%` is displayed as `<0.01%` rather than as zero.
 `test_format_percent_uses_the_documented_display_resolution` enforces the
 resolution, and `test_format_percent_marks_a_value_below_the_resolution`
@@ -10642,7 +10642,7 @@ are read against each other, delivered against exhausted plus stored. They are
 also read against a reader's sense of scale. So they take one uniform
 resolution, on the same argument as the readouts above. The readouts'
 derivation perturbs one stored coefficient by one published SD. Doing the same
-here moves the exhaust total by 0.016 to 0.042 L at 3600 s, and by 0.18 to
+here moves the exhausted total by 0.016 to 0.042 L at 3600 s, and by 0.18 to
 0.23 L at the 24 h supported limit. By agent, the shifts are sevoflurane 0.024
 and 0.19 L, isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L. The
 blood:gas coefficient dominates throughout. These shifts were measured at
@@ -10696,19 +10696,17 @@ refused, rather than shown at a default.
 
 **The exhausted total in millilitres of liquid is shown in whole
 millilitres.** The exhausted total carries the partition coefficients'
-uncertainty, so in liquid it must not claim a finer resolution than in litres
-of vapour. Otherwise a reader who switches the unit sees the model resolve a
-difference in one unit that it does not resolve in the other. So its liquid
-count is derived from the litre's, the way the MAC count is derived from the
-percent's. It is the finest power of ten that resolves no finer than one count
-of the litre display converted into liquid. At the 20 °C reference of
-§ "Agent amount", 0.1 L of vapour is 0.55 mL of sevoflurane liquid, 0.51 mL of
-isoflurane and 0.48 mL of desflurane. So 1 mL is the finest power of ten at or
-above all three. The parameter spread gives the same answer independently. At
-24 h the exhaust total's shift is 0.19 L of sevoflurane vapour, 0.18 L of
-isoflurane and 0.23 L of desflurane. Each agent's own ratio makes that 1.04,
-0.92 and 1.10 mL of liquid. One count of 1 mL is then about one SD, and 0.1 mL
-would be a tenth of one.
+uncertainty, so it must not claim a finer resolution in millilitres of liquid
+than in litres of vapour. Otherwise a reader who switches the unit would see
+the model resolve a difference in one unit that it does not resolve in the
+other. One step of the litre display, 0.1 L of vapour, is 0.55 mL of
+sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane at the
+20 °C reference of § "Agent amount". The smallest power of ten at or above all
+three is 1 mL. The partition coefficients give the same answer. One published
+SD of a coefficient moves the exhausted total at 24 h by 0.19 L of sevoflurane
+vapour, 0.18 L of isoflurane and 0.23 L of desflurane, as derived above for
+the litre display. In liquid that is 1.04, 0.92 and 1.10 mL. One step of 1 mL is therefore
+about one SD, and a step of 0.1 mL would be a tenth of one.
 `test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
 repeats the conversion for every shipped agent from the stored molar mass and
 density.
@@ -10870,19 +10868,20 @@ and a fiftieth. One figure would print fat's amount in steps of 1000 mL by
 chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-The uniform resolution of the readouts does not carry over, for two reasons.
-"Why the resolution is uniform rather than per-compartment" rests first on the
-parameters' uncertainty being absolute across the row. For the amounts it is
-relative, as above. It rests second on a row of values scanned by glyph
-position. The schematic's amounts are labels on separate containers, each
-followed by its unit, and the comparison of amounts that the schematic
-invites is made on the share bar, along one scale. An amount below 0.01 mL
-reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`
+The readouts' uniform resolution does not carry over to the schematic's
+compartment amounts, for two reasons. § "Why the resolution is uniform rather
+than per-compartment" rests first on the parameters' uncertainty being
+absolute across the row of readouts. For the amounts it is relative, as above.
+It rests second on the readouts being compared side by side, where different
+numbers of decimals would put different magnitudes at the same digit position.
+The schematic's amounts are labels on separate containers, each followed by
+its unit, and the schematic compares amounts on the share bar, along one
+scale. An amount below 0.01 mL reads `<0.01 mL vapour`, and exactly zero reads
+`0 mL vapour`
 (`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
-A finer floor
-would print four or more decimals for a moment's worth of agent. The floor is
-a legibility choice and a placeholder, and it is coarse in the allowed
-direction.
+A limit finer than 0.01 mL would print four or more decimals for a moment's
+worth of agent. The 0.01 mL limit is a provisional choice made for legibility.
+It may understate the model's precision, but never overstates it.
 
 **A compartment's share is shown in whole percent.** One SD of a coefficient
 moves a compartment's share by at most 1.2 percentage points, in isoflurane's
