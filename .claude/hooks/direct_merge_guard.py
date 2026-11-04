@@ -87,14 +87,9 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import urllib.parse
-from pathlib import Path
 
 import hook_input
-
-#: Where the tools live, so the guard can read the repository's one GitHub client.
-TOOLS = Path(__file__).resolve().parents[2] / "tools"
 
 ROUTE = (
     "A session merges by arming auto-merge (`enable_pr_auto_merge`) while a check is pending. "
@@ -122,20 +117,10 @@ class Refused(Exception):
         self.why = why
 
 
-def _tools_on_path() -> None:
-    """Put `tools/` on the path, for the repository's one GitHub client, `open_pull_requests`.
-
-    It is imported only once a call is taken for a merge, because it loads
-    docket's git reader, and this guard runs before every MCP call.
-    """
-    if str(TOOLS) not in sys.path:
-        sys.path.insert(0, str(TOOLS))
-
-
 #: Seconds the guard waits for each of its two reads of GitHub. Both reads
 #: together must finish inside the deadline `guard.py` gives this guard, which
 #: the entry point's test checks (`PL-KJN6`, `PL-9KSJ`).
-READ_TIMEOUT_S = 15
+MERGE_READ_TIMEOUT_S = 15
 
 
 def record(path: str) -> object:
@@ -147,12 +132,15 @@ def record(path: str) -> object:
     """
     import urllib.request
 
-    _tools_on_path()
+    # `open_pull_requests`, the repository's one GitHub client, is imported only
+    # once a call is taken for a merge, because it loads docket's git reader,
+    # and this guard runs before every MCP call. `guard.py` puts `tools/` on
+    # the path.
     import open_pull_requests
 
     root = os.environ.get("DIRECT_MERGE_GUARD_API") or open_pull_requests.GITHUB_API
     request = open_pull_requests.api_request(root + path, agent="direct-merge-guard")
-    with urllib.request.urlopen(request, timeout=READ_TIMEOUT_S) as response:
+    with urllib.request.urlopen(request, timeout=MERGE_READ_TIMEOUT_S) as response:
         answer: object = json.load(response)
     return answer
 
@@ -173,7 +161,6 @@ def own_repository() -> str | None:
     failed. The caller then judges every merge.
     """
     try:
-        _tools_on_path()
         import open_pull_requests
 
         return open_pull_requests.repo_slug()

@@ -76,12 +76,6 @@ import hook_input
 #: The events after a Bash call. Any other event, or none, is read as an edit's.
 AFTER_BASH = ("PostToolUse", "PostToolUseFailure")
 
-#: The exit status of `--hint` and `--hint-changed` where nothing was asked,
-#: so the question waits for the next edit or Bash call. `NOT_ASKED` in
-#: `tools/branch_id_check.py` is the owner; this hook cannot import that file
-#: without starting docket, which the spent-marker path must not pay for.
-NOT_ASKED = 3
-
 #: The start of the one line of docket's standard error that is kept: the
 #: floor refusal, so a session below docket's Python floor is told why it
 #: hears nothing.
@@ -184,6 +178,12 @@ def decide(payload: str) -> str:
             target = _edited_path(fields)
             if target:
                 hint = run(["python3", str(check), "--hint", target])
+        # `NOT_ASKED` is the exit status of `--hint` and `--hint-changed` where
+        # nothing was asked, so the question waits for the next edit or Bash
+        # call. It is imported here, after the check has run, because the file
+        # starts docket, which the spent-marker path above must not pay for.
+        from branch_id_check import NOT_ASKED
+
         if hint is not None and hint.returncode != NOT_ASKED and _create(claim):
             if hint.returncode == 0:
                 if hint.stdout.strip():

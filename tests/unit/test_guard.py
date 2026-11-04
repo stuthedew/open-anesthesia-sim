@@ -192,7 +192,7 @@ def test_each_deadline_covers_the_waits_its_guard_sets() -> None:
     deadline = {guard.name: guard.deadline_s for guard in EVERY_GUARD}
     assert deadline["push-check-guard"] > push_check_guard.DEADLINE
     assert deadline["owner_ask_guard"] > owner_ask_guard.ARM_TIMEOUT_S
-    assert deadline["direct-merge-guard"] > 2 * direct_merge_guard.READ_TIMEOUT_S
+    assert deadline["direct-merge-guard"] > 2 * direct_merge_guard.MERGE_READ_TIMEOUT_S
 
 
 @pytest.mark.parametrize("guard", EVERY_GUARD, ids=lambda guard: guard.name)
