@@ -135,10 +135,15 @@ the smallest, because a paragraph you cut needs no sentence edit.
      it add to that point and do not say it again.
    - Cut words that mean little, words that repeat another word's meaning, and
      words the reader can infer. Replace a phrase with a word where one word
-     will do.
+     will do. Do not use the same word or say the same thing in two
+     neighbouring sentences, unless the word is a term the text must keep.
    - Use each word in its everyday sense, as the writing rule's third point
      asks. Where the text gives a word a private sense, such as a sentence that
      "holds" a rule or an item that "owes" a link, say plainly what happens.
+   - Give each term or rule that could seem abstract one short example the
+     reader knows, taken from the file: "a list that promises one entry per
+     member, such as the hazard table". Where the file gives no example,
+     query one rather than invent it.
    - Where the reader would not know a term, use a plainer word rather than add
      a definition. Where the file gives no plainer word, the sentence that
      contains the term usually belongs to the other reader: move it there, and
