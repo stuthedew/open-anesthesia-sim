@@ -162,3 +162,7 @@ and 7.
 missing sentence read as a scientific-transparency gap; with the sentence
 written, and written as a measured paragraph with its sources, there is no gap
 left for the reclassification to describe.
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Known limitations", the note on cardiac output and the perfusion fractions under anesthesia, when `PL-9331` took the decision history out of that section:
+
+> **This is the model's current position, not a closed question.** [...] `PL-8GV5` records how this was decided. The measurements here are a session's, and the direction is the project owner's (2026-09-13).
