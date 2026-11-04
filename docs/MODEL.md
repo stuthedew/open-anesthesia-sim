@@ -10309,11 +10309,11 @@ occasionally change while the percent stays the same. The three per-agent
 figures have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-A positive MAC multiple below 0.01 reads `<0.01 ×MAC`, and this matters more on
-the MAC line than on the percent line. A compartment clears 0.01 MAC later than
-it clears 0.01 percentage points, so `0.00 ×MAC` beneath a percent line that
-already shows the compartment filling would make the two readouts contradict
-each other.
+A positive MAC multiple below the resolution reads `<0.01 ×MAC`, and this
+matters more on the MAC line than on the percent line. A compartment clears
+0.01 MAC later than it clears 0.01 percentage points, so `0.00 ×MAC` beneath a
+percent line that already shows the compartment filling would make the two
+readouts contradict each other.
 
 **For developers.**
 `test_format_mac_multiple_marks_a_value_below_the_resolution` enforces that
@@ -10341,50 +10341,58 @@ differ, and must still look identical on the display.
 
 #### Comparing two readouts
 
-**A gap between two readouts is as accurate as either reading.** Within one
-step, the model never updates a compartment from a value that the same step has
-already changed.
+**Solver error does not make the gap between two readouts less accurate than
+either reading.** Within one time step, the model updates every compartment
+from the values it had at the start of that step. Rounding does make the gap
+less accurate. Each reading is rounded to its last displayed digit, so a gap
+taken from two readings can differ from the true gap by up to one count of that
+digit.
 
 The six compartment readouts and the clock sit in one row of seven panels, where
 seven fit, so that the readouts can be read *in order*: the circuit leads the
 alveoli, and the alveoli lead the tissues. § "The readout row's width condition"
-below says what happens when seven panels do not fit. Solver error could corrupt
-that reading only by reversing which of two compartments is displayed as higher.
-A measurement compared every pair of the six readouts at every step, over every
-trajectory in "Independent-solution test" and all three agents, which is
-1 485 000 pair comparisons. The simulator's readings and those of the
-independent solution **never** disagree about the displayed order, anywhere, at
-any gap (re-measured 2026-10-17).
+below says what happens when seven panels do not fit. Solver error could mislead
+that reading only by reversing which of two compartments is shown as higher. A
+measurement compared every pair of the six readouts at every time step, in every
+run that § "Independent-solution test" describes and for all three agents, which
+is 1 485 000 pair comparisons. The simulator's readings **never** disagreed with
+those of the independent solution about which compartment is higher, even where
+the gap was tiny (measured 2026-10-17).
 
 That is a measurement on one platform, not a guarantee. Rounding to a fixed
-number of decimals never reverses the order of two values. A reversal on the
-display therefore needs the two solutions to put the two compartments in
-opposite order, which needs a true gap smaller than the two compartments' solver
-errors added together. The largest difference between the two solutions in any
-pair's gap, measured anywhere, is $`1.1\times10^{-12}`$ as a fraction, and true
-gaps that small do occur while two compartments cross. So a reversal is
-arithmetically possible there, though none was observed.
+number of decimals never reverses the order of two values. So the display can
+show two compartments in the wrong order only where the simulator and the
+independent solution put them in opposite order. That needs a true gap smaller
+than the two compartments' solver errors added together. The largest difference
+between the two solutions in any pair's gap, over every run, is
+$`1.1\times10^{-12}`$ as a fraction, not a percent, and true gaps that small do
+occur while two compartments cross. A reversal is arithmetically possible
+there, though none was observed.
 
-So the interface adds no warning or marker when readouts are compared. A reader
-who compares them in order, as the row is designed for, cannot be misled by
-solver error. A reader who subtracts two of them is doing arithmetic that the
-interface does not do, and the paragraph above states the limit for that reader.
+The interface therefore adds no warning or marker when readouts are compared. A
+reader who compares them in order, as the row is designed for, can be misled by
+solver error only about two compartments that are crossing, whose true gap is
+far smaller than one count of the last digit. The interface shows no gap between
+two readouts. A gap that a reader works out by subtracting two readings carries
+the rounding of both, described at the start of this subsection, and the solver
+limit in the paragraph above.
 
-**For developers.** Two tests enforce the ordering claim, and each can fail on
-its own half of the path from the model to the readout.
+**For developers.** Two tests enforce the ordering claim. Each covers one half of
+the path from the model to the readout and can fail on its own.
 `test_exact_step_matches_the_independent_solution_everywhere` bounds the
-solver's error. `test_format_percent_preserves_order` in
-`tests/unit/test_formatting.py` checks that the shipped formatter never shows a
-higher fraction as a lower percent, across its "<0.01%" reading below the
-resolution and on both sides of every display-count boundary. Together they mean
-that no inversion can occur at a true gap above twice the first test's
-tolerance, which is $`1.0\times10^{-7}`$ counts.
-`test_displayed_ordering_reverses_only_at_a_crossing` is the trajectory
-measurement quoted above, and it reads each value through the shipped
-`format_percent`. It keeps a threshold rather than asserting zero inversions,
-because an inversion is reachable at a crossing. It enforces the same threshold
-but cannot fail unless one of the two tests fails, so it is the measurement and
-not the evidence.
+solver's error against the independent solution.
+`test_format_percent_preserves_order` in `tests/unit/test_formatting.py` checks
+that the shipped formatter never shows a higher fraction as a lower percent. It
+covers the "<0.01%" reading below the display resolution and both sides of every
+value at which the last displayed digit changes. Together the two tests mean that
+no reversal can occur at a true gap above $`1.0\times10^{-7}`$ counts, which is
+twice the first test's tolerance.
+`test_displayed_ordering_reverses_only_at_a_crossing` is the measurement of every
+run quoted above, and it reads each value through the shipped `format_percent`.
+It allows a reversal where the true gap is below that same threshold, instead of
+asserting that none occurs, because a reversal is possible at a crossing. It
+cannot fail unless one of the other two tests fails, so it records the
+measurement and adds no evidence of its own.
 
 #### One resolution for all six readouts
 
@@ -10434,36 +10442,32 @@ neither.
   stacked.
 
 **The window opens maximized, so the row opens at the widest rung the screen
-affords.** The window's normal size, which a reader gets back on un-maximizing,
-is a fixed fraction of the screen's available area, centred. Maximized, the row
-gets the screen's available width less the window's own frame, which is enough
-for seven across on a 1366 px laptop, one of the commonest screen widths there
-is. Maximized, that screen offers the row about 1320 px, and a 1280 px screen
-offers it about 1234 px, so both open on seven (measured 2026-09-27, on the same
-font). Maximized is not full screen, which the interface does not start in. The
-title bar and window controls stay, and on macOS it is the zoomed window.
-Maximized is also the default window state of the reference design that the
-interface follows (`docs/interface-provenance.md` § "Adopted"). A reader who
-un-maximizes gets the fraction back and meets the ladder above. A screen too
-narrow for seven across at its full width still opens below the widest rung,
-because maximizing changes which rung a screen affords, never the rule that
-decides it.
+affords.** Maximized, the readout region gets the screen's available width less
+the window's own frame. A 1366 px laptop screen, one of the commonest widths,
+opens on seven across, as the paragraph after next measures. A 1280 px screen
+gives the region about 1234 px (measured 2026-09-27, with the tests' font).
+Whether it still opens on seven, now that the control-change record shares the
+region as described below, has no test yet (`PL-LKX7`).
+
+Maximized is not full screen. The title bar and window controls stay, and on
+macOS the window is zoomed. Maximized is also the default window state of the
+reference design that the interface follows (`docs/interface-provenance.md`
+§ "Adopted"). A reader who un-maximizes gets the window's normal size back,
+which is a fixed fraction of the screen's available area, centred. At that size
+the row steps down the ladder above wherever its width requires. A screen too
+narrow for seven across even when maximized opens on a lower rung, because
+maximizing changes the row's width, never the rule that picks the rung.
 
 **The row's width follows the window, never an Area.** The readouts sit in a
 region above the layout container that the Areas replace (§ "Minimum displayed
 outputs" -> "What this list requires once the layout is the reader's"). So a
 split, a join, a border drag or a Workspace switch never changes the width that
-the row is laid out at. Two things do change it: the window's width, and how the
-region divides that width. The region holds the runs' rows in a left column and
-the control-change record in a right column, which take 0.82 and 0.18 of the
-width. Those were the shares of the chart panel's Area and the sidebar's Area in
-the layout that the dashboard first opened on, so the record was as wide as the
-sidebar beneath it. The dashboard now opens on the Workspaces that ship with it,
-whose Areas divide the width differently, and the region keeps its own shares so
-that a Workspace switch cannot change the row's width. The left column never
-narrows below its own minimum width. At whatever width that leaves, every rung
-lays each panel out at its full reserved width, so no value is wrapped away from
-its unit.
+the row is laid out at. Only two things change it: the window's width, and how
+the region divides that width. The region holds the runs' rows in a left column
+and the control-change record in a right column, which take 0.82 and 0.18 of the
+width. The left column never narrows below its own minimum width. At every rung,
+each panel is laid out at its full reserved width, so no value is wrapped away
+from its unit.
 <!-- not-restated: 0.18 -->
 
 **A 1366 px window opens on seven columns, with one run or two** (measured
@@ -10483,6 +10487,10 @@ window with `showMaximized()` over a normal geometry of `WINDOW_SCREEN_FRACTION`
 of the screen's available area. The readouts are in
 `SimulationView.unconditional_region`, and `wrapping_between_parts` wraps the
 control-change record.
+The region's two shares are those of the chart panel's Area and the sidebar's
+Area in the layout that the dashboard first opened on, which made the record as
+wide as the sidebar beneath it. The Workspaces that now ship divide the width
+differently, and the region keeps its own shares.
 `test_every_readout_reserves_a_qualifier_line_and_an_equal_column` enforces the
 column count and the one-column span.
 `test_the_readout_row_reflows_where_its_panels_stop_fitting` reads the step-down
