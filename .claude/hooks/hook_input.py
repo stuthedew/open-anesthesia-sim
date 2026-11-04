@@ -37,6 +37,13 @@ from typing import NamedTuple
 #: `tools/effort_trial.py` both read it from here.
 PROJECTS_ENTRYPOINT = "remote_projects"
 
+#: The values of `CLAUDE_CODE_ENTRYPOINT` in a session that loads the
+#: repository's `.claude/settings.json` itself, so `thread_hooks.py` copies
+#: nothing there. `remote_desktop` is an ordinary cloud session's, read from
+#: one on 2026-10-26 (`PL-CR81`), and `cli` is the terminal's. A session
+#: start with any other value says the hooks were not copied (`PL-KW5K`).
+LOADS_PROJECT_SETTINGS = frozenset({"remote_desktop", "cli"})
+
 #: Where each guard's refusals are logged, one line each, on this machine. It
 #: is outside every checkout, so a refusal in one clone is still counted when
 #: another clone records a pull request. `HOOK_BLOCK_LOG` overrides it, which

@@ -143,7 +143,7 @@ GROUPS: dict[str, tuple[Guard, ...]] = {
     "pre-mcp": (
         # Past its two reads of GitHub (`MERGE_READ_TIMEOUT_S` each).
         Guard("direct-merge-guard", "direct_merge_guard", deadline_s=40, unjudged=merge_unjudged),
-        Guard("pr-body-email-guard", "pr_body_check"),
+        Guard("pr-body-email-guard", "email_screen"),
         # Past the 45 seconds it gives `bin/docket arm` (`ARM_TIMEOUT_S`).
         Guard("owner_ask_guard", "owner_ask_guard", deadline_s=55),
     ),

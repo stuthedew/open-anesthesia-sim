@@ -119,9 +119,6 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tests/unit/test_owner_ask_guard.py": {
         ("test_the_hook_is_wired_on_every_projects_tool", "search"): 1
     },
-    "tests/unit/test_pr_body_check.py": {
-        ("test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script", "compile"): 1
-    },
     "tests/unit/test_quality_step_order.py": {
         ("<module>", "compile"): 12,
         (
@@ -170,7 +167,7 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tools/model_home_check.py": {("<module>", "compile"): 1},
     "tools/model_rewrite.py": {("<module>", "compile"): 9},
     "tools/possessive_section_check.py": {("<module>", "compile"): 1},
-    "tools/pr_body_check.py": {("<module>", "compile"): 4},
+    "tools/pr_body_check.py": {("<module>", "compile"): 3},
     "tools/rejected_prose.py": {
         ("<module>", "compile"): 1,
         ("rewrites", "sub"): 1,

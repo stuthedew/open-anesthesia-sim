@@ -41,9 +41,19 @@ read theirs, so a push in a subshell, after `&&` or behind `timeout` counts
 and one in a heredoc's text, a comment or a quoted message does not - though
 one in a `$( )` in an unquoted heredoc's body runs, and counts (`PL-P95F`). A
 push that sends nothing is skipped: `--delete`, `-d`, a `:<branch>` refspec,
-`--dry-run` and `-n`. `--no-verify` is the one exemption, which the refusal
-offers for a work-in-progress push to a branch with no pull request open,
-since `quality.yml` runs no CI on one.
+`--dry-run` and `-n`.
+
+**A work-in-progress push skips the checks, and only the checks.** A push to a
+branch with no pull request open runs no CI, since `quality.yml` runs only on
+a pull request, so the refusal offers it: written `PUSH_CHECKS=skip git push
+...`, with the assignment ahead of `git` in the same command, it goes out
+unchecked. `--no-verify` used to be that exemption, but it also skips the
+`pre-push` git hook, which since `PL-1ZZ0` refuses a push that deletes a remote
+branch and screens the pushed commits for an email address. So a push with
+`--no-verify` is refused, naming the assignment, and the assignment leaves the
+`pre-push` hook to run (`PL-5R11`). An assignment spelled any other way, such
+as `export` on an earlier line or `env PUSH_CHECKS=skip git push`, is not read,
+and the push is checked as any other.
 
 **Which tree**: the push's own - the payload's `cwd`, moved by any `cd`
 before the push and by the push's `-C` options - and only where git's common
@@ -105,7 +115,10 @@ if TYPE_CHECKING:
 PUSH_VALUED = frozenset(
     ("--repo", "--recurse-submodules", "--receive-pack", "--exec", "--push-option")
 )
-SENDS_NOTHING = frozenset(("--delete", "--dry-run", "--no-verify"))
+SENDS_NOTHING = frozenset(("--delete", "--dry-run"))
+# The assignment ahead of `git push` that skips the checks for a
+# work-in-progress push, and leaves the `pre-push` git hook to run (`PL-5R11`).
+SKIP_CHECKS = "PUSH_CHECKS=skip"
 READS_THE_TREE = frozenset(
     (
         "doc_check",
@@ -294,16 +307,39 @@ def unfinished_note(unfinished: list[str]) -> str:
     )
 
 
-def push_targets(command: str, where: str) -> list[str | None]:
-    """The directory each push in `command` runs in, or None where it cannot be followed."""
+def skips_hooks(words: list[str]) -> bool:
+    """Whether a git push skips git's `pre-push` hook: its last `--verify` or `--no-verify` says.
+
+    Read up to a `--`, past which every word is a remote or a refspec.
+    """
+    args = words[1:]
+    _, at = own_options(args)
+    verdict = False
+    for word in args[at + 1 :]:
+        if word == "--":
+            break
+        if word in ("--verify", "--no-verify"):
+            verdict = word == "--no-verify"
+    return verdict
+
+
+def push_targets(command: str, where: str) -> tuple[list[str | None], bool]:
+    """The directory of each push in `command` to check, and whether any push skips git's hooks.
+
+    A directory is None where it cannot be followed. A push written after
+    `SKIP_CHECKS` is a work-in-progress push and has no directory to check.
+    """
     targets: list[str | None] = []
+    unhooked = False
     cwd: str | None = where
     for words in shell_split.commands(command):
         if words[0] == "cd":
             cwd = moved(cwd, words[-1] if len(words) > 1 else "~")
         elif is_git(words) and sends(words):
-            targets.append(directory(words, cwd))
-    return targets
+            unhooked = unhooked or skips_hooks(words)
+            if SKIP_CHECKS not in words.assignments:
+                targets.append(directory(words, cwd))
+    return targets, unhooked
 
 
 def decide(payload: str) -> str:
@@ -311,7 +347,20 @@ def decide(payload: str) -> str:
     call = hook_input.bash_call(payload)
     if call is None:
         return ""
-    targets = push_targets(call.command, call.cwd or os.getcwd())
+    targets, unhooked = push_targets(call.command, call.cwd or os.getcwd())
+    if unhooked:
+        return hook_input.deny(
+            "push-check-guard",
+            "no-verify",
+            "This push is refused because `--no-verify` skips the `pre-push` git hook, "
+            "which refuses a push that deletes a remote branch and screens the pushed "
+            "commits for an email address, and a commit is public once GitHub has it "
+            "(`PL-5R11`). Push without `--no-verify`. A work-in-progress push to a branch "
+            f"with no pull request open may skip the checks this guard runs: write `{SKIP_CHECKS}` "
+            f"ahead of git in the same command, as `{SKIP_CHECKS} git push -u origin <branch>`. "
+            "The `pre-push` hook still runs.",
+            payload,
+        )
     if not targets:
         return ""
 
@@ -398,6 +447,7 @@ def decide(payload: str) -> str:
     reason += (
         "\n\nFix what it names, commit, and push again. A work-in-progress push to "
         "a branch with no pull request open runs no CI, and only that push may go "
-        "out unchecked, with `git push --no-verify`."
+        f"out unchecked, written `{SKIP_CHECKS} git push -u origin <branch>`. The "
+        "`pre-push` git hook still screens it (`PL-5R11`)."
     )
     return hook_input.deny("push-check-guard", "checks-failed", reason, payload)
