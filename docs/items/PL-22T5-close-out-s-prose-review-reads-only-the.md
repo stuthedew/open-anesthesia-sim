@@ -3,12 +3,14 @@ id: PL-22T5
 title: Close-out's prose review reads only the paragraphs a branch changed and caps each rewrite at the old paragraph's length, so it cannot fold new text into the unchanged paragraph beside it and sets no cap on a new paragraph; PL-ZDZ0's three rounds took its MAC passage from 381 to 366 words, while a rewrite of the whole passage reached 260 with every value kept
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: reader-first-prose
 touches: tools/new_prose.py, tools/rejected_prose.py, tests/unit/test_new_prose.py, tests/unit/test_rejected_prose.py, docs/prose-review/prompt.md, docs/prose-review, .claude/agents/copy-editor.md, .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, docs/apparatus.md, docs/resident-instructions.md, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2017
 payoff: a fix branch can shorten the passage it touches, and every cut arrives with its reason, so sections stop growing between rewrites
 verify: grep -qF 'new_prose.py --draft' .claude/skills/pull-request/SKILL.md && grep -rqF --include=copy-editor.md 'name: copy-editor' .claude/agents && grep -rqF '"prompt": "a901b76da0cbe0a310010e004e6f05145489a6ec69f844a0916c26f6645ad477"' docs/prose-review/runs
 ---
