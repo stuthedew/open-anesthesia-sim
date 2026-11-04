@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: copy-editor
 touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py
-deferred-from: v0.7.0 - a workflow-lane generator, ranked by its generator tier rather than by the gate
 added: 2026-11-04
 payoff: a passage the copy editor passes is one its reader can act on without padding, so the rewrites it reviews stop growing
 verify: grep -qi 'do without' .claude/agents/copy-editor.md && grep -q 'def section_report' tools/new_prose.py && grep -q '^## Judging edits blind' docs/prose-review/README.md
@@ -30,6 +29,6 @@ misread: that a passage the copy editor passed is plain enough for its reader
 2. **Debug on the repository's own text, one section at a time.** Run the copy editor on one section, judge its edit as a professional editor would, find why any edit falls short, fix the instructions and rerun. Then take the next section. Judge each section as a whole as well as paragraph by paragraph, and include some whole documents. Include good sections, which it should leave nearly alone. Start with the five sections in `root-cause-of`, and stop when five sections in a row need no fix. Record each section's result and fix in this item. The edits stay in scratch. Those sections' own items apply them once the copy editor is back.
 3. **Confirm on sections it was not tuned on.** A separate judge, run blind, compares the originals with the edits. No single count, such as words, decides a verdict.
 
-The session judges throughout, and the owner does not review edits (project owner, 2026-11-04: "That's what you are for. You are the copy editor"). The copy editor returns to use only when the owner agrees (`PL-HJFX`). Two earlier forms of this paragraph, a fixed stress test and then a 20-passage set the owner would sample, were superseded the same day.
+The session judges each edit (project owner, 2026-11-04: "That's what you are for. You are the copy editor"). Once a debug section's edit is tentatively final, the session also sends it to the owner with the text before and after, what was wrong, and what it changed and why (project owner, 2026-11-04 20:42Z: "run debug sections by me once you have a tentative finalized version"). It starts the next section without waiting for his verdict, as his brief at 20:17Z asked, and a verdict that finds a fault reopens that section and the count of five. The copy editor returns to use only when the owner agrees (`PL-HJFX`). Two earlier forms of this paragraph, a fixed stress test and then a 20-passage set the owner would sample, were superseded the same day.
 
 **Generator check.** This item is a head: the copy editor reviews every rewrite, and the five rewrites in `root-cause-of` wait on it. It is a second head beside `PL-J1ZM`, whose misread fact is what a reader can do without; this one is that a copy editor pass proves the text plain.
