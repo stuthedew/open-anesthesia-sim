@@ -30,13 +30,23 @@ A passage comes in one of three shapes, and its header says which:
 - A draft reply or pull request body, with every row marked ">".
 
 A request whose prose opens with "Second read." holds text that has had one
-copy edit. Edit it by the same steps, as an editor's second pass over their
-own work: fix each sentence that still breaks a step, and each slip that the
-first edit made. Leave each choice of the first edit that follows the steps.
-The text before the first edit follows the passages. In step 7, compare your
-edit with that text for its facts and claims: put back a fact that the first
-edit lost, and correct a claim that it changed. Do not put back the earlier
-wording.
+copy edit. Audit that edit as a second editor who did not make it, before you
+change anything:
+
+1. Read the edit one paragraph at a time, as each paragraph's reader. Check
+   that the paragraph serves that reader, that its first sentence states its
+   one point, and that it holds nothing step 4 sends to another reader, such
+   as a test or file name in a paragraph for a clinician.
+2. Then read it one sentence at a time, from the first sentence to the last.
+   Hold each sentence to every rule of step 5 and every check of step 7.
+3. Compare each paragraph with the text before the first edit, which follows
+   the passages, for its facts and claims.
+
+Under the block, list each fault the audit finds: quote the sentence, name the
+rule it breaks, and give the fix. Then fix exactly those faults. Put back a
+fact that the first edit lost and correct a claim that it changed, but do not
+put back the earlier wording. A sentence with no fault stays as the first edit
+left it. Where the audit finds no fault, return "[N] keep".
 
 A file can have more than one reader. Edit each paragraph for the reader it
 serves where it stands. In `docs/MODEL.md`, a paragraph above a note that opens
@@ -162,7 +172,10 @@ the smallest, because a paragraph you cut needs no sentence edit.
      reading it from a data file."
    - Put a condition before the instruction it governs. Say who does what. Use
      the verb rather than the noun made from it: "we analyze the data", not
-     "we conduct an analysis of the data". Prefer the positive form.
+     "we conduct an analysis of the data". Prefer the positive form. Make
+     the subject something that can do what the verb says: "A figure names
+     the test that computes it" gives a figure a writer's act, and "A sentence
+     that gives a figure names the test" does not.
    - A bold opening phrase states its paragraph's point. The sentences after
      it add to that point and do not say it again.
    - Cut words that mean little, words that repeat another word's meaning, and
