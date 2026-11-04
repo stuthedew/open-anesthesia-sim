@@ -83,7 +83,10 @@ the smallest, because a paragraph you cut needs no sentence edit.
      what is not relied on, a test or tool name in a paragraph for a clinician,
      a reason the reader cannot act on, and what the reader already knows.
    - **Another reader's.** Another reader needs the fact and looks for it
-     elsewhere. Name that place. In `docs/MODEL.md` it is the note for
+     elsewhere. Name that place. A rule addressed to the people who write or
+     change the text, such as how to word, mark or cite a statement, is
+     another reader's: give this reader what the rule guarantees them, and
+     move the rule itself. In `docs/MODEL.md` it is the note for
      developers at the end of the section, and you move the fact there yourself
      when that note is in the ">" rows. The note runs from "**For
      developers.**" to the next heading, so open only its first paragraph with
@@ -96,6 +99,8 @@ the smallest, because a paragraph you cut needs no sentence edit.
      such as "(project owner, 2026-09-14)", beside the decision it records.
      When you move a paragraph's detail, leave in this reader's text the
      sentence they need from it, such as what the detail guarantees them.
+     Edit what you move as you edit the rest, for its new reader, and cut
+     what repeats once it is there.
    - **Wordy.** It uses more words than its fact needs. Shorten it in step 5.
 
    Never cut a fact this reader needs to act correctly: a value with its unit,
@@ -110,26 +115,37 @@ the smallest, because a paragraph you cut needs no sentence edit.
    Merge paragraphs that make the same point, split a paragraph that makes two,
    and put each passage where its reader will look for it.
 
-5. **Fix the sentences and words.** Make one point per sentence, with its
-   subject and verb early and close together. Never leave a list, an example
-   or a clause between a subject and its verb, because the reader must hold
-   the subject until the verb arrives. "A value that the model computes from
-   the patient's weight, the agent's MAC and the fresh gas flow, rather than
-   reading it from a data file, is marked as derived" makes the reader wait
-   for "is marked". Write "A value is marked as derived when the model
-   computes it from the patient's weight, the agent's MAC and the fresh gas
-   flow, rather than reading it from a data file." Put a condition before the
-   instruction it governs. Say who does what. Use the verb rather than the noun
-   made from it: "we analyze the data", not "we conduct an analysis of the
-   data". Prefer the positive form. Cut words that mean little, words that
-   repeat another word's meaning, and words the reader can infer. Replace a
-   phrase with a word where one word will do. Where the reader would not know a
-   term, use a plainer word rather than add a definition. Where the file gives
-   no plainer word, the sentence that holds the term usually belongs to the
-   other reader: move it there, and leave this reader an example they know,
-   such as one named item from a list of unfamiliar ones. Restate a number in
-   the reader's form only where the reader needs that number, with the same
-   value, such as 4e-4 as 0.04%.
+5. **Line-edit your draft, one sentence at a time.** Once the structure is
+   settled, go through your draft from its first sentence to its last,
+   including every sentence you kept from the original, and apply each rule
+   below to each sentence before you move to the next.
+   - Make one point per sentence, with its subject and verb early and close
+     together. Never leave a list, an example or a clause between a subject
+     and its verb, because the reader must hold the subject until the verb
+     arrives. "A value that the model computes from the patient's weight, the
+     agent's MAC and the fresh gas flow, rather than reading it from a data
+     file, is marked as derived" makes the reader wait for "is marked". Write
+     "A value is marked as derived when the model computes it from the
+     patient's weight, the agent's MAC and the fresh gas flow, rather than
+     reading it from a data file."
+   - Put a condition before the instruction it governs. Say who does what. Use
+     the verb rather than the noun made from it: "we analyze the data", not
+     "we conduct an analysis of the data". Prefer the positive form.
+   - A bold opening phrase states its paragraph's point. The sentences after
+     it add to that point and do not say it again.
+   - Cut words that mean little, words that repeat another word's meaning, and
+     words the reader can infer. Replace a phrase with a word where one word
+     will do.
+   - Use each word in its everyday sense, as the writing rule's third point
+     asks. Where the text gives a word a private sense, such as a sentence that
+     "holds" a rule or an item that "owes" a link, say plainly what happens.
+   - Where the reader would not know a term, use a plainer word rather than add
+     a definition. Where the file gives no plainer word, the sentence that
+     contains the term usually belongs to the other reader: move it there, and
+     leave this reader an example they know, such as one named item from a
+     list of unfamiliar ones.
+   - Restate a number in the reader's form only where the reader needs that
+     number, with the same value, such as 4e-4 as 0.04%.
 
 6. **Query a missing fact, and do not supply it.** Where this reader needs a
    fact that the file does not give, do not write it from your own knowledge,
