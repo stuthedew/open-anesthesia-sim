@@ -1,16 +1,9 @@
 ---
 id: PL-QLNX
 title: bin/docket record copies the guard refusal log into docs/hook-blocks/, which the claim check counts as work outside the queue, so a queue-only branch that records its pull request fails CI's claim check
-priority: P2
-effort: S
-status: ready
-classes: defect
+status: untriaged
 feature: guard-refusal-log
-touches: subprojects/docket/src/docket/vcs.py, tools/hook_blocks.py, docket.toml, subprojects/docket/tests/test_vcs.py, tests/unit/test_hook_blocks.py
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-04
-payoff: a triage or capture branch that records its pull request passes CI without discarding the session's guard refusals or claiming an item it does not need
-verify: grep -q 'def test_a_recorded_refusal_log_is_a_queue_record' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** bin/docket record copies the guard refusal log into docs/hook-blocks/, which the claim check counts as work outside the queue, so a queue-only branch that records its pull request fails CI's claim check
@@ -20,7 +13,5 @@ verify: grep -q 'def test_a_recorded_refusal_log_is_a_queue_record' subprojects/
 **Why it matters.** Any branch that records a pull request number without claiming an item fails CI in the same way, as soon as the session has met a guard refusal. That includes a triage pass that closes an item, or a capture branch. The session then either discards real refusal data or claims an item it does not need.
 
 **Likely fix.** Have `queue_records` include the directory that `record_command` writes, read from one record. For example, add a `docket.toml` key that both `tools/hook_blocks.py` (now the literal `BLOCKS_DIR`) and `queue_records` read. A test should record a pull request on a queue-only branch with a refusal in the local log, and find the claim check still passing.
-
-**Done when.** `queue_records` and `tools/hook_blocks.py` read the refusal log's directory from one record, and a test that records a pull request on a queue-only branch with a refusal in the local log finds the claim check still passing.
 
 **Generator check.** One-off. The fact misread is which paths a queue workflow writes. `queue_records` was built to hold that fact in one place (`PL-F6MM`), and `record_command` was added later without updating it. No other open item describes it.
