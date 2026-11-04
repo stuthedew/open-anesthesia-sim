@@ -49,11 +49,8 @@ note for developers at the end of the section it came from, a paragraph that
 opens with "**For developers.**" That note may name the tests for the paragraphs
 directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
 document must specify the numerical method (`PL-TZ7R`). State a model limitation
-where it could change what a clinician concludes from a displayed value. Leave
-out only a limitation smaller than the display's own resolution, such as an
-error of less than one count in the last digit shown, because it cannot change
-the value a clinician reads (project owner, 2026-11-04, ratified, over
-describing every limitation, `PL-BS6N`).
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
 
 **Give a chosen value its reason from a record.** Where a docstring or a
 comment gives a chosen value, such as a tolerance or a limit, say what the

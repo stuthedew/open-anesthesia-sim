@@ -1512,19 +1512,21 @@ point or where a value's reason comes from, so nothing could be cut for them.
 
 ## When a model limitation earns a sentence, added 2026-11-04
 
-`PL-BS6N` added two sentences to the resident `.claude/rules/plain-writing.md`,
+`PL-BS6N` added one sentence to the resident `.claude/rules/plain-writing.md`,
 at the end of the paragraph that opens "Write what the reader needs to act on,
-and stop". They say to state a model limitation where it could change what a
-clinician concludes from a displayed value, and to leave out only one smaller
-than the display's own resolution. On 2026-11-04 the project owner had a
-warning of that second kind taken out of `PL-J37P`'s text.
+and stop". It says to state a model limitation only where it could change what
+a clinician concludes from a displayed value. On 2026-11-04 the project owner
+had a warning about an error smaller than one count of the last digit taken
+out of `PL-J37P`'s text.
 
-**The carrier test.** The sentences apply to replies as well as to
+**The carrier test.** The sentence applies to replies as well as to
 `docs/MODEL.md`. A path scope would miss replies, because a session reads no
-file before it writes one, so the sentences stay in the resident rule.
+file before it writes one, so the sentence stays in the resident rule.
 
 **What was replaced, and the cost.** Nothing was replaced. The rule grew from
-14,653 to 15,024 characters. No other sentence in the rule says which
-limitations to leave out. The closest in meaning says that the safety-critical
-standard decides which facts a text must give, and that this rule never cuts
-one. The new sentences depend on that sentence, so it stays.
+14,653 to 14,768 characters. A first version had two sentences and 371
+characters, and named the one kind of limitation to leave out. The owner judged
+it too specific for a file every session loads, and it read as requiring every
+larger limitation to be stated. The rule's closing paragraph still says that
+the safety-critical standard decides which facts a text must give, and that
+this rule never cuts one.
