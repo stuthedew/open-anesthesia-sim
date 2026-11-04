@@ -10568,9 +10568,9 @@ coefficient dominates throughout. These shifts were measured at 1 MAC with the
 reference adult's flows, and have no test yet (`PL-19W8`). At those settings,
 one step of 0.1 L therefore lies between about two-fifths of an SD and six SDs,
 from 1 h to the 24 h limit, which is inside the band the readouts' derivation
-admits. A step of 0.01 L would fall to about a twentieth of an SD by 24 h,
-finer than the band's seventh of an SD. At a higher dial setting the shifts are
-larger, and no test yet derives the step there (`PL-0P3F`). Delivered agent carries no
+admits. A step of 0.01 L would fall to about a twentieth of an SD by 24 h. At a
+higher dial setting the shifts are larger, and no test yet derives the step
+there (`PL-0P3F`). Delivered agent carries no
 parameter uncertainty, because it is the dial times the flow times the time, and
 it takes the same resolution so that the three amounts read at one scale.
 <!-- not-restated: 0.18 -->
@@ -10648,44 +10648,19 @@ and the smallest power of ten at or above all three is 1 mL. The partition
 coefficients give the same answer. At 24 h, the one-SD shifts derived above for
 the litre display, 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L
 of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So one step of 1 mL is
-about one SD, and a step of 0.1 mL would be a tenth of one, finer than the
-band's seventh.
+about one SD, and a step of 0.1 mL would be a tenth of one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**For developers.**
-`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
-repeats the litre-to-millilitre conversion for every shipped agent from the
-stored molar mass and density.
-
-**The delivered total in millilitres of liquid is shown in whole
-millilitres** (project owner, 2026-11-04, ratified, over keeping a tenth of a
-millilitre and over four significant figures, `PL-SP6H`). The delivered agent
-is the dial times the flow times the time, so no partition coefficient makes
-it uncertain. The delivered and exhausted totals are both gas at room
-temperature, so their conversion to liquid at the 20 °C reference is exact.
-That leaves one uncertainty in the delivered figure in liquid. It comes from
-the measured liquid density, whose SD is 0.0008, 0.0006 and 0.0004 g/mL for
-sevoflurane, isoflurane and desflurane. That SD moves the figure by a fixed
-share of it, so its effect grows as a run delivers more. The largest totals the
-supported span allows come at each agent's highest dial setting and 10 L/min
-for 24 h. At 8% sevoflurane that is about 6,300 mL of liquid, and one SD is
-about 3.3 mL. So a step of 1 mL is about 0.3 SD there. Desflurane at 18% gives
-the same, and isoflurane at 5% about 0.7 SD. No setting makes the step finer
-than the readouts' seventh of an SD. A step of 0.1 mL would be about a
-thirtieth of an SD at those totals. It would become finer than a seventh of an
-SD once a run had delivered about 1,300 mL of sevoflurane, which takes about
-5 h at 8% and 10 L/min. In a short case, 1 mL is many SDs, which the one-sided
-bound allows. As for the exhausted total, 1 mL is the smallest power of ten at
-or above one step of the litre display, so the two totals read at one scale in
-each unit. A reader who multiplies the delivered figure by the price per
-millilitre beside it gets the cost to within about half a millilitre's price
-(§ "A cost at the reader's price").
-<!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
-<!-- provenance: data/agents/isoflurane.json liquid_density.standard_deviation_g_ml = 0.0006 -->
-<!-- provenance: data/agents/desflurane.json liquid_density.standard_deviation_g_ml = 0.0004 -->
+**The delivered total in millilitres of liquid is shown in whole millilitres.**
+The delivered agent is the dial times the flow times the time, and its
+conversion to liquid at the 20 °C reference is exact. Its only uncertainty in
+liquid is the measured density's, which grows in proportion to the total. At 8%
+sevoflurane and 10 L/min for 24 h, one SD is about 3.3 mL, so a step of 1 mL is
+about 0.3 SD, and no supported setting makes it finer than the readouts' seventh
+of an SD. A step of 0.1 mL would be about a thirtieth. Multiplying the rounded
+figure by the price per millilitre can miss the cost by up to about half a
+millilitre's price (§ "A cost at the reader's price").
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -10725,9 +10700,13 @@ the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
 reads the finest count from the derivation for that amount and unit, so no
 caller can pass a looser bound, and it refuses a finer count when it is built. A
 precision that a reader could set would be built the same way.
+`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
+repeats the litre-to-millilitre conversion for every shipped agent from the
+stored molar mass and density.
 `test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres`
-computes each agent's largest total and its SD from the stored densities, the
-dial limits and the supported flow and run length.
+computes each agent's largest supported total and its SD from the stored
+densities. Whole millilitres replaced a tenth on 2026-11-04 (project owner,
+ratified, over keeping the tenth and over four significant figures, `PL-SP6H`).
 `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`
 computes both counts from the stored densities.
 `test_a_unit_with_no_derived_precision_is_refused` enforces the refusal of the
@@ -11611,7 +11590,7 @@ could read "39 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
 price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The book prints
 $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
 (§ "Agent amount"). The two figures shown multiply to USD 7.98, because the
-cost is computed from the unrounded 39.42 mL, as the next paragraph says. The
+cost uses the unrounded 39.42 mL. The
 wording and the layout are placeholders, and the six facts are the
 requirement.
 

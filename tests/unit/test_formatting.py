@@ -1674,25 +1674,13 @@ def test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_lit
 def test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres() -> None:
     """Derive the delivered total's step in liquid from the density's SD at the largest total.
 
-    The delivered agent is the vaporizer dial setting times the fresh gas flow
-    times the time, so no partition coefficient makes it uncertain. The
-    conversion to liquid is exact at the model's 20 °C reference. So in liquid,
-    the total's only uncertainty comes from the measured density. That SD moves
-    the total by a fixed share of it, so one step is finest against it at the
-    largest total the supported span allows: each agent's highest dial setting,
-    at the highest fresh gas flow, for the longest run. This test computes that
-    total and its SD from each agent's stored density, the density's SD, the
-    agent's ratio of vapour to liquid and the supported limits, not from the
-    formatter.
-
-    At 8% sevoflurane and 10 L/min for 24 h, the total is about 6,300 mL and
-    one SD is about 3.3 mL, so a step of 1 mL is about 0.3 SD. Desflurane at
-    18% gives the same, and isoflurane at 5% about 0.7 SD. None is finer than
-    the seventh of an SD that `docs/MODEL.md` § "Displayed precision" allows
-    for the readouts. A step of 0.1 mL would be about a thirtieth of an SD
-    there. So the total is shown in whole millilitres (project owner,
-    2026-11-04, ratified, over keeping a tenth of a millilitre and over four
-    significant figures, `PL-SP6H`).
+    The delivered total's only uncertainty in liquid is the measured density's,
+    which grows with the total. So one step is finest against it at each
+    agent's highest dial setting, the highest flow and the longest run. The
+    test computes that total and its SD from the stored data, not from the
+    formatter. A step of 1 mL is then about 0.3 SD for sevoflurane and
+    desflurane and 0.7 SD for isoflurane, never finer than the seventh of an SD
+    that `docs/MODEL.md` § "Displayed precision" allows (`PL-SP6H`).
     """
 
     # The fine end of the readouts' band, "about a seventh of one parameter SD"

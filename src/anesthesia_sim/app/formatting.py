@@ -247,15 +247,9 @@ class AgentAmountUnit(Enum):
 #   panel shows them on one scale.
 # - The delivered total in millilitres of liquid has no decimals (project
 #   owner, 2026-11-04, ratified, over keeping a tenth of a millilitre and over
-#   four significant figures, `PL-SP6H`). The delivered agent is the vaporizer
-#   dial setting times the fresh gas flow times the time, so no partition
-#   coefficient makes it uncertain. Once it is converted to liquid, its only
-#   uncertainty comes from the measured density, whose SD moves the total by a
-#   fixed share of it. At 8% sevoflurane and 10 L/min for 24 h, the largest
-#   total the supported span allows, one SD is about 3.3 mL, so a step of 1 mL
-#   is about 0.3 SD. No setting in the supported span makes the step finer than
-#   the seventh of an SD that the section allows. A step of 0.1 mL would be
-#   about a thirtieth of an SD there.
+#   four significant figures, `PL-SP6H`). Its only uncertainty is the measured
+#   density's, which grows with the total. At the largest supported total, a
+#   step of 1 mL is about 0.3 SD, and 0.1 mL would be about a thirtieth.
 # - The exhausted total in millilitres of liquid has no decimals. One step of
 #   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
 #   for every shipped agent. 1 mL is the finest power of ten that is no finer
