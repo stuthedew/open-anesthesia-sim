@@ -1,13 +1,13 @@
 """Print the prose a branch changed, inside the section around it, for the copy editor.
 
 Close-out step 8 in `.claude/skills/docket/modes/close-out.md` saves this
-tool's output to a file and hands that file to the copy-editor agent,
-`.claude/agents/copy-editor.md`. The agent loads none of this repository's
-instructions, so the output opens with the text of
-`.claude/rules/plain-writing.md`, and the agent reads that one file and
+tool's output to a file and hands that file to the copy editor,
+`.claude/agents/copy-editor.md`, through `tools/copy_edit.py`. The copy editor
+loads none of this repository's instructions, so the output opens with the text
+of `.claude/rules/plain-writing.md`, and the agent reads that one file and
 nothing else. Each tool call a subagent makes costs another turn at its full
-context. On its first branch the agent read 29 passages in four reads of
-this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
+context. On its first branch the agent read 29 passages in four reads of this
+tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
 **Which files are read.** A Markdown or Python file is read when a row of the
 rule's reader table names it, itself or by its directory, so the table decides

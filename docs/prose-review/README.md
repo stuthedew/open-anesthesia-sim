@@ -1,12 +1,12 @@
 # The copy editor's test set and examples
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` has the
-`copy-editor` agent edit each long passage that a branch changed, for the
-readers that `.claude/rules/plain-writing.md` names. Its prompt is
-`.claude/agents/copy-editor.md`. This folder holds the paragraphs it must
-never pass again (`PL-FYGJ`, from `PL-H76S`), the gold-standard paragraphs it
-must keep (`PL-556C`), and the before-and-after pairs that the owner approved
-(`PL-J1ZM`).
+Close-out step 8 in `.claude/skills/docket/modes/close-out.md` has the copy
+editor edit each long passage that a branch changed, for the readers that
+`.claude/rules/plain-writing.md` names. Its prompt is
+`.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. This folder
+holds the paragraphs it must never pass again (`PL-FYGJ`, from `PL-H76S`), the
+gold-standard paragraphs it must keep (`PL-556C`), and the before-and-after
+pairs that the owner approved (`PL-J1ZM`).
 
 - `rejected/` holds one file for each paragraph that the review passed and the
   owner then rejected.
@@ -116,8 +116,8 @@ Run it whenever `.claude/agents/copy-editor.md` changes, a reader-table row
 changes for a file that the set holds, or a gold-standard paragraph is added:
 
 1. Run `python3 tools/rejected_prose.py show > show.txt`.
-2. Give the path of `show.txt` to the `copy-editor` agent, as close-out step
-   8 does, and save its whole reply to a file.
+2. Run `python3 tools/copy_edit.py show.txt`, as close-out step 8 does, and
+   save its whole reply to a file.
 3. Run `python3 tools/rejected_prose.py record REPLY`, with that file's path.
 
 The copy editor must flag every rejected entry and keep every gold standard.

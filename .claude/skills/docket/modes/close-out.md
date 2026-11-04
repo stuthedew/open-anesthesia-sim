@@ -293,13 +293,14 @@ page and decides which file a session reads.
    comes with the code around it. The rows marked `>` are the ones the copy
    editor may rewrite: the changed paragraphs, and the paragraph or table row
    on each side of them. Where it prints no passage, go to the comparison at
-   the end of this step. Otherwise start the `copy-editor` agent and give it
-   the file's path and nothing else. It loads none of the resident
-   instructions and opens no other file. On its first branch it read 29
-   passages in four reads of that file and 179,031 tokens (`PL-22T5`). Its
-   instructions, `.claude/agents/copy-editor.md`, say what it returns: for
-   each passage, `[N] keep`, or `[N] rewrite` with the new text and each cut
-   with its reason.
+   the end of this step. Otherwise run `python3 tools/copy_edit.py` on that
+   file and save its reply. It runs the copy editor as its own `claude -p`
+   process, which loads none of the resident instructions and opens no other
+   file, in a Projects thread as in any other session (`PL-TQ4J`). On its first
+   branch it read 29 passages in four reads of that file and 179,031 tokens
+   (`PL-22T5`). Its instructions, `.claude/agents/copy-editor.md`, say what it
+   returns: for each passage, `[N] keep`, or `[N] rewrite` with the new text
+   and each cut with its reason.
 
    **Apply each rewrite as it stands.** Revert one edit only where it lost or
    changed a value, a unit, a condition, an identifier or a citation, and

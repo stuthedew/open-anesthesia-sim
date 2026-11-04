@@ -1,8 +1,8 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives the
-copy-editor agent, whose prompt is `.claude/agents/copy-editor.md`, each long
-passage a branch changed, and the agent judges each one for its named reader.
+Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives the copy
+editor, whose prompt is `.claude/agents/copy-editor.md`, each long passage a
+branch changed, and it judges each one for its named reader.
 The owner is the only clinician who reads this project's prose. When the owner
 rejects a paragraph that the review passed, the paragraph becomes an entry
 in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
@@ -548,7 +548,7 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     if entries and not current:
         problems.append(
             "no run of the set used the current prompt and readers: save the output of `show` to "
-            "a file, give its path to the copy-editor agent, save its whole reply, and run "
+            "a file, run `python3 tools/copy_edit.py` on it, save its whole reply, and run "
             "`record` on it"
         )
     for run in current:

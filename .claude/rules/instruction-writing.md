@@ -252,9 +252,9 @@ itself.
 
 16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. A reply
     that asks the owner to decide, or that runs over 150 words, goes through
-    the `copy-editor` agent first (project owner, 2026-11-04, `PL-J1ZM`). Write
-    the draft to a file in the scratchpad. Save the output of
+    the copy editor first (project owner, 2026-11-04, `PL-J1ZM`). Write the
+    draft to a file in the scratchpad. Save the output of
     `python3 tools/new_prose.py --draft FILE --kind replies` to a second file,
-    give that file's path to the agent, and send its rewrite. Revert an edit
-    only where it lost or changed a value, a unit, a condition, an identifier
-    or a citation.
+    run `python3 tools/copy_edit.py` on it, and send its rewrite. Revert an
+    edit only where it lost or changed a value, a unit, a condition, an
+    identifier or a citation.
