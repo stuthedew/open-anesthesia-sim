@@ -48,17 +48,27 @@ the smallest, because a paragraph you cut needs no sentence edit.
 2. **Read the whole before you change any part.** Read the passage and its "|"
    rows to the end. Note each fact said more than once, in the passage or
    across the section, and each paragraph that stands away from the place its
-   reader would look for it.
+   reader would look for it. In a whole section, then say to yourself in one
+   or two sentences what this reader needs from the section. Everything in it
+   either serves that or belongs to another reader.
 
-3. **Decide how much the passage needs.** Most text needs a light edit or none.
-   Make a change only for a reason that steps 4 to 6 name. A wording you would
-   merely prefer is not a reason. When the passage gives its reader everything
-   they need, in an order they can follow, with no sentence they can do
-   without, return "[N] keep", even where you would have phrased it
-   differently. When a paragraph buries its point, says one thing several
-   ways, or walks through a derivation its reader does not need, trimming will
-   not fix it. Rewrite it from its facts: list the facts its reader needs, then
-   write the paragraph that gives them, in the order the reader needs them.
+3. **Decide how much the passage needs.** Read each sentence once, at reading
+   speed, as its reader would. A sentence needs a change when that reader
+   would not understand it on that first reading, or could do without it. A
+   wording you would merely prefer is not a reason to change a sentence the
+   reader understands. When every sentence passes, and the passage gives the
+   reader everything they need in an order they can follow, return "[N] keep".
+
+   Trim a paragraph whose sentences are sound and whose only fault is
+   material the reader can do without. Rewrite a paragraph from its facts when
+   its sentences are the fault: they stack clauses, keep the subject far from
+   its verb, rest on abstract nouns, or use a word that the reader's "Does not
+   know" line covers, such as one of this repository's own terms. Rewrite it
+   too when it buries its point, says one thing several ways, or walks through
+   a derivation the reader does not need. To rewrite from facts, list the
+   facts this reader needs, set the old sentences aside, and write new ones
+   that say those facts as you would say them to the reader. Never keep a
+   sentence's shape only because it was there.
 
 4. **Keep what the reader needs, and cut or move the rest.** For each
    statement, ask whether this reader needs it to do what their "Will" line
@@ -101,13 +111,23 @@ the smallest, because a paragraph you cut needs no sentence edit.
    and put each passage where its reader will look for it.
 
 5. **Fix the sentences and words.** Make one point per sentence, with its
-   subject and verb early and close together. Put a condition before the
+   subject and verb early and close together. Never leave a list, an example
+   or a clause between a subject and its verb, because the reader must hold
+   the subject until the verb arrives. "A value that the model computes from
+   the patient's weight, the agent's MAC and the fresh gas flow, rather than
+   reading it from a data file, is marked as derived" makes the reader wait
+   for "is marked". Write "A value is marked as derived when the model
+   computes it from the patient's weight, the agent's MAC and the fresh gas
+   flow, rather than reading it from a data file." Put a condition before the
    instruction it governs. Say who does what. Use the verb rather than the noun
    made from it: "we analyze the data", not "we conduct an analysis of the
    data". Prefer the positive form. Cut words that mean little, words that
    repeat another word's meaning, and words the reader can infer. Replace a
    phrase with a word where one word will do. Where the reader would not know a
-   term, use a plainer word rather than add a definition. Restate a number in
+   term, use a plainer word rather than add a definition. Where the file gives
+   no plainer word, the sentence that holds the term usually belongs to the
+   other reader: move it there, and leave this reader an example they know,
+   such as one named item from a list of unfamiliar ones. Restate a number in
    the reader's form only where the reader needs that number, with the same
    value, such as 4e-4 as 0.04%.
 
@@ -127,6 +147,8 @@ the smallest, because a paragraph you cut needs no sentence edit.
    side by side, sentence by sentence.
    - Every fact the reader needs is still there, with the same value, unit and
      condition, and the edit claims neither more nor less than the original.
+     Where you shorten a list of alternatives, such as the ways a rule can be
+     met, keep every alternative or say that others exist.
    - Each value, unit, item id, citation and code span that stays is unchanged.
      A "no test yet" declaration keeps those words, because the documentation
      check reads them. Each heading keeps its text, because other files cite a
@@ -135,9 +157,10 @@ the smallest, because a paragraph you cut needs no sentence edit.
    - The edit is shorter than the original, unless an added word carries a fact
      the reader needs and the original lacked. Name each such fact under the
      block, or cut the words. Work to no word count beyond that.
-   - Each sentence reads as you would say it to a colleague who is this reader.
-     Rewrite a sentence you wrote whose clauses stack or whose subject sits far
-     from its verb.
+   - Read every sentence of your edit aloud as this reader, including each
+     sentence you did not change. Rewrite any sentence they would not
+     understand on first reading, any whose clauses stack or whose subject sits
+     far from its verb, and any that uses a term they do not know.
    - No sentence shows one of the writing rule's five patterns: a tautological
      aside, a contrast nobody claimed, narration about the text itself, a
      defensive scope statement, or a paragraph grown into an essay.
@@ -152,7 +175,8 @@ follow it with one sentence on why it serves its reader.
 Otherwise write "[N] rewrite" and then, in a fenced block, the new text for the
 rows marked ">", exactly as they would stand in the file: the same
 indentation, the same comment markers, quotes or Markdown, and the same line
-wrapping. Where the rows wrap, keep lines to 100 characters or fewer. Where
+wrapping. Where the rows wrap, wrap at the width the original rows use, and
+never past 100 characters. Where
 each paragraph is one line, as in an item file, keep it one line. A table row
 stays on one line, however long. Change no code, and keep each fence, HTML
 comment and heading as it is. Where the text holds a fenced block, open and
@@ -164,6 +188,9 @@ Under the block, list one to a line:
 - each move, with the place it goes;
 - each paragraph you rewrote from its facts, with the facts it keeps;
 - each fact the added words carry, where the edit adds words;
+- each word your edit still uses that the reader's "Does not know" line
+  covers, such as one of this repository's own terms, with why this reader
+  can understand it where it stands;
 - each query.
 
 For a whole section, first list under "Section:" each fact that was said more
