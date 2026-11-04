@@ -416,3 +416,126 @@ def test_a_unit_whose_file_no_row_names_stops_the_report(
 def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: str) -> None:
     """A rule edit that drops a row would stop every review of that kind of file."""
     assert readers_of(reader_table(RULE.read_text(encoding="utf-8")), path)
+
+
+#: A document whose first section holds a value, for the `--compare` tests.
+PRECISION = """\
+# Model
+
+## Displayed precision
+
+The MAC readout steps by 0.01 for every agent.
+
+The percent readout is unchanged here.
+
+The chart keeps its own scale.
+
+## Next
+
+Other text.
+"""
+
+
+def _compare(repo: Path, capsys: pytest.CaptureFixture[str]) -> str:
+    assert main(["--root", str(repo), "--base", "main", "--compare"]) == 0
+    return capsys.readouterr().out
+
+
+@pytest.fixture
+def precise(repo: Path) -> Path:
+    """`repo` with `PRECISION` committed as `docs/MODEL.md` on `main`, and `work` checked out."""
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "docs/MODEL.md", PRECISION)
+    _commit(repo, "add the model document")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "main")
+    return repo
+
+
+def test_a_passage_that_grew_and_lost_a_number_is_reported(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The growth and the lost value are both named, against the paragraph they replaced.
+
+    On `PL-ZDZ0` a passage grew from 163 words to about 210 and no review said
+    so, and a trial copy editor dropped a value from a condition (`PL-J1ZM`).
+    """
+    grown = PRECISION.replace(
+        "The MAC readout steps by 0.01 for every agent.",
+        "The MAC readout steps by one hundredth of MAC for every agent, so that its\n"
+        "last digit is worth the same amount whatever the agent.",
+    )
+    (precise / "docs/MODEL.md").write_text(grown, encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert (
+        'docs/MODEL.md § "Displayed precision", rows 5-6: 9 words on main, 25 now, 16 more' in out
+    )
+    assert "gone  0.01  (fork line 5: The MAC readout steps by 0.01 for every agent.)" in out
+
+
+def test_hunks_parted_by_a_blank_line_are_one_passage_and_by_a_paragraph_two(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Edits to two paragraphs side by side are one passage; a paragraph left alone parts them."""
+    model = precise / "docs/MODEL.md"
+    first = PRECISION.replace("for every agent.", "for each agent.")
+    model.write_text(first.replace("unchanged here.", "the same here."), encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert "1 passages of the simulator's files changed their prose" in out
+    assert "rows 5-7: 15 words on main, 16 now, 1 more" in out
+
+    model.write_text(first.replace("its own scale.", "a scale of its own."), encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert "rows 5-5: 9 words on main, 9 now, the same count" in out
+    assert "rows 9-9: 6 words on main, 8 now, 2 more" in out
+    assert "These files hold every fact they held on main, as often." in out
+
+
+def test_a_reflowed_paragraph_is_not_a_changed_passage(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reflowed = PRECISION.replace(
+        "The MAC readout steps by 0.01 for every agent.",
+        "The MAC readout steps by 0.01\nfor every agent.",
+    )
+    (precise / "docs/MODEL.md").write_text(reflowed, encoding="utf-8")
+
+    assert "No passage of the simulator's files changed its prose" in _compare(precise, capsys)
+
+
+def test_a_removed_paragraph_is_named_with_its_words_on_the_base(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    removed = PRECISION.replace("The MAC readout steps by 0.01 for every agent.\n\n", "")
+    (precise / "docs/MODEL.md").write_text(removed, encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert 'docs/MODEL.md § "Displayed precision", rows 5-5 on main: removed, 9 words' in out
+    assert "gone  0.01" in out
+
+
+def test_a_python_file_is_compared_by_its_prose_alone(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A code span the docstring lost is named on its row, and a number in code is not a fact."""
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "src/pkg/limits.py", 'def cap(x):\n    """Clip `x` at `LIMIT`."""\n    return 7\n')
+    _commit(repo, "a docstring and a number in code")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "main")
+    _write(
+        repo, "src/pkg/limits.py", 'def cap(x):\n    """Clip `x` at the limit."""\n    return 8\n'
+    )
+
+    out = _compare(repo, capsys)
+
+    assert "src/pkg/limits.py, rows 2-2: 4 words on main, 5 now, 1 more" in out
+    assert "gone  LIMIT  (fork line 2: Clip `x` at `LIMIT`.)" in out
+    assert "gone  7" not in out
