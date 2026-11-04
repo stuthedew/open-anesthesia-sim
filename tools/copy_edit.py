@@ -1,21 +1,19 @@
 """Run the copy editor on one file that `tools/new_prose.py` wrote, and print its reply.
 
-Close-out step 8, the pull-request skill and the reply rule hand the copy
-editor a file of passages. The copy editor's instructions are the body of
-`.claude/agents/copy-editor.md`, which is their one home. A Projects thread
-cannot start that agent, because a thread does not load `.claude/agents/`:
-the Agent tool returned "Agent type 'copy-editor' not found" on `PL-J37P`'s
-branch on 2026-11-04. The fallback, a general-purpose agent given the
-agent file's text, loads every resident instruction that the copy editor is
-meant to run without (`PL-TQ4J`).
+Close-out step 8, the pull-request skill and reply rule 16 in
+`.claude/rules/instruction-writing.md` hand the copy editor a file of passages.
+The copy editor's instructions are the body of `.claude/agents/copy-editor.md`,
+which is their one home. A Projects thread cannot start that agent, because a
+thread does not load `.claude/agents/`. The fallback, a general-purpose agent
+given the agent file's text, loads every resident instruction that the copy
+editor is meant to run without (`PL-TQ4J`).
 
 So this tool runs the copy editor as its own `claude -p` process, the same
 way in every kind of session. The process starts in an empty directory that
-holds only the request, so no `CLAUDE.md` or rule is found and loaded. Its
-system prompt is the agent file's body, its one tool is Read, and it loads no
-settings file. On 2026-11-04 a run on two passages read 18,739 tokens, where
-the same request through `claude -p --agent copy-editor` inside the
-repository loaded the resident instructions and started at about 48,000.
+holds only the request, so no `CLAUDE.md` or rule is found and loaded. Run
+inside the repository, even `claude -p --agent copy-editor` loads the resident
+instructions. Its system prompt is the agent file's body, its one tool is Read,
+and it loads no settings file.
 
 The model and effort are the ones `docket.toml`'s `[models]` table chooses
 for the role `copy-editor`. The run is billed to the account that `claude`
@@ -50,9 +48,9 @@ from new_prose import PROMPT  # noqa: E402
 ROLE = "copy-editor"
 #: The name the request takes inside the copy editor's empty directory.
 REQUEST_NAME = "request.txt"
-#: The longest a run may take. The longest copy edit measured so far read 29
-#: passages in about 15 minutes (`PL-22T5`), so 40 minutes leaves room for a
-#: larger branch while still ending a run that has stalled.
+#: A run that takes longer than this is stopped. The longest copy edit measured
+#: so far read 29 passages in about 15 minutes (`PL-22T5`), so 40 minutes leaves
+#: room for a larger branch while still ending a run that has stalled.
 COPY_EDIT_TIMEOUT_S = 40 * 60
 #: Turns off the memory index that a session would otherwise load, so the
 #: copy editor's context is its instructions and the request alone.

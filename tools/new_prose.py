@@ -4,10 +4,10 @@ Close-out step 8 in `.claude/skills/docket/modes/close-out.md` saves this
 tool's output to a file and hands that file to the copy editor,
 `.claude/agents/copy-editor.md`, through `tools/copy_edit.py`. The copy editor
 loads none of this repository's instructions, so the output opens with the text
-of `.claude/rules/plain-writing.md`, and the agent reads that one file and
-nothing else. Each tool call a subagent makes costs another turn at its full
-context. On its first branch the agent read 29 passages in four reads of this
-tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
+of `.claude/rules/plain-writing.md`, and the copy editor reads that one file and
+nothing else. Each tool call that the copy editor makes costs another turn at
+its full context. On its first branch the copy editor read 29 passages in four
+reads of this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
 **Which files are read.** A Markdown or Python file is read when a row of the
 rule's reader table names it, itself or by its directory, so the table decides
@@ -82,8 +82,8 @@ the units that one hunk of the diff touches, widened to whole paragraphs,
 table rows, docstrings or comments on both sides. Hunks parted only by blank
 lines make one passage. It is printed with its words on the default branch and
 now, whatever its length, unless only its spacing changed. A whole section is
-not the passage, because `docs/MODEL.md` § "Displayed precision" runs to about
-8,000 words, where a growth of 50 words would not show. Then, for each file, it
+not the passage, because a growth of 50 words would not show in a section as
+long as `docs/MODEL.md` § "Displayed precision". Then, for each file, it
 lists each equation, "no test yet" declaration, code span, citation, number,
 item id and date that the file held at the fork and holds fewer times now, read
 as `tools/model_rewrite.py` reads a fact. A Python file's facts are read from
