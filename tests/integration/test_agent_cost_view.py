@@ -188,13 +188,15 @@ def test_the_view_is_registered_under_its_kind() -> None:
 def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """Isoflurane at 1.5 % and 2 L/min for 40 min delivers 1.2 L of vapour, or 6 mL of liquid.
+    """Isoflurane at 1.5 % and 6 L/min for 40 min delivers 3.6 L of vapour, or 18 mL of liquid.
 
     The expected text is worked out here, from the inputs and the transcribed
-    constants, and written in this test's own format.
+    constants, and written in this test's own format. The run delivers enough
+    that sevoflurane's or desflurane's factor would draw 20 mL or 17 mL, so a
+    figure converted with the wrong agent's factor fails at whole millilitres.
     """
 
-    dial_percent, flow_l_min, minutes = 1.5, 2.0, 40.0
+    dial_percent, flow_l_min, minutes = 1.5, 6.0, 40.0
     controller = SimulationController(agent_id="isoflurane")
     controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
     controller.set_delivered_concentration_percent(Percent(dial_percent))
@@ -206,9 +208,12 @@ def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
     (cost_view,) = _cost_views(view)
     (panel,) = cost_view.panels
 
-    assert vapour_l == pytest.approx(1.2)
+    assert vapour_l == pytest.approx(3.6)
     assert panel.amount_text.text() == f"{_liquid_ml('isoflurane', vapour_l):.0f} mL of liquid"
-    assert panel.amount_text.text() == "6 mL of liquid"
+    assert panel.amount_text.text() == "18 mL of liquid"
+    assert {
+        f"{_liquid_ml(other, vapour_l):.0f} mL of liquid" for other in ("sevoflurane", "desflurane")
+    } == {"20 mL of liquid", "17 mL of liquid"}
     assert panel.label_text.text() == "Isoflurane delivered"
     assert panel.caption_text.text().startswith("Liquid used by the vaporizer")
     assert panel.name_text.text() == "At 40m of simulated time"
@@ -521,6 +526,9 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     combo.setCurrentIndex(combo.findData("desflurane"))
     _settle(application)
     dial_percent = float(run.controller.snapshot().delivered_concentration_percent)
+    # At 10 L/min the 5 min deliver enough that sevoflurane's factor, left
+    # over from before the change, would draw a different whole millilitre.
+    run.controller.set_fresh_gas_flow(FreshGasFlow(10.0))
     run.controller.start()
     _advance(run.controller, 5 * _SECONDS_PER_MINUTE)
     run.controller.pause()
@@ -531,6 +539,8 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     desflurane_ml = _liquid_ml("desflurane", dial_percent / 100.0 * flow_l_min * 5.0)
     assert alone.label_text.text() == "Desflurane delivered"
     assert alone.amount_text.text() == f"{desflurane_ml:.0f} mL of liquid"
+    stale_ml = _liquid_ml("sevoflurane", dial_percent / 100.0 * flow_l_min * 5.0)
+    assert f"{stale_ml:.0f}" != f"{desflurane_ml:.0f}"
     assert alone.name_text.text() == "At 5m of simulated time"
 
 

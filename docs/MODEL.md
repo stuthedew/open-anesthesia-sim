@@ -10648,9 +10648,11 @@ here moves the exhausted total by 0.016 to 0.042 L at 3600 s, and by 0.18 to
 and 0.19 L, isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L. The
 blood:gas coefficient dominates throughout. These shifts were measured at
 1 MAC with the reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L therefore lies
-between about two-fifths of an SD and six SDs across the whole supported span. That is
+between about two-fifths of an SD and six SDs at those settings, from 1 h to
+the 24 h limit. That is
 inside the band the readouts' derivation admits. A count of 0.01 L
-would fall to about a twentieth of an SD by 24 h. Until `PL-TG60`, the panel
+would fall to about a twentieth of an SD by 24 h. At a higher dial setting the
+shifts are larger, and no test yet derives the count there (`PL-0P3F`). Until `PL-TG60`, the panel
 printed six decimals. They asserted a millilitre of a quantity that the
 parameters place only to within a decilitre. This section justified the six
 decimals by saying that the amounts made the residual visible. That

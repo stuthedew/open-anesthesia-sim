@@ -7079,6 +7079,14 @@ step was finer than the figure's uncertainty supports. The hazard was live, so
 § "Deferred from this gate" admitted the item rather than deferring it. Its
 fix is whole millilitres, which the project owner chose on 2026-11-04.
 
+**`PL-0P3F` joined this list on 2026-11-04, after the freeze.** It is classed
+`science`. A blind review of `PL-SP6H` found that the accounting panel's 0.1 L
+step rests on shifts measured only at 1 MAC with the reference flows. At each
+agent's dial maximum and 10 L/min, one count of 0.1 L falls to about an eighth
+of an SD by 24 h, at the fine end of the band the section allows. The panel
+shows that step at every setting, so the gap is live and the item is admitted
+rather than deferred.
+
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
 a `verify:` command tests for the fix and never for the fault. Each of the 24
@@ -7100,7 +7108,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 81 entries**
+**Cleared before v0.7.0 begins unless deferred - 82 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -7183,6 +7191,7 @@ brief has the tally.
 - PL-000W (S) Which field holds a control's value is mapped twice: controller._control_value maps each ControlInput to an UptakeEquationSettings field, and dashboard_frame's flows dict maps three of them to the run's displayed settings, so a fifth control has to be added to both
 - PL-D1LR (S) docs/MODEL.md lines 6057 and 6363 say the gas accumulators are displayed to six decimals of a litre (1e-6 L) and size the canonical-versus-display margin against that, but § on the agent-accounting panel (line 10154) says its amounts have shown 0.1 L since PL-TG60, so both margins are measured against a resolution the display no longer has (found by the PL-XK00 blind review, 2026-10-25)
 - PL-SP6H (S) Check two docs/MODEL.md agent-amount precision claims against the figures they cite: 0.1 L is said to lie between a quarter of an SD and six SDs, but the quoted 0.016-0.23 L shifts give about 0.43 SD at the coarse end; and 0.1 mL of delivered liquid is said to lie inside the density's band, though at 8% and 10 L/min over 24 h one step is about a thirtieth of an SD
+- PL-0P3F (M) The accounting panel's 0.1 L step for the agent totals is derived from partition-coefficient shifts measured only at 1 MAC with the reference flows; the model is linear in the dial, so at each agent's dial maximum and 10 L/min the 24 h shift is 3 to 4.6 times larger and one count of 0.1 L falls to about an eighth of an SD, at or past the seventh the section allows
 
 ### Deferred from this gate
 
