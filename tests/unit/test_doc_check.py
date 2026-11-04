@@ -8042,25 +8042,29 @@ NOTE_HELD_DOCUMENT = "\n".join(
     [
         "### Displayed precision",
         "",
-        "The sevoflurane step is 0.02 %, and the MAC step is 0.01 MAC.",  # line 3
+        "An older paragraph at 7 L that carries no form.",  # line 3
         "",
-        "- A list entry at 0.06 %.",  # line 5
+        "An older paragraph at 6 L with no test yet (`PL-8888`).",  # line 5
         "",
-        "**For developers.** Dividing 0.02 % by 2 % gives 0.01 MAC, and",  # line 7
+        "The sevoflurane step is 0.02 %, and the MAC step is 0.01 MAC.",  # line 7
+        "",
+        "- A list entry at 0.06 %.",  # line 9
+        "",
+        "**For developers.** Dividing 0.02 % by 2 % gives 0.01 MAC, and",  # line 11
         "`test_the_mac_resolution_is_derived_from_the_percent_",
         "resolution` repeats it.",
         "",
-        "A paragraph below the first note at 4 L/min.",  # line 11
+        "A paragraph below the first note at 4 L/min.",  # line 15
         "",
-        "**For developers.** Measured 2026-11-03 at 2 L, naming no test.",  # line 13
+        "**For developers.** Measured 2026-11-03 at 2 L, naming no test.",  # line 17
         "",
-        "A paragraph above a heading at 5 L.",  # line 15
+        "A paragraph above a heading at 5 L.",  # line 19
         "",
         "#### A deeper heading",
         "",
-        "A paragraph under the deeper heading at 3 L.",  # line 19
+        "A paragraph under the deeper heading at 3 L.",  # line 23
         "",
-        "**For developers.** The 3 L figure has no test yet (`PL-8888`).",  # line 21
+        "**For developers.** The 3 L figure has no test yet (`PL-8888`).",  # line 25
         "",
         "### The next section",
         "",
@@ -8070,31 +8074,38 @@ NOTE_HELD_DOCUMENT = "\n".join(
 )
 
 
-def test_a_developer_note_holds_the_numeric_paragraphs_above_it_and_none_below() -> None:
+def test_a_developer_note_holds_the_passage_directly_above_it_and_none_below() -> None:
     """Regression for `PL-W8FL`: a test named in the note below a paragraph did not hold it.
 
-    The note on line 7 holds each paragraph above it, the list entry among
-    them, through a test name that wraps across a line. It holds nothing
-    below it. The note on line 13 carries only a date, which holds the note
-    itself and not the paragraph above it. Nothing is held across a heading,
-    so line 15 is not. Before `PL-W8FL`, only lines 7 and 13 were held.
+    The note on line 11 holds the paragraph and the list entry directly
+    above it, through a test name that wraps across a line. It holds nothing
+    below it. Its reach stops at line 5, which declares its own test owed,
+    so it does not hold line 5 or the older line 3 above it. The note on
+    line 17 carries only a date, which holds the note itself and not the
+    paragraph above it. Nothing is held across a heading, so line 19 is not.
+    Before `PL-W8FL`, only lines 11 and 17 were held. Its first version also
+    held lines 3 and 5, back to the section's heading.
     """
     members = dict(doc_check._numeric_paragraph_members(NOTE_HELD_DOCUMENT, _numeric_family()))
     held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
 
-    assert sorted(members) == [3, 5, 7, 11, 13, 15, 19, 21]
-    assert held == {3, 5, 7, 13}
+    assert sorted(members) == [3, 5, 7, 9, 11, 15, 17, 19, 23, 25]
+    assert held == {7, 9, 11, 17}
 
 
-@pytest.mark.parametrize(("status", "refused"), [("ready", [11, 15]), ("done", [11, 15, 19, 21])])
+@pytest.mark.parametrize(
+    ("status", "refused"), [("ready", [3, 15, 19]), ("done", [3, 5, 15, 19, 23, 25])]
+)
 def test_a_developer_note_declaring_no_test_yet_holds_the_paragraph_above_it_while_owed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str, refused: list[int]
 ) -> None:
     """A note's declared-none form holds the paragraph above it, as the paragraph's own would.
 
-    So line 19 passes with the note on line 21 while `PL-8888` is open, and
-    both fail once it is closed. Lines 11 and 15 fail either way, because no
-    note holds them.
+    So line 23 passes with the note on line 25 while `PL-8888` is open, and
+    both fail once it is closed. Line 5's own declaration is still resolved
+    against the queue, though the note on line 11 names a test: once
+    `PL-8888` closes, line 5 fails. Lines 3, 15 and 19 fail either way,
+    because no note holds them.
     """
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_numeric_family(),))
 

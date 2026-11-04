@@ -4209,12 +4209,15 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
 
     A note for developers below a paragraph holds it too, so the paragraph a
     clinician reads need not name its test itself (`PL-W8FL`). A note is a
-    top-level paragraph that
-    opens with `DEVELOPER_NOTE_OPENING`. It holds every paragraph above it,
-    back to the previous heading or the previous note, and none below it.
-    The forms by which it holds them, from `_note_holding_forms`, follow the
-    markers in each member it holds. A note is never held by the next one,
-    so its own figures need its own forms.
+    top-level paragraph that opens with `DEVELOPER_NOTE_OPENING`. It holds
+    the run of numeric paragraphs directly above it that carry no form of
+    their own, and none below it. The run stops at a heading, at the
+    previous note, and at a paragraph that `_holds_itself`. So a note added
+    to a long section holds only the passage written with it, and not every
+    older paragraph back to the heading. The forms by which it holds them,
+    from `_note_holding_forms`, follow the markers in each member it holds.
+    A note is never held by the next one, so its own figures need its own
+    forms.
 
     The heading is one `markdown` reads, so a `#` line inside a fence opens no
     section, as for `_list_members` (`PL-0Y7J`).
@@ -4250,22 +4253,40 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
         for block in paragraphs
         if block.depth == 0 and lines[block.start].startswith(DEVELOPER_NOTE_OPENING)
     ]
-    headings = [heading.line for heading in found if opening.end <= heading.line < end]
+    members = []
     for block in paragraphs:
         if not _unit_figures(prose[block.start : block.end], lines[block.start : block.end]):
             continue
         held = [
             marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
         ]
-        note = next((note for note in notes if note.start >= block.end), None)
-        if (
-            note is not None
-            and block not in notes
-            and not any(block.end <= line < note.start for line in headings)
-        ):
-            held += _note_holding_forms("\n".join(lines[note.start : note.end]), family.kind)
         paragraph = textwrap.dedent("\n".join(lines[block.start : block.end]))
-        yield block.start + 1, "\n".join([paragraph, *held])
+        members.append((block, "\n".join([paragraph, *held])))
+    bounds = [h.line for h in found if opening.end <= h.line < end] + [n.start for n in notes]
+    from_notes: dict[int, list[str]] = {}
+    for note in notes:
+        forms = _note_holding_forms("\n".join(lines[note.start : note.end]), family.kind)
+        for block, member in reversed([pair for pair in members if pair[0].end <= note.start]):
+            if (
+                not forms
+                or block in notes
+                or any(block.end <= line < note.start for line in bounds)
+                or _holds_itself(member, family.kind)
+            ):
+                break
+            from_notes[block.start] = forms
+    for block, member in members:
+        yield block.start + 1, "\n".join([member, *from_notes.get(block.start, [])])
+
+
+def _holds_itself(member: str, kind: EntityKind) -> bool:
+    """Whether a member carries a form of its own, so no note below it speaks for it.
+
+    A member that names its entity, or declares that it has none, is held by
+    that form alone. So a note's test cannot hide a paragraph's own
+    declared-none form from the queue, and a note's reach stops there.
+    """
+    return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
 # Every family bound by clause 2 today. **An entry arrives with the annotation
@@ -4424,8 +4445,8 @@ def check_bound_families(root: Path, report: Report) -> None:
                 report.errors.append(
                     f"{where} declares no {family.kind.noun} yet against "
                     f"`{declared.group(1)}`, which is {owed.status}; the link that item "
-                    f"forward-referenced is owed now, so the {family.kind.noun} goes here "
-                    "or another open item takes the debt"
+                    f"forward-referenced is owed now, so the {family.kind.noun} is named where "
+                    "that declaration stands, or another open item takes the debt"
                 )
 
 
