@@ -21,7 +21,7 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "src/anesthesia_sim/app/view_registry.py": {("<module>", "compile"): 1},
     "src/anesthesia_sim/layout/run_identity.py": {("<module>", "compile"): 1},
     "src/anesthesia_sim/layout/tree.py": {("<module>", "compile"): 1},
-    "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 6},
+    "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 4},
     "subprojects/docket/src/docket/checks.py": {
         ("<module>", "compile"): 12,
         ("_answered_beneath", "finditer"): 1,

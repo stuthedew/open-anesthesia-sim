@@ -11790,7 +11790,6 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
         "the 1 MAC figure? Already checked: every figure still matches its source. "
         "What to reply: Merge it."
     )
-    assert arming.renders_owner_ask(line)
     old, why = arming.parse_owner_ask("risk - r | checked - c | look - l")
     assert old == ""
     assert "old risk, checked and look form" in why
