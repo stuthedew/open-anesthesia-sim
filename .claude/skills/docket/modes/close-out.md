@@ -294,7 +294,7 @@ page and decides which file a session reads.
    this step. Otherwise start one subagent, `general-purpose` at the session's own
    effort level (`docs/maintainer.md`, 2026-10-19), and give it the tool's
    whole output and nothing else. The output opens with the reviewer's prompt,
-   whose one home is `docs/prose-review/prompt.md`, so no prompt is copied by
+   whose one home is `.claude/agents/copy-editor.md`, so no prompt is copied by
    hand. The prompt tells the reviewer to open nothing, so it costs one turn
    (project owner, 2026-10-18, ratified, over a review on every branch and
    over no review, `PL-PRCS`). For each unit and each of its readers, the

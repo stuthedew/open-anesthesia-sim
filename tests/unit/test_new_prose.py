@@ -635,9 +635,9 @@ def test_two_changes_that_would_share_a_neighbour_are_one_passage(
 
 def test_front_matter_is_not_read_as_a_heading() -> None:
     """Read as Markdown, the closing `---` of front matter underlines a heading."""
-    source = f"---\nid: PL-X\ntitle: A title\n---\n\n{LONG}\n"
+    source = f"---\nid: PL-K7QX\ntitle: A title\n---\n\n{LONG}\n"
 
-    (review,) = reviews_of("docs/items/PL-X.md", None, source, "")
+    (review,) = reviews_of("docs/items/PL-K7QX.md", None, source, "")
 
     assert (review.section, review.first, review.top) == ("", 1, 6)
 
