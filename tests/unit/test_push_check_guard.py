@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/push-check-guard.sh`, the checks run before a push (`PL-PLSJ`).
+"""Tests for the push-check guard, `.claude/hooks/push_check_guard.py` (`PL-PLSJ`).
 
 The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
 check --verify` (`PL-S1BG`) in the working tree a `git push` runs from, and
@@ -23,7 +23,9 @@ import pytest
 from docket.gitargv import TAKES_A_WORD, subcommand_of
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "push-check-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "push-check-guard"
 
 PASS = 'print("branch-id: visible in flight - PL-K7QX")'
 DOC_ERROR = "docs/items/PL-K7QX-a.md: cites `start.md`, which does not exist"
@@ -96,7 +98,7 @@ def _output(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one Bash call, or `None` if it printed nothing."""
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)})
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,
@@ -477,3 +479,56 @@ def test_a_tree_without_the_project_interpreter_skips_only_those_checks(project:
     reason = decision["permissionDecisionReason"]
     assert "`doc_check` failed" in reason
     assert "type_ignore_check" not in reason
+
+
+def test_a_push_after_a_long_heredoc_is_still_judged(project: Path) -> None:
+    """`PL-B5K1`: a payload past Linux's 128 KiB limit on one environment variable is judged.
+
+    The payload once reached Python in an environment variable, which Linux
+    refuses past that length, so the push ran with no check at all. It now
+    arrives on standard input, and the push gets its refusal.
+    """
+    _stub(project, doc=DOC_FAILS)
+    heredoc = "cat > /tmp/long.txt <<'EOF'\n" + "x" * 140_000 + "\nEOF\n"
+    command = heredoc + "git push -u origin claude/x"
+    assert len(json.dumps({"tool_input": {"command": command}})) > 128 * 1024
+    decision = _decision(command, cwd=project, project=project)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"
+    assert DOC_ERROR in decision["permissionDecisionReason"]
+
+
+def test_a_check_killed_at_the_deadline_is_named(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-DST3`: a check stopped at the limit neither passed nor failed, so the note says so.
+
+    The push still goes, since the guard cannot tell what the check would have
+    found. Before, it went with only the skill note, which read as a pass.
+    """
+    _stub(project, doc="import time\ntime.sleep(30)")
+    monkeypatch.setenv("PUSH_CHECK_GUARD_DEADLINE", "2")
+    output = _output("git push -u origin claude/x", cwd=project, project=project)
+    assert output is not None
+    assert "permissionDecision" not in output
+    note = output["additionalContext"]
+    assert "this push was not checked against them: `doc_check` (stopped at the 2-second" in note
+    assert ".claude/skills/pull-request/SKILL.md" in note
+
+
+def test_a_check_that_crashes_is_named(project: Path) -> None:
+    """A check that dies with a traceback gave no answer either, and the note names its error."""
+    _stub(project, branch="raise RuntimeError('boom')")
+    output = _output("git push -u origin claude/x", cwd=project, project=project)
+    assert output is not None
+    assert "permissionDecision" not in output
+    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in output["additionalContext"]
+
+
+def test_a_refusal_also_names_a_check_that_gave_no_answer(project: Path) -> None:
+    _stub(project, doc=DOC_FAILS, branch="raise RuntimeError('boom')")
+    decision = _decision("git push -u origin claude/x", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert DOC_ERROR in reason
+    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in reason

@@ -117,7 +117,7 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tests/unit/test_item_store_guard.py": {("<module>", "compile"): 1},
     "tests/unit/test_makefile_reference.py": {("<module>", "compile"): 2},
     "tests/unit/test_owner_ask_guard.py": {
-        ("test_the_hook_is_wired_on_every_projects_tool", "search"): 2
+        ("test_the_hook_is_wired_on_every_projects_tool", "search"): 1
     },
     "tests/unit/test_pr_body_check.py": {
         ("test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script", "compile"): 1

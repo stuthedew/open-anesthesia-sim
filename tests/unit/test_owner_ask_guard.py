@@ -17,13 +17,15 @@ import json
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
+import guard as entry_point
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "owner_ask_guard.py"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "owner_ask_guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 
 ASK_LINE = (
@@ -65,7 +67,7 @@ def _decision(
     payload = json.dumps({"tool_name": tool, "tool_input": tool_input or {"text": text}})
     env = {**os.environ, "OWNER_ASK_GUARD_ARM": _fake_arm(tmp_path, code, said)}
     result = subprocess.run(
-        [sys.executable, str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,
@@ -173,7 +175,7 @@ def test_a_progress_note_never_asks_arm(tmp_path: Path) -> None:
     )
     env = {**os.environ, "OWNER_ASK_GUARD_ARM": str(script)}
     result = subprocess.run(
-        [sys.executable, str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,
@@ -354,12 +356,12 @@ def test_the_hook_is_wired_on_every_projects_tool() -> None:
         entry["matcher"]
         for entry in settings["hooks"]["PreToolUse"]
         for hook in entry["hooks"]
-        if "owner_ask_guard.py" in hook["command"]
+        if hook["command"] == 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp'
     ]
     assert len(wired) == 1
     for tool in (*MESSAGE_TOOLS, "mcp__hearthbot__send_card"):
         assert re.search(wired[0], tool), tool
-    assert not re.search(wired[0], "mcp__github__add_issue_comment")
+    assert GUARD in [guard.name for guard in entry_point.GROUPS["pre-mcp"]]
 
 
 POST = "mcp__hearthbot__post_message"

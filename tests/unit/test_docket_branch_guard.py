@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/docket-branch-guard.sh`, the first-edit branch check.
+"""Tests for the branch guard, `.claude/hooks/docket_branch_guard.py`, the first-edit check.
 
 `PL-1CYR` made the branch's position askable at any moment; this hook is what
 asks it, at the moment a discussion becomes implementation. What has to hold is
@@ -22,8 +22,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import guard as entry_point
+
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "docket-branch-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "docket-branch-guard"
 
 
 def _git(*args: str, cwd: Path) -> None:
@@ -97,7 +101,7 @@ def _run_guard(
     if target is not None:
         payload["tool_input"] = {"file_path": str(target)}
     return subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         cwd=root,
         input=json.dumps(payload),
         env=_guard_env(root, tmp_path),
@@ -119,7 +123,7 @@ def _run_after_bash(
         "cwd": str(root),
     }
     return subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         cwd=root,
         input=json.dumps(payload),
         env=_guard_env(root, tmp_path),
@@ -216,7 +220,7 @@ def test_a_session_id_laid_out_across_lines_is_read_as_json(tmp_path: Path) -> N
     work = _clone_of_a_moved_remote(tmp_path)
     answers = [
         subprocess.run(
-            ["bash", str(HOOK)],
+            ["bash", str(HOOK), GUARD],
             cwd=work,
             input=(
                 f'{{\n  "session_id":\n    "{session}",\n  "tool_name":\n    "Edit",\n'
@@ -254,7 +258,7 @@ def test_branch_guard_lets_the_edit_through_when_it_cannot_run(tmp_path: Path) -
     (tmp_path / "markers").mkdir()
     (tmp_path / "bare").mkdir()
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input='{"session_id": "s3"}',
         env={
             "CLAUDE_PROJECT_DIR": str(tmp_path / "bare"),
@@ -326,14 +330,14 @@ def test_an_unset_project_dir_falls_back_as_the_other_hooks_do(tmp_path: Path) -
     _with_the_check(work)
     hooks = work / ".claude" / "hooks"
     hooks.mkdir(parents=True)
-    for name in ("docket-branch-guard.sh", "hook_input.py"):
+    for name in ("guard.sh", "guard.py", "docket_branch_guard.py", "hook_input.py"):
         shutil.copy(HOOK.parent / name, hooks / name)
     env = _guard_env(work, tmp_path)
     del env["CLAUDE_PROJECT_DIR"]
     payload = {"session_id": "s1", "tool_name": "Edit", "tool_input": {"file_path": "src/w.py"}}
 
     result = subprocess.run(
-        ["bash", str(hooks / "docket-branch-guard.sh")],
+        ["bash", str(hooks / "guard.sh"), GUARD],
         cwd=tmp_path,
         input=json.dumps(payload),
         env=env,
@@ -428,18 +432,23 @@ def test_a_failed_bash_call_answers_under_its_own_event(tmp_path: Path) -> None:
 def test_the_hook_runs_after_every_bash_call_and_before_every_edit() -> None:
     """The wiring is what the tests above cannot see: a hook nothing runs asks nothing."""
     hooks = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))["hooks"]
-    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh"'
+    commands = {
+        'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-edit',
+        'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" post-bash',
+    }
 
     def matchers(event: str) -> set[str]:
         return {
             entry.get("matcher", "")
             for entry in hooks.get(event, [])
-            if any(hook.get("command") == command for hook in entry["hooks"])
+            if any(hook.get("command") in commands for hook in entry["hooks"])
         }
 
     assert matchers("PreToolUse") == {"Edit|Write|MultiEdit|NotebookEdit"}
     assert matchers("PostToolUse") == {"Bash"}
     assert matchers("PostToolUseFailure") == {"Bash"}
+    for group in ("pre-edit", "post-bash"):
+        assert GUARD in [guard.name for guard in entry_point.GROUPS[group]]
 
 
 def test_branch_guard_names_a_python_below_the_floor(tmp_path: Path) -> None:

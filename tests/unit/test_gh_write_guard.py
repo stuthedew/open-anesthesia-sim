@@ -16,10 +16,13 @@ import sys
 from pathlib import Path
 
 import gh_write_guard
+import guard as entry_point
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "gh_write_guard.py"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard's own name, which selects it alone in `guard.sh`.
+GUARD = "gh-write-guard"
 
 
 def _payload(command: str) -> str:
@@ -119,8 +122,11 @@ def test_a_call_the_hook_cannot_read_is_refused_only_where_it_names_gh(
     monkeypatch.setattr(gh_write_guard, "judge", broken)
     monkeypatch.setattr(sys, "stdin", io.StringIO(_payload(command)))
 
-    assert gh_write_guard.main() == 0
-    assert ("reader broke" in capsys.readouterr().out) is refused
+    assert entry_point.main([GUARD]) == 0
+    decided = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+    assert ("permissionDecision" in decided) is refused
+    said = decided.get("permissionDecisionReason") or decided["additionalContext"]
+    assert "reader broke" in said
 
 
 @pytest.mark.parametrize(
@@ -138,10 +144,11 @@ def test_the_hook_is_wired_on_bash_and_refuses_from_its_script() -> None:
         for entry in settings["hooks"]["PreToolUse"]
         for hook in entry["hooks"]
     }
-    assert wired['python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/gh_write_guard.py"'] == "Bash"
+    assert wired['bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-bash'] == "Bash"
+    assert GUARD in {guard.name for guard in entry_point.GROUPS["pre-bash"]}
 
     ran = subprocess.run(
-        [sys.executable, str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=_payload("gh pr merge 1991"),
         capture_output=True,
         text=True,
@@ -158,7 +165,7 @@ def test_the_script_lets_a_read_through() -> None:
     the refusal test above would still pass.
     """
     ran = subprocess.run(
-        [sys.executable, str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=_payload("gh pr view 1991"),
         capture_output=True,
         text=True,

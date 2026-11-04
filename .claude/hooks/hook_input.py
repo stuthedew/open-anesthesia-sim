@@ -1,15 +1,20 @@
-"""What a hook reads before it decides anything: its checkout, and the Bash call it was handed.
+"""What a hook reads and writes: its checkout, the call it was handed, and its output.
 
-Every hook here acts on one checkout, and the four Bash guards
-(`floor-interpreter-guard.sh`, `gate-status-guard.sh`, `gh_write_guard.py` and
-`push-check-guard.sh`) each read the command out of the payload Claude Code
-hands them. Each hook used to spell both itself (`PL-FB77`). The guards held
-four identical copies of the payload reading. Five hooks found the checkout,
-and they did not agree: with `CLAUDE_PROJECT_DIR` unset, four fell back to the
-directory two levels above `.claude/hooks/`, and `docket-branch-guard.sh`
-found none and exited, so it said nothing in a checkout where the others
-acted. This module is the one answer. A hook written in Python imports it, and
-one written in shell runs it as a script, which prints the checkout.
+Every hook here acts on one checkout, and each Bash guard reads the command
+out of the payload Claude Code hands it. Each hook used to spell both itself
+(`PL-FB77`). The guards held four identical copies of the payload reading.
+Five hooks found the checkout, and they did not agree: with
+`CLAUDE_PROJECT_DIR` unset, four fell back to the directory two levels above
+`.claude/hooks/`, and the branch guard found none and exited, so it said
+nothing in a checkout where the others acted. This module is the one answer.
+A hook written in Python imports it, and one written in shell runs it as a
+script, which prints the checkout.
+
+It also builds and reads a hook's output. `deny` builds a refusal and logs it
+through `log_refusal`, which the git hooks in `.claude/hooks/git/` call too,
+through `--log`. `output` joins the refusals and notes of several guards into one output, and
+`verdict` reads one guard's output back. `guard.py` uses the last two to run
+every guard of a call from one Python start (`PL-9KSJ`).
 
 Standard library only, since a hook runs before any virtualenv is known.
 """
@@ -21,6 +26,7 @@ import os
 import stat
 import sys
 import tempfile
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -133,12 +139,60 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
     what the log holds.
     """
     log_refusal(guard, rule, session_of(payload))
-    decision = {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": reason,
-    }
-    return json.dumps({"hookSpecificOutput": decision})
+    return output("PreToolUse", refusals=[reason])
+
+
+def output(event: str, *, refusals: Sequence[str] = (), notes: Sequence[str] = ()) -> str:
+    """The hook output for `event` that refuses the call and adds context, or "" for neither.
+
+    The reasons in `refusals` are joined into one refusal, and `notes` into
+    one `additionalContext`, each with a blank line between. This is the one
+    place a hook's output is built, and `verdict` the one place it is read, so
+    `guard.py` can merge what several guards return (`PL-9KSJ`). The fields are
+    the ones https://code.claude.com/docs/en/hooks § "PreToolUse decision
+    control" documents, read 2026-11-03.
+    """
+    fields = {"hookEventName": event}
+    if refusals:
+        fields["permissionDecision"] = "deny"
+        fields["permissionDecisionReason"] = "\n\n".join(refusals)
+    if notes:
+        fields["additionalContext"] = "\n\n".join(notes)
+    return json.dumps({"hookSpecificOutput": fields}) if len(fields) > 1 else ""
+
+
+class Verdict(NamedTuple):
+    """What one hook's output says: the reason it refuses the call, and the note it adds."""
+
+    #: The reason for refusing the call, or `None` where it does not refuse.
+    refusal: str | None
+    #: The context it adds for the session, or `None` where it adds none.
+    note: str | None
+
+
+def verdict(text: str) -> Verdict:
+    """What `text`, one hook's output, says; "" says nothing.
+
+    Raises `ValueError` where `text` is not output `output` could have built:
+    not JSON, a key other than `hookSpecificOutput`, or a decision other than
+    a refusal. A guard that prints something else has failed, and `guard.py`
+    says so.
+    """
+    if not text:
+        return Verdict(None, None)
+    parsed = json.loads(text)
+    fields = parsed.get("hookSpecificOutput") if isinstance(parsed, dict) else None
+    if not isinstance(fields, dict) or set(parsed) != {"hookSpecificOutput"}:
+        raise ValueError(f"it printed {text[:200]!r}, which is not a hook's JSON")
+    decision = fields.get("permissionDecision")
+    if decision not in (None, "deny"):
+        raise ValueError(f"it returned the decision {decision!r}, where only a refusal is merged")
+    reason = fields.get("permissionDecisionReason") if decision == "deny" else None
+    note = fields.get("additionalContext")
+    return Verdict(
+        (reason if isinstance(reason, str) else "") if decision == "deny" else None,
+        note if isinstance(note, str) and note else None,
+    )
 
 
 #: The mode a file `write_atomically` creates is given: readable by all,

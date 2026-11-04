@@ -34,7 +34,7 @@ def test_a_refusing_guard_logs_its_name_rule_and_session(tmp_path: Path) -> None
         }
     )
     result = subprocess.run(
-        ["bash", str(HOOKS / "floor-interpreter-guard.sh")],
+        ["bash", str(HOOKS / "guard.sh"), "floor-interpreter-guard"],
         input=payload.encode(),
         capture_output=True,
         timeout=20,
@@ -50,7 +50,7 @@ def test_a_refusing_guard_logs_its_name_rule_and_session(tmp_path: Path) -> None
 
 
 def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
-    """`pr-body-email-guard.sh` refuses through `tools/pr_body_check.py --screen`,
+    """`pr-body-email-guard` refuses through `tools/pr_body_check.py`'s `screen`,
     which built its own refusal and so logged nothing (`PL-HHKC`)."""
     log = tmp_path / "blocks.tsv"
     payload = json.dumps(
@@ -68,7 +68,7 @@ def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
         }
     )
     result = subprocess.run(
-        ["bash", str(HOOKS / "pr-body-email-guard.sh")],
+        ["bash", str(HOOKS / "guard.sh"), "pr-body-email-guard"],
         input=payload.encode(),
         capture_output=True,
         timeout=20,

@@ -97,8 +97,13 @@ SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 #: its own outside the standard library. `hook_input` meets it too:
 #: `tools/hook_blocks.py` reads where the guards log their refusals from it, in
 #: `.claude/hooks/`, by inserting that path, so the log has one home
-#: (`PL-SG93`).
-VENDORED = frozenset({"docket", "hook_input"})
+#: (`PL-SG93`). `open_pull_requests` meets it the other way round:
+#: `.claude/hooks/direct_merge_guard.py` asks GitHub through
+#: `tools/open_pull_requests.py`, the repository's one GitHub client, by
+#: inserting that path (`PL-S3TF`). `branch_id_check` too:
+#: `.claude/hooks/docket_branch_guard.py` reads its `NOT_ASKED` exit status
+#: from there, on the path `.claude/hooks/guard.py` inserts (`PL-9KSJ`).
+VENDORED = frozenset({"branch_id_check", "docket", "hook_input", "open_pull_requests"})
 
 
 def _bare_python_floor() -> tuple[int, int]:
@@ -213,7 +218,8 @@ def test_no_tool_imports_outside_the_standard_library() -> None:
         # beside it needs no install and is in every fresh clone. Read from the
         # tree rather than listed, because a hand-maintained list of in-tree
         # names is the drift `PL-JBZK` records - and scoped per directory,
-        # since nothing under `.claude/hooks/` can import a `tools/` module.
+        # since a hook imports a `tools/` module only by inserting its path,
+        # which `VENDORED` names.
         beside = {sibling.stem for sibling in path.parent.glob("*.py")} - {path.stem}
         for root in _imported_roots(tree):
             assert root in allowed | beside, (

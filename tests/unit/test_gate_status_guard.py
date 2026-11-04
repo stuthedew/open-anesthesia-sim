@@ -1,4 +1,4 @@
-"""Tests for `.claude/hooks/gate-status-guard.sh`, the swallowed-exit-status refusal.
+"""Tests for the gate-status guard, `.claude/hooks/gate_status_guard.py`.
 
 A shell pipeline reports its last stage, so `make check 2>&1 | tail -45` exits
 with `tail`'s status and a red tree arrives as exit 0. `PL-2JRC` reported the
@@ -25,10 +25,13 @@ import re
 import subprocess
 from pathlib import Path
 
+import guard as entry_point
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-HOOK = REPO / ".claude" / "hooks" / "gate-status-guard.sh"
+HOOK = REPO / ".claude" / "hooks" / "guard.sh"
+#: The guard these tests run alone, through the entry point every guard shares.
+GUARD = "gate-status-guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 
 
@@ -36,7 +39,7 @@ def _decision(command: str, *, tool: str = "Bash") -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one tool call, or `None` if it stayed quiet."""
     payload = json.dumps({"tool_name": tool, "tool_input": {"command": command}})
     result = subprocess.run(
-        ["bash", str(HOOK)], input=payload, capture_output=True, text=True, timeout=20
+        ["bash", str(HOOK), GUARD], input=payload, capture_output=True, text=True, timeout=20
     )
     assert result.returncode == 0, result.stderr
     if not result.stdout.strip():
@@ -1157,14 +1160,25 @@ def test_the_guard_fails_open(command: str) -> None:
     _decision(command)  # the assertion is in `_decision`: exit 0, parseable or empty
 
 
-def test_a_payload_the_hook_cannot_read_is_not_an_error() -> None:
-    """Every error path exits 0 and says nothing, like the two guards beside it."""
-    for payload in ("", "not json", json.dumps({"tool_name": "Bash"})):
+def test_a_payload_the_hook_cannot_read_is_let_through_and_said() -> None:
+    """A call it cannot read goes through, with a note that it was not read (`PL-9KSJ`)."""
+    for payload in ("", "not json"):
         result = subprocess.run(
-            ["bash", str(HOOK)], input=payload, capture_output=True, text=True, timeout=20
+            ["bash", str(HOOK), GUARD], input=payload, capture_output=True, text=True, timeout=20
         )
         assert result.returncode == 0
-        assert result.stdout.strip() == ""
+        output = json.loads(result.stdout)["hookSpecificOutput"]
+        assert "permissionDecision" not in output
+        assert "not a JSON object" in output["additionalContext"]
+    result = subprocess.run(
+        ["bash", str(HOOK), GUARD],
+        input=json.dumps({"tool_name": "Bash"}),
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
 
 
 def test_the_hook_is_wired_into_settings() -> None:
@@ -1176,7 +1190,8 @@ def test_the_hook_is_wired_into_settings() -> None:
         if entry.get("matcher") == "Bash"
         for hook in entry["hooks"]
     ]
-    assert any("gate-status-guard.sh" in command for command in commands)
+    assert 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-bash' in commands
+    assert GUARD in [guard.name for guard in entry_point.GROUPS["pre-bash"]]
 
 
 ARM_PIPED = (
@@ -1217,6 +1232,21 @@ def test_bin_docket_arm_read_whole_or_named_in_text_is_allowed(command: str) -> 
     assert _decision(command) is None
 
 
+def test_a_call_longer_than_an_environment_variable_holds_is_still_judged() -> None:
+    """`PL-B5K1`: a payload past Linux's 128 KiB limit on one environment variable is judged.
+
+    The payload once reached Python in an environment variable, so a call
+    that wrote a long file through a heredoc started no check, and its gate's
+    exit status was thrown away unseen. It now arrives on standard input.
+    """
+    heredoc = "cat > /tmp/long.txt <<'EOF'\n" + "x" * 140_000 + "\nEOF\n"
+    command = heredoc + "make check | tail -5"
+    assert len(json.dumps({"tool_input": {"command": command}})) > 128 * 1024
+    decision = _decision(command)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"
+
+
 @pytest.mark.parametrize(
     ("command", "rule"),
     [
@@ -1237,7 +1267,7 @@ def test_a_logged_refusal_names_the_gate_it_read(command: str, rule: str, tmp_pa
         {"session_id": "cse_a", "tool_name": "Bash", "tool_input": {"command": command}}
     )
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        ["bash", str(HOOK), GUARD],
         input=payload,
         capture_output=True,
         text=True,

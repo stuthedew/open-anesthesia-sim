@@ -51,11 +51,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/regex-guard.sh\""
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" pre-edit",
+            "timeout": 75
           }
         ]
       },
@@ -64,20 +61,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/gh_write_guard.py\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/floor-interpreter-guard.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-status-guard.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/push-check-guard.sh\"",
-            "timeout": 120
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" pre-bash",
+            "timeout": 145
           }
         ]
       },
@@ -86,21 +71,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/direct-merge-guard.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "^mcp__hearthbot__.*$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/owner_ask_guard.py\"",
-            "timeout": 60
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" pre-mcp",
+            "timeout": 110
           }
         ]
       }
@@ -111,7 +83,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh\""
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" post-bash",
+            "timeout": 65
           }
         ]
       },
@@ -131,7 +104,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh\""
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh\" post-bash",
+            "timeout": 65
           }
         ]
       }
