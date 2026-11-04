@@ -5518,7 +5518,12 @@ def cmd_flight(args: argparse.Namespace) -> int:
         opened_now = lookup()
     unasked = (
         arming.unasked_pull_requests(
-            inv.root, opened_now, items_dir=inv.tracked, now=_now(args), runner=inv.git
+            inv.root,
+            opened_now,
+            items_dir=inv.tracked,
+            now=_now(args),
+            record_dir=inv.config.record_dir,
+            runner=inv.git,
         )
         if opened_now is not None and inv.tracked
         else None
@@ -5763,6 +5768,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
             inv.root,
             items_dir=inv.tracked,
             now=_now(args),
+            record_dir=inv.config.record_dir,
             fetch=not args.no_fetch,
             runner=inv.git,
             newest=_newest_pull_request(inv.root, inv.config),
@@ -5779,6 +5785,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         inv.root,
         items_dir=inv.tracked,
         now=_now(args),
+        record_dir=inv.config.record_dir,
         fetch=not args.no_fetch,
         runner=inv.git,
         newest=_newest_pull_request(inv.root, inv.config),
