@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: review-hold
+milestone: v0.6.15
 touches: tools/model_rewrite.py, tests/unit/test_model_rewrite.py, subprojects/docket/src/docket/arming.py, .claude/skills/pull-request/SKILL.md, docs/maintainer.md, .claude/skills/docket/modes/coordinator.md, docs/apparatus.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-QHR2-make-docs-model-md-supported-input-ranges-and.md, docs/items/PL-QL0X-make-docs-model-md-runtime-controls-up-to.md, docs/items/PL-WBR3-make-docs-model-md-s-published-wash-in-and.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md, docs/items/PL-ZT47-docs-model-md-still-reads-as-machine-written.md
 added: 2026-11-02
 closed: 2026-11-02

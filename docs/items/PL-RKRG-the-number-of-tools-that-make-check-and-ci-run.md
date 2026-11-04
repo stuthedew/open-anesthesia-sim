@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.15
 touches: Makefile, .github/workflows/quality.yml, docs/apparatus.md, tests/unit/test_tools_portability.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03

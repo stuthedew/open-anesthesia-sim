@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guard-refusal-log
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_arming.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04

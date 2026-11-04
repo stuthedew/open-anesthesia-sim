@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: defect-review-2026-10
+milestone: v0.6.15
 touches: docs/items/PL-SG93-the-bash-guard-hooks-account-for-74-defects.md, tools/hook_blocks.py, tests/unit/test_hook_blocks.py, .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/hook-blocks/README.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03

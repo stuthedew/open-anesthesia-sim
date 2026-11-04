@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/gitargv.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, tools/left_behind_check.py, tools/blind_review_report.py, docs/items/PL-TFY2-docket-s-git-fetch-gives-up-at-the-ten-second.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only fix to how long a git call that reaches the remote may run, with no effect on what a learner sees
 added: 2026-11-03

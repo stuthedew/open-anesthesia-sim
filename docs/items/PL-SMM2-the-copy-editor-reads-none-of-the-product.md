@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: copy-editor
+milestone: v0.6.15
 touches: .claude/rules/plain-writing.md, tests/unit/test_new_prose.py
 added: 2026-11-04
 closed: 2026-11-04

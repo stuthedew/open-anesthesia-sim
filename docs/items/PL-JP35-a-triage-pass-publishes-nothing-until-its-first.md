@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, session-cost
 feature: claim-record
+milestone: v0.6.15
 touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/render.py
 deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the workflow lane, not safety or science
 added: 2026-11-03

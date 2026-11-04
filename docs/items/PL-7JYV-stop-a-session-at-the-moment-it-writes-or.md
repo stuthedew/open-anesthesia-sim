@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: regex-review
+milestone: v0.6.15
 touches: tools/regex_check.py, tools/regex_baseline.py, .claude/hooks/regex-guard.sh, .claude/settings.json, tests/unit/test_regex_check.py, tests/unit/test_regex_guard.py, Makefile, .github/workflows/quality.yml, tests/unit/test_tools_portability.py, docs/apparatus.md, docket.toml
 added: 2026-11-03
 closed: 2026-11-03

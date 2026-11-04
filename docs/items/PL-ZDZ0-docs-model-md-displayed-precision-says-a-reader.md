@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
+milestone: v0.6.15
 touches: docs/MODEL.md, tests/unit/test_formatting.py
 deferred-from: v0.7.0 - captured after the freeze; every displayed value is correct, and the false sentence is in docs/MODEL.md rather than on screen
 added: 2026-11-03

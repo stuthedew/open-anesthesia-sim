@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: liquid-agent-consumption
+milestone: v0.6.15
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md
 blocked-by: PL-B396, PL-VJZK, PL-93B3
 added: 2026-10-25

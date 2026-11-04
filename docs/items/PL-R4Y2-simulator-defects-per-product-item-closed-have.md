@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: housekeeping
 feature: defect-review-2026-10
+milestone: v0.6.15
 touches: docs/items, ROADMAP.md
 blocked-by: 2026-11-02
 added: 2026-10-19

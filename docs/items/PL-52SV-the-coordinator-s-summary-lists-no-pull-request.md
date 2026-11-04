@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: owner-ask-by-state
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/coordinator.md
 added: 2026-11-04
 closed: 2026-11-04

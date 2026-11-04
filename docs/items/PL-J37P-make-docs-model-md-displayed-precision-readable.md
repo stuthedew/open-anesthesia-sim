@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.15
 touches: docs/MODEL.md, docs/items/PL-040-stop-displaying-more-decimals-than-the-model.md, docs/items/PL-0M7K-test-displayed-ordering-reverses-only-at-a.md, docs/items/PL-X9KD-re-derive-displayed-precision-and-the-supported.md, docs/items/PL-Z4K6-decide-whether-seven-readout-columns-on-a-1366.md
 added: 2026-11-02
 closed: 2026-11-04

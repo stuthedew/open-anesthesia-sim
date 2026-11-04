@@ -6,6 +6,7 @@ owner-priority: P1, 2026-11-02
 effort: M
 status: done
 feature: copy-editor
+milestone: v0.6.15
 touches: .claude/skills/docket/modes/close-out.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tools/rules_paths_check.py, tests/unit/test_rejected_prose.py, tests/unit/test_new_prose.py, docs/apparatus.md, docket.toml, Makefile, .github/workflows/quality.yml
 blocked-by: PL-1XC7
 added: 2026-11-02

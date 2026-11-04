@@ -6,6 +6,7 @@ owner-priority: P1, 2026-11-02
 effort: M
 status: done
 feature: copy-editor
+milestone: v0.6.15
 touches: .claude/rules/plain-writing.md, docs/items/PL-ZT47-docs-model-md-still-reads-as-machine-written.md, tools/model_rewrite.py, tests/unit/test_model_rewrite.py, docs/resident-instructions.md, docs/apparatus.md, docs/maintainer.md, .claude/skills/pull-request/SKILL.md, docs/items/PL-FYGJ-nothing-tests-the-prose-review-against-the.md
 blocked-by: PL-R7Q6
 added: 2026-11-02

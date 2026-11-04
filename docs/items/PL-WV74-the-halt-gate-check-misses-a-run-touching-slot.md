@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: defect-review-2026-10
+milestone: v0.6.15
 touches: tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-11-03
