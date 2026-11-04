@@ -3,11 +3,13 @@ id: PL-9331
 title: Make docs/MODEL.md § "Assumptions", § "Known limitations" and § "Release gate" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P1
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md
 added: 2026-11-02
+closed: 2026-11-04
+pr: 2019
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "Assumptions" "Known limitations" "Release gate"
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
@@ -46,3 +48,12 @@ or a sentence whose meaning needs their judgment.
 **Blocked** (project owner, 2026-11-04). This rewrite waits for the writing rule and the copy editor that `PL-J1ZM`'s design builds through `PL-W8FL`, `PL-43GT`, `PL-22T5` and `PL-JP8X`. Done before them, it would be written under the rules that made the section verbose, and then rewritten again.
 
 **Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
+
+**Owner's review, 2026-11-04.** Five sentences in `docs/MODEL.md` § "Known limitations" and § "Assumptions" now say something different, so pull request #2019 waits for the owner to review them. Four of them correct an error:
+
+1. The humidification table said that with the water-vapour factor (713/760) applied, three of the four published wash-in cohorts fall outside one standard deviation of their published means. It now says all four do, as the table's rows show.
+2. The Gas Man note said the cardiac-output note carries Brody's 1945 relation. It now says that note declines to adopt it.
+3. The lung-store paragraph said the store does not appear in $`F_A/F_I`$ at all. It now says the store takes up agent in the first minutes of wash-in and barely changes $`F_A/F_I`$ at 30 minutes.
+4. The lead-in said "Version v0.1.0 assumes". It now says "This model assumes".
+
+The fifth rewords the arterial-blood bullet. It said arterial blood "is flow-limited and equals alveolar gas". It now says the lung is perfusion limited and arterial blood carries the alveolar partial pressure.
