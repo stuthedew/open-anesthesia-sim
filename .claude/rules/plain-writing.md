@@ -48,7 +48,9 @@ it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
 note for developers at the end of the section it came from, a paragraph that
 opens with "**For developers.**" That note may name the tests for the paragraphs
 directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
-document must specify the numerical method (`PL-TZ7R`).
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
 
 **Give a chosen value its reason from a record.** Where a docstring or a
 comment gives a chosen value, such as a tolerance or a limit, say what the
@@ -56,11 +58,11 @@ value does, why it is this number, and what changing it would do. In
 `docs/MODEL.md`, say it in the note for developers. Take each answer from the
 code or test that uses the value, or from a cited record. When the reason is
 not at hand, trace the value's history first, with `git log -S` and the items.
-Search for the value as the code writes it. The step-size test's 0.5% tolerance, removed in `PL-VXM0`, was
-`5e-3` in `tests/reference/test_sevo_patient.py`, and `git log -S 5e-3` finds
-the commit that first set it. When the trace finds no reason, file an item for the missing
-record, and say in the text what the trace found. Never state a reason that no
-record holds.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
