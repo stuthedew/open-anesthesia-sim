@@ -131,14 +131,14 @@ def run(request: Path, root: Path = ROOT, env: Mapping[str, str] | None = None) 
                 env={**(os.environ if env is None else env), **QUIET_ENV},
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
-                text=True,
                 timeout=COPY_EDIT_TIMEOUT_S,
             )
         except subprocess.TimeoutExpired as error:
             raise Refused(f"claude did not finish within {COPY_EDIT_TIMEOUT_S} s") from error
     if done.returncode:
-        raise Refused(f"claude exited {done.returncode}: {done.stderr.strip()[-500:]}")
-    return reply_of(done.stdout)
+        reason = done.stderr.decode("utf-8", errors="replace").strip()[-500:]
+        raise Refused(f"claude exited {done.returncode}: {reason}")
+    return reply_of(done.stdout.decode("utf-8"))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
