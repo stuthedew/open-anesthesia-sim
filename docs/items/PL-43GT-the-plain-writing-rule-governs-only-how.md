@@ -3,12 +3,14 @@ id: PL-43GT
 title: The plain-writing rule governs only how sentences are worded: nothing sets the order a clinician reader needs (what the readout shows, what it means, then why) or stops one line of reasoning being split into a chain of short sentences, and the blind prose measure scores awkwardness rather than length, so it passed at 21.7% while the owner judges the output too long
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: reader-first-prose
-touches: .claude/rules/plain-writing.md, docs/prose-review/prompt.md
+touches: .claude/rules/plain-writing.md, docs/prose-review/prompt.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - captured after the freeze; it changes how sessions write prose, not a displayed value
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2008
 payoff: a session writing for a clinician or the owner leaves out what that reader does not act on, so a passage says what a readout means in a few sentences
 verify: grep -q 'needs to act on, and stop' .claude/rules/plain-writing.md
 ---
