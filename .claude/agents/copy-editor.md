@@ -75,12 +75,17 @@ the smallest, because a paragraph you cut needs no sentence edit.
    - **Another reader's.** Another reader needs the fact and looks for it
      elsewhere. Name that place. In `docs/MODEL.md` it is the note for
      developers at the end of the section, and you move the fact there yourself
-     when that note is in the ">" rows. Keep a note to one paragraph on one
-     topic. Where the moved facts make a second topic, give them a second
-     paragraph that also opens "**For developers.**". Elsewhere the place is the
-     item, the commit message or a code comment. When you move a paragraph's
-     detail, leave in this reader's text the sentence they need from it, such as
-     what the detail guarantees them.
+     when that note is in the ">" rows. The note runs from "**For
+     developers.**" to the next heading, so open only its first paragraph with
+     those words. Elsewhere the place is the item, the commit message or a code
+     comment. Decision history, meaning who decided, when, and how the decision
+     was reached, belongs in the item that the text names beside it, never in
+     the note for developers. Cut it and name that item. Keep in the note a
+     reason a developer needs before changing the design, such as why an
+     alternative fails. Where no item id holds a decision, keep its short tag,
+     such as "(project owner, 2026-09-14)", beside the decision it records.
+     When you move a paragraph's detail, leave in this reader's text the
+     sentence they need from it, such as what the detail guarantees them.
    - **Wordy.** It uses more words than its fact needs. Shorten it in step 5.
 
    Never cut a fact this reader needs to act correctly: a value with its unit,
@@ -131,6 +136,11 @@ the smallest, because a paragraph you cut needs no sentence edit.
      the reader needs and the original lacked. Name each such fact under the
      block, or cut the words. Work to no word count beyond that.
    - Each sentence reads as you would say it to a colleague who is this reader.
+     Rewrite a sentence you wrote whose clauses stack or whose subject sits far
+     from its verb.
+   - No sentence shows one of the writing rule's five patterns: a tautological
+     aside, a contrast nobody claimed, narration about the text itself, a
+     defensive scope statement, or a paragraph grown into an essay.
 
 ## What to return
 
@@ -154,8 +164,7 @@ Under the block, list one to a line:
 - each move, with the place it goes;
 - each paragraph you rewrote from its facts, with the facts it keeps;
 - each fact the added words carry, where the edit adds words;
-- each query;
-- the passage's words before and after.
+- each query.
 
 For a whole section, first list under "Section:" each fact that was said more
 than once and where it now stands, and each paragraph you moved, merged or
