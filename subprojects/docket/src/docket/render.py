@@ -2913,8 +2913,9 @@ def format_triage(
     # warning that is heeded and one that is trained out.
     carrying = {branch.item_id: branch.name for branch in flight.branches}
     # The weaker mark, for the case the stronger one cannot reach at all: a
-    # triage pass records no claim, so two passes on one item are invisible to
-    # each other however carefully each fetches (`PL-N1JK`).
+    # triage pass that claims nothing leaves only its edits, so two such passes
+    # on one item are invisible to each other however carefully each fetches
+    # (`PL-N1JK`). Triage mode asks a pass to claim its ids first (`PL-JP35`).
     editing: dict[str, list[str]] = {}
     for edit in flight.editing:
         editing.setdefault(edit.item_id, []).append(edit.name)
