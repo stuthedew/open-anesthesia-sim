@@ -49,16 +49,13 @@ source, and `src/` is free to use the language `.python-version` pins.
 `ast.parse`'s `feature_version` cannot bridge that: it only ever narrows the
 syntax accepted, so it cannot teach an older parser a newer language.
 
-So the nine tools that parse repository source - `contrast_check.py`,
-`agent_identity_check.py`, `import_boundary_check.py`,
-`workflow_paths_check.py`, `core_vocabulary_check.py`, `glyph_check.py`,
-`fixture_id_check.py`, `literal_home_check.py` and `regex_check.py` -
-are invoked through
-`uv run python` in both `make check` and `.github/workflows/quality.yml`, and
-are deliberately absent from that workflow's floor section, while staying
-standard-library-only and floor-parseable themselves, which is what keeps them
-in scope here. A tool added to that group belongs on the `uv run python` lines
-in both files and in neither floor section.
+So the tools that parse repository source, such as `contrast_check.py` and
+`regex_check.py`, are invoked through `uv run python` in both `make check` and
+`.github/workflows/quality.yml`. Those two files' `uv run python` lines are
+the list of them. The tools are deliberately absent from that workflow's floor
+section, while staying standard-library-only and floor-parseable themselves,
+which is what keeps them in scope here. A tool added to that group belongs on
+the `uv run python` lines in both files and in neither floor section.
 
 `doc_check.py` and `possessive_section_check.py` are the exception, run both
 ways. They parse repository source too - every module's docstrings, for the
