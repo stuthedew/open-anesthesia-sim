@@ -7321,6 +7321,17 @@ take.
     institution. When no price is set, the View says so instead of showing a
     cost.
 
+12. **The copy editor, fixed, and the rewrites it holds** (queue items
+    `PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`, `PL-XT53` and `PL-YVL0`).
+    The project owner added this to v0.7.0 (project owner, 2026-11-04 20:12Z:
+    "At the copy editor stuff to .7"). The copy editor is the review that
+    every rewrite of `docs/MODEL.md` passes through. It keeps text that its
+    reader does not need, and lengthens some of it, so `PL-HGZS` records it as
+    a live generator. The copy editor is fixed and stress-tested first. Then
+    the five `docs/MODEL.md` rewrites it blocks are made, so that the sections
+    a learner reads beside the schematic, the agent cost View and the other
+    displays are written for a clinician.
+
 ### Definition of done
 
 - A learner can put the compartment schematic in any Area from its View
@@ -7358,6 +7369,9 @@ take.
   cost against that figure times the price.
 - The price and the unit survive a restart, in a preferences file separate
   from every Workspace.
+- The copy editor cuts text that its reader does not need and keeps good
+  text as it is, as `PL-HGZS`'s stress test judges. The five `docs/MODEL.md`
+  rewrites that waited on it have merged.
 - `make check` is green, and `docs/MODEL.md`, `docs/ARCHITECTURE.md` and
   `README.md` describe the interface that exists.
 
