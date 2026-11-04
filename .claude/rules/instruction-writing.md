@@ -14,7 +14,7 @@ without a new carrier to name.
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
 rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block,
-rule 15's clock times and rule 16's copy edit apply to every reply of any
+rule 15's clock times and rule 16's pause apply to every reply of any
 kind. Never mention these rules, "phases," or "closed loops" in the output
 itself.
 
@@ -250,11 +250,8 @@ itself.
     `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
     2026-09-27, `PL-R852`).
 
-16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. A reply
-    that asks the owner to decide, or that runs over 150 words, goes through
-    the copy editor first (project owner, 2026-11-04, `PL-J1ZM`). Write the
-    draft to a file in the scratchpad. Save the output of
-    `python3 tools/new_prose.py --draft FILE --kind replies`, where FILE is the
-    draft, to a second file. Run `python3 tools/copy_edit.py` on the second
-    file. Revert an edit only where it lost or changed a value, a unit, a
-    condition, an identifier or a citation, and send the copy editor's rewrite.
+16. THE COPY EDITOR IS PAUSED. Do not run it on a reply, a pull request or a
+    branch's prose, only to test or debug it, until `PL-HGZS` is fixed and the
+    owner agrees to bring it back (project owner, 2026-11-04). It passed and
+    lengthened text the owner judged too verbose. Cut your own draft instead:
+    remove each fact the reader will not act on.
