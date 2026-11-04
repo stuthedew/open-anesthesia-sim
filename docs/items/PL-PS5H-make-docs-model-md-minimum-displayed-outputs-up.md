@@ -3,10 +3,11 @@ id: PL-PS5H
 title: Make docs/MODEL.md § "Minimum displayed outputs" up to § "The control-input timeline" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
+blocked-by: PL-HGZS
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "What this list requires once the layout is the reader's" "MAC multiples as a display unit" "The chart's time base" "MAC-awake as a chart reference"
