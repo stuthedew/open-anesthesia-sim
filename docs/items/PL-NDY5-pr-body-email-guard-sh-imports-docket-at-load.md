@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, perf
 feature: guards-say-when-they-cannot-check
-touches: tools/pr_body_check.py, tools/email_screen.py, .claude/hooks/guard.py, .claude/hooks/git/pre-push, .claude/hooks/owner_ask_guard.py, tests/unit/test_pr_body_check.py, tests/unit/test_email_screen.py, docs/apparatus.md, docs/resident-instructions.md
+touches: tools/pr_body_check.py, tools/email_screen.py, .claude/hooks/guard.py, .claude/hooks/git/pre-push, .claude/hooks/owner_ask_guard.py, tests/unit/test_pr_body_check.py, tests/unit/test_email_screen.py, tests/unit/test_hook_blocks.py, docs/apparatus.md, docs/resident-instructions.md, .claude/skills/pull-request/SKILL.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
 closed: 2026-11-04

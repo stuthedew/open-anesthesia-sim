@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guards-keyed-on-the-action
-touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, .claude/hooks/shell_split.py, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
+touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, .claude/hooks/shell_split.py, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py, docs/apparatus.md
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane guard defect, not safety or science, and no learner sees it
 added: 2026-11-03
 closed: 2026-11-04

@@ -50,7 +50,7 @@ def test_a_refusing_guard_logs_its_name_rule_and_session(tmp_path: Path) -> None
 
 
 def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
-    """`pr-body-email-guard` refuses through `tools/pr_body_check.py`'s `screen`,
+    """`pr-body-email-guard` refuses through `tools/email_screen.py`'s `screen`,
     which built its own refusal and so logged nothing (`PL-HHKC`)."""
     log = tmp_path / "blocks.tsv"
     payload = json.dumps(

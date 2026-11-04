@@ -729,7 +729,7 @@ group's guards and the module that holds each rule. Seven of those modules
 sit beside it: `floor_interpreter_guard.py`, `gate_status_guard.py`,
 `gh_write_guard.py`, `push_check_guard.py`, `direct_merge_guard.py`,
 `docket_branch_guard.py` and `owner_ask_guard.py`. The other two are `tools/regex_check.py` and
-`tools/pr_body_check.py`. The linter, the type checker and the
+`tools/email_screen.py`. The linter, the type checker and the
 one-source-of-truth check read all of them (`PL-S3TF`). The call arrives on
 standard input because an environment variable carried it before, and Linux
 refuses one past 128 KiB, so a long heredoc switched the guards off
@@ -769,7 +769,7 @@ Every Python-backed guard refuses through `hook_input.deny`, in
 `.claude/hooks/hook_input.py`, which also appends one line to a log on the
 machine: the time, the session id, the guard's name and the rule that refused,
 never the command (`PL-SG93`). The email guard refuses through `screen` in
-`tools/pr_body_check.py`, which calls `deny` too, and
+`tools/email_screen.py`, which calls `deny` too, and
 `tests/unit/test_hook_blocks.py` fails any other Python file that builds a
 refusal of its own (`PL-HHKC`). The two git hooks cannot answer Claude Code,
 so each refuses by its exit status and logs through
@@ -818,7 +818,10 @@ refuses a session's push that deletes a branch on the remote or carries an
 email address in its new commits. Each checks what git is about to do, so the
 spelling of the command does not matter. A hook of the same name that this
 repository did not write is left in place, and the session is told it is
-unguarded.
+unguarded. `git push --no-verify` skips `pre-push`, so the push guard refuses
+a session's push that carries it. A work-in-progress push that should skip the
+push guard's checks is written `PUSH_CHECKS=skip git push`, and `pre-push`
+still screens it (`PL-5R11`).
 
 ## Third-party text (`tests/unit/markdown-specs/`)
 
