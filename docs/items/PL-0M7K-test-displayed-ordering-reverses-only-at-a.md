@@ -116,3 +116,9 @@ second=0.375" ('37.50%' against '30.00%'), and `test_the_real_tree_passes` in
 literals and checks no behaviour. A first mutant, `percent % 10.0`, was also
 caught by `test_format_percent_uses_the_documented_display_resolution`, so it
 did not show what the property adds.
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Displayed precision", when `PL-J37P` took the decision history out of that section:
+
+Since `PL-0M7K` the readings compared are those of the shipped `format_percent`, and the count is still zero (re-measured 2026-10-17). Under the split the two solutions disagreed on the worst reachable trajectory. They disagreed for 0.2 s of a 900 s run with sevoflurane and 1.7 s with desflurane, at gaps up to 1.73 counts of the last displayed digit.
+
+Twice the tolerance is $`1.0\times10^{-7}`$ counts, against the 3.0 counts that the split's bound allowed.

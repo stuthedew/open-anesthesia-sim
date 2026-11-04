@@ -210,3 +210,39 @@ changes.
 together. Three findings filed: `PL-NBWP` (playback multiplier voids the
 control-resolution claim), `PL-NBCJ` (whether the step should move to 0.05 s),
 `PL-B1WW` (the gate measures the oracle's error, not the shipped step's).
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Displayed precision", when `PL-J37P` took the decision history out of that section:
+
+**That ground is gone, and the decision is re-derived here rather than inherited** (`PL-X9KD`, 2026-09-06). `PL-GS5X` replaced the split with an exact propagator, so the solver no longer limits anything a reader can see.
+
+Every figure that the previous version of this section quoted in counts of the last digit described a method that has been retired.
+
+So the constraint that decides the resolution had to be found again, and it is not the one that decided it before.
+
+**The old section ran two questions together, and the distinction between them now carries the whole derivation.** [...] The old section answered the first question and presented the answer as if it were the answer to the second. It could do that because the solver error happened to be close to the readout's resolution, and it can no longer do that.
+
+That test is worth more now than when it was written, not less. While the solver error was close to the readout's resolution, "the model keeps more precision than the display shows" was a small claim.
+
+A second argument used to be offered beside it. It said that the split's error was itself bounded in absolute percentage points, and stayed within a factor of four across the four fast compartments. So one absolute resolution expressed that error directly. That argument is withdrawn with the split. The replacement is that **parameter uncertainty is also absolute in its effect across the row**.
+
+**How this section changed when the solver did, stated so a reader comparing
+versions is not misled.** Through v0.4.2, this section carried a paragraph
+headed "Why parameter uncertainty does not govern this". That paragraph made
+two claims. First, the per-step solver error set the decimal count. Second,
+parameter uncertainty displaces a whole trajectory rather than limiting the
+resolution within a run, so it was disclosed in "Parameter provenance" instead
+of being encoded in a decimal count. The second claim is still true, and it is
+kept above. The first is not, because there is no longer a per-step solver
+error large enough for any readout to express. So the roles have swapped.
+Parameter uncertainty now sets the upper bound on the decimal count. The
+distinction between a displaced trajectory and the resolution within a run now
+explains why that bound is loose enough to permit a digit finer than one SD,
+rather than forbidding it.
+
+Two things did *not* change, and neither depended on the solver. One is the
+resolution that ships. The other is the reason a reader may not treat that
+resolution as a claim about a patient. Nothing in this document has ever
+permitted that second reading. "Known limitations" is where the rule is
+stated: no displayed value may be read as accurate to its last digit as a
+prediction about a patient. A displayed value is accurate to its last digit as
+a statement about this model with these parameters.
