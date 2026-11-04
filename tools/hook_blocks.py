@@ -59,11 +59,14 @@ sys.path.insert(0, str(ROOT / ".claude" / "hooks"))
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.config import load  # noqa: E402
 from docket.vcs import head_branch, read_git  # noqa: E402
 from hook_input import block_log  # noqa: E402
 
-#: Where the copied lines live in the repository.
-BLOCKS_DIR = "docs/hook-blocks"
+#: Where the copied lines live in the repository: `docket.toml`'s `record_dir`,
+#: which the claim check also reads, so a branch that only records its number
+#: owes no claim for the file this writes (`PL-QLNX`).
+BLOCKS_DIR = load(ROOT).record_dir
 
 #: The first line of every copied file.
 BLOCKS_HEADER = "time\tsession\tguard\trule"
@@ -107,6 +110,8 @@ def copy(log: Path, root: Path, branch: str) -> list[str]:
     """
     if not log.is_file():
         return []
+    if not BLOCKS_DIR:
+        return ["hook blocks: docket.toml names no record_dir, so nothing was copied"]
     if not branch:
         return ["hook blocks: HEAD is on no branch, so nothing was copied"]
     held = held_lines(root)
