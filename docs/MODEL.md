@@ -11929,8 +11929,9 @@ value or displayed number here is wrong at sea level. Away from 760 mmHg the
 two classes diverge in opposite directions, which limits where the model
 applies. § "Known limitations" below describes it.
 
-**For developers.** The sea-level identity is a limit on where the model
-applies. Do not "fix" it by adding a device-class parameter.
+**For developers.** The missing device-class parameter is not a defect at
+sea level. A model that adds ambient pressure will need one, because the two
+vaporizer classes respond to it in opposite directions.
 
 ## Known limitations
 
@@ -12020,8 +12021,11 @@ tissue:blood ratio of 1.2 and 1.8 L of pulmonary and arterial blood, the store
 is worth 20.1% of desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of
 isoflurane's.
 
-The store equilibrates fully within about thirty minutes, so it does not
-appear in $`F_A/F_I`$ during wash-in. It acts only early in an elimination.
+The store takes up agent in the first minutes of wash-in, but it
+equilibrates fully within about thirty minutes. So it barely changes the
+30-minute $`F_A/F_I`$ that the wash-in comparison reads, which is why only the
+open-circuit elimination diagnostic showed it. It acts mainly early in an
+elimination.
 "Desflurane's residual, and why the parameter file was not changed" weighs
 these figures against the other explanations of one disagreement.
 
@@ -12438,8 +12442,8 @@ direct representations of metabolism (which would be straightforward) and
 intercompartment diffusion (which would be more complex)" (p. 290).
 
 The time constants in the table's last column, the ratios and the crossing
-times were computed from the published means above and this model's stored
-parameters. None of the sources below is the authority for a stored value:
+times were computed on 2026-09-26 from the published means above and this
+model's parameters as stored then. None of the sources below is the authority for a stored value:
 
 - Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
   Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
@@ -12690,7 +12694,8 @@ the factor, all four fall outside it:
 
 <!-- not-restated: 0.31 -->
 
-This was measured through `_wash_in_ratio` in
+This was measured on 2026-09-19, at the parameters stored then, through
+`_wash_in_ratio` in
 `tests/reference/test_published_wash_in_and_elimination.py`, against the
 published means and standard deviations that the module itself holds.
 
@@ -12706,7 +12711,7 @@ basis is unknown here, could not be shown to move the model toward the
 phenomenon rather than away from it. A proper correction re-references the
 coefficients and the inspired term together. That needs the same
 per-compartment gas-phase model that the note above names, which is well
-outside the current milestone.
+outside the current milestone. Do not "fix" the omission by inserting 713/760.
 
 **What it costs a reader.** Dry alveoli do not affect the displayed percent
 or the MAC multiple, because $`F_A`$ here is anchored to a measured end-tidal
@@ -12771,8 +12776,8 @@ the partial pressure does not. James and White proposed MAPP, minimum alveolar
 *partial pressure*, in place of MAC on exactly this ground. So the unit
 described under § "MAC multiples as a display unit" is a sea-level unit too.
 
-**No correction factor is stored, and the $`1/P`$ form above is only
-approximate.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
+**No correction factor is stored, and the $`1/P`$ form above must not become
+one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
 dilute-vapour limit of the flow-splitting physics. The fuller form is
 $`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$, which reduces to
 $`k\,\mathrm{SVP}/P`$ only where $`\mathrm{SVP} \ll P`$. Isoflurane's
@@ -12783,7 +12788,9 @@ about 16% high at 585 mmHg, where the $`1/P`$ form predicts a flat line. The
 direction of each class's response is not in doubt, and neither is the
 contrast between the two. The size of the variable-bypass compensation is
 approximate, which is why this section says *approximately* preserved and no
-number is stored for it.
+number is stored for it. An implementation of ambient pressure should derive
+the variable-bypass case from each agent's saturated vapour pressure rather
+than from the $`1/P`$ shortcut, and would owe each agent's SVP a source of its own. None is stored today.
 
 **Sources for the notes above.** None of them is the authority for a stored
 value:
@@ -12919,14 +12926,6 @@ patients is weakest.
   unread, which is why this note quotes the study's phase split and does not
   restate its metrics' definitions. It is the authority for nothing stored in
   this project.
-
-**For developers.** Two corrections look natural and are wrong. Do not insert
-713/760 on the inspired term to model humidification: the coefficients and the
-inspired term must be re-referenced together, as the double-counting note
-says. Do not store the $`1/P`$ form as an altitude correction either. An
-implementation of ambient pressure should derive the variable-bypass case from
-each agent's saturated vapour pressure, and would owe each agent's SVP a
-source of its own. None is stored today.
 
 
 ## Release gate
