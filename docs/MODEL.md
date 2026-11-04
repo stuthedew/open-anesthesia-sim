@@ -10370,12 +10370,11 @@ occur while two compartments cross. A reversal is arithmetically possible
 there, though none was observed.
 
 The interface therefore adds no warning or marker when readouts are compared. A
-reader who compares them in order, as the row is designed for, can be misled by
-solver error only about two compartments that are crossing, whose true gap is
-far smaller than one count of the last digit. The interface shows no gap between
-two readouts. A gap that a reader works out by subtracting two readings carries
-the rounding of both, described at the start of this subsection, and the solver
-limit in the paragraph above.
+reader who compares them in order, as the row is designed for, can rely on the
+order shown. The interface shows no gap between two readouts. A gap that a
+reader works out by subtracting two readings carries the rounding of both,
+described at the start of this subsection, and the solver limit in the
+paragraph above.
 
 **For developers.** Two tests enforce the ordering claim. Each covers one half of
 the path from the model to the readout and can fail on its own.
