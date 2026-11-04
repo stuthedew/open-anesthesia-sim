@@ -10147,56 +10147,48 @@ runs it, and `tests/unit/test_contrast_check.py` pins the figures. Run it with
 
 ### Displayed precision
 
+#### What the concentration readouts show
+
 Every modeled concentration and relative partial pressure, in all six
-compartments, is displayed at a fixed resolution of
-**0.01 percentage points**, which is two decimals of a percent. The
-delivered-agent setting uses the same resolution, in the readout beside its
-slider and in the label shown while the slider is dragged, so the setting a
-reader dials and the values it produces are read at one scale. A positive value
-that would round to `0.00%` is displayed as `<0.01%` rather than as zero.
-`test_format_percent_uses_the_documented_display_resolution` enforces the
-resolution, and `test_format_percent_marks_a_value_below_the_resolution`
-enforces the `<0.01%` form.
+compartments, is displayed to **0.01 percentage points**, which is two decimals
+of a percent. The delivered-agent setting uses the same resolution, in the
+readout beside its slider and in the label shown while the slider is dragged, so
+the setting a reader dials and the values it produces are read at one scale. A
+positive value that would round to `0.00%` is displayed as `<0.01%`, so `0.00%`
+means only that no agent has arrived, as before a run starts.
 
-The decimal count is not a formatting convention. Displayed precision is a
-claim about what the model can support, so the count is a decision recorded in
-`PL-040`. Earlier versions displayed three decimals. They were reduced to two
-while the model was solved by an approximate method, the operator split,
-because the third decimal and part of the second were smaller than that
-method's own error.
+Each displayed digit is accurate as a statement about this model with these
+parameters. No displayed value may be read as accurate to its last digit as a
+prediction about a patient ("Known limitations").
 
-**That ground is gone, and the decision is re-derived here rather than
-inherited** (`PL-X9KD`, 2026-09-06). `PL-GS5X` replaced the split with an exact
-propagator, so the solver no longer limits anything a reader can see. Measured
-against the independent solution, the shipped step's own residual is at most
-$`1.6\times10^{-12}`$ percentage points anywhere in the reference gate's
-trajectories, and $`5.2\times10^{-12}`$ over a held hour. That is about one
-two-billionth of the last displayed digit. **A third decimal would no longer be
-numerical noise.** Every figure that the previous version of this section
-quoted in counts of the last digit described a method that has been retired.
+**For developers.** `test_format_percent_uses_the_documented_display_resolution`
+enforces the resolution, and
+`test_format_percent_marks_a_value_below_the_resolution` enforces the `<0.01%`
+form.
 
-So the constraint that decides the resolution had to be found again, and it is
-not the one that decided it before. It is **model fidelity**, meaning what the
-parameters can support. It is bounded from the other side by **legibility**.
+#### Why the readouts show two decimals
 
-**The old section ran two questions together, and the distinction between them
-now carries the whole derivation.** The first question is *how finely can two
-moments within one run be told apart*. Its answer is now about nine decimal
-places finer than the readout shows. Within a run the parameters are fixed and
-the simulation is deterministic. Nothing in the arithmetic comes within nine
-orders of magnitude of the last displayed digit. The second question is *how
-finely does this model resolve a concentration in a patient*. Its answer is
-very much coarser, and it is the question that a clinician reading a percent
-sign is actually asking. The old section answered the first question and
-presented the answer as if it were the answer to the second. It could do that
-because the solver error happened to be close to the readout's resolution, and
-it can no longer do that.
+**The equation solver does not limit the resolution** (measured 2026-09-06). The
+simulator's results differ from an independently computed solution by at most
+$`1.6\times10^{-12}`$ percentage points anywhere in the reference test's runs,
+and by $`5.2\times10^{-12}`$ over an hour with the settings held constant. That
+is about one two-billionth of the last displayed digit, so **a third decimal
+would not be numerical noise.** What decides the count is **model fidelity**,
+meaning what the parameters can support, and it is bounded from the other side
+by **legibility**.
 
-**The upper limit: one measured standard deviation of a partition coefficient
-is worth about one to seven counts of the last displayed digit.** Perturbing a
-single stored coefficient by one published SD, and re-running at 1 MAC with the
-reference adult's flows, displaces a displayed compartment by these amounts,
-which have no test yet (`PL-19W8`):
+**Two questions must be kept apart.** The first is *how finely two moments
+within one run can be told apart*. Within a run the parameters are fixed and the
+simulation is deterministic, so the answer is about nine decimal places finer
+than the readout shows. The second is *how finely this model resolves a
+concentration in a patient*. Its answer is much coarser, and it is the question
+that a clinician reading a percent sign is asking.
+
+**The upper limit: one measured standard deviation of a partition coefficient is
+worth about one to seven counts of the last displayed digit.** One count is 0.01
+percentage points. Perturbing a single stored coefficient by one published SD,
+and re-running at 1 MAC with the reference adult's flows, displaces a displayed
+compartment by these amounts, which have no test yet (`PL-19W8`):
 
 | Coefficient perturbed by one SD | Displacement, worst over 3600 s |
 | --- | --- |
@@ -10207,83 +10199,108 @@ which have no test yet (`PL-19W8`):
 
 <!-- not-restated: 1.3 -->
 
-Each range runs over the three shipped agents, and desflurane always gives the
-largest displacement. The SDs are the measured ones that
-"Parameter provenance" already records. They are the SDs of Yasuda, Targ and
-Eger's human tissue coefficients, which are 3.9% of the mean for desflurane,
-5.3% for sevoflurane and 6.4% for isoflurane. For desflurane's blood:gas coefficient
-the value is Eger's $`0.424 \pm 0.024`$, an SD of 5.7%. Which agent gives the
-largest displacement has no test yet (`PL-19W8`). The three tissue SDs are the
-source's brain:blood ones, and fat's are larger. Which SD each row perturbed
-is being checked, with no test yet (`PL-TDX0`).
+Each range runs over the three agents that the simulator offers, and desflurane
+always gives the largest displacement. The SDs are the measured ones that
+"Parameter provenance" records. The tissue SDs are those of Yasuda, Targ and
+Eger's human tissue coefficients, 3.9% of the mean for desflurane, 5.3% for
+sevoflurane and 6.4% for isoflurane. For desflurane's blood:gas coefficient the
+SD is Eger's $`0.424 \pm 0.024`$, which is 5.7%. Which agent gives the largest
+displacement has no test yet (`PL-19W8`). The three tissue SDs are the source's
+brain:blood ones, and fat's are larger. Which SD each row perturbed is being
+checked, with no test yet (`PL-TDX0`).
 
-Against that, the last digit of a two-decimal readout lies between about a
-seventh of one parameter SD and seven times it. A third decimal would put the
-last digit at one seventieth to seven tenths of one SD. It would then assert
-resolution in a quantity whose own measured spread is one to two orders of
-magnitude wider. It would do so in the readouts where a reader is least able to
-notice. That is false precision in the sense that `CLAUDE.md` forbids, and it
-is what stops the count at two.
+So the last digit of a two-decimal readout lies between about a seventh of one
+parameter SD and seven times it. A third decimal would put the last digit at one
+seventieth to seven tenths of one SD. It would assert resolution in a quantity
+whose measured spread is one to two orders of magnitude wider, in the readouts
+where a reader is least able to notice. That is false precision, and it stops
+the count at two.
 
-**Parameter uncertainty governs the upper limit but still does not govern the
-within-run reading, and both halves matter.** A partition coefficient's SD
-displaces a whole trajectory. It moves where the curve sits, not how finely two
-points on it can be distinguished. So a reader comparing 09:14 against 09:16 of
-one run is not limited by the SD. That is why the readout may honestly carry a
-digit finer than the SD, which is the seventh-of-an-SD end of the range above.
-What the SD does forbid is carrying digits *far* finer than it. A reader cannot
-tell which of the two questions a printed digit is answering. So the interface
-must not invite the second reading while it supports only the first. "Known
-limitations" is where the consequence is made good: no displayed value may be
-read as accurate to its last digit as a prediction about a patient. A displayed
-value is accurate to its last digit as a statement about this model with these
-parameters.
+A digit finer than one SD is still honest, because an SD moves the whole
+trajectory. It moves where the curve sits, not how finely two points on it can
+be told apart, so a reader comparing 09:14 with 09:16 of one run is not limited
+by it. What the SD forbids is digits *far* finer than itself, because a reader
+cannot tell which of the two questions a printed digit answers.
 
-**The lower limit: one decimal is legible enough to be tempting, and it erases
-the teaching.** At 0.1 percentage points the sevoflurane and isoflurane fat
-fractions read `0.0%` for the whole hour (0.032% and 0.015% at 3600 s).
-Desflurane's fat fraction stays at `0.0%` for its first 19.3 minutes and
-reaches 0.2%. Muscle reads `0.0%` for its first 2.9 minutes with desflurane,
-8.5 minutes with sevoflurane and 14.8 minutes with isoflurane. At two decimals
-the same compartments show a nonzero value at 57, 125 and 190 seconds (muscle)
-and 237, 781 and 1477 seconds (fat). What one decimal erases is the
-slow-compartment wash-in, which is the reason for displaying those
-compartments at all. These times have no test yet (`PL-19W8`).
+**The lower limit: one decimal hides the slow compartments' wash-in, which is
+the reason for displaying them.** At 0.1 percentage points the sevoflurane and
+isoflurane fat fractions read `0.0%` for the whole hour (0.032% and 0.015% at
+3600 s). Desflurane's fat fraction stays at `0.0%` for its first 19.3 minutes
+and reaches 0.2%. Muscle reads `0.0%` for its first 2.9 minutes with desflurane,
+8.5 minutes with sevoflurane and 14.8 minutes with isoflurane. At two decimals,
+at 1 MAC with default flows, the same compartments first show a nonzero value at
+57, 125 and 190 seconds (muscle) and 237, 781 and 1477 seconds (fat), for
+desflurane, sevoflurane and isoflurane in that order. These times have no test
+yet (`PL-19W8`).
 
-**That lower limit is a teaching judgment, and it is the project owner's
-rather than the model's** (decided 2026-09-03, `PL-88GQ`). The accuracy
-argument does not apply to it. One decimal is comfortably supported by both
-the solver and the parameters, so nothing numerical rules it out. What rules it
-out is that a simulator built to show uptake and distribution would show a flat
-zero where the uptake is happening. It is stated here as a pedagogical
-objection so that a future revisit knows exactly what it has to beat. It is
-also stated that way so that the revisit does not mistake it for a model
-constraint that the revisit cannot change.
+This lower limit is the project owner's teaching judgment, not a property of the
+model. The solver and the parameters both support one decimal comfortably. What
+rules one decimal out is that a simulator built to show uptake and distribution
+would show a flat zero where the uptake is happening. A future change to one
+decimal has to answer that objection.
 
-**So the band is one to two decimals, and two is the chosen count.** The band
-is what the error budget licenses. The count inside it is a presentation
-decision, which the owner may revise without re-deriving anything in `core/`.
-Nothing in the model is computed from the count. `MAXIMUM_SIMULATION_STEP_S` is
-a tolerance in seconds, and the supported input ranges are intervals in L/min.
-"Supported simulation step" and "Supported input ranges" derive both without
-reference to how many decimals the readout shows. Moving the readout to one
-decimal would change what a reader sees and nothing else. That independence is
-new. Until `PL-X9KD` both were justified through this count. So by the
-reasoning as it was written then, a purely presentational change would have
-licensed a step ten times longer and wider input intervals.
+**So the band is one to two decimals, and two is the chosen count.** The count
+inside the band is a presentation decision, which the owner may revise without
+re-deriving anything in the model. Moving the readout to one decimal would
+change what a reader sees and which settings a slider can reach, and nothing in
+the model's equations.
 
-**The MAC resolution is derived from this one, not chosen beside it.** A MAC
-multiple is a percent divided by the agent's own `mac_percent`. So the
-resolution above already fixes how finely the quotient is known. Stating a
-second resolution independently would mean re-deriving two numbers whenever
-this one is re-measured. The rule is one line: **the finest power of ten that
-is nowhere finer than the percent resolution converted into MAC.** That
-conversion is agent-specific. Converted, 0.01 percentage points is 0.005 MAC
-for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane. So the
-binding agent is isoflurane at 0.0083 MAC, and **0.01 MAC** is the finest power
-of ten at or above it.
-`test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
-arithmetic for every shipped agent.
+**Why not the 0.1 percentage points that agent monitors show.** Agent monitors
+display end-tidal and inspired concentrations to a tenth of a percentage point,
+and that would suit the circuit and alveolar readouts. This simulator also
+displays compartments that no monitor shows, and at that resolution fat and
+muscle read `0.0%` for the times given under the lower limit above. A resolution
+of 0.01 percentage points is the coarsest that keeps every displayed compartment
+legible. That it is also close to what the parameters support is a coincidence,
+because the two are measured independently. The times this paragraph relies on
+have no test yet (`PL-19W8`).
+
+**Why not significant figures.** A significant-figures rule gives the smallest
+values the most decimal places, and the small values are where this model
+supports the least. The parameters' measured SDs, 3.9% to 6.4% of the mean, are
+*relative*, so they apply undiminished to a compartment holding a thousandth of
+a percent. Three significant figures on the fat fraction would imply a relative
+resolution of 0.1% on a number whose parameters are known to about 5%, which
+over-claims by a factor of fifty. The solver is not the limit here. With the
+exact method that the simulator uses, the compartments that hold little agent
+carry at most $`2\times10^{-4}`$ relative error anywhere in the first ten
+seconds of a run, and $`8\times10^{-11}`$ at ten seconds itself. This paragraph
+uses the brain:blood SDs noted above, so it is being corrected, and its figures
+have no test yet (`PL-TDX0`).
+<!-- not-restated: 5 % -->
+
+**Why a value below the resolution is marked rather than shown as zero.** Even
+at two decimals, muscle and fat start below the last digit, for the times given
+under the lower limit above. Showing `0.00%` over those intervals would state
+that the compartment holds no agent, which the model does not say. The model
+says that the compartment is filling, below what the display resolves, and
+`<0.01%` states exactly that. The display marks what it cannot carry rather than
+adding a decimal that the model cannot support.
+
+A negative value is never shown in the below-resolution form. The model cannot
+hold a negative concentration, minus zero included (§ "Concentrations"), so a
+negative value that reaches the display means that something upstream is wrong.
+The display refuses it rather than showing it as a plausible small positive
+reading.
+
+**For developers.** Nothing in `core/` reads the decimal count.
+`MAXIMUM_SIMULATION_STEP_S` is a tolerance in seconds, the supported input
+ranges are intervals in L/min, and "Supported simulation step" and "Supported
+input ranges" derive both without reference to the readout. No `Fraction` can
+hold a negative value, and the formatter is the code that refuses one.
+
+#### The MAC multiple's resolution
+
+**The MAC resolution is derived from the percent resolution.** A MAC multiple is
+a percent divided by the agent's MAC in percent (`mac_percent`), so the percent
+resolution already fixes how finely the quotient is known. The rule is to take
+**the finest power of ten that is nowhere finer than the percent resolution
+converted into MAC.** Converted, 0.01 percentage points is 0.005 MAC for
+sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane. Isoflurane sets
+the limit, at 0.0083 MAC, and **0.01 MAC** is the finest power of ten at or
+above it. `test_the_mac_resolution_is_derived_from_the_percent_resolution`
+repeats this arithmetic for every shipped agent, so adding an agent or changing
+the percent resolution fails there rather than silently over-claiming.
 
 The smallest change the MAC readout can show is therefore 0.02 percentage points
 of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane, never less than the
@@ -10292,444 +10309,363 @@ occasionally change while the percent stays the same. The three per-agent
 figures have no test yet (`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-The below-resolution form applies to the MAC line for the same reason it
-applies to the percent line, and it matters more there, not less. A
-compartment clears 0.01 MAC later than it clears 0.01 percentage points. So
-`0.00 ×MAC` beneath a percent line that already shows the compartment filling
-would make the two readouts contradict each other. `<0.01 ×MAC` states what is
-known, and `test_format_mac_multiple_marks_a_value_below_the_resolution` holds
-that form. The derivation test named above re-runs the derivation against
-every shipped agent. So adding an agent or changing the percent resolution
-fails there rather than silently over-claiming.
+A positive MAC multiple below the resolution reads `<0.01 ×MAC`, and this
+matters more on the MAC line than on the percent line. A compartment clears
+0.01 MAC later than it clears 0.01 percentage points, so `0.00 ×MAC` beneath a
+percent line that already shows the compartment filling would make the two
+readouts contradict each other.
 
-**The resolution is a property of the display alone.** Everything upstream of
-the formatter carries full binary64 precision. That includes the compartment
-states, every integration step, the mixed-venous and tissue transfers, and
-every state of the `DrawnWindow` that the chart is drawn from. Nothing in
-`core/` rounds. The snapshot fields that the interface reads are raw
-fractions, and a slider's value reaches the model unquantized. The rounding
-happens exactly once, in the readout. So the two decimals are a statement about
-what is worth *showing*, never about what the model computes or stores.
-`test_the_model_keeps_precision_the_display_throws_away` enforces this. Two runs
-whose delivered concentrations differ by an amount four orders of magnitude
-smaller than the display resolution must reach states that differ. They must still look
-identical on the display.
+**For developers.**
+`test_format_mac_multiple_marks_a_value_below_the_resolution` enforces that
+form. The MAC resolution is derived rather than stored beside the percent
+resolution so that re-measuring one number never means re-deriving two.
 
-That test is worth more now than when it was written, not less. While the
-solver error was close to the readout's resolution, "the model keeps more
-precision than the display shows" was a small claim. Under the exact step the
-gap is nine orders of magnitude. The rounding in the readout is now the only
-place where resolution is lost anywhere between a slider and a pixel.
+#### What the model keeps that the display rounds
 
-**What the last digit does not cover, and what it still does.** An earlier
-version of this section warned that the gap between two readouts was the least
-certain number on the display. That warning was withdrawn on 2026-09-06
-(`PL-GS5X`), because the error it described came from the earlier method's
-order of updates. Within one step, the model never updates a compartment from a
-value that the same step has already changed. So a gap between two readouts is
-as accurate as either reading it is taken from.
+**The resolution is a property of the display alone.** The model computes and
+keeps every value at full precision, including every value the chart is drawn
+from, and a slider's value reaches the model without rounding. The rounding
+happens exactly once, in the readout, which is the only place between a slider
+and a pixel where resolution is lost. With the exact method that the simulator
+uses, the model keeps about nine orders of magnitude more than the display
+shows.
 
-The comparison that the interface actually invites is therefore no longer at
-risk from the solver, and that is a measurement rather than an assurance. The
-six readouts are placed in one row, where seven panels fit it, to be read
-*ordinally*: the circuit leads the alveoli, and the alveoli lead the tissues.
-§ "The row has a width condition, and both arguments above rest on it" below
-states what happens when seven panels do not fit. An ordinal reading is
-corrupted only if the error can invert which of two compartments is displayed
-as higher. The measurement covered every trajectory in "Independent-solution
-test" and all three agents. It compared every pair of the six readouts at every
-step, which is 1 485 000 pair comparisons. The shipped and reference solutions
-**never** disagree about the displayed ordering, anywhere, at any gap. Since
-`PL-0M7K` the readings compared are those of the shipped `format_percent`, and
-the count is still zero (re-measured 2026-10-17). Under the split the two
-solutions disagreed on the worst reachable trajectory. They disagreed for 0.2 s
-of a 900 s run with sevoflurane and 1.7 s with desflurane, at gaps up to 1.73
-counts of the last displayed digit.
-<!-- not-restated: 0.2 s, 900 s -->
+**For developers.** Everything upstream of the formatter carries full binary64
+precision: the compartment states, every integration step, the mixed-venous and
+tissue transfers, and every state of the `DrawnWindow` that the chart is drawn
+from. Nothing in `core/` rounds, and the snapshot fields that the interface
+reads are raw fractions. `test_the_model_keeps_precision_the_display_throws_away`
+enforces this. Two runs whose delivered concentrations differ by an amount four
+orders of magnitude smaller than the display resolution must reach states that
+differ, and must still look identical on the display.
 
-That is a measurement on one platform rather than a guarantee. The arithmetic
-behind it explains why the gate keeps a threshold rather than asserting zero.
-Rounding to a fixed number of decimals is monotone, so it can never produce an
-ordering opposite to the raw one. An inversion therefore needs the two
-solutions to be genuinely reordered. That needs a true gap smaller than the sum
-of the two displacements. The widest pairwise differential measured anywhere is
-$`1.1\times10^{-12}`$ in fraction. True gaps that small do occur while two
-compartments cross. So an inversion is arithmetically reachable there, even
-though none was observed.
+#### Comparing two readouts
 
-That is why the interface marks nothing here. A reader who compares the
-readouts the way the row is designed to be compared cannot be misled by solver
-error. A reader who subtracts two of them is doing arithmetic that the
-interface does not perform, and the paragraph above is the disclosure for that
-reader. Two tests enforce the claim, and each can fail on its own half of the
-path from the model to the readout.
+**Solver error does not make the gap between two readouts less accurate than
+either reading.** Within one time step, the model updates every compartment
+from the values it had at the start of that step. Rounding does make the gap
+less accurate. Each reading is rounded to its last displayed digit, so a gap
+taken from two readings can differ from the true gap by up to one count of that
+digit.
+
+The six compartment readouts and the clock sit in one row of seven panels, where
+seven fit, so that the readouts can be read *in order*: the circuit leads the
+alveoli, and the alveoli lead the tissues. § "The readout row's width condition"
+below says what happens when seven panels do not fit. Solver error could mislead
+that reading only by reversing which of two compartments is shown as higher. A
+measurement compared every pair of the six readouts at every time step, in every
+run that § "Independent-solution test" describes and for all three agents, which
+is 1 485 000 pair comparisons. The simulator's readings **never** disagreed with
+those of the independent solution about which compartment is higher, even where
+the gap was tiny (measured 2026-10-17).
+
+That is a measurement on one platform, not a guarantee. Rounding to a fixed
+number of decimals never reverses the order of two values. So the display can
+show two compartments in the wrong order only where the simulator and the
+independent solution put them in opposite order. That needs a true gap smaller
+than the two compartments' solver errors added together. The largest difference
+between the two solutions in any pair's gap, over every run, is
+$`1.1\times10^{-12}`$ as a fraction, not a percent, and true gaps that small do
+occur while two compartments cross. A reversal is arithmetically possible
+there, though none was observed.
+
+The interface therefore adds no warning or marker when readouts are compared. A
+reader who compares them in order, as the row is designed for, can rely on the
+order shown. The interface shows no gap between two readouts. A gap that a
+reader works out by subtracting two readings carries the rounding of both,
+described at the start of this subsection, and the solver limit in the
+paragraph above.
+
+**For developers.** Two tests enforce the ordering claim. Each covers one half of
+the path from the model to the readout and can fail on its own.
 `test_exact_step_matches_the_independent_solution_everywhere` bounds the
-solver's error. `test_format_percent_preserves_order` in
-`tests/unit/test_formatting.py` checks that the shipped formatter never shows a
-higher fraction as a lower percent (`PL-0M7K`). It checks this across the
-formatter's "<0.01%" reading below the resolution, and on both sides of every
-display-count boundary. Together the two tests mean that no inversion can occur
-at a true gap above twice the tolerance. Twice the tolerance is
-$`1.0\times10^{-7}`$ counts, against the 3.0 counts that the split's bound
-allowed. `test_displayed_ordering_reverses_only_at_a_crossing` is the
-trajectory measurement quoted above. It enforces that same threshold, but it
-cannot fail unless one of the two tests fails. So it is the measurement and not
-the evidence.
+solver's error against the independent solution.
+`test_format_percent_preserves_order` in `tests/unit/test_formatting.py` checks
+that the shipped formatter never shows a higher fraction as a lower percent. It
+covers the "<0.01%" reading below the display resolution and both sides of every
+value at which the last displayed digit changes. Together the two tests mean that
+no reversal can occur at a true gap above $`1.0\times10^{-7}`$ counts, which is
+twice the first test's tolerance.
+`test_displayed_ordering_reverses_only_at_a_crossing` is the measurement of every
+run quoted above, and it reads each value through the shipped `format_percent`.
+It allows a reversal where the true gap is below that same threshold, instead of
+asserting that none occurs, because a reversal is possible at a crossing. It
+cannot fail unless one of the other two tests fails, so it records the
+measurement and adds no evidence of its own.
 
-**Why the resolution is uniform rather than per-compartment.** The six
-readouts sit together and are read comparatively. They sit in one row where
-seven panels fit the window, and in a grid below that width. The reason for
-showing them together is that a reader can see the circuit lead the alveoli,
-and the alveoli lead the tissues. Different decimal counts across those tiles
-would put different magnitudes at the same glyph position. A value scanned
-rather than read would then be misjudged by a factor of ten. That is a
-property of the reading task, and it is true whatever the solver does.
+#### One resolution for all six readouts
 
-A second argument used to be offered beside it. It said that the split's error
-was itself bounded in absolute percentage points, and stayed within a factor of
-four across the four fast compartments. So one absolute resolution expressed
-that error directly. That argument is withdrawn with the split. The
-replacement is that **parameter uncertainty is also absolute in its effect
-across the row**. The one-SD displacements tabulated above run from
-$`8.7\times10^{-4}`$ to $`6.8\times10^{-2}`$ percentage points across all six
-compartments and all four coefficients. That is a spread of less than two
-orders of magnitude, on a row whose *values* span four. A single absolute
-resolution is the direct expression of that spread. It is set by the
-compartments where the displacement is largest, and it is conservative in the
-ones where the displacement is smaller.
+**The resolution is the same in every compartment, for two reasons.**
 
-**The row has a width condition, and both arguments above rest on it.** The
-interface is responsive. Until now this section stated the one-row arrangement
-without qualification, which a reader is entitled to take as a commitment.
-`readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py` sets the
-row's column count from its width, and every panel spans exactly one column.
-`test_every_readout_reserves_a_qualifier_line_and_an_equal_column` enforces
-both. So the seven panels sit **side by side wherever seven panels' reserved
-widths fit the row, four per line where seven do not, two where four do not,
-and one below that** (`READOUT_ROW_LADDER`). The reservation is the widest
-value each column can show, measured in the rendering font (`PL-3355`). The
-clock's column reserves its widest elapsed form. Each compartment's column
-reserves its widest percent and MAC multiple, so the clock's width costs no
-other column. The widths at which the row steps down belong to the font and
-the display scale rather than to this document. On the offscreen font that the
-test suite renders with, measured on 2026-10-18, the row is seven across from
-1005 logical pixels, four from 591 and two from 310.
-`test_the_readout_row_reflows_where_its_panels_stop_fitting` reads those widths
-from the row rather than asserting them. Those figures are an example of the
-rule, not a specification of it. The Flet build recorded 1200, 992 and 768 as
-a rendered measurement at Flet's sizes (`PL-8M05`). The port derives the same
-ladder from what it draws with. So it asserts no pixel figure that a font or a
-HiDPI scale would falsify.
+- **The six readouts are read comparatively.** Different decimal counts across
+  them would put digits of different place value in the same position, and a
+  value scanned rather than read would then be misjudged by a factor of ten.
+  That is a property of the reading task, whatever the solver does.
+- **Parameter uncertainty is absolute in its effect across the row.** The
+  one-SD displacements tabulated above run from $`8.7\times10^{-4}`$ to
+  $`6.8\times10^{-2}`$ percentage points across all six compartments and all
+  four coefficients. That is a spread of less than two orders of magnitude, on a
+  row whose *values* span four. A single absolute resolution, set by the
+  compartments where the displacement is largest, expresses that spread directly
+  and is conservative where the displacement is smaller.
 
-The two arguments are not affected equally, and neither is withdrawn.
+#### The readout row's width condition
 
-- **The ordinal reading is the one that weakens.** Below the seven-across
-  width the six readouts are on two or more lines. The comparison that the row
-  invites stops being a single glance and becomes a scan across the lines. The
-  *measurement* behind the claim is untouched. It compares displayed values,
-  not their positions, and the 1 485 000 pair comparisons say nothing about
-  layout. So what narrows is the claim that the arrangement invites the
-  comparison, not the claim that the ordering is faithful.
-- **The uniform resolution still applies at every width**, and the reflow does
-  not weaken its argument. That argument is that differing decimal counts would
-  put different magnitudes at the same glyph position. The grid aligns value
-  glyphs within a column at every rung. So a reader scanning two panels
+**The row has a width condition, and both reasons above rest on it.** The row's
+column count follows its width, and every panel takes exactly one column. So the
+seven panels sit **side by side wherever seven panels' reserved widths fit the
+row, four per line where seven do not, two where four do not, and one below
+that**. These four arrangements are the rungs of the row's ladder. Each column
+reserves the widest value it can show, measured in the font the interface draws
+with. The clock's column reserves its widest elapsed time, and each
+compartment's column its widest percent and MAC multiple, so the clock's width
+costs no other column. The widths at which the row steps down depend on the font
+and the display scale. With the font that the tests draw with, measured on
+2026-10-18, the row is seven across from 1005 logical pixels, four from 591 and
+two from 310. Those figures illustrate the rule and do not specify it. The
+ladder is derived from what the interface draws with, so it states no pixel
+width that a different font or display scale would make wrong.
+
+The change of arrangement affects the two reasons unequally, and withdraws
+neither.
+
+- **Reading the row in order becomes harder.** Below the seven-across width the
+  six readouts are on two or more lines, and the comparison that the row invites
+  becomes a scan across the lines instead of a single glance. The measurement
+  behind the ordering claim is untouched, because it compares displayed values,
+  not their positions. What narrows is the claim that the arrangement invites
+  the comparison, not the claim that the ordering is faithful.
+- **The uniform resolution still applies at every width.** The grid aligns
+  the values within a column at every rung, so a reader scanning two panels
   compares them against a common position, whether they are side by side or
-  stacked. The argument never rested on the six being in a single line.
+  stacked.
 
-**In practice the row opens at the widest rung the screen affords, because
-the window opens maximized.** `src/anesthesia_sim/app/main.py` shows the
-window with `showMaximized()` over a normal geometry of
-`WINDOW_SCREEN_FRACTION` of the screen's available area, centred (`PL-005`,
-with the Qt port). So the row gets the screen's available width less the
-window's own chrome, rather than eight tenths of it. That is what pays for
-seven across on a 1366 px laptop, one of the commonest screen widths there is.
-At the fraction, on the offscreen font above, the row on that screen fell 21
-logical pixels short of the seven-across width. A 1093 px window carried a
-1047 px row, while the row's 1068 px wanted a window of about 1114 px. So that
-machine opened on four columns while a slightly wider one opened on seven. The
-conditional arrangement was then the ordinary case rather than the resized
-one. Maximized, the same screen offers the row about 1320 px, and a 1280 px
-screen offers it about 1234 px, so both open on seven. These figures are again
-an example of the rule on one font rather than a specification of it (project
-owner, 2026-09-27, ratified, over raising the fraction to 0.85, which clears
-1366 px at one font and leaves a 1280 px screen on four columns; `PL-Z4K6`).
+**The window opens maximized, so the row opens at the widest rung the screen
+affords.** Maximized, the readout region gets the screen's available width less
+the window's own frame. A 1366 px laptop screen, one of the commonest widths,
+opens on seven across, as the paragraph after next measures. A 1280 px screen
+gives the region about 1234 px (measured 2026-09-27, with the tests' font).
+Whether it still opens on seven, now that the control-change record shares the
+region as described below, has no test yet (`PL-LKX7`).
+
 Maximized is not full screen. The title bar and window controls stay, and on
-macOS it is the zoomed window. So `PL-005`'s refusal of a full-screen start
-does not apply to it. Maximized is also the reference's own default window
-state (`docs/interface-provenance.md` § "Adopted"). A reader who un-maximizes
-gets the fraction back and meets the ladder above as before. A screen too
-narrow for seven across at its full width still opens below the widest rung.
-The maximized window changes which rung a screen affords, never the rule that
-decides it. Until the Qt port the window opened full screen, and the widest
-breakpoint was the only one a reader met without resizing.
+macOS the window is zoomed. Maximized is also the default window state of the
+reference design that the interface follows (`docs/interface-provenance.md`
+§ "Adopted"). A reader who un-maximizes gets the window's normal size back,
+which is a fixed fraction of the screen's available area, centred. At that size
+the row steps down the ladder above wherever its width requires. A screen too
+narrow for seven across even when maximized opens on a lower rung, because
+maximizing changes the row's width, never the rule that picks the rung.
 
-**The row sits in the unconditional region, so its rung follows that region
-and never an Area** (`PL-JSY5`, 2026-10-18). The readouts are in
-`SimulationView.unconditional_region`, above the layout container that the
-Areas replace (§ "Minimum displayed outputs" -> "What this list requires once
-the layout is the reader's";
-`test_no_unconditional_value_sits_inside_the_layout_container`). So a split, a
-join, a border drag or a Workspace switch never changes the width that the row
-is laid out at. Two things do change it: the window's width, and how the region
-divides that width. Since `PL-J8K2`, the region holds the runs' rows in a left
-column and the control-change record in a right column. Since `PL-F2YS` the
-two columns take 0.82 and 0.18 of the width. Those were the shares of the chart
-panel's Area and the sidebar's Area in the layout that the dashboard opened on.
-So the record was as wide as the sidebar beneath it, as `PL-J8K2` Q3 ratified.
-Since `PL-2KXB` the dashboard opens on the shipped Workspaces, whose Areas
-divide the width differently. The region keeps its own shares, because a
-Workspace switch must not change the width that the row is laid out at. The
-left column never narrows below its own minimum width. At whatever width that
-leaves, the reservation rule above (`PL-3355`) still applies. Every rung lays
-each panel out at its full reserved width, so no value is wrapped away from its
-unit.
+**The row's width follows the window, never an Area.** The readouts sit in a
+region above the layout container that the Areas replace (§ "Minimum displayed
+outputs" -> "What this list requires once the layout is the reader's"). So a
+split, a join, a border drag or a Workspace switch never changes the width that
+the row is laid out at. Only two things change it: the window's width, and how
+the region divides that width. The region holds the runs' rows in a left column
+and the control-change record in a right column, which take 0.82 and 0.18 of the
+width. The left column never narrows below its own minimum width. At every rung,
+each panel is laid out at its full reserved width, so no value is wrapped away
+from its unit.
 <!-- not-restated: 0.18 -->
 
-**Measured 2026-10-18: a 1366 px window opens on seven again, with one run or
-two.** On the offscreen font, a 1366 px window gives the region 1320 px. The
-record column takes 235 px and the readout column 1073 px. That is 68 px more
-than the 1005 px that seven across needs. Two runs share that one row
-(`test_two_runs_share_one_readout_block_whose_values_name_their_runs`). So the
-outcome recorded above for a 1366 px screen also applies in compare mode
-(`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns`,
-`PL-F2YS`). Before `PL-F2YS` the record took a 3:1 share, and the readout
-column was 3 px short of seven at one point in the build of v0.6.0. At 235 px
-the longest control-change lines no longer fit on one line. So the record
-wraps them, but only after the time and after the arrow, which keeps every
-value beside its unit (`wrapping_between_parts`).
+**A 1366 px window opens on seven columns, with one run or two** (measured
+2026-10-18). With the tests' font, a 1366 px window gives the region 1320 px.
+The record column takes 235 px and the readout column 1073 px, which is 68 px
+more than the 1005 px that seven across needs. Two runs share that one row, so
+the outcome above for a 1366 px screen also applies in compare mode. At 235 px
+the longest control-change lines no longer fit on one line, so the record wraps
+them, but only after the time and after the arrow, which keeps every value
+beside its unit.
 
-**Why not a significant-figures rule.** A significant-figures rule gives the
-smallest values the most decimal places, and the small values are exactly
-where this model supports the least. The evidence for that is no longer the
-solver. Under the exact step the sparsely filled compartments carry at most
-$`2\times10^{-4}`$ relative error anywhere in the first ten seconds of a run,
-and $`8\times10^{-11}`$ at ten seconds itself. The evidence is the parameters.
-Their measured SDs are 3.9% to 6.4% of the mean and are *relative*, so they
-apply undiminished to a compartment holding a thousandth of a percent. Three
-significant figures on the fat fraction would imply a relative resolution of
-0.1% on a number whose parameters are known to about 5%. That over-claims by a
-factor of fifty, and it does so most severely in the readouts where a reader is
-least able to notice. Those SDs are the source's brain:blood ones, and fat's
-are larger, so this paragraph is being corrected, and its figures have no
-test yet (`PL-TDX0`).
-<!-- not-restated: 5 % -->
+**For developers.** `readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`
+sets the row's column count from its width, and the ladder is
+`READOUT_ROW_LADDER`. The pixel widths above are measured on the offscreen font
+that the test suite renders with. `src/anesthesia_sim/app/main.py` shows the
+window with `showMaximized()` over a normal geometry of `WINDOW_SCREEN_FRACTION`
+of the screen's available area. The readouts are in
+`SimulationView.unconditional_region`, and `wrapping_between_parts` wraps the
+control-change record.
+The region's two shares are those of the chart panel's Area and the sidebar's
+Area in the layout that the dashboard first opened on, which made the record as
+wide as the sidebar beneath it. The Workspaces that now ship divide the width
+differently, and the region keeps its own shares.
+`test_every_readout_reserves_a_qualifier_line_and_an_equal_column` enforces the
+column count and the one-column span.
+`test_the_readout_row_reflows_where_its_panels_stop_fitting` reads the step-down
+widths from the row rather than asserting them.
+`test_no_unconditional_value_sits_inside_the_layout_container` keeps the row
+outside the Areas.
+`test_two_runs_share_one_readout_block_whose_values_name_their_runs` and
+`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` enforce the
+1366 px outcome in compare mode.
 
-**Why not the 0.1 percentage points clinical monitors report.** Agent
-monitors display end-tidal and inspired concentrations to a tenth of a
-percentage point. The circuit and alveolar readouts alone would be well
-matched to that. This simulator, though, displays compartments that no monitor
-shows, and the lower-limit argument above is the answer. At monitor resolution
-the sevoflurane and isoflurane fat fractions read `0.0%` for an entire hour,
-and muscle reads `0.0%` for its first 2.9 to 14.8 minutes. Rounding to
-clinical convention would erase the slow-compartment wash-in, which is the
-reason for displaying those compartments at all. A resolution of 0.01
-percentage points is the coarsest that keeps every displayed compartment
-legible. It is also close to what the parameters support. That closeness is a
-coincidence worth naming, not a second constraint meeting the first, since the
-two are measured entirely independently. The muscle times have no test yet
-(`PL-19W8`).
+#### Time, flows and the chart
 
-**Why a below-resolution value is marked rather than shown as zero.** Even
-at 0.01 percentage points the slow compartments start below the last digit.
-At 1 MAC with default flows, muscle first rounds to a nonzero value at 57 s
-(desflurane), 125 s (sevoflurane), and 190 s (isoflurane). Fat first does so at
-237 s, 781 s, and 1477 s respectively. These times have no test yet
-(`PL-19W8`). Displaying `0.00%` across those
-intervals would state that the compartment holds no agent, which the model
-does not say. The model says that the compartment is filling, below what the
-display resolves. `<0.01%` states exactly that. It also keeps `0.00%` meaning
-the one thing it should: nothing has arrived yet, as before a run starts. This
-is the distinction between a value the model asserts and a value the display
-cannot carry. The interface must preserve that distinction rather than add a
-decimal that the model cannot support.
-
-A negative fraction is deliberately excluded from the below-resolution form.
-No `Fraction` can hold a negative value, and since `PL-LLMN`
-(§ "Concentrations") that includes minus zero. So a negative value that
-reaches the formatter means that something upstream is wrong. The formatter
-refuses it rather than absorbing it into a plausible small positive reading.
-Until `PL-4R3W`, the formatter rendered a negative value with its sign, as the
-anomaly it is. Refusing it is the stronger form of the same rule.
-
-**How this section changed when the solver did, stated so a reader comparing
-versions is not misled.** Through v0.4.2, this section carried a paragraph
-headed "Why parameter uncertainty does not govern this". That paragraph made
-two claims. First, the per-step solver error set the decimal count. Second,
-parameter uncertainty displaces a whole trajectory rather than limiting the
-resolution within a run, so it was disclosed in "Parameter provenance" instead
-of being encoded in a decimal count. The second claim is still true, and it is
-kept above. The first is not, because there is no longer a per-step solver
-error large enough for any readout to express. So the roles have swapped.
-Parameter uncertainty now sets the upper bound on the decimal count. The
-distinction between a displaced trajectory and the resolution within a run now
-explains why that bound is loose enough to permit a digit finer than one SD,
-rather than forbidding it.
-
-Two things did *not* change, and neither depended on the solver. One is the
-resolution that ships. The other is the reason a reader may not treat that
-resolution as a claim about a patient. Nothing in this document has ever
-permitted that second reading. "Known limitations" is where the rule is
-stated: no displayed value may be read as accurate to its last digit as a
-prediction about a patient. A displayed value is accurate to its last digit as
-a statement about this model with these parameters.
-
-**Precision elsewhere in the interface, and why it differs.** Simulated time
-is displayed to 0.1 s, which is exactly `SIMULATION_STEP_S`. The display
-resolves one step and no finer. Every recorded control change is stamped at
-that same resolution, so the timeline and the clock never show one time in two
-different forms. The chart's own time axis is labelled differently, and
-deliberately. Each label is a compound duration that carries its own units. It
-is no finer than the whole second on which every tick of the ladder falls. The
-axis labels a span that a reader scans, not an instant that they read off. A
-tenth of a second on every label would spend width on a digit that is zero at
-every width the ladder offers. "The chart's time base" gives the form and the
-reason it differs from the clock's. Fresh gas flow, alveolar ventilation and
-cardiac output are displayed to 0.1 L/min, as
-`test_fresh_gas_flow_slider_forwards_value_to_controller`,
-`test_alveolar_ventilation_slider_forwards_value_to_controller` and
-`test_cardiac_output_slider_forwards_value_to_controller` read from each
-control's label. This matches the resolution of the
-flow controls that set them. A slider and the readout beside it show one
-quantity. So the Qt sliders are integer-valued, with steps at the display
-resolution: 0.1 L/min for the three flows, and 0.01 percentage points for the
-delivered dial. `test_the_slider_steps_at_the_display_resolution` holds those
-steps. The value applied to the model is exactly the value printed
-beside the control (`PL-25KS`). If a control could apply a value that its own
-label rounds away, a reader could not tell which value is the setting in
-force.
+**Simulated time is displayed to 0.1 s, which is exactly one simulation step
+(`SIMULATION_STEP_S`).** Every recorded control change is stamped at that same
+resolution, so the timeline and the clock never show one time in two different
+forms. The chart's time-axis labels are durations that carry their own units,
+and they are no finer than the whole second, because every tick the axis can
+place falls on a whole second. The axis labels a span that a reader scans, not
+an instant that they read off. A tenth of a second on every label would spend
+width on a digit that is zero at every tick spacing the axis offers. "The
+chart's time base" gives the label form and the reason it differs from the
+clock's.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**The agent-accounting panel's three amounts are displayed to 0.1 L, and its
-two residual lines as the power of ten each lies below, because they answer
-different questions** (`PL-TG60`, 2026-09-15; the residuals' form project
-owner, 2026-10-03, ratified, over one significant digit, over the nearest
-decade and over keeping the sign, `PL-3PJZ`). The residual lines are a
-numerical diagnostic. Their job is to make a residual of order 10⁻¹² L visible
-against amounts of order 1 to 100 L. No fixed decimal count can do that.
+**The chart is read for shape, so its resolution is coarser than the
+readouts'.** It plots the same percentages on a shared linear axis that runs
+from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
+same position in MAC multiples. Its resolution is set by pixels rather than by
+decimals. Every number the chart offers, in the readout row and in the hover
+readout that § "The chart's hover readout: what the tooltip may show" derives
+below, is shown at the resolutions above. The MAC axis is labelled on round MAC
+values, in half-MAC steps, which the fixed 3 ×MAC range gives for every agent,
+so a gridline that a reader learns under one agent means the same thing under
+the next. § "The chart's vertical range is denominated in MAC, and fixed" above
+explains the range. The chart's horizontal extent is the selected time base, so
+the reader chooses the seconds per pixel, as "The chart's time base" explains.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**A residual line shows only the power of ten that the residual is less
-than.** A residual that passes its check is the rounding left over from summing the initial, delivered, exhausted and stored
-amounts. Its digits and its sign are set by the order in which the arithmetic
-ran, not by anything modelled, and a correct change to the code that alters
-only the last binary digits of that arithmetic redraws them. `PL-2MD9`'s change to the propagator is the measurement.
-`PL-KXW1` records an 81-run protocol: three agents, three dial pairs, three
-cardiac outputs and three fresh gas flows. Each run is forked at minute 30
-with the dial set back, and its branch is played for 30 minutes. The protocol
-was replayed on the v0.5.21 tag and on v0.5.22 on 2026-10-03. A branch's residual moved by up
-to 5.9 times between the two trees. There were 2,511 branch samples. The two
-trees' residuals read differently at four significant digits on 1,975 of them,
-at two on 634, at one on 154, and at the power of ten on 22. Those 22 are the
-samples where the two trees' residuals fall on either side of a power of ten.
-Every residual was below 2.1 × 10⁻¹¹ L, and every check passed in both trees.
-A run's own path, which `PL-2MD9` left bit-identical, read identically in
-every form. So each line prints the smallest power of ten that the residual's
-size is less than, such as `<1e-13 L`, which means less than 10⁻¹³ L. The power
-of ten is computed from the float's exact value. The `<` means the same as it
-does on the amounts. Neither line shows a sign, so both lines read alike. The sign means something only in a check that fails.
-Then the run halts, and the failure notice prints the signed values to six
-figures. A residual of exactly zero reads `0 L`. `format_agent_residual` defines the form.
-`test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
-`test_format_agent_residual_drops_the_sign_the_rounding_chose`,
-`test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten`
-and `test_format_agent_residual_reads_zero_as_zero` pin it.
-`test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws` uses
-the pair `5.601e-14 L` and `5.609e-14 L`, which the two trees printed for one
-sample.
-<!-- not-restated: 2.1 -->
+**Fresh gas flow, alveolar ventilation and cardiac output are displayed to
+0.1 L/min**, the resolution of the controls that set them. A slider and the
+readout beside it show one quantity, so each slider moves in steps of the
+display resolution: 0.1 L/min for the three flows, and 0.01 percentage points
+for the delivered dial. The value applied to the model is exactly the value
+printed beside the control. If a control could apply a value that its own label
+rounds away, a reader could not tell which value is the setting in force.
 
-The amounts
-are read against each other, delivered against exhausted plus stored. They are
-also read against a reader's sense of scale. So they take one uniform
-resolution, on the same argument as the readouts above. The readouts'
-derivation perturbs one stored coefficient by one published SD. Doing the same
-here moves the exhausted total by 0.016 to 0.042 L at 3600 s, and by 0.18 to
-0.23 L at the 24 h supported limit. By agent, the shifts are sevoflurane 0.024
-and 0.19 L, isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L. The
-blood:gas coefficient dominates throughout. These shifts were measured at
-1 MAC with the reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L therefore lies
-between a quarter of an SD and six SDs across the whole supported span. That is
-inside the band the readouts' derivation admits. A count of 0.01 L
-would fall to a fiftieth of an SD by 24 h. Until `PL-TG60`, the panel
-printed six decimals. They asserted a millilitre of a quantity that the
-parameters place only to within a decilitre. This section justified the six
-decimals by saying that the amounts made the residual visible. That
-justification did not hold. Delivered agent carries no parameter uncertainty, because it is the
-dial times the flow times the time. It takes the same resolution so that the
-three amounts read at one scale. The panel states the unit as this document
-states it, litres of equivalent pure agent gas, because a bare "L" beside an
-anaesthetic agent invites a reader to take it as litres of liquid.
-`AGENT_AMOUNT_DISPLAY_PRECISION` stores the count, `format_agent_volume`
-defines the form, and `test_agent_amounts_precision` pins both.
+**For developers.** The sliders are integer-valued.
+`test_fresh_gas_flow_slider_forwards_value_to_controller`,
+`test_alveolar_ventilation_slider_forwards_value_to_controller` and
+`test_cardiac_output_slider_forwards_value_to_controller` read the flows'
+resolution from each control's label, and
+`test_the_slider_steps_at_the_display_resolution` enforces the slider steps.
+Because `CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS` set those
+steps, they also decide which settings can reach the model. `app/wash_in.py`
+derives `WASH_IN_DENOMINATOR_FLOOR_FRACTION`, the smallest inspired fraction an
+F_A/F_I ratio may be formed from (§ "F_A/F_I as a displayed ratio"), from the
+concentration resolution, so one more decimal of concentration moves that floor
+down tenfold. A change to either count is therefore a change to the model's
+reachable inputs, and is derived in this section first.
+
+#### The agent-accounting panel
+
+**The panel's three amounts are displayed to 0.1 L, and its two residual lines
+as the power of ten each lies below, because they answer different questions**
+(decided 2026-09-15). The amounts are read against each other, delivered against
+exhausted plus stored, and against a reader's sense of scale. The residual lines
+are a numerical check. They have to make a residual of order 10⁻¹² L visible
+against amounts of order 1 to 100 L, which no fixed decimal count can do.
+
+**The amounts take one uniform resolution, on the same argument as the
+readouts.** Perturbing one stored coefficient by one published SD moves the
+exhausted total by 0.016 to 0.042 L at 3600 s, and by 0.18 to 0.23 L at the 24 h
+supported limit. By agent, the shifts are sevoflurane 0.024 and 0.19 L,
+isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L, and the blood:gas
+coefficient dominates throughout. These shifts were measured at 1 MAC with the
+reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L
+therefore lies between a quarter of an SD and six SDs across the whole supported
+span, which is inside the band the readouts' derivation admits. A count of
+0.01 L would fall to a fiftieth of an SD by 24 h. Delivered agent carries no
+parameter uncertainty, because it is the dial times the flow times the time, and
+it takes the same resolution so that the three amounts read at one scale.
 <!-- not-restated: 0.18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 0.01 L -->
 
+The panel labels the unit as litres of equivalent pure agent gas, the unit this
+document uses, because a bare "L" beside an anaesthetic agent invites a reader
+to take it as litres of liquid.
+
+**A residual line shows only the power of ten that the residual is less than**,
+such as `<1e-13 L`, which means less than 10⁻¹³ L. A residual that passes its
+check is the rounding left over from summing the initial, delivered, exhausted
+and stored amounts. Its digits and its sign are set by the order in which the
+arithmetic ran, not by anything modelled. So a correct change to the code that
+alters only the last binary digits of that arithmetic changes those digits and
+that sign. The `<` means the same as it does on the amounts. Neither line shows
+a sign, so both lines read alike. The sign means something only in a check that
+fails. Then the run halts, and the failure notice prints the signed values to
+six figures. A residual of exactly zero reads `0 L`.
+
+**For developers.** The power of ten is computed from the float's exact value.
+The residual's form rests on a measurement taken on 2026-10-03. A change to the
+propagator's arithmetic that left each run's own path bit-identical was replayed
+on an 81-run protocol: three agents, three dial pairs, three cardiac outputs and
+three fresh gas flows, each run forked at minute 30 with the dial set back and
+its branch played for 30 minutes, on the v0.5.21 tag and on v0.5.22. A branch's
+residual moved by up to 5.9 times between the two trees. Of 2,511 branch
+samples, the two trees' residuals read differently at four significant digits on
+1,975, at two on 634, at one on 154, and at the power of ten on 22, which are
+the samples where the two residuals fall on either side of a power of ten. Every
+residual was below 2.1 × 10⁻¹¹ L, every check passed in both trees, and a run's
+own path read identically in every form. `format_agent_residual` defines the
+form. `test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
+`test_format_agent_residual_drops_the_sign_the_rounding_chose`,
+`test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten` and
+`test_format_agent_residual_reads_zero_as_zero` pin it.
+`test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws` uses the
+pair `5.601e-14 L` and `5.609e-14 L`, which the two trees printed for one
+sample. `AGENT_AMOUNT_DISPLAY_PRECISION` stores the amounts' count,
+`format_agent_volume` defines their form, and `test_agent_amounts_precision`
+pins both.
+<!-- not-restated: 2.1 -->
+
+#### Agent amounts in millilitres, and the cost
+
 **An agent amount's precision is derived for the amount in one unit, and does
-not carry over to another unit** (`PL-0S0V`, 2026-10-27). The derivation above
-is for litres of vapour. v0.7.0 is
-scoped to show the delivered total in millilitres of liquid on the agent cost
-View (`PL-B396`), and each compartment's amount in millilitres of vapour on
-the compartment schematic (`PL-2881`). Both are built now. So
-`app/formatting.py` keys each precision by the amount and the unit, in
-`AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an `AgentAmountPrecision`,
-which holds the amount, the unit and the count shown. It reads the finest
-count from the derivation for that amount and unit, so no caller can pass a
-looser bound. The bound is one-sided. A count coarser than the derivation loses
-detail but claims nothing false. A finer one claims a resolution that the
-parameters or the conversion do not support, so `AgentAmountPrecision` refuses
-it when it is built rather than clamping it. A precision that a reader could
-set would be built the same way. An amount in a unit that has no derivation is
-refused, rather than shown at a default.
+not carry over to another unit.** The derivation above is for litres of vapour.
+The agent cost View shows the delivered total in millilitres of liquid, and the
+compartment schematic shows each compartment's amount in millilitres of vapour,
+so each of those needs its own precision. The bound is one-sided. It limits only
+how fine a count may be. A count coarser than the derivation loses detail but
+claims nothing false. A finer one claims a resolution that the parameters or the
+conversion do not support, so it is refused rather than quietly reduced to the
+bound. An amount in a unit that has no derivation is refused, rather than shown
+at a default.
 
 | Amount | Unit | Decimals | Resolution | Derived from |
 | --- | --- | --- | --- | --- |
-| A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above (`PL-TG60`) |
+| A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above |
 | The delivered total | Millilitres of liquid | 1 | 0.1 mL | One SD of the measured liquid density |
 | The exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
 | The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
-| One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | One SD of a partition coefficient, as a share of the amount, below (`PL-2881`) |
-| One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | One SD of a partition coefficient, below (`PL-2881`) |
+| One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | One SD of a partition coefficient, as a share of the amount, below |
+| One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | One SD of a partition coefficient, below |
 
-**The exhausted total in millilitres of liquid is shown in whole
-millilitres.** The exhausted total carries the partition coefficients'
-uncertainty, so it must not claim a finer resolution in millilitres of liquid
-than in litres of vapour. Otherwise a reader who switches the unit would see
-the model resolve a difference in one unit that it does not resolve in the
-other. One step of the litre display, 0.1 L of vapour, is 0.55 mL of
-sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane at the
-20 °C reference of § "Agent amount". The smallest power of ten at or above all
-three is 1 mL. The partition coefficients give the same answer. At 24 h, the
-one-SD shifts derived above for the litre display, 0.19 L of sevoflurane
-vapour, 0.18 L of isoflurane and 0.23 L of desflurane, are 1.04, 0.92 and
-1.10 mL of liquid. One step of 1 mL is therefore
+**The exhausted total in millilitres of liquid is shown in whole millilitres.**
+The exhausted total carries the partition coefficients' uncertainty, so it must
+not claim a finer resolution in millilitres of liquid than in litres of vapour.
+Otherwise a reader who switches the unit would see the model resolve a
+difference in one unit that it does not resolve in the other. One step of the
+litre display, 0.1 L of vapour, is 0.55 mL of sevoflurane liquid, 0.51 mL of
+isoflurane and 0.48 mL of desflurane at the 20 °C reference of § "Agent amount",
+and the smallest power of ten at or above all three is 1 mL. The partition
+coefficients give the same answer. At 24 h, the one-SD shifts derived above for
+the litre display, 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L
+of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So one step of 1 mL is
 about one SD, and a step of 0.1 mL would be a tenth of one.
-`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
-repeats the conversion for every shipped agent from the stored molar mass and
-density.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**The delivered total in millilitres of liquid is shown to a tenth** (project
-owner, 2026-10-27, ratified, over whole millilitres). The delivered agent is
-the dial times the flow times the time, so no partition coefficient makes it
-uncertain. The delivered and exhausted totals are both gas at room
-temperature, so their conversion to liquid at the 20 °C reference is exact.
-That leaves one uncertainty in the delivered figure in liquid, which is the
-measured density's. Its SD is 0.0008, 0.0006 and 0.0004 g/mL for sevoflurane,
-isoflurane and desflurane. One SD moves the figure by 0.1 mL only once it
-holds about 190 mL of sevoflurane, 250 mL of isoflurane or 366 mL of
-desflurane. Above those volumes the last digit is finer than one SD of the
+**The delivered total in millilitres of liquid is shown to a tenth.** The
+delivered agent is the dial times the flow times the time, so no partition
+coefficient makes it uncertain. The delivered and exhausted totals are both gas
+at room temperature, so their conversion to liquid at the 20 °C reference is
+exact. That leaves one uncertainty in the delivered figure in liquid. It comes
+from the measured liquid density, whose SD is 0.0008, 0.0006 and 0.0004 g/mL
+for sevoflurane, isoflurane and desflurane. One SD moves the figure by 0.1 mL
+only once it holds about 190 mL of sevoflurane, 250 mL of isoflurane or 366 mL
+of desflurane. Above those volumes the last digit is finer than one SD of the
 density. At 2% sevoflurane and 2 L/min, 190 mL takes about 14.5 h, and at the
 dial's maximum of 8% and 10 L/min it takes 43 min. At Gas Man's Exercise 14-1,
 39.4 mL of isoflurane, one SD is 0.016 mL. So 0.1 mL lies inside the band that
 the density spans across the supported settings, as 0.1 L does for the
-partition coefficients above. The tenth also lets a reader multiply the
-delivered figure by the price per millilitre beside it and get the cost, as
-§ "A cost at the reader's price" asks. The delivered total in litres stays at
-0.1 L, coarser than the delivered amount supports, which the one-sided bound
-allows.
-`test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth`
-computes the three volumes from the stored densities.
+partition coefficients. The tenth also lets a reader multiply the delivered
+figure by the price per millilitre beside it and get the cost, as § "A cost at
+the reader's price" asks. The delivered total in litres stays at 0.1 L, coarser
+than the delivered amount supports, which the one-sided bound allows.
 <!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
 <!-- provenance: data/agents/isoflurane.json liquid_density.standard_deviation_g_ml = 0.0006 -->
 <!-- provenance: data/agents/desflurane.json liquid_density.standard_deviation_g_ml = 0.0004 -->
@@ -10737,29 +10673,26 @@ computes the three volumes from the stored densities.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- not-restated: 2 % -->
 
-**A cost and a price per millilitre** (`PL-1P15`). A cost is the delivered
-agent in liquid times the reader's price per millilitre (§ "A cost at the
-reader's price"). The price is the reader's own figure, so it carries no
-modelled uncertainty. The cost's only modelled uncertainty is the liquid
-figure's, which comes from the measured density alone, as the paragraph above
-says. The largest relative SD of a stored density is sevoflurane's,
-0.0008 / 1.5203, or 0.053 %. That is relative, so the cost's precision is a
-count of significant figures, not of decimals. A count of n figures has a
-smallest relative step of 1 in (10^n - 1), at a value such as 999. At three
-figures that is 0.10 %, coarser than one SD of the density, which the
-one-sided bound allows. At four it would be 0.010 %, finer than one SD. So a
-cost is shown to **three significant figures**. It is never shown finer than
-**a hundredth** of its currency, which is the smallest unit of most
-currencies: 0.68 reads `USD 0.68`, not `USD 0.680`. A positive cost below a
-hundredth reads `USD <0.01`, and a run that has delivered nothing reads
-`USD 0`. The price per millilitre is shown to **four significant figures**.
-Four is the fewest at which its rounding moves the product of the figures
-shown by at most half of the cost's smallest step: half a step at four figures
-is at most 0.5 in 1000, against 0.5 in 999 for the cost. The liquid volume's
-0.1 mL is then the only rounding a reader multiplies by that is coarse enough
-to matter, and the readout says so (§ "A cost at the reader's price").
-`test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`
-computes both from the stored densities.
+**A cost is shown to three significant figures, and a price per millilitre to
+four.** A cost is the delivered agent in liquid times the reader's price per
+millilitre (§ "A cost at the reader's price"). The price is the reader's own
+figure, so it carries no modelled uncertainty, and the cost's only modelled
+uncertainty is the liquid figure's, which comes from the measured density alone.
+The largest relative SD of a stored density is sevoflurane's, 0.0008 / 1.5203,
+or 0.053 %. That SD is relative, so the cost's precision is a count of
+significant figures, not of decimals. A count of n figures has a smallest
+relative step of 1 in (10^n - 1), at a value such as 999. At three figures that
+is 0.10 %, coarser than one SD of the density, which the one-sided bound allows.
+At four it would be 0.010 %, finer than one SD. A cost is never shown finer than
+**a hundredth** of its currency, which is the smallest unit of most currencies.
+For example, 0.68 reads `USD 0.68`, not `USD 0.680`. A positive cost below a
+hundredth reads `USD <0.01`, and a run that has delivered nothing reads `USD 0`.
+Four figures is the fewest at which the price's rounding moves the product of
+the figures shown by at most half of the cost's smallest step. Half a step at
+four figures is at most 0.5 in 1000, against 0.5 in 999 for the cost. The liquid
+volume's 0.1 mL is then the only rounded figure in the reader's multiplication
+that is coarse enough to matter, and the readout says so (§ "A cost at the
+reader's price").
 <!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
 <!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
 
@@ -10767,131 +10700,112 @@ computes both from the stored densities.
 converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
 with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
 a long run it is several. No count of decimals can make a figure with a known
-bias of several counts read correctly. So the stored total keeps litres of
+bias of several counts read correctly, so the stored total keeps litres of
 vapour, as the accounting panel shows it.
-`test_a_unit_with_no_derived_precision_is_refused` holds the refusal.
 
-**What this section does not yet derive.** A cost in money depends on a price
-that the reader sets, so its resolution is not a count of decimals, and the
-paragraph on a cost and a price per millilitre below derives it. A compartment's amount was the other gap. At the totals' 0.1 L,
-venous blood reads below resolution for a whole hour at 1 MAC with every
-shipped agent, and so do the alveoli with sevoflurane and isoflurane.
+**For developers.** `app/formatting.py` keys each precision by the amount and
+the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
+`AgentAmountPrecision`, which holds the amount, the unit and the count shown. It
+reads the finest count from the derivation for that amount and unit, so no
+caller can pass a looser bound, and it refuses a finer count when it is built. A
+precision that a reader could set would be built the same way.
+`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
+repeats the litre-to-millilitre conversion for every shipped agent from the
+stored molar mass and density.
+`test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth` computes
+the three volumes from the stored densities.
+`test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`
+computes both counts from the stored densities.
+`test_a_unit_with_no_derived_precision_is_refused` enforces the refusal of the
+stored total in liquid.
+
+Concentration, flow, MAC multiples and the F_A/F_I ratio are each shown in one
+unit, so each keeps one count. If a reader is ever given a choice of unit for
+one of them, its count moves into a table of the same shape.
+
+#### A compartment's amount and share on the schematic
+
+**A compartment's amount needs a precision of its own.** At the totals' 0.1 L,
+venous blood reads below resolution for a whole hour at 1 MAC with every agent
+the simulator offers, and so do the alveoli with sevoflurane and isoflurane.
 Desflurane's alveoli read 0.1 L from about two minutes. These figures have no
-test yet (`PL-19W8`). `PL-2881` derived the amount's own
-precision, in the paragraph on two significant figures below. Concentration, flow, MAC multiples and the F_A/F_I
-ratio are each shown in one unit, so each keeps one count. If a reader is ever
-given a choice of unit for one of them, its count moves into a table of the same
-shape.
-
-**Two of those counts are not display-only.** `CONCENTRATION_DISPLAY_DECIMALS`
-and `FLOW_DISPLAY_DECIMALS` set the slider steps, as the paragraph on precision
-elsewhere in the interface says. So they also decide which settings can reach
-the model. And `app/wash_in.py` derives `WASH_IN_DENOMINATOR_FLOOR_FRACTION`
-from the concentration resolution. That fraction is the smallest inspired
-fraction an F_A/F_I ratio may be formed from (§ "F_A/F_I as a displayed
-ratio"). One more decimal of concentration moves that floor down tenfold. So a
-change to either count is a change to the model's reachable inputs, and is
-derived here first.
-
-The chart plots the same percentages on a shared linear axis that runs from 0
-to 3 ×MAC of the running agent. A second axis on the right shows the identical
-coordinate in MAC multiples. The chart's resolution is set by pixels rather
-than by decimals, and it is coarser than the numeric readouts throughout. A
-trace is where a reader reads a *shape*. Every number the chart offers is
-rendered at the resolution above, not at the axis's resolution. Those numbers
-are the readout row, and the hover readout that § "The chart's hover readout: what the
-tooltip may show" derives below. The MAC axis is labelled on round
-MAC values rather than on round percentages. It uses half-MAC steps, which the
-fixed 3 ×MAC range gives for every agent. So a gridline that a reader learns
-under one agent means the same thing under the next. § "The chart's
-vertical range is denominated in MAC, and fixed" above explains why the range
-is what it is. The chart's horizontal extent is the selected time base rather
-than a fixed span, so the reader chooses the seconds per pixel. "The chart's
-time base" explains how a width is chosen and how it is ruled.
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-
-`app/formatting.py` is where this section is put into code. It holds the
-resolution as a single constant. From that constant it derives the formatter,
-the below-resolution marker, the MAC decimal count and the MAC axis placement.
-It imports no toolkit, so the functions this section reasons about can be read,
-cited and tested without loading the interface.
-`tests/unit/test_formatting.py` pins the constant and every string the
-formatter produces. `tests/unit/test_dashboard_frame.py` tests the end-to-end
-path: a real controller, a real step, and the string on the panel.
-`app/dashboard_frame.py` reads the constant to set the delivered dial's slider
-position. That is why the value the slider applies and the readout beside it
-cannot drift apart.
-
-`tests/reference/test_coupled_dynamics.py` restates the same constant and
-checks it against `app/formatting.py`. It does so because the ordering claim
-above is a property of the rounded values. Adding a decimal would change what
-that claim proves without changing anything the test reads. A change to the
-resolution is a change to this section.
+test yet (`PL-19W8`).
 
 **A compartment's amount is shown to two significant figures, because its
-uncertainty is a share of the amount rather than a fixed volume** (`PL-2881`,
-2026-11-01). The derivation above was repeated on each compartment's amount
-in millilitres of vapour. Each of the four stored coefficients was perturbed
-by one published SD, one at a time, at 1 MAC with the reference adult's
-flows. The amounts were read every second for the first 20 minutes, and at
-60 min, 180 min and 24 h. The shift runs from almost nothing, in the circuit
-in the first seconds, to 216 mL, in desflurane's fat at 24 h, because the
-amounts themselves span as many orders of magnitude. So no single count of
-decimals lies inside the band that the readouts' derivation admits. One count
-of 1 mL is a two-hundredth of one SD in desflurane's fat at 24 h, the kind of
-false precision that stopped the run totals at 0.1 L. One count of 10 mL is
-still a twenty-second of an SD there. It would also print sevoflurane's and
-isoflurane's venous blood as "<10 mL" for almost the whole first hour. That
-blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and 9.7
-to 10.0 mL at 60 min. That is the flat reading that the readouts' lower limit
-refuses.
+uncertainty is a share of the amount rather than a fixed volume** (measured
+2026-11-01). The totals' derivation was repeated on each compartment's amount in
+millilitres of vapour. Each of the four stored coefficients was perturbed by one
+published SD, one at a time, at 1 MAC with the reference adult's flows, and the
+amounts were read every second for the first 20 minutes, and at 60 min, 180 min
+and 24 h. The shift runs from almost nothing, in the circuit in the first
+seconds, to 216 mL, in desflurane's fat at 24 h, because the amounts themselves
+span as many orders of magnitude. So no single count of decimals lies inside the
+band that the readouts' derivation admits. One count of 1 mL is a two-hundredth
+of one SD in desflurane's fat at 24 h, the kind of false precision that stopped
+the run totals at 0.1 L. One count of 10 mL is still a twenty-second of an SD
+there. It would also print sevoflurane's and isoflurane's venous blood as
+"<10 mL" for almost the whole first hour, which is the flat reading that the
+readouts' lower limit refuses. That blood holds about 0.18 mL at 1 min, 6.6 mL
+of sevoflurane at 10 min, and 9.7 to 10.0 mL at 60 min.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL, 10.0 mL -->
 
 Relative to the amount, the shift is narrow. In venous blood and the three
-tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli
-it is below 3%, because the dial sets them and a coefficient barely moves
-them. Two significant figures put the last digit at 1% to 10% of the amount.
-As measured, one count lies between a tenth of one SD, in desflurane's venous
-blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. These
-figures have no test yet (`PL-19W8`). The one-sided bound above allows the
-coarse end. The fine end is finer than the readouts' seventh of an SD, but only
-in the first two minutes, while venous blood fills. Three significant figures
-would put one count at a hundredth of an SD. The readouts' third decimal was
-refused at a seventieth of an SD, and the totals' second decimal at a fiftieth,
-which is the same order. One significant figure would print fat's amount in steps of 1000 mL by
-24 h. So two is the finest count the parameters support, and it is the count
-chosen.
+tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli it
+is below 3%, because the dial sets them and a coefficient barely moves them. Two
+significant figures put the last digit at 1% to 10% of the amount. As measured,
+one count lies between a tenth of one SD, in desflurane's venous blood at 79 s
+when it holds 0.99 mL, and many SDs in the circuit. These figures have no test
+yet (`PL-19W8`). The one-sided bound allows the coarse end. The fine end is
+finer than the readouts' seventh of an SD, but only in the first two minutes,
+while venous blood fills. Three significant figures would put one count at a
+hundredth of an SD. That is the same order as the readouts' third decimal, which
+was refused at a seventieth of an SD, and as the totals' second decimal, which
+was refused at a fiftieth. One significant figure would print fat's amount in
+steps of 1000 mL by 24 h. So two is the finest count the parameters support, and
+it is the count chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-The readouts' uniform resolution does not carry over to the schematic's
-compartment amounts, because neither of its two grounds applies to them. The
-first ground in § "Why the resolution is uniform rather than per-compartment"
-is that the parameters' uncertainty is absolute across the row of readouts.
-For the amounts it is relative, as above. The second is that the readouts are
-read as one set, side by side or stacked, where different numbers of decimals
-would put different magnitudes at the same digit position. The schematic's
-amounts are labels on separate containers, each followed by its unit, and the
-schematic compares amounts along one scale, on the share bar.
+The readouts' uniform resolution does not carry over to the schematic's amounts,
+because neither of its two reasons applies to them. The parameters' uncertainty
+in an amount is relative, as above, not absolute. And the amounts are not a row
+read as one set. They are labels on separate containers, each followed by its
+unit, and the schematic compares them on one scale, in the share bar.
 
 A positive amount that would round to 0.00 mL reads `<0.01 mL vapour`, and
 exactly zero reads `0 mL vapour`
 (`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
 A limit finer than 0.01 mL would print four or more decimals for a moment's
 worth of agent. The 0.01 mL limit is a provisional choice made for legibility.
-It can only make an amount coarser than the two-figure rule would show it,
-which the one-sided bound allows.
+It can only make an amount coarser than the two-figure rule would show it, which
+the one-sided bound allows.
 
-**A compartment's share is shown in whole percent.** A positive share below
-0.5% reads `<1%`, so a compartment that holds agent never reads as holding
-none. A share of 99.5% or more that is not the whole reads `>99%`, so no
-compartment reads as holding all of the agent while another holds some. In a
-desflurane run, the circuit holds more than 99.5% of the agent for about its
-first second. One SD of a coefficient moves a compartment's share by at most
+**A compartment's share is shown in whole percent.** A positive share below 0.5%
+reads `<1%`, so a compartment that holds agent never reads as holding none. A
+share of 99.5% or more that is not the whole reads `>99%`, so no compartment
+reads as holding all of the agent while another holds some. In a desflurane run,
+the circuit holds more than 99.5% of the agent for about its first second. One
+SD of a coefficient moves a compartment's share by at most
 1.2 percentage points, in isoflurane's muscle at 24 h. This figure has no test
-yet (`PL-19W8`). So one count of 1 percentage point lies between 0.8 SD and
-more than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
+yet (`PL-19W8`). So one count of 1 percentage point lies between 0.8 SD and more
+than a hundred SDs, and a count of 0.1 would fall to a twelfth of one SD.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**For developers.** `app/formatting.py` is where this section is put into code.
+It holds the resolution as a single constant, and derives from it the formatter,
+the below-resolution marker, the MAC decimal count and the MAC axis placement.
+It imports no toolkit, so the functions this section reasons about can be read,
+cited and tested without loading the interface. `tests/unit/test_formatting.py`
+pins the constant and every string the formatter produces.
+`tests/unit/test_dashboard_frame.py` tests the end-to-end path: a real
+controller, a real step, and the string on the panel. `app/dashboard_frame.py`
+reads the constant to set the delivered dial's slider position, so the value the
+slider applies and the readout beside it cannot drift apart.
+`tests/reference/test_coupled_dynamics.py` restates the same constant and checks
+it against `app/formatting.py`, because the ordering claim above is a property
+of the rounded values. Adding a decimal would change what that claim proves
+without changing anything the test reads, so a change to the resolution is a
+change to this section.
 
 ### The chart's hover readout: what the tooltip may show
 
