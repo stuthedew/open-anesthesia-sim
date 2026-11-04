@@ -3,7 +3,7 @@ id: PL-HJFX
 title: Pause the copy editor for replies, pull requests and close-out until PL-HGZS is fixed and the owner agrees to bring it back; use it only to test or debug it
 priority: P1
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: prose-quality
 touches: .claude/rules/instruction-writing.md, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/close-out.md, docket.toml, tests/unit/test_new_prose.py
