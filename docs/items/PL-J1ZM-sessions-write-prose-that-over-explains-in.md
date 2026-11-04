@@ -3,18 +3,18 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: ready
+status: blocked
 classes: defect
 feature: reader-first-prose
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
-blocked-by: PL-BSYT, PL-9331, PL-J37P
+blocked-by: PL-TG6P, PL-DH17, PL-HNNH, PL-TTBF
 deferred-from: v0.7.0 - captured after the freeze; it changes how prose is written, not a displayed value
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
-verify: grep -qE '^[*][*]Measured, 20' docs/items/PL-J1ZM-*.md
+verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md
 not-delegable: the approach changes how every session writes and needs a design round with the owner
 root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
-generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), and nothing yet shows that sessions have stopped writing prose that later needs its own rewrite
+generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), but the 2026-11-04 measurement found text published after the copy editor's run, long replies sent without it, and grown passages left unnamed (PL-TG6P, PL-DH17, PL-HNNH)
 misread: what a reader can do without, which no rule states for any kind of text, so each writer adds
 ---
 
@@ -69,3 +69,13 @@ misread: what a reader can do without, which no rule states for any kind of text
 **Blocked on its measurement, 2026-11-04.** `PL-22T5` and `PL-JP8X` have closed, so the whole design is built, and what blocks this item now is the measurement its Done-when names. It waits on the first three rewrites that `bin/docket list` ranked: `PL-BSYT`, `PL-9331` and `PL-J37P`. They were raised to `P1`, because a `P1` head cannot wait on `P2` work. When they close, read every branch merged from `PL-22T5`'s merge to the last of them. Each cut must carry its reason, each grown passage must have its pull request name the facts its added words carry, and the owner must have accepted the text the first time they read it. Together the branches must include a code comment and a reply. Where they do not, wait for the next branch that does.
 
 **Ready to measure, 2026-11-04.** The three branches that Done-when names, `PL-BSYT`, `PL-9331` and `PL-J37P`, have all closed, `PL-9331` last, in #2019. Record whether the owner accepted each branch's text on first reading, in a dated paragraph that opens "**Measured, ". Include this fact from `PL-9331`: before accepting, the owner asked one question. The question was about the working session's reply, which had wrongly implied that "flow-limited" and "perfusion limited" mean different things. It was not about the branch's text in `docs/MODEL.md`, which merged unchanged.
+
+**Measured, 2026-11-04.** The Done-when is not met, and the generator stays live. Seven branches merged from `PL-22T5`'s merge (#2017) to `PL-9331`'s (#2019). Agents read four session transcripts: `PL-BSYT` (#2018), `PL-W6JM` (#2021), `PL-J37P` (#2022, whose thread also filed `PL-JTTD` in #2025) and `PL-9331`. The triage in #2020 and `PL-SMM2` (#2023) were read from their pull requests alone.
+
+1. **The owner's first reading.** The owner accepted `PL-BSYT`'s text with "Merge" and asked for no change. `PL-9331`'s `docs/MODEL.md` text merged unchanged. Before accepting it, the owner asked: "What's the difference between flow limited and perfusion limited? Do you mean perfusion and diffusion limited?" The question answered the session's reason for one rewording, which wrongly implied that the two terms differ. That reason was in the pull request body too, so it is in squash commit 2d61ba9f7 on `main`. `PL-J37P` was not accepted on first reading. The owner had a sentence taken out of `docs/MODEL.md`: "You don't need to add a risk to everything. Only what needs it". `PL-W6JM` merged without the owner's review, as its paths allow, so this condition cannot be measured for it.
+2. **Each cut's reason.** Every cut the copy editor listed carried its reason, on every run whose report the transcript kept. Its restatements carry none, as its instructions allow.
+3. **The facts a grown passage adds.** `PL-BSYT`, `PL-9331` and `PL-SMM2` named them. `PL-W6JM` did not name them for its two docstrings, which grew from 40 words to 86 and from 12 to 56. `PL-J37P` did not either, though its comparison showed growth. Its figures are unreliable, because the section had no subheadings before the rewrite (`PL-TTBF`).
+4. **A code comment.** Only `PL-W6JM` changed one, and it failed condition 3.
+5. **A reply.** The `PL-BSYT` and `PL-W6JM` sessions sent four replies over 150 words, one of them a decision request, and none went through the copy editor. The `PL-J37P` and `PL-9331` threads ran it on one reply and two, and each still sent a long reply or a decision request without it.
+
+**What the failures share.** Both of the owner's objections landed on text that no review saw, written after the copy editor had run, to answer a question it raised (`PL-TG6P`). The other failures are steps of the procedure that no check reaches: the copy edit of a reply (`PL-DH17`) and naming the facts a grown passage adds (`PL-HNNH`). Those four items block this one. When they close, measure again over the three branches after the last of them merges, in a paragraph that opens "**Measured again, ". `PL-BS6N` holds the owner's other point, which is the owner's decision: when a model limitation earns a sentence.
