@@ -162,16 +162,17 @@ READER_HEADER = (
     "What they will do with it",
 )
 
-#: How many lines of code to print above and below a Python unit, so the copy
-#: editor can see what an "it" or a name points at without opening the file.
-#: Above a docstring, the line it most needs is the `def` or `class` it
-#: describes. On 2026-11-04 that line was within 3 rows above 97.3% of the
-#: 7,928 docstrings in `src/`, `tests/`, `tools/` and docket's code, because a
-#: signature that wraps puts its docstring 3 rows below the `def`. Within 2
-#: rows it was above 82.9%, and within 8 above 99.2%. So 3 rows show the `def`
-#: as often as 4 do, and the fourth row is a margin that costs one line on
-#: each side. Each extra row lengthens the file the copy editor reads
-#: (`PL-BXD5`).
+#: How many lines of code to print above and below each docstring, comment or
+#: string literal, so the copy editor can see what an "it" or a name points at
+#: without opening the file. Above a docstring, the line it most needs is the
+#: `def` or `class` it describes. On 2026-11-04 that line was within 2 rows
+#: above 82.9% of the 7,943 docstrings in `src/`, `tests/`, `tools/` and
+#: docket's code, within 3 rows above 97.3%, and within 8 above 99.2%. The jump
+#: at 3 rows comes from signatures that wrap, which put the docstring 3 rows
+#: below the `def`. Three rows therefore show the `def` as often as 4 do, and
+#: the fourth row is a margin that costs one line on each side. Comments were
+#: not measured, because a comment has no single line it describes. Each extra
+#: row lengthens the file the copy editor reads (`PL-BXD5`).
 CONTEXT_ROWS = 4
 
 
