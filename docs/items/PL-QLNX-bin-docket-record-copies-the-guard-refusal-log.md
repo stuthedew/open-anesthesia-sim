@@ -3,12 +3,14 @@ id: PL-QLNX
 title: bin/docket record copies the guard refusal log into docs/hook-blocks/, which the claim check counts as work outside the queue, so a queue-only branch that records its pull request fails CI's claim check
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guard-refusal-log
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_record_command.py, subprojects/docket/README.md, docket.toml, tools/hook_blocks.py, tests/unit/test_hook_blocks.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2009
 payoff: a triage or capture branch that records its pull request number passes CI without claiming an item or throwing away the guard refusals it copied
 verify: grep -q 'record_dir' subprojects/docket/src/docket/vcs.py && ! grep -q '^BLOCKS_DIR = "' tools/hook_blocks.py
 ---

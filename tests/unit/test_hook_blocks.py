@@ -199,6 +199,20 @@ def test_record_runs_the_copy() -> None:
     assert load(REPO).record_command == "python3 tools/hook_blocks.py copy"
 
 
+def test_the_copy_writes_where_the_claim_check_admits_it() -> None:
+    """The copy's directory is the one record the claim check reads (`PL-QLNX`).
+
+    A triage pass that records its number writes the copied refusals and
+    nothing else outside the items, and owes no claim for them.
+    """
+    from docket.config import load
+    from docket.vcs import in_queue
+
+    config = load(REPO)
+    assert BLOCKS_DIR == config.record_dir
+    assert in_queue(f"{BLOCKS_DIR}/claude-triage-a1b2c3.tsv", config)
+
+
 def test_count_reports_a_burst_once(tmp_path: Path) -> None:
     """A session refused for one rule, and refused again on its retry, made one burst.
 
@@ -218,3 +232,15 @@ def test_count_reports_a_burst_once(tmp_path: Path) -> None:
     assert count(tmp_path) == [
         "gate-status-guard\tstatus-swallowed:pytest\t4 refusals\t3 bursts\t2 sessions"
     ]
+
+
+def test_no_record_dir_copies_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With no directory named, the copy says so rather than write into the root."""
+    import hook_blocks
+
+    monkeypatch.setattr(hook_blocks, "BLOCKS_DIR", "")
+    log = _log(tmp_path / "blocks.tsv", "2026-11-04T00:00:00.000000Z\tcse_a\tg\tr")
+    assert copy(log, tmp_path, "b") == [
+        "hook blocks: docket.toml names no record_dir, so nothing was copied"
+    ]
+    assert list(tmp_path.iterdir()) == [log]

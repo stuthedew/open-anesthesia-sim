@@ -1414,6 +1414,11 @@ def queue_records(config: Config) -> tuple[str, ...]:
     other is one file. One list for the check and for what its refusal says it
     admits, so the two cannot drift apart: `PL-F6MM`'s body records were
     missing from both.
+
+    `record_dir` is the directory that `docket record`'s own command writes.
+    Without it, a triage pass that recorded its number after meeting a guard
+    refusal changed a file outside the queue and failed the claim check
+    (`PL-QLNX`).
     """
     return tuple(
         name
@@ -1422,6 +1427,7 @@ def queue_records(config: Config) -> tuple[str, ...]:
             config.roadmap_file,
             config.notes_file,
             RECORDS,
+            config.record_dir.strip("/") + "/" if config.record_dir else "",
         )
         if name
     )
@@ -1430,17 +1436,17 @@ def queue_records(config: Config) -> tuple[str, ...]:
 def in_queue(path: str, config: Config) -> bool:
     """Whether a repository path is one of the records a queue workflow writes.
 
-    The items, the roadmap, the working notes and the pull requests' body
-    records (`queue_records`). A capture, a triage pass or a design round writes
-    these and nothing else - triage puts an item on the debt gate's list in the
-    roadmap, a design round keeps its thread in the notes, and a recovery
-    writes a lost body - and owes no claim, since the ids it leads with are
-    never pushed into one (`PL-3CTW`). Read as the items
-    directory alone, as the spec's "outside `items_dir`" says, it refused 12
-    such passes merged in the week to 2026-09-24, and would have made each
-    claim the ids it triaged. Without the body records it refused every such
-    pass once recorded, so `pr-title` and `checks` could not both pass on it
-    (`PL-F6MM`).
+    The items, the roadmap, the working notes, the pull requests' body
+    records and what `docket record` copies in (`queue_records`). A capture,
+    a triage pass or a design round writes these and nothing else - triage
+    puts an item on the debt gate's list in the roadmap, a design round
+    keeps its thread in the notes, and a recovery writes a lost body - and
+    owes no claim, since the ids it leads with are never pushed into one
+    (`PL-3CTW`). Read as the items directory alone, as the spec's "outside
+    `items_dir`" says, it refused 12 such passes merged in the week to
+    2026-09-24, and would have made each claim the ids it triaged. Without
+    the body records it refused every such pass once recorded, so `pr-title`
+    and `checks` could not both pass on it (`PL-F6MM`).
 
     The whole records directory counts, so CI does not refuse a `--recover`
     pass that claims nothing, though `CLAUDE.md`'s housekeeping rule still
