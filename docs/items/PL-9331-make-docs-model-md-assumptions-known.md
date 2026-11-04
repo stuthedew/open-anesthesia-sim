@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md
 added: 2026-11-02
 closed: 2026-11-04
 pr: 2019

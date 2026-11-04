@@ -3,7 +3,7 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: reader-first-prose
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
@@ -11,6 +11,7 @@ blocked-by: PL-BSYT, PL-9331, PL-J37P
 deferred-from: v0.7.0 - captured after the freeze; it changes how prose is written, not a displayed value
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
+verify: grep -qE '^[*][*]Measured, 20' docs/items/PL-J1ZM-*.md
 not-delegable: the approach changes how every session writes and needs a design round with the owner
 root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
 generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), and nothing yet shows that sessions have stopped writing prose that later needs its own rewrite
@@ -66,3 +67,5 @@ misread: what a reader can do without, which no rule states for any kind of text
 **Answer** (project owner, 2026-11-04, ratified, over printing approved paragraphs to the writing session): the examples go to the copy editor only, once three pairs of different kinds exist. The two pairs from this round are the first two (project owner, 2026-11-04, ratified, over writing new pairs). This item held them until `PL-22T5` built the copy editor, and then they moved to `docs/prose-review/examples/`, one file each.
 
 **Blocked on its measurement, 2026-11-04.** `PL-22T5` and `PL-JP8X` have closed, so the whole design is built, and what blocks this item now is the measurement its Done-when names. It waits on the first three rewrites that `bin/docket list` ranked: `PL-BSYT`, `PL-9331` and `PL-J37P`. They were raised to `P1`, because a `P1` head cannot wait on `P2` work. When they close, read every branch merged from `PL-22T5`'s merge to the last of them. Each cut must carry its reason, each grown passage must have its pull request name the facts its added words carry, and the owner must have accepted the text the first time they read it. Together the branches must include a code comment and a reply. Where they do not, wait for the next branch that does.
+
+**Ready to measure, 2026-11-04.** The three branches that Done-when names, `PL-BSYT`, `PL-9331` and `PL-J37P`, have all closed, `PL-9331` last, in #2019. Record whether the owner accepted each branch's text on first reading, in a dated paragraph that opens "**Measured, ". Include this fact from `PL-9331`: before accepting, the owner asked one question. The question was about the working session's reply, which had wrongly implied that "flow-limited" and "perfusion limited" mean different things. It was not about the branch's text in `docs/MODEL.md`, which merged unchanged.
