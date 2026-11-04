@@ -498,6 +498,7 @@ workflow_paths = [
   "tests/unit/test_model_rewrite.py",
   "tests/unit/test_copy_edit.py",
   "tests/unit/test_new_prose.py",
+  "tests/unit/test_prose_judge.py",
   "tests/unit/test_blind_review.py",
   "tests/unit/test_blind_review_report.py",
   "tests/unit/test_import_boundary_check.py",
@@ -928,3 +929,10 @@ model = "claude-sonnet-5-5"
 [[models.rule]]
 match = { role = "exploration" }
 model = "opus"
+
+# The copy editor runs at extra high effort (project owner, 2026-11-04,
+# ratified, over the default high, `PL-HGZS`): its misses while it was being
+# debugged were reading misses that the extra high session caught.
+[[models.rule]]
+match = { role = "copy-editor" }
+effort = "xhigh"
