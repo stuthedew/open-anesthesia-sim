@@ -10652,6 +10652,11 @@ about one SD, and a step of 0.1 mL would be a tenth of one, finer than the
 band's seventh.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
+**For developers.**
+`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
+repeats the litre-to-millilitre conversion for every shipped agent from the
+stored molar mass and density.
+
 **The delivered total in millilitres of liquid is shown in whole
 millilitres** (project owner, 2026-11-04, ratified, over keeping a tenth of a
 millilitre and over four significant figures, `PL-SP6H`). The delivered agent
@@ -10720,9 +10725,6 @@ the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
 reads the finest count from the derivation for that amount and unit, so no
 caller can pass a looser bound, and it refuses a finer count when it is built. A
 precision that a reader could set would be built the same way.
-`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
-repeats the litre-to-millilitre conversion for every shipped agent from the
-stored molar mass and density.
 `test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres`
 computes each agent's largest total and its SD from the stored densities, the
 dial limits and the supported flow and run length.
