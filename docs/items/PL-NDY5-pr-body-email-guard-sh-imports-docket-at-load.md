@@ -3,14 +3,16 @@ id: PL-NDY5
 title: pr-body-email-guard.sh imports docket at load for modes --screen never uses, which costs about 213 ms on every MCP call and lets an unrelated rename in docket switch the guard off with only an ImportError on swallowed stderr
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, perf
 feature: guards-say-when-they-cannot-check
 touches: tools/pr_body_check.py, tools/email_screen.py, .claude/hooks/guard.py, .claude/hooks/git/pre-push, .claude/hooks/owner_ask_guard.py, tests/unit/test_pr_body_check.py, tests/unit/test_email_screen.py, docs/apparatus.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
-payoff: every MCP call is about 150 ms cheaper, and a rename inside docket can no longer switch off the email guard
-verify: grep -q 'def test_screen_refuses_with_docket_unimportable' tests/unit/test_pr_body_check.py
+closed: 2026-11-04
+pr: 2005
+payoff: the guards on a GitHub call take about 56 ms instead of 149 ms, and a rename inside docket can no longer switch off the email guard
+verify: grep -q 'def test_the_screen_still_refuses_with_docket_unimportable' tests/unit/test_email_screen.py
 ---
 
 **Problem.** pr-body-email-guard.sh imports docket at load for modes --screen never uses, which costs about 213 ms on every MCP call and lets an unrelated rename in docket switch the guard off with only an ImportError on swallowed stderr

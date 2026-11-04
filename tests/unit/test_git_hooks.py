@@ -293,7 +293,7 @@ def test_an_address_in_a_commit_message_is_refused_and_nothing_is_sent(clone: Cl
     assert "refs/heads/work" not in clone.remote_refs()
 
 
-def test_a_work_in_progress_push_that_skips_the_checks_is_still_screened(clone: Clone) -> None:
+def test_a_work_in_progress_push_still_screens_for_an_address(clone: Clone) -> None:
     """The push guard's work-in-progress exemption leaves this hook to run (`PL-5R11`)."""
     clone.sh("git checkout -q -b work")
     clone.sh(f"git commit -q --allow-empty -m 'Asked by {PERSON}.'")

@@ -3,12 +3,14 @@ id: PL-KW5K
 title: thread_hooks.py writes nothing and says nothing when CLAUDE_CODE_ENTRYPOINT is anything but remote_projects, so a renamed entrypoint turns off every repository hook in Projects threads silently
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guards-say-when-they-cannot-check
 touches: .claude/hooks/thread_hooks.py, .claude/hooks/hook_input.py, tests/unit/test_thread_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2005
 payoff: a Projects thread whose hooks the bridge did not copy is told so at session start
 verify: grep -q 'def test_an_unknown_entrypoint_says_the_hooks_were_not_copied' tests/unit/test_thread_hooks.py
 ---

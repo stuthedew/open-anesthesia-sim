@@ -3,12 +3,14 @@ id: PL-5R11
 title: push-check-guard.sh tells a session to push work in progress with git push --no-verify, which also skips the pre-push hook's refusal of branch deletions and its email screen of the new commits
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guards-keyed-on-the-action
 touches: .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, .claude/hooks/shell_split.py, tests/unit/test_push_check_guard.py, tests/unit/test_git_hooks.py
 deferred-from: v0.7.0 - captured after the freeze; a workflow-lane guard defect, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2005
 payoff: a work-in-progress push that skips the checks still has its commits screened for an email address and cannot delete a remote branch
 verify: grep -q 'def test_a_work_in_progress_push_still_screens_for_an_address' tests/unit/test_git_hooks.py
 ---
