@@ -2,7 +2,7 @@
 id: PL-DH17
 title: Sessions skip the copy edit of a long reply or a decision request: the PL-BSYT and PL-W6JM sessions sent four replies over 150 words with none, one of them a decision request, and nothing checks a reply
 status: untriaged
-feature: reader-first-prose
+feature: copy-editor
 added: 2026-11-04
 ---
 

@@ -5,7 +5,7 @@ priority: P1
 owner-priority: P1, 2026-11-02
 effort: S
 status: done
-feature: reader-tested-prose
+feature: copy-editor
 touches: .claude/rules/plain-writing.md, tools/new_prose.py, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md, docs/resident-instructions.md
 added: 2026-11-02
 closed: 2026-11-03

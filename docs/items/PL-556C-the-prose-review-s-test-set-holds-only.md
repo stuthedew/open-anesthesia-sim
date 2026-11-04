@@ -4,7 +4,7 @@ title: The prose review's test set holds only paragraphs the owner rejected, so 
 priority: P1
 effort: M
 status: done
-feature: reader-tested-prose
+feature: copy-editor
 touches: docs/prose-review, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md
 deferred-from: v0.7.0 - apparatus for the prose review, built on the owner's request of 2026-11-03 rather than ranked by the release gate
 added: 2026-11-03

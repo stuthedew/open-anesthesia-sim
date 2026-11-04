@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: ready
 classes: defect
-feature: prose-quality
+feature: copy-editor
 touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py
 deferred-from: v0.7.0 - a workflow-lane generator, ranked by its generator tier rather than by the gate
 added: 2026-11-04
@@ -24,17 +24,12 @@ misread: that a passage the copy editor passed is plain enough for its reader
 
 **Decision** (project owner, 2026-11-04): the copy editor is a root cause that must be fixed and stress-tested before wide use. Rewrites unrelated to testing it are blocked until then, and this item is the highest priority. It is the copy-editor half of `PL-J1ZM`'s fix, split out on the owner's order.
 
-[superseded 2026-11-04: the owner found it too narrow, and the revised form follows] **Done when.** The copy editor can cut a fact its reader does not need, naming the reason. A stress test runs it on passages the owner judged too verbose on 2026-11-04 and on passages the owner accepted. It must cut the first to what the owner accepted and keep the second. The verbose passages are on `#2024`'s branch: the 250-word delivered-total paragraph of `docs/MODEL.md` § "Displayed precision" at `e3834f81c`, and the cut version at `14387f045`. The test runs in `make check`. Only then do the blocked rewrites resume.
+**Done when** (revised 2026-11-04, after two reviews by the owner). The copy editor edits like a professional technical copy editor. Verbose text comes back concise and clear, as long as its reader needs. Good text comes back nearly unchanged. Every fact the reader needs stays. The owner calls it alpha. It is built in three steps:
 
-**Done when** (revised 2026-11-04, after the owner's review). The copy editor edits like a professional technical copy editor. Given verbose or badly written text, it returns text that is concise and clear, as long as its reader needs and no longer. Given good text, it changes little. It keeps every fact the reader needs.
+1. **Research the craft.** Find how professional technical editors work, from published sources, and write what applies into `.claude/agents/copy-editor.md` with citations. Start from Einsohn and Schwartz, *The Copyeditor's Handbook* (4th ed., 2019); Rude and Eaton, *Technical Editing* (5th ed., 2011); Van Buren and Buehler, *The Levels of Edit* (JPL Publication 80-1, 1980); the Federal Plain Language Guidelines (2011); the Google developer documentation style guide; and Williams and Bizup, *Style: Lessons in Clarity and Grace*.
+2. **Debug on the repository's own text, one section at a time.** Run the copy editor on one section, judge its edit as a professional editor would, find why any edit falls short, fix the instructions and rerun. Then take the next section. Include good sections, which it should leave nearly alone. Start with the five sections in `root-cause-of`, and stop when five sections in a row need no fix. Record each section's result and fix in this item. The edits stay in scratch. Those sections' own items apply them once the copy editor is back.
+3. **Confirm on sections it was not tuned on.** A separate judge, run blind, compares the originals with the edits. No single count, such as words, decides a verdict.
 
-The building session judges this, not the owner:
-
-1. A test set of at least 20 passages across the kinds the copy editor reads: model-specification paragraphs, docstrings, replies and pull request bodies. Some are verbose, some already good, and the texts the owner found too verbose on 2026-11-04 are among them.
-2. A separate judge, run blind, compares each original with its edit. It asks which keeps every needed fact, which reads more like professional technical writing, and which is shorter without loss. No single count, such as words, decides a verdict. The judge's standard draws on published guides: the Federal Plain Language Guidelines (plainlanguage.gov, 2011), the Google developer documentation style guide, and Williams and Bizup, *Style: Lessons in Clarity and Grace*.
-3. The session revises the copy editor and reruns the set until its edits win on most passages and make no good passage worse. It runs at least five such rounds before showing the owner anything.
-4. The owner then reads a few before-and-after pairs. Passages the owner accepted earlier are a floor, not a target.
-
-The copy editor returns to use only after the owner agrees (`PL-HJFX`).
+The session judges throughout, and the owner does not review edits (project owner, 2026-11-04: "That's what you are for. You are the copy editor"). The copy editor returns to use only when the owner agrees (`PL-HJFX`). Two earlier forms of this paragraph, a fixed stress test and then a 20-passage set the owner would sample, were superseded the same day.
 
 **Generator check.** This item is a head: the copy editor reviews every rewrite, and the five rewrites in `root-cause-of` wait on it. It is a second head beside `PL-J1ZM`, whose misread fact is what a reader can do without; this one is that a copy editor pass proves the text plain.

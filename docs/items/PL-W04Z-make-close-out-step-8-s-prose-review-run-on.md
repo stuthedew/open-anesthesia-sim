@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: housekeeping
-feature: prose-quality
+feature: copy-editor
 milestone: v0.5.39
 touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, docket.toml, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science

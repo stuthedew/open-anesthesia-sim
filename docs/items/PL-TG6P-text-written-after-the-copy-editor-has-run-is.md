@@ -2,7 +2,7 @@
 id: PL-TG6P
 title: Text written after the copy editor has run is published without review, and both of the owner's objections in PL-J1ZM's measurement landed on such text: PL-9331's wrong reason for a rewording, in its reply and pull request body, and PL-J37P's warning sentence in docs/MODEL.md, each written to answer a question the copy editor raised
 status: untriaged
-feature: reader-first-prose
+feature: copy-editor
 added: 2026-11-04
 ---
 

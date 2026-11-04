@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: blocked
 classes: defect
-feature: reader-first-prose
+feature: copy-editor
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
 blocked-by: PL-TG6P, PL-DH17, PL-HNNH, PL-TTBF
 deferred-from: v0.7.0 - captured after the freeze; it changes how prose is written, not a displayed value

@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
-feature: reader-first-prose
+feature: copy-editor
 touches: tools/new_prose.py
 added: 2026-11-04
 closed: 2026-11-04

@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: feature
-feature: reader-tested-prose
+feature: copy-editor
 touches: tools/rejected_prose.py, tests/unit/test_rejected_prose.py
 added: 2026-11-03
 payoff: a change to the prose review's prompt shows whether it moved the review closer to the owner's verdicts or further from them
