@@ -114,7 +114,6 @@ from __future__ import annotations
 import ast
 import fnmatch
 import re
-import string
 import sys
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -245,10 +244,7 @@ ASK_JARGON = re.compile(
 )
 
 #: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
-#: is sent. `renders_owner_ask` recognizes a line in either form from these
-#: same templates, which `.claude/hooks/owner_ask_guard.py` used to check a
-#: coordinator's post until `PL-X4MD` (`PL-YV90`). A
-#: review is one template. A decision is `ASK_DECISION_SHOWN`, whose
+#: is sent. A review is one template. A decision is `ASK_DECISION_SHOWN`, whose
 #: `options` are two or more `ASK_OPTION_SHOWN` joined by
 #: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
 ASK_REVIEW_SHOWN = (
@@ -1042,78 +1038,6 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
     )
     recommended = ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip("."))
     return ASK_DECISION_SHOWN.format(question=question, options=shown, recommend=recommended), ""
-
-
-def _shown_pattern(template: str, fields: dict[str, str]) -> str:
-    """A regular expression for `template`, its text literal and each field replaced by a pattern.
-
-    `string.Formatter().parse` splits a template into its literal text and
-    its field names, the same split `str.format` uses, so the pattern cannot
-    drift from what `parse_owner_ask` renders.
-    """
-    pattern = ""
-    for literal, field, _, _ in string.Formatter().parse(template):
-        pattern += re.escape(literal)
-        if field is not None:
-            pattern += fields[field]
-    return pattern
-
-
-#: Any field's text: at least one character, as few as will do.
-_SHOWN_VALUE = r".+?"
-
-#: A label or a recommended pick, which the rendered line puts in quote marks.
-_SHOWN_LABEL = r'[^"]+'
-
-_SHOWN_OPTION = _shown_pattern(ASK_OPTION_SHOWN, {"label": _SHOWN_LABEL, "change": _SHOWN_VALUE})
-
-#: The two forms `parse_owner_ask` renders. A decision needs a question ending
-#: in "?" and at least two options, as `parse_owner_ask` does.
-_SHOWN_ASKS = (
-    re.compile(
-        _shown_pattern(
-            ASK_REVIEW_SHOWN,
-            {
-                "changed": _SHOWN_VALUE,
-                "question": _SHOWN_VALUE + r"\?",
-                "checked": _SHOWN_VALUE,
-                "reply": _SHOWN_VALUE,
-            },
-        ),
-        re.IGNORECASE,
-    ),
-    re.compile(
-        _shown_pattern(
-            ASK_DECISION_SHOWN,
-            {
-                "question": _SHOWN_VALUE + r"\?",
-                "options": _SHOWN_OPTION
-                + "(?:"
-                + re.escape(ASK_OPTIONS_JOIN)
-                + _SHOWN_OPTION
-                + ")+",
-                "recommend": _shown_pattern(
-                    ASK_RECOMMEND_SHOWN, {"pick": _SHOWN_LABEL, "why": _SHOWN_VALUE}
-                ),
-            },
-        ),
-        re.IGNORECASE,
-    ),
-)
-
-
-def renders_owner_ask(text: str) -> bool:
-    """Whether `text` holds a line in one of the forms `parse_owner_ask` renders.
-
-    This recognizes the form and proves nothing more. It cannot say whether
-    the line is the one recorded on the pull request's branch, because only
-    `arm` on that branch can. `.claude/hooks/owner_ask_guard.py` used it for
-    the coordinator's posts until `PL-X4MD` made the hook attach the recorded
-    question instead, so nothing outside the tests calls it now (`PL-YV90`).
-    Pass the text with its whitespace already squeezed to single spaces,
-    since a message may wrap the line.
-    """
-    return any(pattern.search(text) for pattern in _SHOWN_ASKS)
 
 
 @dataclass(frozen=True)
