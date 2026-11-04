@@ -440,11 +440,14 @@ The modeled system contains:
 
 **Perfusion-limited exchange.** Agent moves between blood and alveolar gas,
 and between blood and each tissue group, by perfusion-limited exchange. Blood
-leaves the lung or the tissue at equilibrium with it, so blood flow alone sets
-how fast agent moves. In diffusion-limited exchange, which this model does not
-represent, blood leaves before it has equilibrated, and the barrier between
-blood and gas or tissue sets the rate. The term describes the exchange between
-blood and the lung or a tissue, not the blood itself. Jones and Rowland-Yeo
+leaves the lung or the tissue at equilibrium with it, so the barrier between
+them never limits how fast agent moves. The rate is then set by the blood
+flow, the agent's blood:gas partition coefficient and the difference in
+partial pressure, as the uptake equations in § "Governing equations" show. In
+diffusion-limited exchange, which this model does not represent, blood leaves
+before it has equilibrated, and the barrier limits the rate. The term
+describes the exchange between blood and the lung or a tissue, not the blood
+itself. Jones and Rowland-Yeo
 call the two tissue cases perfusion rate-limited and permeability
 rate-limited, and give the first as typical of small lipophilic molecules,
 which the volatile agents are (Jones HM, Rowland-Yeo K. Basic concepts in
@@ -455,10 +458,16 @@ the tissues when they fitted sevoflurane and isoflurane kinetics in volunteers
 (*Anesth Analg* 1991;72:316-24, p. 319).
 
 Arterial blood is not a separate mixing compartment. The model treats the
-lung's exchange with blood as perfusion-limited, so blood leaving the lungs
-equilibrates instantly with alveolar gas. Arterial partial pressure, as a
-fraction, is therefore defined as $`F_a \equiv F_A`$, with no arterial volume,
-mixing delay, or value of its own. This deliberate simplification matches the
+lung's exchange with blood as perfusion-limited, so blood leaving the alveolar
+capillaries equilibrates instantly with alveolar gas. The model also has no
+shunt and only one alveolar compartment, so it has no ventilation-perfusion
+mismatch. All arterial blood has therefore passed through that exchange.
+Arterial partial pressure, as a fraction, is defined as $`F_a \equiv F_A`$,
+with no arterial volume, mixing delay, or value of its own. In patients, the
+arterial partial pressure runs below the end-tidal one during administration,
+as Carpenter and Eger measured (§ "Desflurane's residual, and why the
+parameter file was not changed"). So this identity is a deliberate
+simplification of the model, not a property of the agents. It matches the
 perfusion-limited mammillary structure of the Gas Man simulator, the source of
 this project's sevoflurane and patient parameters. Gas Man computes four
 compartments: alveolar gas and the vessel-rich, muscle, and fat groups. It
@@ -1078,8 +1087,8 @@ would give uptake curves that look plausible and are wrong.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
 Arterial blood has no compartment, capacity or amount balance of its own.
-Because the lung's exchange with blood is perfusion-limited, $`F_a \equiv F_A`$
-at every instant (see § "Model boundary").
+Instead, $`F_a \equiv F_A`$ at every instant, for the reasons § "Model
+boundary" gives.
 
 The agent amount stored in venous blood is:
 
@@ -1586,9 +1595,10 @@ whole step.
 
 ### Arterial blood
 
-The lung's exchange with blood is perfusion-limited. Blood leaving the lungs
-equilibrates instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every
-instant (see § "Model boundary"). There is no separate arterial amount balance, capacity, or
+The lung's exchange with blood is perfusion-limited, and the model has no
+shunt and one alveolar compartment. So all arterial blood has equilibrated
+instantaneously with alveolar gas, and $`F_a \equiv F_A`$ at every instant
+(see § "Model boundary"). There is no separate arterial amount balance, capacity, or
 time constant. Every equation below that references $`F_a`$ uses the current
 alveolar fraction $`F_A`$ directly.
 
@@ -11868,7 +11878,8 @@ level. A model that adds ambient pressure will need one.
 This model does not model:
 
 - a separate arterial blood-mixing compartment. The lung's exchange with blood
-  is perfusion-limited, so arterial blood carries the alveolar partial
+  is perfusion-limited, and the model omits shunt and ventilation-perfusion
+  mismatch (both below). So arterial blood carries the alveolar partial
   pressure at every instant, as in the Gas Man reference simulator's
   mammillary structure (see § "Model boundary");
 - lung tissue and pulmonary blood. No compartment represents either, and
