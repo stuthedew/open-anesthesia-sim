@@ -3,10 +3,12 @@ id: PL-YXPN
 title: Add the copy editor's fix and the model-specification rewrites it holds to v0.7.0's Required scope, at the project owner's word of 2026-11-04 20:12Z
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 touches: ROADMAP.md
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2037
 payoff: v0.7.0 is not cut until the copy editor works and the model-specification sections it holds are written for a clinician
 verify: grep -q "The copy editor, fixed, and the rewrites it holds" ROADMAP.md
 ---
@@ -29,3 +31,6 @@ the thread before this landed, with an invitation to correct it.
 
 **Change.** `ROADMAP.md` § "v0.7.0 - the schematic" gains Required scope item
 12 and one Definition of done bullet.
+`PL-HGZS` loses its `deferred-from: v0.7.0`, because the store refuses an item
+that a milestone's Required scope places and its gate also defers. It still
+ranks by its generator tier.

@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: prose-quality
 touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py
-deferred-from: v0.7.0 - a workflow-lane generator, ranked by its generator tier rather than by the gate
 added: 2026-11-04
 payoff: a passage the copy editor passes is one its reader can act on without padding, so the rewrites it reviews stop growing
 verify: grep -qi 'do without' .claude/agents/copy-editor.md
