@@ -1,33 +1,33 @@
 """Print the prose a branch changed, inside the section around it, for the copy editor.
 
 Close-out step 8 in `.claude/skills/docket/modes/close-out.md` saves this
-tool's output to a file and hands that file to the copy-editor agent,
-`.claude/agents/copy-editor.md`. The agent loads none of this repository's
-instructions, so the output opens with the text of
-`.claude/rules/plain-writing.md`, and the agent reads that one file and
-nothing else. Each tool call a subagent makes costs another turn at its full
-context. On its first branch the agent read 29 passages in four reads of
-this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
+tool's output to a file and hands that file to the copy editor,
+`.claude/agents/copy-editor.md`, through `tools/copy_edit.py`. The copy editor
+loads none of this repository's instructions, so the output opens with the text
+of `.claude/rules/plain-writing.md`, and the copy editor reads that one file and
+nothing else. Each tool call that the copy editor makes costs another turn at
+its full context. On its first branch the copy editor read 29 passages in four
+reads of this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
 **Which files are read.** A Markdown or Python file is read when a row of the
-rule's reader table names it, itself or by its directory, so the table decides
-what is reviewed (`PL-22T5`). A changed file that holds a passage to review
-and that no row names is listed under "Not reviewed", because nobody has said
-who reads it.
+rule's reader table names the file or its directory (`PL-22T5`). A changed file
+that holds a passage to review and that no row names is listed under "Not
+reviewed", because nobody has said who reads it.
 
-**What a unit is.** In a Python file, a unit is a docstring, as
-`docket.python.docstrings` decides, or a run of comment lines, as
-`doc_check._python_comments` joins them. In a Markdown file, it is a paragraph
-or a table row, as `docket.markdown` reads the blocks once the YAML front
-matter is blanked row for row. A paragraph inside a list item or a block quote
-is a unit of its own. A table row is a unit because one cell can carry a whole
-essay. A fence, an HTML comment and a heading are not prose to review
+**What a unit is.** In a Python file, a unit is a docstring, a run of comment
+lines, or any other string literal. `docket.python.docstrings` decides which
+strings are docstrings, `doc_check._python_comments` joins comment lines into
+runs, and an f-string counts as one unit. In a Markdown file, a unit is a
+paragraph or a table row, as `docket.markdown` reads the blocks once the YAML
+front matter is blanked row for row. A paragraph inside a list item or a block
+quote is a unit of its own. A table row is a unit because one cell can carry a
+whole essay. A fence, an HTML comment and a heading are not prose to review
 (`PL-ZT47`).
 
-**Which lines changed.** The diff runs from the commit where the branch forked
-from the default branch to the working tree, and includes files that git does
-not track yet, as `tools/diff_mutation.py` reads it. A file that is new on the
-branch has every line changed.
+**Which lines changed.** The tool reads the diff as `tools/diff_mutation.py`
+reads it, from the commit where the branch forked from the default branch to
+the working tree, including files that git does not track yet. A file that is
+new on the branch has every line changed.
 
 **What is reviewed.** Each passage that `changed_passages` finds is reviewed
 when it has `MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure,
@@ -46,14 +46,17 @@ alone, with `CONTEXT_ROWS` rows of code on each side.
 **Who reads each passage.** `.claude/rules/plain-writing.md` holds a table that
 names the readers of each kind of text: what each knows, what each does not
 know, and what each will do with the text. The table's first column names files
-in code spans, where a span ending in "/" is a directory. The report lists the
-readers of every file it prints a passage from, and each passage names its
-readers, so the copy editor judges it for the reader it is for (`PL-R7Q6`).
+in code spans, where a span ending in "/" is a directory. A string literal is
+reviewed only where a reader row for string literals names its file, and a
+docstring or comment only where another row does, so an interface notice and
+the docstring beside it are judged for different readers (`PL-Q98K`). The
+report lists the readers of every file it prints a passage from, and names
+under each passage the readers to judge it for (`PL-R7Q6`).
 
-Exits 0 when it read the diff, whether or not it printed a passage. A changed
-file that will not parse is named in a "Not read" line, so a partial result is
-never given as a whole one. Exits 1 when the diff could not be read or the
-default branch is unknown.
+The tool exits 0 when it read the diff, whether or not it printed a passage,
+and exits 1 when the diff could not be read or the default branch is unknown. A
+changed file that will not parse is named in a "Not read" line, so a partial
+result is never given as a whole one.
 
 **`--draft FILE --kind WORDS` prepares a reply or a pull request body for review
 before it is sent.** It prints the rule, the reader rows whose first cell
@@ -62,28 +65,28 @@ when no row's first cell contains WORDS.
 
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
-recorded as a `Prose-review:` trailer, and it runs this through `docket.toml`'s
-`prose_count_command` (`PL-W04Z`). It counts long units rather than passages,
-so a passage of several short paragraphs is reviewed and not counted. This
-mode reads the committed branch, from the fork to `HEAD`, because `arm` judges
-commits and not the working tree.
-`--count REV` names the commit that carries the newest record. A unit then
-counts only when its text is not a unit of the same file at `REV`, so a code
-fix after the review needs no second review, while a new or reworded long unit
-does. Comparing texts rather than diffing from `REV` keeps out the prose that a
-merge of the default branch brings in, because that prose is not in the
+recorded as a `Prose-review:` trailer, and it runs this tool through
+`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts long units
+rather than passages, so a passage of several short paragraphs is reviewed and
+not counted. It reads the committed branch, from the fork to `HEAD`, because
+`arm` judges commits and not the working tree.
+`--count REV` names the commit that carries the newest `Prose-review:` trailer.
+A unit then counts only when its text is not a unit of the same file at `REV`, so
+a code fix after the review needs no second review, while a new or reworded long
+unit does. Comparing texts rather than diffing from `REV` keeps out the prose
+that a merge of the default branch brings in, because that prose is not in the
 branch's own diff from the fork. The count is one line holding a whole number.
-Exits 2, printing the unread files to standard error, when a changed file will
-not parse, because a count that skipped a file is not a count.
+It exits 2, printing the unread files to standard error, when a changed file
+will not parse, because a count that skipped a file is not a count.
 
 **`--compare` sets each passage the branch changed beside the text it
 replaced, and lists the facts the branch removed** (`PL-JP8X`). A passage is
 the units that one hunk of the diff touches, widened to whole paragraphs,
 table rows, docstrings or comments on both sides. Hunks parted only by blank
-lines make one passage. It is printed with its words on the default branch and
-now, whatever its length, unless only its spacing changed. A whole section is
-not the passage, because `docs/MODEL.md` § "Displayed precision" runs to about
-8,000 words, where a growth of 50 words would not show. Then, for each file, it
+lines make one passage. It is printed with its word count on the default branch
+and now, whatever its length, unless only its spacing changed. A whole section is
+not the passage, because a growth of 50 words would not show in a section as
+long as `docs/MODEL.md` § "Displayed precision". Then, for each file, it
 lists each equation, "no test yet" declaration, code span, citation, number,
 item id and date that the file held at the fork and holds fewer times now, read
 as `tools/model_rewrite.py` reads a fact. A Python file's facts are read from
@@ -137,6 +140,12 @@ from model_rewrite import (  # noqa: E402
 #: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
 #: short and long units here.
 MIN_WORDS = 30
+#: The kind of a unit that is a string literal in code, other than a docstring.
+STRING_KIND = "string"
+#: The words that mark a reader row as one for string literals. Such a row
+#: applies only to string units, and every other row applies to every other kind,
+#: so an interface notice and the docstring beside it get different readers.
+STRING_ROW_WORDS = "string literals"
 #: The rule whose table names the readers of each kind of text.
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: The copy editor's agent definition, whose body is its prompt. This file is
@@ -153,10 +162,17 @@ READER_HEADER = (
     "What they will do with it",
 )
 
-#: How many lines of code to print above and below a Python unit, so the copy
-#: editor can see what an "it" or a name points at without opening the file.
-#: A higher number lengthens the file the copy editor reads. `PL-PRCS` set it
-#: at 4 and recorded no reason for that number (`PL-22T5`).
+#: How many lines of code to print above and below each docstring, comment or
+#: string literal, so the copy editor can see what an "it" or a name points at
+#: without opening the file. Above a docstring, the line it most needs is the
+#: `def` or `class` it describes. On 2026-11-04 that line was within 2 rows
+#: above 82.9% of the 7,943 docstrings in `src/`, `tests/`, `tools/` and
+#: docket's code, within 3 rows above 97.3%, and within 8 above 99.2%. The jump
+#: at 3 rows comes from signatures that wrap, which put the docstring 3 rows
+#: below the `def`. Three rows therefore show the `def` as often as 4 do, and
+#: the fourth row is a margin that costs one line on each side. Comments were
+#: not measured, because a comment has no single line it describes. Each extra
+#: row lengthens the file the copy editor reads (`PL-BXD5`).
 CONTEXT_ROWS = 4
 
 
@@ -195,6 +211,11 @@ class Reader:
             for named in self.paths
         )
 
+    def covers(self, kind: str) -> bool:
+        """Whether the row is for units of `kind`: string literals, or every other kind."""
+        for_strings = STRING_ROW_WORDS in self.kind.casefold()
+        return for_strings == (kind == STRING_KIND)
+
 
 def reader_table(text: str) -> list[Reader]:
     """Every row of the reader table in the rule's `text`, in order.
@@ -216,9 +237,19 @@ def reader_table(text: str) -> list[Reader]:
     raise ValueError(f"no table headed {' | '.join(READER_HEADER)}")
 
 
-def readers_of(table: Sequence[Reader], path: str) -> list[Reader]:
-    """The rows of `table` that name the file at `path`, in table order."""
-    return [reader for reader in table if reader.reads(path)]
+def readers_of(table: Sequence[Reader], path: str, kind: str | None = None) -> list[Reader]:
+    """The rows of `table` that name the file at `path`, in table order.
+
+    With `kind`, only the rows for units of that kind, as `Reader.covers` decides.
+    """
+    return [
+        reader for reader in table if reader.reads(path) and (kind is None or reader.covers(kind))
+    ]
+
+
+def read_by(table: Sequence[Reader], units: Iterable[Unit]) -> list[Unit]:
+    """The units in `units` that a row of `table` is for, by their file and their kind."""
+    return [unit for unit in units if readers_of(table, unit.path, unit.kind)]
 
 
 def rule_table() -> list[Reader]:
@@ -263,6 +294,42 @@ def prose_units(path: str, source: str) -> list[Unit]:
     return sorted(found, key=lambda unit: unit.first)
 
 
+def string_text(node: ast.Constant | ast.JoinedStr) -> str:
+    """The words of a string literal, with each `{...}` field of an f-string as written."""
+    if isinstance(node, ast.Constant):
+        return str(node.value)
+    return "".join(
+        str(part.value) if isinstance(part, ast.Constant) else "{" + ast.unparse(part.value) + "}"
+        for part in node.values
+        if isinstance(part, ast.Constant | ast.FormattedValue)
+    )
+
+
+def string_units(path: str, source: str) -> list[Unit]:
+    """Return every string literal in `source` that is not a docstring, in the order they start.
+
+    An f-string is one unit, and the string pieces inside it are not units of
+    their own. Strings that Python joins because they stand side by side are
+    one literal, and so one unit. Raises one of `UNTOKENIZABLE` when Python
+    cannot parse `source`.
+    """
+    tree = ast.parse(source, filename=path)
+    skipped = {id(node) for node in docstrings(tree)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            skipped.update(id(inner) for inner in ast.walk(node) if inner is not node)
+    found = [
+        Unit(path, STRING_KIND, node.lineno, node.end_lineno or node.lineno, string_text(node))
+        for node in ast.walk(tree)
+        if id(node) not in skipped
+        and (
+            isinstance(node, ast.JoinedStr)
+            or (isinstance(node, ast.Constant) and isinstance(node.value, str))
+        )
+    ]
+    return sorted(found, key=lambda unit: unit.first)
+
+
 def document_units(path: str, source: str) -> list[Unit]:
     """Every paragraph and table row in the Markdown `source`, in the order they start.
 
@@ -284,10 +351,17 @@ def document_units(path: str, source: str) -> list[Unit]:
 
 
 def units_of(path: str, source: str) -> list[Unit]:
-    """The prose units of the file at `path`: a document's paragraphs, or a Python file's."""
+    """Return the prose units of the file at `path`.
+
+    A document's units are its paragraphs. A Python file's units are its
+    docstrings, comments and string literals, in the order they start.
+    `read_by` decides which of them a review reads.
+    """
     if is_document(path):
         return document_units(path, source)
-    return prose_units(path, source)
+    return sorted(
+        prose_units(path, source) + string_units(path, source), key=lambda unit: unit.first
+    )
 
 
 def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
@@ -349,7 +423,7 @@ def branch_prose(
                 source = (root / path).read_text(encoding="utf-8")
             to = ["HEAD"] if committed else []
             rows = changed_rows(read_git(["diff", "-U0", fork, *to, "--", path], root))
-            units.extend(changed_units(path, source, rows))
+            units.extend(read_by(table, changed_units(path, source, rows)))
         except UNTOKENIZABLE as error:
             unread.append(f"{path}: {refusal(error)}")
     return Found(against, units, unread)
@@ -482,21 +556,24 @@ def changed_passages(path: str, before: str | None, after: str | None, patch: st
     return found
 
 
-def fact_text(path: str, source: str | None) -> str:
-    """The text whose facts are counted: a document whole, or a Python file's prose.
+def fact_text(path: str, source: str | None, *, strings: bool = False) -> str:
+    """Return the text whose facts are counted, a whole document or a Python file's prose.
 
     A Python file's prose keeps the rows it stands on, and every other row is
-    blank, so each fact is placed on the file's own row and no number in code
-    is read.
+    blank, so each fact stays on its own row of the file and no number in code
+    is read. When `strings` is true, the file's string literals count as prose
+    too, so a refusal message that loses the value it names is reported.
     """
     if source is None:
         return ""
     if is_document(path):
         return blank_front_matter(source)
     rows = [""] * len(split_lines(source))
-    for unit in prose_units(path, source):
+    units = prose_units(path, source) + (string_units(path, source) if strings else [])
+    for unit in units:
         for offset, line in enumerate(unit.text.split("\n")[: unit.last - unit.first + 1]):
-            rows[unit.first - 1 + offset] = line
+            at = unit.first - 1 + offset
+            rows[at] = f"{rows[at]} {line}" if rows[at] else line
     return "\n".join(rows)
 
 
@@ -529,8 +606,14 @@ def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Com
         after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
         try:
             patch = read_git(["diff", "-U0", fork, "--", path], root)
-            found.passages += changed_passages(path, before, after, patch)
-            old_facts, new_facts = fact_text(path, before), fact_text(path, after)
+            found.passages += [
+                passage
+                for passage in changed_passages(path, before, after, patch)
+                if read_by(table, passage.before + passage.after)
+            ]
+            strings = bool(readers_of(table, path, STRING_KIND))
+            old_facts = fact_text(path, before, strings=strings)
+            new_facts = fact_text(path, after, strings=strings)
         except UNTOKENIZABLE as error:
             found.unread.append(f"{path}: {refusal(error)}")
             continue
@@ -612,7 +695,7 @@ def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
 
 def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Reader]) -> list[str]:
     """The unit's numbered header, naming its readers from `table`, then its `rows`."""
-    who = "; ".join(reader.who for reader in readers_of(table, unit.path))
+    who = "; ".join(reader.who for reader in readers_of(table, unit.path, unit.kind))
     return [
         "",
         f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
@@ -760,7 +843,11 @@ def branch_reviews(root: Path, base: str, table: Sequence[Reader]) -> Reviewed:
                 found.unread.append(f"{path}: {refusal(error)}")
             continue
         if named:
-            found.reviews += reviews
+            found.reviews += [
+                review
+                for review in reviews
+                if readers_of(table, review.path, review.editable[0].kind)
+            ]
         elif reviews:
             found.unnamed.append(path)
     return found
@@ -776,7 +863,9 @@ def review_header(number: int, review: Review, base: str, table: Sequence[Reader
         change = review.words_after - review.words_before
         more = f"{change} more" if change > 0 else f"{-change} fewer" if change else "no change"
         words = f"{review.words_before} words on {base}, {review.words_after} now, {more}"
-    who = "; ".join(reader.who for reader in readers_of(table, review.path))
+    who = "; ".join(
+        reader.who for reader in readers_of(table, review.path, review.editable[0].kind)
+    )
     return (
         f"[{number}] {review.path}, rows {review.top}-{review.bottom}. "
         f"Changed text: {words}. For: {who}"

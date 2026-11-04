@@ -3,11 +3,13 @@ id: PL-Q98K
 title: The copy editor reads no interface text: src/ holds 131 string literals of 30 words or more (30 in app/controller.py), and the reader table matches rows by path, so an interface string and a docstring in one file cannot take different readers
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: reader-first-prose
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, .claude/rules/plain-writing.md
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2029
 payoff: a long notice or refusal that a learner reads in the interface is reviewed for that reader, as a docstring is for a developer
 verify: grep -qE 'def test_[a-z_]*string_literal' tests/unit/test_new_prose.py
 ---
@@ -20,4 +22,8 @@ verify: grep -qE 'def test_[a-z_]*string_literal' tests/unit/test_new_prose.py
 
 **Done when.** A changed string literal of `MIN_WORDS` words or more in a file under `src/` is printed for the copy editor as a unit of its own, with readers from a row of the reader table that a docstring in the same file does not take. A test in `tests/unit/test_new_prose.py` pins both.
 
-**Generator check.** A remainder of `PL-J1ZM`'s fix, which `PL-22T5` left out on purpose. The fact is which text the copy editor reads, and the reader table is its one record. With `PL-SMM2` that makes two items on the fact, so no new head. Not a re-entry, because `PL-22T5` named it out of scope.
+**Generator check.** This item is a remainder of `PL-J1ZM`'s fix. The fact is which text the copy editor reads, and the reader table is its one record. With `PL-SMM2`, two items concern that fact, so it needs no new head. It is not a re-entry, because `PL-22T5` left it out of scope on purpose.
+
+**Done 2026-11-04.** `tools/new_prose.py` now reads every string literal in a Python file that is not a docstring as a unit of its own. An f-string is one unit, and strings that Python joins because they stand side by side are one unit. Two new rows in the reader table, for string literals in `src/`, give those units a learner who reads a notice beside a value and a Python developer who reads a refusal in a log. A row whose first cell says "string literals" covers only string units, and every other row covers only docstrings and comments, so a notice and the docstring beside it get different readers. `--compare` counts a removed value inside a string literal where a string row names the file, so a refusal that loses the value it names is reported. Four tests in `tests/unit/test_new_prose.py` cover the units, both reader choices and the lost value.
+
+A count on 2026-11-04 with `string_units`, which reads a joined string as one unit, found 69 string literals of 30 words or more under `src/`: 33 under `core/`, 26 under `app/` (10 of them in `app/controller.py`) and 10 under `layout/`. The `ast` method that "Checked 2026-11-04" names above, which counts each piece of a joined string on its own, found 71. Neither reproduces that paragraph's 119. The paragraph names its method in one clause and records no command, so the difference cannot be traced.

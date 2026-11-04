@@ -273,33 +273,36 @@ page and decides which file a session reads.
    `make mutate`'s tool on the functions that the branch changed, so there is
    no second run to make. Sort each survivor as `docs/mutation-testing.md`
    § "Read a survivor" says, and list each one with its kind in the pull
-   request body. `uv run --group mutation mutmut show NAME` prints a
-   survivor's diff while `mutants/` is left from the run. Write the test that
-   kills a real gap in this change, and file an item for a gap that is not
-   this change's. A survivor on a changed line has already made the audit
-   refuse the branch. One on a line the branch did not change is named in the
-   audit's notes and never holds the pull request (project owner, 2026-10-17,
-   ratified, over a whole-tree mutation score as a target, `PL-Y1PS`).
+   request body. While `mutants/` is left from the run,
+   `uv run --group mutation mutmut show NAME` prints a survivor's diff. Where a
+   survivor shows a real gap in this change, write the test that kills it, and
+   file an item for a gap that is not this change's. A survivor on a line the
+   branch did not change never holds the pull request (project owner,
+   2026-10-17, ratified, over a whole-tree mutation score as a target,
+   `PL-Y1PS`).
 
-8. **Have the copy editor edit the prose that the branch changed, before step
-   5's audit**, because its edits change files that the audit and `make check`
-   read. Do this step on every branch. Save the output of
-   `python3 tools/new_prose.py` to a file in the scratchpad. It prints each
-   passage of 30 words or more that the branch changed (project owner,
-   2026-10-18, ratified, over a review on every branch and over no review,
-   `PL-PRCS`). It takes them from every file that a row of the reader table in
-   `.claude/rules/plain-writing.md` names, each with that row's readers. A
-   Markdown passage comes inside its whole section, and a docstring or comment
-   comes with the code around it. The rows marked `>` are the ones the copy
-   editor may rewrite: the changed paragraphs, and the paragraph or table row
-   on each side of them. Where it prints no passage, go to the comparison at
-   the end of this step. Otherwise start the `copy-editor` agent and give it
-   the file's path and nothing else. It loads none of the resident
-   instructions and opens no other file. On its first branch it read 29
-   passages in four reads of that file and 179,031 tokens (`PL-22T5`). Its
-   instructions, `.claude/agents/copy-editor.md`, say what it returns: for
-   each passage, `[N] keep`, or `[N] rewrite` with the new text and each cut
-   with its reason.
+8. **Paused: skip this step** (project owner, 2026-11-04, until `PL-HGZS` is
+   fixed and the owner agrees to bring it back). `bin/docket arm` no longer
+   holds a branch for it. The step as it stood follows.
+   **Have the copy editor edit the prose that the branch changed, before step
+   5's audit.** Do this step on every branch. Save the output of
+   `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
+   each passage of 30 words or more that the branch changed, because in
+   `PL-Y55Q`'s blind re-measure short units were awkward in 25% of verdicts and
+   long ones in 61% (project owner, 2026-10-18, ratified, over a review on every
+   branch and over no review, `PL-PRCS`). It takes them from every file that a
+   row of the reader table in `.claude/rules/plain-writing.md` names, each with
+   that row's readers. A Markdown passage comes inside its whole section, and a
+   docstring or comment comes with the code around it. The rows marked `>` are
+   the ones the copy editor may rewrite: the changed paragraphs, and the
+   paragraph or table row on each side of them. Where it prints no passage, go
+   to the comparison at the end of this step. Otherwise run
+   `python3 tools/copy_edit.py` on that file and save its reply. That tool runs
+   the copy editor as its own `claude -p` process, which loads none of the
+   resident instructions and opens no other file, in a Projects thread as in
+   any other session (`PL-TQ4J`). The copy editor's instructions,
+   `.claude/agents/copy-editor.md`, say what it returns: for each passage,
+   `[N] keep`, or `[N] rewrite` with the new text and each cut with its reason.
 
    **Apply each rewrite as it stands.** Revert one edit only where it lost or
    changed a value, a unit, a condition, an identifier or a citation, and
@@ -314,10 +317,10 @@ page and decides which file a session reads.
    reverted edits. `bin/docket arm` holds a branch that waits on the owner's
    review where long prose was added after the newest such trailer, as
    `python3 tools/new_prose.py --count` counts it (`PL-W04Z`). `PL-PRCS`
-   records what the step costs. On 2026-10-19 `PL-J6CK` measured what the
-   prose review that the copy editor replaced bought: long prose from the
-   branch that ran it was awkward in 22% of blind verdicts, against 58% from
-   branches that skipped it, so the step is kept.
+   records what the step costs. The copy editor replaced an earlier prose
+   review. On 2026-10-19 `PL-J6CK` measured what that review bought: long
+   prose from the branch that ran it was awkward in 22% of blind verdicts,
+   against 58% from branches that skipped it, so the step is kept.
 
    **Then compare the branch with the default branch, after the rewrites are
    applied: `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints

@@ -1,0 +1,8 @@
+time	session	guard	rule
+2026-11-04T16:07:12.713101+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	gate-status-guard	status-swallowed:make docket
+2026-11-04T16:08:24.816159+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	gate-status-guard	status-swallowed:bin/docket check
+2026-11-04T16:10:05.875910+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	gate-status-guard	arm-piped
+2026-11-04T17:24:54.627406+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	gate-status-guard	status-swallowed:pytest
+2026-11-04T18:39:48.096262+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	push-check-guard	checks-failed
+2026-11-04T19:50:54.680168+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	push-check-guard	checks-failed
+2026-11-04T19:55:02.794167+00:00	4381d5dc-fbcf-5f2f-bbd6-dcca9b3c1b38	gate-status-guard	status-swallowed:pytest
