@@ -154,6 +154,9 @@ RUN_KEYS = ("recorded", "prompt", "readers", "entries", "reply")
 #: One verdict in the reviewer's reply, as the prompt asks for it. Emphasis and
 #: code marks are removed from a line before it is matched.
 VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
+# regex: a passage number in brackets inside free prose, with the emphasis and
+# code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
+MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
 
 
 def expected_verdict(name: str) -> str:
@@ -406,6 +409,11 @@ def verdicts(reply: str, count: int) -> list[str]:
     if problems:
         raise ValueError("; ".join(problems))
     return [found[number].pop() for number in range(1, count + 1)]
+
+
+def unmarked(text: str) -> str:
+    """`text` with each bracketed passage number written "Passage N", so `verdicts` finds none."""
+    return MARK_RE.sub(r"Passage \1", text)
 
 
 def rewrites(reply: str) -> dict[int, tuple[str, ...]]:

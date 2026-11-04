@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: copy-editor
-touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py
+touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py, tools/copy_edit.py, tests/unit/test_copy_edit.py, tests/unit/test_rejected_prose.py, docs/apparatus.md, .claude/skills/docket/modes/close-out.md
 added: 2026-11-04
 payoff: a passage the copy editor passes is one its reader can act on without padding, so the rewrites it reviews stop growing
 verify: grep -qi 'do without' .claude/agents/copy-editor.md && grep -q 'def section_report' tools/new_prose.py && grep -q '^## Judging edits blind' docs/prose-review/README.md

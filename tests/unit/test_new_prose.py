@@ -874,3 +874,22 @@ def test_a_refusal_that_loses_its_value_is_reported(
     assert main(["--root", str(repo), "--base", "main", "--compare"]) == 0
     out = capsys.readouterr().out
     assert "gone  0.2" in out
+
+
+def test_a_row_reads_back_as_its_number_mark_and_text() -> None:
+    assert new_prose.read_row(new_prose.row_line(7, ">", "Some text.")) == (7, ">", "Some text.")
+    assert new_prose.read_row(new_prose.row_line(123456, "|", "")) == (123456, "|", "")
+    assert new_prose.read_row("Readers of docs/MODEL.md:") is None
+    assert new_prose.read_row("   12 * not a mark") is None
+
+
+def test_a_header_gives_its_passage_number_and_a_title_gives_none() -> None:
+    header = f"[3] {new_prose.rows_span('doc.md', 4, 9)}. Draft: 5 words. For: A reader"
+    title = f"{new_prose.rows_span('doc.md § "Part"', 1, 20)}:"
+
+    assert new_prose.passage_number(header) == 3
+    assert new_prose.read_span(header) == (4, 9)
+    assert new_prose.respan(header, 4, 6).startswith("[3] doc.md, rows 4-6. Draft:")
+    assert new_prose.passage_number(title) is None
+    assert new_prose.passage_number("[x] doc.md, rows 1-2.") is None
+    assert new_prose.passage_number("[3] keep") is None

@@ -3,7 +3,12 @@
 Close-out step 8 in `.claude/skills/docket/modes/close-out.md` has the copy
 editor edit each long passage that a branch changed, for the readers that
 `.claude/rules/plain-writing.md` names. The copy editor's prompt is
-`.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. This folder
+`.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. Where the
+first read rewrites a passage, that tool has the copy editor read its own edit
+a second time and merges the two replies, as experienced technical editors
+work in two passes (`PL-HGZS`). Its `--reads DIR` option keeps each read's
+request and reply, so that what the second read changed can be judged on its
+own. This folder
 holds the paragraphs it must never pass again (`PL-FYGJ`, from `PL-H76S`) and
 the gold-standard paragraphs it must keep (`PL-556C`).
 

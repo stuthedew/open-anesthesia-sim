@@ -113,6 +113,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -121,6 +122,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.digits import whole_number  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PARAGRAPH, TABLE, Heading, headings, tables  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
@@ -163,6 +165,10 @@ RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: against the paragraphs the owner rejected or named gold standards (`PL-FYGJ`,
 #: `PL-556C`, `PL-22T5`).
 PROMPT = ROOT / ".claude" / "agents" / "copy-editor.md"
+#: The line between the writing rule and the prose in every request. The copy
+#: editor's instructions name it, and `tools/copy_edit.py` finds the passages
+#: below it.
+RULE_END = "The writing rule ends here, and the prose to review follows."
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
     "Kind of text",
@@ -673,13 +679,64 @@ def compare_report(found: Comparison) -> str:
     return "\n".join(out)
 
 
+def row_line(number: int, mark: str, text: str) -> str:
+    """One row of a passage as the copy editor gets it: its number, its mark and its text.
+
+    The mark is `>` for a row the copy editor may rewrite and `|` for a row it
+    only reads. `read_row` reads the row back.
+    """
+    return f"{number:>5} {mark} {text}"
+
+
+# regex: a row is a right-aligned number, a one-character mark and free text,
+# a flat shape that only `row_line` writes and that no parser reads.
+ROW_RE = re.compile(r" *([0-9]+) ([>|])(?: (.*))?")
+# regex: the span "rows FIRST-LAST" that `rows_span` writes into a passage
+# header or a section title, a flat token inside free text.
+ROWS_SPAN_RE = re.compile(r", rows ([0-9]+)-([0-9]+)")
+
+
+def read_row(line: str) -> tuple[int, str, str] | None:
+    """The number, mark and text of a row that `row_line` wrote, or `None` for any other line."""
+    match = ROW_RE.fullmatch(line)
+    if match is None:
+        return None
+    return int(match.group(1)), match.group(2), match.group(3) or ""
+
+
+def rows_span(where: str, first: int, last: int) -> str:
+    """`where` and the rows it covers, as each passage header and section title begins."""
+    return f"{where}, rows {first}-{last}"
+
+
+def read_span(line: str) -> tuple[int, int] | None:
+    """The first and last row of the first span that `rows_span` wrote into `line`."""
+    match = ROWS_SPAN_RE.search(line)
+    return None if match is None else (int(match.group(1)), int(match.group(2)))
+
+
+def respan(line: str, first: int, last: int) -> str:
+    """`line`, a passage header or a section title, with its span set to `first` to `last`."""
+    return ROWS_SPAN_RE.sub(lambda _: rows_span("", first, last), line, count=1)
+
+
+def passage_number(line: str) -> int | None:
+    """The number of the passage whose header `line` is, or `None` where it is no header.
+
+    Every header opens with the passage's number in brackets, then its span.
+    """
+    number, bracket, rest = line.removeprefix("[").partition("] ")
+    if not line.startswith("[") or not bracket or read_span(rest) is None:
+        return None
+    return whole_number(number)
+
+
 def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
     """The unit's rows marked `>`, with `CONTEXT_ROWS` rows of code each side marked `|`."""
     start = max(1, unit.first - CONTEXT_ROWS)
     end = min(len(lines), unit.last + CONTEXT_ROWS)
     for row in range(start, end + 1):
-        mark = ">" if unit.first <= row <= unit.last else "|"
-        yield f"{row:>5} {mark} {lines[row - 1]}"
+        yield row_line(row, ">" if unit.first <= row <= unit.last else "|", lines[row - 1])
 
 
 def describe(readers: Iterable[Reader]) -> list[str]:
@@ -708,7 +765,7 @@ def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Rea
     who = "; ".join(reader.who for reader in readers_of(table, unit.path, unit.kind))
     return [
         "",
-        f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
+        f"[{number}] {rows_span(unit.path, unit.first, unit.last)}, "
         f"{unit.kind}, {unit.words} words, for: {who}",
         *rows,
     ]
@@ -877,7 +934,7 @@ def review_header(number: int, review: Review, base: str, table: Sequence[Reader
         reader.who for reader in readers_of(table, review.path, review.editable[0].kind)
     )
     return (
-        f"[{number}] {review.path}, rows {review.top}-{review.bottom}. "
+        f"[{number}] {rows_span(review.path, review.top, review.bottom)}. "
         f"Changed text: {words}. For: {who}"
     )
 
@@ -896,7 +953,7 @@ def section_rows(
         if row in starts:
             yield review_header(starts[row], numbered[starts[row]], base, table)
         inside = any(review.top <= row <= review.bottom for review in numbered.values())
-        yield f"{row:>5} {'>' if inside else '|'} {lines[row - 1]}"
+        yield row_line(row, ">" if inside else "|", lines[row - 1])
 
 
 def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
@@ -922,7 +979,7 @@ def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
                 texts[path] = split_lines((root / path).read_text(encoding="utf-8"))
             section = next(iter(numbered.values())).section
             where = f'{path} § "{section}"' if section else path
-            out += ["", f"{where}, rows {first}-{last}:"]
+            out += ["", f"{rows_span(where, first, last)}:"]
             out += section_rows(texts[path], first, last, numbered, found.base, table)
     else:
         out.append(
@@ -956,9 +1013,9 @@ def draft_report(path: Path, kind: str, table: Sequence[Reader]) -> str | None:
             f"Readers of {kind}:",
             *describe(readers),
             "",
-            f"[1] {path.name}, rows 1-{len(lines)}. Draft: {words} words. "
+            f"[1] {rows_span(path.name, 1, len(lines))}. Draft: {words} words. "
             f"For: {'; '.join(reader.who for reader in readers)}",
-            *(f"{row:>5} > {line}" for row, line in enumerate(lines, start=1)),
+            *(row_line(row, ">", line) for row, line in enumerate(lines, start=1)),
         ]
     )
 
@@ -1018,9 +1075,9 @@ def section_report(root: Path, path: str, heading: str | None, table: Sequence[R
             "the readers below.",
             *reader_lines(table, [path]),
             "",
-            f"[1] {where}, rows {first}-{last}. Whole {what}: {words} words. "
+            f"[1] {rows_span(where, first, last)}. Whole {what}: {words} words. "
             f"For: {'; '.join(reader.who for reader in readers)}",
-            *(f"{row:>5} > {shown[row - 1]}" for row in range(first, last + 1)),
+            *(row_line(row, ">", shown[row - 1]) for row in range(first, last + 1)),
         ]
     )
 
@@ -1028,7 +1085,7 @@ def section_report(root: Path, path: str, heading: str | None, table: Sequence[R
 def with_rule(text: str) -> str:
     """`text` after the plain-writing rule, which the copy editor does not otherwise have."""
     rule = RULE.read_text(encoding="utf-8").rstrip("\n")
-    return f"{rule}\n\nThe writing rule ends here, and the prose to review follows.\n\n{text}"
+    return f"{rule}\n\n{RULE_END}\n\n{text}"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1083,11 +1140,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         table = rule_table()
         if args.section is not None:
             try:
-                text = section_report(root, args.section, args.heading, table)
+                whole = section_report(root, args.section, args.heading, table)
             except ValueError as error:
                 print(f"new_prose: no answer: {error}", file=sys.stderr)
                 return 1
-            print(with_rule(text))
+            print(with_rule(whole))
             return 0
         if args.draft is not None:
             text = draft_report(args.draft, args.kind, table)

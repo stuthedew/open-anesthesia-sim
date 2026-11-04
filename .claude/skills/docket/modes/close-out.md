@@ -300,7 +300,9 @@ page and decides which file a session reads.
    `python3 tools/copy_edit.py` on that file and save its reply. That tool runs
    the copy editor as its own `claude -p` process, which loads none of the
    resident instructions and opens no other file, in a Projects thread as in
-   any other session (`PL-TQ4J`). The copy editor's instructions,
+   any other session (`PL-TQ4J`). Where its first read rewrites a passage, it
+   reads its own edit a second time and fixes what it missed, so a run can
+   take twice as long (`PL-HGZS`). The copy editor's instructions,
    `.claude/agents/copy-editor.md`, say what it returns: for each passage,
    `[N] keep`, or `[N] rewrite` with the new text and each cut with its reason.
 

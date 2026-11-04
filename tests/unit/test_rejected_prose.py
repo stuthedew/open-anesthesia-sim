@@ -37,6 +37,7 @@ from rejected_prose import (
     record,
     rewrites,
     show,
+    unmarked,
     verdicts,
 )
 
@@ -556,3 +557,13 @@ def test_the_gold_standard_entries_share_the_cap_of_a_kind(tmp_path: Path) -> No
         f"kind gold holds {CAP_PER_KIND + 1} entries, more than {CAP_PER_KIND}: delete the "
         "oldest, gold-2026-11-05-0.md, which git history keeps"
     ]
+
+
+def test_unmarked_text_gives_no_passage_a_verdict() -> None:
+    notes = "**[1] rewrite** cut a repeat; [`2`] keep; see [_3_]."
+
+    plain = unmarked(notes)
+
+    assert plain == "**Passage 1 rewrite** cut a repeat; Passage 2 keep; see Passage 3."
+    with pytest.raises(ValueError, match="no verdict"):
+        verdicts(plain, 1)
