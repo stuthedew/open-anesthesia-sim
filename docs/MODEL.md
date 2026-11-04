@@ -10872,16 +10872,17 @@ The readouts' uniform resolution does not carry over to the schematic's
 compartment amounts, for two reasons. § "Why the resolution is uniform rather
 than per-compartment" rests first on the parameters' uncertainty being
 absolute across the row of readouts. For the amounts it is relative, as above.
-It rests second on the readouts being compared side by side, where different
-numbers of decimals would put different magnitudes at the same digit position.
-The schematic's amounts are labels on separate containers, each followed by
-its unit, and the schematic compares amounts on the share bar, along one
-scale. An amount below 0.01 mL reads `<0.01 mL vapour`, and exactly zero reads
-`0 mL vapour`
+It rests second on the readouts being read as one set, side by side or
+stacked, where different numbers of decimals would put different magnitudes at
+the same digit position. The schematic's amounts are labels on separate
+containers, each followed by its unit, and the schematic compares amounts on
+the share bar, along one scale. A positive amount that would round to
+0.00 mL reads `<0.01 mL vapour`, and exactly zero reads `0 mL vapour`
 (`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
 A limit finer than 0.01 mL would print four or more decimals for a moment's
 worth of agent. The 0.01 mL limit is a provisional choice made for legibility.
-It may understate the model's precision, but never overstates it.
+It can only make an amount coarser than the two-figure rule would show it, so
+it loses detail and adds no precision of its own.
 
 **A compartment's share is shown in whole percent.** One SD of a coefficient
 moves a compartment's share by at most 1.2 percentage points, in isoflurane's
