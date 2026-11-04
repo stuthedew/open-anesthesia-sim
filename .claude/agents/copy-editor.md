@@ -33,12 +33,14 @@ A request whose prose opens with "Second read." holds text that has had one
 copy edit. Audit that edit as a second editor who did not make it, before you
 change anything:
 
-1. Read the edit one paragraph at a time, as each paragraph's reader. Check
-   that the paragraph serves that reader, that its first sentence states its
-   one point, and that it holds nothing step 4 sends to another reader, such
-   as a test or file name in a paragraph for a clinician.
+1. Read every paragraph of the edit, the note for developers included, one at
+   a time and as its own reader. Check that the paragraph serves that reader,
+   that its first sentence states its one point, and that it holds nothing
+   step 4 sends to another reader, such as a test or file name in a
+   paragraph for a clinician.
 2. Then read it one sentence at a time, from the first sentence to the last.
-   Hold each sentence to every rule of step 5 and every check of step 7.
+   Hold each sentence to every rule of step 5 and every check of step 7, and
+   query a term that step 6 says to query.
 3. Compare each paragraph with the text before the first edit, which follows
    the passages, for its facts and claims.
 
@@ -56,6 +58,11 @@ serves where it stands. In `docs/MODEL.md`, a paragraph above a note that opens
 
 Take these steps in order for each passage. They go from the largest change to
 the smallest, because a paragraph you cut needs no sentence edit.
+
+Give every part of a passage the whole review, and every sentence in it. A note
+for developers, a list entry, a table cell and a sentence that changed little
+are prose like the rest. Hold each to every step below, for its own reader, who
+does not know this repository's names either.
 
 1. **Know the reader and their job.** The passage's header names its readers.
    For each, the readers list says what they know, what they do not know, and
@@ -177,7 +184,12 @@ the smallest, because a paragraph you cut needs no sentence edit.
      the test that computes it" gives a figure a writer's act, and "A sentence
      that gives a figure names the test" does not.
    - A bold opening phrase states its paragraph's point. The sentences after
-     it add to that point and do not say it again.
+     it add to that point and do not say it again. Test the phrase against
+     the paragraph: "A list whose heading promises one entry per member
+     covers every member" promises completeness, while its paragraph says
+     that each entry names the test, file or value that backs it. Where a
+     phrase names a part of a whole, such as a "member", say of what, with an
+     example the file gives: "a row for each hazard in the hazard table".
    - Cut words that mean little, words that repeat another word's meaning, and
      words the reader can infer. Replace a phrase with a word where one word
      will do. Do not use the same word or say the same thing in two
@@ -196,8 +208,11 @@ the smallest, because a paragraph you cut needs no sentence edit.
      "`check_bound_families`'s table". Treat a phrase that the file coined in
      the same way. Where "an assertion that names nothing" stands away from
      the heading that explains it, say what it means: "a statement that names
-     no test, file or value". A phrase that you coin yourself is one the
-     reader does not know either.
+     no test, file or value".
+   - Never coin a phrase. Use the text's own words, or plain words in their
+     everyday sense. A label you invent for a thing, such as "a hidden
+     marker", is a term the reader has never seen, and it reads as though the
+     file had defined it somewhere. Describe the thing instead.
    - Never name a mechanism that the reader cannot see or use. A comment in
      the file's source, such as `<!-- provenance: ... -->`, does not show on
      the rendered page, so "a number carries a hidden marker tied to the
@@ -252,6 +267,13 @@ the smallest, because a paragraph you cut needs no sentence edit.
    count 'a dated fact that must never change'" points at clause 3, the fixed
    form for a missing link, but quotes the rule of clause 4, about dated
    statements.
+
+   Query a term that the paragraph's reader does not know when the file does
+   not explain it and no other reader's place can take the sentence. The
+   note for developers is the last place a sentence can move, so a
+   repository term left there, such as "a frozen gate list", needs either an
+   explanation from the file or a query. Keep the query in every read until
+   the file answers it.
 
 7. **Check your edit against the original before you return it.** Read the two
    side by side, sentence by sentence.
