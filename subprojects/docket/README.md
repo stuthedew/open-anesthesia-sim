@@ -56,7 +56,8 @@ docket arm --owner-ask       # only the line the owner may be sent, exiting 0; 3
 docket ci-scope --base origin/main   # items, apparatus or full: whether this branch
                              # changed item files alone, or apparatus files alone, for CI
 docket branch                # where this branch stands against the default one
-docket flight                # which items a branch is already carrying
+docket flight                # which items a branch is already carrying, and which
+                             # open pull requests wait on the owner with no ask recorded
 docket stranded              # work that exists only on a branch
 docket digest --profile      # what the session-start digest asks git, and the ref set it walked
 docket record N              # write this branch's open pull request's number onto
@@ -1057,6 +1058,12 @@ request armed to merge whose required check failed on its head, nothing where
 none has, or exits non-zero where it could not ask. Auto-merge waits on that
 check, so `flight` names such a pull request as failing rather than open, and
 the digest gives it a line of its own. The digest asks the forge nothing else.
+`flight` also lists each open pull request whose branch waits on the
+owner's read with no `Owner-ask:` record (`PL-52SV`). It answers each from the
+remote's copy of the branch, through the same stages as `arm --owner-ask`, so
+a coordinator whose checkout is on `main` sees a thread that is about to
+message the owner with nothing to decide. An open pull request whose branch
+this checkout has not fetched is listed as unread.
 `open_draft_command` is the one forge command that writes (`PL-86DN`): after
 `claim` publishes a claim on a branch with no pull request open, the package
 appends the branch, the default branch's name and a title, and the command

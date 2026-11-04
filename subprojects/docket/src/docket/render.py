@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 
+from .arming import Unasked
 from .checks import (
     DONE_WHEN,
     HOUSEKEEPING,
@@ -1275,6 +1276,41 @@ def _format_failing(failures: FailingPullRequests | None, named: Collection[str]
     return lines
 
 
+#: What `flight` says under the pull requests that wait on the owner with no
+#: question recorded (`PL-52SV`).
+UNASKED_MEANS = (
+    "Each waits on the owner's read, and no Owner-ask record says what to ask. Its thread "
+    "records one, in the form `bin/docket arm` prints on that branch, before it messages "
+    "the owner."
+)
+
+
+def _format_unasked(unasked: Unasked | None) -> list[str]:
+    """The lines `flight` adds about pull requests waiting on the owner with no question.
+
+    Nothing where the forge was not asked, or where every open pull request
+    either has its question or does not wait on the owner.
+    """
+    if unasked is None:
+        return []
+    lines: list[str] = []
+    if unasked.pulls:
+        lines.append("")
+        count = len(unasked.pulls)
+        noun = "pull request waits" if count == 1 else "pull requests wait"
+        lines.append(f"{count} {noun} on the owner's read with no question recorded:")
+        lines.extend(
+            f"  {branch}  {f'#{number}' if number is not None else '(number not given)'}"
+            for branch, number in unasked.pulls
+        )
+        lines.append(UNASKED_MEANS)
+    if unasked.unread:
+        lines.append("")
+        lines.append("Whether these open pull requests wait on the owner could not be read:")
+        lines.extend(f"  {reason}" for reason in unasked.unread)
+    return lines
+
+
 def _digest_age(last_commit: datetime | None, now: datetime) -> str:
     """An age short enough to sit beside an id in the digest's one line."""
     if last_commit is None:
@@ -1291,6 +1327,7 @@ def format_flight(
     unclaimed: Unclaimed | None = None,
     here: Collection[str] = (),
     failures: FailingPullRequests | None = None,
+    unasked: Unasked | None = None,
 ) -> str:
     """Which items are on a branch, how long each has sat, and what went unread.
 
@@ -1446,6 +1483,7 @@ def format_flight(
         lines.append("No branch is carrying an item anybody is still working.")
 
     lines.extend(_format_failing(failures, {branch.name for branch in live}))
+    lines.extend(_format_unasked(unasked))
 
     if settled and settled.branches:
         lines.append("")

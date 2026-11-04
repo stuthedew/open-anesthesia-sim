@@ -3,11 +3,13 @@ id: PL-52SV
 title: The coordinator's summary lists no pull request that waits on the owner's read with no Owner-ask recorded, which PL-X4MD's approved step 3 asked for; bin/docket flight could name each such branch, which needs arm --owner-ask to answer for a branch other than the checked-out one
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: owner-ask-by-state
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/coordinator.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/coordinator.md
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2013
 payoff: the coordinator sees a thread waiting on the owner with no question recorded before that thread messages the owner, not after
 verify: grep -q 'def test_flight_names_a_pull_request_waiting_on_the_owner_with_no_question' subprojects/docket/tests/test_cli.py
 ---
