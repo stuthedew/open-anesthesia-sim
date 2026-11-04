@@ -25,10 +25,12 @@ misread: what a reader can do without, which no rule states for any kind of text
 **Recommended, for a design round with the owner.**
 
 1. Put a subtractive rule ahead of the sentence rules, for every kind of text. Say what the reader needs to act on, and stop. In `docs/MODEL.md` that is what the clinician sees and what it means. Each reason, derivation, test and piece of history goes to the developer note or the item, or is cut. This replaces the rule asking each value for its purpose, reason and effect of change, which moves to the developer note.
-2. Give the writer examples, not only the reviewer. `docs/prose-review/gold/` is empty. Fill it with paragraphs the owner approves, starting with the accepted `PL-ZDZ0` paragraph, and print them to the writing session before it drafts. Check published prompting guidance on examples against rules before building this.
+2. Give the writer examples, not only the reviewer. `docs/prose-review/gold/` is empty. Fill it with paragraphs the owner approves, starting with the accepted `PL-ZDZ0` paragraph, and print them to the writing session before it drafts. Check published prompting guidance on examples against rules before building this. [superseded 2026-11-04: the examples go to the copy editor, not to writers, per Question 2's answer]
 3. Build `PL-W8FL` and `PL-22T5`, and fold `PL-43GT` and `PL-JP8X` into point 1 where they overlap.
 
-**Done when.** On three branches in a row, the text a fresh session writes is no longer than what it replaced, and the owner accepts it on the first read. That covers the docs, code comments and the reply.
+**Done when.** On three branches in a row, the text a fresh session writes is no longer than what it replaced, and the owner accepts it on the first read. That covers the docs, code comments and the reply. [superseded 2026-11-04: no word target, per Question 1's answer]
+
+**Done when** (2026-11-04). On three branches in a row, every cut the copy editor makes carries its reason, every passage that grew names in its pull request the facts its added words carry, and the owner accepts the text on the first read. That covers the docs, code comments and a reply.
 
 **Generator check.** This is the head: a generator of the rewrites named in `root-cause-of`, across every kind of text, recorded live at the project owner's word (2026-11-03). `PL-W8FL`, `PL-22T5`, `PL-43GT` and `PL-JP8X` are parts of its fix.
 
@@ -49,8 +51,105 @@ misread: what a reader can do without, which no rule states for any kind of text
 
 **Prototype run, 2026-11-04.** The draft copy-editor prompt ran once in a fresh `general-purpose` agent, at the session's effort, on two passages. It cut the MAC passage of § "Displayed precision" from 277 words (the passage on `main` since `PL-ZDZ0` merged in #1992) to 110, and a 404-word reply to the owner to 150. It made three errors that applying by default would have published. It wrote "A MAC value below one step shows as `<0.01 ×MAC`", but `format_mac_multiple` marks only a positive value, so zero still reads `0.00`. It rewrote "have no test yet (`PL-19W8`)" as "are untested", which the documentation check does not read as a declaration. It dropped the reply's effort-trial line, which the session-start hook requires in a first reply. So part 2 also needs a script that lists every number, name in backticks, item id and "no test yet" form that an edit removed, for the writer to confirm before the edit lands. That is decidable, so it goes in `tools/new_prose.py`. The run took 11 minutes and 169,720 tokens, with the resident instructions loaded.
 
+**Answer** (project owner, 2026-11-04, ratified, over keeping the close-out prose review advisory and adding rules to it): build the design above, in the build order above. Part 4, no word target, is the owner's own (project owner, 2026-11-04).
+
 **Question 2. Should writers be shown owner-approved example paragraphs?** **Recommendation:** show the examples to the copy editor, not to writers, and only once three pairs of different kinds exist. Each pair is a before and an after the owner approved, with one sentence saying why the after is better. Until there are three, the rule works alone.
 
 - Published guidance pairs examples with rules, and does not offer them instead of rules. Anthropic: "Examples are one of the most reliable ways to steer Claude's output format, tone, and structure", in "3–5 examples", "Diverse" enough that "Claude doesn't pick up unintended patterns" (https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices). OpenAI: "ensure that any important behavior demonstrated in your examples are also cited in your rules" (https://cookbook.openai.com/examples/gpt4-1_prompting_guide).
 - Models copy an example's form and length more than its content (Min et al. 2022, arXiv:2202.12837; Schoch and Ji 2025, arXiv:2502.06653). One MAC paragraph shown to every writer would pull docstrings and replies toward its shape. Examples with a reason beat examples alone (Lampinen et al. 2022, arXiv:2204.02329).
 - The copy editor's text is what gets published, so the examples pay off there. The two before-and-afters in this round are the first two pairs if the owner approves them, with the effort-trial line the prototype dropped put back into the reply's after first. They go in `docs/prose-review/examples/`, apart from `gold/`, whose entries the owner names gold in those words.
+
+**Answer** (project owner, 2026-11-04, ratified, over printing approved paragraphs to the writing session): the examples go to the copy editor only, once three pairs of different kinds exist. The two pairs below are the first two (project owner, 2026-11-04, ratified, over writing new pairs). They move to `docs/prose-review/examples/` when the copy editor is built, and this item holds them until then.
+
+**Pair 1, the MAC passage of `docs/MODEL.md` § "Displayed precision".** Why the after is better: it gives the clinician the three per-agent steps and both display behaviours in 54 words, and moves the derivation and every test name to the developer note.
+
+Before (277 words):
+
+```text
+**The MAC resolution is derived from this one, not chosen beside it.** A MAC
+multiple is a percent divided by the agent's own `mac_percent`. So the
+resolution above already fixes how finely the quotient is known. Stating a
+second resolution independently would mean re-deriving two numbers whenever
+this one is re-measured. The rule is one line: **the finest power of ten that
+is nowhere finer than the percent resolution converted into MAC.** That
+conversion is agent-specific. Converted, 0.01 percentage points is 0.005 MAC
+for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane. So the
+binding agent is isoflurane at 0.0083 MAC, and **0.01 MAC** is the finest power
+of ten at or above it.
+`test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats this
+arithmetic for every shipped agent.
+
+The smallest change the MAC readout can show is therefore 0.02 percentage points
+of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane, never less than the
+percent readout's. The two readouts round separately, so the MAC value can
+occasionally change while the percent stays the same. The three per-agent
+figures have no test yet (`PL-19W8`).
+<!-- not-restated: 0.06 -->
+
+The below-resolution form applies to the MAC line for the same reason it
+applies to the percent line, and it matters more there, not less. A
+compartment clears 0.01 MAC later than it clears 0.01 percentage points. So
+`0.00 ×MAC` beneath a percent line that already shows the compartment filling
+would make the two readouts contradict each other. `<0.01 ×MAC` states what is
+known, and `test_format_mac_multiple_marks_a_value_below_the_resolution` holds
+that form. The derivation test named above re-runs the derivation against
+every shipped agent. So adding an agent or changing the percent resolution
+fails there rather than silently over-claiming.
+```
+
+After (120 words):
+
+```text
+The MAC readout's step, 0.01 MAC, is 0.02 percentage points of sevoflurane,
+0.012 of isoflurane and 0.06 of desflurane, never finer than the percent
+readout's. The readouts round separately, so the MAC value can occasionally
+change while the percent does not. A MAC value above zero but below one step
+shows as `<0.01 ×MAC`.
+<!-- not-restated: 0.06 -->
+
+**For developers.** Dividing the percent step by the smallest `mac_percent`,
+isoflurane's, gives 0.0083 MAC. The MAC step is that, rounded up to a power of
+ten. `test_the_mac_resolution_is_derived_from_the_percent_resolution` repeats
+this arithmetic for every shipped agent, so a new agent or percent step that
+would over-claim fails there.
+`test_the_mac_digit_can_move_alone_at_a_rounding_boundary` checks the second
+sentence, and `test_format_mac_multiple_marks_a_value_below_the_resolution`
+the `<0.01 ×MAC` form. The three per-agent figures have no test yet (`PL-19W8`).
+```
+
+**Pair 2, a reply to the owner.** Why the after is better: it says why the session stopped and asks the two decisions in about 160 words, and drops history and session status that no decision depended on.
+
+Before (404 words):
+
+```text
+I've stopped. This session wrote nothing: it made no claim, no branch and no file edits. It runs in the effort trial's xhigh arm.
+
+**Sessions on this work right now**
+
+- **"Prose generation clarity issues"** is running and overlaps directly. It filed PL-J1ZM (the live generator for over-explaining prose) in #2000, which has merged. It also wrote the prompt this session was given, and it found that prompt too narrow too. Its current task is "Rescope PL-J1ZM to all prose and check the item store", so it is widening the generator from `docs/MODEL.md` to every kind of prose a session writes. It will probably edit PL-J1ZM's item file. A design round started here would then work from a stale brief and conflict with it at merge.
+- **PL-ZDZ0** (the fix to the false MAC-digit sentence in § "Displayed precision") is idle and waiting for you. Its last line asks you to reply "Merge it" to merge #1992, or to say what to change in the MAC sentence. #1992 is open. It also carries PL-JP8X (the prose review never compares new text with the text it replaced) and PL-BSYT's status change. Until it merges, PL-JP8X exists only on that branch.
+- PL-CJGH and PL-RKRG are idle on unrelated apparatus items. Nothing else touches PL-W8FL, PL-22T5 or PL-43GT. None of those three is claimed on any branch.
+
+**What I'd already found, so the next prompt doesn't have to repeat it**
+
+- Main's MAC passage is 381 words. ZDZ0's branch brings it to about 318 by folding its middle paragraphs. The two paragraphs on either side are unchanged from main.
+- The other session's draft of the ~110-word target puts a clinician paragraph first and the derivation in a developer note. It notes that the documentation check would reject that draft until PL-W8FL (the check that forces test names into clinician paragraphs) is fixed. That makes PL-W8FL the right first build under any design.
+
+**What needs you**
+
+1. Send the new prompt. If the rescope session is still running when you do, either let it finish its PL-J1ZM edit first or tell me to work from its branch. Otherwise the two sessions will edit the same item file.
+2. Separately, in the PL-ZDZ0 session: decide whether #1992 merges as it stands. Its session and the rescope session both recommend yes, because it corrects the one false clinical claim and the long text around it is main's old wording.
+```
+
+After:
+
+```text
+I stopped before writing anything: "Prose generation clarity issues" is widening PL-J1ZM (the live generator for over-explaining prose) to all prose. Starting the design round now risks a stale brief and a merge conflict. This session runs in the effort trial's xhigh arm.
+
+No other session or claim touches PL-W8FL (the check that forces test names into clinician paragraphs), PL-22T5 or PL-43GT. Fixing that check comes first under any design: it would reject the other session's ~110-word draft.
+
+**What needs you**
+
+1. Send the new prompt once "Prose generation clarity issues" finishes editing PL-J1ZM (the generator), or have me work from its branch.
+2. In the PL-ZDZ0 session (the MAC-sentence fix), reply "Merge it" to merge #1992, or say what to change in that sentence. Both other sessions recommend merging: it corrects the one false clinical claim, and the rest is main's old wording. It also holds the only copy of PL-JP8X (the prose review never compares new text with old).
+```
