@@ -307,7 +307,7 @@ class Config:
     #: Empty by default, for `open_pull_requests_command`'s reason: `claim`
     #: then says that no draft was opened and what the session does instead.
     open_draft_command: str = ""
-    #: A command counting the long docstrings and comments that the branch's
+    #: A command counting the docstrings and comments that the branch's
     #: simulator change adds and that no review has covered, which `docket arm`
     #: reads so that a simulator branch waits for close-out step 8's review
     #: (`PL-W04Z`). The package appends the commit carrying the newest

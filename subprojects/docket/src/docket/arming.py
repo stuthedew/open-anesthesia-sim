@@ -95,7 +95,7 @@ has already merged; what went unread is said beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
-- A simulator change's new long prose waits for a recorded review
+- A simulator change's new prose waits for a recorded review
   (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
   A blind review record is not undone by a later change, because close-out
   step 9 says a fix made for a finding needs no further pass.
@@ -364,24 +364,24 @@ OWNER_OFF = (
 )
 
 #: The commit trailer a session records close-out step 8's prose review in, with
-#: the value `read N, rewrote M, rejected K` (`PL-W04Z`). A long docstring or
+#: the value `read N, rewrote M, rejected K` (`PL-W04Z`). A docstring or
 #: comment that a simulator change adds after the newest such record holds the
 #: pull request, so a code fix after the review needs no second review, while a
-#: new long docstring does.
+#: new docstring does.
 PROSE_REVIEW = "Prose-review"
 PROSE_FORM = re.compile(r"read \d+, rewrote \d+, rejected \d+")
 
-#: What a `hold` on unreviewed long prose tells the session. The step's own
+#: What a `hold` on unreviewed prose tells the session. The step's own
 #: instructions are in the close-out mode, so they are pointed at, not restated.
 PROSE_ASK = (
     "  Run close-out step 8's prose review (.claude/skills/docket/modes/close-out.md) on "
-    "the long docstrings and comments the branch adds, apply the rewrites you accept, and "
+    "the docstrings and comments the branch adds, apply the rewrites you accept, and "
     "record the review as a trailer in the last paragraph of a commit made after it, beside "
     f"its Co-authored-by line: `{PROSE_REVIEW}: read N, rewrote M, rejected K`. One commit can "
     f"carry this and an {OWNER_READ} record together. Then ask again."
 )
 
-#: What a `hold` tells the session when the count of long prose could not be read.
+#: What a `hold` tells the session when the count of unreviewed prose could not be read.
 PROSE_UNCOUNTED = (
     "  A branch whose prose could not be counted is never armed as though it had none. Make "
     "the count readable, most often by fixing a file Python will not parse, and ask again."
@@ -926,7 +926,7 @@ AUTO_MERGE_ON = "on"
 class CommandCount:
     """A count that a configured command printed, or why it could not be read.
 
-    `prose_count_command` counts the long docstrings and comments that need a
+    `prose_count_command` counts the docstrings and comments that need a
     review, and `blind_count_command` counts the blind review passes a branch
     owes. `count` is that number. `declined` says why it could not be read, so
     that "could not count" never reads as "nothing owed".
@@ -1055,7 +1055,7 @@ class Verdict:
     `pinned` the
     existing tests in `PINS` pinning its answers that it would change or
     delete, `switched_off` when the owner switched its auto-merge off,
-    `unreviewed` how many long docstrings and comments it adds that no
+    `unreviewed` how many docstrings and comments it adds that no
     `PROSE_REVIEW` record covers, `prose_since` the commit carrying the newest
     such record, `prose_declined` why that count could not be read,
     `blind_owed` how many blind review passes it owes, `blind_recorded` how
@@ -1129,7 +1129,7 @@ class Verdict:
 
     @property
     def prose_held(self) -> bool:
-        """Whether long prose with no recorded review, or a count that failed, holds it."""
+        """Whether prose with no recorded review, or a count that failed, holds it."""
         return self.unreviewed > 0 or bool(self.prose_declined)
 
     @property
@@ -1325,13 +1325,13 @@ class Verdict:
             )
             if self.prose_declined:
                 reasons.append(
-                    f"how many long docstrings and comments it adds since {since} could not be "
+                    f"how many docstrings and comments it adds since {since} could not be "
                     f"counted - {self.prose_declined}"
                 )
             else:
                 noun = "docstring or comment" if self.unreviewed == 1 else "docstrings and comments"
                 reasons.append(
-                    f"it adds {self.unreviewed} long {noun} in the simulator since {since}, and "
+                    f"it adds {self.unreviewed} {noun} in the simulator since {since}, and "
                     f"no {PROSE_REVIEW} record covers {'it' if self.unreviewed == 1 else 'them'}"
                 )
         if self.blind_declined:
@@ -1418,8 +1418,8 @@ def arm(
     made since covers holds the pull request, and a forge that could not be
     asked is unread.
 
-    **And a simulator change's new long prose may have had no review**
-    (`PL-W04Z`). `prose_count` counts the long docstrings and comments the
+    **And a simulator change's new prose may have had no review**
+    (`PL-W04Z`). `prose_count` counts the docstrings and comments the
     branch adds, handed the commit carrying the newest `PROSE_REVIEW` record,
     or `""` where none does. It is asked only where the change reaches a
     simulator path. A count above zero holds the pull request, and so does a

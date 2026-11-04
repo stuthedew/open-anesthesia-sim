@@ -21,10 +21,9 @@ the paragraph came from, which decides its readers through the table in
 `.claude/rules/plain-writing.md`. `rejected` is the date of the owner's
 rejection. The entry's body has three sections and may have a fourth, as
 `REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them. The paragraph sits in a
-fenced block, exactly as it stood in its file. It must read as one unit of
-`MIN_WORDS` words or more, as `tools/new_prose.py` reads that file, because the
-review never sees a shorter unit. A shorter rejected paragraph is a miss of
-that word limit rather than of the prompt, so it belongs in an item.
+fenced block, exactly as it stood in its file. It must read as one unit that
+`tools/new_prose.py` would review in that file, because the review never sees
+any other.
 
 **A gold-standard entry** is named `gold-DATE-SLUG.md`. Its front matter gives
 `file` and `named`, the date the owner named the paragraph a gold standard, and
@@ -111,7 +110,7 @@ from docket.model import parse_front_matter  # noqa: E402
 from docket.python import UNTOKENIZABLE, refusal  # noqa: E402
 
 import new_prose  # noqa: E402
-from new_prose import MIN_WORDS, Reader, Unit, excerpt, reader_lines, readers_of  # noqa: E402
+from new_prose import Reader, Unit, excerpt, reader_lines, readers_of, reviewable  # noqa: E402
 
 #: Each kind of failure an entry can record, with what it means. A miss that
 #: fits none of them adds a kind here, with its meaning.
@@ -263,10 +262,9 @@ def _unit(path: str, lines: Sequence[str]) -> Unit:
         raise ValueError(f"the paragraph {error}") from None
     if len(units) != 1:
         raise ValueError(f"the paragraph reads as {len(units)} units of {path}, not one")
-    if units[0].words < MIN_WORDS:
+    if not reviewable(units[0]):
         raise ValueError(
-            f"the paragraph has {units[0].words} words, and the review reads only units of "
-            f"{MIN_WORDS} or more"
+            f"the paragraph has too few words for the review to read it: {units[0].words}"
         )
     return Unit(path, units[0].kind, 1, len(lines), units[0].text)
 
@@ -381,7 +379,7 @@ def repeats(entries: Sequence[Entry]) -> list[str]:
 def show(entries: Sequence[Entry], table: Sequence[Reader]) -> str:
     """What the reviewer is given: the rule, the readers, then each entry as a numbered unit."""
     out = [
-        f"{len(entries)} document paragraphs of {MIN_WORDS} words or more. Rows marked > are "
+        f"{len(entries)} document paragraphs. Rows marked > are "
         "the unit. Judge each unit for the readers its header names, as the list below "
         "describes them."
     ]

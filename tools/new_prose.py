@@ -29,10 +29,11 @@ reads it, from the commit where the branch forked from the default branch to
 the working tree, including files that git does not track yet. A file that is
 new on the branch has every line changed.
 
-**What is reviewed.** Each passage that `changed_passages` finds is reviewed
-when it has `MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure,
-short units were awkward in 25% of verdicts and long ones in 61%, so the long
-ones are where a review pays (project owner, 2026-10-18, ratified, `PL-PRCS`).
+**What is reviewed.** Each passage that `changed_passages` finds is reviewed,
+whatever its length, when `reviewable` accepts one of its units now (project
+owner, 2026-11-04, ratified, over `PL-PRCS`'s floor of 30 words). Short units
+were awkward in 25% of `PL-Y55Q`'s blind verdicts, and many of the messages a
+learner reads are short, so a short passage needs the review too (`PL-HGZS`).
 In a Markdown file, the copy editor reads the passage's whole section, from the
 heading above it to the next heading. It may rewrite the passage and the one
 unit on each side of it inside that section, so it can fold new text into the
@@ -40,8 +41,8 @@ paragraph beside it. It may not rewrite the rest of the section, because
 `docs/MODEL.md` § "Displayed precision" runs to about 8,000 words, and a
 one-sentence fix there would become a rewrite of all of them. That limit is a
 placeholder for the owner to overrule (`PL-22T5`). Two passages that would
-share a unit are reviewed as one. In a Python file, each long unit is reviewed
-alone, with `CONTEXT_ROWS` rows of code on each side.
+share a unit are reviewed as one. In a Python file, each changed unit is
+reviewed alone, with `CONTEXT_ROWS` rows of code on each side.
 
 **Who reads each passage.** `.claude/rules/plain-writing.md` holds a table that
 names the readers of each kind of text: what each knows, what each does not
@@ -86,13 +87,13 @@ level, so no row is edited twice.
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
 recorded as a `Prose-review:` trailer, and it runs this tool through
-`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts long units
-rather than passages, so a passage of several short paragraphs is reviewed and
-not counted. It reads the committed branch, from the fork to `HEAD`, because
-`arm` judges commits and not the working tree.
+`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts the units
+that `reviewable` accepts, rather than passages. It reads the committed
+branch, from the fork to `HEAD`, because `arm` judges commits and not the
+working tree.
 `--count REV` names the commit that carries the newest `Prose-review:` trailer.
 A unit then counts only when its text is not a unit of the same file at `REV`, so
-a code fix after the review needs no second review, while a new or reworded long
+a code fix after the review needs no second review, while a new or reworded
 unit does. Comparing texts rather than diffing from `REV` keeps out the prose
 that a merge of the default branch brings in, because that prose is not in the
 branch's own diff from the fork. The count is one line holding a whole number.
@@ -159,11 +160,14 @@ from model_rewrite import (  # noqa: E402
     report_gone,
 )
 
-#: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
-#: short and long units here.
-MIN_WORDS = 30
 #: The kind of a unit that is a string literal in code, other than a docstring.
 STRING_KIND = "string"
+#: The fewest words a string literal needs to be reviewed. A string of one word,
+#: such as `"utf-8"`, `"mL/h"` or a dictionary key, is a value that the code
+#: reads, and a rewrite of it would change what the program does. Every other
+#: unit is reviewed when it holds a word at all (project owner, 2026-11-04,
+#: ratified, over `PL-PRCS`'s floor of 30 words for every unit).
+STRING_MIN_WORDS = 2
 #: The words that mark a reader row as one for string literals. Such a row
 #: applies only to string units, and every other row applies to every other kind,
 #: so an interface notice and the docstring beside it get different readers.
@@ -418,15 +422,23 @@ def units_of(path: str, source: str) -> list[Unit]:
     )
 
 
+def reviewable(unit: Unit) -> bool:
+    """Whether the copy editor reviews `unit` when the branch changes it.
+
+    A string literal needs `STRING_MIN_WORDS` words, and any other unit one.
+    """
+    return unit.words >= (STRING_MIN_WORDS if unit.kind == STRING_KIND else 1)
+
+
 def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
-    """The units of `MIN_WORDS` or more in `source` that a changed row falls inside.
+    """The units in `source` that `reviewable` accepts and that a changed row falls inside.
 
     `rows` is `None` where the whole file is new, as `changed_rows` returns it.
     """
     return [
         unit
         for unit in units_of(path, source)
-        if unit.words >= MIN_WORDS
+        if reviewable(unit)
         and (rows is None or any(unit.first <= row <= unit.last for row in rows))
     ]
 
@@ -438,7 +450,7 @@ def may_review(path: str) -> bool:
 
 @dataclass
 class Found:
-    """The long units the branch changed in the files that the reader table names."""
+    """The units the branch changed in the files that the reader table names."""
 
     against: str
     units: list[Unit]
@@ -449,7 +461,7 @@ class Found:
 def branch_prose(
     root: Path, base: str, table: Sequence[Reader] | None = None, *, committed: bool = False
 ) -> Found:
-    """The long units changed between the fork from `base` and the working tree.
+    """The units changed between the fork from `base` and the working tree.
 
     Only a file that a row of `table` names is read, and `table` defaults to the
     reader table in the rule. With `committed`, it returns the units changed
@@ -882,7 +894,7 @@ def section_bounds(marks: Sequence[Heading], row: int, total: int) -> tuple[int,
 
 
 def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Review]:
-    """A review of each passage that `patch` changed in `after` and that has `MIN_WORDS` words now.
+    """A review of each passage that `patch` changed in `after` and that `reviewable` accepts now.
 
     `before` is the file at the fork, `None` where the branch added it, and
     `patch` is the `-U0` diff between the two.
@@ -890,7 +902,7 @@ def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Re
     passages = [
         passage
         for passage in changed_passages(path, before, after, patch)
-        if passage.words_after >= MIN_WORDS
+        if any(reviewable(unit) for unit in passage.after)
     ]
     total = len(split_lines(after))
     if not is_document(path):
@@ -907,7 +919,7 @@ def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Re
             )
             for passage in passages
             for unit in passage.after
-            if unit.words >= MIN_WORDS
+            if reviewable(unit)
         ]
     units = units_of(path, after)
     marks = headings(markdown_lines(after))
@@ -1024,7 +1036,7 @@ def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
     out: list[str] = []
     if found.reviews:
         out.append(
-            f"{len(found.reviews)} passages of {MIN_WORDS} words or more changed, against "
+            f"{len(found.reviews)} passages changed, against "
             f"{found.against}. Each has a numbered header. The rows marked > under it are the "
             "rows you may rewrite: the changed text, and in a Markdown file the paragraph or "
             "table row on each side of it. Rows marked | are there to be read: the rest of the "
@@ -1046,8 +1058,7 @@ def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
             out += section_rows(texts[path], first, last, numbered, found.base, table)
     else:
         out.append(
-            f"No passage of {MIN_WORDS} words or more changed in a file that the reader table "
-            f"names, against {found.against}."
+            f"No passage changed in a file that the reader table names, against {found.against}."
         )
     if found.unnamed:
         out += ["", f"Not reviewed, because no row of the reader table in {RULE.name} names it:"]

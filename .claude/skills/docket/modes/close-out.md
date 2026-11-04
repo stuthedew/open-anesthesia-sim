@@ -287,10 +287,11 @@ page and decides which file a session reads.
    **Have the copy editor edit the prose that the branch changed, before step
    5's audit.** Do this step on every branch. Save the output of
    `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
-   each passage of 30 words or more that the branch changed, because in
-   `PL-Y55Q`'s blind re-measure short units were awkward in 25% of verdicts and
-   long ones in 61% (project owner, 2026-10-18, ratified, over a review on every
-   branch and over no review, `PL-PRCS`). It takes them from every file that a
+   each passage that the branch changed, whatever its length, because short
+   passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
+   messages a learner reads are short (project owner, 2026-11-04, ratified,
+   over `PL-PRCS`'s floor of 30 words). A string literal of one word, such as
+   a dictionary key, is code and is left out. It takes them from every file that a
    row of the reader table in `.claude/rules/plain-writing.md` names, each with
    that row's readers. A Markdown passage comes inside its whole section, and a
    docstring or comment comes with the code around it. The rows marked `>` are

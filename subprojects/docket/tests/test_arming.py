@@ -144,7 +144,7 @@ def test_arm_holds_without_prose_review(tmp_path: Path) -> None:
 
     assert held.answer == arming.HOLD
     assert held.lines[0] == (
-        "hold - claude/prose: it adds 1 long docstring or comment in the simulator since it "
+        "hold - claude/prose: it adds 1 docstring or comment in the simulator since it "
         "forked, and no Prose-review record covers it"
     )
     assert arming.PROSE_ASK in held.lines
@@ -164,7 +164,7 @@ def test_arm_holds_without_prose_review(tmp_path: Path) -> None:
 
     assert again.answer == arming.HOLD
     assert again.lines[0].endswith(
-        f"it adds 2 long docstrings and comments in the simulator since the Prose-review record "
+        f"it adds 2 docstrings and comments in the simulator since the Prose-review record "
         f"on {review[:12]}, and no Prose-review record covers them"
     )
 
@@ -182,7 +182,7 @@ def test_arm_holds_when_prose_count_fails(tmp_path: Path) -> None:
 
     assert held.answer == arming.HOLD
     assert held.lines[0] == (
-        "hold - claude/prose: how many long docstrings and comments it adds since it forked "
+        "hold - claude/prose: how many docstrings and comments it adds since it forked "
         "could not be counted - `new_prose --count` exited 2"
     )
     assert arming.PROSE_UNCOUNTED in held.lines
