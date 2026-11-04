@@ -3,10 +3,11 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: ready
+status: blocked
 classes: defect
 feature: reader-first-prose
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, docs/prose-review/prompt.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
+blocked-by: PL-22T5, PL-JP8X
 deferred-from: v0.7.0 - captured after the freeze; it changes how prose is written, not a displayed value
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
@@ -52,6 +53,8 @@ misread: what a reader can do without, which no rule states for any kind of text
 **Prototype run, 2026-11-04.** The draft copy-editor prompt ran once in a fresh `general-purpose` agent, at the session's effort, on two passages. It cut the MAC passage of § "Displayed precision" from 277 words (the passage on `main` since `PL-ZDZ0` merged in #1992) to 110, and a 404-word reply to the owner to 150. It made three errors that applying by default would have published. It wrote "A MAC value below one step shows as `<0.01 ×MAC`", but `format_mac_multiple` marks only a positive value, so zero still reads `0.00`. It rewrote "have no test yet (`PL-19W8`)" as "are untested", which the documentation check does not read as a declaration. It dropped the reply's effort-trial line, which the session-start hook requires in a first reply. So part 2 also needs a script that lists every number, name in backticks, item id and "no test yet" form that an edit removed, for the writer to confirm before the edit lands. That is decidable, so it goes in `tools/new_prose.py`. The run took 11 minutes and 169,720 tokens, with the resident instructions loaded.
 
 **Answer** (project owner, 2026-11-04, ratified, over keeping the close-out prose review advisory and adding rules to it): build the design above, in the build order above. Part 4, no word target, is the owner's own (project owner, 2026-11-04).
+
+**Blocked on its parts, 2026-11-04.** `PL-W8FL` (#2006) and `PL-43GT` (#2008, part 1) are built. What is left of the design is `PL-22T5` (the copy editor, parts 2 and 3) and `PL-JP8X` (the before-and-after comparison, parts 2 and 4), both ready. While this head was `ready`, `bin/docket next` offered it first and no session could start it. Blocked on them, it passes its generator rank to them. The pause on new workflow mechanisms still holds, because it reads `generator: live`, not the status. When both close, this item is the measurement its Done-when names. The owner asked whether it should be blocked; the session judged it the one correct disposition.
 
 **Question 2. Should writers be shown owner-approved example paragraphs?** **Recommendation:** show the examples to the copy editor, not to writers, and only once three pairs of different kinds exist. Each pair is a before and an after the owner approved, with one sentence saying why the after is better. Until there are three, the rule works alone.
 
