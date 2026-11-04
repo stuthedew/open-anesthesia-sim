@@ -1,9 +1,16 @@
 ---
 id: PL-HXF0
 title: doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: one-source-of-truth
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
+payoff: a brief that names a deleted file in an earlier list item can be marked so the documentation check accepts it
+verify: grep -q 'def test_an_absent_marker_under_a_list_covers_its_first_item' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
@@ -25,3 +32,5 @@ marker placement that the check accepts.
 **Done when.** `_absent_paths` reads the marker's scope from `_marked_scope`,
 and a test puts a deleted path in the first of two list items with the marker
 under the list and finds no error.
+
+**Generator check.** One-off. The fact misread is what a marker under a list covers, and `_marked_scope` already states it; `_absent_paths` is the one reader of the three that reads it another way. No head's `misread:` states it (checked with `bin/docket generators --misread`, 2026-11-04).
