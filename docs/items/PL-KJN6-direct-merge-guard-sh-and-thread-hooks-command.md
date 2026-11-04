@@ -3,12 +3,14 @@ id: PL-KJN6
 title: direct-merge-guard.sh and thread_hooks.COMMAND_TIMEOUT_S say Claude Code's default hook timeout is 60 s, which the hooks documentation now gives as 600 s, and docs/apparatus.md names neither thread_hooks.py nor hook_input.py among the hook files nothing wires
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: guard-review-2026-11
 touches: .claude/hooks/thread_hooks.py, .claude/hooks/direct-merge-guard.sh, docs/apparatus.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: the bridge gives a repository SessionStart command the time Claude Code would, and the hook map names every file nothing wires
 verify: grep -q 'COMMAND_TIMEOUT_S = 600' .claude/hooks/thread_hooks.py
 ---

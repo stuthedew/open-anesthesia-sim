@@ -332,8 +332,9 @@ check: sync
 # decays, and this is what stops the next session
 # writing a section citation in a form that says nothing to its reader.
 	uv run python tools/possessive_section_check.py
-# Under `uv run`, all nine of them, like the two lines above, and for a reason
-# about the *input* rather than about the tool. These read `app/`, `tests/` and
+# The tools on the `uv run python` lines at the end of this note run under
+# `uv run`, like the two lines above, for a reason about the *input* rather
+# than about the tool. These read `app/`, `tests/` and
 # modules under `src/anesthesia_sim/` with `ast`, and that source
 # targets 3.14. PEP 695 (3.12) type parameters in `app/bookmarks.py`
 # are a `SyntaxError` to the 3.11 parser these tools promise to run under, and
@@ -393,8 +394,8 @@ check: sync
 # stand.
 #
 # `tools/type_ignore_check.py` above is the same category for a different reason.
-# All nine tools here stay standard-library-only and parse at the floor
-# themselves, which is what `tests/unit/test_tools_portability.py` holds them
+# Every tool on those lines stays standard-library-only and parses at the
+# floor itself, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
 # `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`,
 # `PL-40SJ`.

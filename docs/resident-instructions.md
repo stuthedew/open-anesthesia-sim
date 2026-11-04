@@ -47,7 +47,7 @@ preceded by a read.
 
 | Rule | Was | Is now | Why it moved |
 | --- | --- | --- | --- |
-| Never prune remote-tracking refs | 10 resident lines | `.claude/hooks/no-prune-guard.sh`, a `PreToolUse` deny on `Bash` | A prohibition on a command string is decidable by reading the command. The prose fired when a session remembered it; the hook fires always, and its deny message carries the recipe the caller actually wanted. It guards agent sessions and not a human at a terminal, which is the scope the prose had too. |
+| Never prune remote-tracking refs | 10 resident lines | `.claude/hooks/git/reference-transaction`, a git hook the session-start hook installs (`PL-82J5`) | Whether a command deletes a ref is decidable from what git is about to do, which git hands this hook. The prose fired when a session remembered it; the hook fires always, and its deny message carries the recipe the caller actually wanted. It guards agent sessions and not a human at a terminal, which is the scope the prose had too. |
 | How to restart a merged branch | inside that bullet | the `docket` skill's `stranded` section, and the hook's deny message | Needed at branch recovery, which is where the skill already is, and at the refusal, which is where the question is being asked. |
 | "A push demand after a merged branch may be false" | inside that bullet | `.claude/hooks/stop_hook_patch.py`'s `UNPATCHED` message | Already routed by `PL-WW08`; the resident sentence was a second copy. The message prints at the one moment a session meets a false demand. |
 | The doc-sweep procedure | 11 resident lines | the `docket` skill, Mode: close out | Fires at close-out, which `CLAUDE.md` already requires the skill for. The *trigger* stays resident in one sentence, with its safety reason, because without the reason a session reads the sweep as tidiness and skips it under pressure. |
@@ -1379,6 +1379,8 @@ were left as written: the pull request bodies under `docs/pr-bodies/`,
 `docs/WORKING_NOTES.md`, and the table in § "The check-enforced review,
 2026-10-24".
 
+<!-- absent: .claude/hooks/no-prune-guard.sh -->
+
 **What was replaced, and the cost.** `CLAUDE.md` went from 48,842 to 45,636
 characters, 3,206 fewer. Rule 14 grew by 3 characters for its new pointer. The
 resident instruction files fell by 3,203 characters, from 83,862 to 80,659, as
@@ -1403,7 +1405,7 @@ Retiring prose builds no mechanism, so the generator pause did not apply.
 | --- | --- | --- |
 | The preamble, and § "What this project is" apart from the pause | Nothing. They state the project's purpose and judgment. | Kept |
 | The generator pause, and the generator bullet in § "The queue" | Reviewed by `PL-6VJ3` the same day. No check can read how a reply ends or tell whether a change is a new mechanism. | Kept |
-| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only the Projects asks to read or merge, a thread's and the coordinator's. | Kept |
+| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only the Projects asks to read, merge or decide, a thread's and the coordinator's. | Kept |
 | Simulation time as explicit state, and deterministic results | `tools/import_boundary_check.py` bars `time`, `datetime`, `random`, `secrets` and `uuid` under `core/` only. `app/` holds the clock legitimately and must keep a tick's real duration out of the run, which nothing checks. | Kept |
 | Tests with every core behavior change | CI's 100% coverage gate catches new code that no test runs. It does not catch a changed behavior that the old tests still pass. | Kept |
 | One source of truth | `tools/literal_home_check.py` and `tools/fact_home_check.py`, which the bullet already names. It keeps only what neither check reaches, and the owner specified it on 2026-10-12. | Kept |

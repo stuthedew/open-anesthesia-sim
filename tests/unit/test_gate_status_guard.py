@@ -20,6 +20,7 @@ on the command text alone.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -961,11 +962,67 @@ def test_the_remedy_runs_the_gate_the_command_ran(command: str, spelled: str) ->
     reason = _decision(command)["permissionDecisionReason"]
     assert f"\n    set -o pipefail; {spelled} 2>&1 | tail -45\n" in reason
     assert f"\n    {spelled} > /tmp/gate.log 2>&1 " in reason
-    assert f"(`{spelled} && tail -45 /tmp/gate.log`)" in reason
+    assert f"(`{spelled} > /tmp/gate.log 2>&1 && tail -45 /tmp/gate.log`)" in reason
     remedies = [line.strip() for line in reason.splitlines() if line.startswith("    ")]
     assert len(remedies) == 2, reason
     for remedy in remedies:
         assert _decision(remedy) is None, f"{command!r} was offered {remedy!r}, which is refused"
+
+
+@pytest.mark.parametrize(("command", "spelled"), REMEDIES)
+def test_each_offered_remedy_redirects_into_its_log(command: str, spelled: str) -> None:
+    """Each spelling the refusal offers that reads the log first writes the run there (`PL-VDK9`).
+
+    `make check && tail -45 /tmp/gate.log` printed the whole run and then the
+    tail of an older log, so a remedy is held to what it does: each one is
+    admitted, and each one that reads `/tmp/gate.log` redirects into it first.
+    """
+    reason = _decision(command)["permissionDecisionReason"]
+    offered = [line.strip() for line in reason.splitlines() if line.startswith("    ")]
+    accepted = reason.partition("Two more spellings are accepted")[2].partition("Guarded")[0]
+    offered += [span for span in accepted.split("`")[1::2] if span.startswith(spelled)]
+    assert len(offered) >= 4, reason
+    for remedy in offered:
+        assert _decision(remedy) is None, f"{command!r} was offered {remedy!r}, which is refused"
+        run, _, read = remedy.partition("tail -45 /tmp/gate.log")
+        if read or run != remedy:
+            assert "> /tmp/gate.log 2>&1" in run, f"{remedy!r} reads a log it never wrote"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ruff --version | head -1",
+        "uv run pytest --version | head -1",
+        "uv run mypy -V | head -1",
+        "uv run pytest --collect-only -q | tail -3",
+        "uv run pytest --co -q tests/unit | tail -3",
+        "make check && echo PASS || echo FAIL",
+        "uv run pytest -q && printf 'green\\n' || printf 'red\\n'",
+    ],
+)
+def test_a_version_run_piped_to_head_is_admitted(command: str) -> None:
+    """A run that judges nothing, or prints its verdict as a word, loses no verdict (`PL-9PPJ`).
+
+    A version or collect-only run reports on the tool rather than on the tree,
+    and `&& echo PASS || echo FAIL` prints which way the gate went as `|| echo
+    $?` does. The coordinator's hook probe moved to a test run, which is still
+    refused.
+    """
+    assert _decision(command) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "uv run pytest -q tests/unit/test_line_splits.py | tail -1",
+        "make check && echo PASS || true",
+        "make check && echo PASS; echo FAIL",
+        "uv run pytest -q -k version | tail -1",
+    ],
+)
+def test_a_run_that_judges_the_tree_is_still_refused(command: str) -> None:
+    assert _decision(command) is not None
 
 
 def test_a_gate_run_with_an_unquoted_substitution_is_named_and_says_so() -> None:
@@ -1158,3 +1215,36 @@ ARM_WHOLE = (
 @pytest.mark.parametrize("command", ARM_WHOLE)
 def test_bin_docket_arm_read_whole_or_named_in_text_is_allowed(command: str) -> None:
     assert _decision(command) is None
+
+
+@pytest.mark.parametrize(
+    ("command", "rule"),
+    [
+        ("make check 2>&1 | tail -45", "status-swallowed:make check"),
+        ("uv run pytest -q tests/x.py; echo done", "status-swallowed:pytest"),
+        ("python3 tools/doc_check.py check | tail", "status-swallowed:tools/doc_check.py"),
+    ],
+)
+def test_a_logged_refusal_names_the_gate_it_read(command: str, rule: str, tmp_path: Path) -> None:
+    """The refusal log says which gate was refused, and never the command (`PL-8RGF`).
+
+    A count of `status-swallowed` alone could not tell a refused gate from a
+    command the guard took for one, so the verdicts on the guards would have
+    read a false refusal as a block.
+    """
+    log = tmp_path / "blocks.tsv"
+    payload = json.dumps(
+        {"session_id": "cse_a", "tool_name": "Bash", "tool_input": {"command": command}}
+    )
+    result = subprocess.run(
+        ["bash", str(HOOK)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        env={**os.environ, "HOOK_BLOCK_LOG": str(log)},
+    )
+    assert json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+    (line,) = log.read_text(encoding="utf-8").splitlines()
+    assert line.split("\t")[3] == rule
+    assert "tests/x.py" not in line

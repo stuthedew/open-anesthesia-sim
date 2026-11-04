@@ -149,6 +149,7 @@ from docket.vcs import (  # noqa: E402
     answered,
     call_git,
     default_base,
+    default_branch,
     head_branch,
     in_queue,
     leading_ids,
@@ -437,8 +438,9 @@ def hint(paths: Sequence[str], now: datetime) -> int:
 
     Prints `CLAIMS_NOTHING` where one of PATHS is in this checkout and outside
     the queue and the branch claims nothing, from the same reader the refusal
-    uses. Exits `NOT_ASKED` where none of PATHS is work outside the queue, so
-    the hook asks again at the next edit or Bash call. Silent wherever the answer is not a
+    uses. Exits `NOT_ASKED` where none of PATHS is work outside the queue, or
+    where the checkout is on a detached HEAD or the default branch, so the
+    hook asks again at the next edit or Bash call. Silent wherever the answer is not a
     clear "nothing": a hint that is wrong trains a session to skip the one that
     is right.
     """
@@ -446,7 +448,12 @@ def hint(paths: Sequence[str], now: datetime) -> int:
     if not any(_is_work(path, config) for path in paths):
         return NOT_ASKED
     name = branch_name()
-    if not name or name == "HEAD" or not in_agent_namespace(name):
+    # A detached HEAD or the default branch is where a session stands before
+    # it creates its work branch, so nothing is asked and the question waits
+    # for that branch (`PL-SRQB`).
+    if not name or name == "HEAD" or name == default_branch(ROOT, runner=_runner):
+        return NOT_ASKED
+    if not in_agent_namespace(name):
         return 0
     report = holdings(ROOT, now=now, items_dir=config.items_dir)
     remotes = _remotes(ROOT, _runner)

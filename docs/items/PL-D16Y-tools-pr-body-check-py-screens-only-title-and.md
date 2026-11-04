@@ -3,14 +3,16 @@ id: PL-D16Y
 title: tools/pr_body_check.py screens only title and body, so an address in a merge's commit_message, which becomes the squash commit on main, or in push_files content passes; it also refuses git@github.com remotes and GitHub's own users.noreply.github.com addresses
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: guards-keyed-on-the-action
-touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
+touches: tools/pr_body_check.py, .claude/hooks/pr-body-email-guard.sh, tests/unit/test_pr_body_check.py, tests/unit/test_hook_blocks.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1991
 payoff: an email address cannot reach main through a squash commit message or pushed file content, and GitHub's own addresses stop being refused
-verify: grep -q 'def test_screen_reads_a_merge_commit_message' tests/unit/test_pr_body_check.py
+verify: grep -q 'def test_an_address_in_any_field_github_publishes_is_refused_and_its_field_named' tests/unit/test_pr_body_check.py
 ---
 
 **Problem.** tools/pr_body_check.py screens only title and body, so an address in a merge's commit_message, which becomes the squash commit on main, or in push_files content passes; it also refuses git@github.com remotes and GitHub's own users.noreply.github.com addresses

@@ -50,7 +50,9 @@ docket yield PL-K7QX         # end this branch's claim without closing the item
 docket arm                   # whether this branch's pull request may be armed: arm,
                              # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2,
                              # and 3 for a hold for the owner's read with no ask recorded
-docket arm --owner-ask       # only the line the owner may be sent: exit 0, or 3 for none
+docket arm --owner-ask       # only the line the owner may be sent, exiting 0; 3 for a hold
+                             # for the owner's read with no ask recorded, 2 where it
+                             # cannot answer, 1 otherwise
 docket ci-scope --base origin/main   # items, apparatus or full: whether this branch
                              # changed item files alone, or apparatus files alone, for CI
 docket branch                # where this branch stands against the default one
@@ -1751,7 +1753,12 @@ of that test for the reason churn leaves the store out - per period and per
 day, so a short final period compares with the full ones. Members a head's
 `root-cause-of:` names that were filed while that head was open get their own
 `+head` column: a deliberate sweep files dozens at once, and folded in it reads
-as the regression it was hunting. Beside them, the P0-P3 mix of the filings
+as the regression it was hunting. The `+sweep` column does the same for an item
+that carries `sweep:`. It counts the items whose filing commit leads with the
+sweep's id, filed while the sweep was open. The report asks git only where some
+item records a sweep, and where git cannot answer, as in a shallow clone, the
+column prints `?` and the report says why. Both kinds are left out of
+`re-entry` and of the list of closed items that three filings re-enter. Beside them, the P0-P3 mix of the filings
 rather than of the backlog, and how many apparatus paths no earlier filing
 named, which falls towards zero as the surface is covered. Path recurrence is
 not reported: nearly every filing names a path something closed within the
@@ -2926,6 +2933,21 @@ owed. It goes on the item that gives the answer, through `docket set
 is written in that item's brief. The record carries the answering item's own
 date, so the answer stops applying once three more filings re-enter the line
 after it (`PL-C4F0`).
+
+`sweep` records that an item's work is a deliberate search that files what it
+finds: an inventory, an audit, a survey. It goes on the sweep's own item,
+through `docket set --sweep`, and says in one line what the sweep looks for.
+Its presence is the claim. Which items the sweep filed is not written
+anywhere new: the commit that added each item's file leads with the id of the
+item being worked, so `docket inflow` reads the sweep's filings from git
+history, between the sweep's `added:` and its `closed:`, and counts them apart
+from ordinary inflow (`PL-CJGH`). A head's `root-cause-of:` already did this
+for its own members. A sweep recorded only by its `feature:` did not, and
+`PL-K88Z`'s inventory read as 9 ordinary filings and 5 failed fixes in the
+week of 2026-10-19. One limit follows from reading the squash commit: a pull
+request that closes the sweep beside other items leads with all their ids, so
+what those items' work filed in it counts as the sweep's too. A sweep keeps a
+pull request of its own where that would hide findings.
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

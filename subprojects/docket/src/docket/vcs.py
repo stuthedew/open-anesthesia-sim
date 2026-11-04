@@ -4979,6 +4979,56 @@ def item_additions(root: Path, ref: str, prefix: str, run: Runner) -> ItemAdditi
 
 
 @dataclass(frozen=True)
+class FilingParents:
+    """Which items' work filed each item, or why that is unknown.
+
+    `declined` for the reason `FilingReport` carries one: an empty mapping
+    cannot tell "no item filed these" from "this checkout could not look".
+    """
+
+    #: Each item id that a commit added, mapped to the ids that the commit's
+    #: subject leads with, the item's own ids left out. The set is empty for a
+    #: plain capture, whose subject leads with the ids it is creating.
+    parents: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    declined: str = ""
+
+
+def filing_parents(
+    root: Path, ref: str, prefix: str, runner: Runner | None = None
+) -> FilingParents:
+    """Map each item `ref` reaches to the items whose work filed it.
+
+    `CLAUDE.md` requires every commit subject to lead with the id of the item
+    being worked, and `bin/docket new` writes a capture into that same commit.
+    So the commit that added an item's file names, in its subject, the item
+    whose work produced it. The ids the commit itself adds are left out:
+    a plain capture leads with its own ids, and two items captured together
+    are not each other's parent.
+
+    **The oldest addition wins.** A file deleted and restored, or re-added by
+    a recovery, is added again by a commit that did not produce the item.
+    25 items were added twice on `main` by 2026-11-03, and for 13 of them the
+    two commits lead with different ids. `filed_with_work` keeps the newest
+    instead, because it asks which commit put the copy being read there.
+
+    `tools/generator_check.py` reads its spawn counts from this, and
+    `docket inflow` reads it to tell a sweep's filings apart (`PL-CJGH`).
+    """
+    run = _Silences(runner or _run_git)
+    additions = item_additions(root, ref, prefix, run)
+    if additions.declined or run.reason:
+        return FilingParents(declined=additions.declined or run.reason)
+    parents: dict[str, frozenset[str]] = {}
+    # `item_additions` lists the newest first, so the last assignment is the oldest.
+    for addition in additions.commits:
+        created = set(addition.item_ids)
+        leading = frozenset(leading_ids(addition.subject)) - created
+        for identifier in created:
+            parents[identifier] = leading
+    return FilingParents(parents=parents)
+
+
+@dataclass(frozen=True)
 class FilingCommit:
     """The commit that added an item's file, where that commit also changed code.
 

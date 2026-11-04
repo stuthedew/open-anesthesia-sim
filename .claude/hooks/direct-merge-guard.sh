@@ -75,9 +75,11 @@
 # contains it, so no merge gets through unjudged, and the other MCP calls, such
 # as a Projects thread's posts, are not blocked with it.
 #
-# **Known gap**: a merge made another way - `gh pr merge`, or a REST call from
-# Bash - meets no hook. While the base binds admins GitHub holds it to the same
-# checks, and `CLAUDE.md`'s merge bullet covers the rest.
+# **Known gap**: a merge sent from Bash meets this hook only through `gh`, whose
+# writes `gh_write_guard.py` refuses outright, so every `gh` merge is turned
+# back to the MCP call this hook reads (`PL-3986`). A REST call from another
+# client that carries the token, such as `curl` with `$GH_TOKEN`, meets no
+# hook. While the base binds admins GitHub holds it to the same checks.
 set -uo pipefail
 
 payload=$(cat)
@@ -113,7 +115,9 @@ def refuse(rule, why):
 def record(path):
     """One record from the GitHub API, read without a token."""
     request = urllib.request.Request(API + path, headers={"Accept": "application/vnd.github+json"})
-    # Two reads of 15 s each stay well inside the 60 s Claude Code allows a hook by default.
+    # Two reads of 15 s each stay well inside the 600 s Claude Code allows a
+    # command hook by default (https://code.claude.com/docs/en/hooks, read
+    # 2026-11-03, `PL-KJN6`).
     with urllib.request.urlopen(request, timeout=15) as response:
         return json.load(response)
 

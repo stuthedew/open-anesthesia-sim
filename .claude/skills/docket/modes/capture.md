@@ -138,15 +138,21 @@ took part of its work and left the rest - a commit pushed after the merge,
 which nothing merges and nothing else reports (`PL-3D2M`). Restart the branch
 on the merged `main` and carry the commit forward as a new pull request, never
 by pushing to the merged branch again, which is what lost it. `<branch>` is the
-branch `stranded` named, written out rather than held in a variable:
-`no-prune-guard.sh` refuses a `branch -dr` whose ref the shell builds, since a
-variable reads the same as a loop's (`PL-G8TR`).
+branch `stranded` named, and `<commit>` each commit it named:
 
 ```bash
-git branch -dr origin/<branch>      # this clone's remote-tracking ref
 git fetch origin main
 git checkout -B <branch> origin/main
+git cherry-pick <commit>
+git push --force-with-lease -u origin <branch>
 ```
+
+The remote still holds the old branch, because the commit pushed after the
+merge recreated it, so a plain push is rejected as behind it. The lease push
+replaces it, and moves this clone's stale `origin/<branch>` with it, so that
+ref needs no deleting (`PL-82J5`). Where the remote no longer holds the
+branch, the lease refuses the push, and a plain `git push -u origin <branch>`
+is the one to run.
 
 **`bin/docket branch` names this case while the commit is still
 recoverable**, which is the cheaper end of the same problem: it prints the
@@ -155,19 +161,14 @@ holds a whole commit of the branch (`PL-8M8H`). That is the session holding the
 commit being told, rather than the next session finding it stranded. Reaching
 `stranded` still means the push already happened.
 
-**None of the three deletes the branch on the remote; the branch sweep does.**
-`git branch -dr` clears this clone's remote-tracking ref and nothing else, so
-while the branch is still on the remote the next `git fetch origin` recreates
-the ref under the default refspec `+refs/heads/*:refs/remotes/origin/*` -
-measured 2026-09-05 on `origin/claude/next-item-75htc6`, where `git ls-remote
---heads origin` still returned the branch after the ref had been cleared
-(`PL-K2C8`). GitHub deletes a branch when its own pull request merges, and
+**None of these deletes a branch on the remote; the branch sweep does.**
+GitHub deletes a branch when its own pull request merges, and
 `.github/workflows/branch-sweep.yml` deletes a finished `claude/*` branch daily
 (`PL-X8SV`). This one is not finished while its commit reads as left behind,
 but a commit carried across stops reading that way once its change is on `main`
 (`vcs.change_landed`): from then on `stranded` stops naming the branch, and the
-sweep copies its tip to `refs/archive/<branch>/<tip>` and deletes it. So run the
-three and delete nothing on the remote. The reply names a branch to the project owner
+sweep copies its tip to `refs/archive/<branch>/<tip>` and deletes it. So restart
+the branch and delete nothing on the remote. The reply names a branch to the project owner
 only where `python3 tools/branch_sweep.py` keeps one that should go anyway,
 with the sweep's own push for them to run, since the same push from a session
 is refused (`docs/worker.md` § "Ref operations a session cannot perform"). Fill
@@ -184,10 +185,9 @@ branch deleted by hand restores as a swept one does (`docs/maintainer.md` §
 "Sweep branches now, or restore one the sweep deleted"). A bare
 `git push origin --delete` copies nothing, and a branch the sweep keeps is the
 one some reading still holds (`PL-Y3GK`). The fetch puts the tip in the owner's
-clone for the push to name. `.claude/hooks/no-prune-guard.sh` prints this rule
-when it refuses a prune; keep the two in step. None of it weakens the `--prune` prohibition
-below: prune and `branch -dr` clear local refs and nothing else, so neither one
-finishes the job.
+clone for the push to name. `.claude/hooks/git/pre-push` points here when it
+refuses a session's push that deletes a branch. None of it weakens the
+prohibition below on deleting a remote-tracking ref.
 
 **These commands destroy a branch, so confirm the merge before running
 them.** The check requires the base to have taken one of the branch's
@@ -213,13 +213,14 @@ git fetch --tags --force origin
 history, which is the moment it is wanted; this is for the pass that clears
 refs without being on a diverged branch.
 
-**Delete that one ref by name; never `git fetch --prune`.** A stale
+**Never delete a remote-tracking ref, by a prune or by name.** A stale
 `origin/<branch>` can be the only surviving copy of an item captured on a
 branch nobody merged, which is why `fetch_remote` does not prune and what
 `stranded` recovers - `PL-HKF4` came within one prune of exactly that.
-`.claude/hooks/no-prune-guard.sh` refuses the call and prints these three
-commands, which is why `CLAUDE.md` does not state the prohibition
-(`PL-JK0M`); `PL-1Q3S` and `PL-PF8H` are the two ways such a ref arises.
+`.claude/hooks/git/reference-transaction` refuses any git command a session
+runs that would delete one, whatever its spelling, and prints the restart
+above, which is why `CLAUDE.md` does not state the prohibition (`PL-JK0M`,
+`PL-82J5`). `PL-1Q3S` and `PL-PF8H` are the two ways such a ref arises.
 
 ## Mode: housekeeping nobody filed
 

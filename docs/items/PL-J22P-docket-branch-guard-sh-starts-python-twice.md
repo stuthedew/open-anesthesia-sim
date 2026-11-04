@@ -3,12 +3,14 @@ id: PL-J22P
 title: docket-branch-guard.sh starts Python twice before it checks its markers, about 95 ms on every Edit and Bash call after its questions are spent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: perf
 feature: guard-review-2026-11
 touches: .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_branch_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1989
 payoff: every Edit and Bash call after a session's first edit is about 50 ms cheaper
 verify: grep -q 'def test_spent_markers_start_python_once' tests/unit/test_docket_branch_guard.py
 ---

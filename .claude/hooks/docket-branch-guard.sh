@@ -65,18 +65,22 @@ set -uo pipefail
 payload=$(cat)
 
 command -v python3 >/dev/null 2>&1 || exit 0
-# The checkout, as every hook finds it (`hook_input.py`, `PL-FB77`).
-root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
-[ -x "$root/bin/docket" ] || exit 0
 
-# The id and the event, read as JSON as the rest of the payload is, so an id
-# laid out on the line after its key is still the id (`PL-CXK6`), and each
+# One Python start reads the checkout, as every hook finds it (`hook_input.py`,
+# `PL-FB77`), and the session id and the event from the payload, so a session
+# whose questions are both spent pays one start and no more (`PL-J22P`). The id
+# and the event are read as JSON as the rest of the payload is, so an id laid
+# out on the line after its key is still the id (`PL-CXK6`), and each is
 # reduced to what is safe in a filename. A payload that is not JSON or names no
 # id leaves it empty, and every such session shares the markers kept for
 # "unknown": the first is asked, and the rest are not. A payload naming no
 # event is read as an edit's.
-fields=$(printf '%s' "$payload" | python3 -c 'import json, re, sys
+fields=$(printf '%s' "$payload" | HOOKS="$(dirname "${BASH_SOURCE[0]}")" python3 -c 'import json, os, re, sys
 
+sys.path.insert(0, os.environ["HOOKS"])
+from hook_input import project_root
+
+print(project_root())
 try:
     data = json.load(sys.stdin)
     values = [data.get("session_id"), data.get("hook_event_name")]
@@ -84,9 +88,11 @@ except (AttributeError, ValueError):
     values = []
 for value in values:
     print(re.sub(r"[^A-Za-z0-9_-]", "", value) if isinstance(value, str) else "")
-' 2>/dev/null)
-session=$(printf '%s\n' "$fields" | sed -n 1p)
-event=$(printf '%s\n' "$fields" | sed -n 2p)
+' 2>/dev/null) || exit 0
+root=$(printf '%s\n' "$fields" | sed -n 1p)
+[ -n "$root" ] && [ -x "$root/bin/docket" ] || exit 0
+session=$(printf '%s\n' "$fields" | sed -n 2p)
+event=$(printf '%s\n' "$fields" | sed -n 3p)
 case "$event" in
   PostToolUse | PostToolUseFailure) ;;
   *) event=PreToolUse ;;

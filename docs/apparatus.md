@@ -48,7 +48,6 @@ tools/
 ├── headless_worker.py    # runs one `claude -p` worker per delegable item on the owner's machine, on the monthly API credit: a clone and a `claude/<id>-worker` branch per run, the clone removed once everything in it is pushed and kept with its log otherwise (`PL-TX7K`), a per-run dollar cap, a batch that starts from the Console's credit-left figure and stops before a run it cannot cover (`PL-NQ0M`) or after any failed run (`PL-44SP`), a `caffeinate` hold on the Mac's idle sleep (`PL-BT70`), a refusal before any spend when the bash or make on `PATH` is older than `make check` needs (`PL-44R1`), the model and effort `docket.toml`'s `[models]` table chooses for each item as the role `worker`, with `--model` as an override (`PL-0XDM`), `--no-push` for a trial whose work must stay local (`PL-80R5`), and a record of each pushed run committed to its branch for review (`PL-87BR`)
 ├── hook_blocks.py      # copies the guards' local refusal log into `docs/hook-blocks/`, one file per recording branch so two branches never write one file, when `bin/docket record` runs it as `record_command`; `count` prints each guard's refusals and sessions from those files (`PL-SG93`)
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere under `src/anesthesia_sim/`, the port being complete; `PySide6`, `pyqtgraph` or `numpy` in any module under `core/`; and `anesthesia_sim.app` in any module under `core/`, matched against every dotted name an import makes available with relative imports resolved - so the payload/dataclass boundary, the never-wall-clock rule, the toolkit-independence rule and the layering's one direction are measured rather than asserted
-├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
 ├── left_behind_check.py  # names the commits a branch carries past the head its newest merged pull request merged, because nothing merges a merged pull request a second time and a push made after the merge lands nowhere with no conflict, red check or advisory (`#284`); exact rather than a content comparison - the tip is compared by ancestry against the frozen `refs/pull/<n>/head`, read with one `ls-remote`, so a squash, a base that rewrote the file afterwards and identical lines from two sessions cannot confound it the way they have confounded `vcs.orphaned`, which stays beside it as the half that answers offline (`PL-VV4D`, `PL-BHVM`); the one case ancestry cannot see, a commit past the head whose change reached the base through another pull request, it puts to `vcs.change_landed`, the three-way replay `vcs.orphaned` reads too, and reports as landed there, naming the pull request (`PL-GHHW`, `PL-PXZ3`); git records no link from a branch to its pull request, so that mapping is GitHub's pull-request listing and needs a token; it declines, under its own prefix, on no network, no permission and a `refs/pull/<n>/head` GitHub has deleted (`PL-LF2C`), and never reads a missing answer as clear, because in the session-start digest that calls it silence is the all-clear; where it and `vcs.orphaned` disagree it prints the disagreement and wins
 ├── literal_home_check.py  # refuses a bare numeric literal anywhere under `src/anesthesia_sim/` outside the value of a module-level assignment - 0, 1 and 2 exempt, and never a `bool` - and a numeric constant defined in more than one module, so a number has one named home and a second copy cannot drift from the first; its `BASELINE` holds the literals the tree carried when it landed, keyed by file, scope and value rather than line, and may only shrink, and a finding names any constant of the same value without deciding that it is the same quantity (`PL-40SJ`)
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; a run newer than that verdict that was cancelled, or concluded `action_required`, gets a line of its own whatever the verdict, since its commit has no whole-store verdict and the one reported is an older commit's (`PL-JTHW`); its `FAILED` set is the one `update_armed.py` reads a check run's conclusion by (`PL-351H`); on a failure it makes a second request for the run's jobs and names the step that failed, because 93 of the 109 failures on record are the whole-store replay alone and a line naming no step cannot separate those from a broken tree (`PL-T83R`); it also prints a line when the median time of CI's pytest step over `main`'s five newest successful runs leaves the band of 0.5 to 1.3 times `PYTEST_BASELINE_S`, and says in that line when it could not read the time, so that its silence means the time was read and in the band (`PL-YY32`); it also prints a line naming each `drift.yml` job whose newest result on `main` is not a pass, judged by the job and not by its run, since that workflow reports and never gates and a red run nobody read went unmentioned for 17 days (`PL-JTWV`); the session-start hook calls it, it gates nothing, and it is not the only tool here that reads the network - `required_checks_check.py` does too and gates, and `pr_body_check.py` does in its `--record`, `--recover` and `--compare` modes
@@ -609,18 +608,18 @@ the interpreter that runs it could no longer parse it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard covers the next hook without being extended.
 
-Ten of them are nonetheless *invoked* only under `uv run python`, and three
-more are invoked both bare and under it (see below). The distinction is worth
+Some of them are nonetheless *invoked* only under `uv run python`, and a few
+are invoked both bare and under it (see below). The distinction is worth
 keeping straight, because it is about what a tool reads rather than what it
 needs. `type_ignore_check.py` and `duplicate_code_check.py` are the odd ones out,
 each for a reason of its own. The first shells out to mypy and the second runs
 pylint, so each needs the virtualenv that its tool runs in.
 
-The other nine share one reason. `import_boundary_check.py`,
+The rest share one reason. `import_boundary_check.py`,
 `contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
 `core_vocabulary_check.py`, `glyph_check.py`, `fixture_id_check.py`,
-`literal_home_check.py` and `regex_check.py` each parse repository source with `ast`, and that
-source targets 3.14. For example, `app_metadata.py` writes
+`literal_home_check.py` and `regex_check.py` each parse repository source with
+`ast`, and that source targets 3.14. For example, `app_metadata.py` writes
 `except OSError, subprocess.SubprocessError:` without parentheses. That form
 comes from PEP 758, added in 3.14, so it is a `SyntaxError` to the 3.11
 parser. The PEP 695 type parameters in `app/bookmarks.py` are a `SyntaxError`
@@ -636,8 +635,8 @@ leaving each tool's own docstring to explain it. It ran bare until `PL-L17Q`.
 It was green only because the two files it then read happened to carry no
 3.12+ syntax. One PEP 695 generic added to either file would have failed the
 floor section on a tool nobody had touched. The module docstring of
-`tests/unit/test_tools_portability.py` states the rule that the nine are an
-instance of. A tool that joins them belongs on the `uv run python` lines in
+`tests/unit/test_tools_portability.py` states the rule that this group is
+an instance of. A tool that joins them belongs on the `uv run python` lines in
 both `Makefile` and `.github/workflows/quality.yml`, never in that workflow's
 floor section.
 
@@ -704,7 +703,7 @@ before a push, and they cover what those commands never do.
 
 ## Wired hooks (`.claude/hooks/`)
 
-`.claude/settings.json` wires thirteen scripts as hooks. They live in
+`.claude/settings.json` wires twelve scripts as hooks. They live in
 `.claude/hooks/`, not in `tools/`, and the reason is a guard rather than
 tidiness. `.claude` is a *protected directory* in Claude Code's own list, so a
 write to anything under it is never approved automatically. The write prompts
@@ -715,17 +714,22 @@ the safety check runs before allow rules are evaluated. So the directory is the
 guard, and a hook put anywhere else is silently left outside it.
 `stop_hook_patch.py` sat in `tools/` until `PL-W4H9`. That is exactly the gap
 the item names: a script that rewrites another hook, editable without review.
-`docket-digest.sh`, `docket-branch-guard.sh`, `item_read_log.py`,
-`no-prune-guard.sh`, `floor-interpreter-guard.sh`, `gate-status-guard.sh`,
+`docket-digest.sh`, `docket-branch-guard.sh`,
+`gh_write_guard.py`, `floor-interpreter-guard.sh`, `gate-status-guard.sh`,
 `push-check-guard.sh`, `direct-merge-guard.sh`, `pr-body-email-guard.sh`,
 `owner_ask_guard.py`, `regex-guard.sh` and `webfetch-quote-note.sh` are documented where their
-behavior is, in their own headers. `shell_split.py` is the one file in the
-directory that nothing wires as a hook. The four Bash guards import it to find
+behavior is, in their own headers. So are the two git hooks in
+`.claude/hooks/git/`, which `stop_hook_patch.py` installs rather than
+`.claude/settings.json` wiring them. Three Python files in the directory are not
+wired in `.claude/settings.json`. `hook_input.py` reads the payload and builds
+every refusal, as the next paragraph says. `thread_hooks.py` copies the
+repository's hooks into a Projects thread, whose own settings it is wired in,
+and its header says how. `shell_split.py` is the third. The four Bash guards import it to find
 where one shell command ends (`PL-PVW2`). The parsing itself is done by
 docket's `subprojects/docket/src/docket/shell.py`, which `shell_split.py` finds
 from its own location. It is the one lexer that docket and the guards share
 (`PL-JNYL`). Docket also decides which word of a git call is its command.
-`no-prune-guard.sh` and `push-check-guard.sh` read
+`push-check-guard.sh` reads
 `subprojects/docket/src/docket/gitargv.py`, the same table that `docket.vcs`
 reads. Once the push guard has found a push, it reads the default base and
 git's results through `docket.vcs` (`PL-ZXCN`). So the code that decides what
@@ -741,7 +745,10 @@ machine: the time, the session id, the guard's name and the rule that refused,
 never the command (`PL-SG93`). `pr-body-email-guard.sh` refuses through
 `tools/pr_body_check.py --screen`, whose `screen` calls `deny` too, and
 `tests/unit/test_hook_blocks.py` fails any other Python file that builds a
-refusal of its own (`PL-HHKC`). `bin/docket record` runs `tools/hook_blocks.py copy` as
+refusal of its own (`PL-HHKC`). The two git hooks cannot answer Claude Code,
+so each refuses by its exit status and logs through
+`python3 .claude/hooks/hook_input.py --log`, and the screen of a push's
+commits logs through `log_refusal`, as `deny` does. `bin/docket record` runs `tools/hook_blocks.py copy` as
 `docket.toml`'s `record_command`, which copies the lines the repository lacks
 into `docs/hook-blocks/<branch>.tsv`. `python3 tools/hook_blocks.py count`
 prints each guard's refusals from those files, which is what a keep, simplify
@@ -777,6 +784,15 @@ offline, instead of trading it for a network call at every `Stop`. The hook
 only ever widens the refspec, and it neither fetches nor prunes. So it cannot
 destroy a ref that `bin/docket stranded` needs. `PL-3SGR` and `PL-483K` are
 the two reproductions.
+
+The third thing it does is install the git hooks in `.claude/hooks/git/` into
+the clone's hooks directory (`PL-1ZZ0`). `reference-transaction` refuses a
+session's command that would delete a remote-tracking ref, and `pre-push`
+refuses a session's push that deletes a branch on the remote or carries an
+email address in its new commits. Each checks what git is about to do, so the
+spelling of the command does not matter. A hook of the same name that this
+repository did not write is left in place, and the session is told it is
+unguarded.
 
 ## Third-party text (`tests/unit/markdown-specs/`)
 

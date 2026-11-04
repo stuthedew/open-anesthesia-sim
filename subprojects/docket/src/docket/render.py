@@ -4240,7 +4240,7 @@ def format_trend(report: Trend) -> str:
     return "\n".join(lines)
 
 
-_FILED, _PER_DAY, _REENTRY, _HEAD, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 5, 11, 7
+_FILED, _PER_DAY, _REENTRY, _HEAD, _SWEEP, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 8, 5, 11, 7
 
 
 def format_inflow(report: Inflow) -> str:
@@ -4261,15 +4261,19 @@ def format_inflow(report: Inflow) -> str:
     bands = (*PRIORITIES, UNBANDED)
     lines = [
         f"{'period':<{_LABEL}}{'filed':>{_FILED}}{'/day':>{_PER_DAY}}"
-        f"{'re-entry':>{_REENTRY}}{'+head':>{_HEAD}}"
+        f"{'re-entry':>{_REENTRY}}{'+head':>{_HEAD}}{'+sweep':>{_SWEEP}}"
         + "".join(f"{band:>{_BAND}}" for band in bands)
         + f"{'new paths':>{_NEW}}{'/item':>{_PER_ITEM}}"
     ]
+    # A sweep's filings that git could not attribute are counted in `filed`,
+    # so the column says it was not read rather than printing a zero.
+    unread = "?" if report.sweeps_unread else ""
     for period in report.periods:
         per_item = period.new_paths_per_item
+        swept = unread or str(period.by_sweep)
         lines.append(
             f"{period.label:<{_LABEL}}{period.filed:>{_FILED}}{period.per_day:>{_PER_DAY}.1f}"
-            f"{period.reentries:>{_REENTRY}}{period.by_head:>{_HEAD}}"
+            f"{period.reentries:>{_REENTRY}}{period.by_head:>{_HEAD}}{swept:>{_SWEEP}}"
             + "".join(f"{period.priorities.get(band, 0):>{_BAND}}" for band in bands)
             + f"{period.new_paths:>{_NEW}}"
             + f"{'-' if per_item is None else f'{per_item:.2f}':>{_PER_ITEM}}"
@@ -4291,20 +4295,30 @@ def format_inflow(report: Inflow) -> str:
         "",
         f"One row per {window}, anchored at {report.anchor.isoformat()}, the first {side}",
         *population,
-        "  filed      filings no head explained when they arrived. /day divides by the",
-        "             days the period has, so a short final period compares with the rest.",
+        "  filed      filings no head or sweep explained when they arrived. /day divides by",
+        "             the days the period has, so a short final period compares with the rest.",
         "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
         "             have covered them, as triage's generator check judged it.",
-        "  +head      filed while a head whose root-cause-of names them was open: a sweep's",
-        "             own filings, or new instances of a cause already found. Kept apart so",
+        "  +head      filed while a head whose root-cause-of names them was open: the head's",
+        "             own sweep, or new instances of a cause already found. Kept apart so",
         "             a deliberate sweep does not read as regression.",
+        "  +sweep     filed by the work of an item whose sweep: records a deliberate search,",
+        "             while that item was open, as the commit that added each file says.",
+        "             Kept apart for the reason +head is.",
         f"  {' '.join(PRIORITIES)} {UNBANDED}",
         f"             `filed` by priority; {UNBANDED} is not yet triaged.",
         f"  new paths  {side} paths no earlier filing named. /item divides by every",
-        f"             {side} filing in the period, +head included.",
+        f"             {side} filing in the period, +head and +sweep included.",
         "Each column counts one thing and none is a score: whether a row is the one",
         "expected is the reader's call.",
     ]
+    if report.sweeps_unread:
+        lines += [
+            "",
+            "+sweep is ? because git could not say which item's work filed each item, so a",
+            "sweep's filings are counted in filed. The reason:",
+            f"  {report.sweeps_unread}.",
+        ]
     # A line a successor head answers is listed apart, naming the head: under
     # the first heading it read as a question nobody had answered, and only a
     # reader who knew which filings were heads could tell (`PL-0WT0`).

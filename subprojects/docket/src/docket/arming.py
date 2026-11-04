@@ -72,133 +72,36 @@ said first under either, since everything else was read from HEAD (`PL-21KN`).
 moved or a remote copy HEAD lacks changes nothing about a pull request that
 has already merged; what went unread is said beside it.
 
-**The decisions the rule rests on**, moved here from `CLAUDE.md` with it:
+**The decisions behind these rules** are each recorded in their items:
 
-- a claim holds whichever push carried it (project owner, 2026-09-23,
-  ratified, over arming whatever rode the push, `PL-QP9Z`, and over reading
-  only a start claim on that push, `PL-1MCK`);
-- it holds until the item closes in the branch's own copy and not past it
-  (same date, ratified, over holding it past the item's closing, `PL-KWCY`),
-  and a block releases it too (2026-09-24, ratified, over holding it until
-  closed, `PL-3FYK`) - `claims.RELEASING_STATUSES`;
-- a pull request a claim rides is a draft (2026-09-24, ratified, over opening
-  none while a claim rides or titling it as the capture, because `#978` was
-  merged by hand while its claim was open, `PL-H14W`);
-- the tooling arms on green beside the store, and everything else waits on a
-  read, this module included (2026-09-25, ratified, over holding every path
-  outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
-  docket change and was clicked through, so it guarded nothing, the simulator
-  included. This module stays held so that the gate cannot loosen itself
-  (until 2026-10-19, below);
-- a body record arms on green beside them (2026-09-25, ratified with the
-  record's form, over every pull request holding on the record it writes
-  before its merge, `PL-979D`): the record is a copy of the body, never a
-  change to read;
-- only the owner's read list waits on a read - `src/`, `tests/` outside
-  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md` and
-  this module, until 2026-10-19 - and every other path arms on green, named
-  beside the answer, unless the change raises a question for the owner (the
-  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
-  every path outside the store, the tooling and the records; built by
-  `PL-KKHD`). The rule was written there alone, so on one day `#1298` armed
-  under it while `#1308` held under the old one. It reopened `PL-0JGZ`
-  (project owner, 2026-09-26, ratified), which kept `ROADMAP.md` and
-  `docs/WORKING_NOTES.md` off what arms because the roadmap is where the owner
-  sets direction: neither is on the list, so both arm, and the owner settled
-  it so (project owner, 2026-10-03, ratified, over holding them as before).
-  `.github/workflows/` and `.claude/hooks/` joined the list the same day,
-  since they decide merges and tags as this module does (project owner,
-  2026-10-03, ratified, over leaving them armed on green; `PL-KKHD` records
-  both answers), until the owner's rule of 2026-10-12 below;
-- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it
-  the reader every guard hook reads a Bash call through, so that a change to
-  what the guards refuse still waited on a read outside `.claude/hooks/`
-  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
-  `PL-JNYL` records the answer), until the same rule;
-- workflow items need no merge confirmation (project owner, 2026-10-12: "don't
-  need to ask me for merge confirmation for workflow items"), so
-  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm
-  on green with the rest of the workflow lane, while a product path waits as
-  before, in a change crossing both lanes too (`PL-KPM2`). This module stays
-  on the list so that the gate still cannot loosen itself: a change to it
-  could drop `src/` from the list and merge unread (project owner, 2026-10-12,
-  ratified, over arming a change to it on green with the rest of the workflow
-  lane; `PL-VKHD` records the answer), until the owner's answer of 2026-10-19
-  below;
-- a test of the tooling under `tests/` - a file pytest collects that imports
-  no `anesthesia_sim` on either side of the change - arms on green, as
-  `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
-  (project owner, 2026-10-05, ratified, over keeping every change under
-  `tests/` on the read list; built by `PL-552M`). Since 2026-10-03, 16 of the
-  51 merges held for a read had been held by such tests alone, every
-  `PL-R417` slice among them, so the hold asked for reads with nothing to
-  judge, the click-through that retired the hold on the tooling (`PL-SQTR`).
-  The import rule is the one `tools/workflow_paths_check.py` holds
-  `docket.toml`'s `workflow_paths` to, spelt here and imported there, and it
-  is read from the tree rather than from `workflow_paths`, which arms on
-  green: widening what arms still takes an edit the gate holds (`PL-0JGZ`);
-- a pull request reaches the owner only for a real decision or a high-risk
-  change, and housekeeping merges on green (project owner, 2026-10-17: "Model
-  comes to me only when there is a real decision as discussed or making a high
-  risk change you want a second set of eyes on then you should present the
-  case for the change, the risks etc. but house keeping stuff I don't need to
-  sign off everything"; built by `PL-DKBG`). The read list had held `#1516`'s
-  measured figures and tightened tests exactly as it would a changed equation,
-  and its ask invented two points to judge. So the list no longer holds by
-  itself: a change to it waits for the session's recorded judgment,
-  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads from
-  the branch's commits, and only `needed` and this module wait on the owner
-  (this module until 2026-10-19, below). Chosen over dropping the list and
-  leaving the judgment to prose, which fails open on a session that never
-  makes it, and over keeping the list and rewording the ask, which leaves
-  housekeeping waiting on the owner.
-- a hold for the owner's read carries its ask as an `Owner-ask` record, a
-  decision with at least two options and a recommendation or a review,
-  and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
-  "View chooser thread just told me a generic read pull request without a
-  question again" and "it's not supposed to ask for a merge if nothing to
-  review"; built by `PL-9JHM`). The ask's shape was prose twice before
-  (`PL-9KHK`, `PL-DKBG`), and sessions still sent a bare read. A form for
-  "nothing to decide" was weighed and refused, because a pull request with
-  nothing to review should not reach the owner at all: the way out of such a
-  hold is `Owner-read: not needed`;
-- a change to this module holds only when it changes or deletes an existing
-  test pinning its answers, and otherwise arms on green with the rest of the
-  tooling (project owner, 2026-10-19, ratified, over holding every change to
-  it with a review ask and over arming it on green with no such test;
-  `PL-9JHM` records the owner's answer). It reopens `PL-VKHD`'s answer of
-  2026-10-12, which held every change here so that the gate could not loosen
-  itself, because nine of those holds in two weeks were mostly refactors
-  with nothing to review. To loosen an existing answer, a change has to edit
-  the test that pins it, so that kind of loosening still waits. A loosening
-  that no test pins merges unread, and so would one that also rewrote the
-  check reading the pins, since this module judges its own change;
-- the gate's read covers the existing tests that pin its answers as well as
-  this module, and since 2026-10-19 those tests alone (`PL-9JHM`), so a
-  loosening through what the answer is read through has to edit one (project
-  owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
-  and `test_cli.py` whole, and over leaving it; `PL-WW0Q`). It reopens, for
-  that one route, `PL-SQTR`'s line at this module alone;
-- a simulator change's new long prose waits for a recorded review: `arm`
-  holds while the count that `prose_count_command` gives is above zero, or
-  could not be read, and only the prose added since the newest
-  `Prose-review` record is counted (2026-10-19, decided in the workflow
-  decision round without the owner as the one clearly correct option, over
-  relying on a pointer in close-out step 5 and measuring five more branches,
-  `PL-W04Z`). Five of six simulator branches had skipped step 8's review, and
-  their prose was rated awkward in 58% of verdicts against 22% for the one
-  that ran it (`PL-J6CK`). Docket names no repository tool, so the count is a
-  configured command, as the forge's are;
-- a simulator change waits for its blind generalist review passes: `arm`
-  holds while the number `blind_count_command` gives is more than the newest
-  `Blind-review` record says ran, or could not be read (2026-10-25, a
-  session's call under `PL-HDRN`, over leaving close-out step 9 as prose
-  alone). No simulator branch had merged under step 9 yet, so its skip rate
-  was not measured. Step 8 was skipped by five branches in six while it was
-  prose alone (`PL-W04Z`), and a branch that ran the passes pays one trailer
-  line.
-  A record is not undone by a later change, because close-out step 9 says a
-  fix made for a finding needs no further pass.
+- A claim holds whichever push carried it, until the branch's own copy closes
+  or blocks the item, and a pull request that a claim rides is a draft
+  (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`, `PL-H14W`).
+- The queue's tooling and the pull request body records arm on green beside
+  the store (`PL-SQTR`, `PL-K6B2`, `PL-979D`).
+- Every other path arms on green unless the change raises a question for the
+  owner, and a workflow change needs no merge confirmation (`PL-KKHD`,
+  `PL-0JGZ`, `PL-JNYL`, `PL-KPM2`).
+- A test of the tooling under `tests/`, one that imports no `anesthesia_sim`
+  on either side of the change, arms on green (`PL-552M`). The import rule is
+  spelt here and imported by `tools/workflow_paths_check.py`. It is read from
+  the tree, not from `docket.toml`'s `workflow_paths`, so widening what arms
+  still takes an edit that this gate holds.
+- A simulator change waits for the session's `Owner-read:` judgment, and only
+  `needed` waits on the owner (`PL-DKBG`). A hold for the owner's read carries
+  its question as an `Owner-ask` record (`PL-9JHM`).
+- A change to this module waits on the owner only when it changes or deletes
+  an existing test that pins its answers (`PL-9JHM`, `PL-VKHD`, `PL-WW0Q`). A
+  loosening that no test pins merges unread, and so would one that also
+  rewrote the check that reads the pins, since this module judges its own
+  change.
+- A simulator change's new long prose waits for a recorded review
+  (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
+  A blind review record is not undone by a later change, because close-out
+  step 9 says a fix made for a finding needs no further pass.
+
+The dated reasoning for each rule, as this header held it until 2026-11-03,
+is in `PL-Q28F`.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -214,7 +117,7 @@ import re
 import string
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
@@ -230,6 +133,7 @@ from .vcs import (
     RECORDS,
     REMOTE,
     MergedPullRequest,
+    NewestPullRequest,
     PullRequestLookup,
     RemoteHeads,
     Runner,
@@ -258,16 +162,26 @@ BEHIND = "behind"
 ALREADY_MERGED = "landed"
 UNKNOWN = "unknown"
 
+#: The answer `arm(owner_ask=True)` gives where the pull request does not wait
+#: on the owner's read. That reading stops before the checks that decide
+#: between `arm`, `behind` and the other holds, so it names none of them
+#: (`PL-3D2F`).
+NOT_HELD = "not held"
+
 #: The exit status of each answer. `behind` and `landed` share `hold`'s: all
-#: three say "not now", and the line printed says which.
-EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, UNKNOWN: 2}
+#: three say "not now", and the line printed says which. `not held` shares it
+#: too, since that reading cannot say whether the pull request may be armed.
+EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, NOT_HELD: 1, UNKNOWN: 2}
 
 #: The exit status of a `hold` that waits on the owner's read while no
 #: `OWNER_ASK` record says what to ask, so that nothing may be sent to the
 #: owner yet. It differs from `hold`'s 1 so that the status alone says so: on
 #: `#1612` and `#1676` a session read `arm` through `head`, missed the line
 #: saying to send nothing, and sent the owner a bare read ask (`PL-TLPH`).
-#: `--owner-ask` exits with it too, whenever nothing may be sent.
+#: `--owner-ask` exits with it in exactly that state, and with 1 or 2 in every
+#: other state that has nothing to send, so `.claude/hooks/owner_ask_guard.py`
+#: can tell a thread held for the owner's read from a checkout `arm` cannot
+#: answer for (`PL-R1HT`).
 NO_ASK = 3
 
 #: How many paths outside the store, the tooling and the records a `hold`
@@ -1362,6 +1276,12 @@ class Verdict:
                 )
                 said.append(f"  {self._shown(self.outside)}")
             return tuple(said)
+        if self.answer == NOT_HELD:
+            return (
+                f"not held - {self.branch} does not wait on the owner's read, so there is no "
+                "ask to send them; `bin/docket arm` says whether it may be armed",
+                *notes,
+            )
         if self.answer == ALREADY_MERGED and (merged := self.merged) is not None:
             said = [
                 f"landed - #{merged.number} merged {self.branch} at {merged.head[:12]}, and "
@@ -1539,6 +1459,7 @@ def arm(
     auto_merge: Callable[[int], AutoMerge] | None = None,
     prose_count: Callable[[str], CommandCount] | None = None,
     blind_count: Callable[[], CommandCount] | None = None,
+    owner_ask: bool = False,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -1583,6 +1504,93 @@ def arm(
     the change reaches a simulator path. The newest `BLIND_REVIEW` record
     must record at least that many, and a count that could not be read holds
     the pull request too.
+
+    **With `owner_ask`, it answers only what may be sent to the owner**
+    (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
+    ask a Projects message carries, and the full answer took 2.2 s on a
+    one-file branch and 28.4 s on one changing 62 simulator paths. Only
+    `sendable`, `unasked` and an `unknown` answer are read from the verdict,
+    so `_owner_ask_answer` runs only the stages those rest on.
+
+    **Each step is a stage** (`PL-R4M6`): `_read_branch`, `_read_forge`,
+    `_read_change`, `_read_reviews`, `_read_claims` and `_read_behind` each
+    return what they read and what went unread, `_held` gathers them into one
+    `hold` verdict, and `_settle` turns that into the answer. The full answer
+    and the owner-ask answer compose the same stages, so a change to a step
+    reaches both.
+    """
+    where = _read_branch(root, fetch=fetch, runner=runner)
+    if isinstance(where, Verdict):
+        return where
+    if owner_ask:
+        return _owner_ask_answer(root, where, items_dir=items_dir, now=now, newest=newest)
+    forge = _Forge() if newest is None else _read_forge(root, where, newest, auto_merge)
+    if forge.merged is not None:
+        return Verdict(
+            ALREADY_MERGED,
+            branch=where.name,
+            base=where.base,
+            unpulled=where.unpulled,
+            unread=(*where.unread, *forge.unread),
+            merged=forge.merged,
+        )
+    change = _read_change(root, where, items_dir)
+    reviews = _read_reviews(root, where, change, prose_count, blind_count)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
+    behind, uncounted = _read_behind(root, where)
+    unread = (
+        *where.unread,
+        *forge.unread,
+        *change.unread,
+        *reviews.unread,
+        *misread,
+        *unclaimed,
+        *uncounted,
+        *_silenced(where),
+    )
+    return _settle(
+        _held(
+            where,
+            change,
+            record=record,
+            ask=ask,
+            misasked=misasked,
+            claims=claims,
+            switched_off=forge.switched_off,
+            reviews=reviews,
+            behind=behind,
+            unread=unread,
+        )
+    )
+
+
+@dataclass(frozen=True)
+class _Branch:
+    """Where `HEAD`'s branch stands, which every later stage of `arm` reads from.
+
+    `ran` is the caller's runner, or plain git once a fetch has moved the refs.
+    `run` wraps it and remembers every call git did not answer, so the stages
+    that share it report one partial read. `unread` holds the fetch's failure.
+    """
+
+    name: str
+    base: str
+    remotes: frozenset[str]
+    heads: RemoteHeads | None
+    ran: Runner
+    run: _Silences
+    unpulled: str
+    unread: tuple[str, ...]
+
+
+def _read_branch(root: Path, *, fetch: bool, runner: Runner | None) -> _Branch | Verdict:
+    """Fetch, then find the branch, its base and its copy on the remote.
+
+    Returns an `unknown` verdict where there is no branch to answer for: git
+    did not answer, `HEAD` is detached, no base resolved, or `HEAD` is on the
+    default branch.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -1612,91 +1620,142 @@ def arm(
     if not resolved(base):
         reason = run.reason or f"no default branch could be established to compare {name} with"
         return Verdict(UNKNOWN, branch=name, unread=(reason, *unread))
-    branch = name
-    if branch == _head_name(base, remotes):
+    if name == _head_name(base, remotes):
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
-    unpulled = _unpulled(root, run, heads, name, branch)
-    switched_off = ""
-    if newest is not None:
-        asked = newest(branch, _head_name(base, remotes))
-        pull = asked.newest
-        if asked.declined:
-            unread.append(
-                f"whether {name}'s pull request has already merged could not be asked - "
-                f"{asked.declined}"
-            )
-        elif pull is not None:
-            probe = _Silences(ran)
-            merged = carried_merge(pull, base, root, runner=probe)
-            if probe.reason:
-                unread.append(
-                    f"git could not compare {name} with {pull.head[:12]}, the head "
-                    f"#{pull.number} merged at - {probe.reason}"
-                )
-            elif merged is not None:
-                return Verdict(
-                    ALREADY_MERGED,
-                    branch=name,
-                    base=base,
-                    unpulled=unpulled,
-                    unread=tuple(unread),
-                    merged=merged,
-                )
-            if pull.state == PULL_OPEN and auto_merge is not None:
-                switch = auto_merge(pull.number)
-                if switch.declined:
-                    unread.append(
-                        f"whether auto-merge on #{pull.number} was switched off could not be "
-                        f"asked - {switch.declined}"
-                    )
-                elif switch.state == AUTO_MERGE_OFF:
-                    owned, misread = _switched_off_here(root, run, base, switch.at)
-                    unread.extend(misread)
-                    if not owned:
-                        switched_off = switch.at
+    unpulled = _unpulled(root, run, heads, name, name)
+    return _Branch(name, base, remotes, heads, ran, run, unpulled, tuple(unread))
 
+
+@dataclass(frozen=True)
+class _Forge:
+    """What the forge said: the merge `HEAD` still stands on, and an owner's switch-off."""
+
+    merged: MergedPullRequest | None = None
+    switched_off: str = ""
+    unread: tuple[str, ...] = ()
+
+
+def _read_forge(
+    root: Path,
+    where: _Branch,
+    newest: Callable[[str, str], PullRequestLookup],
+    auto_merge: Callable[[int], AutoMerge] | None,
+) -> _Forge:
+    """Ask the forge whether the pull request merged, and whether its auto-merge was switched off.
+
+    A merge returns at once, since nothing else changes the answer then. A
+    switch off counts only where no commit since records it as the session's
+    own (`AUTO_MERGE`).
+    """
+    pull, merged, unread = _newest_merge(
+        root, where.ran, newest, where.name, where.base, where.remotes
+    )
+    if merged is not None:
+        return _Forge(merged=merged, unread=unread)
+    if pull is None or pull.state != PULL_OPEN or auto_merge is None:
+        return _Forge(unread=unread)
+    switch = auto_merge(pull.number)
+    if switch.declined:
+        said = (
+            f"whether auto-merge on #{pull.number} was switched off could not be "
+            f"asked - {switch.declined}"
+        )
+        return _Forge(unread=(*unread, said))
+    if switch.state != AUTO_MERGE_OFF:
+        return _Forge(unread=unread)
+    owned, misread = _switched_off_here(root, where.run, where.base, switch.at)
+    return _Forge(switched_off="" if owned else switch.at, unread=(*unread, *misread))
+
+
+@dataclass(frozen=True)
+class _Change:
+    """The paths a squash of the branch would land, sorted by what each waits on.
+
+    `on_list` waits on a read, `outside` arms on green beside the store, and
+    `worked` is every path outside the store and the body records. `gate` says
+    whether this module changed, `moved` whether it moved, and `pinned` names
+    the existing tests of its answers that changed.
+    """
+
+    prefix: str
+    on_list: tuple[str, ...] = ()
+    outside: tuple[str, ...] = ()
+    worked: tuple[str, ...] = ()
+    gate: bool = False
+    moved: bool = False
+    pinned: tuple[str, ...] = ()
+    unread: tuple[str, ...] = ()
+
+
+def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
+    """Read the net change `base...HEAD` and sort its paths."""
+    run, base = where.run, where.base
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
     # it made outside it, which a rename would print as one path under the store.
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
-    on_list: tuple[str, ...] = ()
-    outside: tuple[str, ...] = ()
-    worked: tuple[str, ...] = ()
-    gate = False
+    if not answered(changed):
+        said = f"git would not diff {where.name} against {base}, so what a merge lands is unknown"
+        return _Change(prefix, unread=(said,))
+    paths = set(listed_paths(changed))
+    worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
+    # The gate is reported apart, and asked for directly rather than read
+    # back out of what `arms_on_green` holds.
+    gate = GATE in paths
+    rest = paths - {GATE}
     moved = False
+    if gate:
+        fork = run(["merge-base", base, "HEAD"], root).strip()
+        held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
+        moved = held.rstrip("\0") != GATE
+    tooling, unread = _tests_of_the_tooling(sorted(rest), base, root, run)
     pinned: tuple[str, ...] = ()
-    if answered(changed):
-        paths = set(listed_paths(changed))
-        worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
-        # The gate is reported apart, and asked for directly rather than read
-        # back out of what `arms_on_green` holds.
-        gate = GATE in paths
-        rest = paths - {GATE}
-        if gate:
-            fork = run(["merge-base", base, "HEAD"], root).strip()
-            held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
-            moved = held.rstrip("\0") != GATE
-        tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
-        unread.extend(unreadable)
-        if PINS is not None and PINS in paths:
-            pinned, unpinned = _pins_changed(base, root, run)
-            unread.extend(unpinned)
-        on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
-        outside = tuple(
-            sorted(
-                path
-                for path in rest
-                if arms_on_green(path, tooling) and outside_the_store(path, prefix)
-            )
+    if PINS is not None and PINS in paths:
+        pinned, unpinned = _pins_changed(base, root, run)
+        unread = (*unread, *unpinned)
+    on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
+    outside = tuple(
+        sorted(
+            path
+            for path in rest
+            if arms_on_green(path, tooling) and outside_the_store(path, prefix)
         )
-    else:
-        unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
+    )
+    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, tuple(unread))
+
+
+@dataclass(frozen=True)
+class _Reviews:
+    """The prose and blind reviews a simulator change owes, and what the records say ran."""
+
+    unreviewed: int = 0
+    prose_since: str = ""
+    prose_declined: str = ""
+    blind_owed: int = 0
+    blind_recorded: int = 0
+    blind_since: str = ""
+    blind_declined: str = ""
+    unread: tuple[str, ...] = ()
+
+
+def _read_reviews(
+    root: Path,
+    where: _Branch,
+    change: _Change,
+    prose_count: Callable[[str], CommandCount] | None,
+    blind_count: Callable[[], CommandCount] | None,
+) -> _Reviews:
+    """Count the reviews owed, where the change reaches a path that waits on a read."""
+    if not change.on_list:
+        return _Reviews()
+    run, span = where.run, ["HEAD", f"^{where.base}"]
+    unread: list[str] = []
     unreviewed = 0
     prose_since = ""
     prose_declined = ""
-    if on_list and prose_count is not None:
-        prose_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], PROSE_REVIEW)
+    if prose_count is not None:
+        prose_since, value = _newest_trailer(root, run, span, PROSE_REVIEW)
         if prose_since and not PROSE_FORM.fullmatch(value):
             unread.append(
                 f"the {PROSE_REVIEW} record on {prose_since[:12]} is not 'read N, rewrote M, "
@@ -1710,8 +1769,8 @@ def arm(
     blind_recorded = 0
     blind_since = ""
     blind_declined = ""
-    if on_list and blind_count is not None:
-        blind = newest_blind_record(root, ["HEAD", f"^{base}"], runner=run)
+    if blind_count is not None:
+        blind = newest_blind_record(root, span, runner=run)
         if blind.record is None and blind.commit:
             unread.append(
                 f"the {BLIND_REVIEW} record on {blind.commit[:12]} could not be read "
@@ -1724,85 +1783,237 @@ def arm(
         passes = blind_count()
         blind_declined = passes.declined
         blind_owed = 0 if blind_declined else passes.count
-    record, misread = _owner_read(root, run, base, on_list)
-    unread.extend(misread)
-    ask, misasked = _owner_ask(root, run, base, worked)
+    return _Reviews(
+        unreviewed,
+        prose_since,
+        prose_declined,
+        blind_owed,
+        blind_recorded,
+        blind_since,
+        blind_declined,
+        tuple(unread),
+    )
 
-    read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
+
+def _read_claims(
+    root: Path, where: _Branch, *, now: datetime, items_dir: str
+) -> tuple[tuple[Hold, ...], tuple[str, ...]]:
+    """The unreleased claims bound to this branch, and the claim records that could not be read."""
+    unread: list[str] = []
+    read = holdings(root, now=now, items_dir=items_dir, remote=where.heads, runner=where.ran)
     if not read.known:
         unread.append(f"who holds what could not be read - {read.declined}")
+    mine = where.name
     claims = tuple(
         hold
         for hold in read.holds
-        if hold.state != RELEASED and _head_name(hold.ref, remotes) == branch
+        if hold.state != RELEASED and _head_name(hold.ref, where.remotes) == mine
     )
     for ref in read.unreadable:
-        if _head_name(ref, remotes) == branch:
-            unread.append(f"{ref} could not be compared with {base}, so a claim on it was not read")
+        if _head_name(ref, where.remotes) == mine:
+            unread.append(
+                f"{ref} could not be compared with {where.base}, so a claim on it was not read"
+            )
     for line in read.malformed:
         # `<hash> on <ref>: Claim: <text>`, as `claims` writes it; a ref name
         # can hold neither a space nor a colon.
-        where, _, _ = line.partition(": ")
-        if _head_name(where.partition(" on ")[2], remotes) == branch:
-            unread.append(f"a trailer on {name} is not a claim record, so it was not read: {line}")
+        at, _, _ = line.partition(": ")
+        if _head_name(at.partition(" on ")[2], where.remotes) == mine:
+            unread.append(f"a trailer on {mine} is not a claim record, so it was not read: {line}")
+    return claims, tuple(unread)
 
-    counted = run(["rev-list", "--count", f"HEAD..{base}"], root).strip()
-    behind = whole_number(counted)
-    if behind is None:
-        unread.append(f"git would not count {base}'s commits that {name} lacks")
-        behind = 0
-    if run.reason:
-        unread.append(run.reason)
 
-    found = Verdict(
+def _read_behind(root: Path, where: _Branch) -> tuple[int, tuple[str, ...]]:
+    """How many of the base's commits the branch lacks."""
+    counted = whole_number(where.run(["rev-list", "--count", f"HEAD..{where.base}"], root).strip())
+    if counted is None:
+        return 0, (f"git would not count {where.base}'s commits that {where.name} lacks",)
+    return counted, ()
+
+
+def _silenced(where: _Branch) -> tuple[str, ...]:
+    """The calls git did not answer during the read, as one line, or nothing."""
+    return (where.run.reason,) if where.run.reason else ()
+
+
+def _held(
+    where: _Branch,
+    change: _Change,
+    *,
+    record: OwnerRead | None,
+    ask: OwnerAsk | None,
+    misasked: str,
+    claims: tuple[Hold, ...],
+    switched_off: str,
+    reviews: _Reviews,
+    behind: int,
+    unread: tuple[str, ...],
+) -> Verdict:
+    """The `hold` verdict carrying everything read, which `_settle` turns into the answer."""
+    return Verdict(
         HOLD,
-        branch=name,
-        base=base,
-        items_dir=prefix.rstrip("/"),
+        branch=where.name,
+        base=where.base,
+        items_dir=change.prefix.rstrip("/"),
         claims=claims,
-        read=on_list,
+        read=change.on_list,
         record=record,
         ask=ask,
         misasked=misasked,
-        outside=outside,
-        gate=gate,
-        moved=moved,
-        pinned=pinned,
+        outside=change.outside,
+        gate=change.gate,
+        moved=change.moved,
+        pinned=change.pinned,
         switched_off=switched_off,
-        unreviewed=unreviewed,
-        prose_since=prose_since,
-        prose_declined=prose_declined,
-        blind_owed=blind_owed,
-        blind_recorded=blind_recorded,
-        blind_since=blind_since,
-        blind_declined=blind_declined,
+        unreviewed=reviews.unreviewed,
+        prose_since=reviews.prose_since,
+        prose_declined=reviews.prose_declined,
+        blind_owed=reviews.blind_owed,
+        blind_recorded=reviews.blind_recorded,
+        blind_since=reviews.blind_since,
+        blind_declined=reviews.blind_declined,
         behind=behind,
-        unpulled=unpulled,
-        unread=tuple(unread),
+        unpulled=where.unpulled,
+        unread=unread,
     )
+
+
+def _settle(found: Verdict) -> Verdict:
+    """The answer from everything read: `hold`, then `unknown`, then `behind`, then `arm`."""
     if (
-        claims
+        found.claims
         or found.unjudged
         or found.needs_owner
-        or switched_off
+        or found.switched_off
         or found.prose_held
         or found.blind_held
     ):
         return found
-    if unpulled or unread:
-        return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
-    if behind:
-        return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
+    if found.unpulled or found.unread:
+        return Verdict(
+            UNKNOWN,
+            branch=found.branch,
+            base=found.base,
+            unpulled=found.unpulled,
+            unread=found.unread,
+        )
+    if found.behind:
+        return Verdict(
+            BEHIND,
+            branch=found.branch,
+            base=found.base,
+            items_dir=found.items_dir,
+            behind=found.behind,
+        )
     return Verdict(
         ARM,
-        branch=name,
-        base=base,
+        branch=found.branch,
+        base=found.base,
         items_dir=found.items_dir,
-        read=on_list,
-        record=record,
-        outside=outside,
-        gate=gate,
+        read=found.read,
+        record=found.record,
+        outside=found.outside,
+        gate=found.gate,
     )
+
+
+def _owner_ask_answer(
+    root: Path,
+    where: _Branch,
+    *,
+    items_dir: str,
+    now: datetime,
+    newest: Callable[[str, str], PullRequestLookup] | None,
+) -> Verdict:
+    """`arm --owner-ask`: only what may be sent to the owner (`PL-3D2F`).
+
+    It reads the change and the `OWNER_READ` record first. Where nothing holds
+    the pull request for the owner's read, it answers `not held` and reads no
+    claim and no ask. Otherwise it reads the ask and the claims, and asks the
+    forge only where the answer would go to the owner, because only a merge
+    already made changes that answer. It never counts reviews, reads the
+    auto-merge switch or counts commits behind, since those can only add a
+    hold.
+    """
+    change = _read_change(root, where, items_dir)
+    record, misread = _owner_read(root, where.run, where.base, change.on_list)
+    if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
+        unread = (*where.unread, *change.unread, *misread, *_silenced(where))
+        if where.unpulled or unread:
+            return Verdict(
+                UNKNOWN, branch=where.name, base=where.base, unpulled=where.unpulled, unread=unread
+            )
+        return Verdict(NOT_HELD, branch=where.name, base=where.base)
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked)
+    claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
+    found = _held(
+        where,
+        change,
+        record=record,
+        ask=ask,
+        misasked=misasked,
+        claims=claims,
+        switched_off="",
+        reviews=_Reviews(),
+        behind=0,
+        unread=(*where.unread, *change.unread, *misread, *unclaimed, *_silenced(where)),
+    )
+    if found.asks_owner and newest is not None:
+        _, merged, unasked = _newest_merge(
+            root, where.ran, newest, where.name, where.base, where.remotes
+        )
+        if merged is not None:
+            return Verdict(
+                ALREADY_MERGED,
+                branch=where.name,
+                base=where.base,
+                unpulled=where.unpulled,
+                unread=(*found.unread, *unasked),
+                merged=merged,
+            )
+        if unasked:
+            found = replace(found, unread=(*found.unread, *unasked))
+    return _settle(found)
+
+
+def _newest_merge(
+    root: Path,
+    ran: Runner,
+    newest: Callable[[str, str], PullRequestLookup],
+    name: str,
+    base: str,
+    remotes: frozenset[str],
+) -> tuple[NewestPullRequest | None, MergedPullRequest | None, tuple[str, ...]]:
+    """The branch's newest pull request, the merge of it HEAD still stands on, and what went unread.
+
+    The merge is `vcs.carried_merge`'s, and None where the pull request has
+    not merged or HEAD has moved past the head it merged at.
+    """
+    asked = newest(name, _head_name(base, remotes))
+    pull = asked.newest
+    if asked.declined:
+        return (
+            None,
+            None,
+            (
+                f"whether {name}'s pull request has already merged could not be asked - "
+                f"{asked.declined}",
+            ),
+        )
+    if pull is None:
+        return None, None, ()
+    probe = _Silences(ran)
+    merged = carried_merge(pull, base, root, runner=probe)
+    if probe.reason:
+        return (
+            pull,
+            None,
+            (
+                f"git could not compare {name} with {pull.head[:12]}, the head "
+                f"#{pull.number} merged at - {probe.reason}",
+            ),
+        )
+    return pull, merged, ()
 
 
 def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[bool, tuple[str, ...]]:

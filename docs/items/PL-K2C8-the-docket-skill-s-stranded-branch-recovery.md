@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
+feature: stranded-recovery
 milestone: v0.4.21
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-05

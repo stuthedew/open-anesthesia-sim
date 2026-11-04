@@ -173,6 +173,7 @@ from .vcs import (
     ClosureReport,
     CutsInFlight,
     FailingPullRequests,
+    FilingParents,
     FilingReport,
     FlightReport,
     GitRunner,
@@ -202,6 +203,7 @@ from .vcs import (
     filed_here,
     filed_with_work,
     files_in_flight,
+    filing_parents,
     find_cut,
     find_root,
     gone_paths,
@@ -1972,6 +1974,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("impairs-generators", "impairs_generators"),
     ("reenters", "reenters"),
     ("no-successor", "no_successor"),
+    ("sweep", "sweep"),
 )
 
 
@@ -4175,7 +4178,9 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Partially advances: {', '.join(ready.partial_features)}")
     print(f"{current} -> {version}\n")
     print(notes)
-    missed = _missed_expectations(items, config, args.today or date.today())
+    missed = _missed_expectations(
+        items, config, args.today or date.today(), _sweep_filing(args, items)
+    )
     if missed:
         print(missed)
 
@@ -5001,9 +5006,10 @@ def cmd_inflow(args: argparse.Namespace) -> int:
 
     `trend` reports what was closed; this reports what was filed, so "is the
     accumulation slowing?" has an answer other than a session scripting it over
-    the whole store (`PL-WXKD`). It reads only the store, so it asks git
-    nothing. Refuses without `workflow_paths`, as `trend` does and for the same
-    reason: with no boundary declared, no filing is an apparatus filing.
+    the whole store (`PL-WXKD`). It reads the store, and asks git which item's
+    work filed each item only where some item records `sweep:` (`PL-CJGH`).
+    Refuses without `workflow_paths`, as `trend` does and for the same reason:
+    with no boundary declared, no filing is an apparatus filing.
 
     `--lane product` counts the product filings triage's generator check asks
     about instead, so a product head whose fix did not hold is listed as an
@@ -5017,13 +5023,37 @@ def cmd_inflow(args: argparse.Namespace) -> int:
         )
         return 1
     report = analyze_inflow(
-        items, config, by=args.by, today=args.today or date.today(), lane=args.lane
+        items,
+        config,
+        by=args.by,
+        today=args.today or date.today(),
+        lane=args.lane,
+        filing=_sweep_filing(args, items),
     )
     print(render.format_inflow(report))
     return 0
 
 
-def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> str:
+def _sweep_filing(args: argparse.Namespace, items: Sequence[Item]) -> FilingParents | None:
+    """Which items' work filed each item, read only where some item records `sweep:`.
+
+    `inflow` needs the answer only to count a sweep's filings apart, so a store
+    with no sweep asks git nothing. The history is `HEAD`'s, the copy of the
+    store that `_load` reads.
+    """
+    if not any(item.sweep for item in items):
+        return None
+    inv = _invocation(args)
+    if inv.git is None:
+        return FilingParents(
+            declined="`--no-git` was given, so git was not asked which commit filed each item"
+        )
+    return filing_parents(inv.root, "HEAD", inv.tracked, runner=inv.git)
+
+
+def _missed_expectations(
+    items: Sequence[Item], config: Config, today: date, filing: FilingParents | None = None
+) -> str:
     """What a cut says about apparatus inflow: the predictions it broke, or nothing.
 
     Silent when every prediction holds, which is the report the owner asked
@@ -5037,7 +5067,7 @@ def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> 
     """
     if not config.workflow_paths:
         return ""
-    lines = missed_inflow(analyze_inflow(items, config, today=today), today)
+    lines = missed_inflow(analyze_inflow(items, config, today=today, filing=filing), today)
     if not lines:
         return ""
     return "\n".join(
@@ -5685,21 +5715,42 @@ def cmd_arm(args: argparse.Namespace) -> int:
 
     With `--owner-ask` it answers one question for `.claude/hooks/owner_ask_guard.py`:
     what may be sent to the owner about this pull request. It prints the
-    recorded ask's opening line and exits 0, or prints why nothing may be sent,
-    led by the answer's first line, and exits 3.
+    recorded ask's opening line and exits 0. Where the pull request waits on
+    the owner's read and no `Owner-ask` record says what to ask, it prints why
+    nothing may be sent, led by "send the owner nothing", and exits 3. Every
+    other answer prints its first line and exits with its own status: 2 where
+    it cannot answer, and 1 otherwise (`PL-R1HT`). That reading skips the
+    checks that only decide between arming and the other holds, so it takes
+    a fraction of the full answer's time (`PL-3D2F`).
     """
     inv = _invocation(args)
-    unknown = arming.NO_ASK if args.owner_ask else arming.EXIT[arming.UNKNOWN]
-    nothing = "send the owner nothing: " if args.owner_ask else ""
+    unknown = arming.EXIT[arming.UNKNOWN]
     if inv.git is None:
-        print(f"{nothing}unknown - `--no-git` asks git nothing, and the answer is read from git")
+        print("unknown - `--no-git` asks git nothing, and the answer is read from git")
         return unknown
     if not inv.tracked:
         print(
-            f"{nothing}unknown - the store is not below the repository root, so no path can be "
+            "unknown - the store is not below the repository root, so no path can be "
             "told apart from it"
         )
         return unknown
+    if args.owner_ask:
+        verdict = arming.arm(
+            inv.root,
+            items_dir=inv.tracked,
+            now=_now(args),
+            fetch=not args.no_fetch,
+            runner=inv.git,
+            newest=_newest_pull_request(inv.root, inv.config),
+            owner_ask=True,
+        )
+        line = verdict.sendable
+        if line is not None:
+            print(line)
+            return 0
+        lead = "send the owner nothing: " if verdict.unasked else ""
+        print(f"{lead}{verdict.lines[0]}")
+        return verdict.code
     verdict = arming.arm(
         inv.root,
         items_dir=inv.tracked,
@@ -5711,13 +5762,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         prose_count=_prose_count(inv.root, inv.config),
         blind_count=_blind_count(inv.root, inv.config),
     )
-    if args.owner_ask:
-        line = verdict.sendable
-        if line is not None:
-            print(line)
-            return 0
-        print(f"{nothing}{verdict.lines[0]}")
-        return arming.NO_ASK
     for line in verdict.lines:
         print(line)
     return verdict.code
@@ -6224,8 +6268,9 @@ def build_parser() -> argparse.ArgumentParser:
     arm_cmd.add_argument(
         "--owner-ask",
         action="store_true",
-        help="print only the line the owner may be sent about this pull request and exit 0, or "
-        "say why nothing may be sent and exit 3",
+        help="print only the line the owner may be sent about this pull request and exit 0; "
+        "exit 3 where it waits on the owner's read with no Owner-ask recorded, 2 where it "
+        "cannot answer, and 1 otherwise",
     )
     arm_cmd.set_defaults(func=cmd_arm)
     ci_scope_cmd = add(
@@ -6355,6 +6400,9 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--misread", metavar="FACT")
     setter.add_argument("--impairs-generators", metavar="WHY")
+    setter.add_argument(
+        "--sweep", metavar="WHAT", help="record that this item's work is a deliberate sweep"
+    )
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"
     )

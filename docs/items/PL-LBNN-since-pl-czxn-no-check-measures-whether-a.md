@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: dropped
 classes: defect
+feature: test-effectiveness-measurement
 touches: tools/diff_mutation.py
 added: 2026-10-24
 closed: 2026-10-24

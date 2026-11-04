@@ -531,18 +531,28 @@ No part of the ask names a tool, file, command or item id, and `arm` refuses a
 record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
 quotes the text you are to judge, before and after, with enough of the
 surrounding paragraph for the change to make sense, so that you never have to
-open a file to find it (project owner, 2026-11-02, `PL-77QB`). Until a record
-made after the newest change covers the pull request, `arm` tells the session
-to send you nothing. It says so on the first line of its output and with an
-exit status of its own. A thread cannot send the ask
-anyway. `.claude/hooks/owner_ask_guard.py` checks every Projects message that
-asks you to read or merge: a post, an edit, a decision card, and any Projects
-tool it has not been told to skip (`PL-YN60`). Where `arm` has a recorded ask
-for the checkout's branch, the message must carry that ask's line
-(`PL-TLPH`). Otherwise, as for the coordinator relaying a thread's ask, it must
-carry a line in the recorded form. The hook cannot check that such a line is
-the recorded line itself (`PL-YV90`). A question whose answer
-is obvious is a wrong question, as on `#1516`. When there is nothing to decide
+open a file to find it (project owner, 2026-11-02, `PL-77QB`).
+
+Until the session has recorded its question for you, `arm` tells it to send you
+nothing about the pull request. A hook, `.claude/hooks/owner_ask_guard.py`,
+enforces this on the messages a thread or the coordinator sends you in
+Projects, edits and decision cards included (`PL-YN60`). It checks only a
+message that asks you to read, merge or decide something: a request such as
+"read #1676 and merge it" or "it waits on your read", or a question laid out
+in the question-and-options form. Progress notes and every other message go
+through unchecked. For an ask, the hook looks up the pull request on the
+sender's branch:
+
+- **It waits for your read, and no question for you is recorded.** The ask is
+  refused, and so is a question the thread wrote without recording it
+  (`PL-R1HT`, `PL-3D2F`).
+- **A question for you is recorded.** The ask must include that question word
+  for word (`PL-TLPH`).
+- **Neither.** This is the coordinator's case when it passes on a thread's
+  question. The ask must include a question in the recorded form. The hook
+  cannot tell whether it is the question the thread recorded (`PL-YV90`).
+
+A question whose answer is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges
 on green without asking you. A change to a test that pins `arm`'s results
 still waits for you whatever that record says, so its ask is a review.
@@ -1050,9 +1060,10 @@ EOF
 
 Changes to the environment reach new threads, not the ones already running,
 and saving the script rebuilds the environment's cache. To check that it
-worked, ask a new thread to run `uv run pytest --version | head -1`. The
-repository's `gate-status-guard.sh` refuses that command when the hooks are
-loaded. If the thread prints a pytest version instead, the hooks are still off,
+worked, ask a new thread to run `uv run pytest -q
+tests/unit/test_line_splits.py | tail -1`. The repository's
+`gate-status-guard.sh` refuses that command when the hooks are loaded. If the
+thread prints a test count instead, the hooks are still off,
 and the thread should record that in `PL-CR81`.
 
 A plugin may replace this setup script. Plugins added in **Project settings >

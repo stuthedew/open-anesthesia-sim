@@ -13,6 +13,7 @@ closed: 2026-10-24
 pr: 1712
 payoff: the one-source-of-truth row is sized from a count of every second copy, so its scope is measured rather than guessed
 verify: grep -q 'Inventoried 2026-' ROADMAP.md
+sweep: inventories every second copy of a shared fact across the tree and files each finding under one-source-of-truth
 ---
 
 **Problem.** Inventory every second copy of a shared fact across the tree, sorted by the four shapes (a value copied, state with two writers, a rule made in several places, configuration restated), and file each finding under one-source-of-truth

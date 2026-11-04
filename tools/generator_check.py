@@ -98,8 +98,7 @@ from docket.vcs import (  # noqa: E402
     ITEM_FILE_RE,
     LONG_GIT_TIMEOUT,
     GitUnanswered,
-    item_additions,
-    leading_ids,
+    filing_parents,
     read_git,
 )
 
@@ -229,23 +228,15 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     def run(args: list[str], root: Path) -> str:
         return read_git(args, root, timeout=LONG_GIT_TIMEOUT)
 
-    # Which commit added each item file is `vcs.item_additions`' answer, which
-    # `filed_with_work` reads too, so a shallow clone declines here as it does
-    # there rather than crediting its boundary commit (`PL-86H3`).
-    additions = item_additions(repo, "HEAD", items_dir, run)
-    if additions.declined:
-        raise GitUnanswered(additions.declined)
-    parents: dict[str, set[str]] = {}
-    for addition in additions.commits:
-        created = set(addition.item_ids)
-        # A capture commit leads with the ids of the items it is creating, and
-        # `bin/docket new` takes several titles at once - so every id this
-        # commit creates is excluded, not just the one being attributed.
-        # Otherwise two items captured together become each other's parent.
-        leading = set(leading_ids(addition.subject))
-        for identifier in created:
-            parents.setdefault(identifier, leading - created)
-    return parents
+    # Which item's work filed each item is `vcs.filing_parents`' answer, which
+    # `docket inflow` reads too. It reads `vcs.item_additions`, so a shallow
+    # clone declines here rather than crediting its boundary commit
+    # (`PL-86H3`), and it leaves out the ids a capture commit creates, so two
+    # items captured together are not each other's parent (`PL-CJGH`).
+    filed = filing_parents(repo, "HEAD", items_dir, run)
+    if filed.declined:
+        raise GitUnanswered(filed.declined)
+    return {identifier: set(ids) for identifier, ids in filed.parents.items()}
 
 
 def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
