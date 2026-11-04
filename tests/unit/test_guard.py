@@ -29,6 +29,7 @@ from pathlib import Path
 
 import direct_merge_guard
 import guard as entry_point
+import hook_input
 import owner_ask_guard
 import push_check_guard
 import pytest
@@ -206,7 +207,7 @@ def test_a_crashing_guard_says_it_did_not_check(
 ) -> None:
     """A guard that raises lets the call through, and the note names it and the error."""
     _crash(monkeypatch, guard)
-    refusals, notes = entry_point.judged((guard,), QUIET_CALL)
+    refusals, notes, _ = entry_point.judged((guard,), QUIET_CALL)
     assert refusals == []
     (note,) = notes
     assert f"The {guard.name} hook could not check this call" in note
@@ -216,7 +217,7 @@ def test_a_crashing_guard_says_it_did_not_check(
 def test_a_crashing_merge_guard_refuses_a_merge(monkeypatch: pytest.MonkeyPatch) -> None:
     (merge_guard,) = entry_point.selected("direct-merge-guard") or ()
     _crash(monkeypatch, merge_guard)
-    refusals, notes = entry_point.judged((merge_guard,), MERGE_CALL)
+    refusals, notes, _ = entry_point.judged((merge_guard,), MERGE_CALL)
     assert notes == []
     (refusal,) = refusals
     assert refusal.startswith("Refused: the direct-merge-guard hook could not judge")
@@ -231,7 +232,7 @@ def test_a_crashing_gh_guard_refuses_only_a_call_that_names_gh(
     (gh_guard,) = entry_point.selected("gh-write-guard") or ()
     _crash(monkeypatch, gh_guard)
     call = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-    refusals, notes = entry_point.judged((gh_guard,), call)
+    refusals, notes, _ = entry_point.judged((gh_guard,), call)
     assert bool(refusals) is refused
     assert bool(notes) is not refused
     assert "the rule has a bug in it" in (refusals or notes)[0]
@@ -242,7 +243,7 @@ def test_a_guard_that_prints_something_else_is_taken_for_one_that_crashed(
 ) -> None:
     (guard,) = entry_point.selected("regex-guard") or ()
     monkeypatch.setattr(import_module(guard.module), guard.function, lambda _payload: "ok")
-    refusals, notes = entry_point.judged((guard,), QUIET_CALL)
+    refusals, notes, _ = entry_point.judged((guard,), QUIET_CALL)
     assert refusals == []
     (note,) = notes
     assert "The regex-guard hook could not check this call" in note
@@ -257,7 +258,7 @@ def test_a_guard_past_its_deadline_is_stopped_and_said(
     )
     monkeypatch.syspath_prepend(str(tmp_path))
     slow = entry_point.Guard("slow-guard", "slow_rule", deadline_s=1)
-    refusals, notes = entry_point.judged((slow,), QUIET_CALL)
+    refusals, notes, _ = entry_point.judged((slow,), QUIET_CALL)
     assert refusals == []
     assert notes == [entry_point.unchecked("slow-guard", "it did not finish within 1 second")]
 
@@ -267,7 +268,7 @@ def test_one_guard_crashing_leaves_the_others_judging(monkeypatch: pytest.Monkey
     floor = entry_point.GROUPS["pre-bash"][0]
     _crash(monkeypatch, floor)
     call = json.dumps({"tool_name": "Bash", "tool_input": {"command": "make check | tail -5"}})
-    refusals, notes = entry_point.judged(entry_point.GROUPS["pre-bash"], call)
+    refusals, notes, _ = entry_point.judged(entry_point.GROUPS["pre-bash"], call)
     assert len(refusals) == 1
     assert "make check" in refusals[0]
     assert [note for note in notes if floor.name in note]
@@ -347,7 +348,7 @@ def test_the_launcher_and_the_entry_point_refuse_the_same_unjudged_merges(
     """Whether Python crashed or never started, an unjudged merge is refused (`PL-NXRJ`)."""
     (merge_guard,) = entry_point.selected("direct-merge-guard") or ()
     _crash(monkeypatch, merge_guard)
-    refusals, _notes = entry_point.judged((merge_guard,), payload)
+    refusals, _notes, _ = entry_point.judged((merge_guard,), payload)
     assert bool(refusals) is merge
     decided = _launch("pre-mcp", payload, _failing_python(tmp_path))
     assert decided is not None
@@ -380,3 +381,76 @@ def test_the_entry_point_runs_on_the_python_the_hooks_use() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout == ""
+
+
+# --- a guard that rewrites the call's input (`PL-X4MD`) ------------------------
+
+
+def _rule(tmp_path: Path, name: str, output: str) -> None:
+    """A guard module `name` whose `decide` returns `output` for every call."""
+    (tmp_path / f"{name}.py").write_text(
+        f"def decide(payload):\n    return {output!r}\n", encoding="utf-8"
+    )
+
+
+def _rewriting(text: str) -> str:
+    return hook_input.output("PreToolUse", rewrite={"text": text}, notes=[f"rewrote to {text}"])
+
+
+def test_a_rewrite_goes_out_as_allow_with_the_new_input(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _rule(tmp_path, "rewriting_rule", _rewriting("new"))
+    monkeypatch.syspath_prepend(str(tmp_path))
+    found = entry_point.judged((entry_point.Guard("rewriting", "rewriting_rule"),), QUIET_CALL)
+    assert found.rewrite == {"text": "new"}
+    fields = json.loads(
+        hook_input.output(
+            "PreToolUse", refusals=found.refusals, notes=found.notes, rewrite=found.rewrite
+        )
+    )["hookSpecificOutput"]
+    assert fields["permissionDecision"] == "allow"
+    assert fields["updatedInput"] == {"text": "new"}
+    assert fields["additionalContext"] == "rewrote to new"
+
+
+def test_a_refusal_from_another_guard_stops_a_rewritten_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _rule(tmp_path, "rewriting_rule", _rewriting("new"))
+    _rule(tmp_path, "refusing_rule", hook_input.output("PreToolUse", refusals=["no"]))
+    monkeypatch.syspath_prepend(str(tmp_path))
+    guards = (
+        entry_point.Guard("rewriting", "rewriting_rule"),
+        entry_point.Guard("refusing", "refusing_rule"),
+    )
+    found = entry_point.judged(guards, QUIET_CALL)
+    fields = json.loads(
+        hook_input.output(
+            "PreToolUse", refusals=found.refusals, notes=found.notes, rewrite=found.rewrite
+        )
+    )["hookSpecificOutput"]
+    assert fields["permissionDecision"] == "deny"
+    assert "updatedInput" not in fields
+
+
+def test_two_rewrites_of_one_call_send_it_unchanged_and_say_so(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Neither rewrite saw the other's, so sending either would drop the other."""
+    _rule(tmp_path, "first_rule", _rewriting("one"))
+    _rule(tmp_path, "second_rule", _rewriting("two"))
+    monkeypatch.syspath_prepend(str(tmp_path))
+    guards = (entry_point.Guard("first", "first_rule"), entry_point.Guard("second", "second_rule"))
+    found = entry_point.judged(guards, QUIET_CALL)
+    assert found.rewrite is None
+    assert "The guards first, second each rewrote this call" in found.notes[-1]
+
+
+def test_an_allow_without_a_new_input_is_read_as_a_failed_guard() -> None:
+    """Only a rewrite may approve a call, so a bare `allow` is not output `output` builds."""
+    bare = json.dumps(
+        {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+    )
+    with pytest.raises(ValueError, match="no `updatedInput`"):
+        hook_input.verdict(bare)

@@ -535,22 +535,22 @@ open a file to find it (project owner, 2026-11-02, `PL-77QB`).
 
 Until the session has recorded its question for you, `arm` tells it to send you
 nothing about the pull request. A hook, `.claude/hooks/owner_ask_guard.py`,
-enforces this on the messages a thread or the coordinator sends you in
-Projects, edits and decision cards included (`PL-YN60`). It checks only a
-message that asks you to read, merge or decide something: a request such as
-"read #1676 and merge it" or "it waits on your read", or a question laid out
-in the question-and-options form. Progress notes and every other message go
-through unchecked. For an ask, the hook looks up the pull request on the
-sender's branch:
+puts the record into the thread's message itself (`PL-X4MD`). When a thread's
+message to you in Projects names a pull request, and that thread's own pull
+request waits for your read, the hook adds a line at the end of the message:
 
-- **It waits for your read, and no question for you is recorded.** The ask is
-  refused, and so is a question the thread wrote without recording it
-  (`PL-R1HT`, `PL-3D2F`).
-- **A question for you is recorded.** The ask must include that question word
-  for word (`PL-TLPH`).
-- **Neither.** This is the coordinator's case when it passes on a thread's
-  question. The ask must include a question in the recorded form. The hook
-  cannot tell whether it is the question the thread recorded (`PL-YV90`).
+- **A question for you is recorded.** The line is that question, unless the
+  message already quotes it word for word.
+- **No question is recorded yet.** The line is "No question is recorded on
+  this pull request yet, so there is nothing to decide."
+
+Every other message reaches you as written, and the hook refuses none of them.
+A progress note that names a held pull request also gets the line, so you may
+see the question more than once. The coordinator's messages are not changed,
+because its checkout is on no pull request's branch, so it quotes the
+thread's recorded question itself. A decision card has no free-text field to
+add to, so a card about a held pull request reaches you without the line, and
+the thread is told so.
 
 A question whose answer is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges

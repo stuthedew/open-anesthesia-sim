@@ -180,8 +180,9 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, NOT_HELD: 1, UNKNOWN: 2}
 #: saying to send nothing, and sent the owner a bare read ask (`PL-TLPH`).
 #: `--owner-ask` exits with it in exactly that state, and with 1 or 2 in every
 #: other state that has nothing to send, so `.claude/hooks/owner_ask_guard.py`
-#: can tell a thread held for the owner's read from a checkout `arm` cannot
-#: answer for (`PL-R1HT`).
+#: can tell a thread held for the owner's read, whose message it tells the
+#: owner that nothing is recorded, from a checkout `arm` cannot answer for
+#: (`PL-R1HT`, `PL-X4MD`).
 NO_ASK = 3
 
 #: How many paths outside the store, the tooling and the records a `hold`
@@ -245,8 +246,8 @@ ASK_JARGON = re.compile(
 
 #: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
 #: is sent. `renders_owner_ask` recognizes a line in either form from these
-#: same templates, so `.claude/hooks/owner_ask_guard.py` can check a
-#: coordinator's post without a second copy of the form (`PL-YV90`). A
+#: same templates, which `.claude/hooks/owner_ask_guard.py` used to check a
+#: coordinator's post until `PL-X4MD` (`PL-YV90`). A
 #: review is one template. A decision is `ASK_DECISION_SHOWN`, whose
 #: `options` are two or more `ASK_OPTION_SHOWN` joined by
 #: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
@@ -1106,11 +1107,11 @@ def renders_owner_ask(text: str) -> bool:
 
     This recognizes the form and proves nothing more. It cannot say whether
     the line is the one recorded on the pull request's branch, because only
-    `arm` on that branch can. `.claude/hooks/owner_ask_guard.py` uses it for
-    the coordinator's posts, whose checkout is on no pull request's branch
-    (project owner, 2026-10-24, ratified, over having `arm` answer for a
-    named pull request, `PL-YV90`). Pass the text with its whitespace already
-    squeezed to single spaces, since a message may wrap the line.
+    `arm` on that branch can. `.claude/hooks/owner_ask_guard.py` used it for
+    the coordinator's posts until `PL-X4MD` made the hook attach the recorded
+    question instead, so nothing outside the tests calls it now (`PL-YV90`).
+    Pass the text with its whitespace already squeezed to single spaces,
+    since a message may wrap the line.
     """
     return any(pattern.search(text) for pattern in _SHOWN_ASKS)
 
@@ -1192,8 +1193,8 @@ class Verdict:
         """The ask's opening line, where something may be sent to the owner; None otherwise.
 
         This is what `bin/docket arm --owner-ask` prints, and what
-        `.claude/hooks/owner_ask_guard.py` requires in a reply that asks the
-        owner to read or merge the pull request (`PL-TLPH`).
+        `.claude/hooks/owner_ask_guard.py` attaches to a thread's message that
+        names the pull request (`PL-TLPH`, `PL-X4MD`).
         """
         return self.ask.line if self.asks_owner and self.ask is not None else None
 
@@ -1507,7 +1508,7 @@ def arm(
 
     **With `owner_ask`, it answers only what may be sent to the owner**
     (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
-    ask a Projects message carries, and the full answer took 2.2 s on a
+    Projects message that names a pull request, and the full answer took 2.2 s on a
     one-file branch and 28.4 s on one changing 62 simulator paths. Only
     `sendable`, `unasked` and an `unknown` answer are read from the verdict,
     so `_owner_ask_answer` runs only the stages those rest on.
