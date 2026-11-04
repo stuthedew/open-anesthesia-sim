@@ -3,11 +3,11 @@
 `git [-C <path>] [-c <name>=<value>] [--git-dir=<path>] ... <command> [<args>]`:
 git reads its own options ahead of the command name, and some of them take the
 next word as their value where no `=` joins one, so that word is never the
-command. `docket.vcs` names each read by its command, and the Bash guards under
-`.claude/hooks/` decide on a command before it runs; both read it here. `vcs`
-stepped over a value only after `-c` and `-C` while `no-prune-guard.sh` and
-`push-check-guard.sh` each held the full table, so `git --git-dir /x/.git log`
-was the command `/x/.git` to docket and `log` to both guards (`PL-ZXCN`).
+command. `docket.vcs` names each read by its command, and `push-check-guard.sh`
+under `.claude/hooks/` decides on a push before it runs; both read it here.
+`vcs` stepped over a value only after `-c` and `-C` while the Bash guards held
+the full table, so `git --git-dir /x/.git log` was the command `/x/.git` to
+docket and `log` to the guards (`PL-ZXCN`).
 
 A leaf, importing nothing: each guard is a fresh `python3` on every Bash call,
 and `tests/unit/test_shell_reader.py` holds what a guard's imports may load.

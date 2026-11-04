@@ -832,13 +832,21 @@ def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
 # --- the email screen on a pull request call (`PL-7K31`) ----------------------
 #
 # A body is public as soon as GitHub has it, so the screen runs before the call.
-# What is pinned is that a personal address is refused and named, that the one
-# trailer address and a version pin are not, that every MCP tool reaches the
-# hook and the screen reads each GitHub call with a title or body whatever its
-# tool is called (`PL-NZJG`), and that the hook script refuses when Claude Code
-# starts it.
+# What is pinned is that a personal address is refused and named, that the
+# addresses that are nobody's own and a version pin are not, that every MCP
+# tool reaches the hook and the screen reads every field of each GitHub call
+# whatever its tool or field is called (`PL-NZJG`, `PL-D16Y`), and that the hook
+# script refuses when Claude Code starts it.
+#
+# The refused addresses are built when the test runs, because the reserved
+# test domains are admitted and the git hook's push screen reads this file's
+# own text when it is pushed.
 
 REPO = Path(__file__).resolve().parents[2]
+
+#: A person's address, and a second one, made here so this file's text holds none.
+PERSON = "a.person" + "@" + "clinic.org"
+OTHER = "me" + "@" + "hospital.net"
 
 
 def _call(tool: str, **arguments: str) -> str:
@@ -847,17 +855,18 @@ def _call(tool: str, **arguments: str) -> str:
 
 def test_an_email_address_in_a_pull_request_body_is_refused() -> None:
     refusal = pr_body_check.screen(
-        _call("mcp__github__create_pull_request", title="t", body="Asked by a.person@example.org.")
+        _call("mcp__github__create_pull_request", title="t", body=f"Asked by {PERSON}.")
     )
 
     assert refusal is not None
     decision = json.loads(refusal)["hookSpecificOutput"]
     assert decision["permissionDecision"] == "deny"
-    assert "`a.person@example.org`" in decision["permissionDecisionReason"]
+    assert f"`{PERSON}`" in decision["permissionDecisionReason"]
+    assert "`body`" in decision["permissionDecisionReason"]
 
 
 def test_an_email_address_in_an_updated_title_is_refused() -> None:
-    call = _call("mcp__github__update_pull_request", title="PL-K7QX: from me@example.com")
+    call = _call("mcp__github__update_pull_request", title=f"PL-K7QX: from {OTHER}")
 
     assert pr_body_check.screen(call) is not None
 
@@ -868,6 +877,10 @@ def test_an_email_address_in_an_updated_title_is_refused() -> None:
         "Co-authored-by: Claude <noreply@anthropic.com>",
         "Pins react@18.3.1 and @types/node.",
         "No address at all.",
+        "Merged on the website by 3359688+stuthedew@users.noreply.github.com.",
+        "GitHub <noreply@github.com>",
+        "Clone git@github.com:stuthedew/open-anesthesia-sim.git",
+        "Tests use t@example.com, a@bar.example.org, x@mail.example and y@z.invalid.",
     ],
 )
 def test_a_body_without_a_personal_address_is_let_through(body: str) -> None:
@@ -899,13 +912,112 @@ def test_an_email_address_sent_to_github_under_any_tool_name_is_refused(
     a renamed tool, or a comment on the same pull request, published the
     address unread.
     """
-    refusal = pr_body_check.screen(_call(tool, body="Asked by a.person@example.org.", **extra))
+    refusal = pr_body_check.screen(_call(tool, body=f"Asked by {PERSON}.", **extra))
 
     assert refusal is not None
-    assert (
-        "`a.person@example.org`"
-        in json.loads(refusal)["hookSpecificOutput"]["permissionDecisionReason"]
+    assert f"`{PERSON}`" in json.loads(refusal)["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+def _call_with(tool: str, arguments: dict[str, object]) -> str:
+    return json.dumps({"tool_name": tool, "tool_input": {"owner": "o", "repo": "r", **arguments}})
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments", "field"),
+    [
+        (
+            "mcp__github__merge_pull_request",
+            {"pullNumber": 1, "commit_message": "Asked by {person}."},
+            "commit_message",
+        ),
+        (
+            "mcp__github__push_files",
+            {"branch": "b", "message": "m", "files": [{"path": "a.md", "content": "{person}"}]},
+            "files[0].content",
+        ),
+        (
+            "mcp__github__create_or_update_file",
+            {"path": "a.md", "content": "x", "message": "From {person}"},
+            "message",
+        ),
+        ("mcp__github__issue_write", {"method": "create", "labels": ["{person}"]}, "labels[0]"),
+    ],
+    ids=["squash-message", "pushed-file", "commit-message", "nested-list"],
+)
+def test_an_address_in_any_field_github_publishes_is_refused_and_its_field_named(
+    tool: str, arguments: dict[str, object], field: str
+) -> None:
+    """`PL-D16Y`: a merge's message and pushed file content were published unread.
+
+    The screen read only `title` and `body`, so an address in a squash merge's
+    `commit_message`, which becomes the commit on `main`, or in a file sent by
+    `push_files` reached GitHub. Every string in the call is read now.
+    """
+    filled = json.loads(json.dumps(arguments).replace("{person}", PERSON))
+
+    refusal = pr_body_check.screen(_call_with(tool, filled))
+
+    assert refusal is not None
+    reason = json.loads(refusal)["hookSpecificOutput"]["permissionDecisionReason"]
+    assert f"`{PERSON}`" in reason
+    assert f"`{field}`" in reason
+
+
+@pytest.mark.parametrize(
+    ("domain", "admitted"),
+    [
+        ("anthropic.com", False),
+        ("github.com", False),
+        ("noreply.github.com", False),
+        ("users.noreply.github.com", True),
+        ("example.com", True),
+        ("sub.example.net", True),
+        ("mail.example", True),
+        ("host.invalid", True),
+        ("host.test", True),
+        ("localhost.localhost", True),
+        ("example.com.attacker.org", False),
+        ("notexample.com", False),
+    ],
+)
+def test_an_address_under_a_domain_is_admitted_only_where_nobody_can_hold_it(
+    domain: str, admitted: bool
+) -> None:
+    """Joined here, so that the refused addresses are not in this file's own text."""
+    assert pr_body_check.admitted("t" + "@" + domain) is admitted
+
+
+@pytest.mark.parametrize(
+    "address", ["noreply@anthropic.com", "NoReply@GitHub.com", "git@github.com"]
+)
+def test_the_three_addresses_that_are_nobodys_own_are_admitted(address: str) -> None:
+    assert pr_body_check.admitted(address)
+
+
+def test_the_push_screen_names_each_address_with_its_commit_and_place() -> None:
+    """`--screen-push` reads the log the git `pre-push` hook hands it (`PL-1ZZ0`)."""
+    log = (
+        "\0" + "a" * 40 + "\nClaude <noreply@anthropic.com>\nClaude <noreply@anthropic.com>\n"
+        f"Subject\n\nAsked by {PERSON}.\n\n"
+        "diff --git a/n.md b/n.md\n--- a/n.md\n+++ b/n.md\n@@ -1 +1 @@\n"
+        f"-Removed {OTHER}\n+Added {OTHER}\n"
+        "\0" + "b" * 40 + f"\nSomeone <{PERSON}>\nClaude <noreply@anthropic.com>\nClean\n"
     )
+
+    found = pr_body_check.screen_push(log)
+
+    assert found == [
+        f"`{PERSON}` in commit {'a' * 12}, its message",
+        f"`{OTHER}` in commit {'a' * 12}, lines it adds to `n.md`",
+        f"`{PERSON}` in commit {'b' * 12}, its author or committer",
+    ]
+
+
+def test_the_push_screen_lets_a_clean_log_through() -> None:
+    log = "\0" + "a" * 40 + "\nClaude <noreply@anthropic.com>\nClaude <noreply@anthropic.com>\nOK\n"
+
+    assert pr_body_check.screen_push(log) == []
+    assert pr_body_check.screen_push("") == []
 
 
 @pytest.mark.parametrize(
@@ -913,7 +1025,7 @@ def test_an_email_address_sent_to_github_under_any_tool_name_is_refused(
 )
 def test_a_call_that_names_no_repository_is_not_read(tool: str) -> None:
     """Every MCP call reaches the hook, and a thread's post or an email is not GitHub text."""
-    payload = json.dumps({"tool_name": tool, "tool_input": {"body": "Write to me@example.com."}})
+    payload = json.dumps({"tool_name": tool, "tool_input": {"body": f"Write to {OTHER}."}})
 
     assert pr_body_check.screen(payload) is None
     assert pr_body_check.read_back(payload) is None
@@ -969,13 +1081,13 @@ def test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script() -> No
 
     ran = subprocess.run(
         ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
-        input=_call("mcp__github__create_pull_request", body="me@example.com"),
+        input=_call("mcp__github__create_pull_request", body=OTHER),
         capture_output=True,
         text=True,
         check=True,
         cwd=REPO,
     )
-    assert "`me@example.com`" in ran.stdout
+    assert f"`{OTHER}`" in ran.stdout
 
 
 def test_a_pull_request_call_the_guard_lets_through_names_the_read_back() -> None:

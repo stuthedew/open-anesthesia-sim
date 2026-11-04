@@ -1,7 +1,7 @@
 """What a hook reads before it decides anything: its checkout, and the Bash call it was handed.
 
 Every hook here acts on one checkout, and the four Bash guards
-(`floor-interpreter-guard.sh`, `gate-status-guard.sh`, `no-prune-guard.sh` and
+(`floor-interpreter-guard.sh`, `gate-status-guard.sh`, `gh_write_guard.py` and
 `push-check-guard.sh`) each read the command out of the payload Claude Code
 hands them. Each hook used to spell both itself (`PL-FB77`). The guards held
 four identical copies of the payload reading. Five hooks found the checkout,
@@ -95,8 +95,8 @@ def session_of(payload: str) -> str:
     return session if isinstance(session, str) else ""
 
 
-def deny(guard: str, rule: str, reason: str, payload: str) -> str:
-    """Log one refusal, and return the `PreToolUse` output that refuses the call.
+def log_refusal(guard: str, rule: str, session: str) -> None:
+    """Append one refusal to the guards' refusal log.
 
     The guards' refusals were recorded nowhere, so no guard's cost in defects
     could be weighed against what it prevented (`PL-SG93`). Each refusal
@@ -106,26 +106,33 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
     copies the lines into the repository when a pull request is recorded.
 
     The time is to the microsecond, so two refusals in one second stay two
-    lines. A payload with no session id is not logged. Claude Code sends one
-    with every call, so a payload without one is a guard run by hand, such as
-    a session probing a guard's defect, and counting it would make that guard
-    look as if it refused more.
+    lines. A refusal with no session id is not logged. Claude Code sends one
+    with every call, so a refusal without one comes from a guard run by hand,
+    such as a session probing a guard's defect, and counting it would make
+    that guard look as if it refused more.
 
     A log that cannot be written is skipped, because a refusal must still
     refuse when the disk is full or the directory cannot be made.
     """
-    session = session_of(payload)
-    if session:
-        line = "\t".join(
-            (datetime.now(UTC).isoformat(timespec="microseconds"), session, guard, rule)
-        )
-        try:
-            log = block_log()
-            log.parent.mkdir(parents=True, exist_ok=True)
-            with log.open("a", encoding="utf-8") as stream:
-                stream.write(line + "\n")
-        except OSError:
-            pass
+    if not session:
+        return
+    line = "\t".join((datetime.now(UTC).isoformat(timespec="microseconds"), session, guard, rule))
+    try:
+        log = block_log()
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as stream:
+            stream.write(line + "\n")
+    except OSError:
+        pass
+
+
+def deny(guard: str, rule: str, reason: str, payload: str) -> str:
+    """Log one refusal, and return the `PreToolUse` output that refuses the call.
+
+    The session id is the one the payload carries, and `log_refusal` says
+    what the log holds.
+    """
+    log_refusal(guard, rule, session_of(payload))
     decision = {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
@@ -139,17 +146,20 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
 NEW_FILE_MODE = 0o644
 
 
-def write_atomically(target: Path, text: str) -> None:
+def write_atomically(target: Path, text: str, mode: int | None = None) -> None:
     """Replace `target`'s contents, keeping its mode and never truncating it.
 
-    The hooks write files that Claude Code reads or runs while the session
-    goes on: the harness's stop hook, and the user settings that
-    `thread_hooks.py` writes. A partial write would break the session it was
-    meant to help. Writing a sibling and renaming it means the file is either
-    the old one or the new one. A file that does not exist yet is created
-    with `NEW_FILE_MODE`.
+    The hooks write files that Claude Code or git reads or runs while the
+    session goes on: the harness's stop hook, the user settings that
+    `thread_hooks.py` writes, and the git hooks `stop_hook_patch.py` installs.
+    A partial write would break the session it was meant to help. Writing a
+    sibling and renaming it means the file is either the old one or the new
+    one. A file that does not exist yet is created with `NEW_FILE_MODE`.
+    `mode`, where given, is the mode the file has after the write whatever it
+    had before, which is how a git hook is written executable in one step.
     """
-    mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else NEW_FILE_MODE
+    if mode is None:
+        mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else NEW_FILE_MODE
     handle_fd, name = tempfile.mkstemp(dir=str(target.parent), prefix=target.name + ".")
     scratch = Path(name)
     try:
@@ -163,4 +173,11 @@ def write_atomically(target: Path, text: str) -> None:
 
 
 if __name__ == "__main__":
-    sys.stdout.write(f"{project_root()}\n")
+    # `--log GUARD RULE` logs a refusal made outside Claude Code's hook
+    # payloads, by one of the git hooks in `.claude/hooks/git/`. Claude Code
+    # puts the session id in the environment of every Bash call it runs, and
+    # git hands that environment to its hooks.
+    if sys.argv[1:2] == ["--log"] and len(sys.argv) == 4:
+        log_refusal(sys.argv[2], sys.argv[3], os.environ.get("CLAUDE_CODE_SESSION_ID", ""))
+    else:
+        sys.stdout.write(f"{project_root()}\n")

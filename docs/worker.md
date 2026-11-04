@@ -282,12 +282,13 @@ one command, in the order the table gives: the two items read different lines of
 one output. That premise is falsified, and the deletion row is the whole of what
 a session should expect to see.
 
-**The local halves do work, and the half that matters is still yours.**
-`git branch -dr origin/<branch>` clears this clone's remote-tracking ref
-without touching the remote. And the recovery that actually matters - reading
-what a branch uniquely carries and landing it on `main` - is a session's job,
-because a tracking ref can be the only surviving copy of a captured item
-(`bin/docket stranded` is what reads it). Only the deletion is withheld.
+**The half that matters is still yours.** The recovery that actually matters
+is reading what a branch uniquely carries and landing it on `main`. That is a
+session's job, because a tracking ref can be the only surviving copy of a
+captured item (`bin/docket stranded` is what reads it). Only the deletion is
+withheld: on the remote by GitHub, and in this clone by
+`.claude/hooks/git/reference-transaction`, which refuses any command that
+would delete a remote-tracking ref (`PL-82J5`).
 
 **Never report one of these done without re-reading the remote - and read
 `git ls-remote`'s output, never its exit status.** It exits **0** whether the
@@ -301,9 +302,10 @@ cleanup pass ends by handing over a list, not by reporting a job finished.
 the branch on merge, a `git push --force-with-lease` to it fails with
 `! [rejected] ... (stale info)` rather than a 403, because the lease is compared
 against a remote-tracking ref naming a commit the remote no longer has
-(`PL-X9WZ`, 2026-09-21). Nothing was refused: the branch is simply gone. `git
-branch -dr origin/<branch>` and then a plain `git push -u` is the recipe, and
-`.claude/hooks/no-prune-guard.sh` already prints its first half. Read `stale
+(`PL-X9WZ`, 2026-09-21). Nothing was refused: the branch is simply gone. A plain `git push -u` is the recipe: it creates the
+branch again and moves the stale ref with it, so the ref needs no deleting
+(`PL-82J5`). The git hook above prints that recipe when it refuses a
+deletion. Read `stale
 info` as a stale local ref rather than as a permission problem - `PL-483K`
 records a second route to the same message, a `--depth 1` clone whose upstream
 ref was never created, whose dangerous variant is reaching for a bare `--force`.
