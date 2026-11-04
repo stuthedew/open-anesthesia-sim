@@ -301,15 +301,16 @@ page and decides which file a session reads.
    reviewer returns each word, symbol or number that the reader would not
    know, what the reader would take from the unit, whether the unit lets the
    reader do what the reader table says they will do, and each sentence that
-   the takeaway does not need. It then writes `[N] keep`, or `[N] rewrite`
-   with new text for the reader the unit serves, no longer than the text it
-   replaces, and a list of the facts it moved and where each went.
+   could go with every fact kept, with its reason. It then writes `[N] keep`,
+   or `[N] rewrite` with new text for the reader the unit serves, no longer
+   than the text it replaces, and a list of the facts it moved and where each
+   went.
 
    The prompt asks what the named reader would take from the text, because a
    reviewer told to imagine a newcomer still reads with its own vocabulary
-   (`PL-1XC7`, from `PL-H76S`'s design round). Compare each takeaway with the
-   point you wrote down before writing the paragraph, as
-   `.claude/rules/plain-writing.md` asks. A term the reviewer lists, a
+   (`PL-1XC7`, from `PL-H76S`'s design round). Compare each takeaway with what
+   the reader needs to act on, which `.claude/rules/plain-writing.md` puts
+   first. A term the reviewer lists, a
    takeaway that misses your point, or a reader who cannot do what the table
    says means a rewrite: apply the reviewer's or write your own. Keep either
    one no longer than the text it replaces, counted in words. On the first
