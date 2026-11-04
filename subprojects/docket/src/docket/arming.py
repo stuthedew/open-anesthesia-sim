@@ -1378,6 +1378,7 @@ def arm(
     *,
     items_dir: str,
     now: datetime,
+    record_dir: str = "",
     fetch: bool = True,
     runner: Runner | None = None,
     newest: Callable[[str, str], PullRequestLookup] | None = None,
@@ -1448,7 +1449,9 @@ def arm(
     if isinstance(where, Verdict):
         return where
     if owner_ask:
-        return _owner_ask_answer(root, where, items_dir=items_dir, now=now, newest=newest)
+        return _owner_ask_answer(
+            root, where, items_dir=items_dir, record_dir=record_dir, now=now, newest=newest
+        )
     forge = _Forge() if newest is None else _read_forge(root, where, newest, auto_merge)
     if forge.merged is not None:
         return Verdict(
@@ -1459,7 +1462,7 @@ def arm(
             unread=(*where.unread, *forge.unread),
             merged=forge.merged,
         )
-    change = _read_change(root, where, items_dir)
+    change = _read_change(root, where, items_dir, record_dir)
     reviews = _read_reviews(root, where, change, prose_count, blind_count)
     record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
     ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
@@ -1617,10 +1620,17 @@ class _Change:
     unread: tuple[str, ...] = ()
 
 
-def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
-    """Read the net change `base...tip` and sort its paths."""
+def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "") -> _Change:
+    """Read the net change `base...tip` and sort its paths.
+
+    `worked` leaves out the store, the pull requests' body records and
+    `record_dir`, the directory where `docket record` copies the guard
+    refusals a branch met. A copy made after an `OWNER_ASK` record is not new
+    work, so it must not end that record's cover (`PL-1XQP`).
+    """
     run, base, tip = where.run, where.base, where.tip
     prefix = items_dir.strip("/") + "/"
+    records = (prefix, RECORDS, record_dir.strip("/") + "/") if record_dir else (prefix, RECORDS)
     # Both sides of a rename, so a file moved into the store shows the deletion
     # it made outside it, which a rename would print as one path under the store.
     changed = run(changed_path_args("diff", "--name-only", f"{base}...{tip}", "--"), root)
@@ -1628,7 +1638,7 @@ def _read_change(root: Path, where: _Branch, items_dir: str) -> _Change:
         said = f"git would not diff {where.name} against {base}, so what a merge lands is unknown"
         return _Change(prefix, unread=(said,))
     paths = set(listed_paths(changed))
-    worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
+    worked = tuple(sorted(path for path in paths if not path.startswith(records)))
     # The gate is reported apart, and asked for directly rather than read
     # back out of what `arms_on_green` holds.
     gate = GATE in paths
@@ -1853,6 +1863,7 @@ def _owner_ask_answer(
     where: _Branch,
     *,
     items_dir: str,
+    record_dir: str = "",
     now: datetime,
     newest: Callable[[str, str], PullRequestLookup] | None,
 ) -> Verdict:
@@ -1866,7 +1877,7 @@ def _owner_ask_answer(
     auto-merge switch or counts commits behind, since those can only add a
     hold.
     """
-    change = _read_change(root, where, items_dir)
+    change = _read_change(root, where, items_dir, record_dir)
     record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
     if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
@@ -1908,7 +1919,13 @@ def _owner_ask_answer(
 
 
 def owner_ask_on(
-    root: Path, branch: str, *, items_dir: str, now: datetime, runner: Runner | None = None
+    root: Path,
+    branch: str,
+    *,
+    items_dir: str,
+    now: datetime,
+    record_dir: str = "",
+    runner: Runner | None = None,
 ) -> Verdict:
     """`arm --owner-ask` for `branch`'s copy on the remote, whichever branch is checked out.
 
@@ -1934,7 +1951,9 @@ def owner_ask_on(
         reason = run.reason or f"{tip} is not in this checkout, so {branch} could not be read"
         return Verdict(UNKNOWN, branch=branch, base=base, unread=(reason,))
     where = _Branch(branch, base, remotes, None, ran, run, "", (), tip=tip)
-    return _owner_ask_answer(root, where, items_dir=items_dir, now=now, newest=None)
+    return _owner_ask_answer(
+        root, where, items_dir=items_dir, record_dir=record_dir, now=now, newest=None
+    )
 
 
 @dataclass(frozen=True)
@@ -1957,6 +1976,7 @@ def unasked_pull_requests(
     *,
     items_dir: str,
     now: datetime,
+    record_dir: str = "",
     runner: Runner | None = None,
 ) -> Unasked:
     """Which of the open pull requests in `opened` wait on the owner with no question recorded.
@@ -1969,7 +1989,9 @@ def unasked_pull_requests(
     pulls: list[tuple[str, int | None]] = []
     unread: list[str] = []
     for branch in sorted(opened):
-        verdict = owner_ask_on(root, branch, items_dir=items_dir, now=now, runner=runner)
+        verdict = owner_ask_on(
+            root, branch, items_dir=items_dir, now=now, record_dir=record_dir, runner=runner
+        )
         if verdict.unasked:
             pulls.append((branch, opened[branch]))
         elif verdict.answer == UNKNOWN:
