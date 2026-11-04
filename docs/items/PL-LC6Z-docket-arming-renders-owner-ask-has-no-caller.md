@@ -3,12 +3,14 @@ id: PL-LC6Z
 title: docket.arming.renders_owner_ask has no caller outside its tests since PL-X4MD removed the owner-ask guard's wording match; retiring it edits tests in subprojects/docket/tests/test_cli.py that pin arm's answers, so it waits on the owner's read
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: owner-ask-by-state
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, tools/regex_baseline.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2015
 payoff: no unused wording check is left for a later session to wire back in, and the owner-ask code says only what is true
 verify: ! grep -rq 'renders_owner_ask' subprojects/docket/src subprojects/docket/tests
 ---

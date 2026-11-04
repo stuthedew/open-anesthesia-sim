@@ -386,47 +386,6 @@ def test_the_blind_count_command_is_handed_nothing(tmp_path: Path) -> None:
     assert cli._blind_count(tmp_path, Config()) is None
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "Which view opens first? | Chooser: the learner picks a view each run | Last used: it "
-        "opens where they left off | recommend Chooser - it names every view",
-        "Which run opens? | A: the newest | B: the oldest | C: the pinned one | recommend C - it "
-        "is the one the case names.",
-        "changed - the dose label reads mcg | question - should it show mcg/kg/min? | checked - "
-        "the label matches the unit stored | reply - Merge it",
-    ],
-)
-def test_renders_owner_ask_recognizes_every_line_parse_owner_ask_renders(value: str) -> None:
-    """The coordinator's guard reads the form through this, not through a copy (`PL-YV90`).
-
-    A line inside a longer message is recognized too, since a post forwards it.
-    """
-    line, why = arming.parse_owner_ask(value)
-    assert line, why
-
-    assert arming.renders_owner_ask(line)
-    assert arming.renders_owner_ask(f"The thread on #1700 asks: {line} Reply Merge it.")
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Read #1700 and merge it.",
-        # One option only, which `parse_owner_ask` refuses to render.
-        'Which view opens first? Option "Chooser": it picks. I recommend "Chooser": it names.',
-        # No recommendation.
-        'Which view? Option "A": x. Option "B": y. Reply Merge it.',
-        # A review missing its last field.
-        "What changed: a dose label. Question for you: right? Already checked: the tests.",
-        # The old risk form, which is no longer rendered.
-        "Risk to review: a dose label. Checked: the tests. Please look at: the label.",
-    ],
-)
-def test_renders_owner_ask_refuses_a_line_in_neither_form(text: str) -> None:
-    assert not arming.renders_owner_ask(text)
-
-
 # How a `Blind-review` value is read: one entry per finding, by pass (`PL-0BRY`).
 
 
