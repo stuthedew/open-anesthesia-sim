@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect
 feature: guards-keyed-on-the-action
+milestone: v0.6.15
 touches: .claude/hooks/git/reference-transaction, .claude/hooks/git/pre-push, .claude/hooks/stop_hook_patch.py, .claude/hooks/gh_write_guard.py, .claude/hooks/direct-merge-guard.sh, .claude/hooks/pr-body-email-guard.sh, tools/pr_body_check.py, .claude/settings.json, .claude/skills/docket/modes/capture.md, docs/apparatus.md, docs/worker.md, docs/resident-instructions.md, ROADMAP.md, tests/unit/test_git_hooks.py, docs/items/PL-9KSJ-every-guard-hook-fails-open-without-a-trace.md, docs/items/PL-B5K1-the-five-shell-guards-hand-the-payload-to.md, docs/items/PL-S3TF-about-1-430-lines-of-guard-python-live-inside.md, docs/items/PL-SG93-the-bash-guard-hooks-account-for-74-defects.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

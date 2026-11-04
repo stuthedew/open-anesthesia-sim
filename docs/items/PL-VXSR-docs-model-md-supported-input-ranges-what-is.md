@@ -4,6 +4,7 @@ title: docs/MODEL.md § Supported input ranges, 'What is left open, stated plain
 priority: P2
 effort: S
 status: done
+milestone: v0.6.15
 touches: docs/MODEL.md
 added: 2026-11-03
 closed: 2026-11-03

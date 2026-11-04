@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf
 feature: guard-review-2026-11
+milestone: v0.6.15
 touches: .claude/hooks/item_read_log.py, tools/item_reads.py, tests/unit/test_item_read_log.py, .claude/settings.json, docs/apparatus.md, docket.toml, tests/unit/test_line_splits.py, subprojects/docket/src/docket/store.py, tests/unit/test_generator_check.py, ROADMAP.md, docs/items/PL-V9L3-the-working-method-write-up-states-the-dead.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

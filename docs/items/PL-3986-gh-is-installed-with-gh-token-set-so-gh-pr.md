@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: guards-keyed-on-the-action
+milestone: v0.6.15
 touches: .claude/hooks/gh_write_guard.py, .claude/hooks/direct-merge-guard.sh, .claude/settings.json, tests/unit/test_gh_write_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

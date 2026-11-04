@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: effort-trial
+milestone: v0.6.15
 touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/skills/model-review/SKILL.md, .claude/skills/docket/modes/triage.md, .claude/hooks/docket-digest.sh, .claude/hooks/hook_input.py, .claude/hooks/thread_hooks.py, docs/maintainer.md, docs/apparatus.md, docs/model-review.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03

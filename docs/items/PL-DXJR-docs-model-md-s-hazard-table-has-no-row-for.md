@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, safety
 feature: presentation-safety
+milestone: v0.6.15
 touches: docs/MODEL.md, ROADMAP.md, tests/integration/test_controller.py
 added: 2026-11-02
 closed: 2026-11-02

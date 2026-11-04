@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.15
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md
 blocked-by: PL-R7Q6, PL-TZ7R, PL-1XC7, PL-FYGJ, PL-CWRZ
 added: 2026-11-02

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: api-credit-runs
+milestone: v0.6.15
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03

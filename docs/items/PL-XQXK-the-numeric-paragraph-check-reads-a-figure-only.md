@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-claims-held-by-tests
+milestone: v0.6.15
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md, docs/items/PL-5L84-docs-model-md-states-the-20-c-reference.md, docs/items/PL-ZDZ0-docs-model-md-displayed-precision-says-a-reader.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02

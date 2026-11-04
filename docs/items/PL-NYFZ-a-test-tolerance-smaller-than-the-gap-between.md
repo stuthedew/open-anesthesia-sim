@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: dead-test-limits
+milestone: v0.6.15
 touches: tests/conftest.py, tests/unit/test_tolerance_spacing.py, .claude/rules/test-oracles.md, docket.toml
 added: 2026-11-03
 closed: 2026-11-03

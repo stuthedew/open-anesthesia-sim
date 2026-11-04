@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: refactor
 feature: guard-review-2026-11
+milestone: v0.6.15
 touches: .claude/hooks/floor_interpreter_guard.py, .claude/hooks/gate_status_guard.py, .claude/hooks/push_check_guard.py, .claude/hooks/direct_merge_guard.py, .claude/hooks/docket_branch_guard.py, .claude/hooks/guard.sh, .claude/hooks/hook_input.py, .claude/hooks/shell_split.py, docs/apparatus.md, Makefile, tools/fact_home_check.py, tests/unit/test_tools_portability.py, tests/unit/test_line_splits.py, tests/unit/test_docket_branch_guard.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

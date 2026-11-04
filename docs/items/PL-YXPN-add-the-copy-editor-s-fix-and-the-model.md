@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: planning
+milestone: v0.6.15
 touches: ROADMAP.md
 added: 2026-11-04
 closed: 2026-11-04

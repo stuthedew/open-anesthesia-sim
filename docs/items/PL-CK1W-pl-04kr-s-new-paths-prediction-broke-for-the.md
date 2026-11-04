@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: defect-review-2026-10
+milestone: v0.6.15
 touches: docs/items/PL-CK1W-pl-04kr-s-new-paths-prediction-broke-for-the.md
 added: 2026-10-19
 closed: 2026-11-03

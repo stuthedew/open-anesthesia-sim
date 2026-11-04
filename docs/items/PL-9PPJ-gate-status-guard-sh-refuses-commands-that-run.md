@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guard-review-2026-11
+milestone: v0.6.15
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

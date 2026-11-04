@@ -6,6 +6,7 @@ owner-priority: P1, 2026-11-02
 effort: S
 status: done
 feature: reader-tested-prose
+milestone: v0.6.15
 touches: .claude/skills/docket/modes/close-out.md
 blocked-by: PL-R7Q6
 added: 2026-11-02

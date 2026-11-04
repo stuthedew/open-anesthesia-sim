@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.15
 touches: docs/MODEL.md, tests/reference/test_sevo_patient.py
 added: 2026-11-03
 closed: 2026-11-03

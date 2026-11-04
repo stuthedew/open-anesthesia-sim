@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.6.15
 touches: docs/items/PL-P6KV-pl-04kr-s-predictions-broke-twice-more-for-the.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only reading of a release report, with no effect on what a learner sees
 added: 2026-11-03
