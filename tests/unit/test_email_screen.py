@@ -341,3 +341,18 @@ def test_the_screen_loads_no_docket_module() -> None:
         [sys.executable, "-I", "-c", script], capture_output=True, text=True, check=True
     )
     assert ran.stdout.strip() == "[]"
+
+
+def test_a_pre_push_hook_installed_before_the_move_still_screens() -> None:
+    """A session keeps the `pre-push` hook it installed at its start, which ran pr_body_check.py."""
+    author = "Claude <noreply@anthropic.com>"
+    log = f"\0{'a' * 40}\n{author}\n{author}\nTo {PERSON}.\n"
+    ran = subprocess.run(
+        [sys.executable, str(REPO / "tools" / "pr_body_check.py"), "--screen-push"],
+        input=log,
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert ran.returncode == 1
+    assert f"`{PERSON}`" in ran.stderr

@@ -736,7 +736,16 @@ def main(argv: list[str]) -> int:
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
     `--anchors` exits 1 where it fails, because `make check` rests on it.
+
+    `--screen-push` is `tools/email_screen.py`'s, run from here for a
+    `pre-push` hook installed before `PL-NDY5` moved the screen. A session
+    keeps the hook it installed at its start, so without this its pushes
+    would go out unscreened until it restarted.
     """
+    if "--screen-push" in argv:
+        import email_screen
+
+        return email_screen.main(argv)
     ref = default_branch_ref()
     if "--anchors" in argv:
         return anchors(ref)
