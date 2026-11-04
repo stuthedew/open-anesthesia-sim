@@ -502,6 +502,7 @@ workflow_paths = [
   "tests/unit/test_import_boundary_check.py",
   "tests/unit/test_literal_home_check.py",
   "tests/unit/test_pr_body_check.py",
+  "tests/unit/test_email_screen.py",
   "tests/unit/test_pr_record_check.py",
   "tests/unit/test_item_store_guard.py",
   "tests/unit/test_line_splits.py",

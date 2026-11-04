@@ -255,6 +255,7 @@ def test_the_hook_is_wired_on_every_mcp_tool_and_refuses_from_its_script() -> No
         for hook in entry["hooks"]
     }
     command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard.sh" pre-mcp'
+    # regex: the matcher is a regular expression to Claude Code, so it is read as one.
     matcher = re.compile(commands[command])
     for tool in (
         "mcp__github__create_pull_request",

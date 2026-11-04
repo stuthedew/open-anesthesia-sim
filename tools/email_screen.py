@@ -38,6 +38,7 @@ from hook_input import deny, log_refusal
 #: An email address as a person writes one: a local part, `@`, and a domain
 #: ending in a label of letters. A version pin such as `react@18.3.1` ends in
 #: digits, so it is not one.
+# regex: an address in free prose, where no parser applies; a flat token search.
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 
 #: The addresses GitHub text may carry, because each is nobody's own. The
