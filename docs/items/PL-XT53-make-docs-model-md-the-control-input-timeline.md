@@ -3,10 +3,11 @@ id: PL-XT53
 title: Make docs/MODEL.md § "The control-input timeline" through § "The six compartment traces: what separates them" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
+blocked-by: PL-HGZS
 added: 2026-11-02
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
 verify: uv run python tools/model_rewrite.py ids "The control-input timeline" "F_A/F_I as a displayed ratio" "Color contrast, and the standard this interface is held to" "The six compartment traces: what separates them"
