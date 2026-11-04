@@ -18,6 +18,13 @@ v0.7.0 (project owner, 2026-11-04 20:12Z: "Refresh main and in flight. At the
 copy editor stuff to .7 release new patch release in the meantime."). The
 message was voice-typed, and "At" is read as "Add".
 
+**Why it matters.** Without it, v0.7.0 could be cut while the copy editor
+still passes over-explained text, and the model-specification sections that a
+learner reads beside the schematic would stay unrewritten.
+
+**Done when.** `ROADMAP.md`'s v0.7.0 section names the copy editor's fix and
+the five rewrites in its Required scope and its Definition of done.
+
 **Reading.** v0.7.0 is not cut until the copy editor is fixed, so its fix joins
 v0.7.0's Required scope, and the patch release, v0.6.15 (`PL-8B6Z`), ships what
 is finished meanwhile. "The copy editor stuff" is read as `PL-HGZS`, the live
