@@ -192,8 +192,9 @@ def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
 
     The expected text is worked out here, from the inputs and the transcribed
     constants, and written in this test's own format. The run delivers enough
-    that sevoflurane's or desflurane's factor would draw 20 mL or 17 mL, so a
-    figure converted with the wrong agent's factor fails at whole millilitres.
+    agent that sevoflurane's or desflurane's vapour-to-liquid factor would draw
+    20 mL or 17 mL, so a figure converted with the wrong agent's factor fails
+    even at whole millilitres.
     """
 
     dial_percent, flow_l_min, minutes = 1.5, 6.0, 40.0

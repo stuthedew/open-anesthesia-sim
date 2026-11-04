@@ -1598,8 +1598,9 @@ _RUN_TOTALS = (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
 def test_agent_amounts_precision() -> None:
     """Pin the `PL-TG60` decision: one decimal of a litre, and the below-resolution form.
 
-    The Flet panel printed six decimals of an exhaust total whose parameter
-    uncertainty is 0.016-0.23 L across the supported span. One count of 0.1 L
+    The earlier Flet panel printed six decimals of an exhausted total whose
+    parameter uncertainty is 0.016-0.23 L at 1 MAC with the reference adult's
+    flows, and larger at a higher dial setting (`PL-0P3F`). One step of 0.1 L
     lies inside the band that `docs/MODEL.md` § "Displayed precision" derives
     for the concentration readouts, and 0.01 L does not. The three totals
     share the count, so the accounting panel shows them on one scale. A
@@ -1676,12 +1677,13 @@ def test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilit
     The delivered agent is the vaporizer dial setting times the fresh gas flow
     times the time, so no partition coefficient makes it uncertain. The
     conversion to liquid is exact at the model's 20 °C reference. So in liquid,
-    the total's only uncertainty comes from the measured density. That SD is a
-    fixed share of the total, so one step is finest against it at the largest
-    total the supported span allows: each agent's highest dial setting, at the
-    highest fresh gas flow, for the longest run. This test computes that total
-    and its SD from each agent's stored density, the density's SD, the agent's
-    ratio of vapour to liquid and the supported limits, not from the formatter.
+    the total's only uncertainty comes from the measured density. That SD moves
+    the total by a fixed share of it, so one step is finest against it at the
+    largest total the supported span allows: each agent's highest dial setting,
+    at the highest fresh gas flow, for the longest run. This test computes that
+    total and its SD from each agent's stored density, the density's SD, the
+    agent's ratio of vapour to liquid and the supported limits, not from the
+    formatter.
 
     At 8% sevoflurane and 10 L/min for 24 h, the total is about 6,300 mL and
     one SD is about 3.3 mL, so a step of 1 mL is about 0.3 SD. Desflurane at

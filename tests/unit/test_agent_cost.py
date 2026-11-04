@@ -359,9 +359,11 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
 def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() -> None:
     """Run `docs/MODEL.md`'s desflurane case, 6 % at 1 L/min for 60 min at USD 115.13 per 240 mL.
 
-    The cost is 3600 / 209.7 x 115.13 / 240 = USD 8.23. The figures shown
-    beside it, 17 mL and USD 0.4797 per mL, multiply to USD 8.15. So the
-    readout says that the figures are rounded.
+    The case is in § "A cost at the reader's price". The cost is 3600 mL of
+    vapour divided by desflurane's unrounded vapour-to-liquid ratio, about
+    209.7, times 115.13 / 240, which is USD 8.23. The figures shown beside it,
+    17 mL and USD 0.4797 per mL, multiply to USD 8.15. So the readout says that
+    the figures are rounded.
     """
 
     price = AgentPrice("desflurane", 115.13, 240.0, "USD", date(2026, 11, 1))

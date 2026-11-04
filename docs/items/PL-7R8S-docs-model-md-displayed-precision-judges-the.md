@@ -13,15 +13,15 @@ payoff: every agent amount and the cost beside it are judged against one limit, 
 verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.md
 ---
 
-**Problem.** docs/MODEL.md § Displayed precision judges the cost's significant figures against one SD of the density while every other agent amount, the liquid volume beside the cost included, is judged against a seventh of an SD, so the section applies two limits to figures with the same relative uncertainty
+**Problem.** `docs/MODEL.md` § "Displayed precision" judges the cost's significant figures against one SD of the density. It judges every other agent amount, the liquid volume beside the cost included, against a seventh of an SD. So the section applies two limits to figures with the same relative uncertainty.
 
 **Checked 2026-11-04**, by the second blind review pass on `#2024`. The paragraph "A cost and a price per millilitre" refuses four significant figures for a cost because 0.010 % is "finer than one SD" of the density. Every other agent amount in the section is held to the readouts' band, which runs down to about a seventh of an SD. Four figures would be about 0.19 SD (0.010 % against sevoflurane's 0.053 %), inside that band. The volume beside the cost has the same relative uncertainty, and `PL-SP6H` judged its whole millilitre against the seventh. Above about 1,900 mL of sevoflurane the whole-millilitre volume is finer than one SD, so the two figures on one line are judged by different limits.
 
 **Why it matters.** The section gives a reason that its own rule elsewhere contradicts. Nothing on screen is finer than the band: three figures are coarser than the band requires, which the one-sided bound allows.
 
-**Decision needed.** Should a cost keep three significant figures, or show four, the finest the band admits? A learner sees the cost's last digit change.
+**Decision needed.** Should a cost keep three significant figures, or show four, the finest the band admits? The choice is the owner's because four figures would change the last digit of a cost a learner sees.
 
-- **A. Keep three figures**, and restate the reason as a choice inside the band: three figures put the price check's rounding, at most half a cent per dollar, below the cost's step. The learner sees no change.
+- **A. Keep three figures**, and restate the reason as a choice inside the band, as the readouts' two decimals are a choice inside theirs. The learner sees no change.
 - **B. Show four figures**, the finest count the band admits, as each agent amount shows the finest count derived for it. The cost is never finer than a cent, so only a cost of USD 10 or more changes: USD 12.3 would read USD 12.34.
 
 **Recommendation: A.** It fixes the inconsistency in the reason without changing the display, and a cost at the reader's own price is read to a few figures, not to the cent on a long case.
