@@ -7072,6 +7072,13 @@ classed `safety` or `science`. § "Deferred from this gate" admits such a
 capture rather than deferring it. `PL-R4Y2`'s triage placed them, and deferred
 the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 
+**`PL-SP6H` joined this list on 2026-11-04, after the freeze.** It is classed
+`safety`. The agent cost View shows the delivered total in millilitres of
+liquid to 0.1 mL, and in long runs at a high delivered concentration that
+step is finer than the figure's uncertainty supports. The hazard is live, so
+§ "Deferred from this gate" admits the item rather than deferring it. Its
+fix is whole millilitres, which the project owner chose on 2026-11-04.
+
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
 a `verify:` command tests for the fix and never for the fault. Each of the 24
@@ -7093,7 +7100,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 80 entries**
+**Cleared before v0.7.0 begins unless deferred - 81 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -7175,6 +7182,7 @@ brief has the tally.
 - PL-PTDZ (S) The washout figures in docs/MODEL.md § "MAC-awake as a chart reference" (2.86, 6.55 and 7.31 min crossings, 1.69% alveolar, 0.84 MAC after 3 hours) depend on the blood:gas and tissue coefficients, volumes, ventilation, cardiac output and the protocol, but no test pins them, so a parameter change leaves six figures in the specification stale with no check firing
 - PL-000W (S) Which field holds a control's value is mapped twice: controller._control_value maps each ControlInput to an UptakeEquationSettings field, and dashboard_frame's flows dict maps three of them to the run's displayed settings, so a fifth control has to be added to both
 - PL-D1LR (S) docs/MODEL.md lines 6057 and 6363 say the gas accumulators are displayed to six decimals of a litre (1e-6 L) and size the canonical-versus-display margin against that, but § on the agent-accounting panel (line 10154) says its amounts have shown 0.1 L since PL-TG60, so both margins are measured against a resolution the display no longer has (found by the PL-XK00 blind review, 2026-10-25)
+- PL-SP6H (S) Check two docs/MODEL.md agent-amount precision claims against the figures they cite: 0.1 L is said to lie between a quarter of an SD and six SDs, but the quoted 0.016-0.23 L shifts give about 0.43 SD at the coarse end; and 0.1 mL of delivered liquid is said to lie inside the density's band, though at 8% and 10 L/min over 24 h one step is about a thirtieth of an SD
 
 ### Deferred from this gate
 

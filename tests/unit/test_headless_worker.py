@@ -18,7 +18,7 @@ import pytest
 from docket.lines import split_lines
 from docket.model_choice import Choice
 from docket.store import ID_RE
-from docket.vcs import GitCall
+from docket.vcs import GitCall, is_shallow
 from headless_worker import (
     NO_PUSH_URL,
     OUTRANKING_CREDENTIALS,
@@ -240,6 +240,34 @@ def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
     clone = tmp_path / "workers" / "run"
     headless_worker.prepare_clone(str(origin), clone, "claude/pl-b7k2-worker", no_push=True)
     assert _git("rev-parse", "--abbrev-ref", "HEAD", cwd=clone).strip() == "claude/pl-b7k2-worker"
+
+
+def test_a_shallow_checkout_clones_without_a_reference(
+    origin: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Git refuses a shallow reference repository, and cloud checkouts start shallow (`PL-W6JM`)."""
+    seed = tmp_path / "second"
+    _git("clone", "-q", str(origin), str(seed), cwd=tmp_path)
+    _git(
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@t",
+        "commit",
+        "--allow-empty",
+        "-qm",
+        "two",
+        cwd=seed,
+    )
+    _git("push", "-q", "origin", "main", cwd=seed)
+    checkout = tmp_path / "shallow"
+    _git("clone", "-q", "--depth", "1", origin.as_uri(), str(checkout), cwd=tmp_path)
+    assert _git("rev-parse", "--is-shallow-repository", cwd=checkout).strip() == "true"
+    monkeypatch.setattr(headless_worker, "ROOT", checkout)
+    clone = tmp_path / "workers" / "run"
+    headless_worker.prepare_clone(str(origin), clone, "claude/pl-b7k2-worker", no_push=True)
+    assert _git("rev-parse", "--abbrev-ref", "HEAD", cwd=clone).strip() == "claude/pl-b7k2-worker"
+    assert not (clone / ".git" / "objects" / "info" / "alternates").exists()
 
 
 def test_a_failed_clone_names_git_s_error_not_its_progress_line() -> None:
@@ -484,8 +512,21 @@ def test_an_item_the_queue_does_not_offer_is_refused() -> None:
 
 @pytest.mark.reads_item_store
 def test_the_delegable_list_is_read_without_the_bash_launcher() -> None:
-    """`bin/docket` is a bash script, so starting it with Python failed (`PL-W38C`)."""
-    ids = split_lines(run_docket_delegable())
+    """The delegable list is read without starting `bin/docket`, which is a bash script.
+
+    Starting `bin/docket` with Python failed (`PL-W38C`). In a shallow checkout,
+    docket cannot compare every branch with the base branch, so it gives no list
+    rather than part of one, and `run_docket_delegable` then raises `Refused`.
+    The test accepts that refusal only where git says the checkout is shallow
+    (`PL-W6JM`).
+    """
+    try:
+        listing = run_docket_delegable()
+    except Refused:
+        if is_shallow(headless_worker.ROOT) is not True:
+            raise
+        return
+    ids = split_lines(listing)
     assert all(ID_RE.fullmatch(line) for line in ids if line)
 
 

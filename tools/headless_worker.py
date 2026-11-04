@@ -119,7 +119,7 @@ from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model_choice import Choice, item_facts  # noqa: E402
 from docket.shell import BASH_FLOOR  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import REMOTE, call_git, default_base, read_git  # noqa: E402
+from docket.vcs import REMOTE, call_git, default_base, is_shallow, read_git  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -413,15 +413,23 @@ def git_or_refuse(args: Sequence[str], root: Path, timeout: float = CLONE_TIMEOU
 
 
 def prepare_clone(origin: str, clone: Path, branch: str, no_push: bool) -> None:
-    """Clone `origin`, borrowing this checkout's objects, onto a new branch from its base.
+    """Clone `origin` onto a new branch from its base, borrowing objects this repository has.
 
-    The objects are borrowed from the repository's shared git directory, not
-    from the checkout. A linked worktree's `.git` is a file, which `git clone
-    --reference` refuses (`PL-29DJ`).
+    The clone borrows objects only where git says this checkout is not shallow,
+    because git refuses a shallow reference repository and a cloud session's
+    checkout starts shallow. Otherwise, including where git cannot say, it takes
+    every object from `origin`, since borrowing saves only download time (`PL-W6JM`).
+
+    The objects come from the repository's shared git directory rather than the
+    checkout's `.git`, because in a linked worktree `.git` is a file, which
+    `git clone --reference` refuses (`PL-29DJ`).
     """
     clone.parent.mkdir(parents=True, exist_ok=True)
-    shared = read_git(["rev-parse", "--path-format=absolute", "--git-common-dir"], ROOT).strip()
-    git_or_refuse(["clone", "--reference", shared, "--dissociate", origin, str(clone)], ROOT)
+    borrow: list[str] = []
+    if is_shallow(ROOT) is False:
+        shared = read_git(["rev-parse", "--path-format=absolute", "--git-common-dir"], ROOT)
+        borrow = ["--reference", shared.strip(), "--dissociate"]
+    git_or_refuse(["clone", *borrow, origin, str(clone)], ROOT)
     git_or_refuse(["checkout", "-b", branch, default_base(clone)], clone)
     if no_push:
         git_or_refuse(["remote", "set-url", "--push", REMOTE, NO_PUSH_URL], clone)

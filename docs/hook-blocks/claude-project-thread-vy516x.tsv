@@ -1,0 +1,6 @@
+time	session	guard	rule
+2026-11-04T16:03:49.671340+00:00	90cf85ab-6f60-5aa6-827d-02ffd6bc99cf	gate-status-guard	status-swallowed:tools/doc_check.py
+2026-11-04T16:10:50.534072+00:00	90cf85ab-6f60-5aa6-827d-02ffd6bc99cf	gate-status-guard	status-swallowed:tools/doc_check.py
+2026-11-04T16:16:14.708469+00:00	90cf85ab-6f60-5aa6-827d-02ffd6bc99cf	push-check-guard	checks-failed
+2026-11-04T16:17:06.457789+00:00	90cf85ab-6f60-5aa6-827d-02ffd6bc99cf	gate-status-guard	status-swallowed:tools/doc_check.py
+2026-11-04T16:32:01.918572+00:00	90cf85ab-6f60-5aa6-827d-02ffd6bc99cf	gate-status-guard	status-swallowed:tools/doc_check.py

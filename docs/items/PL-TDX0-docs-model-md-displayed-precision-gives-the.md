@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - filed 2026-11-02 from PL-TCD3's blind review; a correcti
 added: 2026-11-02
 payoff: the uncertainty Displayed precision states for each compartment's parameters is the uncertainty its own source measured, so the precision argument a learner reads rests on the right SD
 verify: ! grep -q '3.9% of the mean for desflurane' docs/MODEL.md
+recurrences: 2026-11-04 PL-KG6S
 ---
 
 **Problem.** `docs/MODEL.md` § "Displayed precision" says the stored
