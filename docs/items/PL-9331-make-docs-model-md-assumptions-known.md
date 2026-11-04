@@ -49,4 +49,11 @@ or a sentence whose meaning needs their judgment.
 
 **Ready, 2026-11-04.** All four have closed, so the rewrite is written now, and the copy editor edits it at close-out step 8.
 
-**Owner's review, 2026-11-04.** Five sentences changed what they say, so the pull request waits for the owner to read them. Four correct an error: the humidification table now says all four cohorts fall outside one standard deviation with the factor, the Gas Man note says the cardiac-output note declines Brody's relation, the lung-store paragraph says the store takes up agent early in wash-in, and the lead-in says "This model assumes". The fifth rewords the arterial-blood bullet to say the lung is perfusion limited and arterial blood carries the alveolar partial pressure.
+**Owner's review, 2026-11-04.** Five sentences in `docs/MODEL.md` § "Known limitations" and § "Assumptions" now say something different, so pull request #2019 waits for the owner to review them. Four of them correct an error:
+
+1. The humidification table said that with the water-vapour factor (713/760) applied, three of the four published wash-in cohorts fall outside one standard deviation of their published means. It now says all four do, as the table's rows show.
+2. The Gas Man note said the cardiac-output note carries Brody's 1945 relation. It now says that note declines to adopt it.
+3. The lung-store paragraph said the store does not appear in $`F_A/F_I`$ at all. It now says the store takes up agent in the first minutes of wash-in and barely changes $`F_A/F_I`$ at 30 minutes.
+4. The lead-in said "Version v0.1.0 assumes". It now says "This model assumes".
+
+The fifth rewords the arterial-blood bullet. It said arterial blood "is flow-limited and equals alveolar gas". It now says the lung is perfusion limited and arterial blood carries the alveolar partial pressure.
