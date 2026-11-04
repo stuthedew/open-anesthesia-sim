@@ -3,11 +3,13 @@ id: PL-BSYT
 title: Apply the prose review's rewrites of four docs/MODEL.md Displayed-precision and Agent-amount paragraphs, which use count, glyph position, floor and placeholder in private senses
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 added: 2026-11-03
+closed: 2026-11-04
+pr: 2018
 payoff: a clinician can read how precisely the concentration, MAC and agent-amount readouts are shown without decoding private terms, and so judge how far to trust them
 verify: ! grep -qF 'drag label' docs/MODEL.md && ! grep -qF 'The parameter spread gives the same answer' docs/MODEL.md && ! grep -qF 'coarse in the allowed' docs/MODEL.md
 ---
