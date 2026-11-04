@@ -330,6 +330,12 @@ class Config:
     #: reported and does not undo the number. Empty by default, which runs
     #: nothing.
     record_command: str = ""
+    #: The directory `record_command` writes into, relative to the root. A
+    #: branch that records its pull request's number writes there, so
+    #: `vcs.queue_records` counts it as a queue record and the branch owes no
+    #: claim for it. The project's copy command reads the same key, so the
+    #: path has one home (`PL-QLNX`). Empty by default, which adds nothing.
+    record_dir: str = ""
     #: A command that mutates the lines a branch changed and says which mutants
     #: the tests did not catch, which `docket verify` runs once per run as an
     #: integrity check (`PL-CZXN`). The package appends the base it audits
@@ -708,6 +714,7 @@ def load(root: Path) -> Config:
         record_command=_str(
             section.get("record_command"), defaults.record_command, "record_command"
         ),
+        record_dir=_store_dir(section.get("record_dir"), defaults.record_dir, "record_dir"),
         mutation_command=_str(
             section.get("mutation_command"), defaults.mutation_command, "mutation_command"
         ),
