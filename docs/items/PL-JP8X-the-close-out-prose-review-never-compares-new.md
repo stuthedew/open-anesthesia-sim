@@ -1,9 +1,24 @@
 ---
 id: PL-JP8X
 title: The close-out prose review never compares new text with the text it replaced in the document, so a branch can double a passage's length and pass: on PL-ZDZ0 the owner rejected the rewrite of a 163-word Displayed-precision passage three times as too long (first at about 210 words) before a 100-word version, and no review round flagged the length
-status: untriaged
-feature: prose-quality
+priority: P1
+effort: S
+status: ready
+classes: defect
+feature: reader-first-prose
+touches: tools/new_prose.py, tests/unit/test_new_prose.py
+deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
+payoff: a passage that doubled, or lost a value, a test name or an item id, is named before the owner reads it
+verify: grep -q 'def test_a_passage_that_grew_and_lost_a_number_is_reported' tests/unit/test_new_prose.py
 ---
 
 **Problem.** The close-out prose review never compares new text with the text it replaced in the document, so a branch can double a passage's length and pass: on PL-ZDZ0 the owner rejected the rewrite of a 163-word Displayed-precision passage three times as too long (first at about 210 words) before a 100-word version, and no review round flagged the length
+
+**Why it matters.** Without the comparison, nothing tells the writer or the reviewer that a passage doubled. The owner is then the only check on length, and on `PL-ZDZ0` that took three rounds of their review.
+
+**Decided under `PL-J1ZM`, 2026-11-04.** This is the decidable half of `PL-J1ZM` parts 2 and 4; `PL-22T5` builds the copy-editor agent that reads its output. The prototype run in `PL-J1ZM`'s brief also showed that a copy editor applying edits by default can drop a fact: it removed "above zero" from a display condition, and turned a "no test yet (`PL-19W8`)" declaration into "are untested". So the same script lists what an edit removed.
+
+**Done when.** `tools/new_prose.py` prints, for each changed passage, its word count on the base and on the branch, and lists every number, name in backticks, item id and "no test yet" form that is on the base and not on the branch. A test in `tests/unit/test_new_prose.py` feeds it a passage that lost a number and grew, and finds both reported.
+
+**Generator check.** Part of `PL-J1ZM`'s fix, not a new head: the fact misread is the one `PL-J1ZM` states, what a reader can do without.
