@@ -31,22 +31,24 @@ names. `tools/new_prose.py` reads this table and prints each unit's readers
 for the close-out prose review, so a new row reaches the review with no other
 change.
 
-**Before you write a paragraph, decide what its reader needs.** Write down, in
-one sentence, what the reader should take from the paragraph and what they will
-do with it, using the table above. Keep each fact that serves that sentence.
-Put each other fact where its own reader will look for it. Decision history goes
-in the item. In `docs/MODEL.md`, numerical detail goes in a note for developers
-at the end of the same section, a paragraph that opens with "**For
-developers.**" The detail stays in that document, because the document must
-specify the numerical method (`PL-TZ7R`).
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why, and give the why only where they act on it.
+Move each reason, derivation, test name and piece of history that they do not
+act on to where its own reader looks, or cut it. Decision history goes in the
+item. In `docs/MODEL.md`, the rest goes in a note for developers at the end of
+the same section, a paragraph that opens with "**For developers.**" That note
+may name the tests for the paragraphs directly above it (`PL-W8FL`). The detail
+stays in that document, because the document must specify the numerical method
+(`PL-TZ7R`).
 
-**Give a chosen value its reason from a record.** Where a paragraph gives a
-chosen value, such as a tolerance or a limit, say what the value does, why it is
-this number, and what changing it would do. In `docs/MODEL.md`, that goes in the
-note for developers. Take each answer from the code or test that uses the value,
-or from a cited record. When the reason is not at hand, trace the value's
-history first, with `git log -S` and the items. Search for the value as the
-code writes it. The step-size test's 0.5% tolerance, removed in `PL-VXM0`, was
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance, removed in `PL-VXM0`, was
 `5e-3` in `tests/reference/test_sevo_patient.py`, and `git log -S 5e-3` finds
 the commit that first set it. When the trace finds no reason, file an item for the missing
 record, and say in the text what the trace found. Never state a reason that no
@@ -68,7 +70,9 @@ record holds.
    where it first appears.
 4. **Make one point per sentence.** Put the subject and its verb early and
    close together. When a sentence needs a semicolon, a dash or a second
-   parenthesis, split it. Most sentences should be under 25 words.
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
 5. **State the reason in words.** An item id, a pull request number or a
    section name can follow as a pointer, but the sentence must make sense
    without it.
@@ -136,10 +140,10 @@ change plainly, even when the text around it is dense. Rewriting sentences you
 did not need to touch is work for its own item, in the `prose-quality`
 feature.
 
-This rule decides how a sentence is worded. It does not decide what a text
-must contain or the order of a reply. The safety-critical standard in
-`CLAUDE.md` and `.claude/rules/sources-and-docstrings.md` decide which facts a
-docstring, an error message or a displayed value must give, and
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and
+`.claude/rules/sources-and-docstrings.md` decide which facts a docstring, an
+error message or a displayed value must give, and this rule never cuts one.
 `.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
 commands, paths and quoted output stay exactly as they are.
 
