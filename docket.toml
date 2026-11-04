@@ -694,7 +694,10 @@ open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 # bare interpreter is the 3.11 tools floor, which cannot parse every file
 # under `src/`, so the count exited 2 and `arm` held correct work (`PL-Q508`).
 # The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
-prose_count_command = "uv run python tools/new_prose.py --count"
+# Paused with close-out step 8 (project owner, 2026-11-04, until PL-HGZS is
+# fixed and the owner agrees to bring it back). The command it held was
+# "uv run python tools/new_prose.py --count".
+prose_count_command = ""
 
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
