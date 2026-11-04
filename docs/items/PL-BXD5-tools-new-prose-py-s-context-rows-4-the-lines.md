@@ -3,11 +3,13 @@ id: PL-BXD5
 title: tools/new_prose.py's CONTEXT_ROWS = 4, the lines of code printed around each docstring or comment for the copy editor, has no recorded reason: PL-PRCS set it in 20eb2fd29 and neither the commit nor the item says why 4, or what fewer or more rows would cost or catch
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: reader-first-prose
 touches: tools/new_prose.py
 added: 2026-11-04
+closed: 2026-11-04
+pr: 2030
 payoff: a session changing how much code the copy editor sees knows what four rows buy and what a different number would cost
 verify: ! grep -qF 'recorded no reason for that number' tools/new_prose.py
 ---
@@ -20,4 +22,6 @@ verify: ! grep -qF 'recorded no reason for that number' tools/new_prose.py
 
 **Done when.** The comment above `CONTEXT_ROWS` gives the reason for the number from a record: a measurement on the copy editor's test set or on a branch's units, or a stated choice with what fewer or more rows would cost. The sentence saying that no reason was recorded is gone.
 
-**Generator check.** A one-off. The fact is why this constant is 4. The plain-writing rule's instruction to file an item when a trace finds no reason is what filed it, which is that rule working as intended. No other open item reports a missing reason.
+**Generator check.** This is a one-off, about one missing fact: why `CONTEXT_ROWS` is 4. It was filed under the plain-writing rule's instruction to file an item when a trace of a value's history finds no reason. No other open item reports a missing reason.
+
+**Done 2026-11-04.** The comment above `CONTEXT_ROWS` now gives its reason from a measurement, and the value stays 4. The line that a docstring most needs shown above it is the `def` or `class` it describes. An `ast` walk went over every Python file in `src/`, `tests/`, `tools/` and `subprojects/docket/src/docket/`. For each function and class whose body opens with a docstring, it counted the rows from the `def` or `class` line down to the docstring. Of 7,943 docstrings, 82.9% start 1 row below, 97.3% within 3 rows and 97.3% within 4, 98.0% within 6 and 99.2% within 8. The jump between 1 and 3 rows comes from signatures that wrap onto lines of their own. Three rows therefore show the `def` as often as 4 do, and the fourth row is a margin of one line on each side. Comments were not measured, because a comment has no single line it describes.

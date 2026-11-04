@@ -48,10 +48,11 @@ marked ready** (project owner, 2026-11-04, `PL-J1ZM`), because the squash
 merge makes them the commit on `main`. Write them to a file in the
 scratchpad, the title on the first line, and leave out the `🤖 Generated
 with` lines. Save the output of `python3 tools/new_prose.py --draft FILE
---kind "pull request titles and bodies"` to a second file, and give that
-file's path to the `copy-editor` agent. Publish its rewrite with the
-`🤖 Generated with` lines added back. Revert an edit only where it lost or
-changed a value, a unit, a condition, an identifier or a citation.
+--kind "pull request titles and bodies"`, where FILE is that file, to a
+second file. Run `python3 tools/copy_edit.py` on the second file. Revert an
+edit only where it lost or changed a value, a unit, a condition, an
+identifier or a citation. Then publish the copy editor's rewrite with the
+`🤖 Generated with` lines added back.
 
 ## Run the blind review passes before a simulator pull request is ready
 
