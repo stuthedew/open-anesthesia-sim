@@ -10645,21 +10645,21 @@ difference in one unit that it does not resolve in the other. One step of the
 litre display, 0.1 L of vapour, is 0.55 mL of sevoflurane liquid, 0.51 mL of
 isoflurane and 0.48 mL of desflurane at the 20 °C reference of § "Agent amount",
 and the smallest power of ten at or above all three is 1 mL. The partition
-coefficients give the same answer. At 24 h, the one-SD shifts derived above for
-the litre display, 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L
-of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So one step of 1 mL is
-about one SD, and a step of 0.1 mL would be a tenth of one.
+coefficients give the same answer. At 24 h, the one-SD shifts measured above at
+1 MAC with the reference adult's flows, 0.19 L of sevoflurane vapour, 0.18 L of
+isoflurane and 0.23 L of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So
+at those settings one step of 1 mL is about one SD, and a step of 0.1 mL would
+be a tenth of one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The delivered total in millilitres of liquid is shown in whole millilitres.**
 The delivered agent is the dial times the flow times the time, and its
 conversion to liquid at the 20 °C reference is exact. Its only uncertainty in
-liquid is the measured density's, which grows in proportion to the total. At 8%
-sevoflurane and 10 L/min for 24 h, one SD is about 3.3 mL, so a step of 1 mL is
-about 0.3 SD, and no supported setting makes it finer than the readouts' seventh
-of an SD. A step of 0.1 mL would be about a thirtieth. Multiplying the rounded
-figure by the price per millilitre can miss the cost by up to about half a
-millilitre's price (§ "A cost at the reader's price").
+liquid is the measured density's, which grows in proportion to the total. At
+sevoflurane's largest supported total, 8% at 10 L/min for 24 h, one SD is about
+3.3 mL. So a step of 1 mL is about 0.3 SD, and no supported setting makes it
+finer than the readouts' seventh of an SD. A step of 0.1 mL would be about a
+thirtieth.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -10667,9 +10667,9 @@ millilitre's price (§ "A cost at the reader's price").
 **A cost is shown to three significant figures, and a price per millilitre to
 four.** A cost is the delivered agent in liquid times the reader's price per
 millilitre (§ "A cost at the reader's price"). The price is the reader's own
-figure, so it carries no modelled uncertainty, and the cost's only modelled
-uncertainty is the liquid figure's, which comes from the measured density alone.
-The largest relative SD of a stored density is sevoflurane's, 0.0008 / 1.5203,
+figure, so it carries no modelled uncertainty. The cost's only modelled
+uncertainty is therefore the liquid figure's. The largest relative SD of a
+stored density is sevoflurane's, 0.0008 g/mL against 1.5203 g/mL,
 or 0.053 %. That SD is relative, so the cost's precision is a count of
 significant figures, not of decimals. A count of n figures has a smallest
 relative step of 1 in (10^n - 1), at a value such as 999. At three figures that
@@ -10678,27 +10678,29 @@ At four it would be 0.010 %, finer than one SD. A cost is never shown finer than
 **a hundredth** of its currency, which is the smallest unit of most currencies.
 For example, 0.68 reads `USD 0.68`, not `USD 0.680`. A positive cost below a
 hundredth reads `USD <0.01`, and a run that has delivered nothing reads `USD 0`.
-Four figures is the fewest at which the price's rounding moves the product of
-the figures shown by at most half of the cost's smallest step. Half a step at
-four figures is at most 0.5 in 1000, against 0.5 in 999 for the cost. The liquid
-volume's whole millilitre is then the only rounded figure in the reader's multiplication
-that is coarse enough to matter, and the readout says so (§ "A cost at the
-reader's price").
+The price per millilitre takes four figures, the fewest at which its rounding
+moves the product of the figures shown by at most half of the cost's smallest
+step. At four figures that rounding is at most 0.5 in 1000 of the price, and
+half of the cost's smallest step is 0.5 in 999 of the cost. The liquid volume's
+whole millilitre is then the only rounded figure in the reader's multiplication
+that is coarse enough to matter. It can make the product miss the cost by up to
+about half a millilitre's price, and the readout says that the figures are
+rounded (§ "A cost at the reader's price").
 <!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
 <!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
 
 **The stored total has no liquid precision, and is refused in liquid.** A store
 converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
-with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
-a long run it is several. No count of decimals can make a figure with a known
-bias of several counts read correctly, so the stored total keeps litres of
+with the amount. At 17 mL of liquid it is already a whole step of 1 mL, and in
+a long run it is several steps. No number of decimals can make a figure with a
+known bias of several steps read correctly, so the stored total keeps litres of
 vapour, as the accounting panel shows it.
 
 **For developers.** `app/formatting.py` keys each precision by the amount and
 the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
 `AgentAmountPrecision`, which holds the amount, the unit and the count shown. It
 reads the finest count from the derivation for that amount and unit, so no
-caller can pass a looser bound, and it refuses a finer count when it is built. A
+caller can pass a looser bound. It refuses a finer count when it is built. A
 precision that a reader could set would be built the same way.
 `test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
 repeats the litre-to-millilitre conversion for every shipped agent from the
@@ -10727,19 +10729,20 @@ test yet (`PL-19W8`).
 **A compartment's amount is shown to two significant figures, because its
 uncertainty is a share of the amount rather than a fixed volume** (measured
 2026-11-01). The totals' derivation was repeated on each compartment's amount in
-millilitres of vapour. Each of the four stored coefficients was perturbed by one
-published SD, one at a time, at 1 MAC with the reference adult's flows, and the
-amounts were read every second for the first 20 minutes, and at 60 min, 180 min
-and 24 h. The shift runs from almost nothing, in the circuit in the first
-seconds, to 216 mL, in desflurane's fat at 24 h, because the amounts themselves
-span as many orders of magnitude. So no single count of decimals lies inside the
-band that the readouts' derivation admits. One count of 1 mL is a two-hundredth
-of one SD in desflurane's fat at 24 h, the kind of false precision that stopped
-the run totals at 0.1 L. One count of 10 mL is still a twenty-second of an SD
-there. It would also print sevoflurane's and isoflurane's venous blood as
-"<10 mL" for almost the whole first hour, which is the flat reading that the
-readouts' lower limit refuses. That blood holds about 0.18 mL at 1 min, 6.6 mL
-of sevoflurane at 10 min, and 9.7 to 10.0 mL at 60 min.
+millilitres of vapour. Each of the four stored partition coefficients was
+perturbed by one published SD, one at a time, at 1 MAC with the reference
+adult's flows. The amounts were read every second for the first 20 minutes, and
+at 60 min, 180 min and 24 h. The shift runs from almost nothing, in the circuit
+in the first seconds, to 216 mL, in desflurane's fat at 24 h, because the
+amounts themselves span that many orders of magnitude. So no single number of
+decimals keeps every amount's step inside the band that the readouts'
+derivation admits. A step of 1 mL is a two-hundredth of one SD in desflurane's
+fat at 24 h, the kind of false precision that stopped the run totals at 0.1 L.
+A step of 10 mL is still a twenty-second of an SD there. It would also print
+sevoflurane's and isoflurane's venous blood as "<10 mL" for almost the whole
+first hour, which is the flat reading that the readouts' lower limit refuses.
+That blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and
+9.7 to 10.0 mL at 60 min.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL, 10.0 mL -->
 
@@ -10747,16 +10750,16 @@ Relative to the amount, the shift is narrow. In venous blood and the three
 tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli it
 is below 3%, because the dial sets them and a coefficient barely moves them. Two
 significant figures put the last digit at 1% to 10% of the amount. As measured,
-one count lies between a tenth of one SD, in desflurane's venous blood at 79 s
-when it holds 0.99 mL, and many SDs in the circuit. These figures have no test
-yet (`PL-19W8`). The one-sided bound allows the coarse end. The fine end is
-finer than the readouts' seventh of an SD, but only in the first two minutes,
-while venous blood fills. Three significant figures would put one count at a
-hundredth of an SD. That is finer than the readouts' third decimal, which was
-refused at a seventieth of an SD, and the totals' second decimal, which was
+one step of that digit lies between a tenth of one SD, in desflurane's venous
+blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. These figures
+have no test yet (`PL-19W8`). The one-sided bound allows the coarse end. The
+fine end is finer than the readouts' seventh of an SD, but only in the first two
+minutes, while venous blood fills. Three significant figures would put one step
+at a hundredth of an SD. That is finer than the readouts' third decimal, which
+was refused at a seventieth of an SD, and the totals' second decimal, which was
 refused at about a twentieth. One significant figure would print fat's amount in
-steps of 1000 mL by 24 h. So two is the finest count the parameters support, and
-it is the count chosen.
+steps of 1000 mL by 24 h. So two is the finest number of figures the parameters
+support, and it is the number chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The readouts' uniform resolution does not carry over to the schematic's amounts,
@@ -11590,25 +11593,23 @@ could read "39 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
 price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The book prints
 $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
 (§ "Agent amount"). The two figures shown multiply to USD 7.98, because the
-cost uses the unrounded 39.42 mL. The
-wording and the layout are placeholders, and the six facts are the
-requirement.
+cost uses the unrounded 39.42 mL. The wording and the layout are placeholders,
+and the six facts are the requirement.
 
 **How the cost is computed.** The cost is the delivered agent's liquid
 equivalent times the price per millilitre. The delivered agent is the basis,
 because it is what left the bottle (`ROADMAP.md`, planned-milestone item 28,
-and `PL-H4N8`). § "Agent amount" converts the delivered agent to liquid
-exactly. The price is the one stored for the agent whose amount is priced.
-The cost depends only on the delivered amount, the agent's vapour-to-liquid
-ratio and the stored price. The date is shown and never used in the
-arithmetic, and nothing reads the clock to compute a cost. The cost is
-computed from the unrounded liquid volume and price per millilitre, and it is
-rounded only for display. So the product of the two figures shown beside it
-can differ from the cost. The difference is at most half a unit of the
-volume's last shown digit times the price per millilitre, plus the volume
-times half a unit of the price's last shown digit. Desflurane at USD 115.13
-per 240 mL bottle, run at 6 % and 1 L/min for 60 min, costs USD 8.23. Shown as
-17 mL and USD 0.4797 per mL, the two figures multiply to USD 8.15.
+and `PL-H4N8`). Its conversion to liquid is exact (§ "Agent amount"). The price
+is the one stored for the agent whose amount is priced. The cost depends only on
+the delivered amount, the agent's vapour-to-liquid ratio and the stored price.
+The date is shown and never used in the arithmetic, and nothing reads the clock
+to compute a cost. The cost is computed from the unrounded liquid volume and
+price per millilitre, and it is rounded only for display. So the product of the
+two figures shown beside it can differ from the cost. The difference is at most
+half a unit of the volume's last shown digit times the price per millilitre,
+plus the volume times half a unit of the price's last shown digit. Desflurane at
+USD 115.13 per 240 mL bottle, run at 6 % and 1 L/min for 60 min, costs USD 8.23.
+Shown as 17 mL and USD 0.4797 per mL, the two figures multiply to USD 8.15.
 
 <!-- not-restated: 6 % -->
 
@@ -11633,19 +11634,18 @@ added to, or subtracted from, a cost in another currency.
 **Displayed precision.** The decimals a cost can justify depend on the price,
 so its precision is not a fixed number of decimals (`PL-0S0V`). A cost is shown
 to three significant figures and never finer than a hundredth, and the price
-per millilitre to four significant figures (§ "Displayed precision", in the
-paragraph on a cost and a price per millilitre). Because the liquid volume is
+per millilitre to four significant figures
+(§ "Agent amounts in millilitres, and the cost"). Because the liquid volume is
 shown to the whole millilitre, the product of the figures shown can still
 differ from the cost by more than one unit of the cost's last digit. So the
 readout always says that the figures beside the cost are rounded, and that the
 cost is computed before rounding (`PL-1P15`).
 
 **What the form takes.** The reader types the bottle price and the bottle
-volume as digits with at most one decimal point. A sign, an exponent, a
+volume as digits with at most one decimal point. A sign, scientific notation, a
 thousands separator or a decimal comma is refused rather than guessed at,
-because "1,250" could mean 1250 or 1.25. A refused entry changes nothing, and
-the form says why. The date field writes the date as ISO 8601 does, and starts
-at the day of entry.
+because "1,250" could mean 1250 or 1.25. The form says why it refused an entry.
+The date field writes the date as ISO 8601 does.
 
 **Tests.** The two rows in the hazard table (§ "Reasonably foreseeable misuse,
 and the hazards the presentation carries") name the tests that enforce this

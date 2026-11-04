@@ -15,9 +15,9 @@ verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.m
 
 **Problem.** `docs/MODEL.md` § "Displayed precision" judges the cost's significant figures against one SD of the density. It judges every other agent amount, the liquid volume beside the cost included, against a seventh of an SD. So the section applies two limits to figures with the same relative uncertainty.
 
-**Checked 2026-11-04**, by the second blind review pass on `#2024`. The paragraph "A cost and a price per millilitre" refuses four significant figures for a cost because 0.010 % is "finer than one SD" of the density. Every other agent amount in the section is held to the readouts' band, which runs down to about a seventh of an SD. Four figures would be about 0.19 SD (0.010 % against sevoflurane's 0.053 %), inside that band. The volume beside the cost has the same relative uncertainty, and `PL-SP6H` judged its whole millilitre against the seventh. Above about 1,900 mL of sevoflurane the whole-millilitre volume is finer than one SD, so the two figures on one line are judged by different limits.
+**Checked 2026-11-04**, by the second blind review pass on `#2024`. The paragraph that opens "A cost is shown to three significant figures" refuses four significant figures for a cost because 0.010 % is "finer than one SD" of the density. Four figures would be about 0.19 SD (0.010 % against sevoflurane's 0.053 %), coarser than a seventh of an SD and so inside the band. `PL-SP6H` judged the whole millilitre of the volume beside the cost against the seventh. Above about 1,900 mL of sevoflurane, the whole-millilitre volume is finer than one SD, so the two figures on one line are judged by different limits.
 
-**Why it matters.** The section gives a reason that its own rule elsewhere contradicts. Nothing on screen is finer than the band: three figures are coarser than the band requires, which the one-sided bound allows.
+**Why it matters.** The section gives a reason that its own rule elsewhere contradicts. Nothing on screen is finer than the band. Three figures are coarser than the band requires, which the one-sided bound allows.
 
 **Decision needed.** Should a cost keep three significant figures, or show four, the finest the band admits? The choice is the owner's because four figures would change the last digit of a cost a learner sees.
 
@@ -26,6 +26,6 @@ verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.m
 
 **Recommendation: A.** It fixes the inconsistency in the reason without changing the display, and a cost at the reader's own price is read to a few figures, not to the cent on a long case.
 
-**Done when.** The paragraph "A cost and a price per millilitre" judges the cost's count of figures against the same limit as the other agent amounts, in the form the owner chooses, and `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost` computes that limit.
+**Done when.** The paragraph that opens "A cost is shown to three significant figures" judges the cost's count of figures against the same limit as the other agent amounts, in the form the owner chooses, and `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost` computes that limit.
 
 **Generator check.** Stock of `PL-B6YV`'s fact. The paragraph dates from `PL-1P15`, before that head closed on 2026-11-02, so this is not a re-entry.

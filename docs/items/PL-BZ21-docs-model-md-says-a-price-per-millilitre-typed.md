@@ -13,9 +13,9 @@ payoff: the cost section and its hazard row state each entry mistake's effect on
 verify: ! grep -qF 'Each of the first two mistakes makes that price 100' docs/MODEL.md
 ---
 
-**Problem.** docs/MODEL.md says a price per millilitre typed as the bottle price makes the shown price per millilitre 100 to 1000 times the true one, in the cost section and in its hazard row, but that mistake makes it 100 to 250 times too low
+**Problem.** `docs/MODEL.md` says, in the cost section and in its hazard row, that a price per millilitre typed as the bottle price makes the shown price per millilitre 100 to 1000 times the true one. That mistake makes it 100 to 250 times too low.
 
-**Checked 2026-11-04**, by the copy editor on `#2024`. `docs/MODEL.md` § "A cost at the reader's price" says a price per millilitre typed as the bottle price "gives a cost 100 to 250 times too low", and a bottle volume typed in litres or as one bottle "gives a cost 100 to 1000 times too high". Three sentences later it says "Each of the first two mistakes makes that price 100 to 1000 times the true one", and the hazard row on entry mistakes repeats that. For the first mistake the price per millilitre shown is a hundredth to a 250th of the true one.
+**Checked 2026-11-04**, by the copy editor on `#2024`. `docs/MODEL.md` § "A cost at the reader's price" says a price per millilitre typed as the bottle price "gives a cost 100 to 250 times too low", and a bottle volume typed in litres or as one bottle "gives a cost 100 to 1000 times too high". Later in the same paragraph it says "Each of the first two mistakes makes that price 100 to 1000 times the true one", and the hazard row on entry mistakes repeats that. For the first mistake the price per millilitre shown is a hundredth to a 250th of the true one.
 
 **Why it matters.** The hazard row is the record of what the screen does to catch each mistake. The screen still catches this one, because the price per millilitre shown is far from any real price, but the row states the wrong direction and size.
 

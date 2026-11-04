@@ -243,7 +243,8 @@ class AgentAmountUnit(Enum):
 # holds the figures behind each count.
 #
 # - A run total in litres of vapour has one decimal, the finest that the
-#   parameters support (`PL-TG60`). All three totals use it, so the accounting
+#   parameters support at 1 MAC with the reference flows (`PL-TG60`; higher
+#   dial settings are `PL-0P3F`). All three totals use it, so the accounting
 #   panel shows them on one scale.
 # - The delivered total in millilitres of liquid has no decimals (project
 #   owner, 2026-11-04, ratified, over keeping a tenth of a millilitre and over
@@ -1438,18 +1439,17 @@ AGENT_AMOUNT_UNIT_DISPLAY: Final[Mapping[AgentAmountUnit, DisplayUnit]] = Mappin
 def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     """Render the amount of agent that a run has delivered, in `unit`, followed by the unit.
 
-    The agent cost View shows this text (`PL-B396`). `amount` must already be
-    in `unit`. The precision is the one that `docs/MODEL.md` § "Displayed
-    precision" derives for the delivered agent in that unit. It is a whole
-    millilitre of liquid, or a tenth of a litre of vapour as on the accounting
-    panel. The text follows `format_agent_volume`'s rounding rules. A positive
-    amount that rounds to zero is shown as less than the resolution, such as
-    `<1 mL of liquid`. An amount of exactly zero is shown
-    as zero. The unit always says whether it is vapour or liquid, spelled as
-    `DisplayUnit` spells it.
+    The agent cost View shows this text (`PL-B396`). The precision is the one
+    that `docs/MODEL.md` § "Displayed precision" derives for the delivered agent
+    in that unit. It is a whole millilitre of liquid, or a tenth of a litre of
+    vapour as on the accounting panel. The text follows `format_agent_volume`'s
+    rounding rules. A positive amount that rounds to zero is shown as less than
+    the resolution, such as `<1 mL of liquid`. An amount of exactly zero is
+    shown as zero. The unit always says whether it is vapour or liquid, spelled
+    as `DisplayUnit` spells it.
 
     Args:
-        amount: The delivered agent, in `unit`.
+        amount: The delivered agent, already in `unit`.
         unit: The unit to show the amount in.
 
     Returns:
