@@ -12,7 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze; it changes how prose is writt
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
 not-delegable: the approach changes how every session writes and needs a design round with the owner
-root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K
+root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
 generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), and nothing yet shows that sessions have stopped writing prose that later needs its own rewrite
 misread: what a reader can do without, which no rule states for any kind of text, so each writer adds
 ---
