@@ -149,6 +149,21 @@ the smallest, because a paragraph you cut needs no sentence edit.
      contains the term usually belongs to the other reader: move it there, and
      leave this reader an example they know, such as one named item from a
      list of unfamiliar ones.
+   - Say what a term means where it first appears, never in a later
+     paragraph. Call one thing by one name throughout: the edge of a band is
+     not a "stroke" in one sentence and a "rule" in the next.
+   - Where the text sends the reader to a numbered clause, list entry or item
+     for something short, write the thing itself. "Uses the form in clause 3"
+     tells the reader nothing until they go and find clause 3. Write "uses
+     the fixed form for a missing link, `no test yet (PL-XXXX)`". Keep the
+     pointer after the thing only where the reader may want the full version:
+     "the planned floating windows (`ROADMAP.md` planned-milestone item 34)".
+     A pointer to a whole section by its heading can stay.
+   - Keep modelled and measured apart. A value that a run of this model
+     produced is a result, a simulated value or a value from the run, never a
+     measurement. Keep "measured" for data from patients or instruments,
+     because a clinician who reads "one measurement shows" of a simulator run
+     may take the figure for clinical data.
    - Restate a number in the reader's form only where the reader needs that
      number, with the same value, such as 4e-4 as 0.04%.
 
@@ -182,6 +197,11 @@ the smallest, because a paragraph you cut needs no sentence edit.
      sentence you did not change. Rewrite any sentence they would not
      understand on first reading, any whose clauses stack or whose subject sits
      far from its verb, and any that uses a term they do not know.
+   - Read each sentence together with the one before it. Where the second
+     repeats a word or a fact of the first, cut or reword one of them, unless
+     the word is a term the text must keep. "Common settings exceed the
+     ceiling. Sevoflurane's 8% is a common induction setting" uses "common"
+     twice for one point.
    - No sentence shows one of the writing rule's five patterns: a tautological
      aside, a contrast nobody claimed, narration about the text itself, a
      defensive scope statement, or a paragraph grown into an essay.
@@ -261,6 +281,13 @@ what changed.
 - US federal plain-language guidance, https://digital.gov/guides/plain-language
   (the successor to the 2011 Federal Plain Language Guidelines): the most
   important information first, one topic per paragraph, and no hidden verbs.
+  The 2011 guidelines (March 2011, rev. 1 May 2011), § III.d.6 "Minimize
+  cross-references", p. 83: organize the text so that it needs few
+  cross-references, and where one points to brief material, repeat that
+  material instead.
+- Google, *Technical Writing One*, "Words": define a new term where you
+  introduce it, and use each term consistently, because a term renamed partway
+  through a document reads as a second thing.
 - Williams and Bizup, *Style: Lessons in Clarity and Grace*, Lesson 7,
   "Concision", as university writing handouts quote it: delete words that mean
   little, that repeat other words, or that readers can infer; replace a phrase
