@@ -45,6 +45,10 @@ fidelity and shifts its decimal count as values grow, costing scannability.
 
 The objection that two decimals erases the slow-compartment wash-in does not
 survive the numbers. Over the first hour fat reads 0.00, 0.00, 0.00, 0.01,
-0.04, 0.08 and muscle 0.00, 0.00, 0.06, 0.16, 0.62, 1.25; both are legible
+0.04, 0.08 and muscle 0.00, 0.00, 0.06, 0.16, 0.62, 1.25. Both are legible
 trends. Fat at 60 s carries 0.003% of its equilibrium load, and `0.00%` is
 the truthful statement about it at any precision this model earns.
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Displayed precision", when `PL-J37P` took the decision history out of that section:
+
+Displayed precision is a claim about what the model can support, so the count is a decision recorded in `PL-040`. Earlier versions displayed three decimals. They were reduced to two while the model was solved by an approximate method, the operator split, because the third decimal and part of the second were smaller than that method's own error.

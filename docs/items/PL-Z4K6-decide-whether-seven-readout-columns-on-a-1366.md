@@ -154,11 +154,18 @@ platform happens to have produced by the time the assertion runs.
 `test_the_startup_window_is_sized_from_the_screen_and_centred` keeps its
 geometry cases as the restore geometry.
 
-Documentation: `docs/MODEL.md`'s paragraph on which rung the row opens at is
-rewritten around the maximized window, with the 21 px shortfall and the 0.85
-alternative recorded as the ratified decision; `PL-005`'s closing note gains a
-dated line; `docs/interface-provenance.md` § "Adopted" records the Blender
-default; `docs/ARCHITECTURE.md`'s package-map line for `main.py`, and the
-`WINDOW_SCREEN_FRACTION` comment and `initial_window_geometry` docstring in
-`qt_widgets.py`, now describe a normal geometry rather than where the window
-opens. `touches` widened to the files above.
+The documentation was updated to match. `docs/MODEL.md`'s paragraph on which
+rung the row opens at is rewritten around the maximized window, with the 21 px
+shortfall and the 0.85 alternative recorded as the ratified decision.
+`PL-005`'s closing note gains a dated line. `docs/interface-provenance.md`
+§ "Adopted" records the Blender default. `docs/ARCHITECTURE.md`'s package-map
+line for `main.py`, and the `WINDOW_SCREEN_FRACTION` comment and
+`initial_window_geometry` docstring in `qt_widgets.py`, now describe a normal
+geometry rather than where the window opens. `touches` was widened to the files
+above.
+
+**Moved from docs/MODEL.md on 2026-11-04.** From § "Displayed precision", when `PL-J37P` took the decision history out of that section:
+
+At the window's normal size of eight tenths of the screen (`WINDOW_SCREEN_FRACTION`), on the offscreen font that the tests render with, the row on a 1366 px screen fell 21 logical pixels short of the seven-across width. A 1093 px window carried a 1047 px row, while the row's 1068 px wanted a window of about 1114 px. So that machine opened on four columns while a slightly wider one opened on seven. The conditional arrangement was then the ordinary case rather than the resized one. Maximized, the same screen offers the row about 1320 px, and a 1280 px screen offers it about 1234 px, so both open on seven. These figures are an example of the rule on one font rather than a specification of it (project owner, 2026-09-27, ratified, over raising the fraction to 0.85, which clears 1366 px at one font and leaves a 1280 px screen on four columns; `PL-Z4K6`).
+
+Until the Qt port the window opened full screen, and the widest breakpoint was the only one a reader met without resizing.
