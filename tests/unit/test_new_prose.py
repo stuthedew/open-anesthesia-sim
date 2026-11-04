@@ -692,3 +692,88 @@ def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passa
 
     assert main(["--draft", str(draft), "--kind", "sonnets"]) == 1
     assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err
+
+
+#: A reader table with a row for string literals in an interface package, for
+#: the string-unit tests (`PL-Q98K`).
+STRING_READERS = READERS.replace(
+    "| Replies to the owner |",
+    "| String literals in `src/pkg/app/` | A learner | Anesthesia. | Code. | Act on a notice. |\n"
+    "| Replies to the owner |",
+)
+
+#: An interface module with a long docstring and a long notice beside it.
+NOTICE = f'''\
+def notice(level):
+    """{LONG}"""
+    return f"{LONG} at {{level}}"
+'''
+
+
+def test_string_units_reads_every_literal_but_docstrings_and_f_string_pieces() -> None:
+    source = (
+        'def f(x):\n    """Docstring."""\n    a = "one" "two"\n'
+        '    return f"value {x:.2f} here", "three"\n'
+    )
+
+    found = new_prose.string_units("src/f.py", source)
+
+    assert [(unit.kind, unit.first, unit.text) for unit in found] == [
+        ("string", 3, "onetwo"),
+        ("string", 4, "value {x} here"),
+        ("string", 4, "three"),
+    ]
+
+
+def test_a_long_interface_string_is_printed_for_its_own_reader(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The notice goes to the learner, and the docstring beside it to the developer."""
+    rule = tmp_path / "rule.md"
+    rule.write_text(STRING_READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/app/notice.py", NOTICE)
+
+    assert main(["--root", str(repo), "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert (
+        f"[1] src/pkg/app/notice.py, rows 2-2. Changed text: new, {MIN_WORDS} words. "
+        "For: A developer\n" in out
+    )
+    assert (
+        f"[2] src/pkg/app/notice.py, rows 3-3. Changed text: new, {MIN_WORDS + 2} words. "
+        "For: A learner\n" in out
+    )
+
+
+def test_a_long_string_is_not_printed_where_no_string_row_names_its_file(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A docstring row does not send a file's strings to the copy editor."""
+    rule = repo / ".git" / "rule.md"
+    rule.write_text(STRING_READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/core/notice.py", NOTICE)
+
+    found = branch_prose(repo, "main")
+
+    assert [(unit.kind, unit.first) for unit in found.units] == [("docstring", 2)]
+
+
+def test_a_refusal_that_loses_its_value_is_reported(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A copy edit that drops the number a refusal names is caught by the comparison."""
+    rule = repo / ".git" / "rule.md"
+    rule.write_text(STRING_READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    refusal = 'def check(x):\n    raise ValueError("the flow must be at least 0.2 L/min")\n'
+    _write(repo, "src/pkg/app/check.py", refusal)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "refusal")
+    _git(repo, "branch", "-f", "main")
+    _write(repo, "src/pkg/app/check.py", refusal.replace("at least 0.2 L/min", "too low"))
+
+    assert main(["--root", str(repo), "--base", "main", "--compare"]) == 0
+    out = capsys.readouterr().out
+    assert "gone  0.2" in out

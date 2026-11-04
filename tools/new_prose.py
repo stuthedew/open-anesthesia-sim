@@ -16,8 +16,12 @@ and that no row names is listed under "Not reviewed", because nobody has said
 who reads it.
 
 **What a unit is.** In a Python file, a unit is a docstring, as
-`docket.python.docstrings` decides, or a run of comment lines, as
-`doc_check._python_comments` joins them. In a Markdown file, it is a paragraph
+`docket.python.docstrings` decides, a run of comment lines, as
+`doc_check._python_comments` joins them, or any other string literal, an
+f-string counted whole. A string literal is reviewed only where a reader row
+for string literals names its file, and a docstring or comment only where
+another row does, so an interface notice and the docstring beside it are
+judged for different readers (`PL-Q98K`). In a Markdown file, it is a paragraph
 or a table row, as `docket.markdown` reads the blocks once the YAML front
 matter is blanked row for row. A paragraph inside a list item or a block quote
 is a unit of its own. A table row is a unit because one cell can carry a whole
@@ -137,6 +141,12 @@ from model_rewrite import (  # noqa: E402
 #: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
 #: short and long units here.
 MIN_WORDS = 30
+#: The kind of a unit that is a string literal in code, other than a docstring.
+STRING_KIND = "string"
+#: The words that mark a reader row as one for string literals. Such a row
+#: reads only string units, and every other row reads every other kind, so a
+#: notice in the interface and the docstring beside it take different readers.
+STRING_ROW_WORDS = "string literals"
 #: The rule whose table names the readers of each kind of text.
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: The copy editor's agent definition, whose body is its prompt. This file is
@@ -195,6 +205,11 @@ class Reader:
             for named in self.paths
         )
 
+    def covers(self, kind: str) -> bool:
+        """Whether the row is for units of `kind`: string literals, or every other kind."""
+        for_strings = STRING_ROW_WORDS in self.kind.casefold()
+        return for_strings == (kind == STRING_KIND)
+
 
 def reader_table(text: str) -> list[Reader]:
     """Every row of the reader table in the rule's `text`, in order.
@@ -216,9 +231,19 @@ def reader_table(text: str) -> list[Reader]:
     raise ValueError(f"no table headed {' | '.join(READER_HEADER)}")
 
 
-def readers_of(table: Sequence[Reader], path: str) -> list[Reader]:
-    """The rows of `table` that name the file at `path`, in table order."""
-    return [reader for reader in table if reader.reads(path)]
+def readers_of(table: Sequence[Reader], path: str, kind: str | None = None) -> list[Reader]:
+    """The rows of `table` that name the file at `path`, in table order.
+
+    With `kind`, only the rows for units of that kind, as `Reader.covers` decides.
+    """
+    return [
+        reader for reader in table if reader.reads(path) and (kind is None or reader.covers(kind))
+    ]
+
+
+def read_by(table: Sequence[Reader], units: Iterable[Unit]) -> list[Unit]:
+    """The units in `units` that a row of `table` is for, by their file and their kind."""
+    return [unit for unit in units if readers_of(table, unit.path, unit.kind)]
 
 
 def rule_table() -> list[Reader]:
@@ -263,6 +288,42 @@ def prose_units(path: str, source: str) -> list[Unit]:
     return sorted(found, key=lambda unit: unit.first)
 
 
+def string_text(node: ast.Constant | ast.JoinedStr) -> str:
+    """The words of a string literal, with each `{...}` field of an f-string as written."""
+    if isinstance(node, ast.Constant):
+        return str(node.value)
+    return "".join(
+        str(part.value) if isinstance(part, ast.Constant) else "{" + ast.unparse(part.value) + "}"
+        for part in node.values
+        if isinstance(part, ast.Constant | ast.FormattedValue)
+    )
+
+
+def string_units(path: str, source: str) -> list[Unit]:
+    """Every string literal in `source` that is not a docstring, in the order they start.
+
+    An f-string is one unit, and the string pieces inside it are not units of
+    their own. Strings that Python joins because they stand side by side are
+    one literal, and so one unit. Raises one of `UNTOKENIZABLE` where Python
+    refuses `source`.
+    """
+    tree = ast.parse(source, filename=path)
+    skipped = {id(node) for node in docstrings(tree)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            skipped.update(id(inner) for inner in ast.walk(node) if inner is not node)
+    found = [
+        Unit(path, STRING_KIND, node.lineno, node.end_lineno or node.lineno, string_text(node))
+        for node in ast.walk(tree)
+        if id(node) not in skipped
+        and (
+            isinstance(node, ast.JoinedStr)
+            or (isinstance(node, ast.Constant) and isinstance(node.value, str))
+        )
+    ]
+    return sorted(found, key=lambda unit: unit.first)
+
+
 def document_units(path: str, source: str) -> list[Unit]:
     """Every paragraph and table row in the Markdown `source`, in the order they start.
 
@@ -284,10 +345,17 @@ def document_units(path: str, source: str) -> list[Unit]:
 
 
 def units_of(path: str, source: str) -> list[Unit]:
-    """The prose units of the file at `path`: a document's paragraphs, or a Python file's."""
+    """The prose units of the file at `path`: a document's paragraphs, or a Python file's.
+
+    A Python file's units are its docstrings and comments and its string
+    literals, in the order they start. Which of them a review reads is
+    `read_by`'s to decide.
+    """
     if is_document(path):
         return document_units(path, source)
-    return prose_units(path, source)
+    return sorted(
+        prose_units(path, source) + string_units(path, source), key=lambda unit: unit.first
+    )
 
 
 def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
@@ -349,7 +417,7 @@ def branch_prose(
                 source = (root / path).read_text(encoding="utf-8")
             to = ["HEAD"] if committed else []
             rows = changed_rows(read_git(["diff", "-U0", fork, *to, "--", path], root))
-            units.extend(changed_units(path, source, rows))
+            units.extend(read_by(table, changed_units(path, source, rows)))
         except UNTOKENIZABLE as error:
             unread.append(f"{path}: {refusal(error)}")
     return Found(against, units, unread)
@@ -482,21 +550,24 @@ def changed_passages(path: str, before: str | None, after: str | None, patch: st
     return found
 
 
-def fact_text(path: str, source: str | None) -> str:
+def fact_text(path: str, source: str | None, *, strings: bool = False) -> str:
     """The text whose facts are counted: a document whole, or a Python file's prose.
 
     A Python file's prose keeps the rows it stands on, and every other row is
     blank, so each fact is placed on the file's own row and no number in code
-    is read.
+    is read. With `strings`, its string literals count as prose too, so a
+    refusal message that loses the value it names is reported.
     """
     if source is None:
         return ""
     if is_document(path):
         return blank_front_matter(source)
     rows = [""] * len(split_lines(source))
-    for unit in prose_units(path, source):
+    units = prose_units(path, source) + (string_units(path, source) if strings else [])
+    for unit in units:
         for offset, line in enumerate(unit.text.split("\n")[: unit.last - unit.first + 1]):
-            rows[unit.first - 1 + offset] = line
+            at = unit.first - 1 + offset
+            rows[at] = f"{rows[at]} {line}" if rows[at] else line
     return "\n".join(rows)
 
 
@@ -529,8 +600,14 @@ def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Com
         after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
         try:
             patch = read_git(["diff", "-U0", fork, "--", path], root)
-            found.passages += changed_passages(path, before, after, patch)
-            old_facts, new_facts = fact_text(path, before), fact_text(path, after)
+            found.passages += [
+                passage
+                for passage in changed_passages(path, before, after, patch)
+                if read_by(table, passage.before + passage.after)
+            ]
+            strings = bool(readers_of(table, path, STRING_KIND))
+            old_facts = fact_text(path, before, strings=strings)
+            new_facts = fact_text(path, after, strings=strings)
         except UNTOKENIZABLE as error:
             found.unread.append(f"{path}: {refusal(error)}")
             continue
@@ -612,7 +689,7 @@ def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
 
 def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Reader]) -> list[str]:
     """The unit's numbered header, naming its readers from `table`, then its `rows`."""
-    who = "; ".join(reader.who for reader in readers_of(table, unit.path))
+    who = "; ".join(reader.who for reader in readers_of(table, unit.path, unit.kind))
     return [
         "",
         f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
@@ -760,7 +837,11 @@ def branch_reviews(root: Path, base: str, table: Sequence[Reader]) -> Reviewed:
                 found.unread.append(f"{path}: {refusal(error)}")
             continue
         if named:
-            found.reviews += reviews
+            found.reviews += [
+                review
+                for review in reviews
+                if readers_of(table, review.path, review.editable[0].kind)
+            ]
         elif reviews:
             found.unnamed.append(path)
     return found
@@ -776,7 +857,9 @@ def review_header(number: int, review: Review, base: str, table: Sequence[Reader
         change = review.words_after - review.words_before
         more = f"{change} more" if change > 0 else f"{-change} fewer" if change else "no change"
         words = f"{review.words_before} words on {base}, {review.words_after} now, {more}"
-    who = "; ".join(reader.who for reader in readers_of(table, review.path))
+    who = "; ".join(
+        reader.who for reader in readers_of(table, review.path, review.editable[0].kind)
+    )
     return (
         f"[{number}] {review.path}, rows {review.top}-{review.bottom}. "
         f"Changed text: {words}. For: {who}"
