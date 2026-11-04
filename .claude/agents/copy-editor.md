@@ -196,7 +196,14 @@ the smallest, because a paragraph you cut needs no sentence edit.
      "`check_bound_families`'s table". Treat a phrase that the file coined in
      the same way. Where "an assertion that names nothing" stands away from
      the heading that explains it, say what it means: "a statement that names
-     no test, file or value".
+     no test, file or value". A phrase that you coin yourself is one the
+     reader does not know either.
+   - Never name a mechanism that the reader cannot see or use. A comment in
+     the file's source, such as `<!-- provenance: ... -->`, does not show on
+     the rendered page, so "a number carries a hidden marker tied to the
+     stored value" leaves a clinician asking what a hidden marker is. Give
+     what the mechanism guarantees: "a number repeated from the simulator's
+     data is linked to the stored value, so the two cannot differ unnoticed".
    - Use each word in its everyday sense, as the writing rule's third point
      asks. Where the text gives a word a private sense, such as a sentence that
      "holds" a rule or an item that "owes" a link, say plainly what happens.
