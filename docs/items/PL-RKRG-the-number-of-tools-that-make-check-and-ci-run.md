@@ -3,12 +3,14 @@ id: PL-RKRG
 title: The number of tools that make check and CI run under uv run python is written as a word in six comments and docstrings (Makefile twice, quality.yml twice, docs/apparatus.md twice, test_tools_portability.py), so each new tool must update every copy by hand
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: Makefile, .github/workflows/quality.yml, docs/apparatus.md, tests/unit/test_tools_portability.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-03
+closed: 2026-11-03
+pr: 1997
 payoff: the comments beside the gates stop describing a tool count that is already wrong in three places, and the next tool added needs no hand edits to stay true
 verify: ! grep -qiE '\b(eight|nine|ten|eleven) (of them|tools|lines)|(other|these|same) (eight|nine|ten|eleven)\b' Makefile .github/workflows/quality.yml tests/unit/test_tools_portability.py && ! grep -qE 'Ten of them|other nine' docs/apparatus.md
 ---
@@ -44,3 +46,10 @@ is not `PL-40SJ`'s fact, the value of a named constant. No constant holds this
 count, and `PL-40SJ`'s brief sends prose that restates a number to `PL-G424`'s
 family. No `reenters:` is recorded, because `PL-G424`'s fix deliberately leaves
 counts in prose to judgment. Feature `one-source-of-truth` works it.
+
+**Done 2026-11-03.** Every count of the group is gone from the four files.
+The names of the tools stay in `docs/apparatus.md`, because
+`tools/config_home_check.py` already compares that list with the `Makefile`'s
+`uv run python` lines, so a tool added to one and not the other fails
+`make check`. The test docstring's list had no such check, so it now names two
+tools as examples and points at the lines.
