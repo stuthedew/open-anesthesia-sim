@@ -25,18 +25,22 @@ verify: grep -q 'def test_an_ask_about_a_waiting_pull_request_carries_the_record
 
 If the step 1 test fails, keep the guard from #1984 unchanged and build only step 3.
 
-**Step 1, tried 2026-11-04 and not yet run.** A Projects thread (branch
-`claude/project-thread-6lcfyq`, pull request #2005) tried the test by adding a
-temporary hook to its own `~/.claude/settings.json`. The hook would have
-appended one marked line to a `mcp__hearthbot__post_message` call whose text
-held a marker, returning `permissionDecision: "allow"` with `updatedInput`,
-and the thread would then have read its own message back with `read_thread`.
-The session's permission check refused the write to the settings file as a
-session changing its own configuration. So the test needs the owner's
-go-ahead to add that one hook for one message, or another way to run it. Its
-probe script is short: read the call, and where `tool_input.text` holds the
-marker, print the hook output above with the marker removed and a line
-appended.
+**Step 1 passed, 2026-11-04 01:34 UTC** (run on the owner's go-ahead on the
+decision card, after the session's permission check had refused the same
+settings write unasked). A Projects thread (branch
+`claude/project-thread-6lcfyq`, pull request #2005) added one `PreToolUse`
+hook on `mcp__hearthbot__post_message` to its own `~/.claude/settings.json`.
+For a call whose `text` held a marker, the hook printed
+`permissionDecision: "allow"`, a `permissionDecisionReason`, an
+`additionalContext` and an `updatedInput` with the marker removed and one line
+appended. The thread read the posted message back with
+`read_messages_by_id`: its stored body ended with the appended line, so what
+the owner sees is the rewritten text. The `additionalContext` reached the
+session beside the call. The tool's input held one field, `text`, so that is
+the field step 2 rewrites for `post_message`. The hook was removed and the
+settings file restored straight after. Not tested: the other Projects tools
+(`edit_message`, `request_decision`, `post_widget`), whose fields nobody has
+read.
 
 **Done when.** Step 1's result is recorded here. Where it passed, a Projects
 message that names a pull request waiting on the owner leaves carrying the
