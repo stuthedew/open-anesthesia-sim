@@ -268,7 +268,7 @@ Query: the reader needs the unit, and [2] does not give it.
 
 
 def test_each_passage_takes_the_second_read_s_text_then_the_first_s_then_keep() -> None:
-    merged = copy_edit.merge(FIRST, SECOND, 3)
+    merged = copy_edit.merge([FIRST, SECOND], 3)
 
     assert rejected_prose.verdicts(merged, 3) == ["rewrite", "rewrite", "keep"]
     assert rejected_prose.rewrites(merged) == {
@@ -284,7 +284,7 @@ def test_each_passage_takes_the_second_read_s_text_then_the_first_s_then_keep() 
 
 def test_a_merge_is_refused_where_the_second_read_gives_a_passage_no_verdict() -> None:
     with pytest.raises(copy_edit.Refused, match=r"second read's reply cannot be read: \[2\]"):
-        copy_edit.merge(FIRST, "[1] keep\n", 3)
+        copy_edit.merge([FIRST, "[1] keep\n"], 3)
 
 
 def test_a_fenced_block_s_fence_is_longer_than_any_fence_inside_it() -> None:
@@ -305,26 +305,61 @@ def two_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path / "asked.json"
 
 
-def test_a_rewrite_is_read_a_second_time_and_the_replies_merged(
+def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The second read changes the edit, so a third audits it; the third changes nothing."""
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one.", "Old two."), encoding="utf-8")
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n\nCut a repeat.\n"
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps([FIRST.partition("**[2]")[0], second]))
+    third = "[1] keep\n\nNo fault found.\n"
+    monkeypatch.setenv(
+        "FAKE_REPLIES", json.dumps([FIRST.partition("**[2]")[0], second, third, "unused"])
+    )
 
     reply, counts = copy_edit.run(request, reads=tmp_path / "reads")
 
     asked = json.loads(two_reads.read_text(encoding="utf-8"))
-    assert len(asked) == 2
+    assert len(asked) == 3
     assert copy_edit.SECOND_READ in asked[1]
     assert "    1 > First edit of one." in asked[1]
+    assert "    1 > Second edit." in asked[2]
+    assert "Old one." in asked[2].partition(copy_edit.BEFORE)[2]
     assert rejected_prose.rewrites(reply) == {1: ("Second edit.",)}
+    assert "Notes from the third read:" in reply
     assert counts == (
         "copy_edit: read 10 tokens, wrote 3, 1 turns, $0.50; "
-        "second read: read 10 tokens, wrote 3, 1 turns, $0.50"
+        "second read: read 10 tokens, wrote 3, 1 turns, $0.50; "
+        "third read: read 10 tokens, wrote 3, 1 turns, $0.50"
     )
     assert (tmp_path / "reads" / "second-reply.txt").read_text(encoding="utf-8") == second
+
+
+def test_an_audit_that_returns_the_same_text_ends_the_reads(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    same = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([same, same, "unused"]))
+
+    copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 2
+
+
+def test_a_passage_that_never_settles_stops_at_max_reads(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    edits = [f"[1] rewrite\n\n```\nEdit {n}.\n```\n" for n in range(1, 7)]
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits))
+
+    reply, _ = copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == copy_edit.MAX_READS
+    assert rejected_prose.rewrites(reply) == {1: (f"Edit {copy_edit.MAX_READS}.",)}
 
 
 def test_a_first_read_that_rewrites_nothing_is_the_whole_reply(
@@ -412,7 +447,7 @@ def test_a_merge_turns_a_rewrite_that_changed_code_into_keep_with_the_reason(
     )
     first = "[1] rewrite\n\n```\nx = 2  # New note.\n```\n"
 
-    reply = copy_edit.merge(first, "[1] keep", 1, copy_edit.code_report(request))
+    reply = copy_edit.merge([first, "[1] keep"], 1, copy_edit.code_report(request))
 
     assert reply.startswith("[1] keep\n")
     assert (

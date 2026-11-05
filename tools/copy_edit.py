@@ -15,14 +15,16 @@ inside the repository, even `claude -p --agent copy-editor` loads the resident
 instructions. Its system prompt is the agent file's body, its one tool is Read,
 and it loads no settings file.
 
-The copy editor reads each request twice, as experienced technical editors
-do (project owner, 2026-11-04, ratified, `PL-HGZS`). When the first read
-rewrites a passage, a second run gets the same request with each rewritten
-passage replaced by its edit, under the line `SECOND_READ`, and fixes what the
-first read missed or introduced. The printed reply gives each passage once:
-the second read's text where it rewrote the passage, else the first read's,
-else `[N] keep`. Both reads' notes follow. When the first read rewrites
-nothing, there is no second read.
+The copy editor reads each request at least twice, as experienced technical
+editors do (project owner, 2026-11-04, ratified, `PL-HGZS`). When the first
+read rewrites a passage, a fresh run audits the edit: it gets the same request
+with each rewritten passage replaced by its edit, under the line
+`SECOND_READ`, and fixes what the earlier reads missed or introduced. Audits
+go on until one changes nothing, up to `MAX_READS` reads in all (project
+owner, 2026-11-05, ratified, over exactly two reads). The printed reply gives
+each passage once, in the text of the last read that rewrote it, else
+`[N] keep`. Every read's notes follow. When the first read rewrites nothing,
+there is no audit.
 
 Before the reply is printed, `check_code` compares each rewrite with the rows
 it replaces. A rewrite that changes code, a fenced block, an HTML comment or a
@@ -113,10 +115,23 @@ QUIET_ENV = {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 #: changed can be found. One edit read alone cannot show that (`PL-HGZS`).
 BEFORE = "Before the first edit"
 SECOND_READ = (
-    "Second read. The rows marked > are the text after one copy edit, and each "
-    "header's word counts are the counts before it. The text before that edit "
-    f'follows the passages, under "{BEFORE}".'
+    "Second read. The rows marked > are the text after the earlier copy edits, and "
+    "each header's word counts are the counts before them. The text before the "
+    f'first edit follows the passages, under "{BEFORE}".'
 )
+
+
+#: The most reads one request gets: the first edit and the audits after it.
+#: An audit runs again while the last one changed a passage, because Hart's
+#: experienced technical editors make "at least two passes" ("Interview
+#: responses: The editing practices of professional technical editors", 2010,
+#: https://geoff-hart.com/articles/2010/interview.htm). Runs 16 to 18 of
+#: section 1 each left one or two faults after two reads. Four reads bounds
+#: the cost of a passage that never settles, at about $1 and 10 minutes for
+#: each read of a 1,200-word section; raising it lets such a passage run longer.
+MAX_READS = 4
+#: The name of each read, by its place, for its files and its notes.
+READ_NAMES = ("first", "second", "third", "fourth")
 
 
 class Refused(Exception):
@@ -451,33 +466,31 @@ def code_report(request: str) -> Callable[[int, Sequence[str]], CodeCheck]:
 
 
 def merge(
-    first: str,
-    second: str,
+    replies: Sequence[str],
     count: int,
     check: Callable[[int, Sequence[str]], CodeCheck] | None = None,
 ) -> str:
-    """One reply from the two reads' replies, `first` and `second`, for `count` passages.
+    """One reply from every read's reply in `replies`, in order, for `count` passages.
 
-    Each passage gets one verdict: the second read's text where it rewrote the
-    passage, else the first read's text, else `[N] keep`. `check`, where given,
-    refuses a rewrite that changed code, which then becomes `[N] keep` with the
-    reason under "Code check:", and lists each code name a rewrite dropped. The
-    notes of both reads follow, so that every cut, move and query either read
-    made is kept. Raises `Refused` where either reply does not give each
-    passage one verdict, or a rewrite has no text.
+    Each passage gets one verdict: the text of the last read that rewrote it,
+    else `[N] keep`. `check`, where given, refuses a rewrite that changed code,
+    which then becomes `[N] keep` with the reason under "Code check:", and
+    lists each code name a rewrite dropped. The notes of every read follow, so
+    that every cut, move and query any read made is kept. Raises `Refused`
+    where a reply does not give each passage one verdict, or a rewrite has no
+    text.
     """
     found: list[dict[int, tuple[str, ...]]] = []
-    for name, reply in (("first", first), ("second", second)):
+    for name, reply in zip(READ_NAMES, replies, strict=False):
         try:
             verdicts(reply, count)
             found.append(rewrites(reply))
         except ValueError as error:
             raise Refused(f"the {name} read's reply cannot be read: {error}") from error
-    once, twice = found
     out: list[str] = []
     checked: list[str] = []
     for number in range(1, count + 1):
-        rows = twice.get(number, once.get(number))
+        rows = next((made[number] for made in reversed(found) if number in made), None)
         result = CodeCheck() if rows is None or check is None else check(number, rows)
         for reason in result.refused:
             checked.append(f"- Passage {number}: the rewrite was refused, because {reason}.")
@@ -492,14 +505,14 @@ def merge(
             out += [f"[{number}] rewrite", "", *fenced(rows), ""]
     if checked:
         out += ["Code check:", "", *checked, ""]
-    out += ["Notes from the first read:", "", notes(first), ""]
-    out += ["Notes from the second read:", "", notes(second)]
-    reply = "\n".join(out)
+    for name, reply in zip(READ_NAMES, replies, strict=False):
+        out += [f"Notes from the {name} read:", "", notes(reply), ""]
+    merged = "\n".join(out).rstrip("\n")
     try:
-        verdicts(reply, count)
+        verdicts(merged, count)
     except ValueError as error:
-        raise Refused(f"the two reads' notes left a verdict mark: {error}") from error
-    return reply
+        raise Refused(f"the reads' notes left a verdict mark: {error}") from error
+    return merged
 
 
 def read_once(
@@ -576,22 +589,37 @@ def editor(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
 
 
 def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str]:
-    """Run the copy editor twice on the request `text`, and return its reply and the counts.
+    """Run the copy editor on the request `text` until an audit changes nothing.
 
-    Where `reads` names a directory, each read's request and reply are also
-    written there, so that what the second read changed can be judged alone.
+    Returns its merged reply and the counts. The first read edits; each later
+    read audits the text as the reads before it left it, and runs only while
+    the last read changed a passage, up to `MAX_READS`. Where `reads` names a
+    directory, each read's request and reply are also written there, so that
+    what each audit changed can be judged alone.
     """
-    first, first_counts = editor.read(text, "first", reads)
+    first, first_counts = editor.read(text, READ_NAMES[0], reads)
     try:
-        blocks = rewrites(first)
+        current = dict(rewrites(first))
     except ValueError as error:
         raise Refused(f"the first read's reply cannot be read: {error}") from error
-    if not blocks:
+    if not current:
         return first, first_counts
     count = passage_count(text)
-    second, second_counts = editor.read(second_request(text, blocks), "second", reads)
-    both = f"{first_counts}; second read: {second_counts.removeprefix('copy_edit: ')}"
-    return merge(first, second, count, code_report(text)), both
+    replies = [first]
+    counts = [first_counts]
+    for name in READ_NAMES[1:MAX_READS]:
+        reply, reply_counts = editor.read(second_request(text, current), name, reads)
+        replies.append(reply)
+        counts.append(f"{name} read: {reply_counts.removeprefix('copy_edit: ')}")
+        try:
+            made = rewrites(reply)
+        except ValueError as error:
+            raise Refused(f"the {name} read's reply cannot be read: {error}") from error
+        changed = {number: rows for number, rows in made.items() if current.get(number) != rows}
+        if not changed:
+            break
+        current.update(changed)
+    return merge(replies, count, code_report(text)), "; ".join(counts)
 
 
 def run(
@@ -600,7 +628,7 @@ def run(
     env: Mapping[str, str] | None = None,
     reads: Path | None = None,
 ) -> tuple[str, str]:
-    """Run the copy editor twice on the file at `request`, and return its reply and the counts."""
+    """Run the copy editor on the file at `request`, and return its reply and the counts."""
     return edit(request.read_text(encoding="utf-8"), editor(root, env), reads)
 
 
@@ -658,7 +686,7 @@ def sections(
 ) -> tuple[str, str]:
     """The second part of a document's review: each section line-edited alone, and the counts.
 
-    Each section is its own request, read twice, with its reply under a line
+    Each section is its own request, read as `edit` reads one, with its reply under a line
     that names the section and its rows.
     """
     try:

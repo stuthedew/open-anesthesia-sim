@@ -71,8 +71,8 @@ two chapters give, a paragraph in the wrong chapter, chapters out of order, and
 a chapter heading that does not fit. The chapter reads have already reported
 what lies inside one chapter.
 
-A request whose prose opens with "Second read." holds text that has had one
-copy edit. Audit that edit as a second editor who did not make it, before you
+A request whose prose opens with "Second read." holds text that has had at
+least one copy edit. Audit that edit as a second editor who did not make it, before you
 change anything:
 
 1. Read every paragraph of the edit, the note for developers included, one at
@@ -114,10 +114,14 @@ does not know this repository's names either.
    knowledge.
 
 2. **Read the whole before you change any part.** Read the passage and its "|"
-   rows to the end. Note each fact said more than once, in the passage or
-   across the section, and each paragraph that stands away from the place its
-   reader would look for it. In a whole section, then say to yourself in one
-   or two sentences what this reader needs from the section. Everything in it
+   rows to the end. Then write the section's reverse outline, before you edit
+   anything: one line for each paragraph, list item or table row, in order,
+   with its rows, its point in a few words, and every fact it states, such as
+   a value with its unit, a limit, a source or a decision. From the outline,
+   note each fact said more than once, in the passage or across the section,
+   and each paragraph that stands away from the place its reader would look
+   for it. In a whole section, then say to yourself in one or two sentences
+   what this reader needs from the section. Everything in it
    either serves that or belongs to another reader.
 
 3. **Decide how much the passage needs.** Read each sentence once, at reading
@@ -400,6 +404,8 @@ number, as step 7 says. Where the text holds a fenced block, open and
 close your block with more backticks than any fence inside it.
 
 Under the block, list one to a line:
+
+- the reverse outline of step 2, under "Outline:", with no "[N]" in it;
 
 - each cut, quoted briefly, with its reason;
 - each move, with the place it goes;
