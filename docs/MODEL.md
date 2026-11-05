@@ -11414,23 +11414,34 @@ readout shows these six things:
 6. words saying that the cost is at the reader's price, not only a colour or a
    style, so that no reader misses the statement.
 
-**A bare "mL" does not say enough.** The schematic labels its amounts in
-millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1). Gas Man quotes its price
-as "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
-about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
-factor.
+**A bare "mL" does not say whether it means liquid or vapour.** The schematic
+labels its amounts in millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1).
+Gas Man quotes its price as "Cost/mL vapor" (printed p. 174). One millilitre
+of liquid isoflurane gives about 196 mL of vapour, so a volume or a price read
+as vapour is wrong by that factor.
 
 **The simulator reproduces the costs of both of Gas Man's isoflurane
 exercises.** It does so at the price that the book prints beside the costs of
-Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). Without
-that price, a reader could not tell which of the book's two prices produced
-those costs. For Exercise 14-1 at 60 min, the readout could read "39 mL of
-liquid x USD 0.2047 per mL of liquid = USD 8.07, at your price of USD 20.47
-per 100 mL bottle, as of 2008-03-05". The wording and the layout are
-placeholders, and the six facts are the requirement. The book prints $8.06,
-because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
-(§ "Agent amount"). The two figures shown multiply to USD 7.98, because the
-cost uses the unrounded 39.42 mL.
+Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). For
+Exercise 14-1 at 60 min, the readout could show "39 mL of liquid x USD 0.2047
+per mL of liquid = USD 8.07, at your price of USD 20.47 per 100 mL bottle, as
+of 2008-03-05". The wording and the layout are placeholders. The book
+prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to
+196 (§ "Agent amount").
+
+**The figures beside a cost are rounded, and the readout says so.** It also
+says that the cost is computed from the unrounded liquid volume and price per
+millilitre (`PL-1P15`). The readout shows the cost to three significant figures
+and never finer than a hundredth, and the price per millilitre to four
+significant figures (§ "Displayed precision"). The liquid volume is shown in
+whole millilitres, so the product of the figures shown can differ from the cost
+by more than one unit of the cost's last digit. In the example above, 39 mL
+times USD 0.2047 is USD 7.98. The cost is USD 8.07 because it uses the
+unrounded 39.42 mL. At USD 115.13 per 240 mL bottle, 60 min of desflurane at
+6 % and 1 L/min costs USD 8.23. Shown as 17 mL and USD 0.4797 per mL, the two
+figures multiply to USD 8.15.
+
+<!-- not-restated: 6 % -->
 
 **How the cost is computed.** The cost is the delivered agent's liquid
 equivalent times the price per millilitre. It uses the delivered agent because
@@ -11443,18 +11454,6 @@ beside the cost. The date is never used to compute the cost, and neither is
 today's date. When two runs are compared, each run's cost uses the price of its
 own agent. A cost is never added to, or subtracted from, a cost in another
 currency.
-
-**The figures beside a cost are rounded, and the readout says so.** The cost is
-computed from the unrounded liquid volume and price per millilitre, and the
-readout says that too (`PL-1P15`). It shows the cost to three significant
-figures and never finer than a hundredth, and the price per millilitre to four
-significant figures (§ "Displayed precision"). The liquid volume is shown in
-whole millilitres, so the product of the figures shown can differ from the cost
-by more than one unit of the cost's last digit. At USD 115.13 per 240 mL bottle,
-60 min of desflurane at 6 % and 1 L/min costs USD 8.23. Shown as 17 mL and
-USD 0.4797 per mL, the two figures multiply to USD 8.15.
-
-<!-- not-restated: 6 % -->
 
 **What a stored price carries.** The simulator keeps at most one price for
 each agent. Each price records five things:
