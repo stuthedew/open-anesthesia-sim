@@ -7677,8 +7677,8 @@ Changing the running agent must begin a new run. Switching between volatile
 agents is not modeled (see § "Known limitations"), so there is no residual
 washout to carry over. The model's values for the old agent would mean nothing
 under the new agent's partition coefficients. A change of agent must therefore
-do everything Reset does. It must also rebuild every compartment with the new
-agent's parameters. It must set the delivered concentration to 1 MAC of the new
+do everything Reset does, and rebuild every compartment with the new agent's
+parameters. It must also set the delivered concentration to 1 MAC of the new
 agent rather than keep the old agent's percentage, because the same percentage
 is a different clinical depth for each agent.
 
@@ -7780,10 +7780,10 @@ surveys a range of managements or ranks them, because only two were run.
 - **Every setting up to the fork.** The branch's settings are replayed from the
   trunk's record of setting changes, then checked against the trunk's own
   settings at the fork.
-- **The bookmarks set before the fork.** The branch opens with the trunk's
-  bookmarks. A bookmark added after the fork belongs only to the run it was
-  added to. A run halts when it reaches a bookmark, which marks an instant or a
-  height on a curve.
+- **The bookmarks set before the fork.** A bookmark marks an instant or a height
+  on a curve, and a run halts when it reaches one. The branch opens with the
+  trunk's bookmarks. A bookmark added after the fork belongs only to the run it
+  was added to.
 - **The time frame.** Both runs count time from induction. The chart anchors
   both to induction rather than to either run's own start, so the two traces
   are compared at the same instants.
@@ -7880,8 +7880,9 @@ arithmetic because both use the same keyframe and the same subtraction.
 § "What this requires of a branch" sets this out as a rule with two conditions,
 and says which condition a fork at a bookmark relaxes.
 
-Exact equality rests on this construction, and the tests only catch it
-breaking. Two tests cover a fork on a keyframe and a fork between two keyframes
+**For developers.** Exact equality rests on this construction, and the tests
+only detect when it breaks. Two
+tests cover a fork on a keyframe and a fork between two keyframes
 (`test_a_fork_opening_from_a_keyframe_reproduces_its_parent`,
 `test_a_fork_opening_between_two_keyframes_reproduces_its_parent`). Two more
 test both through the controller, at case instants and at drawn columns
@@ -7890,10 +7891,9 @@ test both through the controller, at case instants and at drawn columns
 Over the 251 shared columns that the last of these tests compares, the worst
 difference between a branch forked at a bookmark and its trunk was 5.3e-16 on
 2026-10-26, a rounding error from the order of the floating-point operations.
-Before `PL-T5NJ` put the columns on whole hundredths of a second, it was
-2.7e-15 over 240 columns, the figure § "The canonical evaluation rule"
-tabulates. A branch that restarts at the
-fork would not reproduce its trunk
+Before `PL-T5NJ` put the columns on whole hundredths of a second, it was 2.7e-15
+over 240 columns, the figure § "The canonical evaluation rule" tabulates. A
+branch that restarts at the fork would not reproduce its trunk
 (`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`).
 No branch that this program builds takes that route.
 
@@ -8063,8 +8063,9 @@ always drawn, so the end of a trace always agrees with the readouts beside it.
 **What the chart draws.** The model computes each point that the chart draws
 from the run's definition, which gives the run's state at any instant directly,
 by formula. No stored series of values lies behind a trace, so none can disagree
-with it. There is a drawn instant at each pixel boundary of the widest plot on
-which the chart is drawn, and never fewer than 150. When a plot becomes wider,
+with it.
+The chart draws the run's state at one instant for each pixel boundary of its
+widest plot, and at never fewer than 150 instants. When a plot becomes wider,
 after the user resizes the application window or drags an area's border, it is
 redrawn at its new width on the next screen update, whether the run is running
 or paused. Two rules set where the drawn instants fall:
@@ -8086,15 +8087,14 @@ or paused. Two rules set where the drawn instants fall:
 **Between control changes, the drawn line is never further from the run than the
 time that one pixel of the plot spans, except at a peak or a trough.** It passes
 through the run's exact state at every drawn instant, and drawn instants are no
-more than a pixel apart. The one exception is a one-minute axis more than 6000
-px wide, where drawn instants a hundredth of a second apart span more than a
-pixel. Where the run only rises or only falls between two drawn instants, the
-run and the straight segment drawn between them cross every level inside the
-same pixel. This one-pixel guarantee is in time, not in percentage points. Where
-a trace is steep, the run can change by many percentage points within one pixel
-of time. No display shows a value between drawn instants: the hover readout
-gives a value only at a point that the plot draws (§ "The chart's hover
-readout").
+more than a pixel apart. The only exception to that spacing is a one-minute axis
+more than 6000 px wide, where drawn instants a hundredth of a second apart span
+more than a pixel. Where the run only rises or only falls between two drawn
+instants, the run and the straight segment drawn between them cross every level
+inside the same pixel. This one-pixel guarantee is in time, not in percentage
+points. Where a trace is steep, the run can change by many percentage points
+within one pixel of time. No display shows a value between drawn instants, the
+hover readout included (§ "The chart's hover readout").
 
 The straight segment between two drawn instants starts and ends on the run's
 curve, but can lie above or below the curve in between. The table gives that
@@ -8290,25 +8290,27 @@ travels beside the concentrations it scales. The controller exposes immutable
 snapshots, and immutable windows onto the recorded run, rather than mutable
 compartment objects.
 
-The two rules for where drawn instants fall are requirements of this document,
-not optimisations. A function sets the number of drawn instants (`chart_columns`
-in `app/chart_frame.py`, `PL-GS3R`). The spacing is the time base divided by
-that number, rounded down onto whole hundredths of a second, and onto whole
-tenths of a second where that adds at most 10% more instants (`grid_spacing_s`
-in `app/chart_time_base.py`, `PL-T5NJ`). Rounding down keeps each segment within
-a pixel of time, except on that one-minute axis more than 6000 px wide. Where
-the spacing is 1 s or more, rounding onto tenths makes each drawn instant one
-that the clock also shows. The floor of 150 drawn instants is the old fixed
-budget's number, kept because no smaller count has been measured. A plot is
-redrawn when it grows wider than the width its frame was sampled for
-(`resample_owed`, `PL-9LNF`). The grid sits at absolute multiples of the
-spacing, so a window that follows the run keeps every drawn instant it had and
-gains at most one, and a steady trace is not redrawn on every frame. A grid
-anchored to the viewport would move on every scroll and resize, and rewrite the
-whole chart on every frame. A grid anchored to each run's own start put a branch
-forked at 55.3 s on 55.3, 65.3, 75.3 … while the run it branched from drew 0,
-10, 20 ….
+**For developers.** The two rules for where drawn instants fall are
+requirements of this document, not optimisations. A function sets the number of
+drawn instants (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`). The spacing
+is the time base divided by that number. It is rounded down onto whole
+hundredths of a second, and onto whole tenths of a second where that adds at
+most 10% more instants (`grid_spacing_s` in `app/chart_time_base.py`,
+`PL-T5NJ`). Rounding down keeps each segment within a pixel of time, except on
+a one-minute axis more than 6000 px wide. Where the spacing is 1 s or more,
+rounding onto tenths puts each drawn instant on a time that the clock also
+shows. The minimum of 150 drawn instants is the fixed count the chart used
+before, kept because no smaller count has been measured. A plot is redrawn when
+it grows wider than the width its frame was sampled for (`resample_owed`,
+`PL-9LNF`).
 <!-- not-restated: 1 s -->
+
+The grid sits at absolute multiples of the spacing, so a window that follows the
+run keeps every drawn instant it had and gains at most one, and a steady trace
+is not redrawn on every frame. A grid anchored to the viewport would move on
+every scroll and resize, and rewrite the whole chart on every frame. A grid
+anchored to each run's own start put a branch forked at 55.3 s on 55.3, 65.3,
+75.3 … while the run it branched from drew 0, 10, 20 ….
 
 Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
@@ -8446,18 +8448,18 @@ entry check that the output is drawn on the display.
   `test_the_dial_is_readable_in_the_unit_its_compartments_are`,
   `test_the_display_names_the_mac_the_readouts_were_divided_by`). See
   § "MAC multiples as a display unit" for what the multiple asserts, and for
-  why both units are shown rather than one being selected;
-- the running agent's population MAC-awake on the chart, drawn as a band. The
-  band is labelled with the fraction it was derived from, MAC-awake as a
-  fraction of the agent's 1 MAC, and with the divisor, that 1 MAC in percent. It
-  is also labelled with the trace it is to be read against. The agent's nominal 1 MAC is drawn
-  alongside it as a visually distinct line
+  why both units are shown rather than one;
+- the running agent's population MAC-awake, drawn on the chart as a band. The
+  band was derived from two numbers, and its label gives both: MAC-awake as a
+  fraction of the agent's 1 MAC, and that 1 MAC in percent. The label also names
+  the trace to read the band against. A visually distinct line on the chart
+  marks the agent's nominal 1 MAC
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
   `test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line`). See
   § "MAC-awake as a chart reference" for what the band asserts and what it does
-  not. That section also explains why no time-to-wake-up figure is displayed
-  anywhere in the interface;
+  not, and for why no time-to-wake-up figure is displayed anywhere in the
+  interface;
 - every setting changed during the current run. Each change is listed with the
   simulated time at which it took effect, the control and its old and new
   values. The chart marks each change at that time
@@ -8489,9 +8491,10 @@ that draws it has gone. Three entries have no field in the snapshot at all. The
 playback rate and the chart's span are view settings, and $`F_A/F_I`$ is
 computed when the plot is drawn.
 
-The test names in each entry make this list a bound family under
-§ "How this document is held to the tree". The documentation check fails when
-an entry names nothing that backs it, or names a test that does not exist.
+**For developers.** The names in parentheses after each entry are the tests
+that check it. The documentation check reads this list (§ "How this document is
+held to the tree"), and fails when an entry names nothing that backs it, or
+names a test that does not exist.
 
 ### What this list requires once the layout is the reader's
 
@@ -9057,11 +9060,13 @@ because its reader, an anesthesia provider, knows what MAC is defined against,
 and a dozen lines of text between the reader and the plot cost more than they
 gave (`PL-6580`).
 
-The stored 1 MAC (`mac_percent`) is a tier-3 value under § "Source hierarchy:
-what may be cited as the authority for a value". Its authority in each agent's
-data file is De Wolf et al. 2012, which reports the flat adult MAC that Gas Man
-uses. Each data file also cites Mapleson 1996, the source for the fall in MAC
-with age, in its `sources` list.
+In each agent's data file, the authority for the stored 1 MAC is De Wolf et al.
+2012, which reports the flat adult MAC that Gas Man uses. Each data file also
+cites Mapleson 1996, the source for the fall in MAC with age.
+
+**For developers.** The stored 1 MAC (`mac_percent`) is a tier-3 value under
+§ "Source hierarchy: what may be cited as the authority for a value", and
+Mapleson 1996 is in each data file's `sources` list.
 
 The ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
 desflurane's dial maximum divided by its 1 MAC. It therefore rests on a real
@@ -9499,12 +9504,12 @@ marks on the charts are labelled as inputs, and the list says so, because a
 vertical line on a chart of patient concentrations would otherwise invite the
 reader to see an event in the curves.
 
-**Bounds are displayed, not silent.** A chart shows at most a fixed number of
-marks, and the list at most a fixed number of lines, so a run may record more
-adjustments than either can show. A chart or a list that ended without a count
-would tell the reader that nothing else happened. Each chart shows the count of
-adjustments it leaves unmarked, because each chart has a window of its own (§
-"The chart's time base").
+**Bounds are displayed, not silent.** A chart shows at
+most a fixed number of marks, and the list of setting changes at most a fixed
+number of lines, so a run may record more adjustments than either can show. A
+chart or a list that ended without a count would tell the reader that nothing
+else happened. Each chart shows the count of adjustments it leaves unmarked,
+because each chart has a window of its own (§ "The chart's time base").
 
 **The timeline itself has no limit.** The limits above apply only to what is
 shown. Dropping the oldest entries would remove the start of the case, which is
@@ -9537,28 +9542,28 @@ Each control is recorded under a fixed name from the clinical vocabulary:
 name taken from the accessor that applies the setting would change whenever the
 code was renamed, and those accessors have been renamed three times (`PL-3TLK`,
 `PL-9SH6`, `PL-NJPB`). The circuit volume was recorded as a fifth control,
-`circuit_volume`, until it became a fixed model parameter rather than a control
-(§ "What is not bounded this way"). Removing that name broke no recorded
-timeline, because a timeline is held in memory and is never saved.
+`circuit_volume`, until it became a fixed model parameter (§ "What is not
+bounded this way"). Removing that name broke no recorded timeline, because a
+timeline is held in memory and is never saved.
 
 Capping the timeline would lose the settings needed to reproduce the run. It
 would also leave memory use unbounded, because the run itself holds one stretch
 and one keyframe for each accepted change and has no limit either
 (§ "The run is that record, and every state is derived from it").
 
-An unlimited timeline is affordable because it grows with the number of settings
-changed, not with the length of the run. Since `PL-5B1N`, a drag adds one entry,
-on release. Before that change, a drag added at most one entry per simulation
-step, however fast the slider reported. The number of entries per real second
-depends on the tick rather than on simulated time, so it is the same at every
-playback multiplier. A measurement on 2026-09-14 under `PL-1PSX` found that
-continuous dragging gave ten entries per real second at 1×, 5×, 20×, 60× and
-300× alike. A drag made while the run was paused gave one entry. Grouping the
-entries for display costs 0.9 ms per frame at a thousand entries and 8.8 ms at
-ten thousand, against a 200 ms frame. The grouping is recomputed only when the
-timeline changes. At a hundred thousand entries it would cost half a frame.
-Reaching that many took about three hours of unbroken dragging under the old
-behaviour, and the timeline would then be smaller than 9 MB.
+The timeline can be unlimited because it grows with the number of settings
+changed, not with the length of the run. Until a drag was recorded only on its
+release (`PL-5B1N`), each drag added at most one entry per simulation step,
+however fast the slider reported. The number of entries per real second then
+depended on the tick rather than on simulated time, so it was the same at every
+playback multiplier. On 2026-09-14, under `PL-1PSX`, continuous dragging gave
+ten entries per real second at 1×, 5×, 20×, 60× and 300× alike, and a drag made
+while the run was paused gave one entry. Grouping the entries for display costs
+0.9 ms per frame at a thousand entries and 8.8 ms at ten thousand, against a
+200 ms frame. The grouping is recomputed only when the timeline changes. At a
+hundred thousand entries it would cost half a frame. Reaching that many took
+about three hours of unbroken dragging under the old behaviour, and the
+timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 ### F_A/F_I as a displayed ratio
@@ -9566,12 +9571,13 @@ behaviour, and the timeline would then be smaller than 9 MB.
 **A second plot, under the compartment chart, draws $`F_A/F_I`$.** It shows the
 modelled alveolar fraction divided by the modelled inspired fraction, over the
 same time window, on a fixed, dimensionless axis labelled from 0 to 1. The
-uptake literature is taught from this curve, and every wash-in figure a reader
-has seen shows it. The six compartment concentrations on the chart above cannot
-be laid beside a published figure, but this ratio can. The validation compares
-the plotted ratio with human measurements at 30 minutes, for all three agents in
-the simulator (§ "Published wash-in and elimination validation test"). The ratio
-is computed only for display, and no equation of the model uses it.
+uptake literature is taught from this curve, and the wash-in figures a reader
+has seen show it. The plot can therefore be laid beside a published figure. The
+six compartment concentrations on the chart above cannot. A validation test
+compares the plotted ratio with human measurements at 30 minutes, for all three
+agents in the simulator (§ "Published wash-in and elimination validation
+test"). The ratio is computed only for display, and no equation of the model
+uses it.
 
 **The ratio is a modelled value, not a measurement.** It has the alveolar
 compartment's limitation: this model has no airway sampling delay and no dead
@@ -9713,17 +9719,18 @@ that frame draws, rather than keeping them as the run goes. A boundary can
 therefore fall only on an instant that the chart plots (`app/chart_frame.py`,
 PL-2FM6).
 
-The crossing column has a ceiling because the ratio can jump. Runs stepped at
-0.1 s cross equilibrium by only a hair. Across every shipped agent and every
-supported alveolar ventilation and cardiac output, at the maximum fresh gas
-flow, the first value above equilibrium is at most 1.00235. But changing the
-circuit volume (`BreathingCircuit.set_circuit_volume`) keeps the agent in the
-circuit and changes the volume it is divided by, so doubling the volume between
-two steps halves $`F_I`$ and doubles the ratio. No interface control changes the
-circuit volume today, but the plot should not rely on that control staying
-absent. The ceiling is 1.05 (`WASH_IN_TERMINUS_CEILING` in
-`app/chart_frame.py`), below the axis top of 1.15 (`WASH_IN_AXIS_MAXIMUM`), so
-even the widest crossing it allows still has clear space above it.
+**For developers.** The column at which the $`F_A/F_I`$ curve crosses
+equilibrium has a ceiling, because the ratio can jump. In runs stepped at 0.1 s,
+the first value above equilibrium is at most 1.00235, across every shipped agent
+and every supported alveolar ventilation and cardiac output, at the maximum
+fresh gas flow. Changing the circuit volume
+(`BreathingCircuit.set_circuit_volume`), however, keeps the agent in the circuit
+and changes the volume it is divided by. Doubling the volume between two steps
+therefore halves $`F_I`$ and doubles the ratio. No interface control changes the
+circuit volume today, but the plot should not rely on that. The ceiling is 1.05
+(`WASH_IN_TERMINUS_CEILING` in `app/chart_frame.py`), below the axis top of 1.15
+(`WASH_IN_AXIS_MAXIMUM`), so even the widest crossing it allows still has clear
+space above it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: app/chart_frame.py WASH_IN_TERMINUS_CEILING = 1.05 -->
 <!-- provenance: app/chart_frame.py WASH_IN_AXIS_MAXIMUM = 1.15 -->
@@ -10857,10 +10864,11 @@ arriving through the display that looks least like a calculation. The qualifiers
 lead because of the general rule in `.claude/rules/expert-review.md`: prefer an
 interface that prevents an error to one that warns after it.
 
-The printed instant is exact because the chart's columns are laid on hundredths
-of a second (`PL-T5NJ`), and every other drawn instant falls on a simulation
-step. The box rounds each instant to a hundredth of a second
-(`HOVER_INSTANT_RESOLUTION_S`), which removes only floating-point noise.
+**For developers.** The instant that the box prints is exact, because the
+chart's columns fall on whole hundredths of a second (`PL-T5NJ`) and every other
+drawn instant falls on a simulation step. The box rounds each instant to a
+hundredth of a second (`HOVER_INSTANT_RESOLUTION_S`), which removes only
+floating-point noise.
 
 #### The hover and the run it belongs to
 
@@ -10985,12 +10993,12 @@ reported run's point.
 A dot marks every reported point, because a single dot would mark one run's trace
 while the text reported several.
 
-When only one run is in reach, which is the usual case once the reader has
-aimed, the box uses the three-line form, naming the run if two are drawn. The
-box gains a line when a run comes into reach and loses it when the reader moves
-away, so the reader sees each run arrive and leave. In the cases measured below,
-it held at most four value lines on a two-run chart, and at most three on a
-single-run chart.
+Once the reader has aimed the pointer, usually only one run is in reach. With
+one run in reach, the hover readout's box uses the three-line form, and names
+that run if two are drawn. The box gains a line when a run comes into reach and
+loses it when the reader moves away, so the reader sees each run arrive and
+leave. In the cases measured below, it held at most four value lines on a
+two-run chart, and at most three on a single-run chart.
 
 **The pointer's place along the time axis names the instant, and the radius
 decides only what is in reach** (`PL-1K9G`, 2026-09-22). The chart draws each
@@ -11007,17 +11015,17 @@ Each line prints its own instant, because two runs' nearest instants can differ
 by up to one column, and the printed form shows the difference. One instant
 above several values would claim that they are simultaneous when they may not be.
 
-**The chart keeps its linear percent axis, which is what crowds the slow
-compartments together** (project owner, 2026-09-23, ratified, over a
-reader-selected logarithmic scale, `PL-QYBW`). Only fat stays crowded for long.
-At a 1 MAC dial, across the simulator's three agents, muscle spans 25–48 px of
-the 360 px plot at one hour, and fat spans 1.5–3.7 px. Fat's trace near zero is
-its true partial pressure, and partial pressure is what drives effect. So one
-linear axis serves all six compartments, and reporting every trace in reach
-copes with the crowding without a change of scale. The fat trace cannot show how
-much agent fat holds: a fifth of the stored agent at one hour, and a third at
-three hours. The compartment schematic shows that amount (§ "The compartment
-schematic: what its heights, amounts and share bar assert").
+**The chart keeps its linear percent axis, which crowds the slow compartments
+together** (project owner, 2026-09-23, ratified, over a reader-selected
+logarithmic scale, `PL-QYBW`). Only fat stays crowded for long. At a 1 MAC dial,
+across the simulator's three agents, muscle spans 25–48 px of the 360 px plot at
+one hour, and fat spans 1.5–3.7 px. Fat's trace near zero is its true partial
+pressure, and partial pressure drives effect, so one linear axis serves all six
+compartments. Because the hover readout reports every trace in reach, the
+crowding needs no change of scale. The fat trace cannot show how much agent fat
+holds: a fifth of the stored agent at one hour, and a third at three hours. The
+compartment schematic shows that amount (§ "The compartment schematic: what its
+heights, amounts and share bar assert").
 
 **For developers.** Five targeting rules were scored on the branched case, with
 alveolar and fat displayed, a pair that the limit on a two-run chart's
@@ -11123,12 +11131,13 @@ On the wash-in plot, the old rule let 23.9–44.4% of vertical 2 px moves change
 box's instant. No box there mixed instants, because the plot draws one trace per
 run. The plot treats a run's stretches as one set of drawn instants.
 
-A logarithmic axis fixed from 0.001 to 3 MAC would put two runs' fat 23–75 px
-apart, but it has three costs. It draws below the 0.01-point resolution of
-§ "Displayed precision". It is a display mode on a chart of clinical values. And
-it would arrive ahead of the v0.6.0 View contract, which decides where a View's
-own settings live. Its strongest use, the washout tail, is a candidate for the
-catalogue of views (planned-milestone item 36) rather than a mode on this chart.
+**For developers.** A logarithmic axis fixed from 0.001 to 3 MAC would put two
+runs' fat traces 23–75 px apart, but it has three costs. It draws below the
+0.01-point resolution of § "Displayed precision". It is a display mode on a
+chart of clinical values. It would also arrive ahead of the v0.6.0 View
+contract, which decides where a View's own settings live. Its strongest use,
+the washout tail, is a candidate for the catalogue of views (planned-milestone
+item 36) rather than a mode on this chart.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 Two functions produce the forms above that list several runs or compartments
@@ -11349,14 +11358,14 @@ above the top of the concentration axis is cut off there, as a run's curve is.
 The off-scale notice then names each preview curve that is cut off, with its
 highest value in view, because the readouts give only the run's values.
 
-**For developers.** The preview is a second run definition
-(`SimulationController.preview_window`), evaluated on the run's own time grid.
-Its settings are built the way a branch, a run taken from another run, builds
-its own (`SimulationController.preview_settings`). A trial run is rebuilt from
-the settings in force, checked to match the run in every value, and given the
-new value through the same setter that applies a value to the run. The centred
-time window comes from `chart_time_base.preview_window`, and the off-scale
-notice's wording from `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
+**For developers.** The preview has a run definition of its own
+(`SimulationController.preview_window`). It is evaluated on the run's own time
+grid. Its settings are built the way a branch, a run taken from another run,
+builds its own (`SimulationController.preview_settings`). A trial run is rebuilt
+from the settings in force and checked to match the run in every value. It then
+takes the new value through the same setter that applies a value to the run. The
+centred time window comes from `chart_time_base.preview_window`, and the wording
+of the off-scale notice from `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel
@@ -11557,14 +11566,16 @@ price's last shown digit. The cost's precision is not a fixed count of
 decimals, because how many decimals a cost can justify depends on the price
 (§ "Displayed precision", `PL-0S0V`).
 
-The two rows in the hazard table (§ "Reasonably foreseeable misuse, and the
-hazards the presentation carries") name the tests for this section. A test in
-`tests/integration/test_agent_cost_view.py` runs both of Gas Man's isoflurane
-exercises from the patient inputs to the drawn cost, at US$20.47 per 100 mL
-bottle, and checks the four printed costs
-(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`). The conversion
-to liquid alone is checked against the same exercises in
-`tests/reference/test_published_vapour_to_liquid.py`.
+When the simulator runs Gas Man's two isoflurane exercises from their patient
+inputs, at US$20.47 per 100 mL bottle, the displayed cost reproduces the four
+costs printed in them. The conversion to liquid alone is checked against the
+same exercises.
+
+**For developers.** The two rows in the hazard table (§ "Reasonably foreseeable
+misuse, and the hazards the presentation carries") name the tests for this
+section. The cost is checked in `tests/integration/test_agent_cost_view.py`
+(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`), and the
+conversion to liquid in `tests/reference/test_published_vapour_to_liquid.py`.
 
 ### The compartment schematic: what its heights, amounts and share bar assert
 
