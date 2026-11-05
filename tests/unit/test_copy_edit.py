@@ -442,7 +442,7 @@ def test_a_comment_cut_whole_is_listed_and_not_refused() -> None:
     assert copy_edit.check_code("docs/MODEL.md", before, before, copied).refused == ()
 
 
-def test_a_decision_tag_cut_with_its_item_id_is_listed() -> None:
+def test_a_decision_tag_cut_with_its_item_id_is_refused() -> None:
     before = [
         "The dialog locks the window (project owner, 2026-10-18,",
         "ratified, over a modeless notice, `PL-W5WX`). It also holds (`PL-TPBH`).",
@@ -450,9 +450,9 @@ def test_a_decision_tag_cut_with_its_item_id_is_listed() -> None:
     kept_id = ["The dialog locks the window (`PL-W5WX`). It also holds."]
     lost_id = ["The dialog locks the window. It also holds (`PL-TPBH`)."]
 
-    assert copy_edit.check_code("docs/MODEL.md", before, before, kept_id).lost_decisions == ()
-    assert copy_edit.check_code("docs/MODEL.md", before, before, lost_id).lost_decisions == (
-        "PL-W5WX",
+    assert copy_edit.check_code("docs/MODEL.md", before, before, kept_id).refused == ()
+    assert copy_edit.check_code("docs/MODEL.md", before, before, lost_id).refused == (
+        "it cut the decision that `PL-W5WX` records without naming the item",
     )
 
 

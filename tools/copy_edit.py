@@ -29,11 +29,11 @@ that rewrote it, else `[N] keep`. Every read's notes follow.
 
 Before the reply is printed, a check compares each rewrite with the rows it
 replaces (`check_code`). It refuses a rewrite that changes code, a fenced
-block, a heading or an HTML comment, or that writes an HTML comment or a code
-name the passage does not hold. A refused rewrite is printed as `[N] keep`,
-with the reason under "Code check:". Under the same heading, the reply also
-lists each code name a rewrite dropped, each comment it cut whole, and each
-item whose decision's tag it cut without keeping the item's id (project owner,
+block, a heading or an HTML comment, that writes an HTML comment or a code
+name the passage does not hold, or that cuts a decision's tag without keeping
+the item's id. A refused rewrite is printed as `[N] keep`, with the reason
+under "Code check:". Under the same heading, the reply also lists each code
+name a rewrite dropped and each comment it cut whole (project owner,
 2026-11-04, `PL-HGZS`).
 
 **A whole document is reviewed in two parts** (project owner, 2026-11-04,
@@ -346,7 +346,7 @@ def fenced(rows: Sequence[str]) -> list[str]:
 
 @dataclass(frozen=True)
 class CodeCheck:
-    """The reasons a rewrite is refused, and each code name, comment and item id it cut.
+    """The reasons a rewrite is refused, and each code name and comment it cut.
 
     The copy editor may change prose and nothing else. Its instructions say so.
     This check enforces the rule on each rewrite the copy editor returns, so that
@@ -357,7 +357,6 @@ class CodeCheck:
     refused: tuple[str, ...] = ()
     dropped: tuple[str, ...] = ()
     cut_comments: tuple[str, ...] = ()
-    lost_decisions: tuple[str, ...] = ()
 
 
 #: Python tokens that are prose or layout, which a copy edit may change. Every
@@ -417,8 +416,9 @@ def check_code(
     """What the rewrite `after` of the rows `before` did to code, in the file at `path`.
 
     A rewrite is refused where it changes Python code, a fenced block, a heading
-    or an HTML comment, or where it writes an HTML comment or a code name that
-    the passage does not hold. `seen` is every row of the passage, the read-only
+    or an HTML comment, where it writes an HTML comment or a code name that the
+    passage does not hold, or where it cuts the item id beside a decision.
+    `seen` is every row of the passage, the read-only
     rows included, so a code name the copy editor took from any of them is not
     new. A comment the rewrite cut whole is listed and not refused, because the
     copy editor's instructions say to cut a source comment with the number it
@@ -448,9 +448,13 @@ def check_code(
             "it wrote code names the passage does not hold: "
             + ", ".join(f"`{span}`" for span in added)
         )
+    refused += [
+        f"it cut the decision that `{item}` records without naming the item"
+        for item in lost_decisions(before, after)
+    ]
     dropped = tuple(sorted({span for span in old_spans if span not in new_spans}))
     cut = tuple(sorted((old_comments - new_comments).elements()))
-    return CodeCheck(tuple(refused), dropped, cut, lost_decisions(before, after))
+    return CodeCheck(tuple(refused), dropped, cut)
 
 
 def lost_decisions(before: Sequence[str], after: Sequence[str]) -> tuple[str, ...]:
@@ -460,7 +464,10 @@ def lost_decisions(before: Sequence[str], after: Sequence[str]) -> tuple[str, ..
     records the decision. The item's id must then stay beside the decision.
     Without the id, nothing in the text leads to the record of who decided and
     what was chosen over what. A blind judge preferred the original of one
-    section only because its edit had lost such an id (`PL-HGZS`).
+    section only because its edit had lost such an id (`PL-HGZS`). The rewrite
+    is refused rather than listed, because the copy editor cut such an id in 4
+    of the 72 rewrites of the first branch it edited after the fix, and a
+    refusal keeps the passage without relying on the session to restore it.
     """
     old = " ".join(" ".join(before).split())
     new = " ".join(after)
@@ -533,11 +540,6 @@ def merge(
             checked.append(
                 f"- Passage {number}: the rewrite no longer names `{span}`. "
                 "Check that its reader does not need it."
-            )
-        for item in result.lost_decisions:
-            checked.append(
-                f"- Passage {number}: the rewrite cut the decision that `{item}` records "
-                "without naming the item. Put the id back beside the decision."
             )
         for comment in result.cut_comments:
             checked.append(
