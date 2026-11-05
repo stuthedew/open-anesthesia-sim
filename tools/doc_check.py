@@ -4123,7 +4123,8 @@ def _holds_its_figures(member: str) -> bool:
     a test named in a code span, read by `_names_a_test` exactly as the other
     families read it. The second is a published source in a form
     `PUBLISHED_SOURCE_RE` reads. The third is an ISO date, which makes the
-    paragraph a dated record, which nothing checks against the code. The fourth, the declared-none form, is
+    paragraph a dated record, which nothing checks against the code. The
+    fourth, the declared-none form, is
     `check_bound_families`' own. A date or a source inside a code span does
     not count, because a code span quotes text rather than citing it. A note
     holds the paragraph only by the first form or the fourth, because
@@ -4290,12 +4291,13 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
     return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
-# Every family bound today by the rule that each listed entry names what backs it. **An entry arrives with the annotation
-# pass that makes its family conform, never in anticipation of one**, so the
-# check never holds `make check` red for work nobody has done yet. The check was
-# introduced over the hazard table, which conformed already, so it landed green;
-# `PL-036` added the minimum displayed outputs, `PL-2M9N` added the required
-# tests, and `PL-8LDF` (required invariants) is the pass still due.
+# Every family bound today by the rule that each listed entry names what backs
+# it. **An entry arrives with the annotation pass that makes its family conform,
+# never in anticipation of one**, so the check never holds `make check` red for
+# work nobody has done yet. The check was introduced over the hazard table,
+# which conformed already, so it landed green; `PL-036` added the minimum
+# displayed outputs, `PL-2M9N` added the required tests, and `PL-8LDF` (required
+# invariants) is the pass still due.
 #
 # `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
 # precision", whose numbers a learner reads directly. The other sections join
