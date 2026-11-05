@@ -73,11 +73,12 @@ as a Workspace, and you switch between Workspaces by their tabs. Three come with
 the simulator: Default, Induction and Maintenance.
 
 A region outside the Areas shows the simulated time, the playback rate, whether
-the simulation is running or halted and why, the agent and its 1 MAC, and each
-compartment's concentration. You need these values to read any other number, so
-no arrangement can remove them. The agent appears by name and in its ISO 5360
-vaporizer color. Every compartment concentration is given in percent **and** as
-a multiple of the agent's 1 MAC. The same percentage is a different MAC multiple
+the simulation is running or halted and why, the agent and its 1 MAC, the
+delivered concentration, each compartment's concentration, and the list of
+settings changed during the run, with when each took effect and its value. You
+need these values to read any other number, so no arrangement can remove them.
+The agent appears by name and in its ISO 5360 vaporizer color. Every
+concentration is given in percent **and** as a multiple of the agent's 1 MAC. The same percentage is a different MAC multiple
 for each agent, so neither unit is safe alone.
 
 While a case runs, the window also shows the following.
@@ -108,11 +109,11 @@ While a case runs, the window also shows the following.
   Induction Workspace includes this plot.
 - The running agent's population MAC-awake is drawn as a labelled band, and its
   nominal 1 MAC as a line.
-- Hovering over a drawn point of a compartment trace shows the point's
-  compartment and simulated time, and its value in both units at the readouts'
-  own resolution. On a drawn point of the wash-in curve, it shows the ratio.
-  While more than one run is drawn, it also shows which run the point belongs
-  to. Nothing is shown between drawn points, or over a reference band or line,
+- Hovering over a drawn point of a trace opens a readout. Its first line says
+  the value is modelled and names the agent and the simulated time, and, while
+  more than one run is drawn, which run the point belongs to. Below that is the
+  value: for a compartment, its name and value in both units at the readouts'
+  own resolution, and for the wash-in curve, the ratio. Nothing is shown between drawn points, or over a reference band or line,
   or a mark for a changed setting.
 
 ### Playback speed and time base
@@ -130,7 +131,10 @@ affects only what is drawn.
 ## What it does not simulate
 
 - **Nitrous oxide, any second gas, and concentration or second-gas effects.**
-  Nitrous oxide is planned.
+  Nitrous oxide is planned. The scope word differs between this page and the
+  package for that reason: this page says *inhaled*, the subject the project
+  teaches, and `pyproject.toml` says *volatile*, the three agents this release
+  models (`PL-XF89`).
 - **Switching agents mid-run.** Choosing a different agent starts a new run.
   Washout of the previous agent is not modeled.
 - **Regional gas exchange.** There is no dead space, shunt,

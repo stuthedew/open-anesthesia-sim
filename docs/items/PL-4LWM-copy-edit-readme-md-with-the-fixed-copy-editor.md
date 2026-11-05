@@ -7,7 +7,7 @@ touches: README.md
 added: 2026-11-05
 closed: 2026-11-05
 pr: 2041
-verify: grep -q '^### The window$' README.md && ! grep -q 'scope word differs' README.md
+verify: grep -q '^### The window$' README.md && grep -q '^## How the model is checked' README.md
 ---
 
 **Problem.** README.md had not been through the copy editor since its fix (`PL-HGZS`, #2038). The project owner asked on 2026-11-05 for every human-facing document to be copy edited, skipping text the copy editor had already edited (thread "Copy edit the entire repository"). README's § "What it is for" was used in the copy editor's blind test, so it is left as it is.
