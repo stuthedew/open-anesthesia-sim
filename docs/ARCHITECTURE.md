@@ -24,14 +24,14 @@ data/  --loaded by-->  core/  --read by-->  app/
 - **`core/`** is the scientific simulation. It does not use wall-clock time, and
   its only I/O is reading the packaged JSON files in `data/`. Identical inputs
   always give identical results.
-- **`layout/`** holds the layout of each window as a value: which View occupies
-  which part of the window. It also provides the operations a user performs on
-  a layout (`PL-C842`, `PL-1FT6`). It imports no toolkit, so every operation is
-  tested without a `QApplication`. The one `core/` module it imports is
-  `core/checked_number.py`, for the way that module names a refused value. Only
-  one module in `layout/` writes outside the source tree (`store.py`). It saves
-  the user's Workspaces, which are layouts, as described under
-  § "User state: the saved Workspaces" below.
+- **`layout/`** holds the layout of each window as a value: which View, such as
+  a chart, occupies which part of the window. It also provides the operations a
+  user performs on a layout (`PL-C842`, `PL-1FT6`). It imports no toolkit, so
+  every operation is tested without a `QApplication`. The one `core/` module it
+  imports is `core/checked_number.py`, for the way that module names a refused
+  value. Only one module in `layout/` writes outside the source tree
+  (`store.py`). It saves the user's Workspaces, which are layouts, as described
+  under § "User state: the saved Workspaces" below.
 - **`app/`** is the PySide6 user interface. It never performs a physiological
   or unit calculation itself. For every file under `app/`, a project rule
   forbids simulation calculations in UI callbacks
@@ -163,7 +163,7 @@ data/machines/reference_circle_system.json  ──┴─> core/parameters.py
                             app/controller.SimulationController
 ```
 
-Only one module, `core/parameters.py`, reads the JSON files, which it does
+Only one module, `core/parameters.py`, reads the parameter files, which it does
 through `importlib.resources`. It validates the schema version, the required
 fields, the units, and the ranges before it builds the agent, patient and
 circuit parameters (`AgentParameters`, `ReferenceAdultParameters` and
@@ -218,8 +218,8 @@ the four setters changes it. `docs/MODEL.md` § "What is not bounded this way"
 gives the argument.
 
 The snapshot is the run's state at one instant. It holds a fixed number of
-values, however long the run has been going. The run as a whole comes
-separately, from another method of the controller,
+values, however long the run has been going. States across a span of the run
+come separately, from another method of the controller,
 `drawn_window(start_s, stop_s, columns)`. That method evaluates the states at
 the instants that a chart is about to plot, across the axis the caller names,
 and returns them as a drawn window (`DrawnWindow`). The snapshot and the run are
@@ -245,17 +245,18 @@ The record is keyed rather than ordered, so a container looks its amount up by
 the compartment it draws and cannot be handed a neighbour's. Because the amounts
 are not in the state vector, the controller pairs each key by hand with the
 `core/` object it is read from. This is a second pairing, beside the one the
-traces use (`run_series.COMPARTMENT_STATE_INDEX`). The reference test against
-the coupled oracle catches a wrong pair. A later model that holds several
-substances keys the same record by substance as well, rather than adding fields.
+traces use (`run_series.COMPARTMENT_STATE_INDEX`). A reference test compares
+each amount with oracles for the coupled system, which do not read `core/`. It
+therefore catches a wrong pair. A later model that holds several substances
+keys the same record by substance as well, rather than adding fields.
 
 The record holds the six amounts and not their total. The snapshot carries the
 total separately (`stored_agent_l`). It is the one sum of the six amounts that
 the core computes (`AgentUptakeSystem.total_stored_agent_l`), and the accounting
-check reads it. Adding up the record again in the interface would compute the
-same total a second time. Instead, a unit test requires the six amounts, added
-in the core's order, to equal the snapshot's total to the last bit. A reference
-test compares each amount with oracles that do not read `core/`.
+check reads it. The interface does not add up the record again, because that
+would compute the same total a second time. A unit test requires the six
+amounts, added in the core's order, to equal the snapshot's total to the last
+bit.
 
 **A run is its inputs, and its states are derived from them** (PL-T691). The
 controller keeps the run as a run definition (`RunDefinition`, in
@@ -263,7 +264,7 @@ controller keeps the run as a run definition (`RunDefinition`, in
 moment, plus one keyframe per change, and nothing else of the run. A keyframe is
 the state at the instant of its change. While the settings stay the same, the
 equations are linear and time-invariant, so the propagator is exact over any
-horizon, not only over a step. Every state that the run passed through is
+length of time, not only over a step. Every state that the run passed through is
 therefore one propagation from the latest keyframe before it, and none of those
 states has to have been recorded. No per-step sample history is kept beside the
 definition, because such a history would be a second copy of the run that could
@@ -307,7 +308,7 @@ rather than of layout, and must be readable and testable with no toolkit loaded.
 The presentation is split into these modules:
 
 - The formatter (`app/formatting.py`) turns a fraction into the strings a
-  reader sees: a percent, and a multiple of the running agent's 1 MAC. It uses
+  user sees: a percent, and a multiple of the running agent's 1 MAC. It uses
   the resolutions that `docs/MODEL.md` § "Displayed precision" derives.
 - The chart layer (`app/chart_frame.py`) decides, as plain values, what one
   frame of the chart shows: which compartment a trace carries, which instants
@@ -320,12 +321,12 @@ The presentation is split into these modules:
   The widget code (`app/qt_widgets.py`) updates the leaf widgets to match, and
   decides nothing.
 - The control timeline (`app/control_timeline.py`) turns the recorded control
-  changes into the adjustments a reader sees. Those changes are faithful to the
+  changes into the adjustments a user sees. Those changes are faithful to the
   run, so one slider drag appears among them as several settings. Showing that
   drag as one adjustment is a claim about what the user did, not a tidier
   rendering of what the model saw.
 - The playback module (`app/playback.py`) turns the playback rate that a
-  reader selects into the number of whole simulation steps that a tick takes.
+  user selects into the number of whole simulation steps that a tick takes.
   A rate is realised only as a step count, never as a larger step, so the
   module rejects a rate that does not land on a whole number of steps.
   Otherwise the run would advance at a rate other than the one it displays: a
@@ -368,7 +369,7 @@ only a simulated time, so it is outside the table as well.
 **Every failure that the core reports is a simulation error.** Each is a
 subclass of `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare
 `ValueError`, so the interface can recognise a simulation failure and act on it.
-The hierarchy has two branches, which the interface treats differently:
+The hierarchy splits into two kinds, which the interface treats differently:
 
 - A configuration error (`SimulationConfigurationError`) means that a value was
   rejected before it changed anything. The run view catches it
@@ -407,9 +408,9 @@ a refused setting:
    also reject an `int` beyond the float range by name, rather than let
    `math.isfinite` raise `OverflowError` while converting it (`PL-3800`).
 
-The step method, `AgentUptakeSystem.advance()`, decides which branch a failure
-belongs to. It checks its own arguments first. Then it re-raises any guard
-failure during the step as a numerical error (`SimulationNumericalError`),
+The step method, `AgentUptakeSystem.advance()`, decides which of the two kinds a
+failure belongs to. It checks its own arguments first. Then it re-raises any
+guard failure during the step as a numerical error (`SimulationNumericalError`),
 keeping the original as `__cause__`.
 
 The step method also makes the step atomic: it captures every dynamic value
@@ -463,9 +464,10 @@ and an agent change, which starts a fresh run (`set_agent()`). A reset can
 itself refuse, when the run definition cannot start from the settings record.
 It does so before it clears anything. The run view then halts the run on that
 refusal through the same path as other halts (`RunView._handle_reset`,
-`PL-M4M0`). Every other halt's banner names reset as the way out, so the banner
-for this halt says instead that no setting can repair the refusal, and that
-closing and reopening the application starts a new run (`PL-01GY`).
+`PL-M4M0`). Every other halt's banner names reset as the way out. Here the
+reset itself was refused, so this halt's banner says instead that no setting
+can repair the refusal, and that closing and reopening the application starts
+a new run (`PL-01GY`).
 
 A halt is presented from the run's record (`RunRecord`), which the controller
 returns (`SimulationController.record()`). Both the snapshot and the record
@@ -506,7 +508,7 @@ Two tests check these rules. One checks each value on screen, and what
 qualifies it, against one step
 (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`,
 `PL-J5GC`). The second requires every other widget that shows the run's state
-to read the same on a halted run as on a drawn one. It applies to a widget by
+to look the same on a halted run as on a drawn one. It applies to a widget by
 default, so a widget added later is checked without anyone listing it
 (`test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`,
 `PL-X7D5`).
@@ -523,7 +525,7 @@ later is checked without anyone having to remember it
 (`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`).
 
 When a frame fails, the trunk records that its dashboard failed. It then offers
-no keyframe and no passed mark either, because a branch opened at one of them
+no branch at a keyframe or a passed mark either, because a branch opened there
 would be drawn by the same dashboard, which could fail the same way. An
 exception raised in one of the dashboard's own slots is recorded in the same way
 as a frame that fails, because it too belongs to no single run
@@ -556,8 +558,8 @@ little over branching from the trunk again.
 and how exact each is in floating point.
 
 **Where a branch may be taken.** There are three places, each reached by its own
-method rather than through one list. A fork at the supported run length is
-rejected for every method (`_resume_point`, `PL-VHQX`), because the branch would
+method rather than through one list. Every method rejects a fork at the
+supported run length (`_resume_point`, `PL-VHQX`), because the branch would
 have no step to take and a reset would return it to the same stop.
 
 The first is any **keyframe** that the trunk holds. A keyframe is the trunk's
@@ -587,12 +589,12 @@ before the fork, because a paused trunk usually does not stand on a keyframe. On
 a 120 s run with two setting changes, 3 of the 1 201 instants it can stand at
 are keyframes, and none is recorded at a pause. The branch's clock and its live
 system stand at the fork. This route costs the trunk nothing. Recording a
-keyframe where the run halts was rejected. The branch would be exact against its
-trunk either way, but a recorded keyframe would move the trunk's own later
-results away from what the unmarked case gives, so marking a run would change
-it. The results of both routes are in `PL-B8MK`.
-`docs/MODEL.md` § "What this requires of a branch" says which of its two
-conditions the route used here relaxes, and what that costs.
+keyframe where the run halts would also give a branch that is exact against its
+trunk, but it would move the trunk's own later results away from what the
+unmarked case gives, so marking a run would change it. The results of both
+routes are in `PL-B8MK`. `docs/MODEL.md` § "What this requires of a branch"
+sets two conditions on a branch, and says which one this route relaxes and
+what that costs.
 
 A paused point ends when the trunk starts again, because the point where a
 running trunk stands moves with every step. For that reason it is kept out of
@@ -718,9 +720,9 @@ keyframe of the case rather than at a zero of its own, so a keyframe read from a
 branch needs no conversion to be placed on the case's axis, and no code that
 reads a run's instants has to know whether the run is a trunk or a branch.
 `docs/MODEL.md` § "The canonical evaluation rule" explains why the definition
-opens at a keyframe. A second time frame for branches once anchored a branch's
-drawn columns to its own zero, so they landed at case instants the trunk never
-draws (`PL-2R2C`). That frame has since been removed (`PL-ZMRT`).
+opens at a keyframe. A separate time frame for branches would anchor a branch's
+drawn columns to its own zero, so they would land at case instants the trunk
+never draws (`PL-2R2C`, `PL-ZMRT`).
 
 No method restarts a branch's run definition at its fork, and none may be
 relaxed into a restart on the grounds that the difference is small. A unit test
@@ -752,25 +754,25 @@ from this. Each is a property of the display, not of the model:
   **The branch control has a selector and a button, because a learner can fork
   from points that last for different lengths of time** (`PL-TYWQ`, `PL-Y2SL`).
   The selector lists two kinds of row together, earliest first. The first kind
-  is each instant in the case's list of fork points
-  (`BranchedCase.fork_points_s`), and a branch from one opens at that instant
-  (`fork_at`). The second kind is each mark that the trunk has passed
-  (`BranchedCase.mark_fork_points`, `PL-W4XQ`), and a branch from one is taken
-  through a separate method (`fork_at_mark`). A mark's row gives the instant at
-  which its branch opens, and never the instant of the mark itself. The row
-  adds "on your mark", the wording of the label shown when the run halts. The
-  selector gains a row as the clock passes a mark, and loses one only when the
-  learner removes that mark or the trunk starts over.
+  is each keyframe that the case lists (`BranchedCase.fork_points_s`), and a
+  branch from one opens at that keyframe (`fork_at`). The second kind is each
+  mark that the trunk has passed (`BranchedCase.mark_fork_points`, `PL-W4XQ`),
+  and a branch from one is taken through a separate method (`fork_at_mark`). A
+  mark's row gives the instant at which its branch opens, and never the instant
+  of the mark itself. The row adds "on your mark", the wording of the label
+  shown when the run halts. The selector gains a row as the clock passes a mark,
+  and loses one only when the learner removes that mark or the trunk starts
+  over.
 
   Below the selector, a button takes a branch where the paused trunk stands
   (`BranchedCase.here_fork_point`). Pausing records no keyframe, so the paused
-  point adds no fork point. Unlike a row in the selector, it lasts only until
-  the run resumes. The button appears whenever the case offers that point and
-  only one run is shown. Its label gives the instant at which the branch will
-  open, as in "Branch here: 1h23m". When a mark stopped the trunk there, the
-  label reads "..., stopped on your mark". A row and the button labelled with
-  the same instant open their branches under the same settings, because each
-  opens under what the dial says at its instant (`PL-ZR49`).
+  point has no row in the selector. Unlike a row, it lasts only until the run
+  resumes. The button appears whenever the case offers that point and only one
+  run is shown. Its label gives the instant at which the branch will open, as in
+  "Branch here: 1h23m". When a mark stopped the trunk there, the label reads
+  "..., stopped on your mark". A row and the button labelled with the same
+  instant open their branches under the same settings, because each opens under
+  what the dial says at its instant (`PL-ZR49`).
 
   The project owner chose these two controls (2026-09-21, ratified, over one
   list that grows a row while the run is halted). With one list, that row would
@@ -857,12 +859,11 @@ so it cannot represent a branch of a branch. The screen shows at most two runs
 
 **After the fork, a difference between the two runs can come only from their
 control timelines.** A branch inherits the trunk's agent, patient, circuit
-volume and bookmarks, and the four live controls up to the fork. It keeps these
-fixed, so that a difference between the runs cannot come from any of them. For
-example, the agent cannot be changed on a branch (`set_agent` refuses), and on
-the trunk it is locked while two runs are shown. The control timeline is the
-one thing a branch does not inherit. The branch's timeline opens with only the
-trunk's changes at the fork, if there are any.
+volume and bookmarks, and the four live controls up to the fork, and keeps them
+fixed. For example, the agent cannot be changed on a branch (`set_agent`
+refuses), and on the trunk it is locked while two runs are shown. The control
+timeline is the one thing a branch does not inherit. The branch's timeline opens
+with only the trunk's changes at the fork, if there are any.
 
 **Before the fork, the two runs use the same history object, not a reproduction
 of it.** A branch's definition holds the trunk's own keyframe, and both runs sit
@@ -1035,8 +1036,7 @@ specifies what a price carries and what is refused. The project ships no price.
 - **When the file is written.** The preferences store writes the whole file when
   asked (`PreferencesStore.save`). The dashboard saves as soon as the reader
   picks the agent cost View's unit (`PL-B396`) or sets or removes a price
-  (`PL-1P15`), the way Blender saves its preferences. Nothing is written before
-  the first save.
+  (`PL-1P15`). Nothing is written until the reader does one of these.
 - **How a save works.** A save writes a temporary file, calls `fsync` on it and
   replaces the old file with it (`os.replace`). The store takes these steps
   through the module that also saves the layouts file (`user_files.py`). No
