@@ -7674,73 +7674,74 @@ run whose record cannot be built is not worth continuing.
 ## Agent-change behavior
 
 Changing the running agent must begin a new run. Switching between volatile
-agents is not modeled (see § "Known limitations"). So there is no residual
-washout to carry across. There is also no state from the old agent that the
-new agent's partition coefficients would make meaningful. A change of agent
-must therefore do everything Reset does. In addition, it must rebuild every
-compartment against the new agent's parameters. It must also take the
-delivered concentration from that agent's own 1 MAC, rather than carrying over
-the old agent's percentage, because the same percentage is a different
-clinical depth for each agent.
+agents is not modeled (see § "Known limitations"), so there is no residual
+washout to carry over. The model's values for the old agent would mean nothing
+under the new agent's partition coefficients. A change of agent must therefore
+do everything Reset does. It must also rebuild every compartment with the new
+agent's parameters. It must set the delivered concentration to 1 MAC of the new
+agent rather than keep the old agent's percentage, because the same percentage
+is a different clinical depth for each agent.
 
-Because a change of agent begins a new run, it **destroys one**. Destroying a
-run places a requirement on the interface, not only on the controller. The run
-definition, the control-input timeline and the simulated time that a run
-reached are everything a learner has to look back at. Nothing in this
-application saves them, and there is no undo. So:
+Beginning a new run **discards the current one**. All a user has to look back
+at is the run's definition, its timeline of control changes and the simulated
+time it reached. Nothing in the simulator saves them, and there is no undo. So
+the interface must follow these rules:
 
-- the interface must not discard a run that holds anything (any elapsed
-  simulated time, or any recorded control change) without first stating that
-  the run will be discarded and obtaining the user's confirmation;
-- the statement must name what is lost in the terms that the display already
-  uses for it, so that the user can check it against the readouts it
-  describes;
-- declining must leave the run, its definition, its timeline and the control
-  that offered the change exactly as they were; and
-- a selection that resolves to the agent already running must change nothing,
-  since it proposes no new case.
+- Before the interface discards a run that has any elapsed simulated time or
+  any recorded control change, it must say so and ask the user to confirm.
+- The question must name what will be lost in the terms that the display
+  already uses, so that the user can check it against the readouts.
+- Declining must leave the run, its definition, its timeline and the control
+  that offered the change exactly as they were.
+- Choosing the agent that is already running is not a change of agent, so it
+  must do nothing.
 
-A run that holds nothing (no elapsed time and no recorded control change) is
-exempt, because it has nothing to discard. A confirmation that fires when
-nothing is at stake also teaches the user to answer it without reading it. By
-the time something is at stake, that confirmation would go unread. Pressing
-Reset is therefore also the way to make a later change of agent happen without
-a confirmation.
+A run with no elapsed simulated time and no recorded control change is
+discarded without a question, so a user who presses Reset first can then
+change agent without one.
 
-**Reset's exemption covers the run whose button was pressed, and no other
-run** (project owner, 2026-10-18, ratified, over extending it to every run the
-press takes with it, `PL-W5WX`). Pressing a run's Reset is the request to
-discard that run. The trunk's Reset also drops every branch drawn beside it,
-because a branch cannot outlive the run it was taken from. But the reader did
-not press Reset on the branch. So when a drawn branch has run past its fork, or
-holds a control change made since it opened, the trunk's Reset states what
-that branch holds and asks before it discards anything, as the list above
-requires. A change that sets a dial back to the trunk's value before the fork
-counts, because the branch opened at what the dial said. The
-trunk's Reset also asks about a branch whose state cannot be read, because
-what that branch holds is not known to be nothing. A branch that holds
-neither is dropped without a question. Four tests in
-`tests/integration/test_simulation_view.py` enforce this rule:
-`test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
+**Pressing a run's Reset confirms discarding that run, and no other run**
+(project owner, 2026-10-18, ratified, over extending it to every run the press
+takes with it, `PL-W5WX`). A branch is a run taken from another run, the trunk,
+at a moment called its fork. The display draws each branch beside its trunk.
+Pressing the trunk's Reset also discards every branch, because a branch cannot
+outlive its trunk. When a branch has run past its fork, or has had a control
+change since then, the trunk's Reset says what that branch holds and asks before
+it discards any run. Setting a dial back to a value the trunk had before the
+fork is still a control change, because the branch started from what the dial
+said at the fork. The trunk's Reset also asks about a branch when the simulator
+cannot tell what that branch holds. Any other branch is discarded without a
+question.
+
+**Every run waits while a question is open, and carries on as it was when the
+question closes** (project owner, 2026-10-31, ratified, over letting the runs
+go on stepping, `PL-TPBH`). Each of these questions blocks the rest of the
+window: the trunk's Reset question, the question asked before a change of
+agent starts a new case, and the questions from the Workspace strip. While one
+is open, the user cannot press Pause on any run. A run that was running
+resumes at the same playback rate, and a paused run stays paused. The wait
+changes nothing in a run, so each run follows the same course as if the user
+had answered at once, as § "The reproducibility guarantee" requires. The
+bookmark editor does not block the window, so runs go on as usual while it is
+open.
+
+**For developers.** Runs with nothing to lose get no question because a
+question asked when nothing is at stake teaches the user to answer it without
+reading it. By the time something is at stake, the question would go unread.
+
+Four tests in `tests/integration/test_simulation_view.py` enforce the rule for
+branches: `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
 `test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow`,
 `test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
 `test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch`.
 
-**Every run holds while a question is open, and carries on as it was when
-the question closes** (project owner, 2026-10-31, ratified, over letting the
-runs go on stepping, `PL-TPBH`). The trunk's Reset question, the question
-asked before a new agent starts a new case, and the Workspace strip's
-questions are all window-modal. While one is open, the reader cannot press
-Pause on any run. Before this rule, a reader who spent ten seconds on a
-question at 300× came back to a case 50 simulated minutes further on. Now no
-run takes a step while a question is open. When it closes, a running run runs
-again at the same playback rate, and a paused run stays paused. The hold only
-skips ticks of the step timer and changes nothing in the run. So a run's
-trajectory is the same as if the reader had answered at once, as
-§ "The reproducibility guarantee" requires. The bookmark editor is not modal,
-so it holds nothing. `test_the_run_does_not_advance_while_a_reset_question_is_open`
-enforces this rule for the trunk's Reset question, and two tests beside it
-enforce it for the new-case and Workspace questions.
+Runs wait during a question because otherwise a user who spent ten seconds on
+it at 300× playback would come back to a case 50 simulated minutes further on.
+The wait works by skipping ticks of the step timer. One test enforces the wait
+during the trunk's Reset question
+(`test_the_run_does_not_advance_while_a_reset_question_is_open`), and two tests
+beside that one do the same for the question asked before a change of agent
+and the Workspace strip's questions.
 
 ## What a branch comparison asserts, and what it does not
 
@@ -8055,14 +8056,14 @@ often than a chart can resolve. The instant that the numeric readouts show is
 always drawn, so the end of a trace always agrees with the readouts beside it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-The model computes each point that the chart draws from the run's definition,
-which gives the run's state at any instant directly, by formula. No stored
-series of values lies behind a trace, so none can disagree with it. There is a
-drawn instant at each pixel boundary of the widest plot on which the chart is
-drawn, and never fewer than 150. When a plot becomes wider, after the user
-resizes the application window or drags an area's border, it is redrawn at its
-new width on the next screen update, whether the run is running or paused. Two
-rules set where the drawn instants fall:
+**What the chart draws.** The model computes each point that the chart draws
+from the run's definition, which gives the run's state at any instant directly,
+by formula. No stored series of values lies behind a trace, so none can disagree
+with it. There is a drawn instant at each pixel boundary of the widest plot on
+which the chart is drawn, and never fewer than 150. When a plot becomes wider,
+after the user resizes the application window or drags an area's border, it is
+redrawn at its new width on the next screen update, whether the run is running
+or paused. Two rules set where the drawn instants fall:
 
 - **The drawn instants lie on a grid that starts at the case's time zero.**
   A run branched from another therefore draws at the same instants as the run
@@ -8227,6 +8228,7 @@ because the arithmetic did. § "Supported simulation step" gives the grid of
 tick boundaries for each rate, and how far a delay of one tick can shift a
 displayed compartment. It also gives the route that is exact at every rate:
 pause, change the setting, then resume.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 The third condition is human factors, and it is why the rate is a required
 display rather than a preference. A rate is a mode. A clock is easy to misread
@@ -8301,6 +8303,7 @@ every frame. A grid anchored to the viewport would move on every scroll and
 resize, and rewrite the whole chart on every frame. A grid anchored to each
 run's own start put a branch forked at 55.3 s on 55.3, 65.3, 75.3 … while the
 run it branched from drew 0, 10, 20 ….
+<!-- not-restated: 1 s -->
 
 Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
