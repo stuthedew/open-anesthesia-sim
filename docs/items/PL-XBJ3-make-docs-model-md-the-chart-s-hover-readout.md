@@ -3,14 +3,16 @@ id: PL-XBJ3
 title: Make docs/MODEL.md § "The chart's hover readout: what the tooltip may show" through § "The compartment schematic: what its heights, amounts and share bar assert" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 blocked-by: PL-HGZS
 added: 2026-11-02
+closed: 2026-11-05
+pr: 2042
 payoff: a clinician reading this part of the model specification finds the equations, units and limitations without reading past decision history and padding
-verify: uv run python tools/model_rewrite.py ids "The chart's hover readout: what the tooltip may show" "A preview of an unapplied setting" "A cost at the reader's price" "The compartment schematic: what its heights, amounts and share bar assert"
+verify: ! grep -qF 'The argument that the pointer is already over one curve' docs/MODEL.md && grep -qF 'When the pointer rests over a trace, a small box' docs/MODEL.md
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability is judged by a person: no command separates plain prose from padded prose.
 ---
 
@@ -49,3 +51,7 @@ or a sentence whose meaning needs their judgment.
 **Ready, 2026-11-04.** All four have closed, so the rewrite can be done now, and the copy editor edits it at close-out step 8.
 
 **Checked 2026-11-04.** Its `verify:` command named § "Minimum displayed outputs", which runs to § "Assumptions" and so also covered the sections of `PL-J37P`, `PL-PS5H` and `PL-XT53`. It now names this item's four sections.
+
+**Applied 2026-11-05.** The four subsections are the copy editor's fresh runs after `PL-HGZS` merged, the hover readout as one whole section. The session restored the decision record that the price is taken per bottle (`PL-VJZK`, 2026-10-26), which the run cut, and answered the copy editor's questions from the text and code: a price typed per millilitre makes the shown price per millilitre too low; the price is the one value shown that is not modelled; SC 1.4.11 is WCAG's; and § "MAC multiples as a display unit" gives the reason for the 3 MAC top. Two independent review passes found faults, all fixed: the hover's printed instant is rounded to a hundredth of a second, not to the simulation step; the compartment schematic exists, so the fat paragraph points at it; the four-line and three-line limits are measured results; a cost View's amount is not a vapour volume; and the end-to-end cost test is in `tests/integration/test_agent_cost_view.py`.
+
+**Why `verify:` changed.** It ran `tools/model_rewrite.py ids` over the subsections and passed only when that printed nothing. The rewrite keeps each item id that stands beside a recorded decision, so the command can never print nothing. The new command checks that a sentence of the old text is gone and that the rewritten one is present.

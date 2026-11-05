@@ -1450,7 +1450,7 @@ findings and `safety`/`science` findings, which re-enter this gate.
   within a run rules that out. The axis is fixed at 0 to 3 x MAC for every
   agent. Three is exactly desflurane's dial maximum expressed in MAC. A trace
   above the ceiling is named, rather than left to draw as a plateau.
-  `docs/MODEL.md` s "The chart's vertical range is denominated in MAC, and
+  `docs/MODEL.md` s "The chart's vertical range is set in MAC, and
   fixed" carries the reasoning.
 - **A recorded control-input timeline** (queue item PL-DR1Z). Every change to
   the fresh gas flow, the vaporizer dial, alveolar ventilation or cardiac

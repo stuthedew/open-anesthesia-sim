@@ -305,7 +305,9 @@ def number_value(number: str) -> tuple[float, str | None] | None:
     The unit is normalized by `doc_check._prose_figure`, so "10 percent" and
     "10%" hold one value, and both hold the value of a bare "0.1". A comma is
     read as a thousands separator. A numeral whose comma is not one, such as
-    "1,5", returns `None`, so it is never paired.
+    "1,5", returns `None`, so it is never paired. So does a numeral with two
+    decimal points, such as the WCAG success criterion "1.4.11", which is a
+    section number and not a value.
     """
     parts = NUMBER_PARTS_RE.fullmatch(number)
     if parts is None:
@@ -313,6 +315,8 @@ def number_value(number: str) -> tuple[float, str | None] | None:
     numeral = parts["numeral"].replace("−", "-")
     whole = numeral.lstrip("+-").partition(".")[0]
     if "," in numeral and any(len(group) != 3 for group in whole.split(",")[1:]):
+        return None
+    if numeral.count(".") > 1:
         return None
     value, unit = doc_check._prose_figure(numeral.replace(",", ""), parts["unit"] or None)
     if unit == "%":

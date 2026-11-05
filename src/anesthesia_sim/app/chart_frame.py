@@ -361,8 +361,9 @@ class TraceStyle:
 # Each style differs from its partner in mark length, in gap length and in
 # rhythm at once. The one genuinely confusable pair of styles in the set is the
 # 2 px dots against the 4 px short dash. That pair is assigned to mixed venous
-# against muscle, which has the *widest* colour separation of any pair of these
-# six (1.45). `docs/MODEL.md` carries the matrix these choices were taken from.
+# against muscle, the second widest colour separation of any pair of these six
+# (1.45, after circuit against alveolar at 1.62). `docs/MODEL.md` carries the
+# matrix these choices were taken from.
 #
 # The vessel-rich trace's equal mark and gap is a rhythm that no other trace
 # here has, because the other four dashed traces all draw more ink than gap.

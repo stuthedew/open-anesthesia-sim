@@ -21,14 +21,15 @@ The set has two tiers, plus the control-input record:
   as a `SubstanceInstance` rather than written into the set.
 - **The control-input record** is unconditional on its own terms: the list
   of settings changed during the run, which `docs/MODEL.md` states apart from
-  both tiers ("The control-input timeline splits the same way").
+  both tiers ("The control-input record is unconditional, and its chart marks
+  are conditional").
 
 The agent accounting is deliberately not here. It is required to be
 reachable, not to be visible, so it belongs to the View registry (`PL-50PZ`).
 
 **Each top-level window's region holds part of the set** (`PL-W54S`).
-`docs/MODEL.md` § "What a second top-level window owes, and it is not the
-whole set" splits the set by the reason each tier is required. Every window
+`docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+set" splits the set by the reason each tier is required. Every window
 carries the invariant tier, because a concentration drawn with no time, run
 state or drug is misread in whatever window it is drawn. Once a second window
 is open, every window also names the run it shows. The per-substance tier and
@@ -271,8 +272,8 @@ def window_region(
 ) -> tuple[UnconditionalValue, ...]:
     """The values one top-level window's unconditional region must hold.
 
-    `docs/MODEL.md` § "What a second top-level window owes, and it is not the
-    whole set" decides the split (project owner, 2026-09-16, ratified). Every
+    `docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+    set" decides the split (project owner, 2026-09-16, ratified). Every
     window holds the invariant tier, and also the run's name once more than
     one window is open. Only the main window, `MAIN_WINDOW`, holds the
     per-substance tier and the control-input record.

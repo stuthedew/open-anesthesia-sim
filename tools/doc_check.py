@@ -5898,8 +5898,8 @@ def _headings(text: str) -> list[str]:
     Both are section titles here, and the documents cite them the same way.
     Restricting this to `#` lines did not narrow the check, it made it wrong
     in one direction only - `docs/MODEL.md` cites its own `**The chart's
-    vertical range is denominated in MAC, and fixed.**` marker, and that
-    citation is correct.
+    vertical range is set in MAC, and fixed.**` marker, and that citation is
+    correct.
 
     A marker opens a statement of prose, as `statement_lines` reads one, and
     is read past its containers' markers (`PL-8NPN`). A bold run a soft break
