@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: project-introduction
+milestone: v0.6.16
 touches: README.md
 added: 2026-09-06
 closed: 2026-11-05
