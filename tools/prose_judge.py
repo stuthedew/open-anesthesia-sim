@@ -5,19 +5,19 @@ usage: python3 tools/prose_judge.py OUTDIR REQUEST REPLY [REQUEST REPLY ...] [--
 Each REQUEST is a file that `tools/new_prose.py` wrote, and each REPLY is what
 `tools/copy_edit.py` printed for it. Every passage that a reply rewrote becomes
 one pair: the rows marked `>` in the request, and the reply's text for them.
-The pairs go to the judge in one file, each with its file and its readers.
+The judge gets the pairs in one file, each with its source file and readers.
 Within each pair the edit is version A or version B at random, from a seeded
 generator, so the judge is never told which version is the original. The
-judge's instructions are the body of `.claude/agents/prose-judge.md`, and it
+judge's instructions are the body of `.claude/agents/prose-judge.md`. The judge
 runs the way `tools/copy_edit.py` runs the copy editor: alone, in an empty
-directory, with Read as its one tool (`PL-HGZS`).
+directory, with Read as its only tool (`PL-HGZS`).
 
-`docs/prose-review/README.md` § "Judging edits blind" says when to run it and
-how to read its result. Writes `request.txt`, `key.json`, `reply.txt` and
-`result.json` into OUTDIR. Prints one line for each pair, saying whether the
-edit, the original or neither won, and the words in each, then one line of
-counts. Exits 0 when every pair has a verdict, and 1 with the reason when the
-judge could not be run or left a pair without one.
+Writes `request.txt`, `key.json`, `reply.txt` and `result.json` into OUTDIR.
+Prints one line for each pair, saying whether the edit, the original or neither
+won and how many words each version has, then one line of counts. Exits 0 when
+every pair has a verdict, and 1 with the reason when the judge could not be run
+or left a pair without one. `docs/prose-review/README.md` § "Judging edits blind"
+says when to run this tool and how to read its result.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ import copy_edit  # noqa: E402
 from new_prose import passage_number, passage_place, read_readers_heading  # noqa: E402
 from rejected_prose import rewrites  # noqa: E402
 
-#: The role `docket.toml`'s `[models]` table is asked about.
+#: The role to look up in `docket.toml`'s `[models]` table.
 JUDGE_ROLE = "prose-judge"
 #: The judge's agent definition, whose body is its prompt.
 JUDGE_PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
@@ -50,10 +50,10 @@ JUDGE_PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
 JUDGE_TASK = f"Judge the pairs in {copy_edit.REQUEST_NAME}."
 #: The seed for the order of A and B, so that a run can be repeated exactly.
 SEED = 20261104
-#: Deletes the emphasis and code marks a verdict line may carry.
+#: Deletes the emphasis and code marks that a verdict line may carry.
 EMPHASIS = str.maketrans("", "", "*_`")
-# regex: a verdict line in the judge's free prose, which its instructions ask
-# for as "[N] verdict: A", B or same, found anywhere in a line.
+# regex: a verdict anywhere in a line of the judge's free prose. The judge's
+# instructions ask for "[N] verdict: A", "[N] verdict: B" or "[N] verdict: same".
 JUDGE_VERDICT_RE = re.compile(r"\[(\d+)\]\s*verdict:\s*(A|B|same)\b", re.IGNORECASE)
 
 
@@ -71,8 +71,9 @@ class Pair:
 def readers_blocks(lines: Sequence[str]) -> dict[str, str]:
     """Each block of readers in a request's prose, by the file or kind it names.
 
-    A block runs from the line `new_prose.readers_heading` wrote to the next
-    blank line. Only the lines before the first passage header are read.
+    A block runs from its "Readers of ..." heading (`new_prose.readers_heading`)
+    to the next blank line. Only the lines before the first passage header are
+    read.
     """
     blocks: dict[str, list[str]] = {}
     current: list[str] | None = None
@@ -100,7 +101,7 @@ def places_of(lines: Sequence[str]) -> dict[int, str]:
 
 
 def pairs_of(name: str, request: str, reply: str) -> list[Pair]:
-    """The pairs that `reply` makes of the passages in `request`, one for each it rewrote."""
+    """One pair for each passage in `request` that `reply` rewrote."""
     _, lines = copy_edit.prose_of(request)
     readers = readers_blocks(lines)
     originals, places = copy_edit.marked_rows(lines), places_of(lines)

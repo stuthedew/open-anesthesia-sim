@@ -1,50 +1,51 @@
 """Run the copy editor on one file that `tools/new_prose.py` wrote, and print its reply.
 
-Close-out step 8, the pull-request skill and reply rule 16 in
-`.claude/rules/instruction-writing.md` hand the copy editor a file of passages.
-The copy editor's instructions are the body of `.claude/agents/copy-editor.md`,
-which is their one home. A Projects thread cannot start that agent, because a
-thread does not load `.claude/agents/`. The fallback, a general-purpose agent
-given the agent file's text, loads every resident instruction that the copy
-editor is meant to run without (`PL-TQ4J`).
+A session hands the copy editor a file of passages at close-out step 8, in the
+pull-request skill, and under reply rule 16 in
+`.claude/rules/instruction-writing.md`. The copy editor's instructions are kept
+only in the body of `.claude/agents/copy-editor.md`. A Projects thread cannot
+start that agent, because a thread does not load `.claude/agents/`. The fallback
+is a general-purpose agent given the agent file's text, but that agent loads
+every resident instruction that the copy editor is meant to run without
+(`PL-TQ4J`).
 
-So this tool runs the copy editor as its own `claude -p` process, the same
-way in every kind of session. The process starts in an empty directory that
-holds only the request, so no `CLAUDE.md` or rule is found and loaded. Run
-inside the repository, even `claude -p --agent copy-editor` loads the resident
-instructions. Its system prompt is the agent file's body, its one tool is Read,
-and it loads no settings file.
+So this tool runs the copy editor as its own `claude -p` process, the same way
+in every kind of session. The process starts in an empty directory that holds
+only the request, so it finds no `CLAUDE.md` or rule to load. Inside the
+repository, even `claude -p --agent copy-editor` loads the resident
+instructions. The process's system prompt is the agent file's body, its one
+tool is Read, and it loads no settings file.
 
 The copy editor reads each request at least twice, as experienced technical
 editors do (project owner, 2026-11-04, ratified, `PL-HGZS`). When the first
-read rewrites a passage, a fresh run audits the edit: it gets the same request
-with each rewritten passage replaced by its edit, under the line
-`SECOND_READ`, and fixes what the earlier reads missed or introduced. Audits
-go on until one changes nothing, up to `MAX_READS` reads in all (project
-owner, 2026-11-05, ratified, over exactly two reads). The printed reply gives
-each passage once, in the text of the last read that rewrote it, else
-`[N] keep`. Every read's notes follow. When the first read rewrites nothing,
-there is no audit.
+read rewrites a passage, a fresh run audits the edit. That run gets the same
+request, with each rewritten passage replaced by its edit. A line before the
+passages marks the request as a second read (`SECOND_READ`). The audit fixes
+what the earlier reads missed or introduced. Audits go on until one changes
+nothing, up to `MAX_READS` reads in all (project owner, 2026-11-05, ratified,
+over exactly two reads). When the first read rewrites nothing, there is no
+audit. The printed reply gives each passage once, in the text of the last read
+that rewrote it, else `[N] keep`. Every read's notes follow.
 
-Before the reply is printed, `check_code` compares each rewrite with the rows
-it replaces. A rewrite that changes code, a fenced block or a heading, alters an HTML
-comment or writes one the passage does not hold, or writes a code name the
-passage does not hold, is refused
-and printed as `[N] keep`, with the reason under "Code check:". A code name
-that a rewrite dropped, a comment that it cut whole, and an item whose
-decision's tag it cut without keeping the item's id, are listed there too
-(project owner, 2026-11-04, `PL-HGZS`).
+Before the reply is printed, a check compares each rewrite with the rows it
+replaces (`check_code`). It refuses a rewrite that changes code, a fenced
+block, a heading or an HTML comment, or that writes an HTML comment or a code
+name the passage does not hold. A refused rewrite is printed as `[N] keep`,
+with the reason under "Code check:". Under the same heading, the reply also
+lists each code name a rewrite dropped, each comment it cut whole, and each
+item whose decision's tag it cut without keeping the item's id (project owner,
+2026-11-04, `PL-HGZS`).
 
 **A whole document is reviewed in two parts** (project owner, 2026-11-04,
-`PL-HGZS`). `--structure FILE` runs the structure read, which rewrites
-nothing: one read of a short document, or one read per chapter of a long one
-and then one read of all the chapters' outlines. `--sections FILE` then
-line-edits each section alone, each with its two reads. `tools/new_prose.py`
-builds every one of those requests.
+`PL-HGZS`). With `--structure FILE`, the tool runs the structure read, which
+rewrites nothing. A short document gets one read. A long one gets one read per
+chapter, then one read of all the chapters' outlines. With `--sections FILE`,
+the tool then line-edits each section alone, each with its two reads. All of
+those requests come from `tools/new_prose.py`.
 
-The model and effort are the ones `docket.toml`'s `[models]` table chooses
-for the role `copy-editor`. The runs are billed to the account that `claude`
-signs in with, as an Agent call would be.
+The `[models]` table in `docket.toml` chooses the model and effort for the role
+`copy-editor`. The runs are billed to the account that `claude` signs in with,
+as an Agent call would be.
 
 Prints the reply on standard output and one line of counts on standard
 error. Exits 0 when the copy editor replied, and 1 with the reason when
@@ -104,19 +105,20 @@ ROLE = "copy-editor"
 REQUEST_NAME = "request.txt"
 #: What the copy editor is asked to do with the request.
 TASK = f"Copy-edit the passages in {REQUEST_NAME}."
-#: A read that takes longer than this is stopped, and each of the two reads
-#: has its own limit. The longest copy edit measured so far read 29 passages
-#: in about 15 minutes (`PL-22T5`), so 40 minutes leaves room for a larger
-#: branch while still ending a run that has stalled.
+#: A read that takes longer than this is stopped. Each of the two reads has
+#: its own limit. The longest copy edit measured so far read 29 passages in
+#: about 15 minutes (`PL-22T5`), so 40 minutes leaves room for a larger branch
+#: while still ending a run that has stalled.
 COPY_EDIT_TIMEOUT_S = 40 * 60
 #: Turns off the memory index that a session would otherwise load, so the
 #: copy editor's context is its instructions and the request alone.
 QUIET_ENV = {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
-#: The line that opens the prose of a second read's request. The copy editor's
-#: instructions say what to do with a request that holds it.
 #: The heading under which a second read's request gives each edited passage
-#: as it stood before the first read, so that a fact the first read lost or
-#: changed can be found. One edit read alone cannot show that (`PL-HGZS`).
+#: as it stood before the first read, so that the audit can find a fact the
+#: first read lost or changed. The edit alone cannot show such a fact
+#: (`PL-HGZS`). The next constant (`SECOND_READ`) is the line that opens the
+#: prose of a second read's request. The copy editor's instructions say what
+#: to do with a request that holds that line.
 BEFORE = "Before the first edit"
 SECOND_READ = (
     "Second read. The rows marked > are the text after the earlier copy edits, and "
@@ -125,16 +127,17 @@ SECOND_READ = (
 )
 
 
-#: The most reads one request gets: the first edit and the audits after it.
-#: An audit runs again while the last one changed a passage, because Hart's
-#: experienced technical editors make "at least two passes" ("Interview
+#: The most reads one request gets, counting the first edit and the audits
+#: after it. A first read that rewrites a passage gets an audit because
+#: experienced technical editors make "at least two passes" (Hart, "Interview
 #: responses: The editing practices of professional technical editors", 2010,
-#: https://geoff-hart.com/articles/2010/interview.htm). Runs 16 to 18 of
-#: section 1 each left one or two faults after two reads. Four reads bounds
-#: the cost of a passage that never settles, at about $1 and 10 minutes for
-#: each read of a 1,200-word section; raising it lets such a passage run longer.
+#: https://geoff-hart.com/articles/2010/interview.htm). Audits go on until one
+#: changes nothing, because runs 16 to 18 of section 1 each left one or two
+#: faults after two reads. A limit of four bounds the cost of a passage that
+#: never settles, at about $1 and 10 minutes for each read of a 1,200-word
+#: section. Raising the limit lets such a passage run longer.
 MAX_READS = 4
-#: The name of each read, by its place, for its files and its notes.
+#: The name of each read in order, used in its files and its notes.
 READ_NAMES = ("first", "second", "third", "fourth")
 
 
@@ -153,7 +156,7 @@ def instructions(prompt: str) -> str:
 def claude_argv(
     claude: str, system_prompt: Path, model: str, effort: str, task: str = TASK
 ) -> list[str]:
-    """The `claude -p` command that does `task` with `REQUEST_NAME`, by default a copy edit."""
+    """The `claude -p` command that does `task`, by default a copy edit, on `REQUEST_NAME`."""
     return [
         claude,
         "-p",
@@ -194,9 +197,9 @@ def reply_of(output: str) -> tuple[str, str]:
 
 
 def prose_of(request: str) -> tuple[str, list[str]]:
-    """`request` up to and including its `RULE_END` line, and the lines after it.
+    """`request` up to and including the line that ends the writing rule, and the lines after it.
 
-    Raises `Refused` where the request has no `RULE_END` line.
+    Raises `Refused` where the request has no such line (`RULE_END`).
     """
     head, marker, body = request.partition(RULE_END)
     if not marker:
@@ -236,15 +239,15 @@ def marked_rows(lines: Sequence[str]) -> dict[int, list[str]]:
 
 
 def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
-    """The request for the second read: `request` with each passage in `blocks` edited.
+    """`request` with each passage in `blocks` edited, for the second read.
 
-    `blocks` maps a passage's number to the rows the first read gave it. The
-    passage's rows marked `>` give way to those rows, numbered from the first
-    of them. Each row, header and section title after them in the same listing
-    is renumbered to follow. `SECOND_READ` opens the prose, and after the last
-    passage, under `BEFORE`, each edited passage's rows stand as the first read
-    was given them. Raises `Refused` where a passage in `blocks` has no rows
-    marked `>`.
+    `blocks` maps a passage's number to the rows the first read gave it. Those
+    rows replace the passage's rows marked `>`, and are numbered from where the
+    old rows began. Each row, header and section title after them in the same
+    listing is renumbered to follow. The prose opens with `SECOND_READ`. After
+    the last passage, under the heading `BEFORE`, each edited passage's rows
+    appear as the first read was given them. Raises `Refused` where a passage in
+    `blocks` has no rows marked `>`.
     """
     head, lines = prose_of(request)
     marked = marked_rows(lines)
@@ -293,7 +296,8 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
 def fitted_titles(lines: Sequence[str]) -> list[str]:
     """`lines`, with each section title's last row set to the last row listed under it.
 
-    A title is a line that ends with a colon and holds a span but is no header.
+    A title is a line that gives a span of rows and ends with a colon, such as
+    "tools/copy_edit.py, rows 1-57:", but is not a passage header.
     """
     out = list(lines)
     for index, line in enumerate(out):
@@ -314,7 +318,7 @@ def fitted_titles(lines: Sequence[str]) -> list[str]:
 def notes(reply: str) -> str:
     """The `reply` without its fenced blocks, each "[N]" written "Passage N".
 
-    A verdict mark left in the notes would give its passage a second verdict.
+    An "[N]" left in the notes would give passage N a second verdict.
     Runs of blank lines that the dropped blocks leave become one.
     """
     lines = split_lines(reply)
@@ -342,11 +346,12 @@ def fenced(rows: Sequence[str]) -> list[str]:
 
 @dataclass(frozen=True)
 class CodeCheck:
-    """What a rewrite did to code: each change that refuses it, and each name or comment it cut.
+    """The reasons a rewrite is refused, and each code name, comment and item id it cut.
 
-    The copy editor may change prose and nothing else. Its instructions say so,
-    and this check enforces it on what it returns, so that no session applies a
-    rewrite that changed code (project owner, 2026-11-04, `PL-HGZS`).
+    The copy editor may change prose and nothing else. Its instructions say so.
+    This check enforces the rule on each rewrite the copy editor returns, so that
+    no session applies a rewrite that changed code (project owner, 2026-11-04,
+    `PL-HGZS`).
     """
 
     refused: tuple[str, ...] = ()
@@ -356,9 +361,9 @@ class CodeCheck:
 
 
 #: Python tokens that are prose or layout, which a copy edit may change. Every
-#: other token is code and must come back as it was. A string literal is prose
-#: here because the units the copy editor edits include docstrings and the
-#: string literals a learner reads.
+#: other token is code and must come back as it was. A string literal counts as
+#: prose because the copy editor edits docstrings and the string literals a
+#: learner reads.
 PROSE_TOKENS = frozenset(
     {
         tokenize.COMMENT,
@@ -378,10 +383,11 @@ HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 
 
 def python_code(rows: Sequence[str]) -> list[tuple[int, str]] | list[str]:
-    """The code in Python `rows`: its tokens other than prose, or failing that, its code lines.
+    """The tokens of Python `rows` other than prose, or failing that, their code lines.
 
-    An excerpt can start inside an indented block, so it may not tokenize. Then
-    the code is each line that holds no quote and no `#`, which is code alone.
+    An excerpt can start inside an indented block, so it may not tokenize. When
+    it does not, the code is each line that holds no quote and no `#`, since such
+    a line can hold only code.
     """
     try:
         return [
@@ -410,15 +416,15 @@ def check_code(
 ) -> CodeCheck:
     """What the rewrite `after` of the rows `before` did to code, in the file at `path`.
 
-    `seen` is every row of the passage, the read-only rows included, so a code
-    name the copy editor took from any of them is not a new name. A rewrite is
-    refused where it changes Python code, a fenced block or a heading, alters an
-    HTML comment or writes one the passage does not hold, or writes a code name
-    that the passage does not hold. A comment it cut whole is listed and not
-    refused, because the copy editor's instructions say to cut a source comment
-    with the number it backs. The documentation check still refuses a stored
-    value that a paragraph states with no source comment, though not a figure
-    derived from one, so the session judging the edit checks those.
+    A rewrite is refused where it changes Python code, a fenced block, a heading
+    or an HTML comment, or where it writes an HTML comment or a code name that
+    the passage does not hold. `seen` is every row of the passage, the read-only
+    rows included, so a code name the copy editor took from any of them is not
+    new. A comment the rewrite cut whole is listed and not refused, because the
+    copy editor's instructions say to cut a source comment with the number it
+    backs. The documentation check still refuses a stored value that a paragraph
+    states with no source comment, but not a figure derived from that value, so
+    the session judging the edit checks such figures.
     """
     refused: list[str] = []
     if path.endswith(".py") and python_code(before) != python_code(after):
@@ -428,14 +434,13 @@ def check_code(
     if not path.endswith(".py"):
         if old_fences != new_fences:
             refused.append("it changed, added or removed a fenced block")
-        # A copy of a comment the passage holds goes with a number stated twice.
+        # A rewrite may repeat a comment the passage holds, to go with a number stated twice.
         if set(new_comments) - set(old_comments):
             refused.append("it changed an HTML comment or wrote a new one")
         if old_titles != new_titles:
             refused.append("it changed, added or removed a heading")
-    # A code name the passage already holds anywhere, inside a longer code
-    # span, a source comment or the prose, is one the copy editor took from
-    # the text, not one it made up.
+    # A code name counts as taken from the text when the passage already holds
+    # it anywhere, even inside a longer code span, a source comment or the prose.
     known = " ".join(" ".join(seen).split())
     added = sorted({span for span in new_spans if " ".join(span.split()) not in known})
     if added:
@@ -451,11 +456,11 @@ def check_code(
 def lost_decisions(before: Sequence[str], after: Sequence[str]) -> tuple[str, ...]:
     """Each item that a decision's tag in `before` names and `after` no longer names.
 
-    The copy editor may cut a decision's tag whole, but only where the item it
-    names holds the decision, and the item's id must stay beside the decision.
+    The copy editor may cut a decision's tag whole only where the item it names
+    records the decision. The item's id must then stay beside the decision.
     Without the id, nothing in the text leads to the record of who decided and
     what was chosen over what. A blind judge preferred the original of one
-    section for this alone (`PL-HGZS`).
+    section only because its edit had lost such an id (`PL-HGZS`).
     """
     old = " ".join(" ".join(before).split())
     new = " ".join(after)
@@ -485,7 +490,7 @@ def passage_texts(request: str) -> dict[int, tuple[str, list[str], list[str]]]:
 
 
 def code_report(request: str) -> Callable[[int, Sequence[str]], CodeCheck]:
-    """A check of one passage's rewrite against the code in `request`'s text of that passage."""
+    """A check of a passage's rewrite against the code that `request` gives for that passage."""
     texts = passage_texts(request)
 
     def check(number: int, rows: Sequence[str]) -> CodeCheck:
@@ -503,12 +508,12 @@ def merge(
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
     Each passage gets one verdict: the text of the last read that rewrote it,
-    else `[N] keep`. `check`, where given, refuses a rewrite that changed code,
-    which then becomes `[N] keep` with the reason under "Code check:", and
-    lists each code name a rewrite dropped. The notes of every read follow, so
-    that every cut, move and query any read made is kept. Raises `Refused`
-    where a reply does not give each passage one verdict, or a rewrite has no
-    text.
+    else `[N] keep`. Where `check` is given, it refuses a rewrite that changed
+    code, and the passage then becomes `[N] keep` with the reason under
+    "Code check:". The check also lists each code name a rewrite dropped. The
+    notes of every read follow, so that every cut, move and query any read made
+    is kept. Raises `Refused` where a reply does not give each passage one
+    verdict, or a rewrite has no text.
     """
     found: list[dict[int, tuple[str, ...]]] = []
     for name, reply in zip(READ_NAMES, replies, strict=False):
@@ -564,7 +569,7 @@ def read_once(
     env: Mapping[str, str],
     task: str = TASK,
 ) -> tuple[str, str]:
-    """One run of `claude -p` on the request `text`: its reply and its counts.
+    """The reply and counts of one run of `claude -p` on the request `text`.
 
     `prompt` is the system prompt and `task` what it is asked to do. The run
     starts in an empty directory that holds only the request.
@@ -592,7 +597,7 @@ def read_once(
 
 @dataclass(frozen=True)
 class Editor:
-    """How to run the copy editor: the `claude` program, its prompt, model and effort."""
+    """The `claude` program, prompt, model, effort and environment for running the copy editor."""
 
     claude: str
     prompt: str
@@ -601,7 +606,7 @@ class Editor:
     env: Mapping[str, str]
 
     def read(self, asked: str, name: str, reads: Path | None) -> tuple[str, str]:
-        """One read of the request `asked`, kept under `name` in `reads` where it is given."""
+        """One read of the request `asked`, kept under `name` in `reads`, if given."""
         reply, counts = read_once(
             asked, self.claude, self.prompt, self.model, self.effort, self.env
         )
@@ -613,7 +618,7 @@ class Editor:
 
 
 def editor(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
-    """The copy editor that `docket.toml` and its agent file set up.
+    """The copy editor that `docket.toml` and the agent file set up.
 
     Raises `Refused` where `claude` is missing or no model is chosen.
     """
@@ -631,9 +636,9 @@ def editor(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
 def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str]:
     """Run the copy editor on the request `text` until an audit changes nothing.
 
-    Returns its merged reply and the counts. The first read edits; each later
-    read audits the text as the reads before it left it, and runs only while
-    the last read changed a passage, up to `MAX_READS`. Where `reads` names a
+    Returns its merged reply and the counts. The first read edits. Each later
+    read audits the text as the earlier reads left it, and runs only while the
+    last read changed a passage, up to `MAX_READS` reads. Where `reads` names a
     directory, each read's request and reply are also written there, so that
     what each audit changed can be judged alone.
     """
@@ -681,13 +686,12 @@ def where(path: str, part: Part) -> str:
 def structure(
     path: str, root: Path = ROOT, env: Mapping[str, str] | None = None, reads: Path | None = None
 ) -> tuple[str, str]:
-    """The first part of a document's review: its structure read, and the counts.
+    """A document's structure read, the first part of its review, with the counts.
 
-    A document `new_prose.chapters` keeps whole is read once. A longer one is
-    read a chapter at a time, and each chapter's reverse outline then goes to
-    one read of the whole document's outline, which finds what crosses
-    chapters. Raises `Refused` where a read rewrites a row, or a chapter read
-    gives no outline.
+    A short document is read once, whole. A longer one is split into chapters
+    (`new_prose.chapters`) and read a chapter at a time. A last read then takes
+    every chapter's reverse outline and finds what crosses chapters. Raises
+    `Refused` where a read rewrites a row, or a chapter read gives no outline.
     """
     try:
         pieces = structure_reports(root, path, rule_table())
@@ -724,10 +728,10 @@ def structure(
 def sections(
     path: str, root: Path = ROOT, env: Mapping[str, str] | None = None, reads: Path | None = None
 ) -> tuple[str, str]:
-    """The second part of a document's review: each section line-edited alone, and the counts.
+    """The second part of a document's review, each section line-edited alone, with the counts.
 
-    Each section is its own request, read as `edit` reads one, with its reply under a line
-    that names the section and its rows.
+    Each section is its own request, edited and audited like any other (`edit`).
+    Its reply follows a line that names the section and its rows.
     """
     try:
         parts = part_reports(root, path, rule_table())

@@ -66,7 +66,7 @@ def fake(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def section_request(tmp_path: Path) -> str:
-    """The request that `tools/new_prose.py --section` writes for README's "How it runs"."""
+    """A copy-edit request for README's "How it runs", from `tools/new_prose.py --section`."""
     (tmp_path / "README.md").write_text(README, encoding="utf-8")
     text = new_prose.section_report(tmp_path, "README.md", "How it runs", new_prose.rule_table())
     return "\n".join(["Write plainly.", "", new_prose.RULE_END, "", text])
@@ -79,7 +79,7 @@ def pair(name: str, original: str, edited: str) -> prose_judge.Pair:
 
 
 def test_a_rewritten_passage_becomes_one_pair_with_its_readers(tmp_path: Path) -> None:
-    """The real section writer's rows and readers are read back, beside the reply's text."""
+    """The reply's text is paired with the rows and readers of a passage in a real request."""
     (found,) = prose_judge.pairs_of("s1", section_request(tmp_path), REWRITE)
 
     assert found.name == "s1 [1]"
@@ -140,7 +140,7 @@ def test_a_verdict_is_read_against_the_key() -> None:
 def test_main_runs_the_judge_alone_and_writes_the_key_and_result(
     fake: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The judge sees only its request, with its own instructions, and the result unblinds it."""
+    """The judge sees only its request and its own instructions, and the result is unblinded."""
     request, reply, out = tmp_path / "s1" / "request.txt", tmp_path / "reply.txt", tmp_path / "out"
     request.parent.mkdir()
     request.write_text(section_request(tmp_path), encoding="utf-8")

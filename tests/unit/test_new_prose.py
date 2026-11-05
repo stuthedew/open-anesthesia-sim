@@ -31,8 +31,8 @@ from new_prose import (
     reviews_of,
 )
 
-#: The words in `LONG`, which only has to be longer than `SHORT`. The review
-#: reads units of any length, so the two differ only in the text they carry.
+#: The number of words in `LONG`, which only has to be longer than `SHORT`. The
+#: review reads units of any length, so it treats the two alike.
 MIN_WORDS = 30
 LONG = " ".join(["word"] * MIN_WORDS)
 SHORT = "Two words."
@@ -93,8 +93,8 @@ def test_prose_units_reads_docstrings_and_joined_comment_runs() -> None:
 
 def test_only_a_unit_that_a_changed_row_falls_inside_is_printed(repo: Path) -> None:
     model = repo / "src/pkg/model.py"
-    # A change to code beside a docstring, a change inside a short docstring,
-    # and a change inside a long comment.
+    # Change code beside a docstring, and the text inside a short docstring
+    # and a long comment.
     text = SOURCE.replace("x * LIMIT", "x * LIMIT * 2").replace(
         f'"""{SHORT}"""', f'"""{SHORT} more"""'
     )
@@ -193,10 +193,10 @@ def _count(repo: Path, capsys: pytest.CaptureFixture[str], *extra: str) -> tuple
 
 
 def test_counts_units_since_commit(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """`--count` counts committed units, leaving out those already at a given commit.
+    """The `--count` option counts committed units, leaving out those already at a given commit.
 
-    This is what `bin/docket arm` reads (`PL-W04Z`). A code fix after the
-    review must not ask for a second review, and a new unit must.
+    The workflow command `bin/docket arm` reads this count (`PL-W04Z`). A code fix
+    after the review must not trigger a second review, and a new unit must.
     """
     _write(repo, "src/pkg/fresh.py", SOURCE)
     _commit(repo, "add a file with four units")
@@ -246,12 +246,13 @@ def test_count_exits_2_when_a_changed_file_will_not_parse(
 
 
 def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
-    """`bin/docket arm` runs this tool under the project interpreter, which parses all of `src/`.
+    """The workflow command `bin/docket arm` runs this tool under the project interpreter.
 
-    A bare `python3` is the tools interpreter, held to a 3.11 floor, and `src/`
-    targets 3.14. Under the bare one the count exits 2 on any branch that
-    changes a file written in newer syntax, such as the PEP 758 `except` in
-    `app_metadata.py`, and `arm` then holds correct work (`PL-Q508`).
+    That interpreter parses all of `src/`, which targets 3.14. A bare `python3`
+    runs `tools/` and may be as old as 3.11. Under such an interpreter, the
+    count fails with exit status 2 on any branch that changes a file written in
+    newer syntax, such as the PEP 758 `except` in `app_metadata.py`. The
+    workflow command then blocks correct work (`PL-Q508`).
     """
     command = load(ROOT).prose_count_command.split()
     assert command[:3] == ["uv", "run", "python"]
@@ -694,7 +695,7 @@ def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passa
     assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err
 
 
-#: A model document whose section holds a subsection, for the whole-section mode.
+#: A model document whose section holds a subsection.
 NESTED = f"""\
 ---
 title: front matter
@@ -719,7 +720,7 @@ title: front matter
 
 @pytest.fixture
 def nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A repository root holding `NESTED` as `docs/MODEL.md`, read against `READERS`."""
+    """A repository root holding `NESTED` as `docs/MODEL.md`, with `READERS` as the rule file."""
     rule = tmp_path / "rule.md"
     rule.write_text(READERS, encoding="utf-8")
     monkeypatch.setattr(new_prose, "RULE", rule)
@@ -730,7 +731,7 @@ def nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_section_prints_a_section_and_its_subsections_as_one_passage_to_rewrite(
     nested: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The copy editor may rewrite the whole section, so it can fold a repeat across paragraphs."""
+    """The copy editor may rewrite the whole section, to merge a fact repeated across paragraphs."""
     argv = ["--root", str(nested), "--section", "docs/MODEL.md", "--heading", "Displayed precision"]
 
     assert main(argv) == 0
@@ -924,7 +925,7 @@ def test_a_long_interface_string_literal_is_printed_for_its_own_reader(
 def test_a_short_notice_is_printed_and_a_one_word_string_is_not(
     repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A notice of two words is prose a learner reads; a one-word string is a value the code reads.
+    """A notice of two words is prose a learner reads. A one-word string is a value the code uses.
 
     The review reads a changed passage of any length (project owner,
     2026-11-04, `PL-HGZS`), but a rewrite of `"mL/h"` or a dictionary key would

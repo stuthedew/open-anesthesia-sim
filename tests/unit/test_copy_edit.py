@@ -98,8 +98,8 @@ def test_main_exits_1_with_the_reason_when_claude_is_missing(
     assert "copy_edit: no reply: no `claude` on PATH" in capsys.readouterr().err
 
 
-#: A stand-in for `claude` that gives the replies in `FAKE_REPLIES` in turn, and
-#: records the request each run was given.
+#: A stand-in `claude` command that gives the replies in `FAKE_REPLIES` in turn,
+#: and records the request each run was given.
 TWO_READS_CLAUDE = """\
 #!/usr/bin/env python3
 import json, os
@@ -119,7 +119,7 @@ def request_of(*prose: str) -> str:
 
 
 def draft_request(tmp_path: Path, *lines: str) -> str:
-    """The request `tools/new_prose.py --draft` writes for a reply made of `lines`."""
+    """The request that `tools/new_prose.py --draft` writes for a reply made of `lines`."""
     draft = tmp_path / "draft.md"
     draft.write_text("\n".join(lines) + "\n", encoding="utf-8")
     text = new_prose.draft_report(draft, "Replies", new_prose.rule_table())
@@ -146,7 +146,7 @@ def test_the_second_request_holds_the_edit_numbered_from_the_passage_s_first_row
 
 
 def test_rows_after_an_edit_are_renumbered_through_the_listing() -> None:
-    """A longer edit moves the later rows, the next header and the title; a new listing does not."""
+    """A longer edit renumbers later rows, the next header and the title, but not a new listing."""
     request = request_of(
         'doc.md § "Part", rows 10-15:',
         "[1] doc.md, rows 10-11. Changed text: 40 words now. For: A reader",
@@ -294,7 +294,7 @@ def test_a_fenced_block_s_fence_is_longer_than_any_fence_inside_it() -> None:
 
 @pytest.fixture
 def two_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Put the two-reads stand-in first on PATH, and return the file it records into."""
+    """Put the stand-in for `claude` first on PATH, and return the file it records into."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     claude = bin_dir / "claude"
@@ -308,7 +308,7 @@ def two_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The second read changes the edit, so a third audits it; the third changes nothing."""
+    """The second read changes the edit, so a third read audits it. The third changes nothing."""
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one.", "Old two."), encoding="utf-8")
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n\nCut a repeat.\n"
@@ -376,7 +376,7 @@ def test_a_first_read_that_rewrites_nothing_is_the_whole_reply(
 
 
 def test_the_copy_editor_s_instructions_name_the_second_read_s_opening() -> None:
-    """The agent file says what to do with a second read, so it must quote the line's opening."""
+    """The copy editor's prompt must quote a second read's opening to say what to do with one."""
     opening = copy_edit.SECOND_READ.partition(".")[0]
 
     assert f'"{opening}."' in copy_edit.PROMPT.read_text(encoding="utf-8")

@@ -49,8 +49,8 @@ READERS = """\
 """
 TABLE = reader_table(READERS)
 PROMPT = "Review the prose below.\n"
-#: The words in `PARAGRAPH`. The review reads a unit of any length, so the
-#: number only sizes the fixtures.
+#: The number of words in `PARAGRAPH`. The review reads a paragraph of any
+#: length, so the number only sizes the fixtures.
 MIN_WORDS = 30
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
 #: A paragraph the owner named a gold standard, which differs from every rejected one.
