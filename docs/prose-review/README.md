@@ -4,14 +4,16 @@ Close-out step 8 in `.claude/skills/docket/modes/close-out.md` has the copy
 editor edit each passage that a branch changed, whatever its length, for the
 readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 `.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. Where the
-first read rewrites a passage, that tool has a fresh run of the copy editor
-audit the edit, and audits again while the last audit changed something, up
-to four reads. Experienced technical editors make at least two passes
+first read rewrites a passage, the tool starts a fresh run of the copy editor
+to audit that edit. It audits again while the last audit changed something,
+up to four reads. Experienced technical editors make at least two passes
 (`PL-HGZS`). The tool merges the replies. Its `--reads DIR` option keeps each
 read's request and reply, so that what each audit changed can be judged on its
-own. This folder
-holds the paragraphs it must never pass again (`PL-FYGJ`, from `PL-H76S`) and
-the gold-standard paragraphs it must keep (`PL-556C`).
+own.
+
+This folder holds the paragraphs the copy editor must never pass again
+(`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
+(`PL-556C`).
 
 - `rejected/` holds one file for each paragraph that the review passed and the
   owner then rejected.
@@ -66,17 +68,17 @@ Optional: the version the owner accepted, once there is one.
 ```
 ````
 
-`file` decides which readers the copy editor judges the paragraph for, so it
-must be a file that a row of the reader table names. The paragraph must read
-as one unit that `tools/new_prose.py` would review in that file.
+The `file` field decides which readers the copy editor judges the paragraph
+for, so it must be a file that a row of the reader table names. The paragraph
+must be one unit that `tools/new_prose.py` would review in that file.
 
 ## Adding a gold-standard paragraph
 
 Add one only when the owner names a paragraph a gold standard, in those words.
-A paragraph the owner calls acceptable, or says needs no change, stays out. A
-rewrite could still improve it, and the review must stay free to propose one
-(project owner, 2026-11-03, 03:17Z). The paragraph must read as one unit
-that the review would read, as for a rejected entry. Name the file
+Leave out a paragraph that the owner calls acceptable or says needs no change.
+A rewrite could still improve it, and the review must stay free to propose one
+(project owner, 2026-11-03, 03:17Z). As for a rejected entry, the paragraph
+must be one unit that the review would read. Name the file
 `gold-DATE-SLUG.md`, where `DATE` is the day the owner named it. Its front
 matter has `file` and `named`, and its body has the first three sections of a
 rejected entry:
@@ -106,9 +108,10 @@ The item, pull request or commit that wrote the paragraph.
 When the owner accepts the rewrite of a rejected entry, record it as that
 entry's accepted rewrite and not here, even if the owner names it a gold
 standard. The copy editor would otherwise see both versions of one paragraph
-and could compare them, which a real review never can. `check` refuses a
-gold-standard entry that repeats a rejected paragraph or an accepted rewrite.
-The gold-standard entries share the cap of `CAP_PER_KIND`, as one more kind.
+and could compare them, which a real review never can. The `check` command
+refuses a gold-standard entry that repeats a rejected paragraph or an accepted
+rewrite. The gold-standard entries share the cap of `CAP_PER_KIND`, as one
+more kind.
 
 A gold-standard entry needs a run of the current prompt before `check` passes,
 because nobody knows whether that prompt keeps it until a run reads it. A new
@@ -134,18 +137,18 @@ current prompt has read.
 
 ## Reviewing a whole document
 
-A rewrite of a whole document, such as `docs/MODEL.md`, is reviewed in two
-parts (project owner, 2026-11-04: "We should just run documents one section at
-a time for line by line edits but look at whole documents as well for
+Review a rewrite of a whole document, such as `docs/MODEL.md`, in two parts
+(project owner, 2026-11-04: "We should just run documents one section at a
+time for line by line edits but look at whole documents as well for
 structure. Two part review"):
 
 1. Run `python3 tools/copy_edit.py --structure FILE` and save its reply. This
    read rewrites nothing. It lists each fact given in two sections, each
    paragraph in the wrong section or written for another reader, sections out
    of order, and each heading that does not say what its section holds. A
-   document of more than about 6,000 words is read one chapter at a time,
-   each chapter ending with an outline of one line per paragraph, and a last
-   read takes all the outlines together.
+   document of more than about 6,000 words is read one chapter at a time. The
+   read of each chapter ends with an outline of one line per paragraph, and a
+   last read takes all the outlines together.
 2. Apply the findings you accept to the document, before any line edit,
    because a sentence that is about to move would be edited for nothing.
 3. Run `python3 tools/copy_edit.py --sections FILE` and save its reply. It
@@ -157,9 +160,9 @@ one passage at a time inside its section.
 
 ## Judging edits blind
 
-Run this once the copy editor's instructions have settled, on sections that
-they were not tuned on. It shows whether a reader who does not know which
-version is the edit prefers the edit (`PL-HGZS`):
+Once the copy editor's instructions have settled, test whether a reader who
+does not know which version is the edit prefers the edit. Use sections that
+the instructions were not tuned on (`PL-HGZS`):
 
 1. For each section, make a directory named for it, such as `reset/`.
 2. In that directory, save the output of

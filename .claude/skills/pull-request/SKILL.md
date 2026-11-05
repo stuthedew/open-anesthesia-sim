@@ -44,16 +44,16 @@ rewriting its placeholder title and body and marking it ready. Where `claim`
 said it opened none, open it as a draft yourself before any work.
 
 **The title and body go through the copy editor before the pull request is
-marked ready** (project owner, 2026-11-04, `PL-J1ZM`; paused from 2026-11-04
-until the owner brought it back on 2026-11-05, `PL-HGZS`), because the squash
-merge makes them the commit on `main`. Write them to a file in the
-scratchpad, the title on the first line, and leave out the `🤖 Generated
-with` lines. Save the output of `python3 tools/new_prose.py --draft FILE
---kind "pull request titles and bodies"`, where FILE is that file, to a
-second file. Run `python3 tools/copy_edit.py` on the second file. Revert an
-edit only where it lost or changed a value, a unit, a condition, an
-identifier or a citation. Then publish the copy editor's rewrite with the
-`🤖 Generated with` lines added back.
+marked ready** (project owner, 2026-11-04, `PL-J1ZM`), because the squash
+merge makes them the commit message on `main`. The rule was paused from
+2026-11-04 until the owner brought it back on 2026-11-05 (`PL-HGZS`). Write
+them to a file in the scratchpad, the title on the first line, and leave out
+the `🤖 Generated with` lines. Run `python3 tools/new_prose.py --draft FILE
+--kind "pull request titles and bodies"`, where FILE is that file, and save
+its output to a second file. Run `python3 tools/copy_edit.py` on the second
+file. Revert an edit only where it lost or changed a value, a unit, a
+condition, an identifier or a citation. Then publish the copy editor's
+rewrite with the `🤖 Generated with` lines added back.
 
 ## Run the blind review passes before a simulator pull request is ready
 

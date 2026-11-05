@@ -242,20 +242,21 @@ itself.
       `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
       reserves (`PL-DR3G`).
 
-15. CLOCK TIMES IN CENTRAL. Every clock time a reply gives, and the date
-    beside it, is US Central (`America/Chicago`, the project owner's zone in
+15. CLOCK TIMES IN CENTRAL. Give every clock time in a reply, and the date
+    beside it, in US Central (`America/Chicago`, the project owner's zone in
     Madison, Wisconsin), marked CDT or CST as that date falls. That includes
     the compaction deadline. The tools here print UTC and the offset moves with
     daylight saving, so convert with a command rather than by hand:
     `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
     2026-09-27, `PL-R852`).
 
-16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. A reply
-    that asks the owner to decide, or that runs over 150 words, goes through
-    the copy editor first (project owner, 2026-11-04, `PL-J1ZM`; paused from
-    2026-11-04 until the owner brought it back on 2026-11-05, `PL-HGZS`). Write
-    the draft to a file in the scratchpad. Save the output of
-    `python3 tools/new_prose.py --draft FILE --kind replies`, where FILE is the
-    draft, to a second file. Run `python3 tools/copy_edit.py` on the second
-    file. Revert an edit only where it lost or changed a value, a unit, a
-    condition, an identifier or a citation, and send the copy editor's rewrite.
+16. COPY-EDIT A DECISION REQUEST OR A LONG REPLY BEFORE SENDING IT. When a
+    reply asks the owner to decide or runs over 150 words, put it through the
+    copy editor first (project owner, 2026-11-04, `PL-J1ZM`). The rule was
+    paused from 2026-11-04 until the owner brought it back on 2026-11-05
+    (`PL-HGZS`). Write the draft to a file in the scratchpad. Run
+    `python3 tools/new_prose.py --draft FILE --kind replies`, where FILE is
+    that file, and save its output to a second file. Run
+    `python3 tools/copy_edit.py` on the second file. Revert an edit only where
+    it lost or changed a value, a unit, a condition, an identifier or a
+    citation, and send the copy editor's rewrite.
