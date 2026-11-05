@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: reader-first-prose
+milestone: v0.6.16
 touches: .claude/rules/plain-writing.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - a wording question on a writing rule, outside the schematic milestone
 added: 2026-11-04

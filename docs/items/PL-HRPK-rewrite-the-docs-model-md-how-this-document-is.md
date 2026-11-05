@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.16
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-HGZS
 added: 2026-11-04

@@ -156,7 +156,8 @@ rule above applies.
 | v0.6.12 | Completed | **The release where a press on an Area border in a window too small for the Areas no longer rewrites the saved arrangement, where a drag pushed into an Area held at its View's need turns the border WARNING as a keyboard step already did, where a too-small Area's notice is wrapped at the width the Area is drawn at, where the test behind `docs/MODEL.md`'s directional ventilation requirement checks that F_A/F_I is higher at the higher ventilation at every second of the first minute, and where the model review keeps counting a failed pull request title as a red CI run, because a measurement found that none of its 102 failures was by design.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` (`8186a8c`) and `data/` (`2f84dbb`) resolve to the same trees at the v0.6.11 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/area_layout.py` and `layout/sizing.py`, for the Area borders and floors. **It finishes two features**, `invariant-test-gaps` and `model-review`, and closes no generator head. **None is a Gate 3 entry**, though three were deferred from it, and the gate stands at 78 of 89 cleared, as at the v0.6.11 tag. `PL-2JYB`, the cut, ships in no release under `PL-KRS6`. | 6 items |
 | v0.6.13 | Completed | **The release where the compartment schematic ships, drawing the circuit, the alveoli, venous blood and the three tissue groups as containers filled to their modelled tension, each labelled with its tension and its amount in millilitres of vapour, with one bar of each compartment's share of the agent the run holds, placed beside the concentration chart in the Maintenance Workspace; where the agent cost View shows the delivered agent in millilitres of liquid equivalent; where a reader's agent price and cost unit get a preferences file of their own; where a MAC target that a step lands on exactly reads the same on a branch as on the trunk; where an Area's floor is measured only at the width the Area is drawn at; and where the charts hand pyqtgraph numpy arrays.** 22 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, seven of them here, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No equation or model parameter changed**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.12 tag and here, and `data/` moved (`2f84dbb` to `7cc6b59`) only in the Maintenance Workspace's arrangement and a docstring. **Every modelled state is bit-identical, and 19 of 271 halts, each at a MAC target, come one or two 0.1 s steps earlier**: the trajectory comparison against the v0.6.12 tag found every state vector, canonical state, drawn window, hover string and readout string identical over 81 cases and three 24-hour runs. The 19 halts moved because `PL-QVBR` gives a MAC target's height a band of one part in a hundred thousand, and a run now halts at the first step whose reading enters it. Each snapshot gains two fields, the compartment amounts and the vapour-per-liquid factor. **It finishes four features**, `generator-heads`, `guard-tool-names`, `review-hold` and `schematic`, and closes two generator heads, `PL-16BG` and `PL-B6YV`, both spent. **Seven are Gate 3 entries**, five of them in v0.7.0's Required scope, and with `PL-0KPD` dropped the gate stands at 86 of 89 cleared, from 78 of 89 at the v0.6.12 tag. `PL-PZGY`, the cut, ships in no release under `PL-KRS6`. | 22 items |
 | v0.6.14 | Completed | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares, and where four documents stop claiming more than their sources or the code support: the stored tissue:gas coefficients are Gas Man's figures for Yasuda, Targ and Eger's measurements rather than roundings of them, `docs/MODEL.md` names the held runs' own rounding bound, `control_timeline.py` says where the delivered dial's units change, and a textbook is tier 2 everywhere.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because the schematic milestone is not finished: 10 of the 11 ids in v0.7.0's Required scope are closed, and `PL-1P15`, the cost in money on the agent cost View, stays open. v0.7.0 and v0.8.0 are given to milestone sections. **No code, stored value or displayed value changed, and no run can differ**: `core/` (`8186a8c`) resolves to the same tree at the v0.6.13 tag and here. `data/` moved (`7cc6b59` to `c3fbdbc`) only in the three agent files' `sources` notes and `provenance_gap` text, and `tools/ast_identity.py` finds no code moved in `app/control_timeline.py` or `tests/reference/test_coupled_dynamics.py`, so the trajectories were not re-measured. **It finishes two features**, `drift-2026-11-01` and `stale-source-claims`, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 86 of 89 cleared, as at the v0.6.13 tag. `PL-T343`, the cut, ships in no release under `PL-KRS6`. | 5 items |
-| v0.6.15 | Completed / current baseline | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** 98 items, and a patch on both halves of § "Versioning decision"'s test, cut before v0.7.0 at the project owner's word (project owner, 2026-11-04). No capability boundary is crossed: the 11 ids that v0.7.0's Required scope named before this cut are now closed, `PL-1P15` among them, and the project owner has since added the copy editor's fix and the five `docs/MODEL.md` rewrites it blocks, which stay open (`PL-YXPN`, `#2037`). v0.7.0 is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0 are given to milestone sections. **No equation, model parameter or stored value changed, and no modelled state can differ**: `core/` (`8186a8c`) and `data/` (`c3fbdbc`) resolve to the same trees at the v0.6.14 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/`, for the cost in money (`PL-1P15`, `#1939`). **It finishes eleven features**, among them `owner-ask-by-state`, `guards-keyed-on-the-action` and `dead-test-limits`, and closes four generator heads, all spent (`PL-1ZZ0`, `PL-9KSJ`, `PL-H76S`, `PL-ZCF9`). **One is a Gate 3 entry**, `PL-1P15`, and with `PL-SP6H` added to the list the gate stands at 87 of 90 cleared, from 86 of 89 at the v0.6.14 tag. `PL-8B6Z`, the cut, ships in no release under `PL-KRS6`. | 98 items |
+| v0.6.15 | Completed | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** 98 items, and a patch on both halves of § "Versioning decision"'s test, cut before v0.7.0 at the project owner's word (project owner, 2026-11-04). No capability boundary is crossed: the 11 ids that v0.7.0's Required scope named before this cut are now closed, `PL-1P15` among them, and the project owner has since added the copy editor's fix and the five `docs/MODEL.md` rewrites it blocks, which stay open (`PL-YXPN`, `#2037`). v0.7.0 is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0 are given to milestone sections. **No equation, model parameter or stored value changed, and no modelled state can differ**: `core/` (`8186a8c`) and `data/` (`c3fbdbc`) resolve to the same trees at the v0.6.14 tag and here, so the trajectories were not re-measured. `src/` moved only in `app/`, for the cost in money (`PL-1P15`, `#1939`). **It finishes eleven features**, among them `owner-ask-by-state`, `guards-keyed-on-the-action` and `dead-test-limits`, and closes four generator heads, all spent (`PL-1ZZ0`, `PL-9KSJ`, `PL-H76S`, `PL-ZCF9`). **One is a Gate 3 entry**, `PL-1P15`, and with `PL-SP6H` added to the list the gate stands at 87 of 90 cleared, from 86 of 89 at the v0.6.14 tag. `PL-8B6Z`, the cut, ships in no release under `PL-KRS6`. | 98 items |
+| v0.6.16 | Completed / current baseline | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** 11 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: every id in v0.7.0's Required scope is now closed, the six of entry 12 among them, but Gate 3 still has `PL-SP6H` open, and v0.7.0 is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0 are given to milestone sections. **No code, equation, model parameter or stored value changed, and no run can differ**: `core/` (`8186a8c`), `data/` (`c3fbdbc`), `tests/reference/` (`545a009`) and `.github/` (`fefd203`) resolve to the same trees at the v0.6.15 tag and here. `src/` moved only in comments and docstrings in `app/chart_frame.py` and `app/unconditional_set.py`, which `tools/ast_identity.py` confirms, so the trajectories were not re-measured. **It finishes two features**, `reader-first-prose` and `repo-copy-edit`, and closes one generator head, `PL-HGZS`, spent. **None is a Gate 3 entry**, and the gate stands at 87 of 90 cleared, as at the v0.6.15 tag. `PL-80PZ`, the cut, ships in no release under `PL-KRS6`. | 11 items |
 <!-- absent: item_read_log.py -->
 
 **Tags.** Every version that the table above marks Completed carries an
@@ -273,84 +274,73 @@ checkout will produce it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.6.15
+## Current baseline: v0.6.16
 
-v0.6.15 is the release where the agent cost View shows the delivered agent's
-cost in money, where most of `docs/MODEL.md` is rewritten in plain English for
-a clinician reader, and where the guard hooks are rebuilt to check the action
-a command performs. It has 98 items and is a patch on both halves of
-§ "Versioning decision"'s test. The project owner asked for it as a patch
-before v0.7.0 (project owner, 2026-11-04). The 11 ids that v0.7.0's Required
-scope named before this cut are now closed, because `PL-1P15`, the cost in
-money, closes here. The project owner then added a twelfth entry, the copy
-editor's fix and the five `docs/MODEL.md` rewrites it blocks (`PL-YXPN`,
-`#2037`), and those six items stay open. v0.7.0 is cut only after they close
-and the project owner has test-driven `main`. Its gate also has three entries
-open. v0.7.0 and v0.8.0 are
+v0.6.16 is the release where the copy editor is fixed and back in use, and
+where the `docs/MODEL.md` rewrites it held are finished. It has 11 items and
+is a patch on both halves of § "Versioning decision"'s test. Every id in
+v0.7.0's Required scope is now closed. Entry 12's six items, the copy editor's
+fix and the five `docs/MODEL.md` rewrites it blocked, close here. v0.7.0 is
+still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0 is cut
+only after the project owner has test-driven `main`. v0.7.0 and v0.8.0 are
 given to milestone sections.
 
-One of the 98 is on Gate 3's frozen list, `PL-1P15`. `PL-SP6H` joined the
-list after the v0.6.14 cut. So the gate stands at 87 of 90 cleared, from 86 of
-89 at the v0.6.14 tag. The three entries still open are `PL-SP6H`, which this
-gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
+None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90
+cleared, as at the v0.6.15 tag. The three entries still open are `PL-SP6H`,
+which this gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred
+from it.
 
-**No equation, model parameter or stored value changed, and no modelled state
-can differ:**
+**No code, equation, model parameter or stored value changed, and no run can
+differ:**
 
-| Tree | v0.6.14 tag | This cut | What moved |
+| Tree | v0.6.15 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `afd7347` | `fc47153` | `app/`, for the cost in money |
+| `src/` | `fc47153` | `a66313e` | comments and docstrings in two `app/` files |
 | `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
 | `src/anesthesia_sim/data/` | `c3fbdbc` | `c3fbdbc` | nothing |
-| `tests/reference/` | `dd8aeab` | `545a009` | `test_sevo_patient.py` |
-| `docs/MODEL.md` | `acaa24f` | `e3f95ff` | the plain-English rewrite, and the cost in money |
-| `README.md` | `d25636f` | `c5e9784` | the cost in money |
-| `.github/` | `cceaa91` | `fefd203` | `quality.yml` |
+| `tests/reference/` | `545a009` | `545a009` | nothing |
+| `docs/MODEL.md` | `e3f95ff` | `6bb0708` | the plain-English rewrite |
+| `README.md` | `c5e9784` | `6644ce2` | the copy edit |
+| `.github/` | `fefd203` | `fefd203` | nothing |
 
-Because `core/` and `data/` are the same trees, the trajectories were not
-re-measured. `tools/ast_identity.py` finds code moved in one reference test,
-`test_sevo_patient.py`. `PL-VXM0` (`#1967`) removed its 0.5% step-size limit,
-which never decided a result, and `#1950` reworded its docstrings.
+`tools/ast_identity.py` finds no code moved in `app/chart_frame.py` or
+`app/unconditional_set.py`. Because `core/` and `data/` are the same trees,
+the trajectories were not re-measured.
 
-**The cost in money** (`PL-1P15`, `#1939`). The agent cost View now shows what
-the delivered agent cost, at a bottle price and bottle volume that the reader
-sets for each agent. The project ships no price. The cost carries the price's
-currency and the date the price applies from, so a figure is never read
-without the price behind it. The price is kept in the preferences file, apart
-from every Workspace. An end-to-end test sets a price and checks the displayed
-cost.
+**The copy editor** (`PL-HGZS`, `#2038`). The copy editor used to ask whether
+each sentence was clear and each fact present, so it kept text its reader did
+not need and sometimes lengthened it. Its instructions now cut a repeated
+fact, words a fact does not need, and a fact meant for another reader. A blind
+judge preferred the edited text for six of seven sections the instructions
+were not tuned on. `PL-HGZS` was a live generator and is now spent.
 
-**The model specification in plain English.** Pull requests from `#1944` to
-`#2027` rewrote `docs/MODEL.md` section by section for a clinician
-reader, and moved the history behind each value to the items. Several stale
-claims were corrected on the way: seven in the source hierarchy (`PL-HJDK`),
-the MAC digit at a rounding boundary (`PL-ZDZ0`), and what the supported input
-ranges still accept (`PL-VXSR`). The rewrites that remain wait on the copy
-editor, which `PL-HGZS` records as a live generator.
+**The model specification in plain English.** `#2040` and `#2042` rewrote the
+rest of `docs/MODEL.md`'s interface sections, from § "Minimum displayed
+outputs" to § "Interface boundary", and § "How this document is held to the
+tree", for a clinician reader. The history behind each value moved to the
+items. Two stale statements were corrected on the way: the agreement between
+a branch and its trunk (`PL-4VJG`) and the clause a gate-count check applies
+(`PL-6VBY`).
 
-**The guards.** Every guard on a tool call now runs through one module, which
-records a guard's crash instead of letting the call pass as though it had been
-checked (`PL-9KSJ`). Each irreversible action is checked where git or the one
-GitHub screen performs it, so a new spelling of a command reaches no action
-unread (`PL-1ZZ0`). The owner-ask guard flags a pull request that waits on the
-owner by its recorded state rather than by the wording of the message
-(`PL-X4MD`).
+**The README** (`PL-4LWM`, `PL-8BLJ`, `#2041`). `README.md` was copy edited
+with the fixed copy editor, and its pre-release warning no longer uses
+headings that GitHub's outline put ahead of the project name.
 
-The release finishes eleven features: `claim-record`, `dead-test-limits`,
-`effort-trial`, `guard-code-structure`, `guard-refusal-log`,
-`guard-review-2026-11`, `guards-keyed-on-the-action`,
-`guards-say-when-they-cannot-check`, `owner-ask-by-state`,
-`owner-ask-refusals` and `review-hold`. It closes four generator heads, all
-spent: `PL-1ZZ0`, `PL-9KSJ`, `PL-H76S` and `PL-ZCF9`. The release item is
-`PL-8B6Z`, whose `resource: release-train` keeps it out of every later
-release. `bin/docket release` reported one missed apparatus-inflow prediction
-for 2026-10-26 to 2026-11-01: one P1 apparatus filing outside the generator
-tier. `bin/docket inflow` has the table, and `PL-8B6Z`'s session filed an item
-to find the filing.
+**When a limitation earns a sentence** (`PL-BS6N`, `#2031`). The writing rule
+now says to state a model limitation only where it could change what a
+clinician concludes from a displayed value. `#2031` merged inside the v0.6.15
+tag's span, and v0.6.15's notes point to it here.
+
+The release finishes two features, `reader-first-prose` and
+`repo-copy-edit`, and closes one generator head, `PL-HGZS`, spent. The release
+item is `PL-80PZ`, whose `resource: release-train` keeps it out of every later
+release. `bin/docket release` again reported the missed apparatus-inflow
+prediction for 2026-10-26 to 2026-11-01, one P1 apparatus filing outside the
+generator tier. `PL-7LMM` already records that week's miss.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.15 tag. It is described in the
-next release, and v0.6.15's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.16 tag. It is described in the
+next release, and v0.6.16's notes take a pointer to it at that release's cut.
 
 ## The plan
 

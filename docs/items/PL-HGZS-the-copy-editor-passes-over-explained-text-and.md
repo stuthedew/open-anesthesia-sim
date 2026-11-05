@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: copy-editor
+milestone: v0.6.16
 touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py, tools/copy_edit.py, tests/unit/test_copy_edit.py, tests/unit/test_rejected_prose.py, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/agents/prose-judge.md, tools/prose_judge.py, tests/unit/test_prose_judge.py, docket.toml, docs/items/PL-HGZS-the-copy-editor-passes-over-explained-text-and.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py
 added: 2026-11-04
 closed: 2026-11-05
