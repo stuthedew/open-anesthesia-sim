@@ -281,46 +281,52 @@ page and decides which file a session reads.
    2026-10-17, ratified, over a whole-tree mutation score as a target,
    `PL-Y1PS`).
 
-8. **Paused: skip this step** (project owner, 2026-11-04, until `PL-HGZS` is
-   fixed and the owner agrees to bring it back). `bin/docket arm` no longer
-   holds a branch for it. The step as it stood follows.
-   **Have the copy editor edit the prose that the branch changed, before step
+8. **Have the copy editor edit the prose that the branch changed, before step
    5's audit.** Do this step on every branch. Save the output of
    `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
-   each passage of 30 words or more that the branch changed, because in
-   `PL-Y55Q`'s blind re-measure short units were awkward in 25% of verdicts and
-   long ones in 61% (project owner, 2026-10-18, ratified, over a review on every
-   branch and over no review, `PL-PRCS`). It takes them from every file that a
-   row of the reader table in `.claude/rules/plain-writing.md` names, each with
-   that row's readers. A Markdown passage comes inside its whole section, and a
-   docstring or comment comes with the code around it. The rows marked `>` are
-   the ones the copy editor may rewrite: the changed paragraphs, and the
-   paragraph or table row on each side of them. Where it prints no passage, go
-   to the comparison at the end of this step. Otherwise run
-   `python3 tools/copy_edit.py` on that file and save its reply. That tool runs
-   the copy editor as its own `claude -p` process, which loads none of the
-   resident instructions and opens no other file, in a Projects thread as in
-   any other session (`PL-TQ4J`). The copy editor's instructions,
-   `.claude/agents/copy-editor.md`, say what it returns: for each passage,
-   `[N] keep`, or `[N] rewrite` with the new text and each cut with its reason.
+   each passage that the branch changed in a file that has a row in the
+   reader table of `.claude/rules/plain-writing.md`, with the readers that
+   the row names. It prints a passage whatever its length, because short
+   passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
+   messages a learner reads are short (project owner, 2026-11-04, ratified,
+   over `PL-PRCS`'s floor of 30 words). It leaves out a string literal of one
+   word, such as a dictionary key, because that is code. A Markdown passage
+   comes inside its whole section, and a docstring or comment comes with the
+   code around it. The copy editor may rewrite the rows marked `>`: the
+   changed paragraphs, and the paragraph or table row on each side of them.
+   Where the tool prints no passage, go to the comparison at the end of this
+   step.
+
+   Otherwise run `python3 tools/copy_edit.py` on that file and save its
+   reply. That tool runs the copy editor as its own `claude -p` process,
+   which loads none of the resident instructions and opens no other file. It
+   works the same way in a Projects thread (`PL-TQ4J`). Where the first read
+   rewrites a passage, fresh audits fix what it missed until one changes
+   nothing or four reads have run, so a run can take up to four times as long
+   (`PL-HGZS`). For each passage the copy editor returns `[N] keep`, or
+   `[N] rewrite` with the new text and each cut with its reason, as its
+   instructions in `.claude/agents/copy-editor.md` say.
 
    **Apply each rewrite as it stands.** Revert one edit only where it lost or
    changed a value, a unit, a condition, an identifier or a citation, and
    keep the original sentence there, because the safety-critical standard
    applies to what a docstring states. Accept a restated number only after
    checking that its value is unchanged. Put each fact that the copy editor
-   moved in the place it names. Say in the pull request body how many
-   passages it read, how many it rewrote and how many edits you reverted.
-   Record the same three counts as a trailer in the last paragraph of the
-   commit that applies the rewrites, or of the next commit where there were
-   none: `Prose-review: read N, rewrote M, rejected K`, where K counts the
-   reverted edits. `bin/docket arm` holds a branch that waits on the owner's
-   review where long prose was added after the newest such trailer, as
-   `python3 tools/new_prose.py --count` counts it (`PL-W04Z`). `PL-PRCS`
-   records what the step costs. The copy editor replaced an earlier prose
-   review. On 2026-10-19 `PL-J6CK` measured what that review bought: long
-   prose from the branch that ran it was awkward in 22% of blind verdicts,
-   against 58% from branches that skipped it, so the step is kept.
+   moved in the place it names.
+
+   **Record what the review did.** Say in the pull request body how many
+   passages the copy editor read, how many it rewrote and how many edits you
+   reverted. Record the same three counts as a trailer in the last paragraph
+   of the commit that applies the rewrites, or of the next commit where there
+   were none: `Prose-review: read N, rewrote M, rejected K`, where K counts
+   the reverted edits. `bin/docket arm` holds a branch that waits on the
+   owner's review where long prose was added after the newest such trailer,
+   as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
+
+   **The step is kept because the prose review it replaced worked.** On
+   2026-10-19 `PL-J6CK` found that long prose from the branch that ran that
+   review was awkward in 22% of blind verdicts, against 58% from branches
+   that skipped it. `PL-PRCS` records what the step costs.
 
    **Then compare the branch with the default branch, after the rewrites are
    applied: `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints

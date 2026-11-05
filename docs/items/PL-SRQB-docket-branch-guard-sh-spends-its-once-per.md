@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: guard-review-2026-11
+milestone: v0.6.15
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py
 deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the workflow lane, not safety or science, and no learner sees it
 added: 2026-11-03

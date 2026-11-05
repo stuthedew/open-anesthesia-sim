@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: owner-ask-by-state
+milestone: v0.6.15
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/hooks/gate-status-guard.sh, docs/maintainer.md, docs/resident-instructions.md, tools/regex_baseline.py
 added: 2026-11-03
 closed: 2026-11-03

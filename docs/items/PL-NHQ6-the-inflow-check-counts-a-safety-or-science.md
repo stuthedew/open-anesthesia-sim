@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: convergence-visibility
+milestone: v0.6.15
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-NHQ6-the-inflow-check-counts-a-safety-or-science.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only release-report fix with no effect on what a learner sees
 added: 2026-11-03

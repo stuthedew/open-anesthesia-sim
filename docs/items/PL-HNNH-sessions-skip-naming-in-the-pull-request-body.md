@@ -2,7 +2,7 @@
 id: PL-HNNH
 title: Sessions skip naming, in the pull request body, the facts a grown passage adds: PL-W6JM's two docstrings grew by 44 and 46 words and PL-J37P's subsections grew, and neither body says what the added words carry, though tools/new_prose.py --compare printed the growth
 status: untriaged
-feature: reader-first-prose
+feature: copy-editor
 added: 2026-11-04
 ---
 

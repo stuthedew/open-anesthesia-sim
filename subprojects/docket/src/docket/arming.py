@@ -1,55 +1,62 @@
-"""Whether a pull request may be armed for auto-merge: `bin/docket arm`'s answer for `HEAD`.
+"""Decide whether `HEAD`'s pull request may be armed for auto-merge (`bin/docket arm`).
 
-`.claude/skills/pull-request/SKILL.md` arms a pull request whose branch
-carries only item files, so a capture reaches the default branch even when its
-session ends before any work does (project owner, 2026-09-23, ratified, over "a branch carrying only
-captured items is not a pull request", `PL-WNCT`). Which pushes could be armed
-was a catalog of claim shapes each session applied by judgment - the empty
-start commit, a queue-only commit start mode read as one - and every shape it
-missed merged a claim away with its branch while the work went on (`PL-QP9Z`,
-`PL-1MCK`, `PL-KWCY`). A claim is a recorded fact now (`claims`), so the
-question is decided here, from the tree, and asked before arming and before
+Under `.claude/skills/pull-request/SKILL.md`, a session arms a pull request
+whose branch carries only item files, so a capture reaches the default branch
+even when its session ends before any work does (project owner, 2026-09-23,
+ratified, over "a branch carrying only captured items is not a pull request",
+`PL-WNCT`). Sessions once decided by judgment which pushes could be armed,
+from a catalog of claim shapes such as the empty start commit, or a
+queue-only commit that start mode treated as one. Each shape the catalog
+missed let a merge take a claim away with its branch while the work went on
+(`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`). A claim is now a recorded fact (`claims`),
+so this module decides the question from the tree, before arming and before
 every later push while a pull request is open.
 
 **Five answers, and an exit status for each.**
 
-- `arm` (0): the net change a squash would land - `base...HEAD` - waits on
-  no read from the owner: it changes or deletes no existing test pinning this
-  module's answers (`PINS`), and either reaches no
-  simulator path (`READ_PATHS`, a test of the tooling under `tests/` aside,
-  which `arms_on_green` answers path by path) or carries the session's
-  `Owner-read: not needed - <why>` record on a commit since its newest change
-  there, and no record on it says `needed`; no claim bound to this
-  branch is unreleased; HEAD holds every commit of the branch's copy on the
-  remote; and the branch contains the base's tip. A path outside the store,
-  the queue's own tooling, `subprojects/docket/`, and the pull requests'
-  recovered bodies, `docs/pr-bodies/`, is named beside the answer: the owner's
-  rule arms it on green unless the change raises a question for them, which
-  stays the session's judgment, and asks for the reason in the report.
-- `hold` (1), naming what holds it. A claim holds the pull request unarmed and
+- `arm` (0): the net change that a squash would land (`base...HEAD`) waits on
+  no read from the owner. That needs all of these:
+  - it changes or deletes no existing test that pins this module's answers
+    (`PINS`);
+  - it touches no simulator path (`READ_PATHS`), or a commit made since its
+    newest change there carries the session's `Owner-read: not needed - <why>`
+    record and no record on the change says `needed`. A test of the tooling
+    under `tests/` is not a simulator path here, and `arms_on_green` decides
+    such tests path by path;
+  - no claim bound to this branch is unreleased;
+  - HEAD holds every commit of the branch's copy on the remote;
+  - the branch contains the base's tip.
+  The answer names each path that the change lands outside the store,
+  outside the queue's own tooling (`subprojects/docket/`) and outside the pull
+  requests' recovered bodies (`docs/pr-bodies/`). Under the owner's rule, such
+  a path arms on green unless the change raises a question for the owner.
+  Whether it does stays the session's judgment, and the rule asks the session
+  to give its reason in the report.
+- `hold` (1), naming what holds it. A claim keeps the pull request unarmed and
   a draft, whichever push carried it, until the branch's own copy closes or
-  blocks the item or the branch yields it: merged, the branch and its claim go
-  together while the work goes on. A lapsed claim is unreleased too - it is
-  work nobody finished or handed back. A simulator path no `Owner-read`
-  record covers holds it until the session records whether the owner needs
-  to read it (`JUDGE_ASK`), so a judgment nobody made fails safe rather than
-  merging a clinical change unread. A record saying `needed` and a change to
-  an existing test pinning this module's answers (`PINS`) hold it for the
-  owner's read, and it merges on the owner's word alone. A change to this
-  module that edits no such test arms, and the answer names it. So
-  does a switch of auto-merge off that no commit records as the session's
-  (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
-  line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
-  says that nothing goes to the owner until there is one (`READ_ASK`). With no
-  record it also opens its first line with "send the owner nothing" and exits
-  3 (`NO_ASK`) rather than 1, so that a session reading only the first line,
-  or only the exit status, still learns it (`PL-TLPH`).
-  Long docstrings and comments that a simulator change adds, and that no
-  `Prose-review` record covers, hold it until the session records close-out
-  step 8's review (`PROSE_ASK`), and so does a count that could not be read.
-  A simulator change holds until its newest `Blind-review` record says at
-  least as many blind review passes ran as it owes (`BLIND_ASK`), and so does
-  a count of the passes owed that could not be read.
+  blocks the item, or the branch yields the claim. A merge before then would
+  take the branch and its claim together while the work goes on. A lapsed
+  claim also counts as unreleased, because it is work nobody finished or
+  handed back. A simulator path that no `Owner-read` record covers holds it
+  until the session records whether the owner needs to read it
+  (`JUDGE_ASK`), so a judgment nobody made fails safe rather than merging a
+  clinical change unread. A record saying `needed` holds it for the owner's
+  read, and so does a change to an existing test that pins this module's
+  answers (`PINS`). The pull request then merges on the owner's word alone.
+  A change to this module that edits no such test arms, and the answer names
+  it. A switch of auto-merge off that no commit records as the session's also
+  holds it (`AUTO_MERGE`). Once no claim holds it, a hold for the owner's
+  read prints the ask's opening line from the session's `Owner-ask` record
+  (`ASK_LINE`). With no record, it says that nothing goes to the owner until
+  there is one (`READ_ASK`), opens its first line with "send the owner
+  nothing" and exits 3 (`NO_ASK`) rather than 1, so that a session reading
+  only the first line, or only the exit status, still learns it (`PL-TLPH`).
+  Long docstrings and comments that a simulator change adds hold it until the
+  session records close-out step 8's review in a `Prose-review` record that
+  covers them (`PROSE_ASK`). A prose count that could not be read holds it
+  too. A simulator change holds until its newest `Blind-review` record says
+  that at least as many blind review passes ran as it owes (`BLIND_ASK`). A
+  count of the passes owed that could not be read holds it too.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -57,20 +64,21 @@ every later push while a pull request is open.
   and HEAD still stands on the head it merged at (`vcs.carried_merge`), so
   there is nothing to arm. Whatever came after that head is carried onto the
   base by a restart and a new pull request (`PL-8BR0`).
-- `unknown` (2): something the answer rests on could not be read - no branch,
-  no established base, a history git would not walk, a claim trailer that
-  does not parse, a fetch that failed, a forge that could not say whether the
-  pull request merged - or the branch's copy on the remote holds commits HEAD
-  lacks, so HEAD is not what its pull request lands. Never `arm` from a
-  partial read.
+- `unknown` (2): something the answer rests on could not be read, or the
+  branch's copy on the remote holds commits HEAD lacks, so HEAD is not what
+  its pull request lands. What could not be read may be the branch, an
+  established base, a history git would not walk, a claim trailer that does
+  not parse, a fetch that failed, or a forge that could not say whether the
+  pull request merged. Never `arm` from a partial read.
 
 **`hold` outranks `unknown`.** A claim or a path that waits on a read is
-reason enough whatever else went unread, so it is said, with what went unread beside
-it, rather than withheld. Commits the remote's copy holds and HEAD lacks are
-said first under either, since everything else was read from HEAD (`PL-21KN`).
+reason enough to hold, whatever else went unread, so the answer is `hold`
+with what went unread named beside it. Under either answer, the commits that
+the remote's copy holds and HEAD lacks are named first, since everything else
+was read from HEAD (`PL-21KN`).
 **`landed` outranks every other answer**, since a claim, a path, a base that
 moved or a remote copy HEAD lacks changes nothing about a pull request that
-has already merged; what went unread is said beside it.
+has already merged. What went unread is named beside it.
 
 **The decisions behind these rules** are each recorded in their items:
 
@@ -82,11 +90,12 @@ has already merged; what went unread is said beside it.
 - Every other path arms on green unless the change raises a question for the
   owner, and a workflow change needs no merge confirmation (`PL-KKHD`,
   `PL-0JGZ`, `PL-JNYL`, `PL-KPM2`).
-- A test of the tooling under `tests/`, one that imports no `anesthesia_sim`
-  on either side of the change, arms on green (`PL-552M`). The import rule is
-  spelt here and imported by `tools/workflow_paths_check.py`. It is read from
-  the tree, not from `docket.toml`'s `workflow_paths`, so widening what arms
-  still takes an edit that this gate holds.
+- A test under `tests/` counts as a test of the tooling, and arms on green,
+  when it imports no `anesthesia_sim` on either side of the change
+  (`PL-552M`). The import rule is spelt here and imported by
+  `tools/workflow_paths_check.py`. It is read from the tree, not from
+  `docket.toml`'s `workflow_paths`, so widening what arms still takes an edit
+  that this gate holds.
 - A simulator change waits for the session's `Owner-read:` judgment, and only
   `needed` waits on the owner (`PL-DKBG`). A hold for the owner's read carries
   its question as an `Owner-ask` record (`PL-9JHM`).
@@ -95,7 +104,7 @@ has already merged; what went unread is said beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
-- A simulator change's new long prose waits for a recorded review
+- A simulator change's new prose waits for a recorded review
   (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
   A blind review record is not undone by a later change, because close-out
   step 9 says a fix made for a finding needs no further pass.
@@ -103,10 +112,10 @@ has already merged; what went unread is said beside it.
 The dated reasoning for each rule, as this header held it until 2026-11-03,
 is in `PL-Q28F`.
 
-Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
-holds"): a triage pass moving statuses is the queue-only work auto-merge
-exists for, and a cut's notes file lies outside the store and the tooling,
-so the paths hold it already.
+No rule of its own holds arming for status changes or release cuts (`PL-MB2W`
+§ "Other holds"). A triage pass that moves statuses is the queue-only work
+that auto-merge exists for. A cut's notes file lies outside the store and the
+tooling, so the path rules already hold it.
 """
 
 from __future__ import annotations
@@ -363,25 +372,25 @@ OWNER_OFF = (
     "the switch, and ask again."
 )
 
-#: The commit trailer a session records close-out step 8's prose review in, with
-#: the value `read N, rewrote M, rejected K` (`PL-W04Z`). A long docstring or
-#: comment that a simulator change adds after the newest such record holds the
-#: pull request, so a code fix after the review needs no second review, while a
-#: new long docstring does.
+#: The commit trailer in which a session records close-out step 8's prose
+#: review, with the value `read N, rewrote M, rejected K` (`PL-W04Z`). A
+#: docstring or comment that a simulator change adds after the newest such
+#: record holds the pull request. A code fix after the review therefore needs
+#: no second review, while a new docstring does.
 PROSE_REVIEW = "Prose-review"
 PROSE_FORM = re.compile(r"read \d+, rewrote \d+, rejected \d+")
 
-#: What a `hold` on unreviewed long prose tells the session. The step's own
-#: instructions are in the close-out mode, so they are pointed at, not restated.
+#: What a `hold` on unreviewed prose tells the session. It points to the
+#: close-out mode for the step's instructions instead of restating them.
 PROSE_ASK = (
     "  Run close-out step 8's prose review (.claude/skills/docket/modes/close-out.md) on "
-    "the long docstrings and comments the branch adds, apply the rewrites you accept, and "
+    "the docstrings and comments the branch adds, apply the rewrites you accept, and "
     "record the review as a trailer in the last paragraph of a commit made after it, beside "
     f"its Co-authored-by line: `{PROSE_REVIEW}: read N, rewrote M, rejected K`. One commit can "
     f"carry this and an {OWNER_READ} record together. Then ask again."
 )
 
-#: What a `hold` tells the session when the count of long prose could not be read.
+#: What a `hold` tells the session when the count of unreviewed prose could not be read.
 PROSE_UNCOUNTED = (
     "  A branch whose prose could not be counted is never armed as though it had none. Make "
     "the count readable, most often by fixing a file Python will not parse, and ask again."
@@ -926,10 +935,11 @@ AUTO_MERGE_ON = "on"
 class CommandCount:
     """A count that a configured command printed, or why it could not be read.
 
-    `prose_count_command` counts the long docstrings and comments that need a
-    review, and `blind_count_command` counts the blind review passes a branch
-    owes. `count` is that number. `declined` says why it could not be read, so
-    that "could not count" never reads as "nothing owed".
+    The command in `prose_count_command` counts the docstrings and comments
+    that need a review, and the one in `blind_count_command` counts the blind
+    review passes a branch owes. `count` is the number the command printed.
+    `declined` says why it could not be read, so that "could not count" is
+    never treated as "nothing owed".
     """
 
     count: int = 0
@@ -1044,29 +1054,39 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
 class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
-    `claims` are the unreleased claims bound to this branch, `read` the
-    simulator paths a merge would land, `record` the newest `OWNER_READ`
-    record that covers them (or, with none, the branch), `ask` the newest
-    `OWNER_ASK` record made since the branch's newest change outside the store,
-    and `misasked` why such a record did not parse, `outside` the paths it would
-    land outside the store, the tooling and the records that arm all the same
-    and are named, `gate` whether it would change this module, `moved`
-    whether it brings the module in at a path the base does not hold it at,
-    `pinned` the
-    existing tests in `PINS` pinning its answers that it would change or
-    delete, `switched_off` when the owner switched its auto-merge off,
-    `unreviewed` how many long docstrings and comments it adds that no
-    `PROSE_REVIEW` record covers, `prose_since` the commit carrying the newest
-    such record, `prose_declined` why that count could not be read,
-    `blind_owed` how many blind review passes it owes, `blind_recorded` how
-    many the newest `BLIND_REVIEW` record says ran, `blind_since` the commit
-    carrying that record, `blind_declined` why the passes owed could not be
-    counted, and `behind`
-    how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
-    the remote holds that HEAD lacks, with what brings it in, or why that
-    could not be read, said before anything else. `unread` is why the answer
-    is `unknown`, or what went unread beside a `hold` or a `landed`. `merged`
-    is the merged pull request a `landed` names, and what came after it.
+    - `claims`: the unreleased claims bound to this branch.
+    - `read`: the simulator paths a merge would land.
+    - `record`: the newest `OWNER_READ` record that covers them (or, with
+      none, the branch).
+    - `ask`: the newest `OWNER_ASK` record made since the branch's newest
+      change outside the store.
+    - `misasked`: why such a record did not parse.
+    - `outside`: the paths a merge would land outside the store, the tooling
+      and the records, which arm all the same and which the answer names.
+    - `gate`: whether the branch would change this module.
+    - `moved`: whether the branch brings the module in at a path the base
+      does not hold it at.
+    - `pinned`: the existing tests in `PINS` that pin this module's answers
+      and that the branch would change or delete.
+    - `switched_off`: when the owner switched the pull request's auto-merge
+      off.
+    - `unreviewed`: how many docstrings and comments the branch adds that no
+      `PROSE_REVIEW` record covers.
+    - `prose_since`: the commit carrying the newest such record.
+    - `prose_declined`: why that count could not be read.
+    - `blind_owed`: how many blind review passes the branch owes.
+    - `blind_recorded`: how many passes the newest `BLIND_REVIEW` record says
+      ran.
+    - `blind_since`: the commit carrying that record.
+    - `blind_declined`: why the passes owed could not be counted.
+    - `behind`: how many of the base's commits the branch lacks.
+    - `unpulled`: what the branch's copy on the remote holds that HEAD lacks,
+      with what brings it in, or why that could not be read. The answer says
+      it before anything else.
+    - `unread`: why the answer is `unknown`, or what went unread beside a
+      `hold` or a `landed`.
+    - `merged`: the merged pull request a `landed` names, and what came after
+      it.
     """
 
     answer: str
@@ -1129,7 +1149,7 @@ class Verdict:
 
     @property
     def prose_held(self) -> bool:
-        """Whether long prose with no recorded review, or a count that failed, holds it."""
+        """Whether prose with no recorded review, or a count that failed, holds the pull request."""
         return self.unreviewed > 0 or bool(self.prose_declined)
 
     @property
@@ -1325,13 +1345,13 @@ class Verdict:
             )
             if self.prose_declined:
                 reasons.append(
-                    f"how many long docstrings and comments it adds since {since} could not be "
+                    f"how many docstrings and comments it adds since {since} could not be "
                     f"counted - {self.prose_declined}"
                 )
             else:
                 noun = "docstring or comment" if self.unreviewed == 1 else "docstrings and comments"
                 reasons.append(
-                    f"it adds {self.unreviewed} long {noun} in the simulator since {since}, and "
+                    f"it adds {self.unreviewed} {noun} in the simulator since {since}, and "
                     f"no {PROSE_REVIEW} record covers {'it' if self.unreviewed == 1 else 'them'}"
                 )
         if self.blind_declined:
@@ -1387,63 +1407,66 @@ def arm(
     blind_count: Callable[[], CommandCount] | None = None,
     owner_ask: bool = False,
 ) -> Verdict:
-    """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
+    """Whether the pull request for `HEAD`'s branch may be armed, before or after it opens.
 
     Fetches first unless `fetch` is false, because `behind` read from a stale
-    base is a confident wrong answer; a fetch that fails leaves every answer
-    but `hold` unknown. `now` judges the claims' leases, as it does for
-    `claims.holdings`, and must carry its offset.
+    base is a confident wrong answer. A fetch that fails leaves every answer
+    but `hold` unknown. `now` is the time against which the claims' leases
+    are judged, as in `claims.holdings`, and must carry its offset.
 
     **HEAD is the pull request only while it holds the branch's copy on the
-    remote.** Another writer - GitHub's *Update branch*, a second session - can
-    push commits HEAD lacks, and everything read from HEAD is then read from a
-    commit the pull request has moved past: `arm` said `behind 1` of a pull
-    request already level with its base, and armed one landing a path outside
-    the store (`PL-21KN`). So that copy is read before anything else, by
-    `_unpulled`, from the remote's listing where the fetch answered - taken
-    once and handed to `holdings` too, so a tracking ref for a branch the
-    remote deleted is neither the copy nor a holder (`PL-MT3R`).
+    remote.** Another writer can push commits that HEAD lacks, for example
+    GitHub's *Update branch* or a second session. Everything read from HEAD is
+    then read from a commit the pull request has moved past. Once, `arm` said
+    `behind 1` of a pull request already level with its base, and armed one
+    that landed a path outside the store (`PL-21KN`). So the remote's copy is
+    read before anything else (`_unpulled`), from the remote's listing where
+    the fetch succeeded. The listing is taken once and handed to `holdings`
+    too, so a tracking ref for a branch the remote deleted is neither the copy
+    nor a holder (`PL-MT3R`).
 
-    **And its pull request may already have merged**, which nothing in the
-    tree says where the branch carried only item files (`PL-8BR0`). `newest`
-    is the caller's way to ask the forge about the branch's newest pull
-    request, handed the branch and the default branch's name: a merge that
-    `vcs.carried_merge` confirms HEAD still stands on is `landed` at once, and
-    a forge that could not be asked is unread, since arming a pull request that
-    merged is the answer this exists to stop.
+    **And its pull request may already have merged.** Where the branch
+    carried only item files, nothing in the tree shows that (`PL-8BR0`).
+    `newest` is the caller's way to ask the forge about the branch's newest
+    pull request, given the branch and the default branch's name. Where that
+    pull request has merged and HEAD still stands on the merge, as
+    `vcs.carried_merge` confirms, the answer is `landed` at once. A forge that
+    could not be asked counts as unread, since arming a pull request that has
+    merged is what this check exists to stop.
 
     **And its auto-merge may have been switched off by the owner** (`PL-8TPV`).
     `auto_merge` asks the forge for the latest switch on an open pull request,
-    handed its number. A switch off that no `AUTO_MERGE` record on a commit
-    made since covers holds the pull request, and a forge that could not be
-    asked is unread.
+    given its number. A switch off holds the pull request unless an
+    `AUTO_MERGE` record on a commit made since covers it. A forge that could
+    not be asked counts as unread.
 
-    **And a simulator change's new long prose may have had no review**
-    (`PL-W04Z`). `prose_count` counts the long docstrings and comments the
-    branch adds, handed the commit carrying the newest `PROSE_REVIEW` record,
-    or `""` where none does. It is asked only where the change reaches a
+    **And a simulator change's new prose may have had no review**
+    (`PL-W04Z`). `prose_count` counts the docstrings and comments the branch
+    adds. It is given the commit carrying the newest `PROSE_REVIEW` record,
+    or `""` where none does, and is asked only where the change touches a
     simulator path. A count above zero holds the pull request, and so does a
     count that could not be read.
 
     **And its blind review passes may never have run** (`PL-HDRN`).
     `blind_count` counts the passes the branch owes, and is asked only where
-    the change reaches a simulator path. The newest `BLIND_REVIEW` record
+    the change touches a simulator path. The newest `BLIND_REVIEW` record
     must record at least that many, and a count that could not be read holds
     the pull request too.
 
     **With `owner_ask`, it answers only what may be sent to the owner**
-    (`PL-3D2F`). `.claude/hooks/owner_ask_guard.py` asks that before every
-    Projects message that names a pull request, and the full answer took 2.2 s on a
-    one-file branch and 28.4 s on one changing 62 simulator paths. Only
-    `sendable`, `unasked` and an `unknown` answer are read from the verdict,
-    so `_owner_ask_answer` runs only the stages those rest on.
+    (`PL-3D2F`). A hook asks that question before every Projects message
+    that names a pull request (`.claude/hooks/owner_ask_guard.py`). The full
+    answer took 2.2 s on a one-file branch and 28.4 s on one that changed 62
+    simulator paths. Only `sendable`, `unasked` and an `unknown` answer are
+    read from the verdict, so `_owner_ask_answer` runs only the stages those
+    rest on.
 
     **Each step is a stage** (`PL-R4M6`): `_read_branch`, `_read_forge`,
     `_read_change`, `_read_reviews`, `_read_claims` and `_read_behind` each
     return what they read and what went unread, `_held` gathers them into one
     `hold` verdict, and `_settle` turns that into the answer. The full answer
     and the owner-ask answer compose the same stages, so a change to a step
-    reaches both.
+    applies to both.
     """
     where = _read_branch(root, fetch=fetch, runner=runner)
     if isinstance(where, Verdict):

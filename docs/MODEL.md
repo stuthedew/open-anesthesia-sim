@@ -19,7 +19,7 @@ delivered agent
         ↓
 breathing circuit
         ↓
-alveolar gas ⇄ blood (flow-limited, no separate arterial compartment)
+alveolar gas ⇄ blood (perfusion-limited, no separate arterial compartment)
         ↓
 vessel-rich group / muscle / fat
         ↓
@@ -304,110 +304,128 @@ the dials are written, because writing a dial can raise an exception.
 
 ## How this document is held to the tree
 
-The hazard table applies one rule to each of its rows: *every row names the test
-that enforces it, or says plainly that it has none*. This section applies the
-same rule to the whole document, in four clauses.
+When a statement in this document or in `README.md` is about the simulator's
+code, data or output, it names the thing it describes. Where no test covers the
+statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
+parenthesis names the open work item for adding the test. The hazard table works
+the same way: each row names the test that enforces it, or says plainly that it
+has none.
 
-Without these clauses, a sentence reads exactly as it did when it was true, even
-after the test it names is renamed, the field it describes removed, or the number
-it states changed. Requirements traceability, linking each requirement to the
-tests and risk controls that cover it, is the established practice for software
-of this class. IEC 62304 § 5.1.1 requires the software development plan to carry
-traceability between system requirements, software requirements, software system
-tests and risk control measures. The FDA's *General Principles of Software
-Validation* (2002) § 5.2.2 names traceability analysis among the validation
-tasks. Gotel and Finkelstein set out the problem in *An analysis of the
-requirements traceability problem*, ICRE 1994, pp. 94–101.
+Each name is set in fixed-width type and points to a test, a file, or a part of
+the code or its data. A number repeated from the simulator's data is linked to
+the stored value. An automatic documentation check looks up each name and link.
+Without that check, a sentence would still read as true after the test it names
+was renamed, the data it describes was removed or the value it repeats was
+changed.
 
-**The four clauses bind this document and `README.md`**, the two documents that
-a reader of a displayed value trusts. How they apply to the project's other
-documents is in this section's note for developers.
+For a figure that the model computes or the simulator displays, such as the time
+at which a compartment first shows a nonzero reading, the sentence that gives
+the figure names the test that computes it, or uses the fixed form. Where that
+test also reads the figure from this document and compares it with the model's
+output, the document cannot drift from the model without the test failing.
 
-1. **A live assertion names what it asserts.** A sentence that states a fact
-   about the code or its data, such as that a test enforces a rule, that a field
-   exists, that a value is *N*, or that a job runs something, names that thing in
-   a form that can be looked up. The forms are a test, path, symbol or field in
-   code format, or a `<!-- provenance: -->` marker over a restated number. The
-   author owes this, whether or not the checker reads the sentence.
-   `tools/doc_check.py` resolves every one of those forms.
-2. **An enumerated family is kept complete.** Some headings promise one
-   assertion per member: the invariants list, the required-tests subsections,
-   the displayed-outputs list, the hazard table, a frozen gate list and a
-   marked enumeration. Every member of such a family names its entity or
-   carries the declared-none form of clause 3. `check_bound_families` fails a
-   member that does neither.
-3. **The declared-none form names the item that owes the link.** An absence is
-   written ``no test yet (`PL-XXXX`)``, and the parenthesis names an item still
-   open in the queue. The words before it belong to the sentence, and the form
-   itself is fixed. With a fixed form, a script can tell a forgotten link from a
-   declared absence. Each exemption also points forward to the work that owes
-   the link. And closing the named item without adding the link fails the
-   check.
-4. **A dated statement is a record of what was true on its date, and is never
-   checked against the code.** A sentence that carries a date, sits under a
-   dated heading, or sits inside a released version's section asserts what was
-   true at that date. It is not linked, not checked, and **not edited to carry a
-   later fact**. A later fact is added with its own date.
+In some parts of this document, an automatic check makes sure that each claim
+names in fixed-width type what it describes. It checks every row of the hazard
+table, every output in the displayed-outputs list and every subsection of the
+required tests. It does not yet check the entries of the required invariants.
 
-**A computed claim names the test that computes it.** This is clause 1 applied
-to what the model computes and what the interface displays. For example, a
-sentence that says when a compartment first shows a nonzero reading is a claim
-about the model's output. It names the test that computes the figure, in code
-format, or it carries ``no test yet (`PL-XXXX`)``. The strongest form is a test
-that reads the figure from this document and compares it with the model's
-output, as `tests/reference/test_mac_awake_washout_figures.py` does. Then the
-page cannot drift from the model without a test failing. Naming a test is the
-minimum.
+In the sections that the check reads paragraph by paragraph, every number with a
+unit has something behind it. Its paragraph gives a test, the fixed form, a date
+or a published source, or links the number to the simulator's data.
 
-`check_bound_families` enforces this rule one section at a time, in each section
-listed in its table. Each paragraph there that states a number with a unit must
-carry one of these: a test in code format, the declared-none form, a date, or a
-published source cited by a DOI, a PubMed id, an ISBN or a journal locator such
-as "Anesth Analg 1991;72:316-324". An author and a year alone, such as "Mapleson
-1963", does not count, because no pattern can tell it from a phrase such as
-"Until 2026". The test or the declared-none form may instead be in the note for
-developers below the paragraph. That note covers the paragraphs directly above
-it, back to the previous heading or note, and stops at the first paragraph that
-passes on its own. A date or a source in the note covers only the note. A
-paragraph with none of these passes only if a marker covers each of its numbers
-with a unit. A `provenance:` marker covers a value the paragraph
-asserts, in that value's unit. A `derived:` marker covers a figure the paragraph
-computed, in the unit it writes, and each input it asserts. A `not-restated:`
-marker covers nothing, because it says its numbers are not stored values. So a
-computed figure cannot pass on a marker written for a figure beside it. A
-section joins the table when the change that makes it conform is merged, as
-clause 2's families do. The check cannot read a qualitative claim, such as which
-value a readout shows beside a halt. Such a claim still falls under clause 1,
-and review enforces it.
+Outside these lists and sections, only the documentation review before a work
+item closes finds a number with nothing behind it, or a claim that does not name
+what it describes. The review does the same for a qualitative claim, such as
+which value a readout shows beside a halt, because the check cannot read one.
 
-**Counts.** A count is stated in prose only where a check links it to what it
-counts, such as a group heading over its entries or a marker over a data value.
-Otherwise the count is dated, the rule is stated without the number, or the
-number is read from the tool that prints it. So this document never states the
-size of its own families.
+When a statement carries a date, sits under a dated heading or sits in a
+released version's section, it records what was true on that date. It need not
+name a test, and nothing checks it against the code. A later fact gets its own
+date, and the dated statement is never changed to carry it.
 
-**What an assertion that names nothing looks like.** Inside a bound family, it
-must use the declared-none form, or the check fails. The same is true of a
-paragraph that states a number with a unit, in a section that the check covers
-paragraph by paragraph. Elsewhere in a bound document, such an assertion is a
-number without a marker or a claim without a code span. There, the
-documentation review before a work item closes catches it:
-`tools/doc_check.py candidates` prints it when its subject changes. Computed
-claims are the exception, and their sections join the check one at a time. A
-dated assertion is a record anywhere.
+A count in this document is dated, checked against what it counts, or copied
+from a tool that prints it. For example, a check compares the count in a heading
+with the entries under it. Nothing checks a copied count later, so it can go out
+of date.
 
-**For developers.** `ROADMAP.md`'s frozen lists are already families under
-clause 2, and its prose falls under clause 4. `docs/ARCHITECTURE.md`'s package
-map is already a family. Every thread in `docs/WORKING_NOTES.md` is dated, so
-only clause 4 governs it. Prose about the project's workflow tooling, called
-the apparatus, is not bound. That covers `.claude/`, `CONTRIBUTING.md` and
-`docs/resident-instructions.md`, where the counts rule is only advice. In
-`tools/doc_check.py`, `check_named_tests`, `check_citations`,
-`check_prose_provenance` and `check_make_targets` resolve the forms clause 1
-names. A family joins `check_bound_families`'s table only when the change that
-annotates its members is merged, so the check never keeps `make check` failing
-for work not yet done. `check_gate_counts` applies clause 3 in code: it calls a
-frozen count "a dated fact that must never change".
+**For developers.** These rules apply in part to the project's other documents.
+The frozen lists in `ROADMAP.md` and the package map in `docs/ARCHITECTURE.md`
+also promise an entry for each member, and each has checks of its own. The check
+of a frozen list reads only the lines that open with an item id. The prose of
+`ROADMAP.md` is treated as dated. Every thread in `docs/WORKING_NOTES.md` is
+dated, so only the rule for dated statements applies to it. The rules do not
+apply to prose about the project's workflow tooling, in `.claude/`,
+`CONTRIBUTING.md` and `docs/resident-instructions.md`, where the rule on counts
+is only advice.
+
+A statement is about the code or its data when it says, for example, that a test
+enforces a rule, that a field exists, that a value is *N*, or that a job runs
+something. It names that thing as a test, path, symbol or field in fixed-width
+type, or with a `<!-- provenance: -->` marker over a restated number. In the
+documentation check (`tools/doc_check.py`), the functions that look up these
+forms are `check_named_tests`, `check_citations`, `check_prose_provenance` and
+`check_make_targets`. The strongest link for a figure from the model is a test
+that reads it from this document, as
+`tests/reference/test_mac_awake_washout_figures.py` does.
+
+A writer may phrase the words before ``no test yet (`PL-XXXX`)`` freely, but the
+form itself is fixed, so that the documentation check can tell a forgotten link
+from a declared absence. Closing the named item without adding the link makes
+the check fail.
+
+The lists whose headings promise an entry for each member of a set are the
+invariants list, the required-tests subsections, the displayed-outputs list, the
+hazard table, a frozen gate list and a marked enumeration. The function that
+checks them (`check_bound_families`) reads only the lists and sections named in
+its table, each section paragraph by paragraph. A list or a section joins that
+table only when the change that makes it conform is merged, so that work not
+yet done never makes `make check` fail.
+
+In those sections, a published source counts only when it is cited by a DOI, a
+PubMed id, an ISBN or a journal locator such as "Anesth Analg 1991;72:316-324".
+An author and a year alone, such as "Mapleson 1963", do not count, because no
+pattern can tell them from a phrase such as "Until 2026".
+
+A paragraph's test or fixed form may sit in the note for developers below it.
+That note covers the paragraphs directly above it, back to the previous heading
+or note, and stops at the first paragraph that passes on its own. A date or a
+source in the note covers only the note.
+
+A paragraph with no test, fixed form, date or source passes only if a marker
+covers each number that it states with a unit. A `provenance:` marker covers a
+value the paragraph states, in that value's unit. A `derived:` marker covers a
+figure that the paragraph works out, in the unit it writes, and each input the
+paragraph states. A `not-restated:` marker covers nothing, because it says that
+the paragraph's numbers are not stored values. So a computed figure cannot pass
+on a marker written for a figure beside it.
+
+Outside the lists and sections where the check looks for a missing name, a
+command for the documentation review (`tools/doc_check.py candidates`) prints a
+number without a marker, or a claim without a name in fixed-width type, when
+the thing that the number or claim describes changes.
+
+Besides a count in a heading, a check compares a count with what it counts only
+through a marker over a data value. Any other count is dated, copied from a
+tool, or left out. This document never states the number of entries in the
+hazard table or in any other list named in this section. The function that
+checks gate counts (`check_gate_counts`) applies the rule on counts in code. It
+checks each count that a frozen list states about itself against the list: in a
+group heading, in a release table, and in the sentence that says how many
+entries are marked `not-delegable`. It refuses a count written into a lower
+heading, which it cannot check. It leaves other counts in prose alone, because a
+sentence such as "frozen at seventeen entries" records a dated fact that must
+never change.
+
+This section's rules follow requirements traceability, the established practice
+for software of this application's safety class (§ "Software safety
+classification: Class C, for the whole application"). Traceability links each
+requirement to the tests and risk controls that cover it. IEC 62304 § 5.1.1
+requires the software development plan to carry traceability between system
+requirements, software requirements, software system tests and risk control
+measures. The FDA's *General Principles of Software Validation* (2002) § 5.2.2
+names traceability analysis among the validation tasks. Gotel and Finkelstein
+set out the problem in *An analysis of the requirements traceability problem*,
+ICRE 1994, pp. 94–101.
 
 ## Purpose
 
@@ -438,15 +456,39 @@ The modeled system contains:
 5. one muscle tissue group; and
 6. one fat tissue group.
 
-Arterial blood is not a separate mixing compartment. The model treats
-pulmonary exchange as flow-limited. It assumes that blood leaving the lungs
-equilibrates instantly with alveolar gas. So arterial partial pressure, as a
-fraction, is defined as $`F_a \equiv F_A`$, with no arterial volume, mixing
-delay, or value of its own. This deliberate simplification matches the
-flow-limited mammillary structure of the Gas Man simulator, the source of this
-project's sevoflurane and patient parameters. Gas Man computes four
-compartments: alveolar gas and the vessel-rich, muscle, and fat groups. It
-displays arterial tension without tracking it as a compartment. See:
+**Perfusion-limited exchange.** Agent moves between blood and alveolar gas,
+and between blood and each tissue group, by perfusion-limited exchange. The
+term describes that exchange, not the blood itself. Blood leaves the lung or
+the tissue at equilibrium with it, so the barrier between them never limits
+how fast agent moves. The rate is set by the blood flow, the agent's blood:gas
+partition coefficient and the difference in partial pressure, as the uptake
+equations in § "Governing equations" show. In diffusion-limited exchange,
+which this model does not represent, blood leaves before it has equilibrated,
+and the barrier limits the rate. Jones and Rowland-Yeo call the two tissue
+cases perfusion rate-limited and permeability rate-limited, and give the first
+as typical of small lipophilic molecules, which the volatile agents are
+(Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
+pharmacokinetic modeling in drug discovery and development.
+*CPT Pharmacometrics Syst Pharmacol* 2013;2:e63, doi:10.1038/psp.2013.41).
+Yasuda et al. assumed perfusion-limited delivery to the tissues when they
+fitted sevoflurane and isoflurane kinetics in volunteers (*Anesth Analg*
+1991;72:316-24, p. 319).
+
+Arterial blood is not a separate mixing compartment. The model has no shunt
+and only one alveolar compartment, so it has no ventilation-perfusion mismatch,
+and all arterial blood has passed through the lung's perfusion-limited exchange
+with alveolar gas. Arterial partial pressure, as a fraction, is therefore
+defined as $`F_a \equiv F_A`$, with no arterial volume, mixing delay, or value
+of its own. In patients, the arterial partial pressure runs below the
+end-tidal one during administration, as Carpenter and Eger measured
+(§ "Desflurane's residual, and why the parameter file was not changed"), so
+this identity is a deliberate simplification of the model and not a property
+of the agents. It matches the structure of the Gas Man simulator, the source
+of this project's sevoflurane and patient parameters. In Gas Man too, each
+tissue group exchanges agent only with blood, by perfusion-limited exchange.
+Gas Man computes four compartments: alveolar gas and the vessel-rich, muscle,
+and fat groups. It displays arterial partial pressure without tracking it as a
+compartment. See:
 
 - Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
   Technology in Anesthesia. <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
@@ -979,7 +1021,7 @@ column to be understood has a defect.
 | $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
 | $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see § "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
 | $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
-| $`F_a`$ | Arterial partial-pressure-equivalent fraction. Arterial blood is flow-limited, so $`F_a \equiv F_A`$, and $`F_a`$ is not an independent state | dimensionless | — no attribute: the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction, defined as $`F_a \equiv F_A`$ (§ "Model boundary") | dimensionless | — the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
 | $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
@@ -1061,8 +1103,9 @@ kept its own copy, the copies could disagree and no check would fire. A pool at
 would give uptake curves that look plausible and are wrong.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
-Arterial blood is flow-limited (see § "Model boundary"). It has no capacity
-or amount balance of its own. Instead, $`F_a \equiv F_A`$ at every instant.
+Arterial blood has no compartment, capacity or amount balance of its own.
+Instead, $`F_a \equiv F_A`$ at every instant, for the reasons § "Model
+boundary" gives.
 
 The agent amount stored in venous blood is:
 
@@ -1569,11 +1612,12 @@ whole step.
 
 ### Arterial blood
 
-Arterial blood is flow-limited. Blood leaving the lungs equilibrates
-instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every instant (see
-§ "Model boundary"). There is no separate arterial amount balance, capacity, or
-time constant. Every equation below that references $`F_a`$ uses the current
-alveolar fraction $`F_A`$ directly.
+In this model, $`F_a \equiv F_A`$ at every instant. The lung's exchange with
+blood is perfusion-limited, and the model has no shunt and one alveolar
+compartment, so all arterial blood has equilibrated with alveolar gas (see
+§ "Model boundary"). There is no equation for an arterial amount of agent, and
+no arterial capacity or time constant. Every equation below that contains
+$`F_a`$ uses the current alveolar fraction $`F_A`$ in its place.
 
 ### Tissue uptake and return
 
@@ -1676,8 +1720,8 @@ $$
 M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
 $$
 
-Arterial blood contributes no separate term, because it is flow-limited and
-contains no independent amount of agent (see § "Model boundary").
+Arterial blood contributes no separate term, because it is not a compartment
+and contains no independent amount of agent (see § "Model boundary").
 
 ### Mass-balance identity
 
@@ -3837,15 +3881,11 @@ those settings as reflecting clinical conditions. That range contains 4, 5 and
 as one is the same error that the De Wolf entry guards against for its 1 L/min
 elsewhere in this section.
 
-There is no "arterial blood-pool volume" row. Arterial blood is flow-limited
-and has no state of its own (see § "Model boundary"). The code derives the
-tissue:blood coefficients at load time, as tissue:gas divided by blood:gas, in
-the `AgentParameters` properties in `core/parameters.py`. The data file does
-not store them a second time. The tissue-blood partition-coefficient tests in
-`tests/unit/test_parameters.py` guard this derivation.
+There is no "arterial blood-pool volume" row, because arterial blood has no
+volume of its own in this model (see § "Model boundary").
 
-**The division is the literature's own operation, and one published table
-reproduces its results.** Eger and Saidman state the operation in these words:
+**Dividing tissue:gas by blood:gas is the literature's own operation, and one
+published table reproduces its results.** Eger and Saidman state the operation in these words:
 "a tissue/blood partition coefficient for a given anesthetic is calculated by
 dividing a tissue/gas partition coefficient by the blood/gas partition
 coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger computed
@@ -3928,7 +3968,10 @@ from a profile that omits it starts at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
 in `core/circuit.py`
 (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
 `test_the_flow_default_matches_the_shipped_machine_file` fails if the constant
-and the file's value ever differ.
+and the file's value ever differ. The tissue:blood coefficients are computed in
+the `AgentParameters` properties in `core/parameters.py`, and the tissue-blood
+partition-coefficient tests in `tests/unit/test_parameters.py` guard that
+division.
 
 ### v0.2.0: isoflurane and desflurane
 
@@ -7578,521 +7621,488 @@ tests at the new extreme setting, without revisiting the step.
 
 ## Reset behavior
 
-Reset must:
+Reset pauses the simulation and keeps the user's selected settings. It also:
 
-- pause the simulation;
-- set simulation time to zero by clearing the step count from which that time
-  was reached, and release the step that the run was using, so that a fresh
-  run may use a different one;
-- clear circuit, alveolar, blood, and tissue agent amounts;
-- open a fresh run definition at the cleared state, so that no state of the
-  discarded run can be derived or drawn;
-- clear the recorded control-input timeline, which belongs to the run that
-  recorded it;
-- reset cumulative delivered and exhausted amounts;
-- restore the mass-balance residual to zero;
-- clear any recorded failure state, so that a session halted by a failed step
-  can be started again from a clean state; and
-- preserve the user’s selected settings.
+- sets simulation time to zero;
+- clears the agent amounts in the circuit, alveoli, blood and tissues;
+- discards the run, so that none of its states can be computed or drawn;
+- clears the recorded timeline of control inputs;
+- sets the cumulative amounts delivered and exhausted, and the mass-balance
+  residual, back to zero; and
+- clears any recorded failure, so that a session halted by a failed step can
+  start again from a clean state.
 
-**A branch's Reset returns it to its fork rather than to zero**, because a
-branch never held the case's induction (§ "The canonical evaluation rule").
-Its clock, its state and its accounting go back to the fork. Its settings are
-preserved as a trunk's are. A trunk's fresh run definition opens under those
-settings. A branch's opens on the parent's stretch it was taken from, so the
-preserved settings are recorded in it as a change at the fork. The
-control-input timeline is cleared. It then holds the entries that the branch
-first opened with, followed by each preserved setting that differs from the
-one the branch opened under. So a reset branch's timeline and its provenance
-agree on the settings it runs under (`PL-K5BS`, `PL-ZR49`).
+**Reset on a branch returns it to its fork rather than to zero**, because a
+branch never held the case's induction (§ "The canonical evaluation rule"). A
+branch is a run taken from a point in a parent run, and that point is called the
+fork. The branch's simulation time, state and accounting go back to the fork. Its
+timeline of control inputs then holds the entries that the branch first opened
+with, followed by each kept setting that differs from the one that the branch
+opened under.
 
-A Reset that the core refuses does none of these things. The fresh run
-definition opens on a settings record, which is built from the compartments.
-Building that record fails when the tissue flows no longer sum to the cardiac
-output. Since `PL-HQF5` and `PL-Z0HN`, the only cause of that is a perfusion
-fraction written in a way that bypasses its guard.
-`SimulationController.reset()` builds that record before it does anything
-listed above. A refused Reset therefore leaves the run exactly as it was,
-rather than half cleared. The interface halts the run on the refusal through
-the failed-step path (`PL-M4M0`). For other failures, the banner names Reset
-as the way to recover. For this refusal it says instead that no setting can
-repair it, because a new cardiac output scales every flow by one factor. It
-also says that closing and reopening the application starts a new run
-(`PL-01GY`). The next step refuses the same record. There,
-`AgentUptakeSystem.advance()` reports the refusal as a failed step rather than
-as a refused setting, because a run whose record cannot be built is not worth
-continuing.
+**The simulator refuses Reset when the tissue flows no longer sum to the cardiac
+output.** A refused Reset leaves the run exactly as it was. The interface then
+halts the run, as it does when a step fails (`PL-M4M0`). For other failures, its
+banner names Reset as the way to recover. For a refused Reset, the banner says
+instead that no setting can repair the run, because a new cardiac output scales
+every flow by one factor. It also says that closing and reopening the
+application starts a new run (`PL-01GY`).
+
+**For developers.** Reset sets simulation time to zero by clearing the count of
+steps taken. It releases the step length that the run was using, so that a fresh
+run may use a different one. It discards the run by opening a fresh run
+definition at the cleared state. A run definition is the stored record of a run: the
+settings in force at each moment, and the state at each change of setting, from
+which every other state is computed (§ "The run is that record, and every state
+is derived from it"). The timeline is cleared because it belongs to
+the run that recorded it.
+
+A fresh run definition opens under the user's settings. On a branch, it opens
+instead on the stretch of the parent run that the branch was taken from, and
+those settings are recorded in it as a change at the fork. The branch's timeline
+and provenance then agree on its settings (`PL-K5BS`, `PL-ZR49`).
+
+Reset is refused when it cannot build the settings record that the fresh run
+definition opens on. It builds that record from the compartments before it
+changes anything (`SimulationController.reset()`). The build fails when the
+tissue flows do not sum to the cardiac output, which can happen only when a
+perfusion fraction is written in a way that bypasses its guard (`PL-HQF5`,
+`PL-Z0HN`). The next simulation step (`AgentUptakeSystem.advance()`) refuses the
+same record. It reports a failed step rather than a refused setting, because a
+run whose record cannot be built is not worth continuing.
 
 ## Agent-change behavior
 
 Changing the running agent must begin a new run. Switching between volatile
-agents is not modeled (see § "Known limitations"). So there is no residual
-washout to carry across. There is also no state from the old agent that the
-new agent's partition coefficients would make meaningful. A change of agent
-must therefore do everything Reset does. In addition, it must rebuild every
-compartment against the new agent's parameters. It must also take the
-delivered concentration from that agent's own 1 MAC, rather than carrying over
-the old agent's percentage, because the same percentage is a different
-clinical depth for each agent.
+agents is not modeled (see § "Known limitations"), so there is no residual
+washout to carry over. The model's values for the old agent would mean nothing
+under the new agent's partition coefficients. A change of agent must therefore
+do everything Reset does, and rebuild every compartment with the new agent's
+parameters. It must also set the delivered concentration to 1 MAC of the new
+agent rather than keep the old agent's percentage, because the same percentage
+is a different clinical depth for each agent.
 
-Because a change of agent begins a new run, it **destroys one**. Destroying a
-run places a requirement on the interface, not only on the controller. The run
-definition, the control-input timeline and the simulated time that a run
-reached are everything a learner has to look back at. Nothing in this
-application saves them, and there is no undo. So:
+Beginning a new run **discards the current one**. All a user has to look back
+at is the run's definition, its timeline of control changes and the simulated
+time it reached. Nothing in the simulator saves them, and there is no undo. So
+the interface must follow these rules:
 
-- the interface must not discard a run that holds anything (any elapsed
-  simulated time, or any recorded control change) without first stating that
-  the run will be discarded and obtaining the user's confirmation;
-- the statement must name what is lost in the terms that the display already
-  uses for it, so that the user can check it against the readouts it
-  describes;
-- declining must leave the run, its definition, its timeline and the control
-  that offered the change exactly as they were; and
-- a selection that resolves to the agent already running must change nothing,
-  since it proposes no new case.
+- Before the interface discards a run that has any elapsed simulated time or
+  any recorded control change, it must say so and ask the user to confirm.
+- The question must name what will be lost in the terms that the display
+  already uses, so that the user can check it against the readouts.
+- Declining must leave the run, its definition, its timeline and the control
+  that offered the change exactly as they were.
+- Choosing the agent that is already running is not a change of agent, so it
+  must do nothing.
 
-A run that holds nothing (no elapsed time and no recorded control change) is
-exempt, because it has nothing to discard. A confirmation that fires when
-nothing is at stake also teaches the user to answer it without reading it. By
-the time something is at stake, that confirmation would go unread. Pressing
-Reset is therefore also the way to make a later change of agent happen without
-a confirmation.
+A run with no elapsed simulated time and no recorded control change is
+discarded without a question, so a user who presses Reset first can then
+change agent without one.
 
-**Reset's exemption covers the run whose button was pressed, and no other
-run** (project owner, 2026-10-18, ratified, over extending it to every run the
-press takes with it, `PL-W5WX`). Pressing a run's Reset is the request to
-discard that run. The trunk's Reset also drops every branch drawn beside it,
-because a branch cannot outlive the run it was taken from. But the reader did
-not press Reset on the branch. So when a drawn branch has run past its fork, or
-holds a control change made since it opened, the trunk's Reset states what
-that branch holds and asks before it discards anything, as the list above
-requires. A change that sets a dial back to the trunk's value before the fork
-counts, because the branch opened at what the dial said. The
-trunk's Reset also asks about a branch whose state cannot be read, because
-what that branch holds is not known to be nothing. A branch that holds
-neither is dropped without a question. Four tests in
-`tests/integration/test_simulation_view.py` enforce this rule:
-`test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
+**Pressing a run's Reset confirms discarding that run, and no other run**
+(project owner, 2026-10-18, ratified, over extending it to every run the press
+takes with it, `PL-W5WX`). A branch is a run taken from another run, the trunk,
+at a moment called its fork. The display draws each branch beside its trunk.
+Pressing the trunk's Reset also discards every branch, because a branch cannot
+outlive its trunk. When a branch has run past its fork, or has had a control
+change since then, the trunk's Reset says what that branch holds and asks before
+it discards any run. Setting a dial back to a value the trunk had before the
+fork is still a control change, because the branch started from what the dial
+said at the fork. The trunk's Reset also asks about a branch when the simulator
+cannot tell what that branch holds. Any other branch is discarded without a
+question.
+
+**Every run waits while a question is open, and carries on as it was when the
+question closes** (project owner, 2026-10-31, ratified, over letting the runs
+go on stepping, `PL-TPBH`). Each of these questions blocks the rest of the
+window: the trunk's Reset question, the question asked before a change of
+agent starts a new case, and the questions from the Workspace strip. While one
+is open, the user cannot press Pause on any run. A run that was running
+resumes at the same playback rate, and a paused run stays paused. The wait
+changes nothing in a run, so each run follows the same course as if the user
+had answered at once, as § "The reproducibility guarantee" requires. The
+bookmark editor does not block the window, so runs go on as usual while it is
+open.
+
+**For developers.** Runs with nothing to lose get no question because a
+question asked when nothing is at stake teaches the user to answer it without
+reading it. By the time something is at stake, the question would go unread.
+
+Four tests in `tests/integration/test_simulation_view.py` enforce the rule for
+branches: `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
 `test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow`,
 `test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
 `test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch`.
 
-**Every run holds while a question is open, and carries on as it was when
-the question closes** (project owner, 2026-10-31, ratified, over letting the
-runs go on stepping, `PL-TPBH`). The trunk's Reset question, the question
-asked before a new agent starts a new case, and the Workspace strip's
-questions are all window-modal. While one is open, the reader cannot press
-Pause on any run. Before this rule, a reader who spent ten seconds on a
-question at 300× came back to a case 50 simulated minutes further on. Now no
-run takes a step while a question is open. When it closes, a running run runs
-again at the same playback rate, and a paused run stays paused. The hold only
-skips ticks of the step timer and changes nothing in the run. So a run's
-trajectory is the same as if the reader had answered at once, as
-§ "The reproducibility guarantee" requires. The bookmark editor is not modal,
-so it holds nothing. `test_the_run_does_not_advance_while_a_reset_question_is_open`
-enforces this rule for the trunk's Reset question, and two tests beside it
-enforce it for the new-case and Workspace questions.
+Runs wait during a question because otherwise a user who spent ten seconds on
+it at 300× playback would come back to a case 50 simulated minutes further on.
+The wait works by skipping ticks of the step timer. One test enforces the wait
+during the trunk's Reset question
+(`test_the_run_does_not_advance_while_a_reset_question_is_open`), and two tests
+beside that one do the same for the question asked before a change of agent
+and the Workspace strip's questions.
 
 ## What a branch comparison asserts, and what it does not
 
-**Two curves, one difference, an obvious conclusion. The conclusion is the
-part that this model does not supply.** The sections above establish that a
-difference between two runs is *real*. Together,
-§ "The reproducibility guarantee" and § "The canonical evaluation rule" rule
-out rounding, evaluation order, playback rate and the machine as sources of
-the difference. Neither
-section says what the difference is *about*. A comparison is the most
-persuasive thing that this simulator draws. It persuades whether or not its
-limits reach the reader. That is why the limits are stated here, rather than
-left for the reader to infer from the machinery that produced the comparison.
+**A difference between two runs is real, but a comparison does not say what it
+means for a patient.** The difference does not come from rounding, from the
+order of the program's arithmetic, from the playback rate or from the computer
+(§ "The reproducibility guarantee", § "The canonical evaluation rule"). What a
+comparison can teach is the mechanism: which way a curve moves when one thing
+changes, why it moves that way, and roughly how fast, in a model whose
+structure makes the reason easy to see. That is the only educational claim that
+two runs support.
 
 ### What is compared, and what the two runs share
 
-**Two managements of one case.** A comparison shows a **trunk** and one
-**branch** of it. The two are the same run, continued in two ways from an
-instant that the first run passed through. The structure is
-described in `docs/ARCHITECTURE.md` § "What a branch is, and what it
-shares with its parent".
+**A comparison shows two managements of one case.** The first run is the
+**trunk**. A **branch** continues it in another way from an instant that the
+trunk passed through, and that instant is the **fork**.
 
-**Two, and never N.** The display shows at most two runs. While two are shown,
-a further fork is refused rather than replacing the one on screen
-(`test_a_second_fork_is_refused_while_two_runs_are_shown`). No branch is ever
-compared with another branch. Each branch is compared with the trunk it was
-taken from. `ROADMAP.md` § "Explicitly out of scope for v0.5.0" declares both
-limits. So a comparison asserts something about **two** control timelines over
-one case. Nothing on screen has surveyed a range of managements or ranked one,
-because only two were ever run. A reader must not generalise from a facility
-capped at two runs as though it had no cap.
+**The display shows at most two runs.** While two are shown, another branch is
+refused rather than replacing the one on screen. No branch is compared with
+another branch, only with the trunk it was taken from. Nothing on screen
+surveys a range of managements or ranks them, because only two were run.
 
-**What the two runs share. The code enforces each one by construction, not by
-a reader's agreement to leave it alone:**
+**The program guarantees that both runs share the following:**
 
-- **The patient.** Both runs use one reference adult
-  (`src/anesthesia_sim/data/patients/reference_adult.json`). The patient is
-  carried into the branch at the fork rather than chosen again
+- **The patient.** Both runs use the same reference adult, which the branch
+  takes from the trunk at the fork.
+- **The agent.** The branch takes the trunk's agent at the fork, and neither
+  run's agent can be changed while the comparison is shown.
+- **The equations, the parameter set and the model version.** Both runs come
+  from the same program.
+- **The circuit volume.** The branch takes the trunk's circuit volume, which
+  cannot be changed during a run.
+- **The simulation step.** The branch uses the trunk's step, and a fork between
+  two steps is refused rather than approximated.
+- **Every setting up to the fork.** The branch's settings are replayed from the
+  trunk's record of setting changes, then checked against the trunk's own
+  settings at the fork.
+- **The bookmarks set before the fork.** A bookmark marks an instant or a height
+  on a curve, and a run halts when it reaches one. The branch opens with the
+  trunk's bookmarks. A bookmark added after the fork belongs only to the run it
+  was added to.
+- **The time frame.** Both runs count time from induction. The chart anchors
+  both to induction rather than to either run's own start, so the two traces
+  are compared at the same instants.
+
+**After the fork, a difference between the two runs is caused by the settings
+that differ between them, and by nothing else in the model.** Taking a branch
+leaves the trunk unchanged. The branch's record of setting changes opens with
+copies of the trunk's changes at the fork, and holds none of the trunk's
+earlier changes. A reset branch keeps those copies and can record the learner's
+settings after them (§ "Reset behavior"). So everything that either run records
+after the fork is what its learner did to it.
+
+**For developers.** The architecture document describes a branch's structure
+(`docs/ARCHITECTURE.md` § "What a branch is, and what it shares with its
+parent").
+
+The roadmap leaves a third run and a comparison of two branches out of scope
+for v0.5.0 (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"). A test checks
+that another branch is refused while two runs are shown
+(`test_a_second_fork_is_refused_while_two_runs_are_shown`).
+
+The code enforces what the two runs share as follows:
+
+- The reference adult is stored in
+  `src/anesthesia_sim/data/patients/reference_adult.json`. Two tests check that
+  a branch carries the trunk's patient and agent
   (`test_a_branch_is_the_agent_and_patient_its_parent_was`,
   `test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork`).
-- **The agent.** The agent is carried into the branch the same way. It is then
-  locked on both sides for as long as the comparison is shown. A branch's
-  `set_agent` refuses outright
-  (`test_a_branch_cannot_change_its_agent_out_from_under_the_case`). The
-  trunk's selector is locked while two runs are shown
+- A branch refuses an agent change outright (`set_agent`,
+  `test_a_branch_cannot_change_its_agent_out_from_under_the_case`). On the
+  trunk, the agent selector is locked
   (`test_the_trunks_selector_is_locked_while_two_runs_are_shown`). Changing
-  agent begins a new run (§ "Agent-change behavior"). So an agent that could
-  change under a comparison would end one of its two runs rather than vary it.
-- **The equations, the parameter set and the model version.** § "The
-  reproducibility guarantee" does not cover runs on a different model version
-  or a different platform. A comparison stays within one model version and one
-  platform by construction, because both runs are runs of the same program.
-- **The circuit volume.** It is a build-time parameter with no live setter
+  the agent begins a new run (§ "Agent-change behavior"), so an agent change
+  during a comparison would end one of the two runs rather than vary it.
+- Exact reproducibility is not guaranteed across model versions or platforms
+  (§ "The reproducibility guarantee"), and the two runs of a comparison always
+  share one model version and one platform.
+- The circuit volume is a build-time parameter with no live setter
   (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter`).
   It is applied to a branch before any state is.
-- **The step.** A branch carries the trunk's own step through its
-  `ResumePoint`. A fork at an instant that is not a whole number of steps is
-  refused rather than approximated
-  (`test_a_branch_steps_to_where_its_parent_stepped`). § "The reproducibility
-  guarantee" does not cover two runs at different steps. Carrying the step is
-  what keeps that exclusion from applying to a comparison.
-- **Every control value up to the fork.** The branch's settings are replayed
-  from the trunk's own recorded control timeline. They are then checked
-  against the settings that the trunk's stretch of the run carries, rather
-  than trusted
+- A branch carries the trunk's step in its resume point (`ResumePoint`). A test
+  checks this and the refusal of a fork between two steps
+  (`test_a_branch_steps_to_where_its_parent_stepped`). Exact reproducibility is
+  not guaranteed between runs at different steps (§ "The reproducibility
+  guarantee"), so carrying the step keeps a comparison within the guarantee.
+- A test checks the replayed settings
   (`test_a_branch_inherits_its_parent_s_settings_at_the_fork`).
-- **The bookmarks.** Both runs are marked at the same questions
+- A test checks that a branch carries the trunk's bookmarks
   (`test_a_branch_opens_carrying_the_marks_of_the_case_it_continues`).
-- **The time frame.** Both runs are stamped in case time, measured from
-  induction. The chart's columns are anchored to the case's zero rather than
-  to either run's own opening. So the two traces are compared at matched
-  instants
+- Each column of the chart stands for an instant at which it draws a value. A
+  test checks that a branch uses the trunk's columns
   (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from`). A
-  fork taken at a bookmark adds exactly one column, which is the fork itself
+  fork at a bookmark adds exactly one column, the fork itself
   (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
 
-**What differs is the control timeline after the fork, and nothing else.** A
-branch opens with a timeline of its own, which holds none of the trunk's
-earlier changes. The only entries it opens with are copies of the trunk's
-changes at the fork
-(`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`). A
-reset branch keeps them, and can record the learner's settings after them, as
-§ "Reset behavior" says. Each entry states a setting in force from the fork
-on, so the sentence below is still true. Forking leaves the trunk untouched
-(`test_forking_leaves_the_trunk_untouched`). So everything that either run
-records after the fork is what its learner did to it. **A difference between
-the two runs at an instant past the fork is therefore caused by the settings
-that differ after the fork, on either side, and by nothing else in the
-model.** That is what the mechanism provides, and it is worth stating
-positively as well as negatively. Building the case twice instead would leave
-the two runs differing by everything that was not reproduced identically. A
-learner reading that comparison could not see which differences they had
-caused.
+In the code, a run's record of setting changes is its control timeline. Two
+tests check what a branch's control timeline opens with and that forking leaves
+the trunk untouched
+(`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`,
+`test_forking_leaves_the_trunk_untouched`).
+
+Each entry that a reset branch keeps states a setting in force from the fork
+on, so a reset does not change what can cause a difference after the fork.
+
+Building the case twice instead of forking would leave the two runs differing
+by everything that was not reproduced identically, and a learner could not see
+which differences they had caused.
 
 ### The shared history is identical by construction, not by measurement
 
-**Construction, not reproduction.** A branch's run definition carries the
-parent's own keyframe. It forms each propagation interval as the instant minus
-the opening of the segment that holds the instant. Parent and child use the
-identical keyframe and the identical subtraction, so they perform the same
-sequence of floating-point operations at every instant they share. § "What
-this requires of a branch" states the rule and its two conditions, and says
-which of them a fork at a bookmark relaxes. The tests exist to catch that
-construction breaking, not to establish the property.
-`test_a_fork_opening_from_a_keyframe_reproduces_its_parent` and
-`test_a_fork_opening_between_two_keyframes_reproduces_its_parent` test the two
-fork shapes. `test_a_branch_reproduces_its_parent_at_every_instant_they_share`
-and `test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`
-test them through the controller, at case instants and at drawn columns.
-`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`
-tests the restart that would *not* reproduce. No branch that this program
-builds ever takes that route.
+**Before the fork, a branch and its trunk are exactly equal.** The branch
+repeats the trunk's arithmetic, operation for operation, at every instant they
+share. This holds for every branch the program builds
+(§ "What this requires of a branch"). There is no error to allow for, and none
+is shown.
 
-**So there is no residual to state: it is zero.** A branch and its parent
-agree element for element, not within a tolerance, at every instant they
-share. This is true at a fork on a keyframe and at a fork between two
-keyframes (§ "What this requires of a branch"). Nothing is left over for a
-reader to allow for, and for the same reason nothing is shown to them.
+**Exact equality applies to the values the model computes, and not always to
+the values the chart draws.** Where the fork was at a setting change, the two
+drawn traces agree exactly at every point they share. Where it was at a
+bookmark, they can differ by a rounding error that is orders of magnitude too
+small to move any displayed digit (§ "The canonical evaluation rule",
+§ "Displayed precision").
 
-**What that does not guarantee is anything after the fork.** Identity before
-the fork is a statement about arithmetic, and it sets no bound on anything
-after the fork. How far the two runs diverge, in which direction, how quickly,
-and whether they converge again are properties of the settings and of the
-model. No property of the construction limits any of them. "Identical up to
-the branch point" is a warrant that what comes after is not an artifact of the
-fork, and it is a warrant for nothing else.
+**Equality before the fork sets no bound on anything after it.** Only the
+settings and the model decide how far the two runs diverge, in which direction,
+how quickly, and whether they converge again.
 
-**And it is a statement about the canonical path, which is not the path the
-chart draws.** Where the fork was taken at a control event, the drawn values
-of the two runs agree exactly at every column they share. Where it was taken
-at a bookmark, they agree only to within floating-point composition. The worst
-difference is 2.7e-15 over the 240 shared columns that the test above checks.
-§ "The canonical evaluation rule" tabulates this and places it orders of
-magnitude below what § "Displayed precision" resolves, so no displayed digit
-moves. A **difference** trace between the two drawn traces would *not* show
-zero, and that is one reason this interface draws none. Such a trace would
-show a few units in the last place where two identical runs should show zero.
-A reader who saw it would take it for a disagreement about the case, not for
-the composition order that it is.
+**For developers.** A keyframe is the state at the instant a setting change
+took effect, and a segment is the stretch of a run between two changes
+(§ "The run is that record, and every state is derived from it"). A branch's
+run definition carries the trunk's own keyframe. It forms each propagation interval as the instant minus the opening
+of the segment that holds the instant. The branch repeats the trunk's
+arithmetic because both use the same keyframe and the same subtraction.
+§ "What this requires of a branch" sets this out as a rule with two conditions,
+and says which condition a fork at a bookmark relaxes.
+
+**For developers.** Exact equality rests on this construction, and the tests
+only detect when it breaks. Two
+tests cover a fork on a keyframe and a fork between two keyframes
+(`test_a_fork_opening_from_a_keyframe_reproduces_its_parent`,
+`test_a_fork_opening_between_two_keyframes_reproduces_its_parent`). Two more
+test both through the controller, at case instants and at drawn columns
+(`test_a_branch_reproduces_its_parent_at_every_instant_they_share`,
+`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`).
+Over the 251 shared columns that the last of these tests compares, the worst
+difference between a branch forked at a bookmark and its trunk was 5.3e-16 on
+2026-10-26, a rounding error from the order of the floating-point operations.
+Before `PL-T5NJ` put the columns on whole hundredths of a second, it was 2.7e-15
+over 240 columns, the figure § "The canonical evaluation rule" tabulates. A
+branch that restarts at the fork would not reproduce its trunk
+(`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`).
+No branch that this program builds takes that route.
 
 ### Neither run is a prediction for a patient
 
-**This model has one patient, and no variability around it.** The parameters
-are those of one reference adult. No equation here takes a covariate that
-distinguishes one patient from another. No weight, age, sex or
-body-composition term enters any of the equations, and nothing scales a
-volume, a flow or a coefficient from such a term (§ "Known limitations"). Two
-branches are two trajectories of *one* modelled patient under two managements.
-They are not two patients, not two samples from a population, and not a range.
+**This model has one patient, and no variability around it.** No equation takes
+a covariate that distinguishes one patient from another, such as weight, age,
+sex or body composition. Nothing scales a volume, a flow or a coefficient from
+such a covariate (§ "Known limitations"). The two runs are two trajectories of
+*one* modelled patient under two managements. They are not two patients, not
+two samples from a population, and not a range.
 
-**So a difference between the branches is a property of the model rather than
-an expected clinical difference.** It carries no interval, no spread and no
-distribution, because the model contains nothing that could supply one. It
-does not say how much two patients managed those two ways would differ from
-each other. It does not say how far a real patient would depart from either
-curve. Nor does it say how likely either management is to reach a given state
-by a given time. It says what these equations do under these two control
-timelines. That statement applies inside the envelope that § "Supported input
-ranges" and § "Supported run length" declare, and to the fidelity that
-§ "Published wash-in and elimination validation test" establishes.
+**So a difference between the runs is a property of the model, not an expected
+clinical difference.** It carries no interval, spread or distribution, because
+the model contains nothing that could supply one. It does not say how much two
+patients managed those two ways would differ, how far a real patient would
+depart from either curve, or how likely either management is to reach a given
+state by a given time. It says what these equations do under these two
+managements, within the limits that § "Supported input ranges" and
+§ "Supported run length" declare, and with the fidelity that § "Published
+wash-in and elimination validation test" establishes.
 
-**A branch that differs in cardiac output is still not a second patient.**
-This is the case most likely to be misread. Cardiac output is a live control,
-and it is also the quantity by which a clinician most readily tells one
-patient from another. Dialling it changes this patient's circulation. Its
-effect on uptake is a real property of these equations, and a legitimate thing
-to put on either side of a fork. What it does not do is describe a
-*different* patient. A patient who differs in cardiac output differs in
-compartment volumes too, and this model keeps those volumes fixed. So moving
-one half of the coupled pair shifts every tissue time constant
-$`V_i \lambda_{i:b} / Q_i`$ in a direction the intact pair need not take.
-§ "Known limitations" measures that artifact where it arises from weight
-scaling, and the same arithmetic governs it here.
+**A branch that differs in cardiac output is still not a second patient.** This
+is the case most likely to be misread, because cardiac output is both a setting
+the learner can adjust during a run and the quantity by which a clinician most
+readily tells one patient from another. Dialling it changes this patient's
+circulation. Its effect on uptake is a real property of these equations, and
+setting it differently in the two runs is legitimate. But a patient who differs
+in cardiac output differs in compartment volumes too, and this model keeps
+those volumes fixed. So changing cardiac output alone shifts every tissue time
+constant $`V_i \lambda_{i:b} / Q_i`$ in a direction that flow and volume
+changing together need not take. § "Known limitations" gives the size of the same
+artifact for a cardiac output scaled to body weight with the volumes kept fixed,
+and the same arithmetic applies here.
 
-**The reading to refuse, stated concretely: "low flow woke this patient twelve
-minutes sooner."** Three separate things are wrong with it, and only the first
-is about variability.
+**Do not read a comparison as "low flow woke this patient twelve minutes
+sooner."** Three separate things are wrong with that reading, and only the
+first is about variability.
 
 - **"this patient"**: there is one modelled patient and no population around
   it, so nothing on screen is about a patient at all.
 - **"woke"**: this model has no effect-site compartment and defines
-  $`F_a \equiv F_A`$ (§ "Model boundary"). So it has no measure of
+  $`F_a \equiv F_A`$ (§ "Model boundary"), so it has no measure of
   responsiveness in which two runs could differ. The nearest thing the chart
   shows is the vessel-rich trace read against the MAC-awake band. That band is
-  one standard deviation either side of a published population mean, and it
-  is explicitly not a prediction for the patient on the screen (§ "MAC-awake
-  as a chart reference"). The interface displays no time-to-wake-up figure of
-  any kind, by decision rather than by omission.
+  one standard deviation either side of a published population mean, and it is
+  not a prediction for the patient on the screen (§ "MAC-awake as a chart
+  reference").
 - **"twelve minutes"**: a duration read between two curves inherits every
-  limitation of the model that drew them. § "Known limitations" is long
-  enough that a minutes-precise emergence difference is not among the things
-  this model is claimed to get right.
-
-**What a comparison is for is the mechanism**: which way a curve moves when
-one thing changes, why it moves that way, and roughly how fast, in a model
-whose structure makes the reason legible. That is the educational claim these
-two runs support, and it is the only one.
+  limitation of the model that drew them, and this model does not claim to get
+  a difference in emergence time right to the minute (§ "Known limitations").
 
 ### What the interface may assert about a comparison
 
-The interface may mark where the branch was taken
-(`BRANCH_POINT_LEGEND_LABEL` in `src/anesthesia_sim/app/dashboard_frame.py`).
-It may name the run that each displayed value and each record of an input
-belongs to (§ "Reasonably foreseeable misuse, and the hazards the presentation
-carries", the row on reading one run's value as the other's). And it may carry
-the two standing statements beside the readouts:
-`INTERPRETATION_DISCLAIMER_TEXT` and `USE_DISCLAIMER_TEXT`.
+The interface may mark the fork. It may name the run that each displayed value
+and each record of setting changes belongs to (§ "Reasonably foreseeable
+misuse, and the hazards the presentation carries", the row on reading one run's
+value as the other's). And it may show the two standing disclaimers beside the
+readouts, one on interpretation and one on use.
 
 **It must not draw the conclusion for the reader.** That rules out a
-difference trace between two runs, a score or ranking of one management
+difference trace between the two runs, a score or ranking of one management
 against the other, a time-to-wake-up figure, and a sentence stating what the
-comparison shows. Each of these is the conclusion that this section says the
-model does not support. A qualifier beside it does not repair that, because
-the number would be acted on and the qualifier would not. § "MAC-awake as a
-chart reference" already makes this argument about a wake-up readout. Audited
-2026-09-21 against `src/anesthesia_sim/app/dashboard_frame.py`,
-`src/anesthesia_sim/app/chart_frame.py` and
-`src/anesthesia_sim/app/qt_chart.py`: the interface draws none of them.
+comparison shows. As checked on 2026-09-21, the interface draws none of them.
+Each would state a conclusion that the model does not support. A qualifier
+beside any of them would not repair that, because the reader would act on the
+conclusion and not on the qualifier. § "MAC-awake as a chart reference" makes
+the same argument about a wake-up readout.
 
-**Where the line falls, since two shipped surfaces sit close to it and neither
-crosses.** First, a bookmark halts a run on the step that crosses a marked
-instant or height. The clock then shows where that run actually stopped
-(§ "Halting on a marked crossing"). Two runs halted at one marked height
-therefore show two instants. Each is an instant that its run *reached*, not a
-figure predicted for an endpoint that the run has not reached. Second, each
-run's control-change record states that run's own inputs. It is the record of
-what its learner did, not a statement about the difference between the two
-runs. That is why the record is headed for the run it belongs to rather than
-for the comparison.
+**Two features of the interface come close to drawing a conclusion, and
+neither does:**
+
+- A run halts on the step that crosses a bookmark, and the clock then shows
+  where that run actually stopped (§ "Halting on a marked crossing"). Two runs
+  halted at one marked height therefore show two instants. Each is an instant
+  that its run *reached*, not a predicted time for an endpoint that the run has
+  not reached.
+- Each run's record of setting changes states what that run's learner did, not
+  a difference between the two runs. That is why the record's heading names its
+  run rather than the comparison.
+
+**For developers.** The fork's mark is `BRANCH_POINT_LEGEND_LABEL` in
+`src/anesthesia_sim/app/dashboard_frame.py`, and the two disclaimers are
+`INTERPRETATION_DISCLAIMER_TEXT` and `USE_DISCLAIMER_TEXT`. The check on
+2026-09-21 covered `src/anesthesia_sim/app/dashboard_frame.py`,
+`src/anesthesia_sim/app/chart_frame.py` and
+`src/anesthesia_sim/app/qt_chart.py`.
+
+A difference trace would mislead even before the fork, where the two runs are
+identical. If the fork was at a bookmark, the trace would show a tiny nonzero
+difference there instead of zero, and a reader would take that for a
+disagreement about the case.
 
 ## Interface boundary
 
-The interface may:
+The interface shows the model's results and controls the run, but it does none
+of the model's calculations. It may:
 
 - display values;
 - convert fractions to percent;
 - collect user settings;
 - issue Start, Pause, and Reset commands;
-- choose how many simulation steps each tick of its own loop takes, so that a
-  run can be played faster than real time, subject to the constraint below;
-- halt a run and record why when the core raises, and report a value the
-  core refused;
-- render the run's states across a window of its axis, evaluated from its
-  definition;
-- choose how wide a window of the run the chart draws, and how that window is
-  ruled, subject to the constraint below;
-- choose the instants a plotted trace is evaluated at, subject to the
-  constraint below;
-- draw a subset of the compartment traces, at the reader's request, subject
-  to the constraint below;
-- draw a published clinical constant as a chart reference, at a height the
-  chart's own axis gives meaning to, subject to the constraint below;
-- form the ratio of two modelled fractions where this document names it as a
-  displayed quantity, subject to the constraint below;
-- declare where one user adjustment of a control begins, so that the run's
-  record of its own inputs can be read as the acts that produced it,
-  subject to the constraint below; and
+- halt a run, and record why, when the model stops with an error;
+- report a value that the model refused; and
 - display mass-balance status.
 
-**What a drawn window is.** A chart draws from a `DrawnWindow`
-(`app/run_series.py`). It contains the states at the instants that one frame
-plots. `SimulationController.drawn_window` evaluates them from the run's
-definition, and nothing is stored behind them. Each state is bound to the
-substance that the run is of. It carries that substance's six compartment
-values, as fractions of one atmosphere, under the stable identifiers that
-`RecordedQuantity` names. A trace addresses one of them as a `RecordedSeries`,
-which is a substance-and-quantity pair. Today a run is of one substance, the
-agent it is a run of. Changing agent starts a new run rather than adding to
-this one, so a window describes one substance.
+Under the conditions set out below, it may also:
 
-A window is keyed by substance rather than by six named fields, because a
-compartment fraction asserts nothing without the substance it is a fraction
-of. Six flat names can describe exactly one substance. A second substance
-would then have to arrive either as six more names or as values pooled with
-the first substance's values. Pooled values are the correct-number-wrong-label
-failure that this document forbids elsewhere. The chart is addressed the same
-way: one trace is bound to one substance-and-quantity pair. So a trace can
-draw only what it names. A frame that asks for a substance the run is not of
-fails, rather than drawing whichever substance the run does contain. The
-wash-in quotient below is formed from one substance's own two fractions, for
-the same reason.
+- draw the run's states over a window of time, computed by the model at
+  instants that the interface chooses;
+- choose how wide a window of the run the chart shows, and how its time axis
+  is ruled;
+- draw only some of the compartment traces, when the user asks;
+- draw a published clinical constant as a chart reference, at a height that
+  the chart's own axis gives meaning to;
+- form the ratio of two modelled fractions where this document names it as a
+  displayed quantity;
+- declare where one adjustment of a control begins, so that the run's record
+  of its inputs can be read as the user's actions that produced it; and
+- choose how many simulation steps to take at a time, so that a run can be
+  played faster than real time.
 
-**What a snapshot is, and why it is not keyed the same way.** A frame is
-rendered from an instantaneous state, `app/controller.py`'s
-`SimulationSnapshot`. The snapshot carries the six compartment values as flat
-named fields rather than as the per-substance mapping above. That asymmetry
-is a decision, not unfinished work (`PL-TCD1`, 2026-09-13). A snapshot is one
-instant's transient state for the running agent. Unlike the run definition, it
-is never stored, never compared against a later run, and never read back. So
-giving it a second substance later adds a field rather than invalidating
-anything already written. That is the test that `ROADMAP.md` § "Designed for
-forking" applies: "whether retrofitting invalidates recorded runs or merely
-adds a field". That section places per-compartment agent amounts in the
-snapshot on the declined side of the test. `ROADMAP.md` Phase 1 generalizes
-the patient to N simultaneously present substances, and the mapping arrives
+It must not:
+
+- calculate uptake, partitioning, tissue flow, mixed-venous return or mass
+  balance;
+- integrate the model's equations;
+- correct negative stores;
+- change the model's state directly;
+- continue a run past a step that the model could not complete;
+- take extra simulation steps to catch up when it falls behind real time, or
+  otherwise let elapsed real time decide how many steps a run takes;
+- change the simulation step size in response to a playback control, or
+  advance a run at a rate other than the one it displays;
+- let a display choice, such as the chart's window width, change what a run
+  recorded, or present a chart window narrower than the run as though it
+  showed the whole run;
+- present a run halted by a failure as though it were paused;
+- discard a run that holds recorded state without stating what will be lost
+  and asking the user to confirm, as "Agent-change behavior" requires;
+- display a concentration at a finer resolution than "Displayed precision"
+  justifies, or show a value that the model does not resolve as though the
+  model asserted it; or
+- predict when the simulated patient would wake, or display a
+  time-to-awakening figure of any kind. The MAC-awake reference is a labelled
+  population band because a per-patient prediction is a claim this model does
+  not support. A disclaimer beside such a number would not undo that claim,
+  because the number would be acted on and the disclaimer would not.
+
+**Every trace and every readout names the substance it shows.** A chart trace
+shows one compartment of one substance, because a compartment fraction means
+nothing without the substance it is a fraction of. Today a run contains one
+substance, its agent, and changing the agent starts a new run rather than
+adding to this one. A trace draws only the substance it names. The readout row
+names the substance itself, so the user need not carry it over from the agent
+selector. A compartment value and the trace beside it always name the same
+substance.
+
+**Every point that a chart trace draws is a state the run reached, at the
+instant where it is drawn.** The interface never interpolates, smooths,
+averages or otherwise makes up a plotted value. A trace need not draw every
+instant, because the run advances one step every 0.1 s of simulated time, more
+often than a chart can resolve. The instant that the numeric readouts show is
+always drawn, so the end of a trace always agrees with the readouts beside it.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+**What the chart draws.** The model computes each point that the chart draws
+from the run's definition, which gives the run's state at any instant directly,
+by formula. No stored series of values lies behind a trace, so none can disagree
 with it.
+The chart draws the run's state at one instant for each pixel boundary of its
+widest plot, and at never fewer than 150 instants. When a plot becomes wider,
+after the user resizes the application window or drags an area's border, it is
+redrawn at its new width on the next screen update, whether the run is running
+or paused. Two rules set where the drawn instants fall:
 
-What the asymmetry may not do is let one frame describe the run in two
-vocabularies. The six fields travel with the `agent_id` and
-`agent_display_name` they belong to. This is for the same reason that
-`agent_mac_percent` travels beside the concentrations it scales. The
-interface also names the substance on the readout row itself, rather than
-leaving a reader to carry it over from the agent selector. So a compartment
-number and the trace beside it name the same substance on the face of the
-display.
+- **The drawn instants lie on a grid that starts at the case's time zero.**
+  A run branched from another therefore draws at the same instants as the run
+  it branched from, and the two can be compared point for point. Each drawn
+  instant falls on a whole hundredth of a second, so the hover readout can give
+  the exact time of the state it shows.
+- **Every control change inside the window is a drawn instant.** Between
+  control changes each compartment's value is a sum of exponentials, with
+  bounded curvature and no hidden transients, so every sharp feature of a run
+  is at a control change. A grid that stepped over one would draw a straight
+  line through the very instant that the user is looking for. The point drawn
+  there is the state that the run's definition stores for that instant. The
+  chart therefore shows every control change exactly, to the last digit the
+  readouts display.
 
-**What the chart draws.** A plotted trace need not draw the run at every
-instant the run passed through. A run advances by one step every 0.1 s, well
-beyond what a chart can resolve. But every point that the trace does draw must
-be a state the run actually reached, at the instant it is drawn at. The
-interface must not interpolate, smooth, average, or otherwise synthesize a
-plotted value. The instant that the numeric readouts were formatted from must
-always be drawn, so that the end of a trace and the readouts beside it cannot
-disagree.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**Between control changes, the drawn line is never further from the run than the
+time that one pixel of the plot spans, except at a peak or a trough.** It passes
+through the run's exact state at every drawn instant, and drawn instants are no
+more than a pixel apart. The only exception to that spacing is a one-minute axis
+more than 6000 px wide, where drawn instants a hundredth of a second apart span
+more than a pixel. Where the run only rises or only falls between two drawn
+instants, the run and the straight segment drawn between them cross every level
+inside the same pixel. This one-pixel guarantee is in time, not in percentage
+points. Where a trace is steep, the run can change by many percentage points
+within one pixel of time. No display shows a value between drawn instants, the
+hover readout included (§ "The chart's hover readout").
 
-The chart meets this by **evaluating the run's definition rather than reading
-samples back from a store**. `core/run_definition.py` returns the state at any
-instant in closed form. So the columns that a frame draws are chosen for the
-axis being drawn and computed for it. No recorded series lies behind the trace
-that could disagree with it. Two rules decide where the columns fall. Both are
-properties that this document requires, not optimisations:
+The straight segment between two drawn instants starts and ends on the run's
+curve, but can lie above or below the curve in between. The table gives that
+vertical gap at the middle of a segment, in percentage points (pp), computed on
+a plot 1 000 px wide. A time base is a window width that the chart offers, and
+the spacing between drawn instants is that width divided by 1 000.
 
-- **The columns sit on a grid anchored to the case's zero**, at absolute
-  multiples of the spacing that the selected time base and the plot width
-  imply. There is one column per pixel boundary of the widest plot the frame
-  is drawn on, and never fewer than 150 (`chart_columns` in
-  `app/chart_frame.py`, `PL-GS3R`). The spacing is the span divided by those
-  columns, rounded down onto whole hundredths of a second, and onto tenths
-  wherever that adds at most a tenth more columns (`grid_spacing_s` in
-  `app/chart_time_base.py`, `PL-T5NJ`). Every drawn instant is then a whole
-  number of hundredths, so the chart's hover can print exactly the instant
-  whose state it prints. Rounding down keeps each chord within a pixel of
-  time. The one exception is a spacing below a hundredth of a second, which
-  needs a one-minute axis more than 6000 px wide. A plot can become wider than
-  the width its frame was sampled for, by a window resize or by a reader
-  dragging an Area border. The plot is then redrawn on the next render tick, whether the run is
-  running or paused (`resample_owed`, `PL-9LNF`). A window that follows the
-  run therefore keeps every column it had and gains at most one, so a steady
-  trace is not redrawn on every frame. A grid anchored to the viewport would
-  instead move on every scroll and resize, and rewrite the whole chart on
-  every frame. The anchor is the case's zero rather than each run's own
-  opening. That choice puts a branch's columns on the same instants as the
-  trunk's, so the two can be read against each other at matched points. A
-  per-run anchor put a branch forked at 55.3 s on 55.3, 65.3, 75.3 … while
-  the trunk drew 0, 10, 20 ….
-- **Every control event inside the window is a column of its own.** Between
-  events the trajectory is a sum of exponentials with bounded curvature and
-  no hidden transients. So every sharp feature in a run is at an event
-  boundary. A grid that stepped over one would draw a straight line through
-  the single instant that a reader is looking for. Each such column is read
-  from the keyframe that the run definition already stores at that instant,
-  so it is exact rather than propagated.
-
-**So the drawn chart reproduces every control change**, to the last digit
-the readouts display, while the stored record need not. There is no stored
-record (project owner, 2026-09-05, recorded here when the sample store was
-deleted). At the instant the dial moves, the interpolation error scales as
-O(h) rather than O(h²). That is the signature of a kink, since the derivative
-of the circuit fraction is discontinuous at a control change. Placing a
-column on each event is the whole of the answer to it.
-
-**Between events the guarantee is a pixel of time, not a number of percentage
-points** (`PL-GS3R`, decided 2026-09-14). Take two drawn instants no more than
-a pixel apart, both exact. A monotone run and the straight segment the plot
-rules between them cross every level inside the same pixel. So the drawn line
-is within one pixel of time of the run everywhere, and on the run at every
-drawn instant. The numeric departure between drawn instants is deliberately
-not the guarantee. Where the trace is steep, one pixel of time is many
-percentage points of value. No display shows a value between drawn instants:
-the hover returns a value only at a point the plot draws (§ "The chart's
-hover readout"). The pixel is a logical pixel of the plot, which is the
-resolution at which the axis is ruled and labelled.
-
-That guarantee was the response to a measurement. From `PL-2FM6` until
-`PL-GS3R`, the rule was a fixed budget of 150 columns at every width. Across
-the twelve-hour base, that rule ruled a 290 s chord, and it drew the steep
-early wash-in below the run. For sevoflurane 2% to 4% at the fastest supported
-settings (FGF 10 L/min, V_A 12 L/min, Q 10 L/min), the line fell below the run
-by 0.53 pp on the alveolar trace (0.26 MAC) and 0.89 pp on the circuit trace.
-For a desflurane overpressure induction, 0% to 12% then 6% at 600 s, it fell
-below by 3.8 pp on the alveolar trace (0.64 MAC) and 5.5 pp on the circuit.
-A numeric bound could be held instead: 0.01 pp, the readout's resolution,
-everywhere on every trace. On that desflurane case it would need a 2 s chord,
-which is 21 601 columns across twelve hours. No hardware this project has
-measured can draw that many inside its frame budget. And the whole of that
-error lies within 1 800 s of a dial change. Beyond that, the 290 s chord
-itself is within 0.0024 pp. These values were measured on 2026-09-14 against
-the closed-form state every 0.1 s, the step the run advances by, over five
-twelve-hour runs built in closed form.
-<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- not-restated: 2 %, 6 % -->
-
-The table below gives what the one-pixel rule leaves between drawn instants,
-measured on a 1 000 px plot. The chord is the rung's span divided by 1 000:
-
-| Time base | Chord | Sevoflurane 2% to 4%, worst trace | Desflurane 0% to 12% to 6%, worst trace | Desflurane, alveolar |
+| Time base | Spacing | Sevoflurane 2% to 4%, worst trace | Desflurane 0% to 12% to 6%, worst trace | Desflurane, alveolar |
 | --- | ---: | ---: | ---: | ---: |
 | 15 min | 0.9 s | 0.0004 pp | 0.0025 pp | 0.0025 pp |
 | 1 h | 3.6 s | 0.0052 pp | 0.032 pp | 0.032 pp |
@@ -8103,256 +8113,299 @@ measured on a 1 000 px plot. The chord is the rung's span divided by 1 000:
 
 <!-- not-restated: 2 %, 6 % -->
 
-Those are the mid-chord departures of a straight segment from a curve that
-passes through both of its ends. Each is a vertical gap at an instant that no
-display shows, and, by the argument above, less than one pixel horizontally.
-The departures grow with the chord, so a narrower plot draws a larger one and
-a wider plot a smaller one. They are the bound a reader should have in mind
-for a trace's *shape* inside a single pixel column, never for a value.
+The gaps grow with the spacing, so a narrower plot has larger gaps and a wider
+plot smaller ones. They bound the error in a trace's *shape* inside one pixel
+column, never in a displayed value.
 
-**The one case the pixel argument does not cover is an extremum between two
-dial changes.** The alveoli and the venous blood keep filling for a moment
-after the vaporizer is turned down. So a trace can turn inside one interval
-and rise above both drawn values, where the line falls short of it. This was
-measured over five runs. Two were the sevoflurane cases at the fastest
-settings, 2% to 4% and 4% to 0%. Two were the desflurane case, at the fastest
-settings and at slow settings (FGF 0.5 L/min, V_A 2 L/min, Q 2 L/min). The
-fifth was the reference adult at 1 to 2 MAC. The worst such gap at any rung
-is 0.0028 pp, on the mixed venous trace at the desflurane dial-down on the
-twelve-hour base. That is less than a third of the readout's resolution.
-`tests/unit/test_run_definition.py` checks that the gap in that case stays
-below half of it.
-<!-- not-restated: 2 % -->
+**Between two control changes, the drawn line can miss the top of a peak or
+the bottom of a trough.** Because the alveoli and the venous blood keep filling
+for a moment after the vaporizer is turned down, the run can peak between two
+drawn instants, above both drawn values. Over five simulated runs, the largest
+gap at a peak or a trough on any time base is 0.0028 pp, on the mixed venous
+trace at the desflurane dial-down on the twelve-hour time base. That is less
+than a third of the readout's resolution of 0.01 pp.
 
-Pegging that residual to the displayed resolution is deliberate. It does not
-cross the line drawn under § "Supported simulation step". That section
-forbids traffic in the other direction: the readout's decimal count must not
-feed back into the model. That is why the step tolerance and the supported
-ranges are stated in absolute percentage points. The statement here is about
-the *chart*, expressed in the units a reader actually reads it in. Nor is the
-peg arbitrary. The two-decimal readout is itself derived from model fidelity
-under § "Displayed precision": one published SD of a partition coefficient
-displaces a compartment by 8.7e-4 to 6.8e-2 percentage points.
+The values that a chart draws are for display only, and the program prevents
+their use for anything else (§ "The canonical evaluation rule" below).
 
-The pixel-column framing is the one Jugel, Jerzak, Hackenbroich and Markl
-prove from the other side, for recorded data. They prove that a line chart is
-fixed by at most four values per pixel column (M4: A Visualization-Oriented
-Time Series Data Aggregation, *Proceedings of the VLDB Endowment*
-2014;7(10):797-808). Their selection method itself is not used. Nothing is
-selected from a store. The run is evaluated at the column instants, and a
-control event is always a column, whatever the pixel width. A selection of
-recorded extremes could not guarantee that (`PL-4RBD`). The Flet chart could
-not afford one column per pixel (`PL-YSZN`). It kept a fixed 150-column budget
-through its own series module until `PL-25KS` ported the dashboard, and that
-module was removed along with the Flet chart.
+**The user chooses which compartment traces are drawn and how wide a window
+of the run the chart shows, and neither choice changes the run.** The two
+choices change no model state and nothing in the run's definition, and
+identical inputs still produce identical results. The window width therefore
+sits outside "Runtime controls", with the other interface settings.
 
-The drawn columns are display-path values, taken under § "The canonical
-evaluation rule" below. They may be drawn and used for nothing else. The
-program enforces that rule rather than only describing it.
+A user cannot compare two compartments while four other lines cross them, so
+the interface may draw only some of the six traces. When it does:
 
-**Which compartment traces are drawn is the reader's to choose, and the
-choice may not change anything else.** A reader cannot compare two
-compartments while four other lines cross them, so the interface may draw a
-subset of the six. Three conditions bound this choice. First, the selection
-is presentation only. It affects no model state and changes nothing in the
-run definition, and identical inputs still produce identical results. Second,
-every compartment's concentration stays in the numeric readouts whatever is
-drawn. A chart showing two curves is therefore a chosen view of six modelled
-compartments, not a model with two. Third, the display must state, for every
-compartment, whether its trace is currently drawn. A legend entry for a line
-that is not on the plot makes a claim about the run that the run does not
-support. That is the same defect as an unlabelled reference, arriving from
-the other direction.
+1. The numeric readouts still show every compartment's concentration. A chart
+   with two curves is a chosen view of six modelled compartments, not a model
+   with two.
+2. The display states, for every compartment, whether its trace is drawn. A
+   legend entry for a line missing from the plot claims something about the
+   run that the run does not support.
 
-A **reference** is not a trace, and it is deliberately exempt from the rule
-above. It draws no state of the run, because it is a published constant
-rather than a modeled quantity. A labelling requirement bounds the exemption
-instead. A reference must state the value and the divisor it was drawn from.
-It must name the compartment that it is to be read against. It must also be
-visually distinguishable in kind from a compartment trace, by mark type
-rather than by colour alone. A reader who has no reason to think otherwise
-takes an unlabelled horizontal line for a modeled quantity. That is the
-confusion between modeled and measured values that this document forbids
-elsewhere, arriving through the chart.
+A case runs for hours, but the moment a learner is most likely to be watching
+lasts minutes, and no single window width serves both. Two conditions apply to
+the width that the user chooses:
+
+1. The width is fixed by the selection, never by how long the run has been
+   going. A window that grew with the run would change the slope of every trace
+   while the underlying rates stayed the same.
+2. A setting that claims to show the whole run shows all of it, at every
+   length. A narrower window labelled as the whole run misstates what the user
+   is looking at.
+
+See § "The chart's time base" for the widths, the ruling and the labels that
+meet these conditions.
+
+A **chart reference** is not a trace. It draws a published constant, not a
+state of the run, so the rule that every drawn point is a state the run reached
+does not apply to it. Instead, it must be labelled. Its label states the value
+and the divisor it was drawn from, and names the compartment it is to be read
+against. The reference differs in kind from a compartment trace by its type of
+mark, not by colour alone. A user with no reason to think otherwise takes an
+unlabelled horizontal line for a modelled quantity, and so mistakes a measured
+value for a modelled one.
 See § "MAC-awake as a chart reference".
 
-A **displayed ratio** of two modelled fractions is a trace, and it is *not*
-exempt from the rule above. Every point it draws is still computed from one
-evaluated state of the run, at the instant at which it is drawn. Nothing
-about it may be interpolated, smoothed or averaged. A ratio also needs a
-**stated domain**. A quotient of two modelled states can be undefined (a zero
-denominator) or outside what the plot claims to show. In neither case does
-the interface have a number that it may substitute. So five rules apply. The
-domain is documented here and enforced in one place in code. A drawn instant
-outside the domain contributes no point, rather than a clamped, extrapolated
-or defaulted one. The trace breaks where the domain does, rather than joining
-across the instants it skipped, because a join would draw values the run
-never produced. The display states which two quantities the ratio is of, in
-the terms this document uses for them. Where the trace is absent, the display
-says which boundary it stopped at, because otherwise an absent trace looks
-like a run that stopped. See § "F_A/F_I as a displayed ratio", the only such
-quantity today.
+A **displayed ratio** of two modelled fractions is a trace, so the rule that
+every drawn point is a state the run reached applies to it. Each point is formed
+from one substance's two fractions in one state of the run, at the instant
+where it is drawn. A ratio also needs a stated **domain**: the states of the run
+for which it is drawn. A ratio of two modelled values can be undefined, when its
+denominator is zero, or can fall outside what the plot claims to show. In
+neither case may the interface substitute a number. Four rules follow:
 
-A **control mark** is a third kind of chart series. It is exempt from the
-trace rule for yet another reason: it draws no value at all. It marks a
-simulated time on the horizontal axis and asserts nothing about the vertical
-one. A labelling requirement of its own bounds the exemption. A control mark
-must be visually distinguishable in kind from both a trace and a reference,
-by something other than colour. The display must identify it as a record of
-a user input, not of anything measured or modelled. It must also come with a
-statement of which control moved and to what setting. A bare mark says only
-that something unspecified happened. That invites the reader to supply their
-own explanation for the change in the curves beside it.
+1. A drawn instant outside the domain gives no point, rather than a clamped,
+   extrapolated or defaulted one.
+2. The trace breaks where the domain does, and does not join across the
+   instants it skipped, because a join would draw values the run never
+   produced.
+3. The display states which two quantities the ratio is of, in the terms this
+   document uses for them.
+4. Where the trace is absent, the display says at which boundary it stopped,
+   because otherwise an absent trace looks like a run that stopped.
+
+See § "F_A/F_I as a displayed ratio", the only such quantity today.
+
+A **control mark** shows the instant on the time axis at which the user moved
+a control. It draws no value and says nothing about the vertical axis, so the
+rule that every drawn point is a state the run reached does not apply to it.
+Instead, it must be labelled. It differs in kind from both a trace and a
+reference, by something other than colour. The display identifies it as a
+record of a user input, not of anything measured or modelled, and states which
+control moved and to what setting. A bare mark says only that something
+happened, and invites the user to supply their own explanation for the change
+in the curves beside it.
 See § "The control-input timeline".
 
-Declaring where an adjustment begins is a statement about the *input
-device*, not about the model. It changes no simulation state and records no
-value. It must not alter what is recorded or what the model computes. The
-declaration exists because a slider reports continuously while it is dragged.
-The interface is therefore the only party that can tell one turn of a control
-from two.
+Declaring where one adjustment of a control begins concerns the input device,
+not the model. A slider reports continuously while it is dragged, so only the
+interface can tell one turn of a control from two. The declaration records no
+value. It must not change the simulation state, what the run records or what
+the model computes.
 
-**How wide a window the chart draws is the reader's to choose, and the choice
-may not change the run.** A case runs for hours, but the moment a learner is
-most likely to be watching lasts minutes, so no single window serves both.
-Three conditions bound the choice. First, it is a view control. It affects no
-model state, alters nothing in the run definition, and leaves identical
-inputs producing identical results. So it sits outside "Runtime controls"
-with the other interface settings. Second, the width in force must be a fixed
-property of the selection, not of how long the run has been going. A window
-that grew with the run would rescale every trace's slope while the underlying
-rates did not change. Third, a mode that claims to show the whole run must
-show all of it at every length. A window narrower than the case, labelled as
-the whole case, is a false statement about what the reader is looking at.
-See § "The chart's time base", which carries the widths, the ruling and the
-labelling that this paragraph requires.
+**A playback rate is a number of steps, never a step size, and it must be on
+screen.** Real time is too slow to watch the two compartments that make uptake
+and distribution worth teaching. At the reference settings, sevoflurane's
+muscle group has a time constant of about 135 min, and fat one of about 42 h.
+The interface advances the run in ticks, one every 0.1 s, and at real time each
+tick takes one step. To play a run faster, it takes more steps per tick, under
+three conditions of different kinds.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**A playback rate is a number of steps, never a step size, and it has to be
-on screen.** The two compartments that make uptake and distribution worth
-teaching cannot be watched in real time. At the reference settings,
-sevoflurane's muscle group has a time constant of about 135 min, and fat has
-one of about 42 h. So the interface may play a run faster by taking more
-steps per tick. Three conditions bound this, and they are of different kinds.
+The first condition is arithmetic. The interface refuses a rate that does not
+come to a whole number of steps per tick, because rounding it would give either
+a step of a different size or a run advancing at a rate other than the one
+displayed. So faster playback stays within "The reproducibility guarantee":
+identical inputs still produce identical run definitions, and two learners
+comparing the same case at different speeds are comparing the same arithmetic.
 
-The first condition is arithmetic. The step size is fixed, and the rate is
-realised *only* as the number of those steps that a tick takes. A rate that
-does not land on a whole number of steps is refused rather than rounded,
-because the alternatives would be a step of a different size, or a run
-advancing at a rate other than the one displayed. This rule keeps a faster playback inside
-"The reproducibility guarantee" rather than making it a second numerical
-solution. Identical inputs still produce identical run definitions. Two
-learners comparing the same case at different speeds are comparing the same
-arithmetic. A count of more than 1 000 steps per tick is refused too
-(`PL-T6P0`). A tick takes all of its steps before the interface can respond,
-so a count with no bound would freeze the application with no error. The
-bound is set by time: one step measured about 53 microseconds on 2026-10-26,
-so 1 000 steps take about half of the 0.1 s tick. The tick is one step long,
-so the fastest offered rate takes 300 steps per tick at any step.
+The second condition is control resolution, and it limits that last claim. The
+two learners are comparing the same *case* only if neither of them touches a
+control. A tick takes all of its steps without interruption, so a setting
+changed while the run plays first acts at the next tick boundary. Tick
+boundaries are the rate times 0.1 s of simulated time apart. The same slider
+moves made at two rates therefore land at two different simulated instants and
+produce two different runs. The runs differ because the inputs differed, not
+because the arithmetic did. § "Supported simulation step" gives the grid of
+tick boundaries for each rate, and how far a delay of one tick can shift a
+displayed compartment. It also gives the route that is exact at every rate:
+pause, change the setting, then resume.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+The third condition is human factors, and it is why the rate is a required
+display rather than a preference. A rate is a mode. A clock is easy to misread
+at a glance when it advances at sixty times real time beside numbers that look
+like a live case. So the rate is shown wherever simulated time is shown, at
+every rate, including real time. If the label were absent at 1×, its presence
+would become the signal, and a user would have to be taught that convention
+instead of reading the rate off the screen. The rate states only how fast the
+interface is playing the run. It implies nothing about the model or the
+patient, and it is not a second reading of the clock beside it.
+
+**The rate label shows the rate that was set: the multiple of real time chosen
+with the playback control.** The interface computes the steps per tick from
+that setting, so the label always agrees with the number of steps each tick
+takes. The simulated clock is exact at every rate, because simulated time is a
+count of the steps taken. Whether the run keeps pace with real time depends on
+the computer. When the computer cannot run a tick in time, the tick is lost,
+and no extra steps make it up. The **delivered rate** is the set rate times the
+fraction of ticks that ran. In a measurement on 2026-09-27, every rate from 1×
+to 300× delivered 99.0 to 99.9% of its setting over 8 to 30 s, and the tick
+period stayed at 100 ms to within 4 ms. On a computer that loses ticks, the run
+plays slower than the label says, and nothing on screen shows the delivered
+rate.
+<!-- not-restated: 100 ms -->
+
+**For developers.** A chart draws from a window of states (`DrawnWindow` in
+`app/run_series.py`), one for each instant that a frame plots. The controller
+evaluates them from the run's definition (`SimulationController.drawn_window`,
+`core/run_definition.py`). Keeping no stored samples of the run is a decision
+(project owner, 2026-09-05, recorded here when the sample store was deleted).
+Each state carries its substance's six compartment values, as fractions of one
+atmosphere, under stable identifiers (`RecordedQuantity`). A trace addresses one
+of them as a substance-and-quantity pair (`RecordedSeries`). When a frame asks
+for a substance that the run does not contain, it fails rather than drawing
+whichever substance is in the run. The window is keyed by substance rather than
+by six named fields, because six flat names can describe only one substance. A
+second substance would then need six more names, or values pooled with the
+first substance's, and pooled values show a correct number under the wrong
+label.
+
+A frame is rendered from the running agent's state at one instant
+(`SimulationSnapshot` in `app/controller.py`), which carries the six compartment
+values as flat named fields. This difference from the window is a decision, not
+unfinished work (`PL-TCD1`, 2026-09-13). Unlike the run's definition, a snapshot
+is never stored, never compared with a later run and never read back, so giving
+it a second substance later adds a field and invalidates nothing already
+written. The roadmap's test for a change like this is "whether retrofitting
+invalidates recorded runs or merely adds a field"
+(`ROADMAP.md` § "Designed for forking"). By that test, the roadmap declines
+per-compartment agent amounts in the snapshot. The snapshot gains the
+per-substance mapping with `ROADMAP.md` Phase 1, which generalizes the patient
+to N simultaneously present substances. The six fields travel with the
+`agent_id` and `agent_display_name` they belong to, as `agent_mac_percent`
+travels beside the concentrations it scales. The controller exposes immutable
+snapshots, and immutable windows onto the recorded run, rather than mutable
+compartment objects.
+
+**For developers.** The two rules for where drawn instants fall are
+requirements of this document, not optimisations. A function sets the number of
+drawn instants (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`). The spacing
+is the time base divided by that number. It is rounded down onto whole
+hundredths of a second, and onto whole tenths of a second where that adds at
+most 10% more instants (`grid_spacing_s` in `app/chart_time_base.py`,
+`PL-T5NJ`). Rounding down keeps each segment within a pixel of time, except on
+a one-minute axis more than 6000 px wide. Where the spacing is 1 s or more,
+rounding onto tenths puts each drawn instant on a time that the clock also
+shows. The minimum of 150 drawn instants is the fixed count the chart used
+before, kept because no smaller count has been measured. A plot is redrawn when
+it grows wider than the width its frame was sampled for (`resample_owed`,
+`PL-9LNF`).
+<!-- not-restated: 1 s -->
+
+The grid sits at absolute multiples of the spacing, so a window that follows the
+run keeps every drawn instant it had and gains at most one, and a steady trace
+is not redrawn on every frame. A grid anchored to the viewport would move on
+every scroll and resize, and rewrite the whole chart on every frame. A grid
+anchored to each run's own start put a branch forked at 55.3 s on 55.3, 65.3,
+75.3 … while the run it branched from drew 0, 10, 20 ….
+
+Each control change is a drawn instant because the run has a kink there: the
+derivative of the circuit fraction is discontinuous. Without a drawn instant
+there, the interpolation error at that instant would scale as O(h), in
+proportion to the spacing h between drawn instants, rather than as O(h²), in
+proportion to its square. The stored state drawn at a control change is a
+keyframe, not one propagated from an earlier instant.
+
+The pixel in the one-pixel guarantee is a logical pixel of the plot, the
+resolution at which the axis is ruled and labelled.
+
+The one-pixel guarantee (`PL-GS3R`, decided 2026-09-14) replaced a fixed budget
+of 150 drawn instants at every width. Across the twelve-hour time base, that
+budget spaced drawn instants 290 s apart, and it drew the steep early wash-in
+below the run. For sevoflurane 2% to 4% at the fastest supported settings
+(FGF 10 L/min, V_A 12 L/min, Q 10 L/min), the line fell below the run by
+0.53 pp on the alveolar trace (0.26 MAC) and 0.89 pp on the circuit trace. For
+a desflurane overpressure induction, 0% to 12% then 6% at 600 s, it fell below
+by 3.8 pp on the alveolar trace (0.64 MAC) and 5.5 pp on the circuit. Keeping
+every trace within the readout's resolution everywhere would instead need a 2 s
+spacing on the desflurane case: 21 601 drawn instants across twelve hours. No
+hardware this project has measured can draw that many inside its frame budget.
+All of the old budget's error lies within 1 800 s of a dial change, and beyond
+that the 290 s spacing itself is within 0.0024 pp. These values were computed
+on 2026-09-14 against the run's exact state every 0.1 s, the step the run
+advances by, over five twelve-hour runs built by formula.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 2 %, 6 % -->
+
+The five simulated runs for the gap at a peak or a trough were sevoflurane
+2% to 4% and 4% to 0% at the fastest settings, the desflurane case at the
+fastest settings and at slow settings (FGF 0.5 L/min, V_A 2 L/min, Q 2 L/min),
+and the reference adult at 1 to 2 MAC. A test checks that the gap at the peak
+in the desflurane dial-down case stays below half the readout's resolution
+(`tests/unit/test_run_definition.py`).
+<!-- not-restated: 2 % -->
+
+Bounding the gap at a peak or a trough by the readout's resolution is
+deliberate. It does not break the rule of § "Supported simulation step" that the
+readout's number of decimals must not feed back into the model. That rule is why
+the step tolerance and the supported ranges are stated in absolute percentage
+points. This bound is about the chart, in the units that the readout shows. The
+two-decimal readout itself follows from the model's fidelity
+(§ "Displayed precision"): one published SD of a partition coefficient displaces
+a compartment by 8.7e-4 to 6.8e-2 percentage points.
+
+The one-pixel guarantee works in pixel columns, as Jugel, Jerzak, Hackenbroich
+and Markl do for recorded data: they prove that a line chart is fixed by at
+most four values per pixel column (M4: A Visualization-Oriented Time Series
+Data Aggregation, *Proceedings of the VLDB Endowment* 2014;7(10):797-808).
+Their method of selecting values from a store is not used. The run is
+evaluated at the drawn instants, and a control change is always one of them
+whatever the pixel width. A selection of recorded extremes could not guarantee
+that (`PL-4RBD`).
+
+The code enforces a displayed ratio's domain in one place.
+
+The steps per tick are derived in `app/playback.py`, and a precise timer starts
+each tick (`PreciseTimer`, `RunView.step_tick`). A count of more than 1 000
+steps per tick is refused (`PL-T6P0`). A tick takes all of its steps before the
+interface can respond, so a count with no bound would freeze the application
+with no error. The bound is set by time: one step took about 53 microseconds
+when measured on 2026-10-26, so 1 000 steps take about half of the 0.1 s tick.
+A tick lasts as long in real time as one step does in simulated time, so the
+fastest offered rate, 300×, takes 300 steps per tick whatever the step size.
 <!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 1000 -->
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**What the rate label is a statement about, and what was measured**
-(`PL-SQJ1`). The label states the *setting*: the multiple of real time that
-the loop is asked for. `app/playback.py` derives the steps per tick from that
-setting, so the label cannot drift from the loop, by construction. The
-simulated clock is exact at every rate, because simulated time is a count of
-steps taken. Whether the wall clock keeps up depends on the host.
-`RunView.step_tick` takes its burst on a `PreciseTimer` interval and takes no
-extra steps to make up for a missed tick. A tick that the event loop could
-not service is therefore lost. The **delivered rate** is the set rate times
-the fraction of ticks that fired. It was measured on 2026-09-27 with the real
-dashboard on the offscreen platform and both timers running. Every rung from
-1× to 300× delivered 99.0 to 99.9% of its setting over 8 to 30 s. The tick
-period stayed at 100 ms to within 4 ms. The 73 to 91% measured once came from
-the Flet loop and went away with that toolkit. The label is therefore left as
-it is, and nothing on screen names a delivered rate (project owner,
-2026-09-27, ratified, over qualifying the label as "up to 300×", which trades
-a precise claim that is true for a vague one, and over building the
-disclosure now). A host that holds the loop past one interval delivers less
-than the label says, and nothing on screen says so. `PL-2NYN` is the guard
-that would show the delivered rate beside the set one when fewer than 95% of
-ticks fire over a 50-tick window. A delivered rate below 99% measured on the
-owner's own machine reopens the decision.
-<!-- not-restated: 100 ms -->
-
-The second condition is control resolution, and it limits what the sentence
-above may be taken to mean. Those two learners are comparing the same
-arithmetic. They are comparing the same *case* only if neither of them
-touches a control. A tick advances its whole burst without interruption, so a
-setting changed while the run plays first acts at a tick boundary. The
-boundaries are `multiplier × 0.1` s of simulated time apart. The same slider
-moves made at two rates therefore land at two different simulated instants
-and produce two different runs. The runs differ because the inputs differed,
-not because the arithmetic did. § "Supported simulation step" carries the grid for each rate, what one
-step of it costs a displayed compartment, and the pause-change-resume route
-that is exact at every rate.
-
-The third condition is human factors, and it is why the rate is a required
-displayed output rather than a preference. A rate is a **mode**. A clock
-advancing at sixty times real time, beside numbers that look like a live
-case, is easy to misread at a glance. So the rate must be shown wherever
-simulated time is shown, at every rate, including real time. If the label
-were absent at 1x, the label's *presence* would become the signal. A reader
-would have to be taught that convention, rather than being able to read it
-off the screen. The rate must not imply anything about the model. It is a
-statement about how fast the interface is playing recorded steps, never about
-the patient. It is also not a second reading of the clock it sits beside.
-
-The interface must not:
-
-- calculate uptake;
-- calculate partitioning;
-- calculate tissue flow;
-- calculate mixed-venous return;
-- integrate equations;
-- correct negative stores;
-- calculate mass balance;
-- modify core state directly;
-- continue a run past a step the core could not complete;
-- take extra simulation steps to make up wall-clock time a slow tick lost,
-  or otherwise let elapsed real time decide how many steps a run takes;
-- change the simulation step size in response to a playback control, or
-  advance a run at a rate other than the one it is displaying;
-- let a view control change what a run recorded, or present a chart window
-  narrower than the run as though it showed the whole of it;
-- present a run halted by a failure as though it were paused;
-- discard a run that holds recorded state without stating what will be lost
-  and obtaining confirmation, as "Agent-change behavior" requires; or
-- display a concentration at a finer resolution than "Displayed precision"
-  justifies, or render a value the model does not resolve as though it were
-  a value the model asserts; or
-- predict when the simulated patient would wake, or display a
-  time-to-awakening figure of any kind. The MAC-awake reference is a
-  labelled population band precisely because a per-patient prediction is a
-  claim this model does not support. A disclaimer beside such a number would
-  not undo that claim, because the number would be acted on and the
-  disclaimer would not.
-
-The controller exposes immutable snapshots, and immutable windows onto the
-recorded run, rather than mutable compartment objects.
+The 2026-09-27 measurement used the real dashboard on the offscreen platform,
+with both timers running. Showing only the set rate is a decision (project
+owner, 2026-09-27, ratified, over qualifying the label as "up to 300×", which
+trades a precise claim that is true for a vague one, and over building the
+disclosure now). A proposed change would show the delivered rate beside the set
+one when fewer than 95% of ticks run over a 50-tick window (`PL-2NYN`). If a
+delivered rate below 99% is measured on the owner's own machine, the decision
+is reopened (`PL-SQJ1`).
 
 ## Minimum displayed outputs
 
-The interface must show the following outputs. Each entry names the test that
-enforces it, which makes the entries a bound family under
-§ "How this document is held to the tree", clause 2. The test names say that
-the value reaches the *display*, and that is the link that matters here. A
-required output can go on travelling in `SimulationSnapshot` long after the
-widget that draws it has gone. Three of these entries have no snapshot field at
-all. The playback rate and the chart's time base are view settings, and
-$`F_A/F_I`$ is derived at the point of drawing.
+The interface must show the following outputs. The tests in brackets after each
+entry check that the output is drawn on the display.
 
 - simulated time (`test_refresh_view_formats_every_concentration_metric`,
   `test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour`);
 - the playback rate that is set, as a multiple of real time. It is drawn
   wherever simulated time is drawn, and at every rate, including real time
-  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). It is the
-  setting, not a reading of whether the clock is moving: a paused, reset or
-  halted run still shows the rate it plays at, and the status word in the
-  transport row says whether the run is running. See § "Interface boundary"
-  for what the rate is a statement about, and what it is not;
-- how much simulated time the chart is showing, and whether that width was
-  chosen or fits the whole run so far
+  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). A paused,
+  reset or halted run still shows the rate it would play at. The status word in
+  the row of playback controls says whether the clock is moving. See
+  § "Interface boundary" for what the rate does and does not assert;
+- how much simulated time the chart is showing, and whether that span was the
+  reader's choice or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
   `test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_reader`).
   See § "The chart's time base";
@@ -8388,450 +8441,340 @@ $`F_A/F_I`$ is derived at the point of drawing.
   (`test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre`);
 - mass-balance residual or status
   (`test_refresh_view_reports_valid_agent_accounting`,
-  `test_refresh_view_reports_failed_agent_accounting`); and
-- every concentration above, and the delivered concentration, also shown as a
-  multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
+  `test_refresh_view_reports_failed_agent_accounting`);
+- every concentration above, including the delivered concentration, also shown
+  as a multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
   stated on the display (`test_every_compartment_is_readable_in_mac_multiples`,
   `test_the_dial_is_readable_in_the_unit_its_compartments_are`,
   `test_the_display_names_the_mac_the_readouts_were_divided_by`). See
   § "MAC multiples as a display unit" for what the multiple asserts, and for
-  why both units are shown rather than one being selected; and
-- the running agent's population MAC-awake on the chart, drawn as a band. The
-  band is labelled with the fraction and the divisor it was drawn from, and
-  with the trace it is to be read against. The agent's nominal 1 MAC is drawn
-  alongside it as a visually distinct line
+  why both units are shown rather than one;
+- the running agent's population MAC-awake, drawn on the chart as a band. The
+  band was derived from two numbers, and its label gives both: MAC-awake as a
+  fraction of the agent's 1 MAC, and that 1 MAC in percent. The label also names
+  the trace to read the band against. A visually distinct line on the chart
+  marks the agent's nominal 1 MAC
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
   `test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line`). See
   § "MAC-awake as a chart reference" for what the band asserts and what it does
-  not. That section also explains why no time-to-wake-up figure is displayed
-  anywhere in the interface; and
-- every setting changed during the current run. Each is listed with the
-  simulated time it took effect, the control it changed and the values it moved
-  between, and each is marked on the chart at that time
+  not, and for why no time-to-wake-up figure is displayed anywhere in the
+  interface;
+- every setting changed during the current run. Each change is listed with the
+  simulated time at which it took effect, the control and its old and new
+  values. The chart marks each change at that time
   (`test_the_list_states_what_was_changed_and_to_what`,
   `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
   § "The control-input timeline"; and
 - $`F_A/F_I`$ over the run, on a dimensionless axis of its own. The plot is
   labelled as a ratio against the modelled inspired concentration, not against
-  the vaporizer dial. The plot carries the control marks above, is ruled at the
-  equilibrium that the curve approaches, and states where the ratio is not
+  the vaporizer dial. It carries the marks for setting changes, has a line at
+  the equilibrium that the curve approaches, and states where the ratio is not
   defined
   (`test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s`,
   `test_the_wash_in_plot_says_what_its_denominator_is`,
   `test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit`). See
-  § "F_A/F_I as a displayed ratio" for the domain it is drawn over, and for
-  what the curve does and does not assert.
+  § "F_A/F_I as a displayed ratio" for the part of the run over which the curve
+  is drawn, and for what it does and does not assert.
 
 The six compartment concentrations above are requirements on the **numeric
 readouts**, not on the chart. The reader may show and hide the chart's
-compartment traces (see § "Interface boundary"). A required value must not
-leave the display when the curve that draws it does. Four of the chart entries
-in this list are the MAC-awake band, the 1 MAC line, the control marks, and
-$`F_A/F_I`$. They are requirements on the chart itself, and the reader cannot
-hide them. The time base is the one chart entry above that the reader does
-choose. For the time base, this list requires that the width in force is
-stated. It never requires that any particular width is in force.
+compartment traces (see § "Interface boundary"), but a required value must stay
+on the display when its trace is hidden. The MAC-awake band, the 1 MAC line, the
+marks for setting changes and the $`F_A/F_I`$ plot are requirements on the chart
+itself, and the reader cannot hide them. Of the chart entries, only the span of
+simulated time is the reader's choice, and no particular span is required.
+
+**For developers.** Testing the display matters because a required output can
+stay in the simulation snapshot (`SimulationSnapshot`) long after the widget
+that draws it has gone. Three entries have no field in the snapshot at all. The
+playback rate and the chart's span are view settings, and $`F_A/F_I`$ is
+computed when the plot is drawn.
+
+**For developers.** The names in parentheses after each entry are the tests
+that check it. The documentation check reads this list (§ "How this document is
+held to the tree"), and fails when an entry names nothing that backs it, or
+names a test that does not exist.
 
 ### What this list requires once the layout is the reader's
 
-This list was written for one fixed layout. Since v0.6.0, `ROADMAP.md`
-planned-milestone item 34 has let the reader add, resize and remove the
-interface's areas. The two meet at the paragraph above. Hiding a compartment
-trace is safe *because* the value stays in the numeric readouts. So a layout
-that can remove the readouts removes the guarantee that the sentence rests on.
-Every show/hide affordance that this document permits then becomes unsafe at
-once. The failure is silent. The chart behaves exactly as documented while the
-display no longer meets this list.
+Since v0.6.0, the reader can add, resize and remove the interface's areas, the
+parts of the window that each show one view, such as a chart (`ROADMAP.md`
+planned-milestone item 34). This list was written for one fixed layout. It now
+divides its values into three parts, by what a reader could misread without
+them. Unconditional values stay on screen in every layout. From any layout, the
+reader can bring on screen the agent accounting, which tracks how much agent the
+model has delivered, exhausted and stored. Conditional values appear only with
+the chart they belong to.
 
-So the list divides into three parts. The division follows what a reader
-could misread a value without. It does not follow how the interface happens to
-be arranged today.
+The division stops a rearranged layout from breaking this list unnoticed.
+Hiding a compartment trace is safe because its value stays in the numeric
+readouts. A layout that could remove the readouts would make every show/hide
+control that this document permits unsafe at once, while the chart still
+behaved exactly as documented.
 
-**Unconditional - the values that no workspace may remove and nothing may
-cover.** The set is stated as a *test*, not as a list. The test is this: a
-value is unconditional when a reader could misread the run's other displayed
-numbers without it. Applying that test gives two tiers.
+**A value is unconditional when a reader could misread the run's other
+displayed numbers without it.** Nothing may cover such a value. The set is
+defined by this criterion, not by a fixed list, and the criterion gives two
+tiers.
 
-**Invariant, whatever is being simulated.** This tier is simulated time, the
-rate at which it is advancing, run state, why a run halted (when one has), and
-what is being administered. Once more than one top-level window can exist, the
-tier also includes the name of the run that the window is showing. See
-§ "What a second top-level window owes" below. That section is where the last
-value comes from. It also explains why this tier and the next are allocated to
-windows differently. None of these values depends on the substance or the
-model. A concentration with no time, no run state and no named drug is the
-correct number under the wrong patient. This document treats that as a display
-failure, not as a missing convenience.
+**The invariant tier is the same whatever is simulated.** It holds simulated
+time, the rate at which it is advancing, the run state, why the run halted (when
+it has), and what is being administered. A concentration shown with no time, no
+run state and no named drug is the correct number under the wrong patient, which
+is a display failure.
 
-**Instantiated per modelled substance, and the current instance is not the
-rule** (project owner, 2026-09-16). For the inhaled-agent model that this
-document specifies, the test selects the delivered concentration and the six
-compartment concentrations. Each is shown in both units, with that agent's 1
-MAC in percent stated. **That instance applies only while an inhaled agent is
-what the run models.** A run that administers no volatile agent owes no
-vaporizer dial, no circuit concentration and no MAC multiple, because it has no
-such quantity to misread. Examples are the intravenous models of `ROADMAP.md`
-planned-milestone item 13, or any later substance. Such a run owes its own
-instance of the same test instead. That instance is named where the substance's
-model is specified.
+**The per-substance tier depends on what the run models** (project owner,
+2026-09-16). For the inhaled-agent model that this document specifies, the
+criterion selects the delivered concentration and the six compartment
+concentrations, each in both units, with the agent's 1 MAC in percent. A run
+that gives no volatile agent need not show them, because it has no vaporizer
+dial, circuit concentration or MAC multiple to misread. That applies to a run
+of the planned intravenous models (`ROADMAP.md` planned-milestone item 13), and
+to a run of any later substance. The same criterion selects such a run's own
+values, which are named where its substance's model is specified.
 
-Writing today's instance as the permanent list is a specific error. This
-document has already made that error once, and it guards against it here. The
-error is to record a rule that is true of the model currently implemented as if
-it were a rule about the application. The test above is what generalises. The
-seven concentrations are what the test currently returns.
+Arterial concentration is **not** in this list. In this model the arterial
+fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
+§ "Model boundary"). A separate arterial readout would show the alveolar number
+a second time under another name, as though the model computed an arterial
+value of its own.
 
-**Reachable rather than simultaneously visible.** This tier is the agent
-accounting: cumulative delivered, cumulative exhausted, total stored, and the
-mass-balance residual with its absolute error. These values state whether the
-*model* is conserving mass. A reader does not titrate against them. Their
-absence from a particular workspace makes no clinical reading wrong, so a
-layout may leave them out. They must stay reachable in every layout, and they
-must not be removable from the application.
+The alveolar readout is labelled "Alveolar", with "end-tidal-equivalent" on the
+line below. It shows the concentration in the model's one well-mixed alveolar
+compartment, which is the value a monitor's end-tidal reading estimates in a
+real patient. The model has no dead space, airway sampling delay or shunt, so
+this readout is not a simulated end-tidal measurement.
 
-**What "reachable" means** (`PL-50PZ`, project owner, 2026-09-27, ratified,
-over leaving the word undefined). A View kind is reachable in a Workspace when
-a reader can bring it on screen from that Workspace through the interface
-alone, in a bounded number of steps, without a drag or a file edit. Two parts
-of the build make that true for every Workspace at once. First, every Area's
-header carries a View chooser. Its menu lists every View kind that the build
-registers, whatever the Workspace names, and choosing one shows it in that Area
-(`app/area_layout.py`). Second, the dashboard's page grows to give a chosen
-View the size it needs. So the choice shows the View itself, and never only the
-notice that the Area is too small for it (`PL-K285`). The registry,
-`app/view_registry.py`, marks the accounting View `required_reachable`. A build
-that does not register that View fails when the module is imported. A layout
-always contains at least one Area, so there is always a chooser to use. None of
-the shipped Workspaces names the accounting View, so the chooser is its route
-in the shipped set. `tests/integration/test_view_chooser.py` checks that route
-from every Area of each shipped Workspace. Each Area that names the accounting
-View builds a View of its own (`PL-TH35`). So when two Areas name it, both show
-the five amounts.
+**The agent accounting must stay reachable, though not always visible.** It
+consists of cumulative agent delivered, cumulative agent exhausted, total agent
+stored, and the mass-balance residual with its absolute error. These five
+amounts show whether the model is conserving mass, and a reader does not
+titrate against them. A Workspace is a saved layout, chosen by its tab. A
+Workspace may leave the amounts out, because their absence makes no clinical
+reading wrong. Nothing may remove them from the application.
 
-**Conditional. These bind a surface only when that surface is shown.** A
-concentration chart carries the MAC-awake band, the 1 MAC line and the control
-marks. It also states how much simulated time it is showing, and whether that
-width was chosen or fits the run. An $`F_A/F_I`$ plot carries its equilibrium
-rule and states where the ratio is not defined. A reference exists so that a
-*trace* is not read without its clinical anchor. Where no trace is drawn, there
-is nothing to anchor, and nothing is lost when the surface is absent. What must
-never happen is a surface shown without its references. That is what these
-entries have always been about.
+**"Reachable" means the reader can bring a view on screen through the interface
+alone** (`PL-50PZ`). They must be able to do it from the Workspace they are in,
+in a bounded number of steps, without dragging anything or editing a file.
+Every area's header has a view chooser, whose menu lists every kind of view the
+application has, whatever the Workspace. Choosing a view shows it in that area.
+The page grows to give the view the space it needs, so the reader sees the view
+itself, never only a notice that the area is too small (`PL-K285`). The
+application will not start if the accounting view is missing from the chooser's
+menu. Every layout has at least one area, so a chooser always offers the
+accounting view. None of the Workspaces supplied with the simulator includes the
+accounting view, so the chooser is how a reader reaches it.
 
-**The control-input timeline splits the same way.** The record itself is
-unconditional. The record is every setting changed during the run, with the
-simulated time it took effect, the control it changed and the values it moved
-between. Its **marks on the chart** are conditional on a chart being shown. The
-list carries the facts, and the marks carry the reading against the curve. That
-reading exists only where a curve does.
+**Conditional values are required only on a chart or plot that is shown.** A
+concentration chart shows the MAC-awake band, the 1 MAC line and the marks of
+control changes. It also states how much simulated time it shows, and whether
+that span was chosen or fits the run. An $`F_A/F_I`$ plot shows its equilibrium
+line and states where the ratio is not defined. These references exist so that a
+trace is never read without its clinical anchor. Where no trace is drawn there
+is nothing to anchor, so leaving the chart out loses nothing.
 
-**Where the unconditional set lives in the build.** `app/unconditional_set.py`
-states the two tiers and the control-input record as data, with the inhaled
-instance as `INHALED_AGENT`. Each run's values sit in one region across the top
-of the dashboard, outside the Areas that `app/area_layout.py` lays out. Since
-`PL-W9P6` (2026-10-18), the setting sections sit in a plain column between the
-region and the Areas, so they are not in an Area either. The dashboard refuses
-to place a run whose region lacks a declared value. So a value moved into an
-Area fails at once, rather than becoming something the reader's own Area
-operations can close (`PL-NWTM`, laid out to `PL-J8K2`).
+**The control-input record is unconditional, and its chart marks are
+conditional.** The record lists every change to a setting during the run, with
+the simulated time it took effect, the control it changed and the values it
+moved between. It gives the facts, and the marks place them against the curve.
 
-**Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The use
-disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one of
-this list's values, so `app/unconditional_set.py` does not declare it. Its home
-is the line across the foot of the window, outside the layout container. The
-project owner ratified that placement on 2026-10-11, together with the band
-across the top (`PL-J8K2`, Q1). No split, join, close or Workspace switch
-affects the line, so it is present in every Workspace a learner builds
-(`test_the_dashboard_carries_the_educational_disclaimer`). Once more than one
-top-level window can exist, each window carries the line in its own frame,
-beside its invariant tier. This is because a window read alone needs the
-statement of what the tool is for as much as it needs the run's time and agent.
+**The unconditional values sit outside the areas.** Each run's unconditional
+values are in one band across the top of the dashboard, the unconditional
+region. The setting sections are in a plain column between that region and the
+areas, so they are outside the areas too (`PL-W9P6`). Neither is affected by a
+change to the areas or a switch of Workspace, so no saved layout has to be
+checked against this list. The dashboard will not place a run whose region
+lacks a required value (`PL-NWTM`, laid out to `PL-J8K2`).
 
-*Always in view* (`PL-NNML`, 2026-10-20). The line sits at the foot of the
-window, below the part of the dashboard that scrolls. The unconditional region
-sits at the top, above that part. Only the Workspace tabs, the Areas and the
-case's controls scroll between them. So neither the window's height nor any
-scrolling takes the line out of view. Neither takes the region out of view
-either, nor the interpretation statement, `INTERPRETATION_DISCLAIMER_TEXT`, on
-the region's readout heading row. That includes the scroll to the concentration
-chart that happens when a branch is taken (`PL-562Z`). This is what the colour
-section below means by "always". Before this change, the whole page scrolled.
-Measured offscreen at 1366 px wide on 2026-10-20, the page was 1087 px tall in
-the Default Workspace and 1505 px in Induction and Maintenance. So in a 700 or
-900 px window, the line was below the visible part, and scrolling down to it
-moved the region off the top.
-`test_the_region_and_the_use_disclaimer_stay_in_the_viewport` checks both at
-700, 900 and 1100 px in each shipped Workspace.
+**The educational-use disclaimer is a line across the foot of the window,
+outside the layout** (`PL-JSY5`, `PL-J8K2` Q1). Like the unconditional region,
+it is unaffected by any change to the areas, so it is present in every Workspace
+a reader builds. Once a run can be shown in a separate window, each window will
+carry the line in its own frame, beside its invariant tier. A window read alone
+needs the statement of what the tool is for as much as it needs the run's time
+and agent.
 
-**The rule all three rest on is about occlusion, not about window types.** No
-value this list requires may be covered while the application still believes it
-is showing that value. This one sentence applies to a panel drawn over the
-dashboard. It applies to a second top-level window dragged over another
-window's invariant region, or over the main window's per-substance readouts. It
-applies to any later floating mechanism. It covers all three without being
-argued again for each. It is a property of the display rather than of a window type, which is why it
-is stated once, here.
+**The disclaimer line and the unconditional region are always in view**
+(`PL-NNML`). The line sits below the part of the dashboard that scrolls, and
+the region sits above it. Only the Workspace tabs, the areas and the case's
+controls scroll between them. The interpretation statement on the region's
+readout heading row stays in view with the line and the region, at any window
+height and through any scrolling. This is what "always" means in the paragraphs
+on the alert colour below.
 
-**What "the application believes" is bounded by what it can observe, and the
-boundary is stated rather than implied** (2026-09-16). The rule applies to the
-application's *own* windows and panels, which it creates, positions and can
-query. It makes no claim about a window that belongs to another application, or
-to the operating system, drawn on top of one of ours. That is not a loophole
-being reserved. It is the limit of what any application can enforce. Saying so
-stops a later reader from taking the sentence above as a guarantee against
-every way a value can be hidden. What the toolkit itself can report is narrower
-than it first appears, and this was measured rather than assumed (PySide6
-6.11.2 / Qt 6.11.2, 2026-09-16). `QWidget.isVisible()` is documented to stay
-true for a widget "obscured by other windows on the screen". So it reports the
-application's own show/hide bookkeeping, and never occlusion.
-`QWindow.visibility()` reports which of Hidden, Windowed, Minimized, Maximized
-or FullScreen a window occupies. That catches a minimized or hidden window and
-nothing else. The one signal close to occlusion, `QWindow.isExposed()`, is
-documented only as something that *might* change when a window is "made totally
-obscured by another window". The platform plugins also disagree about it. The
-macOS plugin drives it from `NSWindow.occlusionState`, while the Windows plugin
-deliberately keeps it true under occlusion for compatibility. So it is not a
-signal that a safety rule may rest on, and this document does not rest one on
-it. What the application must do is the half it can achieve. It must never go
-on *asserting* that it is showing a value when it can see that the value's own
-window is minimized or hidden.
+**No value this list requires may be covered while the application treats it
+as shown.** This occlusion rule applies to a panel drawn over the dashboard, a
+separate window dragged over another window's invariant tier or over the main
+window's per-substance readouts, and any floating element added later. It is a
+property of the display, so it is the same for every kind of window.
 
-**Guaranteed structurally, not by validating a saved layout.** Each top-level
-window's unconditional region sits outside *that window's* area system. So no
-split, join, close or workspace switch affects it, and no saved layout has to
-be checked against this list to be safe. Closing a window is also one of those
-operations, and it is the one operation that the area system does not own. The
-main window cannot be closed while any other window is open. That is what keeps
-the per-substance tier from being closed out from under a reader. Validating
-each workspace and refusing the ones that fail is the fallback for anything
-that cannot live in that region. Validation warns after the fact, where the
-structure prevents the failure. That makes validation the weaker of the two,
-which is why it is the fallback. Blender is the model for the *structure*, a
-region outside the area system, and explicitly not for its persistence.
-Blender's Topbar and Status Bar sit outside the area system as this region
-does, but neither is unconditionally present. *Focus Mode* (View -> Area ->
-Focus Mode, Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar and the
-editor's secondary regions together, for maximum screen space (Blender Manual,
-"Interface -> Window System -> Areas", read at the source 2026-09-16). That is
-the right trade for a 3D application and the wrong one here. Blender has no
-class of value whose absence is a safety failure, and this application does. So
-take the structure and refuse the escape hatch. Say so wherever a reader would
-otherwise assume that the whole precedent was copied.
+**The occlusion rule applies only to the application's own windows and panels**
+(2026-09-16). The application creates and places these, and can check their
+state. A window of another program or of the operating system can still cover a
+value, and no application can prevent that. The application can tell when one of
+its windows is minimized or hidden, but it has no reliable signal that a window
+is covered. It must never go on treating a value as shown once it can see that
+the value's window is minimized or hidden.
 
-**What a second top-level window owes, and it is not the whole set** (project
+**A separate window shows the invariant tier, not the whole set** (project
 owner, 2026-09-16, ratified - a recommendation put to them and agreed, chosen
 over the two live readings `PL-W54S` had written, and reopenable on ordinary
 evidence per `CLAUDE.md`; the occlusion rule above is not, being the safety
-floor rather than the arrangement). The guarantee above is stated against the
-area system's own operations. It stops at the frame of the window that carries
-the region. `ROADMAP.md` item 34 includes break-out as its second half, which
-is wanted but not yet scheduled (project owner, 2026-09-26). Break-out takes an
-area into its own top-level window, which is itself a full window with its own
-areas. The region that v0.6.0 builds has to be the right shape for break-out on
-the first attempt. `PL-WLWY` wrote three candidate readings of what such a
-window owes, and closed without choosing between them. The answer is a fourth
-reading. It splits the obligation the way this section has already split the
-list, because **the two tiers are unconditional for different reasons and those
-reasons travel differently**:
+requirement rather than the arrangement). Breaking an area out into a window
+of its own is the second half of `ROADMAP.md` planned-milestone item 34, and it
+is wanted but not yet scheduled (project owner, 2026-09-26). Such a window is a
+full window, with areas of its own. The two tiers are unconditional for
+different reasons, so each goes where its reason applies:
 
-- **Every top-level window the application owns carries the invariant tier
-  together with the name of the run that window is showing.** The invariant
-  tier is simulated time, the rate at which it is advancing, run state, why a
-  run halted (when one has), and what is being administered. The tier and the
-  name sit in a region outside *that* window's area system. The tier's own
-  justification above is that "a concentration with no time, no run state and
-  no named drug is the correct number under the wrong patient". That is a
-  property of any surface that displays a concentration, not of the display
-  taken as a whole. So the tier follows the concentration into whatever window
-  the concentration goes to. It is five values and a name. That is small enough
-  for a window holding one chart to carry it without the squeeze that
-  § "Diverged, and each divergence has a specific cause" of
-  `docs/interface-provenance.md` refuses.
-- **The per-substance tier lives once, in the main window**, which **cannot be
-  closed while any other top-level window is open**. Closing the main window
-  closes the others. This tier's justification is the other one: a reader could
-  misread the run's *other* displayed numbers without it. That is a statement
-  about the display taken as a whole, not about any one surface.
-- **The accounting tier is unchanged**, because it is already an obligation on
-  the application rather than on any layout or window.
+- **Every window of the application carries the invariant tier and the name of
+  the run it shows**, in a region outside that window's areas. Any view that
+  shows a concentration needs its time, run state and drug, so the tier goes
+  with the concentration into whatever window shows it. Five values and a name
+  fit, without squeezing, in a window that holds one chart.
+- **The per-substance tier appears once, in the main window**, which cannot be
+  closed while any other window is open. Closing the main window closes the
+  others. A reader could misread the run's other displayed numbers without this
+  tier, so it concerns the display as a whole rather than any one view.
+- **The agent accounting is unchanged**, because its requirement already applies
+  to the application rather than to any layout or window.
 
-**Why the other two readings were refused**, recorded so that they are not
-proposed again. *Every window carries the whole region* is not merely the
-stricter option. A broken-out window is typically small, such as one chart on a
-second screen. Forcing seven concentrations in two units into it has one of two
-results. Either they dominate the window, which defeats break-out, or they are
-squeezed, which is the failure the never-hidden divergence exists to refuse.
-*The main window carries everything and a broken-out window names only its run*
-leaves a window drawing compartment traces with no time, no rate, no run state
-and no agent. It also rests the guarantee on a window that the reader may not
-be able to see. `PL-WLWY` used that same property to rule out the reading that
-the contract applies to the application rather than to the window. A guarantee
-that rests on where the window manager has put things is the same guarantee in
-both cases.
-
-**This is the display side of an evidenced failure mode, not a house
-preference.** It is established that correct data read in the wrong context is
-a distinct class of clinical-information-system error. Ash, Berg and Coiera
-describe the "silent errors" that such systems foster rather than prevent (*J
-Am Med Inform Assoc* 2004;11(2):104-112, doi:10.1197/jamia.M1471). Magrabi and
-colleagues classified 42,616 reported incidents. Their classification makes
-information *output* a category in its own right, at 20% of computer-related
-problems (*J Am Med Inform Assoc* 2010;17(6):663-670,
-doi:10.1136/jamia.2009.002444). The closest measured analogue of the rule above
-is the wrong-patient order. Restoring one piece of patient context to the
-display banner, a photograph, was associated with lower wrong-patient order
-entry across 2,558,746 orders (adjusted OR 0.57, 95% CI 0.52-0.61; Salmasian et
-al., *JAMA Netw Open* 2020;3(11):e2019652,
+**The invariant tier answers a documented failure.** Correct data read in the
+wrong context is an established class of clinical-information-system error.
+Ash, Berg and Coiera describe the "silent errors" that such systems foster
+rather than prevent (*J Am Med Inform Assoc* 2004;11(2):104-112,
+doi:10.1197/jamia.M1471). Magrabi and colleagues classified 42,616 reported
+incidents, and their classification makes information *output* a category of
+its own, at 20% of computer-related problems (*J Am Med Inform Assoc*
+2010;17(6):663-670, doi:10.1136/jamia.2009.002444). The closest measured
+analogue is the wrong-patient order. Restoring one piece of patient context, a
+photograph, to the display banner was associated with fewer wrong-patient
+orders across 2,558,746 orders (adjusted OR 0.57, 95% CI 0.52-0.61; Salmasian
+et al., *JAMA Netw Open* 2020;3(11):e2019652,
 doi:10.1001/jamanetworkopen.2020.19652). That is the invariant tier's argument
-in a different clinical setting: context carried in the frame of the view,
-rather than assumed from elsewhere on the screen. Two things are deliberately
-*not* claimed here, because they were checked and not found. The first is that
-duplicating a live readout across windows is itself a named hazard. The one
-randomised trial of concurrently open records found no difference in
-wrong-patient errors (Adelman et al., *JAMA* 2019;321(18):1780-1787,
-doi:10.1001/jama.2019.3698). The second is that tiling is a published
-preference over overlapping windows. The only controlled comparison does not
-support that claim. The tiling argument rests on this project's own occlusion
-reasoning, as item 34 already records.
+in another clinical setting: context carried in the frame of the view, not
+assumed from elsewhere on the screen.
 
-**A stepping stone, and recorded as one** (project owner, 2026-09-15). This is
-deliberately the rigid version, with a fixed unconditional region and a
-conditional remainder. It was chosen to be correct while the layout apparatus
-is built, not to be the apparatus's final shape: "ultimately, will be able to
-resize everything however ... I'm ok with starting with a relatively more rigid
-structure as a stepping stone". So the particular split of this list is
-expected to be revisited as that apparatus matures. What must survive any
-revision is the occlusion rule above. That rule is the safety requirement,
-while the split is only the arrangement.
+**The division of this list is a first version** (project owner, 2026-09-15).
+The fixed unconditional region and the conditional remainder were chosen to be
+correct while the tools for arranging the layout are built, and the division is
+expected to change as those tools mature. Any change must keep the occlusion
+rule, because that rule is the safety requirement and the division is only the
+arrangement.
 
-**While two runs are shown, every readout names the run it describes, and all
-six compartments keep theirs** (`PL-1XPX`). This list is a requirement on the
-numeric readouts, and it does not become a smaller one in compare mode. The
-rule in the paragraph above says that a required value must not leave the
-display with the curve that draws it. That rule applies to the chart's
-two-compartment cap (`ROADMAP.md` v0.5.0, `PL-HLD5`) exactly as it applies to a
-reader hiding a trace. The cap is a colour-capacity limit on the chart, not a
-reduction of what the display owes. So while two runs are compared, the chart
-may draw two compartments and the readouts still carry six, for both runs. The
-readouts are what keep the other four on the display.
+**While two runs are shown, every readout names its run, and all six
+compartments keep their readouts for both runs** (`PL-1XPX`). A required value
+must not leave the display with the curve that draws it. That applies to the
+chart's limit of two compartments in compare mode (`ROADMAP.md` v0.5.0,
+`PL-HLD5`) just as it does when a reader hides a trace. The limit comes from how
+many colours the chart can use, and it does not reduce what the display must
+show.
 
-**The run is named in text, not carried by colour or by position.** Colour is
-spent on the compartment, and it cannot take a second meaning on either side of
-a mode change. "The six compartment traces" measures the worst
-trace-against-trace pair at 1.01:1 against a 3:1 requirement. That is why
-`PL-HLD5` put the run on line width rather than colour. Text has no equivalent
-of line width. Position alone fails the reader who has looked away and back,
-which is the stale-context failure that this requirement exists for. A
-concentration that does not say which management produced it is the correct
-number under the wrong patient context.
+**The run is named in text, not by colour or position.** Colour already
+identifies the compartment in both modes, so it cannot also identify the run.
+The worst contrast between two compartment traces is 1.01:1, against the 3:1
+required (§ "The six compartment traces"). The chart therefore shows the run by
+line width instead (`PL-HLD5`). Text has no equivalent of line width. Position
+alone fails a reader who looks away and back, which is the stale-context failure
+this requirement exists to prevent.
 
-**A run's name renders its identity, not its place** (`PL-7Z84`). Each run that
-the session places is given a number, counting from 1, and the name is "Run"
-followed by that number. A run keeps its number for as long as it holds its
-place on screen. For the trunk, that is from when the dashboard opens. For a
-branch, it is from its fork until it is dropped. The run's own Reset and a
-change of agent both keep the number, because both start a new run definition
-in the same place, after any confirmation that § "Agent-change behavior" asks
-for. No number is given out twice in a session. So a branch taken after a
-dropped one is "Run 3", never a second "Run 2". A reused name would let a
-Workspace pinned to the dropped run find a run of that name, and show its
-values as the dropped run's values. `src/anesthesia_sim/layout/run_identity.py`
-defines the identity, and `dashboard_frame.run_label` is the one place where it
-is rendered.
+**A run's name gives its identity, not its place** (`PL-7Z84`). Each run placed
+in a session gets a number, counting from 1, and its name is "Run" followed by
+that number. A run keeps its number for as long as it holds its place on screen.
+Branches fork from a run called the trunk, which holds its place from when the
+dashboard opens. A branch holds its place from its fork until it is dropped.
+Resetting a run and changing its agent both keep the number, because both start
+the run afresh in the same place, after any confirmation that
+§ "Agent-change behavior" asks for. No number is given out twice in a session,
+so a branch taken after a dropped one is "Run 3", never a second "Run 2". A
+Workspace can be pinned to a run, so that it shows that run. If a name were
+reused, a Workspace pinned to the dropped run would find a new run of that name
+and show its values as the dropped run's.
 
-A view shows the name of its run whenever a reader could mistake its values for
-another run's values. That applies in three cases: while another run is drawn
-anywhere in the application, while the view is pinned to a run, and always in a
-window broken out of the main one
-(§ "What a second top-level window owes, and it is not the whole set"). The
-old test was the number of runs on the dashboard. That test fails for a run
-shown alone in a pinned Area or in a window of its own. Break-out windows are not built, so the dashboard is the
-only window in which a run is drawn. In this version, therefore, the names are
-shown when two runs are compared, and a pinned Workspace shows its run's name
-in the header of every Area (`PL-2KXB`).
+A view shows its run's name whenever a reader could mistake its values for
+another run's: while another run is drawn anywhere in the application, while the
+view is pinned to a run, and always in a window broken out of the main one.
+Break-out windows are not built yet, so the dashboard is the only window that
+draws a run. In this version, therefore, the names appear when two runs are
+compared, and a pinned Workspace shows its run's name in the header of every
+area (`PL-2KXB`).
 
-**A Workspace pins a run by its identity, and an absent pin is stated**
+**A Workspace pins a run by its identity, and says when that run is absent**
 (`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
-number, and the random token of the session that placed the run. A run with
-the same number in a later session is therefore a different run. When a pinned
-run is not open, the Workspace's Areas show a named "run not present" state. They
-never show another run in its place, and the simulation is left untouched.
-`Workspace.shown_runs` decides which runs a Workspace's Views show. The tab
-strip (`PL-2KXB`) is where a reader sets a pin and sees the absent state.
+number, and a random code for the session that placed the run. A run with the
+same number in a later session is therefore a different run. When the pinned
+run is not open, the Workspace's areas show a named "run not present" state.
+They never show another run in its place, and the simulation is left untouched.
+The reader sets a pin on the row of Workspace tabs, and sees the absent state
+there (`PL-2KXB`).
 
-**Both runs are shown, rather than the selected one with the selection stated.**
-Showing only the selected run would make the readout block a mode. A stale
-selection in that mode would have no visual sign at all. The block looks the
-same whichever run is selected, so a reader who has forgotten the selection
-takes one management's number for the other's. Stating the selection only
-warns after the fact, whereas showing both runs prevents the error. Pairing the
-two values under one compartment label keeps this from doubling the block's
-height. The second run's value and its second unit sit under the first run's
-value in the same panel. Each value has its run's name on the line above it.
-So the block keeps one row of seven panels, and it grows by those name lines
-rather than by a second row (`PL-F2YS`). This preserves the one-row
-comparative reading for which this document requires the resolution to be
-uniform: a reader sees the circuit lead the alveoli, and the alveoli lead the
-tissues. The two values are stacked rather than placed side by side because
-stacking keeps each panel at its one-run width. That width keeps the row seven
-panels across at 1366 px. Placed side by side, the values would make each
-panel roughly twice as wide. Each run's delivered concentration sits on that
-run's own line, beside its name and its transport controls. The values that
-the two runs share are stated once, on the heading line above the paired
-block: the substance, the agent's 1 MAC, and the version and model. They are
-the same for both runs for two reasons. A second run must use the first run's
-agent, and a branch's MAC is checked against its trunk's MAC when the branch
-is opened (`PL-QLZ5`). `PL-3355` still applies. A readout panel reserves the
-width of the widest value it can show, so a value is never wrapped away from
-its unit at any width at which the row is laid out.
+**Both runs' values are shown, not only the selected run's.** Showing only the
+selected run would make the readout block a mode. The block would look the same
+whichever run was selected, so a stale selection would have no visual sign. A
+reader who had forgotten the selection would take one management's number for
+the other's. Stating the selection would only warn after the fact, whereas
+showing both runs prevents the error.
+
+Each compartment's panel holds both runs' values. The second run's value and its
+second unit sit under the first run's, and each value has its run's name on the
+line above it. The block therefore stays one row of seven panels and grows only
+by those name lines (`PL-F2YS`). The single row keeps the comparison for which
+this document requires uniform resolution: a reader sees the circuit lead the
+alveoli, and the alveoli lead the tissues. Each readout panel reserves the width
+of the widest value it can show, so a value is never wrapped away from its unit
+at any width at which the row is laid out (`PL-3355`).
+
+Each run's delivered concentration sits on that run's own line, beside its name
+and its controls, such as Start. The values the two runs share appear once, on
+the heading line above the block: the substance, the agent's 1 MAC, and the
+version and model. They are the same for both runs because a second run must use
+the first run's agent, and a branch's MAC is checked against its trunk's when
+the branch is opened (`PL-QLZ5`).
 
 **No difference readout is required, and none may be added without a stated
-sign convention.** The arithmetic difference of two alveolar fractions is not
-a quantity with a conventional clinical reading. Clinicians reason about depth
-in MAC multiples and in time-to-target. Displaying such a difference would
-imply a standard meaning that it does not have, and "Displayed precision"
-refuses that on grounds of interpretability. The chart already shows the
-comparison continuously, on the axis the reader is looking at.
+sign convention.** The arithmetic difference of two alveolar fractions has no
+conventional clinical reading, because clinicians reason about depth in MAC
+multiples and time to target. Displaying it would imply a standard meaning that
+it does not have, which § "Displayed precision" rules out on grounds of
+interpretability. The chart already shows the comparison continuously, on the
+axis the reader is looking at.
 
-Arterial concentration is deliberately **not** in this list. In this model,
-arterial blood is flow-limited and holds no independent state:
-$`F_a \equiv F_A`$ (see § "Model boundary"). A separate arterial readout would
-therefore display the alveolar number a second time under a different name.
-That would present a definitional identity as though it were an independently
-modeled quantity. Earlier revisions of this document required an arterial
-readout. That requirement dates from before the arterial simplification was
-made explicit. It is withdrawn, rather than satisfied by a duplicate label.
+Telling a halted run from a paused one is a required output. Both stop the
+numbers advancing, and under § "Step atomicity" both leave the simulation in a
+state that the reader can trust. A paused run continues when the reader asks,
+but a halted run cannot. A halted run shown as "Paused" would offer a Start
+control that fails at the first simulation step, and would present a stopped
+trajectory as one still in progress. That is the mode confusion that this
+document's interface rules exist to prevent. A display that merely freezes, with
+no change of state at all, is worse still.
 
-Showing which agent is running is a required output, not a convenience. A
-correct concentration attributed to the wrong agent is a presentation failure.
-The same number also means a different clinical depth for each agent: 2% is
-about 1 MAC of sevoflurane but roughly a third of a MAC of desflurane.
+Showing which agent is running is also a required output. A correct
+concentration attributed to the wrong agent is a display failure, and the same
+number means a different clinical depth for each agent: 2% is about 1 MAC of
+sevoflurane but roughly a third of a MAC of desflurane.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
-The agent selector and the header reinforce that written name with the
-agent-identification color specified by ISO 5360:2016 Table 2 ("Dimensions and
-colours of agent-specific bottle collars and connectors"): yellow for
-sevoflurane, purple for isoflurane, and blue for desflurane. Footnote b of that
-table is the reason the color appears here at all: "if a colour is used on a
-vaporizer, bottle, or package label to facilitate correct identification, it
-is important that only the colour for the appropriate anaesthetic agent be
-used". Displaying a color therefore obligates the application to display the
-correct one. Color is a redundant cue, never the only identifier. The agent
-name stays visible, and each foreground and background pair must meet WCAG 2.2
-AA contrast. The cited standard references, the screen-color approximations
-and the accessible foregrounds are kept together in `app/theme.py`, so that the
-mapping can be audited as one unit.
+The agent selector and the header back the written name with the
+agent-identification colour of ISO 5360:2016 Table 2 ("Dimensions and colours
+of agent-specific bottle collars and connectors"): yellow for sevoflurane,
+purple for isoflurane, and blue for desflurane. Footnote b of that table is why
+the colour appears at all: "if a colour is used on a vaporizer, bottle, or
+package label to facilitate correct identification, it is important that only
+the colour for the appropriate anaesthetic agent be used". Showing a colour
+therefore obliges the application to show the correct one. The colour is never
+the only cue: the agent name is always shown beside it, in the selector's
+options and in the header badge.
 
-The displayed fills are two approximations away from the standard's own value.
-They must not be read as an exact reproduction. Table 2 footnote c states that
-"Munsell colour is the original" and that the other color systems it lists
-"show the nearest available colour sample". The Pantone reference is therefore
-already ISO's approximation, and the sRGB `fill` approximates the Pantone in
-turn. Converting each Munsell original to sRGB independently (via Illuminant C,
-chromatically adapted to D65) gives the deviation of each displayed fill from
-the standard's original value:
+The displayed fills are two approximations away from the standard's own colour.
+Table 2 footnote c states that "Munsell colour is the original" and that the
+other colour systems it lists "show the nearest available colour sample". The
+Pantone reference is therefore already ISO's approximation, and each displayed
+fill is a screen colour (sRGB) that approximates the Pantone in turn. The
+sevoflurane and desflurane originals lie outside the range of sRGB colours, so
+no display can reproduce them exactly. Converting each Munsell original to sRGB
+directly gives each displayed fill's difference from the standard's original
+(ΔE00):
 
 | Agent | ISO Munsell original | Munsell as sRGB | Displayed fill | ΔE00 |
 | --- | --- | --- | --- | --- |
@@ -8841,454 +8784,491 @@ the standard's original value:
 
 <!-- not-restated: 2.1 -->
 
-The sevoflurane and desflurane originals fall outside the sRGB gamut. No
-display can reproduce them exactly, so some deviation is unavoidable rather
-than a choice. The Scope of ISO 5360 excludes desflurane's *dimensions*, and
-Table 2 records "N.S." for its collar angle. Its *colour* is specified in that
-same row, and that colour is what this application uses.
+Table 2 specifies a *colour* for desflurane, and this application uses it,
+even though the Scope of ISO 5360 excludes desflurane's *dimensions* and its
+row in that table records "N.S." for the collar angle.
 
-A known limitation of the standard is reproduced here deliberately. A user
-with a color vision deficiency cannot distinguish isoflurane's purple from
-desflurane's blue. For normal color vision the two differ by only 1.09 in
-luminance, so hue alone separates them. Simulating the three dichromacies
-removes the hue without supplying the luminance: 1.48 for protanopia, 1.06 for
-deuteranopia, and 1.11 for tritanopia. These values were measured by
-`tools/contrast_check.py` with the Brettel 1997 projection recorded under § "The
-six compartment traces" below. They are pinned by
-`tests/unit/test_contrast_check.py`, so this paragraph cannot go stale behind a
-color edit. Choosing more separable colors would break the correspondence to
-real vaporizers, so it is the worse option. The mitigation is that the agent
-name is always rendered alongside the color. `tests/unit/` asserts this for
-both the dropdown options and the header badge. Color must never be the only
-thing distinguishing two agents in this interface.
-
-Distinguishing a halted run from a paused one is required for the same
-reason. Both stop the numbers advancing, and under § "Step atomicity" both
-leave state that the reader can trust. But a paused run will continue when
-the reader asks, and a halted run cannot. A halted run displayed as "Paused"
-therefore offers a Start control that will fail on its first tick. It also
-presents a stopped trajectory as one still in progress. That is the
-mode-confusion failure that this specification's interface rules exist to
-prevent. A display that is merely frozen, with no change of state at all, is
-worse still.
-
-The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
+This application keeps a known limitation of the standard. A reader with a
+colour vision deficiency cannot tell isoflurane's purple from desflurane's blue.
+With normal colour vision the two differ by only 1.09 in luminance, so hue alone
+separates them. Simulating the three dichromacies removes the hue without
+supplying the luminance difference needed to tell them apart: 1.48 for
+protanopia, 1.06 for deuteranopia, and 1.11 for tritanopia. More separable
+colours would break the match with real vaporizers, so they are the worse
+option. For a reader with a colour vision deficiency, the agent name beside each
+colour identifies the agent instead.
 
 **The alert colour deliberately does not follow the medical alarm-colour
-convention** (project owner, 2026-09-14). The agent colours above are adopted
-*because* a standard obligates them. This is the opposite decision, about a
-different colour. The two are recorded together so that the difference is
-visible rather than inferred.
+convention** (project owner, 2026-09-14). This interface uses the alert colour
+only for bold coloured text: the run-status word, a transient notice line, the
+agent-accounting status word, the permanent educational disclaimer, and the
+case-discard dialog. The agent colours above follow a standard because it
+requires them, and nothing requires the alert colour.
 
 IEC 60601-1-8 governs *visual alarm signals*, which are indicators that encode
-priority by colour together with a flash rate. This interface has none. Every
-use of `WARNING` in `app/theme.py` is bold coloured text. Those uses are the
-run-status word, a transient notice line, the agent-accounting status word,
-the permanent educational disclaimer, and the case-discard dialog. There is no
-indicator lamp, no filled banner, no flashing element and no priority tier. So
-there is nothing to which the convention could apply.
+priority by colour together with a flash rate. This interface has no indicator
+lamp, filled banner, flashing element or priority tier, so the convention has
+nothing to apply to.
 
-The disclaimer is what settles the question, and it points away from adopting
-the convention rather than toward it. `WARNING` is the colour of a line that is
-on screen *always*. A monitor's alarm colours carry meaning precisely because
-they are absent until something is wrong. A permanent element painted in a
-high- or medium-priority alarm colour would teach the opposite of the
-convention it borrowed. The divergence is also chosen for its own sake. A
-teaching tool that looks unmistakably unlike a monitor cannot be mistaken for
-one, and this project's disclaimers already take that view.
+The disclaimer settles the question against the convention. The alert colour
+marks a line that is on screen *always*, while a monitor's alarm colours carry
+meaning because they are absent until something is wrong. A permanent element
+painted in a high- or medium-priority alarm colour would teach the opposite of
+the convention it borrowed. Departing from the convention is also wanted for its
+own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
+mistaken for one, which is the view this project's disclaimers already take.
 
 *"Always" names where the line lives, not that it is in view on every screen
 today* (`PL-JSY5`, 2026-10-18). Where the line lives, and the one gap in that,
-are stated in § "Minimum displayed outputs" -> "What this list requires once
-the layout is the reader's". The argument above needs only that the line is
-a permanent statement rather than a conditional one, and that is true at every
-window size.
+are stated in the paragraphs on the disclaimer line above. The argument above
+needs only that the line is a permanent statement, not a conditional one, and
+that is true at every window size.
 
-The interface applies the same economy of signals one level down. The
-supported-run-length boundary is `MUTED`, not `WARNING`, for two reasons.
-Colouring a correct model's declared boundary as a fault would teach a reader
-to distrust a number that is sound. It would also spend the one signal that
-this interface has.
+The boundary of the supported run length is shown in the muted colour, not the
+alert colour, for two reasons. Colouring a correct model's declared boundary as
+a fault would teach a reader to distrust a sound number. It would also spend the
+one signal this interface has.
 
-Two things apply regardless, and neither is in question. First, any colour
-chosen must still clear the contrast target that `tools/contrast_check.py`
-enforces. Second, the ISO 5360 agent colours are untouched. They identify an
-agent and carry no urgency. That is why Table 2 footnote b obligates them and
-nothing obligates this colour. **The decision binds the Qt port as much as the
-current interface**. The port decides the palette afresh, and it is the moment
-at which an indicator-shaped surface could first appear. The port must not
-arrive carrying a monitor's priority palette.
+**For developers.** The unconditional tiers and the control-input record are
+stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
+`INHALED_AGENT`. The educational-use disclaimer is a standing statement
+(`USE_DISCLAIMER_TEXT`) rather than one of this list's values, so that file
+does not declare it. The interpretation statement is
+`INTERPRETATION_DISCLAIMER_TEXT`.
 
-*The priority-to-colour mapping itself is deliberately not recorded here.* It
-could not be established from a primary source, and the secondary sources
-disagree. Three independent reports give the low-priority colour as cyan, as
-blue, and as "green or blue". Writing down a value that is wrong at least twice
-over would be worse than recording none. The decision above does not depend on
-the mapping.
+A code change that moves a required value into an area fails at once, because
+the dashboard then refuses to place the run. Otherwise the reader could close
+the value along with its area. Checking each saved Workspace and rejecting the
+ones that fail is the fallback for anything that cannot sit outside the areas.
+It is the weaker guarantee, because a check warns after the fact, while the
+structure prevents the failure.
+
+The view chooser is built in `app/area_layout.py`. The view registry marks the
+accounting view `required_reachable` (`app/view_registry.py`), and a build that
+does not register that view fails when the module is imported. Each area that
+shows the accounting view builds a copy of its own, so two such areas both show
+the five amounts (`PL-TH35`).
+
+A test checks the chooser's route to the accounting view from every area of
+each Workspace supplied with the simulator
+(`tests/integration/test_view_chooser.py`). Another checks that the disclaimer
+line is present in every Workspace
+(`test_the_dashboard_carries_the_educational_disclaimer`). A third checks that
+the unconditional region and the disclaimer line stay in view in windows 700,
+900 and 1100 px tall, in each supplied Workspace
+(`test_the_region_and_the_use_disclaimer_stay_in_the_viewport`). The region and
+the line must also stay in view through the scroll to the concentration chart
+that happens when a branch is taken (`PL-562Z`).
+
+Before the region and the line were fixed outside the scrolling part
+(`PL-NNML`), the whole page scrolled. At 1366 px wide, the page was 1087 px tall
+in the Default Workspace and 1505 px in Induction and Maintenance (measured
+offscreen, 2026-10-20). In a 700 or 900 px window, the disclaimer line was
+therefore below the visible part, and scrolling down to it moved the region off
+the top.
+
+Blender is the model for the region's structure, a region outside the areas,
+and not for its persistence. Blender's Topbar and Status Bar sit outside its
+areas as this region does, but neither is always present. Focus Mode (View ->
+Area -> Focus Mode, Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar and the
+editor's secondary regions together, for maximum screen space (Blender Manual,
+"Interface -> Window System -> Areas", read at the source 2026-09-16). That is
+the right trade for a 3D application and the wrong one here. Blender has no
+value whose absence is a safety failure, and this application does. Take the
+structure, and leave out any way to hide the region, such as Focus Mode. Say so
+wherever a reader would otherwise assume that the whole precedent was copied.
+
+The toolkit can report less about a covered window than first appears (measured
+on PySide6 6.11.2 / Qt 6.11.2, 2026-09-16). A widget's visibility flag
+(`QWidget.isVisible()`) is documented to stay true for a widget "obscured by
+other windows on the screen", so it reports the application's own show/hide
+bookkeeping and never occlusion. A window's visibility state
+(`QWindow.visibility()`) says which of Hidden, Windowed, Minimized, Maximized or
+FullScreen the window is in, so it catches a minimized or hidden window and
+nothing else. The one signal close to occlusion (`QWindow.isExposed()`) is
+documented only as something that *might* change when a window is "made totally
+obscured by another window", and the platform plugins disagree about it. The
+macOS plugin drives it from `NSWindow.occlusionState`, while the Windows plugin
+deliberately keeps it true under occlusion for compatibility. No safety rule may
+rest on that signal, which is why the occlusion rule asks only what the
+application can see.
+
+The region built in v0.6.0 must already have the right shape for separate
+windows, because its protection from changes to the areas stops at the frame of
+its own window.
+
+Two other readings of what a separate window must show were refused, and should
+not be proposed again. Giving every window the whole unconditional region fails
+because a broken-out window is typically small, such as one chart on a second
+screen. Seven concentrations in two units would either dominate it, which
+defeats breaking it out, or be squeezed, which
+§ "Diverged, and each divergence has a specific cause" of
+`docs/interface-provenance.md` rules out. Giving the main window everything, and
+a broken-out window only its run's name, leaves a window drawing compartment
+traces with no time, no rate, no run state and no agent. It also rests the
+guarantee on a window that the reader may not be able to see. In a third
+reading, the requirement applies to the application rather than to each window.
+It was ruled out on the same ground (`PL-WLWY`), because it too rests the
+guarantee on where the window manager has put things.
+
+The evidence checked does not name duplicating a live readout across windows
+as a hazard in itself. The one randomised trial of concurrently open records
+found no difference in wrong-patient errors (Adelman et al., *JAMA*
+2019;321(18):1780-1787, doi:10.1001/jama.2019.3698). Nor does the evidence show
+a published preference for non-overlapping areas over overlapping windows, and
+the only controlled comparison does not support one. The case for
+non-overlapping areas rests on this project's own reasoning about covered
+values, as `ROADMAP.md` planned-milestone item 34 records.
+
+The run identity is defined in `src/anesthesia_sim/layout/run_identity.py`, and
+the one place that renders a run's name is `dashboard_frame.run_label`. A
+Workspace's views show the runs that `Workspace.shown_runs` returns. An earlier
+rule showed run names only when more than one run was on the dashboard. That
+rule fails for a run shown alone in a pinned area or in a window of its own
+(`PL-2KXB`).
+
+Stacking the two runs' values leaves each panel at its one-run width, so the row
+stays seven panels across at 1366 px. Placed side by side, the values would make
+each panel roughly twice as wide (`PL-F2YS`).
+
+The cited standard references, the screen-colour approximations and the
+accessible foregrounds are kept together in `app/theme.py`, so that the
+agent-colour mapping can be audited as one unit. Every foreground and background
+pair must meet WCAG 2.2 AA contrast. Each Munsell original was converted to sRGB
+via Illuminant C, chromatically adapted to D65. The dichromacy figures were
+computed by `tools/contrast_check.py` with the Brettel 1997 projection recorded
+under § "The six compartment traces". A test pins them, so a colour change
+cannot leave them out of date (`tests/unit/test_contrast_check.py`). Tests in
+`tests/unit/` check that the agent name is shown beside its colour in the
+selector's options and in the header badge.
+
+The alert colour is `WARNING` in `app/theme.py`, and the muted colour is
+`MUTED`. Two requirements apply whatever alert colour is chosen. The chosen
+colour must still meet the interface's contrast target, which
+`tools/contrast_check.py` enforces. The ISO 5360 agent colours stay as they are,
+because they identify an agent and carry no urgency.
+
+The alert-colour decision applies to the Qt port as much as to the current
+interface. The port chooses its palette afresh, and an indicator-shaped element
+could first appear in it, so the port must not arrive with a monitor's priority
+palette.
+
+IEC 60601-1-8's mapping of priority to colour could not be established from a
+primary source, and the secondary sources disagree. Three independent reports
+give the low-priority colour as cyan, as blue, and as "green or blue". The
+alert-colour decision does not depend on the mapping.
 
 ### MAC multiples as a display unit
 
-Every compartment is displayed twice. One display is a percent of one
-atmosphere, and the other is a multiple of the running agent's 1 MAC. Both are
-shown at once: on every compartment, on the delivered-agent control, and on
-the chart. The chart carries a percent axis on the left and a MAC axis on the
-right. Each axis states its own unit in its title, `% of 1 atm` and `×MAC`.
-Until PL-6580, both units were stated in a caption above the plot instead.
-The percent unit is `% of 1 atm` and not `vol %`. A volumes percent is a
-gas-phase volume fraction. The circuit and alveolar compartments have one. The
-mixed-venous, vessel-rich, muscle and fat compartments do not. They hold a
-partial pressure instead, which convention quotes as a percentage of an
-atmosphere. An axis that titled all six as a volume fraction would claim, for
-four of them, a quantity they do not have.
+Every compartment is shown in two units at once: a percent of one atmosphere,
+and a multiple of 1 MAC of the agent in use. Both units appear on the readouts,
+on the delivered-agent control and on the chart. The chart has a percent axis
+on the left, titled `% of 1 atm`, and a MAC axis on the right, titled `×MAC`. It
+plots each trace once, in percent, and the MAC axis relabels that scale, so the
+two axes always agree about where a trace is.
 
-**Why the second unit exists.** A percent axis silently changes meaning when
-the agent changes. 2% is 1 MAC of sevoflurane and about a third of a MAC of
-desflurane. So two runs plotted in percent are two different clinical
-situations drawn at the same height. A learner who compares a desflurane
-wash-in to a sevoflurane one in percent is comparing nothing. MAC multiples
-are the unit that keeps its meaning when the agent changes, and they are the
-unit clinicians reason in.
+The percent unit is `% of 1 atm`, not `vol %`, because `vol %` is a gas-phase
+volume fraction and only the circuit and alveolar compartments have one. The
+mixed-venous, vessel-rich, muscle and fat compartments hold a partial pressure,
+which convention quotes as a percent of one atmosphere.
+
+**MAC multiples keep their meaning when the agent changes, and clinicians reason
+in them.** A percent changes meaning with the agent: 2% is 1 MAC of sevoflurane
+and about a third of a MAC of desflurane. A desflurane wash-in and a sevoflurane
+wash-in drawn at the same height in percent therefore show two different
+clinical situations.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
-**What a MAC multiple on a compartment asserts.** This is the whole difficulty
-of the unit, and the difficulty is not the arithmetic. MAC is defined for the
+**What a MAC multiple means depends on the compartment.** MAC is defined for the
 *alveolar* (end-tidal) concentration at one atmosphere in a nominal
 40-year-old. It is the population ED50 for immobility in response to a
 standardized surgical stimulus. So:
 
 - On the **alveolar** compartment, a MAC multiple has its conventional
-  meaning. It is subject to every limitation of the divisor recorded below.
+  meaning, subject to the limitations listed below.
 - On the **circuit, mixed-venous, vessel-rich, muscle and fat** compartments,
   it means only *this compartment's partial pressure equals N times the
   alveolar partial pressure that would be 1 MAC*. It is a ratio of partial
-  pressures. It is **not** a statement that the patient is at N MAC of
-  anesthetic depth. The two read identically on a label unless the label says
-  which one it means.
+  pressures, **not** a statement that the patient is at N MAC of anesthetic
+  depth.
 
-The display never presents the ratio as a depth, and the notation is what
-tells the reader so. The unit is written `×MAC` on every readout and on the
-chart's right-hand axis, for the reason given below. Until PL-6580, the
-distinction was also stated in prose beside the chart, in the terms above.
-That paragraph was removed with the rest of the panel's explanatory text. The
-reader of this display is an anesthesia provider. For that reader, what MAC is
-defined against is fundamental knowledge, not something to be taught at the
-top of a chart. A dozen lines of text between the reader and the plot cost
-more than they gave. This section is now the only full statement of the
-convention, which is why it is stated here at length.
+Three limitations apply to every compartment, including the alveolar one:
 
-Three further limitations apply to every compartment, including the alveolar
-one, and none of them is modeled here. First, MAC falls about 6% per decade of
-age (Mapleson 1996, cited in each agent's `sources`), and this model's
-reference adult has no age parameter. Second, the MAC multiples of
-co-administered agents are additive, and this model runs one agent at a time.
-Third, opioids, temperature and patient factors modify MAC, and none of them
-is represented.
+1. MAC falls about 6% per decade of age (Mapleson 1996), and the model's
+   reference adult has no age parameter.
+2. The MAC multiples of co-administered agents are additive, and the model runs
+   one agent at a time.
+3. Opioids, temperature and patient factors modify MAC, and the model
+   represents none of them.
 <!-- not-restated: 6 % -->
 
-**The unit is written `×MAC`, not `MAC`.** "0.80 MAC" is read as a depth.
-"0.80 ×MAC" is read as what the number is. The multiplication sign does safety
-work rather than typographic work, and that is why the readouts carry it. The
-chart's right-hand axis is titled `×MAC` for the same reason and in the same
-words. Its ticks show bare numbers, such as `0.5` and `1.0`. So the title is
-the only thing on the plot that says what they are. The title also labels six
-traces at once, and five of them are not the compartment that MAC is defined
-for. One unit is written as one token everywhere it appears.
+**The unit is written `×MAC`, not `MAC`.** A clinician reads "0.80 MAC" as a
+depth of anesthesia, and "0.80 ×MAC" as a multiple of 1 MAC, which is what the
+number is. Every readout carries the multiplication sign, and so does the MAC
+axis title. The axis ticks show bare numbers, such as `0.5` and `1.0`, so only
+the title says what they are. That title labels six traces at once, and five of
+them are not the alveolar compartment. No text on the display explains the
+difference between a ratio and a depth, so the sign is the only thing that
+marks it.
 
-**The divisor is displayed.** A MAC multiple has exactly one free parameter.
-`CLAUDE.md` requires a clinically meaningful displayed value to be traceable
-to the transformation that produced it. The interface therefore states the
-running agent's 1 MAC in percent beside the chart, as "1 MAC sevoflurane =
-2.0%". A reader who disagrees with the divisor can then see that they
-disagree. They can also convert back to the percent that the model actually
-computes.
+**The agent's 1 MAC is shown beside the chart**, for example as "1 MAC
+sevoflurane = 2.0%". Every MAC multiple on the display is a percent divided by
+the 1 MAC of the agent that produced that percent. A reader can compare the
+1 MAC shown with the value they use, and can convert back to the percent that
+the model computes. The 1 MAC is also the vaporizer's starting position.
+§ "Delivery-limit and MAC parameters" gives the source of each agent's 1 MAC,
+how far it is from the primary literature, and what that gap means for
+comparing agents.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 
-**Nothing in `core/` computes a MAC multiple.** The transformation lives in
-`app/formatting.py` and takes the divisor as an argument. The divisor reaches
-it through `SimulationSnapshot.agent_mac_percent`. That field sits beside the
-concentrations the divisor scales and the agent it belongs to. So a frame
-cannot pair one agent's compartment with another agent's MAC. The chart's
-plotted points remain in percent. The MAC axis relabels that same coordinate
-rather than carrying a second series, so the two axes cannot come to disagree
-about where a trace is. Both units are always shown rather than selected,
-because a unit selector would make the axis unit a mode, and a chart read under the
-wrong assumed unit is a misreading that no disclaimer catches.
-
-**The chart's vertical range is denominated in MAC, and fixed.** For every
-agent, the axis runs from 0 to **3 ×MAC** of the running agent, with a rule
-every half MAC. The axis is therefore one ruler: the same case drawn under two
-agents is drawn at the same height. That is the property the second unit
-exists to give, and the axis previously took it away. Until PL-CC23, the top
-of the axis was the agent's vaporizer dial maximum. That was 3.00 ×MAC of
-desflurane, 4.00 of sevoflurane and 4.17 of isoflurane. So a learner who
-compared a desflurane wash-in to a sevoflurane one was comparing shapes
-silently rescaled by 1.39×. The horizontal rules were also a fixed 2 percent
-apart. That is every 0.33 ×MAC under desflurane and every 1.67 ×MAC under
-isoflurane.
-<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
-<!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
-<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
-<!-- derived: 1.39 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
-<!-- derived: 1.39 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
-<!-- derived: 0.33 from data/agents/desflurane.json mac_percent = 6 -->
-<!-- derived: 1.67 from data/agents/isoflurane.json mac_percent = 1.2 -->
+**The chart's vertical range is set in MAC, and fixed.** For every
+agent, the axis runs from 0 to a ceiling of **3 ×MAC** of the agent in use, with
+a gridline every half MAC. A given MAC multiple is therefore drawn at the same
+height under any agent. The axis never grows to fit a trace. An axis that grew
+would redraw a rising curve smaller partway through a lesson, and a reader would
+take that change of shape for something the model did. The axis stays the same
+for the whole session, not only within a run, so two consecutive runs are
+comparable too.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**Why 3, and why fixed.** Three is exactly desflurane's dial maximum divided
-by its 1 MAC. So the shared ceiling is anchored to a real device limit rather
-than to a preference. The agent whose vaporizer is most limited also gets no
-dead band above its reachable range. The ceiling puts the 1 MAC line at a
-third of the plot height. That is inside the plot rather than on its frame,
-which a ceiling of 2 could not do. The ceiling also keeps on the plot the 2-3×
-MAC range that overpressure induction works in. The axis is fixed rather than
-fitted for the reason that "Why the axis is fixed rather than fitted" gives
-for the wash-in plot below. An axis that grew to fit an excursion would redraw
-a rising curve at a smaller height partway through a lesson. A reader would
-attribute that change of shape to the model. The axis is fixed across the
-session, not only within a run, so two consecutive runs are comparable too.
-
-**A trace above the ceiling is named, not left to look like a plateau.** A
-fixed ceiling can be exceeded, where a ceiling at the dial maximum could not.
-The setting that exceeds it is in common use, not an edge case. Sevoflurane's
-8% dial setting is 4.00 ×MAC and is a common inhalational-induction setting. A
-clipped trace draws as a horizontal line at the top of the frame, and a
-horizontal line is what a plateau looks like. So a reader would conclude that
-the concentration stopped rising at 3 ×MAC when the model says it did not.
-That is a wrong clinical reading of a correct model. The chart therefore names
-the compartments that are above the ceiling. It also says that the readouts,
-which are not clipped, keep showing their values. The comparison is made
-against the displayed resolution rather than against zero, so a trace sitting
-exactly at the ceiling is not reported. This matters because isoflurane's
-ceiling is 3 × 1.2, which in binary floating point is 3.5999999999999996.
+**The chart names each compartment whose trace is above the ceiling.** A trace
+above 3 ×MAC is cut off at the top of the frame, where it runs flat as a plateau
+would. If the chart did not name the compartment, a reader would conclude that
+the concentration stopped rising at 3 ×MAC when the model says it did not. The
+chart also says that the readouts are not cut off and keep showing their values.
+Sevoflurane's 8% dial setting is 4.00 ×MAC, above the ceiling, and is common for
+inhalational induction.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**What the divisor is worth.** `mac_percent` is a tier-3 value, and this
-section is where that matters most. The value is now the divisor of every MAC
-number on the display, not only the vaporizer's starting position.
-"Delivery-limit and MAC parameters" carries its provenance and the size of the
-gap against the primary literature. That includes the consequence for the
-cross-agent comparison that this unit exists to support.
+**For developers.** Nothing in the model's code (`core/`) computes a MAC
+multiple. The display code converts percent to MAC multiples
+(`app/formatting.py`) and takes the agent's 1 MAC as an argument. That 1 MAC
+travels in each snapshot of the simulation's state, beside the concentrations
+it scales and the agent it belongs to (`SimulationSnapshot.agent_mac_percent`).
+The display code therefore cannot pair one agent's concentrations with another
+agent's 1 MAC.
+
+Both units are shown because a unit selector would make the axis unit a mode,
+and a chart read under the wrong assumed unit is a misreading that no
+disclaimer catches. The agent's 1 MAC is shown because the project's rules
+(`CLAUDE.md`) require a clinically meaningful displayed value to be traceable to
+the transformation that produced it. The display carries no text explaining MAC
+because its reader, an anesthesia provider, knows what MAC is defined against,
+and a dozen lines of text between the reader and the plot cost more than they
+gave (`PL-6580`).
+
+In each agent's data file, the authority for the stored 1 MAC is De Wolf et al.
+2012, which reports the flat adult MAC that Gas Man uses. Each data file also
+cites Mapleson 1996, the source for the fall in MAC with age.
+
+**For developers.** The stored 1 MAC (`mac_percent`) is a tier-3 value under
+§ "Source hierarchy: what may be cited as the authority for a value", and
+Mapleson 1996 is in each data file's `sources` list.
+
+The ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
+desflurane's dial maximum divided by its 1 MAC. It therefore rests on a real
+device limit. Desflurane's vaporizer is the most limited, and the ceiling leaves
+no empty band above the range that vaporizer can reach. The ceiling puts the
+1 MAC line at a third of the plot height, inside the plot rather than on its
+frame, which a ceiling of 2 could not do. It also keeps on the plot the
+2-3 ×MAC range that overpressure induction works in. A ceiling at each agent's
+own dial maximum could never be exceeded. But it would draw the same MAC
+multiple at different heights for different agents, because the dial maxima
+run from 3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
+<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
+
+A gridline every half MAC (`CHART_GRID_INTERVAL_MAC`) falls on the values that
+the MAC axis labels, so the axis names every gridline on the plot.
+
+The chart compares a trace's excess over the ceiling with the displayed
+resolution rather than with zero, so it does not name a compartment whose trace
+sits exactly at the ceiling. This matters for isoflurane, whose ceiling,
+3 × 1.2, is 3.5999999999999996 in binary floating point.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 ### The chart's time base
 
-**What it is.** The time base is how much simulated time the chart shows at
-once. The reader either picks a width from a fixed ladder or leaves the
-default, which fits the whole run so far. In both cases the horizontal axis is
-simulated time. The time base decides only how much of that time is on the
-plot and how finely the span is ruled. The code for this section is
-`app/chart_time_base.py`. That module is arithmetic over simulated time. It
-reads no simulation state and imports no toolkit. So the widths and the rule
-this section reasons about can be read, cited and tested without loading the
-interface. The section above governs the vertical axis, and this one governs
-the horizontal axis.
+**The time base is how much simulated time a chart shows at once.** The reader
+either picks from a fixed ladder of widths, from fifteen minutes to twelve
+hours, or leaves the default, which fits the whole run so far. Either way, the
+horizontal axis is simulated time. A separate control, the playback rate, sets
+how fast the run advances, so that a long case can be watched in one sitting.
 
-**Why a case needs one.** The compartments this model exists to teach are
-slow, but the moment a learner is most likely to be watching is not. At the
-reference settings, muscle's time constant for sevoflurane is about 135 min
-and fat's is about 42 h, while induction lasts minutes. A five-minute window
-hides everything slower than the vessel-rich group. A twelve-hour window puts
-a five-minute induction in the leftmost 0.7% of the plot. The playback rate is
-what makes a long case watchable in one sitting, and the time base is what
-makes it readable. They are separate controls because they address separate
-questions: how fast the run advances, and how much of it is in view.
+**A time base changes the view and never the run.** No simulation step is
+resized or taken again. Nothing that defines the run is added, discarded or
+altered. A case watched at a width of fifteen minutes or of twelve hours is the
+same run, so § "The reproducibility guarantee" still applies. Every point drawn
+at any width is a state that the run reached at the simulated instant where the
+point sits. In a wider window, these states lie further apart in simulated time.
+No drawn value is estimated from its neighbours, and no stored image is
+enlarged.
 
-**A time base is a view control and reaches no model state.** Choosing a time
-base changes which part of the run is drawn, and at what column spacing, and
-nothing else. No step is resized. Nothing in the run definition is added,
-discarded or altered, and the run is not re-stepped. The time base therefore
-leaves "The reproducibility guarantee" untouched. The same case watched at
-fifteen minutes and at twelve hours is the same run, keyframe for keyframe.
-Every point drawn at any width is still a state that the run reached at the
-simulated instant where the point sits on the time axis. It is evaluated from the run definition
-under the constraint that "Interface boundary" places on a plotted trace. So a
-wider window is a coarser *grid* of exact states. It is never a resampling, an
-interpolation or a stored image zoomed into.
+**No one width suits a whole case.** The compartments this model exists to teach
+are slow, but the moment a learner is most likely to be watching is not. At the
+reference settings, muscle's time constant for sevoflurane is about 135 min and
+fat's is about 42 h, while induction lasts minutes. A five-minute window hides
+everything slower than the vessel-rich group. A twelve-hour window puts a
+five-minute induction in the leftmost 0.7% of the plot.
 
-**Why a fixed ladder rather than a free zoom.** The selected width is the
-width of the window at every point of every run. So seconds per pixel is a
-property of the reader's choice, not of how long the run has been going. A
-trace's slope on the plot is then a fixed multiple of its rate. The slope
-stays comparable between two moments of one run and between two runs. A
-window that grew continuously with the run would rescale every slope while the
-underlying rates stayed the same. That would be a misleading visual encoding
-of rate of rise, which is the one quantity that uptake and distribution are
-taught by. The fixed vertical range rests on the same argument. Discrete steps
-also make one step a meaningful change rather than a nudge, because each rung
-is at least half again as wide as the one below it.
+**A chosen width keeps slopes comparable within a run and between runs.** It
+stays the same at every moment of every run. Seconds per pixel then depend on
+the reader's choice alone, not on how long the run has gone on. A trace's slope
+on the plot is therefore a fixed multiple of its rate of change. A window that
+widened continuously with the run would rescale every slope while the rates
+stayed the same. That would misrepresent rate of rise, the one quantity by which
+uptake and distribution are taught. The vertical axis has a fixed range for the
+same reason (see the section above).
 
-**The ruling derives from the width.** Each rung carries the interval at
-which its gridlines and labels fall. Every rung is ruled into four to six
-intervals. That range looks like a grid, rather than like a bare axis or a
-hatch pattern. A single fixed interval cannot do that across the whole ladder.
-The 60 s interval that this replaced would rule a twelve-hour axis into 720
-lines, which would look like a solid block. Ticks stand at multiples of the
-interval measured from the case's zero, not from the window's left edge. So a
-gridline stays at the same simulated time as the window slides underneath it.
-That is true for every run on the axis, because a branch is on the same clock
-as the trunk it came from.
+**The gridlines follow from the width.** Each width on the ladder sets the
+interval at which gridlines and labels fall, so that the axis holds four to six
+intervals. Gridlines fall at multiples of that interval counted from the start
+of the case, not from the window's left edge, so a gridline stays at the same
+simulated time as the window slides under it. The gridlines are the same for
+every run drawn on the axis, because a run branched from another keeps the clock
+of the run it came from.
 
-**Fitting always fits.** Fitting is the default mode. Past the widest declared
-rung, the ladder continues by doubling, rather than stopping at the widest
-rung and showing only part of the case. Suppose a mode named for showing the
-whole run silently showed the most recent twelve hours of a fourteen-hour run.
-It would then claim something false about what the reader is looking at. That
-is why the honesty of the name is a requirement on the mode, not a property of
-how far the ladder reaches. The ladder also carries rungs below the narrowest
-width that the selector offers. Fitting can reach those rungs, but the reader
-cannot choose them. Fitting has to work at ten seconds as well as at ten
-hours, and choosing a span with nothing in it gives a view nobody wants.
+**The default always shows the whole run.** It uses the narrowest width that
+holds the run, so the width steps up as the run grows, and slopes on the plot
+change scale at each step. Past the widest width on the ladder, it keeps
+doubling the width. Early in a run, it can also use widths narrower than any the
+reader can choose.
 
-**Every axis label carries its own unit, and the width in force is stated.** A
-tick reads `0`, `45s`, `3m`, `1m30s` or `1h30m`, rather than a bare number
-under a unit given in a caption. The axis spans anything from a minute to half
-a day. So a bare `12` would mean twelve minutes on one time base and twelve
-hours on another, while looking identical on both. A reader who missed the
-caption would have nothing in the label to correct them. Beside the plot, the
-chart names the width in words. It also says whether the reader chose that
-width or it is the whole run so far, because those are different claims about
-what is on screen. The time base is a mode in exactly the sense that the
-playback rate is one, and it is displayed for the same reason. When a reader
-cannot see the span, they supply their own assumption for it.
+**Every axis label carries its own unit, and each chart states its width.** A
+label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. Beside the plot, the chart
+names the width in words and says whether the reader chose it or it is the whole
+run so far.
 
-**Each chart holds its own time base** (project owner, 2026-10-19,
-ratified, over one shared window saved per Workspace; `PL-L59K`). The
-concentration chart and the F_A/F_I plot each carry a time-base control. A
-choice made in one control sets that chart alone. So one chart can show the
-first fifteen minutes of a case while another fits the whole run. `ROADMAP.md`
-§ "v0.6.0 - the layout is the reader's", Required scope entry 11, asks for
-this. Two charts at different widths no longer share a time axis, so each
-chart states its own width beside its plot. Every advisory that depends on the
-window is based on that chart's own window and shown on that chart. These
-advisories are the notice naming traces above the axis, the count of control
-changes the chart could not mark, and the count of F_A/F_I stretches it could
-not draw. A notice naming a clipped trace that the chart in front of the
-reader does not draw would be false for that chart. Charts at the same width
-are drawn from one frame, so they show the same instants. A chart saves its
-width with its other settings. The shipped Induction Workspace saves its
-concentration chart on the 15-minute width, which follows the run. So the
-current values stay on the plot after the first fifteen minutes. Switching to
-the Induction tab loads that state, so its chart opens on that width
-(`PL-2KXB`).
+**Each chart has its own time base** (project owner, 2026-10-19, ratified, over
+one shared window saved per Workspace; `PL-L59K`). The concentration chart and
+the F_A/F_I plot each have a time-base control, and a choice in one sets that
+chart alone. One chart can show the first fifteen minutes of a case while
+another fits the whole run. Each notice that depends on a chart's window
+describes that window and appears on that chart. These are the notice naming
+traces above the top of the axis, the count of control changes the chart could
+not mark, and the count of F_A/F_I stretches it could not draw. Two charts at
+the same width show the same instants.
+
+**A chart saves its width with its other settings.** The Induction Workspace
+that comes with the simulator saves its concentration chart at the 15-minute
+width. That width follows the run, so the current values stay on the plot after
+the first fifteen minutes. Switching to the Induction tab opens the chart at that
+width (`PL-2KXB`).
+
+**For developers.** The time base's code is in `app/chart_time_base.py`. The
+module does arithmetic on simulated time. It reads no simulation state and
+imports no interface toolkit, so the widths and gridline intervals can be read,
+cited and tested without loading the interface.
+
+Each drawn point is evaluated from the run's definition, under the constraint
+that § "Interface boundary" places on a plotted trace.
+
+Each width on the ladder is at least half again as wide as the one below it, so
+one step up or down visibly changes the view.
+
+Four to six intervals look like a grid rather than a bare axis or a hatch
+pattern. No single fixed interval does that across the whole ladder. The 60 s
+interval used before would draw 720 gridlines across a twelve-hour axis, enough
+to look like a solid block.
+
+The doubling is there because a mode named for showing the whole run would
+misstate what is on screen if it showed only the last twelve hours of a
+fourteen-hour run. The narrower widths let the default work ten seconds into a
+run as well as at ten hours. The reader cannot pick them, because a span with
+nothing in it gives a view nobody wants.
+
+Each label carries its unit because the axis spans anything from a minute to
+half a day. A bare `12` would mean twelve minutes at one width and twelve hours
+at another. Like the playback rate, the width is displayed because a reader who
+cannot see the span supplies their own assumption for it. The chart also says
+how the width was set, because a chosen width and the whole run so far mean
+different things about what is on screen.
+
+The roadmap for v0.6.0 asks for a time base per chart (`ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's", Required scope entry 11). Each chart's
+notices describe its own window, because a notice naming a clipped trace that
+the chart does not draw would be false for that chart. Charts at the same width
+are drawn from one frame.
 
 ### MAC-awake as a chart reference
 
-The compartment chart carries two horizontal clinical references. A **band**
-marks the running agent's population MAC-awake, and a **line** marks its
-nominal 1 MAC. Neither is a modeled quantity. Both are published constants,
-drawn at a height that the chart's own percent axis gives meaning to. `core/`
-computes neither of them. No governing equation reads MAC-awake, just as none
-reads `mac_percent`.
+The compartment chart carries two horizontal clinical references for the agent
+in use. A **band** marks its population MAC-awake, and a **line** marks its
+nominal 1 MAC. Neither is modelled. Both are published constants, drawn at
+their values on the chart's percent axis.
 
-**Why two rather than one.** Chortkoff et al. state that "along with
+**With both references drawn, the chart shows the *decrement required for
+arousal*, not only the endpoint.** Chortkoff et al. state that "along with
 pharmacokinetics, the ratio of the awakening concentration to the
 anesthetizing concentration (MAC-awake/MAC) determines time to awakening".
-When both references are drawn, that ratio becomes the visible gap between
-them. The chart then shows the *decrement required for arousal*, not only the
-endpoint. That is what lets a reader compare a twenty-minute case and a
-three-hour case side by side. It is the lesson of context-sensitive emergence,
-stated as geometry.
+That ratio becomes the visible gap between the two references. So a reader can
+compare a twenty-minute case with a three-hour case side by side, and see the
+lesson of context-sensitive emergence.
 
-**The mark type carries the distinction, not the colour.** The two references
-differ in epistemic status, and their marks say so. MAC-awake is a measured
+**Shape, not colour, tells the two references apart.** MAC-awake is a measured
 population value with real spread, so it is drawn as a band. 1 MAC is a
 definitional anchor, not a distribution of the same kind, so it is drawn as a
 line. The difference between a band and a line survives greyscale and every
-colour-vision deficiency. § "Color contrast" below requires that of any
-encoding that carries meaning. It is also a stronger separation than any pair
-of colours. Both references are drawn in the interface's own ink and label
-colours rather than in a seventh and eighth hue. That way, neither is mistaken
-for another compartment.
+colour-vision deficiency. Both references are drawn in the interface's own ink
+and label colours, so neither is mistaken for a compartment.
 
-**The band's geometry, and why it is two strokes rather than a thicker mark.**
-The band is drawn as a stroke on each of its two boundaries, with a light fill
-between them. Both strokes sit on the published values, so the drawn extent
-equals the data extent exactly. Nothing pads the band outward. A band drawn
-thicker than one standard deviation would assert a wider population spread
-than the sources support. That would be a claim about the evidence, not a
-styling choice. So a minimum drawn height is specifically excluded, whatever
-it would do for legibility.
+**The band spans one standard deviation either side of the published mean
+MAC-awake.** It covers roughly the middle two thirds of a population, not its
+full range. A rule marks each edge, on its published value, with a light fill
+between the two. Nothing pads the band outward, even where it is thin, so the
+space between the rules is exactly the published spread.
 
-The second stroke is necessary because no axis range can provide the
-separation. On the fixed `CHART_AXIS_TOP_MAC` range, the band spans 3.33% of
-the plot height for sevoflurane and 4.20% for desflurane. No ceiling that this
-chart can take changes that. At 2 MAC the band is unambiguous, but the 1 MAC
-anchor sits at mid-plot. That leaves no room above it for the overpressure
-induction that the chart has to be able to show. At 4 MAC the band is back to
-the 2.50% it had on the dial-maximum axis that this one replaced. Suppose a
-mark is stroked on its upper edge only, over an unstroked fill. It then has the
-geometry of a line with a shadow beneath it, however wide the fill is. That
-geometry is what made this band look like a line. It would have collapsed the
-band-versus-line distinction above into no distinction at all. Two strokes
-with a gap between them have the geometry of an interval. They remain an
-interval at any thickness the axis leaves. So what a reader sees between the
-two rules is the population spread, not a decoration around a threshold.
+MAC-awake is the concentration at which half of a population responds to verbal
+command. The band's label names that endpoint. MAC's endpoint is different:
+immobility in response to a standardized surgical incision.
 
-<!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
-<!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
+**The band is not a prediction for the patient on the screen.** It is the
+strongest claim that the evidence supports. The interface shows no
+time-to-wake-up figure of any kind, because this model does not support a
+per-patient prediction.
 
-**What the band asserts.** MAC-awake is the concentration at which half of a
-population responds to verbal command. That is a *different endpoint* from
-MAC, which is immobility in response to a standardized surgical incision. The
-label says which endpoint the band shows. The band extends one standard
-deviation either side of the published mean. It therefore spans roughly the
-middle two thirds of a population, not its full range.
-
-**What the band does not assert, and what the interface therefore never
-shows.** The band is not a prediction for the patient on the screen. The
-interface displays no time-to-wake-up figure of any kind. A readout of the
-form "time to wake-up: 14 min" would be taken as a per-patient prediction,
-which this model does not support. No surrounding disclaimer undoes that,
-because the number would be acted on and the disclaimer would not. A band is
-the strongest claim that the evidence supports, which is why the reference
-takes that form.
-
-**Which trace the band is read against, and why that is the load-bearing
-part.** The band must be read against the **vessel-rich** trace. This model
-has no effect-site compartment and defines $`F_a \equiv F_A`$ (see § "Model
-boundary"). So the alveolar trace is the fastest curve on the chart, and the
-furthest from where responsiveness actually returns. One measurement shows
-the size of the gap. It ran sevoflurane for 3 hours at the opening dial of
-2.0%, which is the stored 1 MAC, and the default fresh gas flow of 4 L/min.
-That brought the alveolar fraction only to 1.69%, or 0.84 MAC. The vaporizer
-was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
-trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
-it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
-with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
-They were measured again on 2026-10-31, with each crossing time interpolated
-between the two steps on either side of it (`PL-PTDZ`). That second run
-corrected one figure below, from 7.31 to 7.30 min.
-`tests/reference/test_mac_awake_washout_figures.py` reads this protocol and
-its figures from this section, runs the protocol, and holds each figure to the
-places printed. So a parameter change that moves a figure fails the test, and
-so does an edit here that changes the protocol or a figure on its own.
+**Read the band against the vessel-rich trace.** This model has no effect-site
+compartment and defines $`F_a \equiv F_A`$ (see § "Model boundary"). So the
+alveolar trace is the fastest curve on the chart, and the furthest from where
+responsiveness returns. One simulation shows the size of the gap. It ran
+sevoflurane for 3 hours at the opening dial of 2.0%, which is the stored 1 MAC,
+and the default fresh gas flow of 4 L/min. That brought the alveolar fraction
+only to 1.69%, or 0.84 MAC. The vaporizer was then turned off and the fresh gas
+flow raised to 10 L/min. The alveolar trace crosses the band's centre at
+2.86 min, and the vessel-rich trace crosses it at 6.55 min, 2.29 times later.
+These figures are from a run on 2026-10-26, repeated on 2026-10-31 (`PL-39KH`,
+`PL-PTDZ`). An automated test reruns this protocol and checks each figure to
+the decimal places printed here.
 <!-- not-restated: 10 L/min -->
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
 <!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
-The primary literature makes this a question of *which number is correct*,
-not only of how a number is read. Katoh et al. determined sevoflurane and
-isoflurane MAC-awake by two methods, a slow, equilibrated washout and a fast
-one. The two methods disagree. Slow washout gave 0.34 and 0.31 of MAC for
-sevoflurane and isoflurane respectively, against 0.22 for both by fast
-washout. The paper attributes the difference to end-tidal-to-arterial and
-arterial-to-cerebral anesthetic differences. That is precisely what this model
-represents as the alveolar-to-vessel-rich difference. The paper also
-estimates the brain concentration at awakening. That estimate is not a
-measurement, because cerebral concentration cannot be sampled in these
+**The choice of trace also decides which published value is correct.** Katoh
+et al. determined sevoflurane and isoflurane MAC-awake by a slow, equilibrated
+washout and by a fast one, and the two methods disagree. Slow washout gave
+0.34 of MAC for sevoflurane and 0.31 for isoflurane, against 0.22 for both by
+fast washout. Katoh attributes the disagreement to end-tidal-to-arterial and
+arterial-to-cerebral anesthetic differences. This model represents those
+differences as the gap between the alveolar and vessel-rich traces. The stored
+values are the slow-washout ones, and they belong against the vessel-rich
+trace.
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+
+Katoh also estimated the brain concentration at awakening. That estimate is
+not a measurement, because cerebral concentration cannot be sampled in these
 patients. The abstract says the brain concentrations were "calculated with
 end-tidal anesthetic concentrations", and the title calls them "predicted".
 So they come from Katoh's own model of brain uptake (`PL-YDRT`). That model
 treats the brain as one well-mixed compartment perfused by arterial blood. Its
 equation 1 (p. 1013) is:
-<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
-<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 
 $$
 \frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
@@ -9297,82 +9277,96 @@ $$
 This is the perfusion-limited form that § "Tissue uptake and return" uses for
 each tissue group. Katoh's compartment is the brain alone, though, while this
 model's vessel-rich group pools the brain with the heart, liver, kidney and
-viscera. Every patient was given the same rules for the flow and the volume.
-Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac
-index of 3.5 L/min/m², so it scales with body surface area. Brain volume
-$`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's time
-constant therefore varied a little from patient to patient. The coefficients
-were the same for everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is
-0.63 for sevoflurane and 1.36 for isoflurane, and the brain:gas coefficient
-$`\lambda_{T/G}`$ is 1.15 and 2.09.
-The arterial partial pressure was not measured. Katoh's equation 2 sets it
-equal to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal
-value for 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The
-two give different answers. During fast washout, the calculated cerebral
-concentration at first eye opening was 0.30 of MAC for sevoflurane and 0.26
-for isoflurane under equation 2 (Table 1, p. 1014). Under equation 3 it was
-0.34 and 0.30 (Table 3, p. 1016). The abstract quotes the equation 3 figures,
+viscera. Katoh computed every patient's flow and volume from the same
+formulas. Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a
+cardiac index of 3.5 L/min/m², so it scales with body surface area. Brain
+volume $`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's
+time constant therefore varied a little from patient to patient. The
+coefficients were the same for everyone. The blood:gas coefficient
+$`\lambda_{B/G}`$ is 0.63 for sevoflurane and 1.36 for isoflurane, and the
+brain:gas coefficient $`\lambda_{T/G}`$ is 1.15 and 2.09.
+
+Katoh did not measure the arterial partial pressure. Equation 2 sets it equal
+to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal value for
+20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The two give
+different results. During fast washout, the calculated cerebral concentration
+at first eye opening was 0.30 of MAC for sevoflurane and 0.26 for isoflurane
+under equation 2 (Table 1, p. 1014). Under equation 3 it was 0.34 and 0.30
+(Table 3, p. 1016). The abstract quotes the equation 3 figures and calls them
 "nearly equal to MAC-Awake obtained by slow alveolar washout". Neither set
-differs significantly from the slow-washout values. The stored values are
-therefore the slow-washout ones, and the trace they belong against is the
-vessel-rich one. That rests on a modelled estimate agreeing with an
-equilibrated measurement, which is weaker evidence than a direct measurement
-of the brain would be.
+differs significantly from the slow-washout values. So the stored values and
+the choice of the vessel-rich trace rest on a modelled estimate that agrees
+with an equilibrated measurement. That is weaker evidence than a direct
+measurement of the brain would be.
 
 <!-- not-restated: 0.34 -->
 
-**Three ways of misreading the band run in the same direction, and it is the
-consequential one.** Concentration falls during emergence. So a trace crosses
-a higher reference sooner, and a faster-falling trace crosses any reference
-sooner. Three distinct reading errors therefore all shorten the apparent time
-to awakening. The first is reading the band against the alveolar trace instead
-of the vessel-rich one. The second is drawing the slow-washout value against a
-fast-washout alveolar trace, where 0.22 would be the matching figure. The
-third is the denominator mistake described below. A learner who takes away
-any of these errors concludes that emergence is faster than this model says.
-That learner carries into practice the belief that a patient is more awake
-than they are. That is why this document specifies the reference, rather than
-leaving it to the chart.
+**The band is drawn at a fraction of the stored MAC.** MAC-awake is stored as
+that fraction, never as a percent of one atmosphere. Each source expresses
+MAC-awake as a ratio to MAC, and Katoh does so explicitly, "as a ratio to
+age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
+its own population was measured against. Desflurane shows the risk. Chortkoff's
+MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
+18-30. The stored MAC is Rampil's figure for ages 31-65, 6.0%. Dividing 2.60% by
+6.0% would give 0.433 instead of the published 0.36, so the band would be drawn
+20% too high and crossed too soon. Storing the fraction avoids that error. The
+chart's MAC axis is also scaled by the stored MAC, so the band sits at its
+published fraction on that axis. For desflurane, storing the fraction also
+allows an independent check. The band's centre is 0.36 of the stored 6.0%, or
+2.16%, and Song et al. measured 2.17% in the non-jaundiced control arm of a
+population that Rampil's 31-65 year MAC describes.
 
-**The band's height has a fourth source of error, and its direction differs
-by agent** (`PL-GCGX`). The band is the stored fraction times the stored
-`mac_percent`, which is the Gas Man flat adult MAC. The traces are absolute
-partial pressures and do not depend on that divisor. So wherever the divisor
-departs from the literature, the band moves against the traces by the same
-proportion. § "Delivery-limit and MAC parameters" compares the stored MAC with
-Mapleson's age-40 values. Against them, the stored MAC is 11.1% high for
-sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Mapleson's 95%
-confidence limits are about ±7%, and ±10% for desflurane. Only sevoflurane's
-gap is larger than its limits. So the sevoflurane band probably sits too high,
-by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
-wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
-drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
-Mapleson's 1.80%, at 7.30 min. The isoflurane and desflurane gaps are inside
-the limits, so Mapleson does not show either band to be off. For desflurane a
-direct measurement points the same way. The drawn centre of 2.16% agrees with
-Song et al.'s measured 2.17%, as the paragraph below says. All three figures
-are gaps from Mapleson's MAC, not from the MAC each source used.
-<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
 <!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
 
-Katoh's own denominator is each patient's age-adjusted MAC, from two linear
-equations on p. 1013. For isoflurane it is 1.43 − 0.0061 × age (yr) percent,
-and for sevoflurane 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC
-studies for them and does not say how the equations were derived from those
-studies. At age 40 the equations give 1.94% for sevoflurane and 1.19% for
-isoflurane. At that age the stored MAC is 3.3% above Katoh's for sevoflurane
-and 1.2% above it for isoflurane. The band is the stored fraction times the
-stored MAC, so it sits above Katoh's own age-40 awakening concentration by
-the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
-isoflurane, where Katoh's fractions times Katoh's age-40 MAC give 0.658% and
-0.368%. Both differences are much less than the 0.05 of MAC standard
-deviation of Katoh's fractions. Katoh's slow-washout patients themselves woke
-at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
-(Table 1, p. 1014). Those figures are lower than the band mostly because the
-patients were older, with mean ages of 45.9 and 45.1 years. So they are not a
-like-for-like check of a band drawn for age 40. The age-40 comparison points
-the same way as the Mapleson one: the band sits slightly high, so it teaches a
-slightly early wake-up (`PL-P319`).
+**Three misreadings of the band all make emergence look faster than this model
+says.** Concentration falls during emergence. So a trace crosses a higher
+reference sooner, and a faster-falling trace crosses any reference sooner. The
+first error is reading the band against the alveolar trace instead of the
+vessel-rich one. The second is drawing the slow-washout value against a
+fast-washout alveolar trace, where 0.22 would be the matching figure. The
+third is dividing a published MAC-awake percent by a MAC other than the one
+its population was measured against, as in the desflurane example above. A
+learner who takes away any of these errors carries into practice the belief
+that a patient is more awake than they are.
+
+**The band's height has a fourth source of error, and its direction differs by
+agent** (`PL-GCGX`). The stored MAC is Gas Man's flat adult value. The traces
+are absolute partial pressures and do not depend on MAC. So wherever the
+stored MAC departs from the literature, the band moves against the traces by
+the same proportion. § "Delivery-limit and MAC parameters" compares the stored
+MAC with Mapleson's age-40 values. Against them, the stored MAC is 11.1% high
+for sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. All
+three are gaps from Mapleson's MAC, not from the MAC that each source used.
+Mapleson's 95% confidence limits are about ±7%, and ±10% for desflurane. Only
+sevoflurane's gap is larger than its limits. So the sevoflurane band probably
+sits too high, by about 11% if Mapleson is right, and a band drawn too high
+teaches an earlier wake-up. In the run above, the vessel-rich trace crosses
+sevoflurane's drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the
+same fraction of Mapleson's 1.80%, at 7.30 min.
+The isoflurane and desflurane gaps are inside the limits, so Mapleson does not
+show either band to be off. Song et al.'s measurement agrees with the drawn
+desflurane band as well.
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+
+The comparison with Katoh's own MAC at age 40 points the same way as the
+Mapleson one. The band sits slightly high, so it teaches a slightly early
+wake-up (`PL-P319`). Katoh's denominator is each patient's age-adjusted MAC,
+from two linear equations on p. 1013. For isoflurane it is
+1.43 − 0.0061 × age (yr) percent, and for sevoflurane
+2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for them
+and does not say how the equations were derived from those studies. At age 40
+the equations give 1.94% for sevoflurane and 1.19% for isoflurane. The stored
+MAC is 3.3% above Katoh's for sevoflurane and 1.2% above it for isoflurane, so
+the band sits above Katoh's own age-40 awakening concentration by the same
+proportions. The drawn centres are 0.68% sevoflurane and 0.372% isoflurane,
+where Katoh's fractions times Katoh's age-40 MAC give 0.658% and 0.368%. Both
+differences are much less than the standard deviation of Katoh's fractions,
+0.05 of MAC. Katoh's slow-washout patients themselves woke at a mean end-tidal
+0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane (Table 1, p. 1014).
+Those figures are lower than the band mostly because the patients were older,
+with mean ages of 45.9 and 45.1 years. So they are not a like-for-like check
+of a band drawn for age 40.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
@@ -9381,62 +9375,34 @@ slightly early wake-up (`PL-P319`).
 <!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 <!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
 
-**The value is stored as a fraction of MAC, never as a percent of one
-atmosphere, and that is a safety decision rather than a schema preference.**
-Each source expresses MAC-awake as a ratio to MAC. Katoh does so explicitly,
-"as a ratio to age-adjusted MAC". A published *percent*, by contrast, is
-anchored to whichever MAC its own population was measured against. Desflurane
-is the worked example. Chortkoff's MAC-awake of 2.60% is 36% of a MAC of about
-7.25%, which is Rampil's 18-30 year figure. This project stores Rampil's 31-65
-year figure of 6.0% instead. Dividing the absolute percent by the stored MAC
-would give 0.433 rather than the published 0.36. That is 20% high, so the band
-would be drawn 20% too high and crossed too soon. Storing the fraction removes
-the trap outright. It also stays correct if `mac_percent` is ever changed or
-made age-aware.
+**The 1 MAC line marks the nominal value, not the dialled one.** A fixed line
+sits at the same height in every run, so runs stay comparable. A line that
+tracked the dialled concentration would only restate where the trace already
+starts. The line sits at the stored MAC. It is labelled as a reference adult
+value, not as this patient's MAC, because this model has no age parameter.
 
-<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
+At a 1 MAC dial, no patient trace reaches the 1 MAC line, however long the case
+runs. This is expected and is not a display fault. Muscle and fat keep taking
+up agent for many hours, so the blood returning to the lungs stays below the
+alveolar gas. That keeps the alveolar fraction below the inspired fraction, and
+rebreathing keeps the inspired fraction below the dial (`PL-39KH`). In the
+3-hour run above, the alveolar and vessel-rich traces both reached only
+0.84 MAC. This shortfall happens in real patients too, and it is worth teaching.
 
-A fraction with no stated denominator is the correct number in the wrong
-context. So each agent's `mac_awake.mac_reference_basis` records the MAC that
-its fraction was derived against. The interface states the divisor that the
-fraction is multiplied by. Applying the fraction to this project's own
-`mac_percent` keeps the band and the axis consistent by construction. For
-desflurane, it also gives an independent cross-check. 0.36 of the stored 6.0%
-is 2.16%. Song et al. measured 2.17% in the non-jaundiced control arm of a
-population that the 31-65 year divisor describes.
+**The *absolute height* of both references inherits every limitation of the
+stored MAC.** The fractions come from primary measurements in humans (tier 1).
+The stored MAC is tier 3: it is Gas Man's parameter, not a measurement
+(§ "Source hierarchy: what may be cited as the authority for a value").
+§ "Delivery-limit and MAC parameters" records its limitations. The interface
+shows that MAC, so a reader can compare it with the value they would use.
 
-<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
-
-**The 1 MAC line is the nominal value, not the dialled one.** A fixed
-reference stays comparable across runs. That is what lets a reader compare two
-cases of different length side by side. A line that tracked the concentration
-the learner happened to dial would only restate where the trace already
-starts. The line is the flat adult `mac_percent`. It is labelled as a
-reference adult value, not as a patient-specific one. The reason is that this
-model has no age parameter, while Katoh expressed MAC-awake as a ratio to
-age-adjusted MAC.
-
-One consequence is expected and is not a rendering fault. At a 1 MAC dial, no
-patient trace reaches the 1 MAC line, however long the case runs. Muscle and
-fat keep taking up agent for many hours, so the blood returning to the lungs
-stays below the alveolar gas. That keeps the alveolar fraction below the
-inspired fraction, and rebreathing keeps the inspired fraction below the dial
-(`PL-39KH`). The measurement above shows the size: after 3 hours at 1 MAC the
-alveolar and vessel-rich traces stood at 0.84 MAC. That is true of the
-patient, and it is worth teaching.
-
-**What the references inherit, and one methodological limitation.** The
-fractions are tier 1, from primary measurements in humans. `mac_percent` is
-tier 3. So the *absolute height* of both references inherits every limitation
-that "Delivery-limit and MAC parameters" records for the divisor. The
-interface displays that divisor, so a reader who disagrees with it can see
-that they do. Separately, the three fractions were not determined by one
-method. Katoh's slow-washout arm is *descending*. Chortkoff and Song both
-determined desflurane MAC-awake by *ascending* stepwise equilibration. All
-three are equilibrated determinations rather than fast-washout ones, which is
-why all three belong against the vessel-rich trace. But ascending and
-descending determinations are not interchangeable, and no descending-washout
-desflurane MAC-awake was found. The three fractions (0.31 isoflurane, 0.34
+**The three fractions were not determined by one method.** Katoh's
+slow-washout arm is *descending*. Chortkoff and Song both determined
+desflurane MAC-awake by *ascending* stepwise equilibration. All of these are
+equilibrated determinations, not fast-washout ones, so all three fractions
+belong against the vessel-rich trace. But ascending and descending
+determinations are not interchangeable, and no descending-washout MAC-awake
+for desflurane was found. The three fractions (0.31 isoflurane, 0.34
 sevoflurane, 0.36 desflurane) sit in a narrow range, so each agent carries its
 own value rather than one fraction covering all three.
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
@@ -9444,544 +9410,582 @@ own value rather than one fraction covering all three.
 
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
 
+**For developers.** The model's code (`core/`) computes neither reference, and
+no governing equation uses MAC-awake or the stored MAC (`mac_percent`). Each
+agent's data file records the MAC that its MAC-awake fraction was derived
+against (`mac_awake.mac_reference_basis`). Storing the fraction is a safety
+decision. It also keeps the band correct if `mac_percent` is ever changed or
+made age-aware.
+
+Telling the references apart by shape meets the requirement in
+§ "Color contrast" below for any encoding that carries meaning. Shape also
+separates them more strongly than any pair of colours would. Using the ink and
+label colours avoids a seventh and eighth hue on the chart.
+
+The band has no minimum drawn height, even though one would help legibility.
+A padded band would claim a wider population spread than the sources support.
+
+The band is ruled on both edges because no axis range that the chart can use
+gives it enough height to look like a band on its own. On the fixed axis range
+(`CHART_AXIS_TOP_MAC`, 3 ×MAC), it spans 3.33% of the plot height for
+sevoflurane and 4.20% for desflurane. A 2 MAC ceiling would make the band
+unambiguous, but would put the 1 MAC line at mid-plot and leave no room above it
+for the overpressure induction that the chart must be able to show. A 4 MAC
+ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
+the vaporizer dial's maximum. A band ruled on its upper edge only, over an
+unruled fill, looks like a line with a shadow beneath it, whatever the fill's
+height. The two references would then no longer differ in shape. Two rules with
+a gap between them look like an interval at any height the axis leaves.
+
+<!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+There is no time-to-wake-up readout because a figure such as "time to
+wake-up: 14 min" would be taken as a per-patient prediction. No disclaimer
+beside it would undo that, because readers act on the number and not on the
+disclaimer.
+
+The washout figures come from simulating sevoflurane uptake
+(`AgentUptakeSystem.for_agent("sevoflurane")`) at 0.1 s steps. Since the
+2026-10-31 run, each crossing time is interpolated between the two steps on
+either side of it. The automated test reads the protocol and its figures from
+this section (`tests/reference/test_mac_awake_washout_figures.py`). So a
+parameter change that moves a figure fails it, and so does an edit to the
+protocol or to a figure on its own.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
 ### The control-input timeline
 
-**What it is.** The timeline is a record of the settings that a run was
-given. It is kept with the run and cleared with it. Each entry is one change
-that the model actually ran under. The entry gives the simulated time at which
-the change took effect, the user adjustment it belongs to, and the control. It
-also gives the values before and after, and the unit that both values are in.
+**The timeline records the settings that a run was given.** Each entry is one
+change that the model ran under. It gives the simulated time at which the
+change took effect, the control, the values before and after, the unit of both
+values, and the user adjustment that the change belongs to, such as one drag of
+a slider. The timeline is kept with the run and cleared with it. It is shown as
+marks on the charts and as a list beside them. Settings of the delivered
+concentration appear in the same format as every other concentration on the
+page.
 
-**Why the model needs one at all.** A curve without its inputs is not a
-result that anybody can check. The exercises that this simulator exists to
-support all take the form "change one thing and look at what happened".
-Examples are overpressuring and then dialling back, dropping the flow, and
-halving the cardiac output. A learner who cannot see where they dialled back cannot read
-their own experiment. The stronger requirement is reconstruction. The recorded
-timeline, re-applied to a fresh run at the recorded times, must reproduce the
-run that it describes. Reconstruction is what makes a recorded run a result
-rather than a picture of one, and the design decisions below exist to provide
-it.
+**A curve can be checked only against the settings that produced it.** The
+exercises that this simulator exists to support all take the form "change one
+thing and look at what happened". Examples are overpressuring and then dialling
+back, dropping the flow, and halving the cardiac output. A learner who cannot
+see where they dialled back cannot read their own experiment. Given the
+recorded settings at the recorded times, a fresh run must reproduce the run
+that the timeline describes.
 
-**Recorded values are the model's, not the interface's.** Each value is read
-back from the compartment that holds it, after the core has accepted it. It is
-stored in the unit that the core uses. So the delivered dial is stored as the
-percent of one atmosphere it was set to, which is the percent the core is set
-with (`PL-NJPB`). It is displayed through `format_percent`, the formatter
-that every other concentration on the page goes through. That formatter takes
-the model's fraction, so the recorded percent is converted to a fraction on its
-way in and back to a percent for display. A record
-of what was *asked for*, rather than of what took effect, would diverge from
-the run the first time the two differed. The core rejects an out-of-range
-setting rather than clamping it precisely so that the two cannot differ
-silently.
+**Each recorded value is the one that took effect.** The model refuses a
+setting outside its allowed range rather than replacing it with the nearest
+allowed value, so the value that took effect never differs silently from the
+value asked for. A refused setting is not recorded.
 
-**A refused setting is not recorded**, because it never took effect. The
-recording happens after the core's setter returns. So this rule follows from
-the structure of the code, rather than from a check that someone could forget.
+**Only what the model saw is recorded.** A setting equal to the one already in
+place is not a change. Nor is a setting that is replaced before the next
+simulation step, because the model uses only the value in place when a step
+runs. A control moved twice between two steps is therefore one change, from the
+first value to the last. A control moved and moved back within one step is no
+change at all. Recording the values in between would describe a run that did
+not happen.
 
-**Only what the model saw is recorded.** A setting equal to the one already
-in place is not a change. Nor is a setting that is replaced before the next
-simulation step. Only the value in place when a step runs is integrated. So a
-control moved twice between two steps is one change, from the first value to
-the last. A control moved and moved back within one step is no change at all.
-Recording the intermediate values would describe a run that did not happen.
-Without this collapse, the timeline would record the input device rather than
-the simulation.
+**One drag of a control is one adjustment, and it applies once.** While the
+slider's handle is held, the run keeps its setting and the chart draws a preview
+(§ "A preview of an unapplied setting"). Releasing the handle applies the value
+once, so a drag records one setting change. A key press, one notch of the scroll
+wheel or a click on the slider away from its handle is a single input, and is an
+adjustment of its own.
 
-**What a displayed adjustment is, and why it is not the same object.** A
-slider reports its value continuously while it is dragged. So one turn of one
-control arrives at the model as a series of settings. The run really was
-computed under each of them, and all of them are one act by the person. The
-record keeps every setting, because reconstruction needs them. The display
-groups them into adjustments, because a reader needs to see the act. The
-grouping is exact rather than inferred. The interface declares where an
-adjustment begins, at the moment a drag starts, and every change carries the
-number it was assigned. Nothing infers a gesture from the spacing of the
-entries, and nothing may. A playback multiplier changes how much simulated
-time one drag spans, so any threshold would group correctly at one rate and
-wrongly at another. A change that arrives with no adjustment declared becomes
-an adjustment of its own. Examples are a keyboard press on a slider and a
-programmatic call. Treating such a change as its own adjustment is the honest
-reading of a discrete input.
+A displayed adjustment states the interval it spans and how many settings the
+model ran under during it. The count is shown because an adjustment made over
+eight settings is a different run from one made in a single step, even when
+the two start and end at the same values.
 
-A displayed adjustment states the interval it spans. It also states how many
-settings the model was stepped under during that interval. The count is
-displayed rather than hidden because an adjustment made over eight settings is
-not the same run as one made in a single step, even where the endpoints match.
+**A timeline entry records an input, and says nothing about the patient.** The
+marks on the charts are labelled as inputs, and the list says so, because a
+vertical line on a chart of patient concentrations would otherwise invite the
+reader to see an event in the curves.
 
-**What it asserts, and what it does not.** A timeline entry asserts that the
-named control moved between the stated values over the stated simulated
-interval. It says nothing about the patient. It is a record of an *input*,
-never of a measurement or of a modelled quantity. That is why the chart's
-marks are labelled as inputs, and why the list beside them says so
-explicitly. Otherwise a vertical rule on a chart of patient concentrations invites
-the reader to see an event in the curves.
+**Bounds are displayed, not silent.** A chart shows at
+most a fixed number of marks, and the list of setting changes at most a fixed
+number of lines, so a run may record more adjustments than either can show. A
+chart or a list that ended without a count would tell the reader that nothing
+else happened. Each chart shows the count of adjustments it leaves unmarked,
+because each chart has a window of its own (§ "The chart's time base").
 
-**Stability of the recorded identifiers.** Each control is recorded under a
-fixed string chosen from the domain: `fresh_gas_flow`, `delivered`,
-`alveolar_ventilation` and `cardiac_output`. The string is not taken from the
-name of the accessor that applies the setting. An identifier taken from the
-code would make the vocabulary of every already-recorded run obsolete the next
-time the code was renamed. A fifth string, `circuit_volume`, was recorded here
-until the circuit volume was established as a fixed model parameter rather
-than a control (§ "What is not bounded this way"). Retiring it cost no
-already-recorded timeline, because a timeline is held in memory and cleared
-with its run rather than persisted.
+**The timeline itself has no limit.** The limits above apply only to what is
+shown. Dropping the oldest entries would remove the start of the case, which is
+the part a learner returns to.
 
-**Bounds are displayed, not silent.** The chart carries a fixed number of
-marks, and the list carries a fixed number of lines. So a run may record more
-adjustments than either can show. The display counts what it does not show. A
-chart that quietly stops annotating, or a list that quietly ends, states that
-nothing else happened. Each chart counts its own unmarked changes and says so
-on itself, because each chart has a window of its own
-(§ "The chart's time base").
+**For developers.** The two display limits are `MAX_CHART_CONTROL_MARKS` in
+`app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS` in `app/dashboard_frame.py`.
+No record gives the reason for either value (`PL-N8G4`).
 
-**The record itself carries no ceiling, and that is a decision rather than
-an omission.** The two bounds above limit only what is *shown*. Dropping the
-oldest entries would remove the beginning of a case. That is the part a
-learner returns to, since "where did I dial back?" is the question this record
-exists to answer. Dropping them would also bound nothing, because the run
-definition of § "The run is that record, and every state is derived from it"
-above holds one stretch and one keyframe per accepted change, and that
-definition is not bounded either. Capping only the display record would give up the reconstruction claim
-above, while the larger structure kept growing.
+The timeline reads each value from the compartment that
+holds it, after the model's setter for that control returns. A setter returns
+only when the model accepts the value, so no separate check is needed to keep a
+refused setting out.
 
-What makes that affordable is that the record grows with the time spent
-*changing settings*, not with the length of the run. Only the value in place
-when a step runs is recorded. So a drag adds at most one entry per simulation
-step, however fast the slider reports. That rate is a property of the tick
-rather than of simulated time, so it is the same at every playback multiplier.
-Measured on 2026-09-14 under `PL-1PSX`, continuous dragging gave ten entries
-per real second at 1×, 5×, 20×, 60× and 300× alike. A drag made while the run
-is paused gave one entry. The grouping behind the display costs 0.9 ms per
-frame at a thousand entries and 8.8 ms at ten thousand, against a 200 ms
-frame. It is recomputed only when the record changes. It would cost half a
-frame at a hundred thousand entries. Reaching that many takes about three
-hours of unbroken dragging, and at that point the record is smaller than
-9 MB.
+Every value is stored in the unit the model is set with, which for the
+delivered concentration is the percent of one atmosphere (`PL-NJPB`). The
+formatter for concentrations (`format_percent`) takes a fraction, so the stored
+percent is converted to a fraction on its way in and back to a percent for
+display.
+
+The interface declares an adjustment when a drag starts, and each change
+carries the number of its adjustment. A change that arrives with no declared
+adjustment, such as a call from code, gets a number of its own. Code must never
+group changes by the time between them. A playback multiplier changes how much
+simulated time one drag spans, so any time threshold would group correctly at
+one multiplier and wrongly at another.
+
+Each control is recorded under a fixed name from the clinical vocabulary:
+`fresh_gas_flow`, `delivered`, `alveolar_ventilation` and `cardiac_output`. A
+name taken from the accessor that applies the setting would change whenever the
+code was renamed, and those accessors have been renamed three times (`PL-3TLK`,
+`PL-9SH6`, `PL-NJPB`). The circuit volume was recorded as a fifth control,
+`circuit_volume`, until it became a fixed model parameter (§ "What is not
+bounded this way"). Removing that name broke no recorded timeline, because a
+timeline is held in memory and is never saved.
+
+Capping the timeline would lose the settings needed to reproduce the run. It
+would also leave memory use unbounded, because the run itself holds one stretch
+and one keyframe for each accepted change and has no limit either
+(§ "The run is that record, and every state is derived from it").
+
+The timeline can be unlimited because it grows with the number of settings
+changed, not with the length of the run. Until a drag was recorded only on its
+release (`PL-5B1N`), each drag added at most one entry per simulation step,
+however fast the slider reported. The number of entries per real second then
+depended on the tick rather than on simulated time, so it was the same at every
+playback multiplier. On 2026-09-14, under `PL-1PSX`, continuous dragging gave
+ten entries per real second at 1×, 5×, 20×, 60× and 300× alike, and a drag made
+while the run was paused gave one entry. Grouping the entries for display costs
+0.9 ms per frame at a thousand entries and 8.8 ms at ten thousand, against a
+200 ms frame. The grouping is recomputed only when the timeline changes. At a
+hundred thousand entries it would cost half a frame. Reaching that many took
+about three hours of unbroken dragging under the old behaviour, and the
+timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 ### F_A/F_I as a displayed ratio
 
-**What it is.** It is a second plot under the compartment chart, on the same
-time window. It draws $`F_A/F_I`$, the modelled alveolar fraction divided by
-the modelled inspired fraction, on a dimensionless axis fixed from 0 to 1. It
-is a *displayed* quantity. `core/` computes it nowhere, no governing equation
-reads it, and it is no part of the run's definition. `app/wash_in.py` is the
-code in which this section ends, in the same way that `app/formatting.py` is
-the code in which "Displayed precision" ends. `app/wash_in.py` holds the
-arithmetic and the domain, and nothing else. `tests/unit/test_wash_in.py` pins
-both.
+**A second plot, under the compartment chart, draws $`F_A/F_I`$.** It shows the
+modelled alveolar fraction divided by the modelled inspired fraction, over the
+same time window, on a fixed, dimensionless axis labelled from 0 to 1. The
+uptake literature is taught from this curve, and the wash-in figures a reader
+has seen show it. The plot can therefore be laid beside a published figure. The
+six compartment concentrations on the chart above cannot. A validation test
+compares the plotted ratio with human measurements at 30 minutes, for all three
+agents in the simulator (§ "Published wash-in and elimination validation
+test"). The ratio is computed only for display, and no equation of the model
+uses it.
 
-**Why the interface owes it.** The uptake literature is taught from this
-curve, and every wash-in figure a reader has seen is drawn as this curve. It
-is also the quantity on which this model has been compared against human
-measurement. The section "Published wash-in and elimination validation test"
-checks $`F_A/F_I`$ at 30 minutes for all three shipped agents. So the trace
-and the validation are the same number.
-`test_the_displayed_ratio_is_the_quantity_this_file_validates` asserts this,
-rather than leaving it to inspection. Six absolute concentrations cannot be
-laid beside a published figure, but this ratio can.
+**The ratio is a modelled value, not a measurement.** It has the alveolar
+compartment's limitation: this model has no airway sampling delay and no dead
+space. It is not a depth of anesthesia, a time to any endpoint, or a
+prediction for an individual patient.
 
 **The denominator is the modelled inspired concentration, not the vaporizer
-dial.** The inspired fraction here is the breathing circuit's own. That is an
-assumption of this circuit model rather than a general fact (see § "Model
-boundary"). The distinction from the dial is not pedantic. The circuit
-approaches the delivered concentration only over its own time constant. So
-early in a run the two differ substantially, and dividing by the dial would
-understate the ratio for as long as the difference lasted. The interface
-states which one it uses at the point of display.
+dial.** This model assumes that the inspired fraction is the concentration in
+the breathing circuit (§ "Model boundary"). The circuit approaches the
+delivered concentration only over its own time constant, so early in a run the
+two differ substantially. Dividing by the dial would understate the ratio for
+as long as they differed. The interface says beside the plot which denominator
+the ratio uses.
 
 **The curve is the textbook wash-in curve only while the inspired
-concentration is held constant.** If the vaporizer or the fresh gas flow moves
-mid-run, $`F_A/F_I`$ remains a well-defined ratio of two modelled states. But
-it stops being a wash-in fraction of anything a reader can name. A rise across
-such a change is the setting moving, not uptake slowing. The control marks of
-"The control-input timeline" are drawn on this plot as well as on the
-compartment chart above it. Both sets of marks are drawn in the same pass over
-the same adjustments. So the plot that could be misread is the plot that
-carries the annotation.
+concentration is held constant.** If the vaporizer setting or the fresh gas
+flow changes mid-run, the ratio is no longer the wash-in fraction of anything a
+reader can name. A rise across such a change shows the setting moving, not
+uptake slowing. This plot therefore carries the compartment chart's control
+marks, which show where each setting changed (§ "The control-input timeline").
 
-**The plotted domain, and why it has two boundaries.** A drawn column
-contributes a point only where both of these conditions are true:
+**A point is drawn only inside two boundaries.** The plot samples the run at a
+series of instants, called columns. A column is inside the boundaries when both
+of these conditions are true:
 
-1. $`F_I \geq 10^{-4}`$, one displayed unit of concentration. $`F_I`$ is
-   exactly zero before any agent reaches the circuit. That is true at the
+1. $`F_I \geq 10^{-4}`$ (0.01%), the smallest step of the concentration
+   display. $`F_I`$ is exactly zero until agent reaches the circuit: at the
    start of every run, and throughout a run whose vaporizer is never opened.
-   There the quotient is $`0/0`$. This lower limit is derived from
-   `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen beside it. So
-   the ratio is never formed from a denominator that the interface itself
-   renders as `0.00%`.
-2. $`F_A/F_I \leq 1`$. The condition $`F_A \leq F_I`$ is exactly the uptake
-   regime. Alveolar gas gives up agent to blood, so the alveolar fraction
-   stays below the inspired one and reaches it only at equilibrium. Above 1,
-   the tissues are returning agent faster than it is being delivered. That is
-   elimination, not wash-in. Equilibrium is drawn on the chart as a labelled
-   reference line.
+   There the ratio is $`0/0`$. With this limit, the ratio is never formed
+   from an inspired concentration that the display shows as `0.00%`.
+2. $`F_A/F_I \leq 1`$, which is the uptake regime. Alveolar gas gives up agent
+   to blood, so the alveolar fraction stays below the inspired one and reaches
+   it only at equilibrium. Above 1, the tissues are returning agent faster
+   than it is delivered, which is elimination, not wash-in. The chart draws
+   equilibrium as a labelled reference line.
 
-   The comparison allows `WASH_IN_ROUNDING_ALLOWANCE`, 1e-6, above 1 for
-   rounding (`PL-N559`). At zero cardiac output the exact solution has
-   $`F_A`$ rise to $`F_I`$ and stop. The stepped run instead settles onto a
-   floating-point fixed point within about 1e-13 of that, and in some runs
-   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at a fresh gas flow of
-   10 L/min settles
-   at 1 + 2.2e-14, which the plot once captioned as the patient returning
-   agent. Once a run reaches its fixed point, every later step returns the
-   same state, so the overshoot does not grow with run length. On 2026-10-26
-   it was the same at 96 h as at 1 h.
+   This boundary allows the ratio up to 1.000001. At zero cardiac output the
+   exact ratio rises to 1 and stops, but the simulation's rounding can leave
+   it a hair above 1. If the ratio stayed at 1.000001 for a whole run of the
+   longest supported length, the run would lose less than 1% of the agent in
+   alveolar gas, venous blood and the vessel-rich group.
+
+Outside either boundary nothing is drawn, so the trace breaks into separate
+stretches. No value is pinned to the edge of the axis or replaced by a
+default, and no line bridges a gap. A ratio held at 1.0 would show a completed
+wash-in that the run never reached. A line joining the wash-in on either side
+of a washout would show values that the run never produced.
+
+**Each stretch is extended by one column at each end, so a reader can see
+where it stops.** That extra column is the stretch's *crossing column*: the
+neighbouring column that has a ratio but lies outside the boundaries. Without
+it, the trace would stop at its last column inside the boundaries. That
+column can lie below the equilibrium line by as much as the trace rises between
+two columns. A trace that stops in clear space short of the line looks exactly
+like one cut off by the edge of the plot. This trace is still climbing steeply
+when it stops. With the crossing column drawn, the trace meets the equilibrium
+line and ends on it, with a point marker that shows the trace ended rather than
+ran out of view.
+
+A crossing column whose ratio is above a fixed ceiling is not drawn at all. Its
+stretch then ends at its last column inside the boundaries, with no point moved
+onto the ceiling and no line drawn toward it.
+
+**The crossing column is drawn, but its value is not shown as wash-in.** Its
+ratio is above 1. Hovering over it shows "Past equilibrium: not a wash-in
+fraction" under the wash-in label, in place of the ratio. A value such as 1.03
+shown there would teach a wash-in past completion, at the point marker, where
+a reader is most likely to look.
+
+**The caption beside the plot says why the trace is blank.** "No agent has
+reached the circuit yet" and "the patient is returning agent" are opposite
+situations, and an absent trace alone cannot show which applies. While the
+trace is drawn, the caption gives the value at its right-hand end. One
+calculation produces both the caption and the trace, so they cannot disagree.
+
+**The gridlines and labels stop at 1, with a little space above them.** Every
+published wash-in figure uses a scale of 0 to 1, and matching those figures is
+the point of this plot. The space above keeps a trace that ends at equilibrium
+off the top edge, where it would look cut off. Because that space is
+unlabelled, a reader does not take it for a range the ratio can reach.
+
+**The axis is fixed rather than fitted.** An axis that grew to fit the ratio
+during elimination would redraw the wash-in curve at a smaller height partway
+through a lesson, and a reader would attribute that change of shape to the
+model. Such an axis would also have no stable height. During elimination the
+circuit is fed by agent-free fresh gas and by rebreathed alveolar gas, so the
+ratio settles near $`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which the
+supported input ranges do not bound.
+
+**The ratio is shown to two decimals, to match the published spread.** Yasuda
+et al. report 0.850, 0.733 and 0.90, with standard deviations of 0.018, 0.027
+and 0.01, so a third decimal would be finer than that spread. See
+§ "Published wash-in and elimination validation test".
+
+**For developers.** The ratio and its two boundaries are computed only in
+`app/wash_in.py`, a module that contains nothing else. Unit tests cover both
+(`tests/unit/test_wash_in.py`). The ratio is no part of a run's definition. A
+test checks that the plotted ratio is the quantity that the validation compares
+(`test_the_displayed_ratio_is_the_quantity_this_file_validates`).
+
+The control marks on both plots are drawn in one pass over the same
+adjustments.
+
+The 0.01% limit on $`F_I`$ is derived from the concentration display's
+resolution (`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`), so it follows that
+resolution if the display changes.
+
+The rounding allowance of 1e-6 (`WASH_IN_ROUNDING_ALLOWANCE`, `PL-N559`) is
+there because, at zero cardiac output, the stepped run settles on a
+floating-point fixed point within about 1e-13 of the exact solution. A fixed
+point is a state that every later step returns unchanged. In some runs that
+state has $`F_A`$ above $`F_I`$. An isoflurane run at a fresh gas flow of
+10 L/min settles at a ratio of 1 + 2.2e-14, which the plot once captioned as
+the patient returning agent. Because later steps return the same state, the
+overshoot does not grow with run length. On 2026-10-26 it was the same at 96 h
+as at 1 h. A test checks the fixed point against the exact solution for each
+shipped agent
+(`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-   The value comes from a clinical requirement rather than from the rounding
-   (project owner, 2026-10-26, ratified, over 1e-9 sized from the rounding
-   and over deriving the value in code). A whole run of the longest supported
-   length, held at a quotient of 1 + 1e-6, must lose less than 1% of the
-   agent in the fast pool: alveolar gas, venous blood and the vessel-rich
-   group. Agent then leaves at alveolar ventilation times $`F_I`$ times
-   1e-6, and the concentration cancels against the pool. The worst case is
-   desflurane at an alveolar ventilation of 12 L/min, which loses about 0.3%
-   in 24 h.
-   `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
-   checks this for every shipped agent from the run-length limit, the
-   ventilation limit and the data files, so extending any of them fails it.
-   The allowance is also about 10 million times the largest overshoot
-   measured, 9.6e-14.
-   `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`
-   checks the fixed point against the closed form for each shipped agent.
+The allowance is sized from the 1% limit above, a clinical requirement, rather
+than from the rounding (project owner, 2026-10-26, ratified, over 1e-9 sized
+from the rounding and over deriving the value in code). At a ratio of
+1 + 1e-6, agent leaves at a rate of alveolar ventilation times $`F_I`$ times
+1e-6. The agent held in alveolar gas, venous blood and the vessel-rich group
+also scales with $`F_I`$, so the fraction lost is the same at any $`F_I`$. The
+worst case is desflurane at an alveolar ventilation of 12 L/min, where a run
+loses about 0.3% in 24 h. A test checks the loss for every shipped agent from
+the run-length limit, the ventilation limit and the data files, so extending
+any of them fails it
+(`test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`). The
+allowance is also about 10 million times the largest overshoot seen in a run,
+9.6e-14.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-Outside either boundary nothing is drawn. The value is not clamped to the
-axis, not interpolated across, and not replaced by a default. A ratio pinned
-to 1.0 would draw a completed wash-in that the run never reached. A line
-joining the wash-in on either side of a washout would draw values that the run
-never produced. So the trace is a set of segments rather than one polyline,
-and it breaks where the domain does.
+The chart code works out the stretches again in each frame, from the columns
+that frame draws, rather than keeping them as the run goes. A boundary can
+therefore fall only on an instant that the chart plots (`app/chart_frame.py`,
+PL-2FM6).
 
-**One point past the boundary, so the ending is legible.** Each stretch is
-extended at each end by its *crossing* column. The crossing column is the
-neighbouring drawn column that has a ratio but sits outside the domain.
-Without it, the curve stops at the last column at or below equilibrium. That
-column can sit a whole column spacing's rise below the equilibrium line that
-the curve stopped short of. A trace that halts in clear space short of a
-boundary looks exactly like one that the frame cut off. This trace is still
-climbing steeply when it stops. With the crossing column drawn, the trace
-meets the equilibrium reference and ends on it. It carries a point marker that
-says the series ended rather than ran out of view. The stretches are
-classified over the columns that each frame draws, rather than maintained as
-the run goes. So a boundary can fall only on an instant that the chart
-actually plots (`app/chart_frame.py`, PL-2FM6).
-
-That extension is bounded by a stated ceiling, not by a property of the
-model. A run stepped at 0.1 s crosses equilibrium by only a hair. This was
-measured across every shipped agent and every supported alveolar ventilation
-and cardiac output, at the maximum fresh gas flow. The first stepped state
-above equilibrium reaches 1.00235. But the ratio is not continuous in general.
-`BreathingCircuit.set_circuit_volume` conserves the agent in the circuit while
-it changes the volume that the agent is divided by. So a circuit volume
-doubled between two steps halves $`F_I`$ and doubles the ratio. No interface
-control does that today. A rule that holds only because a slider is absent is
-not one to build on. So a crossing column above the ceiling is not drawn at
-all, and the stretch ends where it would have ended without it. The stretch is
-not clamped onto the ceiling and not interpolated onto it.
+**For developers.** The column at which the $`F_A/F_I`$ curve crosses
+equilibrium has a ceiling, because the ratio can jump. In runs stepped at 0.1 s,
+the first value above equilibrium is at most 1.00235, across every shipped agent
+and every supported alveolar ventilation and cardiac output, at the maximum
+fresh gas flow. Changing the circuit volume
+(`BreathingCircuit.set_circuit_volume`), however, keeps the agent in the circuit
+and changes the volume it is divided by. Doubling the volume between two steps
+therefore halves $`F_I`$ and doubles the ratio. No interface control changes the
+circuit volume today, but the plot should not rely on that. The ceiling is 1.05
+(`WASH_IN_TERMINUS_CEILING` in `app/chart_frame.py`), below the axis top of 1.15
+(`WASH_IN_AXIS_MAXIMUM`), so even the widest crossing it allows still has clear
+space above it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: app/chart_frame.py WASH_IN_TERMINUS_CEILING = 1.05 -->
+<!-- provenance: app/chart_frame.py WASH_IN_AXIS_MAXIMUM = 1.15 -->
 
-**The crossing column is drawn, but its number is not printed as wash-in.**
-Its quotient is above 1, so it is elimination rather than a wash-in fraction.
-The chart's hover at that column says "Past equilibrium: not a wash-in
-fraction" under the wash-in label instead of printing the quotient
+The hover text past equilibrium is set in the chart code
 (`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT` in `app/chart_frame.py`, `PL-YH6Z`).
-Printed there, a value such as 1.03 would teach a wash-in past completion, at
-the dot a reader is most likely to point at.
 
-**A blank stretch says which boundary it is.** "No agent has reached the
-circuit yet" and "the patient is returning agent" are opposite situations. A
-reader shown only an absent trace cannot tell which of the two applies. The
-line beside the plot names the case. Where the trace is drawing, that line
-also gives the value at which the trace's right-hand end sits. One evaluation
-of one rule produces both, so the sentence and the curve cannot disagree.
-
-**Why the axis is fixed rather than fitted, and why it does not stop at 1.**
-0 to 1 is the scale of every published wash-in figure, and matching those
-figures is the point of drawing this curve at all. So the ruling and the
-labels stop at 1. The axis itself extends a little above 1. That headroom is
-required for legibility, and it is not a margin. If the axis topped out at
-equilibrium, the trace's ending would land on the frame. There, a line that
-stopped and a line that the plot cut off look exactly alike. The top of the
-frame is deliberately unlabelled. So the readable scale remains 0 to 1, and
-the space above it is not taken as a range the ratio can reach. An axis that
-instead grew to fit the elimination excursion would redraw the wash-in curve
-at a smaller height partway through a lesson. A reader would attribute that
-change of shape to the model rather than to the axis. Such an axis would also
-have no stable height to grow to. During elimination the circuit is fed by
-agent-free fresh gas and by rebreathed alveolar gas. So the ratio settles near
-$`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which the supported input ranges do
-not bound. This was measured on sevoflurane, by closing the vaporizer at
-10 L/min after a 30-minute wash-in. The ratio was 3.47 at the reference
-adult's 4.0 L/min of alveolar ventilation, 1.83 at 12.0, 5.93 at 2.0 and 20.11
-at 0.5. The predictions were 3.50, 1.83, 6.00 and 21.00. Values above 1 are
-excluded because they are not wash-in fractions. That they are also unbounded
-is why no fitted axis would help.
+The formula for the ratio during elimination was checked on sevoflurane by
+closing the vaporizer at a fresh gas flow of 10 L/min after a 30-minute wash-in.
+The ratio was 3.47 at the reference adult's 4.0 L/min of alveolar ventilation,
+1.83 at 12.0, 5.93 at 2.0 and 20.11 at 0.5, against predictions of 3.50, 1.83,
+6.00 and 21.00.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4.0 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-**Displayed precision.** The ratio is shown to two decimals. This figure is
-deliberately *not* derived from the concentration resolution. The quotient's
-own resolution depends on its denominator. So a run early in wash-in knows the
-ratio far less finely than a run at equilibrium, and a single derived figure
-would over-claim at one end. The figure is set instead by what the quantity is
-compared against. Yasuda et al. report 0.850, 0.733 and 0.90, with standard
-deviations of 0.018, 0.027 and 0.01. So a third decimal would be finer than
-the published spread. See
-§ "Published wash-in and elimination validation test".
-
-**What it does not assert.** The ratio is a modelled ratio, not a
-measurement. It carries the alveolar compartment's own limitation: this model
-has no airway sampling delay and no dead space. And it is not a depth of
-anesthesia, a time to any endpoint, or a prediction for an individual patient.
+The two decimals are not derived from the concentration display's resolution,
+because the ratio's resolution depends on its denominator. It is far coarser
+early in wash-in than at equilibrium, so any single derived figure would
+over-claim at one end.
 
 ### Color contrast, and the standard this interface is held to
 
-**The target is WCAG 2.2 Level AA.** In two places this project deliberately
-holds itself to a higher bar, and it explicitly defers a set of criteria. WCAG
-2.2 is the current W3C Recommendation (published 2023-10-05). WCAG 3.0 is a
-Working Draft whose scoring model replaces pass/fail entirely, and this
-interface is not designed against it. Conforming to 2.2 AA also satisfies the
-2.1 AA that EN 301 549 and the 2024 ADA Title II rule reference, and the 2.0
-AA that Section 508 references. None of those instruments applies to this
-project, though. AA is chosen because it is the right engineering bar for a
-teaching tool, not because the project is obliged to comply.
+**The target is WCAG 2.2 Level AA.** WCAG 2.2 is the current W3C
+Recommendation (published 2023-10-05). Meeting its Level AA also satisfies the
+2.1 AA that EN 301 549 and the 2024 ADA Title II rule reference, and the 2.0 AA
+that Section 508 references. None of those applies to this project. AA was
+chosen as the right engineering bar for a teaching tool. The interface does not
+target WCAG 3.0, a Working Draft whose scoring model replaces pass and fail.
 <!-- not-restated: 2.1 -->
+
+The project defers four criteria until the interface is settled enough to
+assess them: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10
+(Reflow) and 1.4.12 (Text Spacing). Keyboard and screen-reader support is an
+open question, not a commitment, because it depends on what the software that
+draws the window can deliver.
 
 Two criteria carry most of the weight:
 
 - **SC 1.4.3, Contrast (Minimum)**, requires 4.5:1 for text. Every readout,
   every label naming a readout, and every agent name over its identification
-  color is held to this minimum. The project claims the large-text exception
-  (18pt, or 14pt bold) nowhere. The interface's default text size is 14px, so
-  bold status text is judged at 4.5:1 like everything else. The larger readout
-  values are held to the same 4.5:1.
+  color must meet it. The project never uses the large-text exception (18pt, or
+  14pt bold), so the larger readout values must meet 4.5:1 too, and so must the
+  bold status text, set at the default size of 14px.
 
-  **Text is measured against the surface it is actually drawn on, and there are
-  two such surfaces.** The run-status word, the halted-run notice and the
-  educational-use disclaimer sit in the top-level column, so the page
-  background shows through behind them. The readouts, their labels, the axis
-  description and the accounting lines sit inside panels. The page background
-  is the darker of the two. So wherever a color appears on both, the page
-  background is the stricter test and the one that counts. Assuming that the
-  panel was the surface is what hid the shortfall that `PL-X0RG` fixed. The
-  label color measured 4.28:1 on the panel and 3.98:1 on the page, and only the
-  second is what a reader of the run-status word actually sees.
+  **Text is measured against the surface it is drawn on, and there are two
+  such surfaces.** The run-status word, the halted-run notice and the
+  educational-use disclaimer sit directly on the page background. The
+  readouts, their labels, the axis description and the accounting lines sit
+  inside panels, which are lighter than the page. Where a color appears on
+  both, the page background is the stricter test, and it is the one that
+  counts.
 - **SC 1.4.11, Non-text Contrast**, requires 3:1 for graphical objects. Here
-  that means each chart trace against the panel it is drawn on, and each agent
-  swatch treated as a shape. It also means the active track of each parameter
-  slider, which is how a control shows where its value sits in its range.
+  that means each chart trace against the panel it is drawn on, each agent
+  swatch treated as a shape, and the active track of each parameter slider,
+  which shows where the slider's value sits in its range.
 
 <!-- not-restated: 4.5 -->
 
-**A color that carries meaning both as text and as a graphic needs two values,
-not one.** The two minima differ by half again, so a single constant that
-serves both roles fails one of them. This interface has one such case. It is
-recorded here because the constant's name does not make the roles obvious.
-`ACCENT` is the graphical one, used for the sliders' active track.
-`ACCENT_TEXT` is the same hue darkened until it is legible as text. It carries
-the affirmative status words "Running" and "Valid", whose counterpart is the
-warning color. Telling a running run from a halted run is safety-critical for
-the reason given above. So the word that announces the state is held to the
-text minimum on the surface it is actually drawn on. The color is also never
-the only cue. The words themselves differ, so a reader who cannot tell the
-colors apart still reads the state.
+**Color is never the only cue.** SC 1.4.1 (Level A) requires this, and ISO
+5360 Table 2 footnote b gives a stronger reason: it makes displaying a color an
+obligation to display the *correct* one. A second cue keeps a mis-seen color
+from becoming a mis-identified agent, so the agent name always accompanies the
+color. Telling a running simulation from a halted one is safety-critical. The
+status words "Running" and "Valid" differ from the words for the opposite
+states, which appear in the warning color. A reader who cannot tell the colors
+apart therefore still reads the state.
 
-Held **above** AA in two places:
+The interface goes beyond AA in two places:
 
-- **Color is never the sole channel.** SC 1.4.1 (Level A) requires this, but
-  the reason here is stronger than the criterion. ISO 5360 Table 2 footnote b
-  makes displaying a color an obligation to display the *correct* one. So a
-  second cue is what keeps a mis-seen color from becoming a mis-identified
-  agent. The agent name always accompanies the color. The chart's traces
-  require a non-color channel for the reason given in the next bullet.
-- **Chart traces are held to pairwise separation, which WCAG does not cover.**
-  SC 1.4.11 asks only for 3:1 against the *background*. It says nothing about
-  how far apart two adjacent series must be, yet reading one compartment
-  against another is the whole lesson of this chart. **Confirmed against the
-  source on 2026-09-07** (`PL-JX0Z`). The project owner supplied the
-  Understanding document after the egress proxy refused five routes to it.
-  Its line-graph example (Figure 38) is explicit: *"The lines should have 3:1
-  contrast against their background, but as there is little overlap with other
-  lines they do not need to contrast with each other or the graduated lines."*
-  Its "Graphical Objects" section makes each line in a graph a graphical object
-  in its own right. It also allows the Gestalt "law of continuity" to ignore
-  **minor** overlaps between them. Note the condition that both carve-outs
-  depend on: an absence of overlap. This chart does not meet it. Six traces
-  start together, converge toward equilibrium and cross through wash-in and
-  washout. So this chart does not qualify for the exemption that would excuse
-  pairwise separation. That makes the bar below a supported exceedance rather
-  than an arbitrary strictness. It is also why `tools/contrast_check.py`
-  reports the pairwise matrix without failing on it, while it enforces the
-  3:1 minimum against the panel that the criterion does require.
-
-  This bar cannot be met by luminance differences. Contrast ratios compose
-  along a bounded axis, since black to white is 21:1. Sort $`n`$ traces by
-  luminance, and the smallest adjacent gap is largest when the gaps are equal.
-  So no arrangement of six traces gives every pair more than
-  $`21^{1/5}\approx1.84`$. The requirement in the next bullet tightens this
-  further, to 1.48. Both values are less than SC 1.4.11's 3:1. So a redundant
-  non-color channel (line style or marker) is a **requirement** for this chart
-  rather than an embellishment, and no palette choice can remove it. The next
-  section describes how that requirement is met.
+- **Chart traces can be told apart from each other, which WCAG does not
+  cover.** SC 1.4.11 asks only for 3:1 against the *background*, yet reading
+  one compartment against another is the whole lesson of this chart. W3C's
+  Understanding document for that criterion excuses lines from contrasting
+  with each other only where they overlap little. This chart's six traces
+  start together, converge toward equilibrium and cross during wash-in and
+  washout. No choice of colors can give every pair of six traces 3:1 against
+  each other, so each trace also has a line style or marker, which the next
+  section describes.
 - **Each chart trace clears 3:1 against the panel, both as displayed and under
   simulated dichromacy.** SC 1.4.11 is defined on the color the display emits,
-  so this is the project's bar rather than the criterion's. The reason for it
-  is the criterion's *purpose*: that a graphical object be findable against its
-  background. Measuring one observer does not serve that purpose. This is not a
-  hypothetical strictness. The muscle trace passed at 3.19:1 as displayed and
-  failed at 2.98:1 when simulated for deuteranopia. No normal-vision check
-  could have seen that shortfall.
+  so this bar is the project's own. Its reason is the criterion's purpose: a
+  graphical object must be findable against its background, and a check that
+  models only normal color vision cannot show that for a reader with
+  dichromacy.
 
-**Deferred, and named so that the deferral is visible** rather than silently
-unlisted: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10 (Reflow)
-and 1.4.12 (Text Spacing). Each needs a settled interface before it can be
-assessed. What the rendering backend can deliver for keyboard and
-screen-reader support is an open question rather than a commitment.
+**The gridline grey is exempt from SC 1.4.11** (project owner, 2026-09-27,
+ratified, over darkening the grey to 3:1; `PL-HKTB`). It colors the plot's
+gridlines, the axis lines, the line between sections of the chart column and
+the sliders' unfilled groove, at 1.31:1 against the panel. The criterion
+applies only to a graphical object *required to understand the content*. The
+values that the gridlines mark are shown in three other ways: each gridline
+stands at an axis tick labeled in text at 5.00:1, the readouts state every
+compartment's current value, and hovering over any drawn point shows its exact
+value. The section line sits over a bold heading or a titled panel that
+already marks the boundary. The groove is the edge of a slider whose handle
+and filled track identify it.
 
-**Exempt from SC 1.4.11, and recorded as such rather than left unasked**: the
-gridline grey, `GRIDLINE`, in all four things it draws. These are the plot's
-ruling, the axis lines, the rule between sections of the chart column and the
-sliders' unfilled groove (project owner, 2026-09-27, ratified, over darkening
-the grey to 3:1; `PL-HKTB`). The grey measures 1.31:1 on the panel. The
-criterion applies only to a graphical object *required to understand the
-content*. The Understanding document's line-graph example does count a chart's
-"background lines for the values" as graphical objects, and it asks 3:1 of
-them. But in that example the rulings are how a value is perceived at all.
-The document states what lifts the requirement under its
-"Required for understanding" heading. There, the requirement does not apply
-when "a graphic with text embedded or overlaid conveys the same information,
-such as labels and values on a chart". This chart has three such carriers of the same
-information. Every ruling stands at a tick that the axis labels as text at
-5.00:1. The readouts state every compartment's current value. The hover states
-the exact value at any drawn point. So the chart passes the criterion's own
-test: assume the area is invisible, and ask whether the graphic is still
-understood. The section rule sits over a bold heading or a titled panel that
-already marks the boundary. The groove is the edge of a control whose handle
-and filled track already identify it. The criterion's own paragraph on
-boundaries excuses these cases in terms. Darkening was refused because of the
-chart's hierarchy, not because of the criterion. A ruling at 3:1 would be 87%
-as dark as the lightest trace (3.43:1). It would collapse the visual ordering
-in which a ruling sits below a reference line, which sits below a trace. The
-line widths of 1 / 1.5 / 2-3 px also carry that ordering. The record is the
-`EXEMPT` table in `tools/contrast_check.py`. It has one entry per use, which
-gives the criterion's grounds and cites the drawing code by symbol.
-`make check` counts the uses into the contrast report line. It refuses an
-exempt name that the palette does not hold. It also refuses a colour that is
-both required and exempt on one surface, so nothing is held to the criterion
-and excused from it at the same time. An exemption is not a shortfall. A
-shortfall is a pair that should meet a minimum and does not. The bar for
-entering the exemption table is the criterion's own carve-out, never a failing
-ratio.
+**The ratios are computed from the interface's own colors**, with WCAG 2.2's
+definitions of relative luminance and contrast ratio, each time the project's
+checks run. Each requirement is a minimum ratio that named colors must reach,
+such as 4.5:1 for a readout's text on its panel. A requirement whose colors
+miss its minimum today is a shortfall. Each shortfall is recorded with the work
+item that will fix it.
+<!-- not-restated: 4.5 -->
 
-**The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
-`make check`. It reads the color constants out of `app/theme.py`, which has
-contained every one of them since `PL-2CS8`.
-`check_colors_live_in_the_theme` requires them to stay there. The tool holds
-each declared requirement to its declared minimum. It uses WCAG 2.2's own
-definitions of relative luminance and contrast ratio. Its requirement table
-names the colors, the criterion, and the reason they are held to that number.
-The judgment of *which* colors matter stays in that table, and the tool only
-evaluates it. Most entries are one foreground against one background. Some
-elements have an edge that either of two channels can carry. Such an element
-declares both channels and is held to the better of them. Each agent
-identification badge is that case: a fill outlined in the agent's own text
-color. The badge is perceivable by whichever of the two clears the minimum, so
-measuring one channel at a time misreports it. Requirements that do not meet
-their minimum today are listed in the table, each against the item that closes
-it. A listed shortfall that starts passing is reported as an error, so a fix
-cannot leave its excuse behind. A colour that the criterion does not apply to
-is recorded in the same file's exemption table, not as a requirement or a
-shortfall. The paragraph above records the gridline grey that way.
+**The window is always light, even on a computer set to dark appearance**
+(project owner, 2026-09-20, ratified - chosen over leaving the host appearance
+alone, and over growing a second palette for dark appearance). All 24
+requirements are measured on the light theme's panel and page background. The
+six compartment trace colors were chosen to meet their minimums under simulated
+dichromacy on those same surfaces. A window drawn on other surfaces would show
+color pairs that nothing has measured. A disabled control still takes its
+colors from the computer's setting, apart from one disabled color that the
+interface declares. That color's contrast is checked too.
 
-**A declared colour reaches the screen by one of three mechanisms.** Most of
-this interface is drawn by a stylesheet composed from `app/theme.py`'s
-constants. Those constants are what `tools/contrast_check.py` reads. Every one
-of those stylesheets is composed in `app/stylesheets.py` (`PL-Y4YX`). Some
-widgets cannot be drawn that way. An entry's fill, a spin box's stepper, a
-list's rows and its scroll bar, a check box's indicator and a dialog's own
-surface are painted from Qt palette roles. Styling them with a stylesheet
-instead costs the native stepper and the check box's tick. For those widgets,
-`qt_widgets.declare_interface_colours` declares the same theme colours as
-palette roles. PANEL and INK become `Base` and `Text`, MUTED becomes
-`PlaceholderText`, and PRIMARY and PANEL become `Highlight` and
-`HighlightedText`. So the pairs on screen are pairs that the requirement table
-already measures. The function writes only the `Active` and `Inactive` colour
-groups. A disabled colour stays the platform's, with the single declared
-exception recorded above.
+**For developers.** The contrast check (`tools/contrast_check.py`) runs in
+`make check`. It reads the color constants from `app/theme.py`, which contains
+every one of them. A second check (`check_colors_live_in_the_theme`) keeps them
+there. Each entry in the contrast check's requirement table names the colors,
+the criterion and the reason for the minimum. The table records which colors
+matter, and the check only evaluates it. Most entries are one foreground
+against one background. Some elements show their edge in either of two colors,
+such as an agent badge, which is a fill outlined in the agent's own text color.
+The entry for such an element declares both colors. The element passes when
+the better of the two meets the minimum, because a reader finds the edge by
+whichever color contrasts more. Shortfalls are listed in the same table. The
+check reports an error when a listed shortfall starts passing, so a fix cannot
+leave its listing behind.
 
-The third mechanism writes the same role set on the `QApplication` itself,
-through `qt_widgets.declare_application_colours`. It is the fallback that the
-other two cannot provide. Qt's application palette follows the **host
-appearance**. So on a machine set to Dark, everything that this interface did
-not name arrived with a dark theme's surfaces, around a light window. That
-included what no per-widget declaration can reach, because a stylesheet makes
-every widget beneath it resolve its colours from the application palette, not
-from the styled ancestor. **This interface declares its light theme there rather
-than following the host** (project owner, 2026-09-20, ratified - chosen over
-leaving the host appearance alone, and over growing a second palette for dark
-appearance). The reason is the requirement table. All 24 requirements are
-measured on PANEL and BACKGROUND. So are the dichromacy minimums that the six
-compartment traces were re-picked against. An interface that rendered any
-other surface would be measuring surfaces that are not on screen. The cost is
-recorded rather than hidden. A reader whose machine is set to Dark gets a
-light-appearing window. Supporting dark appearance properly means re-measuring
-every requirement here against a second pair of surfaces. It also means
-re-picking all six traces under four vision models. That is interface work,
-not a setting.
+A color that a criterion does not apply to goes in the contrast check's
+exemption table (`EXEMPT`), with one entry per use. Each entry gives the
+criterion's grounds and cites the drawing code by symbol. An entry must rest on
+an exemption that the criterion itself grants, never on a failing ratio. A
+color that fails its minimum is listed as a shortfall. The checks that
+`make check` runs count the exempt uses into the contrast report line. They
+refuse an exempt name that `app/theme.py` does not define, and a color that is
+both required and exempt on one surface.
 
-**It is a palette and not a colour-scheme hint.** Qt 6.8's
-`styleHints().setColorScheme` documents itself as a hint. Its documentation
-says that "overriding the color scheme is not supported on all platforms". It
-was observed being ignored outright on 2026-09-20, when it still reported
-`Unknown` after being set. So nothing here rests on it. A palette is
-authoritative at any depth. The test `tests/integration/test_dark_appearance.py`
-supplies a dark host palette. Measured against that palette, the page's scroll
-bar goes from 94.3% of its pixels darker than mid-grey to none.
+Measuring text on the panel alone once hid a shortfall, fixed in `PL-X0RG`.
+The label color gave 4.28:1 on the panel and 3.98:1 on the page, where the
+run-status word is drawn.
 
-Two things still follow the host. Both do so by the rule, not by omission. A
-**disabled** widget draws from the `Disabled` colour group, which all three
-mechanisms leave to the platform. Declaring a disabled colour is a decision
-under `.claude/rules/ui-color.md`, and this interface has exactly one, measured
-above. The splitter handles used to be disabled, so they kept the host's dark
-surface. Since `PL-W9P6` (2026-10-18) they are enabled. The border between two
-Areas now shows the page's `BACKGROUND` under a dark host too.
-`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` checks
-this (`PL-05M4`).
-A **tooltip** draws from `ToolTipBase` and `ToolTipText`, which are outside the
-declared role set. This interface uses no tooltip today.
+A color that carries meaning both as text and as a graphic needs two
+constants, because text needs 4.5:1 and a graphic 3:1, and one constant serving
+both roles fails one of them. The accent color is the only such case. The
+sliders' active track uses `ACCENT`, and "Running" and "Valid" use
+`ACCENT_TEXT`, the same hue darkened until it is legible as text.
+<!-- not-restated: 4.5 -->
 
-All of this is visible rather than asserted.
-`tests/integration/test_dark_appearance.py` renders the dashboard and both
-dialogs under the palette that a dark host supplies. It fails on any content
-widget that resolves to that palette. That is what caught six controls that
-had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). It also checks the
-chrome and the untouched `Disabled` group against the same host. Which
-controls this test covers is not left to a remembered list of widget kinds.
-`tests/integration/test_simulation_view.py` builds the whole dashboard under a
-foreground colour that this interface never uses. It fails on any control that
-paints its own content and resolves to that colour. So a control added later
-must declare a colour, rather than depend on somebody noticing it. The test
-names what it exempts, each against the reason it draws no text.
-`tools/contrast_check.py` counts those kinds into its report line. A
-requirement exists only where somebody wrote a colour down. So a control that
-writes none would otherwise be absent from both sides of that line's count,
-and the line would treat it as covered (`PL-4L49`).
+The excuse for lines that overlap little comes from the Understanding document
+for SC 1.4.11, read on 2026-09-07 in a copy the project owner supplied
+(`PL-JX0Z`). Its line-graph example (Figure 38) says: *"The lines should have
+3:1 contrast against their background, but as there is little overlap with
+other lines they do not need to contrast with each other or the graduated
+lines."* Its "Graphical Objects" section makes each line in a graph a graphical
+object in its own right. Citing the Gestalt "law of continuity", it lets
+**minor** overlaps between lines be ignored.
+
+The traces cannot all reach 3:1 against each other because contrast ratios
+multiply along a bounded scale: black to white is 21:1. With $`n`$ traces
+sorted by luminance, the smallest gap between adjacent traces is largest when
+the gaps are equal. So no arrangement of six traces gives every pair more than
+$`21^{1/5}\approx1.84`$. The bound tightens to 1.48 once every trace must also
+clear 3:1 against the panel, as displayed and under simulated dichromacy. Both
+values are less than 3:1, so the line style or marker cannot be dropped.
+
+Because the criterion does not require pairwise separation, the contrast check
+reports the contrast between every pair of traces without failing on it. It
+enforces the 3:1 minimum against the panel, which the criterion does require.
+
+Checking under simulated dichromacy has caught a shortfall: the muscle trace
+passed at 3.19:1 as displayed and failed at 2.98:1 for deuteranopia.
+
+The gridline grey's exemption (`GRIDLINE`) rests on the Understanding document
+for SC 1.4.11. The document's line-graph example does ask 3:1 of a chart's
+"background lines for the values", but there the gridlines are how a value is
+perceived at all. Under the heading "Required for understanding", the document
+says the criterion does not apply when "a graphic with text embedded or
+overlaid conveys the same information, such as labels and values on a chart".
+This chart passes the criterion's own test: imagine the gridlines invisible,
+and ask whether the chart is still understood. The criterion's paragraph on
+boundaries expressly excuses cases such as the section line and the groove.
+
+Darkening the grey was refused because of the chart's visual order, in which a
+gridline sits below a reference line and a reference line below a trace. A
+gridline at 3:1 would be 87% as dark as the lightest trace (3.43:1), and that
+order would collapse. Line widths of 1 / 1.5 / 2-3 px also carry that order.
+
+Supporting dark appearance would mean measuring every requirement again on a
+second pair of surfaces, and choosing all six trace colors again under four
+vision models.
+
+A declared color reaches the screen by one of three mechanisms. Most of the
+interface is drawn by stylesheets, all composed in one module
+(`app/stylesheets.py`) from the theme's color constants (`PL-Y4YX`). Some
+widgets are painted from Qt palette roles instead: an entry's fill, a spin
+box's stepper, a list's rows and its scroll bar, a check box's indicator and a
+dialog's own surface. A stylesheet would cost them the native stepper and the
+check box's tick. For those widgets, a function
+(`qt_widgets.declare_interface_colours`) declares the same theme colors as
+palette roles. It maps PANEL and INK to `Base` and `Text`, MUTED to
+`PlaceholderText`, and PRIMARY and PANEL to `Highlight` and `HighlightedText`,
+so the pairs on screen are pairs that the requirement table already measures.
+It writes only the `Active` and `Inactive` color groups.
+
+The third mechanism is the fallback that keeps the window light under a dark
+host: a function (`qt_widgets.declare_application_colours`) writes the same
+roles on the `QApplication` itself. Without the fallback, Qt's application
+palette follows the host appearance. On a machine set to Dark, everything this
+interface did not name would then take a dark theme's surfaces, around a light
+window. No per-widget declaration can cover all of that, because every widget
+beneath a styled widget resolves its colors from the application palette
+rather than from the styled ancestor.
+
+The interface sets a palette, which is authoritative at any depth, and does not
+rely on a color-scheme hint. Qt 6.8 documents its color-scheme setting
+(`styleHints().setColorScheme`) as a hint: "overriding the color scheme is not
+supported on all platforms". On 2026-09-20 the setting was seen to be ignored
+outright: it still reported `Unknown` after being set.
+
+Disabled controls follow the host because all three mechanisms leave the
+`Disabled` color group to the platform. Declaring a disabled color is a
+decision that the project's rule for interface colors governs
+(`.claude/rules/ui-color.md`). The splitter handles are enabled (`PL-W9P6`), so
+the border between two areas shows the page's `BACKGROUND` under a dark host
+too, rather than the host's dark surface. A test
+(`test_the_border_between_two_areas_shows_the_page_rather_than_the_host`)
+checks this (`PL-05M4`).
+
+Tooltips also follow the host, because they draw from `ToolTipBase` and
+`ToolTipText`, which are outside the declared roles. This interface uses no
+tooltip today.
+
+The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
+the dashboard and both dialogs under the palette a dark host supplies. It
+fails on any content widget that resolves to that palette, and it checks the
+chrome and the untouched `Disabled` group against the same host. Under that
+host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
+without the interface's own palette, and none are with it.
+
+A second test (`tests/integration/test_simulation_view.py`) catches any control
+that declares no color, including one added later. It builds the whole
+dashboard under a foreground color that this interface never uses, and fails
+on any control that paints its own content and resolves to that color. It
+exempts only kinds of control that draw no text, and names each kind with its
+reason. A requirement exists only where somebody wrote a color down, so the
+contrast check counts those kinds into its report line. Without that count, a
+control that declares no color would appear on neither side of the report
+line, and the line would show it as covered (`PL-4L49`).
 
 ### The six compartment traces: what separates them
 
-Six curves share one plot. Taking a value off the wrong curve is a misreading
-of a clinical quantity, not an aesthetic complaint. The curves are separated by
-**line style**, with color as a second cue and never the first. This section
-records why that order is forced, and which standard the colors must meet
-instead.
-
-**Line style is the separating channel.**
+Each compartment's trace has its own line style, and color is only a second
+cue. Six traces share one plot, and a trace mistaken for another gives a wrong
+clinical value.
 
 | Compartment | Line style | Dash pattern (px) | Width (px) |
 | --- | --- | --- | --- |
@@ -9992,26 +9996,51 @@ instead.
 | Muscle | dotted | 2 on, 3 off | 2 |
 | Fat | dash-dot | 12 on, 4 off, 2 on, 4 off | 2 |
 
-All six styles differ. The legend entry beside each checkbox names its style in
-words, so a reader can learn each trace's style without consulting the plot.
-Circuit and vessel-rich were both solid until `PL-GVXP`. For that one pair, the
-redundant channel was redundant in name only.
+The legend entry beside each checkbox names its trace's style in words, so a
+reader can learn every style from the legend alone.
 
-**Which style goes on which compartment is decided by the colors.** The two
-traces that are hardest to separate by color get the two marks that are easiest
-to separate by shape. The next pair gets the next easiest marks, and so on
-outward. The closest pairs in the matrix below are vessel-rich against fat, and
-mixed venous against fat. In the first pair, an even dash is set against an
-alternating dash-dot. In the second, a short uniform dash is set against that
-same dash-dot. In each pair, the two marks differ in mark length, gap length
-and rhythm at once. The one pair of marks in the set that a reader could
-genuinely confuse is the 2 px dots against the 4 px short dash. That pair is
-spent on mixed venous against muscle, which has the widest separation of any
-pair among these six.
+**Color cannot be the first cue, because some pairs of trace colors are almost
+equally bright.** The closest pairs are vessel-rich and fat, and mixed venous and
+fat. No other choice of colors fixes this. Each color has at least the 3:1
+contrast against the panel that WCAG success criterion 1.4.11 requires, both as
+displayed and as simulated for protanopia, deuteranopia and tritanopia. The
+colors are chosen to label their compartment and to clear that minimum.
 
-**Color is a second cue, and the arithmetic says it cannot be the first.**
-Every trace clears the 3:1 contrast that SC 1.4.11 requires against the panel.
-It does so as displayed and as simulated for each dichromacy:
+**The colors decide which line style goes on which compartment.** The two traces
+whose colors are hardest to separate get the two styles that are easiest to
+separate by shape. The next pair gets the next easiest, and so on. Fat's
+dash-dot therefore differs in dash length, gap length and rhythm from both the
+vessel-rich even dash and the mixed venous short dash. The one pair of styles
+that a reader could confuse is dotted, with 2 px dots, and short dash, with 4 px
+dashes. That pair goes to muscle and mixed venous, whose colors are the second
+most widely separated pair among these six (1.45 in the table below, after
+circuit and alveolar at 1.62).
+
+**With two runs on the plot, at most two compartments are drawn** (`PL-HLD5`,
+`PL-8PSW`). The cap applies to the plot only. All six readouts stay on screen for
+both runs (§ "Minimum displayed outputs").
+
+**Line width shows the run.** Each compartment keeps its line style and color.
+The first run's traces are wider, and the second run's keep the width in the
+table above. A reader compares the two widths only between the two traces of one
+compartment, which are always adjacent. A branched run repeats its parent exactly
+up to the branch point, where the two runs diverge (planned-milestone item 12).
+Before that point the two traces of a compartment coincide, so the narrower one
+is drawn on top, where the wider one cannot hide it.
+
+**A solid vertical line marks a branch point, and a finely dashed one marks a
+control change.** Both lines are the same color, so only their dash pattern and
+the legend's words tell them apart. A reader must not confuse the two, because
+reading a branch point as a control change would attribute the runs' divergence
+to the wrong cause.
+
+**For developers.** A script computes every figure in this section
+(`tools/contrast_check.py`), and a unit test checks the script's results against
+these figures (`tests/unit/test_contrast_check.py`). The script runs as part of
+`make check`, and its `--matrix` option prints the pairwise table below.
+
+Each trace has this contrast against the panel, as displayed (Normal) and as
+simulated for each dichromacy:
 
 | Trace | sRGB | Normal | Protanopia | Deuteranopia | Tritanopia |
 | --- | --- | --- | --- | --- | --- |
@@ -10022,8 +10051,8 @@ It does so as displayed and as simulated for each dichromacy:
 | Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
 | Fat | `#64748B` | 4.76 | 4.74 | 4.76 | 4.77 |
 
-Compared trace against trace, the contrast is a different picture. The design
-rests on this table:
+The contrast between each pair of traces is far lower, and the design in this
+section rests on it:
 
 | Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
 | --- | --- | --- | --- | --- | --- |
@@ -10043,94 +10072,62 @@ rests on this table:
 | Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
 
-**Re-picking the palette does not fix this, and the search was run rather than
-assumed.** The ceiling above is $`21^{1/5}\approx1.84`$. Requiring 3:1 against
-a white panel caps every trace's luminance at 0.30. That shortens the axis and
-brings the ceiling down to **1.48**. A search over lightness, with each hue and
-saturation held fixed, reaches **1.28** as the best worst-pair contrast across
-the four vision models. It gets there only by driving four of the six traces to
-near-black. That loses the hue identity that makes a trace nameable, and it
-buys a number still less than half of 3:1. So the colors here are chosen to
-name their compartment and to clear the 3:1 minimum against the panel. The
-line style does the separating. `.claude/rules/ui-color.md` records this as a
-standing judgment, so that the search is not re-run every time a color is
-touched.
+Other colors would not help, because the closest pair among any six colors has a
+contrast ceiling of $`21^{1/5}\approx1.84`$. Requiring 3:1 against the white panel
+caps each trace's luminance at 0.30, which lowers that ceiling to **1.48**. A
+search over lightness, with each hue and saturation held fixed, reaches **1.28**
+at best for the worst pair across the four vision models. It gets there only by
+making four of the six traces nearly black, which loses the hue that lets a
+reader name a trace. Even then, 1.28 is less than half of 3:1. A project rule
+(`.claude/rules/ui-color.md`) records this result, so that the search is not
+re-run each time a color changes.
 
-**Two colors were re-picked to meet the 3:1 minimum, not to improve
-separation.** The alveolar trace was `#18A999`, at 2.93:1 as displayed and
-2.61:1 simulated for protanopia. The muscle trace was `#D97706`, at 3.19:1 as
-displayed and 2.98:1 simulated for deuteranopia. Each new color keeps the old
-hue and saturation exactly. It is darkened to the lightest shade that clears
-3.2:1 in all four models. That target is 3:1 plus two tenths, so the shipped
-value is not itself a boundary case. The alveolar trace also draws the
-$`F_A/F_I`$ wash-in plot. That plot carries a single line and never had a
-separation problem. It inherited the shortfall from the shared constant, and
-the same change fixes it.
+Two colors were darkened to meet the 3:1 minimum against the panel, not to
+improve separation. The alveolar trace was `#18A999`, at 2.93:1 as displayed
+and 2.61:1 simulated for protanopia. The muscle trace was `#D97706`, at 3.19:1
+as displayed and 2.98:1 simulated for deuteranopia. Each new color keeps the
+old hue and saturation exactly, and is darkened to the lightest shade that
+clears 3.2:1 in all four vision models. The extra 0.2 keeps the shipped color
+off the 3:1 boundary. The $`F_A/F_I`$ wash-in plot takes its single line's
+color from the alveolar trace's constant, so it had the same shortfall, and
+darkening the alveolar color fixed it.
 
-**What changes when two runs share the axis, and what does not.** Nothing about
-a compartment's appearance changes. Each compartment keeps the line style and
-the colour that the table above gives it. The reason is that colour already
-means "compartment" here. A channel that means something else on either side
-of a mode change is a misread of a clinical value waiting to happen. What is added is the **run, on
-line width, at two levels**. The arithmetic above allows this only under a cap.
-With six compartments, the width column above is already spent across 2 px and
-3 px. So **at most two compartments are drawn while two runs are shown**
-(`PL-HLD5`, `PL-8PSW`). Two compartments times two runs is four curves. The cap
-limits how much the chart's colours can carry. It never reduces what the
-display must show. § "Minimum displayed outputs" keeps all six readouts on
-screen for both runs, and it names this cap when it says so.
+The dichromacy figures use Brettel, Viénot and Mollon's projection onto the
+reduced stimulus surface that each dichromacy leaves. That surface is defined by
+the neutral axis and by the monochromatic stimuli that a dichromat and a normal
+trichromat see as the same hue.[^brettel1997] The simulation uses the
+two-half-plane form, because the single-matrix simplification of Viénot,
+Brettel and Mollon (1999) is not accurate for tritanopia.[^vienot1999] The
+coefficients are the precomputed sRGB-space forms published by libDaltonLens,
+which derives them from Brettel's construction over the Smith and Pokorny (1975)
+cone fundamentals.[^daltonlens]
 
-**The first run is the wider, and the second keeps the single-run width.** This
-is forced rather than chosen. A branch reproduces its parent element-wise up to
-the fork (planned-milestone item 12). So before the branch point, the two
-curves do not merely run close together. They coincide exactly, and whichever
-curve is drawn thicker hides the other completely over that stretch. The
-narrower curve therefore has to be the one drawn last, on top. Widening one
-curve, rather than narrowing the other, also keeps every trace at or above the
-2 px width that the table above gives it. A 1 px antialiased line renders
-lighter than its declared colour. That would push it back below the 3:1
-minimum against the panel, which this section treats as an error rather than a
-tracked shortfall. A reader compares the two width levels *locally*, between
-the two curves of one compartment, which are adjacent by construction. The
-reader does not have to decode them across the plot.
+The figures support one comparative claim: no arrangement of these six colors
+separates the traces, whichever observer is assumed. The figures have three
+limits:
 
-**Two marks that are not traces, and how they are separated.** A control change
-and a branch point are both vertical lines. Both annotate an instant rather
-than showing any part of the run. Both are drawn in the control mark's colour.
-They are separated by the dash pattern: the control mark is finely dashed and
-the branch point is solid. The legend also names both in words. Neither mark
-depends on a hue. That is deliberate, because a reader must not confuse this
-pair. A fork is where two runs stop being the same run. Reading a fork as a
-setting change would attribute a divergence to the wrong cause.
+1. The simulation renders, for a normal observer, an approximation of a
+   dichromat's *appearance*. It does not measure dichromatic perception. It
+   models the three dichromacies, not the far commoner anomalous trichromacies,
+   so it does not represent their milder losses.
+2. The script applies WCAG's relative-luminance formula to the simulated output.
+   The formula was not defined for that use, because success criterion 1.4.11 is
+   written for the color the display emits.
+3. The calculation concerns luminance only, so it says nothing about the
+   difference in hue that a reader with normal color vision uses.
 
-**The dichromacy simulation.** The simulation uses Brettel, Viénot and Mollon's
-projection onto the reduced stimulus surface that each dichromacy leaves. That
-surface is defined by the neutral axis and by the monochromatic stimuli that a
-dichromat and a normal trichromat see as the same hue.[^brettel1997] The
-simulation uses the two-half-plane form rather than the single-matrix
-simplification of Viénot, Brettel and Mollon (1999). That simplification is
-not accurate for tritanopia, and all three dichromacies are reported
-here.[^vienot1999] The coefficients are the precomputed sRGB-space forms
-published by libDaltonLens. libDaltonLens derives them from Brettel's
-construction over the Smith and Pokorny (1975) cone fundamentals.[^daltonlens]
+Color stays with the compartment when a second run is added, because a cue
+whose meaning changed between one run and two would invite misreading a clinical
+value.
 
-There are three limits on how far these numbers may be read. First, the
-simulation renders, for a normal observer, an approximation of a dichromat's
-*appearance*. It is not a measurement of dichromatic perception. It also
-models the three dichromacies rather than the far commoner anomalous
-trichromacies, so it does not represent the milder losses of anomalous
-trichromacy. Second, WCAG's
-relative-luminance formula is then applied to that simulated output. The
-formula was not defined for that use, because SC 1.4.11 is defined on the
-color the display emits. Third, the whole calculation is about luminance. So
-it says nothing about the hue difference that a reader with normal color
-vision actually uses. The numbers are good for the comparative claim that this
-section uses them for: that no arrangement of these six colors separates them,
-whichever observer is assumed.
+Because the colors cannot separate the traces, width can show the run only under
+a cap on the compartments drawn. The six compartments already use two widths,
+2 px and 3 px, which sets the cap at two.
 
-`tools/contrast_check.py` computes every figure in this section. `make check`
-runs it, and `tests/unit/test_contrast_check.py` pins the figures. Run it with
-`--matrix` to print the pairwise table above.
+The first run is widened, rather than the second narrowed, so that no trace is
+drawn narrower than 2 px. A 1 px antialiased line renders lighter than its color
+and would fall below the 3:1 minimum against the panel that every trace must
+meet.
 
 [^brettel1997]: Brettel H, Viénot F, Mollon JD. Computerized simulation of
     color appearance for dichromats. J Opt Soc Am A. 1997;14(10):2647-2655.
@@ -10523,7 +10520,7 @@ readout that § "The chart's hover readout: what the tooltip may show" derives
 below, is shown at the resolutions above. The MAC axis is labelled on round MAC
 values, in half-MAC steps, which the fixed 3 ×MAC range gives for every agent,
 so a gridline that a reader learns under one agent means the same thing under
-the next. § "The chart's vertical range is denominated in MAC, and fixed" above
+the next. § "The chart's vertical range is set in MAC, and fixed" above
 explains the range. The chart's horizontal extent is the selected time base, so
 the reader chooses the seconds per pixel, as "The chart's time base" explains.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
@@ -10805,33 +10802,23 @@ change to this section.
 
 ### The chart's hover readout: what the tooltip may show
 
-When a pointer is held over a trace, a small floating readout appears. This
-section derives the readout's contents in the same way that
-§ "Displayed precision" above derives the contents of the numeric readouts,
-and for the same reason. What a hover reports is a clinically meaningful displayed value.
-So what it may show is a claim about the model, not a formatting convention.
+When the pointer rests over a trace, a small box appears with the value under the
+pointer. This box, the hover readout, supplies for itself every qualifier that the
+readout panel takes from its surroundings. The panel's six values sit under a
+heading that names the agent and calls them modelled, beside a legend that names
+each compartment. The panel's alveolar entry also carries the gloss
+`end-tidal-equivalent`. The box floats over the plot and can cover the heading it
+would otherwise be read under. It is the one place in the interface where a number
+appears with nothing around it.
 
-**It needs a derivation of its own because it is read detached from everything
-that qualifies it.** The six numeric readouts sit under a heading that names
-the agent and calls the values modelled. They sit beside a legend that names
-each compartment. They are on a panel whose alveolar entry carries the
-`end-tidal-equivalent` gloss that this document requires above. A floating box
-carries none of that context. It appears over the plot, and it can cover the
-heading that it would otherwise be read under. It is the one place in this
-interface where a number is presented with nothing around it. So the box has
-to supply for itself every qualifier that the readout row gets from its
-surroundings.
-
-**And it is the display a reader has most deliberately stopped to consult.** A
-reader glances at a value in the readout row while a run plays. A value under
-a cursor is one that somebody went looking for. That makes the hover readout
-the display most likely to be written down. It is also the display where being
-mistaken for a measurement costs most.
+The box is also the display that a reader consults most deliberately. A value in
+the readout panel is glanced at while a run plays, but a value under the pointer
+is one that somebody went looking for. So the box is the display most likely to
+be written down, and the one where a value mistaken for a measurement costs most.
 
 #### What it shows
 
-The box has three lines. The first gives the run context, the second says what
-the value is, and the third gives the value.
+The box has three lines: the run context, what the value is, and the value.
 
 ```
 Modelled sevoflurane · 20m8s
@@ -10839,52 +10826,45 @@ Alveolar (end-tidal-equivalent)
 1.43%   0.71 ×MAC
 ```
 
-**The order carries the safety argument. It is not a matter of typography.**
-The qualifiers come before the number. So a reader reaches `1.43%` only after
-passing "modelled" and the compartment the value belongs to, rather than
-meeting them afterwards. `.claude/rules/expert-review.md` states the general
-form: prefer an interface that prevents an error to one that warns after it. A
-hedge placed below the number it hedges is a warning, because the number has
-already been read.
+The qualifiers come first, so a reader reaches `1.43%` only after passing
+"Modelled" and the compartment. A qualifier below the number would come too late,
+because the number has already been read.
 
-Each line, and the reason it must be there:
+1. **Run context: "Modelled", the agent, the run when more than one is drawn, and
+   the instant.** "Modelled" appears on every hover, not only for the compartments
+   that a monitor also measures. The agent is there because one percentage means
+   different things under different agents: 1.43% is 0.71 MAC of sevoflurane and
+   0.24 MAC of desflurane. The instant is printed to the hundredth of a second, in
+   the form that the clock, the time axis and the time stamp of each control change
+   also use, such as `20m8s`. It is the exact instant of the value beside it, not a
+   rounding of it.
+2. **What the value is: the compartment, with its gloss where the readout panel
+   has one.** Two compartments carry a gloss, `Alveolar (end-tidal-equivalent)`
+   and `Circuit (inspired)`, because a clinician would most readily set those two
+   beside a monitor reading (§ "Minimum displayed outputs"). The other four carry
+   none, as in the readout panel.
+3. **The value, in percent and as a MAC multiple.** The readout panel shows the
+   same pair. The chart has an axis for each, and a single number could be read
+   against either.
 
-1. **Run context: the modelled marker, the agent, the run where more than one
-   is drawn, and the instant.** The marker appears on every hover, not only on
-   the compartments that have a measured twin. The reason is that the box is
-   detached from the heading that would otherwise carry the marker. The agent
-   is there because the same percentage means different things under different
-   agents. For example, 1.43% is 0.71 MAC of sevoflurane and 0.24 MAC of
-   desflurane. A floating box cannot rely on the header being visible behind
-   it. The instant is given in the compound form of `format_elapsed`, to the
-   hundredth of a second that the chart's columns are laid on. So the printed
-   instant is the instant of the state printed beside it, not a rounding of
-   it (`PL-T5NJ`). The clock, every control stamp and the time axis use the
-   same form.
-2. **What the value is: the compartment, with its gloss where the readout row
-   has one.** The two glossed compartments are
-   `Alveolar (end-tidal-equivalent)` and `Circuit (inspired)`. The other four
-   carry no gloss, because the readout row gives them none. Those two glosses
-   exist for the two compartments that a clinician would most readily set
-   beside a monitor reading. § "Minimum displayed outputs" made that decision,
-   and the box reuses it rather than taking it again.
-3. **The value, in both units the chart carries.** The value is given as a
-   percent and as a MAC multiple, the same pair that the readout panel shows.
-   The reason is that the chart itself has two axes, and a single number could
-   be read against either one.
+Every number in the box is formatted as the readout panel formats it, never left to
+the charting software's default (§ "What a chart library prints instead, measured").
+The MAC multiple divides by the same MAC as the MAC axis and the readout panel.
 
-**Every number in the box is produced by `app/formatting.py`, never by the
-chart library.** The box uses only `format_percent`, `format_mac_multiple` and
-`format_elapsed`. The rest of this section exists to justify this rule, and the
-rule is not a style preference. A charting library formats a coordinate, and
-formatting a coordinate is different from formatting a clinical value. Every
-default this project has met formats the coordinate.
+**For developers.** Two functions in `app/chart_frame.py` produce the three-line
+form (`format_trace_hover` and `format_wash_in_hover`). Every number in it comes
+from `app/formatting.py`: `format_percent`, `format_mac_multiple` and
+`format_elapsed`. The multiple divides by the snapshot's own MAC (`mac_percent`).
+Any other divisor would be the traceability failure that `CLAUDE.md` forbids,
+arriving through the display that looks least like a calculation. The qualifiers
+lead because of the general rule in `.claude/rules/expert-review.md`: prefer an
+interface that prevents an error to one that warns after it.
 
-The MAC multiple is computed against the snapshot's own `mac_percent`, exactly
-as the MAC axis and the readout row compute theirs. A hover that reported a MAC
-multiple computed from any other divisor would be the traceability failure that
-`CLAUDE.md` forbids. It would arrive through the one display that looks least
-like a calculation.
+**For developers.** The instant that the box prints is exact, because the
+chart's columns fall on whole hundredths of a second (`PL-T5NJ`) and every other
+drawn instant falls on a simulation step. The box rounds each instant to a
+hundredth of a second (`HOVER_INSTANT_RESOLUTION_S`), which removes only
+floating-point noise.
 
 #### The hover and the run it belongs to
 
@@ -10899,26 +10879,53 @@ Alveolar (end-tidal-equivalent)
 1.43%   0.71 ×MAC
 ```
 
-**The hover is a displayed concentration, so § "Minimum displayed outputs"
-already decides the principle**: "The run is named in text, not carried by
-colour or by position… Text has no width analogue… A concentration that does
-not say which management produced it is the correct number under the wrong
-patient context." That paragraph was written about the numeric readouts. Every
-reason it gives applies to the hover with more force, not less. The readouts
-sit in a labelled block beside the run's own panel. The hover box floats over
-the plot with nothing around it. That is the same argument that the start of
-this section makes for why the modelled marker travels with the value.
+The box follows the rule that § "Minimum displayed outputs" sets for the readout
+panel: "The run is named in text, not carried by colour or by position… A
+concentration that does not say which management produced it is the correct
+number under the wrong patient context." The rule matters more for the box than
+for the panel, which sits in a labelled block.
 
-**The argument that the pointer is already over one curve is false, and this
-was measured.** At the time, `nearest_trace_point` kept the single globally
-nearest drawn point across *every* run on the frame. (`PL-JVHL` retired that
-rule, as described below.) Wherever two runs' curves for one compartment run
-close together, the pointer is within reach of both runs. The measurement was
-made on 2026-09-17 on a branched sevoflurane case. It used the reference adult,
-with the trunk held at 1 MAC and the branch forked at 10 min. The axis covered
-60 minutes and was 900 px wide and 360 px tall, so the scale was 4.00 s/px and
-0.0167 %/px. The table gives the share of the shared axis on which both runs'
-points for one compartment sit inside the 12 px hover radius:
+Pointing at one trace does not pick out one run. Where two runs' traces for one
+compartment lie close together, the pointer is within the hover radius, 12 pixels
+(px), of both. The percent axis tops out at 3 MAC for every agent, so the slow
+compartments lie close to zero. Through a case's first hour, fat stays in about
+the bottom 1% of the axis height. All along the time axis, a pointer within reach
+of one run's fat trace is within reach of the other's too, even under the widest
+difference in management that the interface permits. The two runs' fat values
+can still differ. Take a sevoflurane case held at 1 MAC, with a second run (the
+branch) forked from the first (the trunk) at 10 min with the vaporizer turned
+off. At 3492 s the fat value reads either `0.03%   0.02 ×MAC` or
+`0.01%   <0.01 ×MAC`, depending on the run. That is a threefold difference in
+stored agent, between a run still carrying agent and a run 48 minutes into
+emergence. The slow compartments are the ones this chart exists to teach.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+A single run goes unnamed because there is nothing to tell it apart from, and a
+name would suggest a comparison that is not on screen. A reader always sees when
+a second run is drawn, because it brings a second legend entry, a second readout
+panel and a second set of traces.
+
+**For developers.** The run goes on line 1, which already gives the run context,
+so the box keeps its three lines. While two runs are compared, the run name is
+the only part of that line that tells them apart. The agent is always the same:
+the code that assembles the chart refuses runs that differ in agent
+(`assemble_chart_frame`), because they share one MAC axis and one set of clinical
+references. The one argument for a fourth line is that a reader scans a separate
+line but may miss a word in the middle of one. That matters because the run under
+a resting pointer can change. But the value on line 3 changes at the same moment,
+so the reader gets two cues.
+
+The run name appears on the same condition as the difference in line width
+between runs: the code that styles each run's trace widens none until a second
+run exists (`run_trace_style`).
+
+The table gives the share of the axis on which both runs' points for one
+compartment lie inside the hover radius. The figures come from simulating the
+branched case on 2026-09-17 on the reference adult, with the branch's management
+at the fork varied. The 60-minute axis was 900 px wide and 360 px tall, a scale of
+4.00 s and 0.0167% per pixel. The percent axis had its shipped top
+(`CHART_AXIS_TOP_MAC`). At the time, the hover reported the single drawn point
+nearest the pointer across every run (`nearest_trace_point`).
 
 | Branch's management at the fork | Alveolar | Fat |
 | --- | ---: | ---: |
@@ -10926,45 +10933,12 @@ points for one compartment sit inside the 12 px hover radius:
 | raised to 1.25 MAC | 8.5% | 100% |
 | vaporizer turned off | 1.6% | 100% |
 
-The fat figure is 100% in every case, even against the widest difference in
-management that the interface permits. The reason is that the percent axis is
-fixed at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`), and the slow
-compartments sit near zero on it. Through a case's first hour, fat stays within
-about 1% of the axis height. Those slow compartments are the ones this chart
-exists to teach. The problem is consequential, not cosmetic. Of the hovers that
-could report either run, 83.3–95.3% (alveolar) and 43.8–81.4% (fat) would print
-*different* text. On the emergence case, the fat hover at 3492 s shows either
-`0.03%   0.02 ×MAC` or `0.01%   <0.01 ×MAC`, depending on which run it
-reported. That is a threefold difference in stored agent, between a run still
-carrying agent and a run 48 minutes into emergence.
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-
-**The run goes on line 1 rather than on a fourth line.** This section already
-calls line 1 the *run context*, so naming the run completes that line. It does
-not change the three-line form that the rest of this section derives. While two
-runs are compared, the run name is also the only token on that line that tells
-them apart. `assemble_chart_frame` refuses a frame whose runs differ in agent,
-because the runs share one MAC axis and one set of clinical references. So the
-agent is the same across the runs being compared. Without the run name, the
-line would spend its distinguishing slot on a constant. The one argument for a
-fourth line is that a reader scans a separate line but may miss a token in the
-middle of a line. That matters because the run under a resting pointer can
-change. The answer is that the value on line 3 changes at the same moment, so
-the reader has two cues rather than none.
-
-**The run name is conditional, and that is not a hidden mode.** A single run
-has nothing to be told apart from. A name on the only run drawn would imply a
-comparison that is not on screen. The condition is the same one that the width
-channel already uses: `run_trace_style` widens nothing until a second run
-exists. The condition is also visible on its face. A second run brings a second
-legend entry, a second readout panel and a second set of curves with it. A
-reader cannot be in the two-run state without seeing the two runs.
-
-**Naming the run made the choice between runs *visible*. It did not make the
-hover report the curve the reader aimed at.** In the measurement above, moving
-the pointer by 2 px changed which run the hover reported on 75.4–99.9% of the
-fat axis. That is a question of targeting, not of the readout, and the next
-subsection describes how it was settled (`PL-JVHL`).
+Of the hovers that could report either run, 83.3–95.3% (alveolar) and
+43.8–81.4% (fat) would print different text. Naming the run made visible which
+run the nearest-point rule chose, but did not make the box report the trace the
+reader aimed at: a 2 px move changed which run it reported on 75.4–99.9% of the
+fat axis. § "Where more than one trace answers" gives the rule that replaced the
+nearest-point rule (`PL-JVHL`).
 
 #### Where more than one trace answers
 
@@ -10980,91 +10954,14 @@ Run 1 · 20m8s   1.43%   0.71 ×MAC
 Run 2 · 20m8s   1.45%   0.73 ×MAC
 ```
 
-**The rule is "stop choosing". It is that because the two targeting rules that
-would have chosen better were measured, and they change nothing.** The rules
-were scored on the branched sevoflurane case above, with the reader showing
-alveolar and fat. That is the pair that `COMPARED_COMPARTMENT_CAP` admits on a
-two-run frame. The metric is narrower than the 75.4–99.9% figure above and
-cannot be compared with it. It takes the hovers where both runs are inside the
-radius *before and after* a 2 px move, and gives the share of them whose
-reported run changed. The earlier figure counts axis columns. This one counts
-hovers that could have gone either way.
-
-| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
-| --- | ---: | ---: | ---: |
-| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
-| nearest curve measured along its length | 9.2% | 9.0% | 9.2% |
-| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
-| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
-| every run inside the radius answers | 0.0% | 0.0% | 0.0% |
-
-The results are identical to the digit, for two reasons. Both reasons are facts
-about this chart, not about any implementation. First, the trace is drawn at
-about one sample per 4 s against a 12 px radius. So the pointer's distance to
-the polyline and its distance to the nearest vertex differ by a fraction of a
-pixel. Here, "nearest along its length" gives the same number as
-"nearest drawn point", however real the distinction is on a sparse, steep
-curve. Second, both runs' fat points are inside the radius over 94.5–98.0% of
-the hoverable area. So "inside a run's own band" has to break the tie by the
-rule it was meant to replace, exactly where the defect lives.
-
-**Breaking near-ties toward the trunk also reaches 0.0%, and it was refused
-because of what it costs.** A tie window does not remove the boundary. It adds
-a second boundary, where the pointer crosses out of the window. On the alveolar
-trace of the 1.25 MAC case, the tie window raises the share of contended axis
-columns that flip from 58.5% to 98.4%. It also makes the branch's value
-unreachable wherever the curves lie inside the window, which is most of the fat
-trace. A displayed value that a reader cannot reach is worse than one that is
-hard to aim at.
-
-**Distance settles nothing, including which compartment is reported** (project
-owner, 2026-09-20, ratified, over recording the measurement and leaving the
-flip to the axis fix). Before this decision, the nearest drawn point picked the
-trace, on the reasoning that a reader aims at a curve. `PL-0RZ0` measured what
-the same compression does to that reasoning. Two or more compartments sit
-inside the radius over 15.2–45.7% of the two-run chart's hoverable area, and
-over 37.0% of the single-run chart's. Across the contended pointer pairs 2 px
-apart, the aimed-at compartment changed on 6.6–13.6% of pairs. On 99.9% of
-those, the hover printed a different number, by a median of 17.1–17.9× for
-muscle against fat.
-
-| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
-| --- | --- | ---: | ---: |
-| one run | all six | 37.0% | 12.7% |
-| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
-| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
-| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
-| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
-
-**There is no aim to respect at that separation**, which is why the reasoning
-above did not survive its own measurement. At a flip, the two winning points
-are a median 0.9 px apart, and 100% of them are within 2 px. The box hangs from
-the aimed-at point, and the two points are this close, so the box does not
-move. Only the compartment's name and the
-numbers change, and the reader has already read past the name. `PL-QYBW` states
-this second consequence in its own terms: at 0.2–1.4 px, no targeting rule can
-let a reader aim at one trace rather than another. A rule that picked one would
-be picking arbitrarily, not honouring an aim.
-
-**No value became unreachable under the old rule, and recording that is part of
-the case.** This section refuses the near-tie tie-break partly because it made
-a value unreachable. Measured across the same cases, every compartment was
-reported somewhere on 98% or more of the axis columns where it is drawn. The
-worst was muscle, at 2.0% on the single-run chart. The defect was that the
-reader got the wrong trace, never that a trace could not be reached.
-<!-- not-restated: 2.0 % -->
-
-So every run and every compartment whose drawn point is inside the radius is
-reported. Nothing is left for a hand movement too small to aim with to decide.
-That is what takes the flip rate to zero on both axes.
-
-**The box keeps the form it had wherever one compartment is reported.** That is
-54.3–99.5% of hovers across the measured cases, and 63.0% on the single-run
-chart. The form is the agent, then the compartment, then one value line per
-run. Where the readings span several compartments, one heading cannot stand for
-them all, so the compartment heading is dropped. Each value line then opens
-with its own compartment, with the gloss that `docs/MODEL.md` requires wherever
-a compartment is named. The run follows, while more than one run is drawn:
+**Every compartment whose drawn point is inside the radius is also reported**
+(project owner, 2026-09-20, ratified, over recording the measurement and leaving
+the flip to the axis fix). Where every reading in reach belongs to one
+compartment, which is most hovers, the box keeps the form above: the agent, the
+compartment, then one value line per run. Where the readings span several
+compartments, the compartment line is dropped. Each value line then opens with
+its own compartment, with its gloss where it has one, followed by the run while
+more than one run is drawn:
 
 ```
 Modelled sevoflurane
@@ -11074,28 +10971,128 @@ Fat · Run 1 · 20m   0.01%   0.01 ×MAC
 Fat · Run 2 · 20m   0.01%  <0.01 ×MAC
 ```
 
-The lines are ordered by compartment first, following the trace table, and then
-by run. Both orders are the frame's own drawing order, so the box is read in
-the same direction as the legend beside it. The box carries one value line on
-21–93% of hovers. It never carries more than four on the two-run chart, or more
-than three on the single-run chart. That small number of lines is what made it
-affordable to stop choosing here.
+The box reports every trace in reach because, where traces crowd together, no
+hand can aim at one rather than another. Two runs' fat traces lie 0.2–1.4 px
+apart, and at that separation no rule for picking one trace can follow the
+reader's aim (`PL-QYBW`). The earlier rule reported only the nearest point, so a
+2 px movement could switch the box to another run or compartment, and to a
+different number. The box itself stayed put. Only the name and the numbers
+changed, and the reader had already read past the name. Now no movement too
+small to aim with decides what the box shows.
 
-**The pointer names the instant, and the radius decides only what is in reach**
-(`PL-1K9G`, 2026-09-22). Each run is reported at its drawn instant nearest the
-pointer in time, and a tie goes to the earlier instant. Each of the run's
-compartments is reported at that instant if its point there is inside the
+Lines are ordered by compartment and then by run, both in the chart's drawing
+order, so the box follows the legend and the readout panels beside it. Distance
+from the pointer never sets the order, because lines ordered by distance would
+swap places under movements too small to aim with. The box is placed at the first
+reported run's point.
+
+A dot marks every reported point, because a single dot would mark one run's trace
+while the text reported several.
+
+Once the reader has aimed the pointer, usually only one run is in reach. With
+one run in reach, the hover readout's box uses the three-line form, and names
+that run if two are drawn. The box gains a line when a run comes into reach and
+loses it when the reader moves away, so the reader sees each run arrive and
+leave. In the cases measured below, it held at most four value lines on a
+two-run chart, and at most three on a single-run chart.
+
+**The pointer's place along the time axis names the instant, and the radius
+decides only what is in reach** (`PL-1K9G`, 2026-09-22). The chart draws each
+run as columns of points: one column every 4 s on a 60-minute axis and every
+48 s on a 12-hour axis, plus a column at each of that run's control changes. A
+branch draws none before its fork. Each run is reported at its drawn instant
+nearest the pointer in time, and a tie goes to the earlier instant. Each of that
+run's compartments is reported if its point at that instant is inside the
 radius. So every compartment of one run is reported at one instant. Moving the
-pointer up or down the percent axis can change what is in reach, but never the
-instant that a value is labelled with.
+pointer up or down can change what is in reach, but never the instant printed.
+The wash-in plot follows the same rule.
 
-Before that change, each trace kept its own drawn point nearest the pointer,
-measured in both dimensions. So on a sloped trace, the pointer's height chose
-the column. This was measured on the branched case above. It was also measured
-on a two-hour single run, both on its fitted 2-hour axis and on the 12-hour
-axis, where a dial change draws a near-vertical step. The scan covered every
-pixel of height at four sub-pixel phases per column. Before any number was
-kept, the scan's selection was checked against the shipped function:
+Each line prints its own instant, because two runs' nearest instants can differ
+by up to one column, and the printed form shows the difference. One instant
+above several values would claim that they are simultaneous when they may not be.
+
+**The chart keeps its linear percent axis, which crowds the slow compartments
+together** (project owner, 2026-09-23, ratified, over a reader-selected
+logarithmic scale, `PL-QYBW`). Only fat stays crowded for long. At a 1 MAC dial,
+across the simulator's three agents, muscle spans 25–48 px of the 360 px plot at
+one hour, and fat spans 1.5–3.7 px. Fat's trace near zero is its true partial
+pressure, and partial pressure drives effect, so one linear axis serves all six
+compartments. Because the hover readout reports every trace in reach, the
+crowding needs no change of scale. The fat trace cannot show how much agent fat
+holds: a fifth of the stored agent at one hour, and a third at three hours. The
+compartment schematic shows that amount (§ "The compartment schematic: what its
+heights, amounts and share bar assert").
+
+**For developers.** Five targeting rules were scored on the branched case, with
+alveolar and fat displayed, a pair that the limit on a two-run chart's
+compartments allows (`COMPARED_COMPARTMENT_CAP`). The score is the share of
+hovers whose reported run changed after a 2 px move, among hovers with both runs
+inside the radius before and after the move. It counts hovers that could go
+either way, so it cannot be compared with the 75.4–99.9% figure under
+§ "The hover and the run it belongs to", which is a share of axis columns.
+
+| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
+| --- | ---: | ---: | ---: |
+| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
+| nearest trace measured along its length | 9.2% | 9.0% | 9.2% |
+| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
+| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
+| every run inside the radius is reported | 0.0% | 0.0% | 0.0% |
+
+The first three rules score the same to the digit, for two reasons that belong
+to this chart's geometry. First, the trace is drawn at about one sample per 4 s
+against a 12 px radius, so the pointer's distance to the polyline and to the
+nearest vertex differ by a fraction of a pixel. Nearest along the length would
+differ from nearest drawn point only on a sparse, steep trace. Second, both
+runs' fat points lie inside the radius over 94.5–98.0% of the hoverable area, so
+a band rule must break its tie by the nearest-point rule it was meant to
+replace, exactly where the reported run flips.
+
+Breaking near-ties toward the trunk scores 0.0%, as reporting every run does, but
+was refused for its costs. A tie window keeps the boundary between the runs and
+adds a second one, where the pointer leaves the window. Among axis columns with
+both runs in reach on the alveolar trace of the 1.25 MAC case, it raises the share
+on which the reported run flips from 58.5% to 98.4%. It also makes the branch's
+value unreachable wherever the two runs' traces lie inside the window, which is
+most of the fat trace. A value that a reader cannot reach is worse than one that
+is hard to aim at.
+
+Before every compartment in reach was reported (`PL-0RZ0`), the nearest drawn point
+picked the compartment, on the reasoning that a reader aims at a trace. The
+crowding near zero defeats that reasoning. Two or more compartments lie inside the
+radius over 15.2–45.7% of the two-run chart's hoverable area, and over 37.0% of
+the single-run chart's. Across pairs of pointer positions 2 px apart with more
+than one compartment in reach, the compartment reported changed on 6.6–13.6% of
+pairs. On 99.9% of those, the box printed a different number, by a median of
+17.1–17.9× for muscle against fat. At a change, the two nearest points were a
+median 0.9 px apart, and all were within 2 px.
+
+| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
+| --- | --- | ---: | ---: |
+| one run | all six | 37.0% | 12.7% |
+| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
+| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
+| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
+| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
+
+The nearest-point rule never made a value unreachable, which matters because the
+tie-break above was refused partly for doing so. Across the same cases, every
+compartment was reported on 98% or more of the axis columns where it is drawn.
+The worst was muscle on the single-run chart, unreported on 2.0% of its columns.
+<!-- not-restated: 2.0 % -->
+
+Reporting every trace in reach was affordable because the box stays short. One
+compartment alone is in reach on 54.3–99.5% of hovers across these cases, and
+63.0% on the single-run chart. The box carries one value line on 21–93% of hovers.
+
+Before the pointer's time alone named the instant (`PL-1K9G`), each trace reported
+its own drawn point nearest the pointer in both dimensions, so on a sloped trace
+the pointer's height chose the column. The scan behind that change covered the
+branched case, and a two-hour single run on its fitted 2-hour axis and on the
+12-hour axis, where a dial change draws a near-vertical step. It tried every pixel
+of height at four sub-pixel phases per column, and its selection was checked
+against the shipped function before any number was kept. The whole scan is in
+`PL-1K9G`.
 
 | Chart | Boxes holding 2+ of one run's readings that mixed instants | Spread, median / max | A vertical 2 px move changed the instant / the printed value |
 | --- | ---: | ---: | ---: |
@@ -11106,150 +11103,96 @@ kept, the scan's selection was checked against the shipped function:
 
 <!-- not-restated: 13.0 -->
 
-The premise that made the problem look cosmetic was that two adjacent columns
-usually print the same value. That premise holds for fat, and mostly for
-muscle, which is the pair on which the problem was first observed. It fails for
-the other four compartments. On the 60-minute axis, 44.0–93.3% of adjacent
-columns of the circuit, alveolar, mixed venous and vessel-rich traces print
-different values. The figure is 3.3–16.0% for muscle and 0.7–1.3% for fat. Nor
-was the spread one grid column, as this section used to say. A sloped trace's
-nearest point can lie as far to the side as the radius reaches, which is
-fifteen minutes on the 12-hour axis. `PL-1K9G` holds the whole scan.
+Mixed instants matter because adjacent columns often print different values. On
+the 60-minute axis, the share of adjacent columns that differ is 44.0–93.3% on the
+circuit, alveolar, mixed venous and vessel-rich traces, against 3.3–16.0% on
+muscle and 0.7–1.3% on fat. Under the old rule, a sloped trace's nearest point
+could lie as far to the side as the radius reaches, which is fifteen minutes on
+the 12-hour axis.
 
-**The radius is measured at the named instant, not to the nearest of the
-trace's points.** The alternative was to keep the old reach and report the
-point at the named instant. That would also have made the instant depend on the
-pointer's time alone, and it would have kept every value that the old rule
-reported. But where this rule reports nothing, the alternative would have
-reported a point a median 13.5 px and up to 42.5 px from the pointer on the
-60-minute axis, and up to 146 px on the 12-hour axis. The dot and the box would
-then hang on a value the reader is nowhere near. So every value the box reports
-is at the instant the pointer names *and* within reach of the pointer. The cost
-is aim beside a steep segment. There, a pointer level with a point several
-columns along no longer reports that point. Of the area over which each trace
-was reported, 84–100% is kept on the 60-minute and 2-hour axes, and 45–54% for
-the four fast compartments on the 12-hour axis. Nothing is reported that the
-old rule did not report, and no drawn instant becomes unreachable.
+The alternative to measuring the radius at the named instant was to keep the old
+reach and report the point at that instant. Like the chosen rule, that would have
+made the instant depend on time alone, and it would have kept every value that
+the old rule reported. But where the chosen rule reports nothing, the alternative
+would have reported a point a median 13.5 px and up to 42.5 px from the pointer on
+the 60-minute axis, and up to 146 px on the 12-hour axis. The dot and the box would
+then hang on a value the reader is nowhere near. The chosen rule's cost comes
+beside a steep segment, where a pointer level with a point several columns along
+no longer reports that point. Even so, the chosen rule keeps 84–100% of the area
+over which the old rule reported each trace on the 60-minute and 2-hour axes, and
+45–54% for the four fast compartments on the 12-hour axis. It reports nothing the
+old rule did not, and leaves no drawn instant unreachable.
 
-The wash-in plot reports values by the same rule, and it treats a run's
-stretches as one set of drawn instants. It draws one trace per run, so no box
-there mixed instants. But the same vertical movement moved its one instant on
-23.9–44.4% of movements.
+On the wash-in plot, the old rule let 23.9–44.4% of vertical 2 px moves change a
+box's instant. No box there mixed instants, because the plot draws one trace per
+run. The plot treats a run's stretches as one set of drawn instants.
 
-**The instant is stated on each line rather than once for the box.** Every
-compartment of one run shares the instant, but two runs need not. Each run also
-draws the columns that its own control events fall on, and a branch draws no
-columns before its fork. So the instants nearest one pointer can differ between
-runs. Where both runs are drawn, they can differ by up to one grid column. That
-is 4 s on the 60-minute axis and 48 s on the 12-hour one, and `format_elapsed`
-shows both. A single instant above a column of values would assert a
-simultaneity that the readings do not have. This is the same rule that makes
-the modelled marker travel with the value rather than sit in a heading: a
-qualifier belongs to the number it qualifies.
-
-**The lines are ordered by run, not by distance**, and so is the box's own
-position, which hangs from the point of the first run reported. Ordering by
-distance would put this defect back into the layout. The numbers would swap
-places under a hand movement too small to aim with, which is what the rule
-exists to stop. Run order is the order of the legend and of the readout panels,
-so the box is read in the same direction as everything beside it.
-
-**A dot is drawn on every point that is reported**, not one dot for the box. A
-single dot would mark one run's curve while the text reported several runs.
-That is the attribution failure that § "The hover and the run it belongs to"
-closes, arriving through the marker instead of through the words.
-
-**When one run is reported, the box uses the three-line form, unchanged.** Two
-runs drawn with only one inside the radius is the ordinary case, because the
-reader has aimed successfully. That case gets the form that the rest of this
-section derives, still naming the run because two are drawn. The box gaining
-and losing a line as the pointer moves is not a hidden mode. It is a display of
-what is in reach. A run leaves the radius because the reader moved
-deliberately, and the box shows this by losing that run's line. That event is
-visible, whereas the silent swap it replaces was not.
-
-**The root cause is the axis, and the axis stays** (project owner, 2026-09-23,
-ratified, over a reader-selected logarithmic scale, `PL-QYBW`). The slow
-compartments are compressed near zero because the percent axis is fixed at
-3 MAC for every agent (`CHART_AXIS_TOP_MAC`). That compression puts two runs' fat
-points 0.2–1.4 px apart and makes them contend almost everywhere. Only fat
-stays compressed for long. At a 1 MAC dial on the three shipped agents, muscle
-spans 25–48 px of the 360 px plot at one hour, and fat spans 1.5–3.7 px. Fat's
-trace near zero is its true partial pressure, and partial pressure is what
-drives effect. So the chart keeps one linear axis for all six compartments, and
-the rule above resolves the contention without a change of scale. What the
-trace cannot show is how much agent fat holds: a fifth of the stored agent at
-one hour, and a third at three. That is a question of amount, and
-planned-milestone item 27's schematic is the view that shows it. A logarithmic
-scale was the alternative weighed. Fixed from 0.001 to 3 MAC, it would put the
-two runs' fat 23–75 px apart, but it has three costs. It draws below the
+**For developers.** A logarithmic axis fixed from 0.001 to 3 MAC would put two
+runs' fat traces 23–75 px apart, but it has three costs. It draws below the
 0.01-point resolution of § "Displayed precision". It is a display mode on a
-chart of clinical values. And it would arrive ahead of the v0.6.0 View contract
-that decides where a View's own settings live. Its strongest use, the washout
-tail, is a candidate for item 36's catalogue of views rather than a mode on
-this chart.
+chart of clinical values. It would also arrive ahead of the v0.6.0 View
+contract, which decides where a View's own settings live. Its strongest use,
+the washout tail, is a candidate for the catalogue of views (planned-milestone
+item 36) rather than a mode on this chart.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-`chart_frame.format_compared_trace_hover` and
-`chart_frame.format_compared_wash_in_hover` produce both forms above. Like
-every other number here, they go through `app/formatting.py`, using
-`format_percent`, `format_mac_multiple` and `format_elapsed`.
-`nearest_trace_point` and `nearest_wash_in_point` collect the traces within
-reach at the instant that the pointer names. `tests/unit/test_chart_frame.py`
-holds both worked examples above verbatim. Beside them it holds the measured
-fat and muscle cases from which the run rule and the compartment rule were
-decided, and the geometry from which the instant rule was decided
+Two functions produce the forms above that list several runs or compartments
+(`chart_frame.format_compared_trace_hover` and
+`chart_frame.format_compared_wash_in_hover`), and their numbers come from
+`app/formatting.py` like every other number in the box. Two more collect the
+traces within reach at the instant that the pointer names (`nearest_trace_point`
+and `nearest_wash_in_point`), and the first of them skips hidden compartments.
+The unit tests in `tests/unit/test_chart_frame.py` contain both worked examples
+above verbatim. They also contain the fat and muscle cases behind the decisions to
+report every run and every compartment in reach, and the geometry behind the
+decision that the pointer's time alone names the instant
 (`test_every_compartment_of_one_run_answers_at_one_instant`).
 
 #### Resolution: the readouts' derivation applies unchanged
 
-The hover prints two decimals of a percent and two decimals of a MAC multiple,
-with the below-resolution forms `<0.01%` and `<0.01 ×MAC`.
-§ "Displayed precision" derives both. Nothing in that derivation depends on
-where the number appears. The ceiling is one measured standard deviation of a
-partition coefficient, which displaces a trajectory rather than a display. The floor is
-a teaching judgment about what a reader can learn from the slow compartments.
+The box prints a percent and a MAC multiple to two decimals each, as `<0.01%`
+and `<0.01 ×MAC` below that. § "Displayed precision" derives both forms for the
+readout panel, and nothing in that derivation depends on where the number
+appears. Its upper limit on precision is one measured standard deviation of a
+partition coefficient, which shifts the modelled trajectory itself, whatever
+display shows it. Its lower limit is a teaching judgment about what a reader can
+learn from the slow compartments.
 
-**The one argument for a finer hover readout is answered here on its own
-terms, rather than inherited from the readouts.** That section separates two questions
-that a printed digit could be answering. The first is how finely two moments
-*within one run* can be told apart. That is about nine decimal places finer
-than the readout shows. The second is how finely this model resolves a
-concentration *in a patient*, which is much coarser. A hover is closer to the
-first question than the readout row is. It reports one trace at one instant,
-which is the shape of a within-run comparison, and the within-run question
-would justify a third decimal.
+**The box gets no third decimal.** A printed digit could answer either of two
+questions. One is how finely two moments within one run can be told apart, which
+is about nine decimal places finer than the readout panel shows. The other is how
+finely this model resolves a concentration in a patient, which is much coarser.
+The box is closer than the readout panel to the first question, because it reports
+one trace at one instant, the form a within-run comparison takes. That question
+alone would justify a third decimal. But a reader cannot tell which question a
+digit answers, and the box makes the confusion worse. It is the display most
+likely to be written down, it floats over a chart whose whole subject is a
+patient, and it is read without the readout panel's five other compartments,
+which show that a within-run comparison is on offer.
 
-The hover does not get a third decimal, for the same reason that settles the
-readouts: a reader cannot tell which of the two questions a printed digit is
-answering. The hover makes that confusion worse rather than better. It is the
-display most likely to be transcribed. It appears over a chart whose whole
-subject is a patient. And it is read without the row of five other
-compartments, which make it obvious that a within-run comparison is what is on
-offer. So the display most exposed to the patient reading is the last one
-that should carry a digit that only the within-run reading supports.
-
-**The below-resolution form is required here, not optional.** At 1 MAC
-sevoflurane, fat stays below 0.01% for the first thirteen minutes, and muscle
-stays below it for the first two. Those minutes are the slow-compartment
-wash-in that the chart exists to show. `<0.01%` says what is known. A hover
-that printed a number there would claim a resolution the model does not have.
-It would do so on the compartment where a reader is least able to notice.
+**The below-resolution form is required here.** At 1 MAC sevoflurane, fat stays
+below 0.01% for the first thirteen minutes, and muscle for the first two. Those
+minutes are the slow-compartment wash-in that the chart exists to show. `<0.01%`
+says what is known. A number there would claim a resolution the model does not
+have, on the compartment where a reader is least able to notice.
 
 #### What a chart library prints instead, measured
 
-The default matters for two reasons. It is what ships if nothing overrides it.
-And both toolkits this project has used default to formatting the coordinate.
-`flet_charts.LineChartDataPoint` defaults to a `LineChartDataPointTooltip`
-whose `text` this application never writes into. `pyqtgraph.ScatterPlotItem`
-defaults `tip`, which is the formatter for the hoverable-points route, to
-`'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`.
+Left to its default, the charting software's own tooltip prints the plotted
+coordinate instead of a clinical value. It prints no unit, it prints a number where
+the box prints `<0.01%`, and it prints more decimals the smaller the value.
 
-These values were measured on 2026-09-14. The case was the reference adult,
-with sevoflurane delivered at 0.02 (1 MAC) and the shipped column budget over
-a one-hour axis. `.3g` was applied to the drawn y as `ScatterPlotItem` would
-apply it, and `format_percent` was applied to the same value. The table shows
-four instants of the first hour:
+**For developers.** The default matters because it is what ships if nothing
+overrides it, and both toolkits this project has used format the coordinate. In
+Flet, a chart's data point (`flet_charts.LineChartDataPoint`) defaults to a
+tooltip (`LineChartDataPointTooltip`) whose `text` this application never writes
+into. In pyqtgraph, a scatter plot (`pyqtgraph.ScatterPlotItem`) defaults its
+formatter for hoverable points, `tip`, to
+`'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`. The table shows `.3g` applied to
+the drawn y, as that scatter plot would apply it, and `format_percent` applied to
+the same value, at four instants of the first hour. The values come from a run on
+2026-09-14 on the reference adult, with sevoflurane delivered at 0.02 (1 MAC) and
+the shipped number of columns over a one-hour axis.
 
 | Instant | Compartment | `.3g` on the drawn y | This readout |
 | --- | --- | ---: | ---: |
@@ -11260,30 +11203,23 @@ four instants of the first hour:
 | 1208.1 s | Fat | `0.00888` | `0.01%` |
 | 3600.0 s | Alveolar | `1.54` | `1.54%` |
 
-The default has three separate defects, and the third is the one that would
-go unnoticed:
-
-- **Resolution.** `3.52e-05` carries five decimal places beyond the resolution
-  that this document derives. It does so on the compartment where the readout
-  row deliberately refuses to print a number at all. A reader comparing the
-  hover with the panel would find the two disagreeing about whether the value
-  is known.
-- **Units.** `.3g` prints no unit. The chart carries a percent axis and a MAC
-  axis. So a bare `1.54` could belong to either of two scales, which differ by
-  a factor of about two for sevoflurane. `3.52e-05` is worse, because it reads
-  equally well as a fraction of an atmosphere, which is a hundredfold out.
-- **A varying number of decimals.** Three significant figures give two
-  decimals at `1.54`, three at `0.262` and six at `0.000656`. The readout row
-  is fixed at two decimals. The whole of § "Displayed precision" is the
-  argument for a *uniform* resolution. A display whose precision changes with
-  the size of the value it shows claims that the model resolves small values
-  more finely than large ones. That is the opposite of the truth.
+- `3.52e-05` carries five decimal places beyond the resolution of § "Displayed
+  precision", on the compartment where the readout panel prints no number at all.
+  A reader comparing that number with the panel would find them disagreeing about
+  whether the value is known.
+- With no unit, a bare `1.54` could belong to either axis, and the two differ by a
+  factor of about two for sevoflurane. `3.52e-05` is worse, because it reads
+  equally well as a fraction of an atmosphere, a hundredfold out.
+- Three significant figures give two decimals at `1.54`, three at `0.262` and six
+  at `0.000656`. A display whose precision changes with the size of the value
+  claims that the model resolves small values more finely than large ones, the
+  opposite of the truth. This fault is the one that would go unnoticed.
 
 #### Which series answer a hover, and which do not
 
-The six compartment traces respond to a hover, in the form above. The wash-in
-trace responds in its own units, because $`F_A/F_I`$ is dimensionless and has
-neither a percent nor a MAC reading:
+The six compartment traces respond to a hover in the form above, unless the
+reader has hidden the compartment. The wash-in trace responds with a plain ratio,
+because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading:
 
 ```
 Modelled sevoflurane · 20m8s
@@ -11291,209 +11227,237 @@ Wash-in F_A/F_I (alveolar / modelled circuit)
 0.71
 ```
 
-`format_wash_in_ratio` produces the number. The parenthesis is the caption that
-`app/wash_in.py` already carries, for the reason stated there: $`F_I`$ is the
-modelled circuit rather than the vaporizer dial. The caption uses a solidus
-rather than a division sign, because every non-ASCII character that reaches a
-reader must have been rendered and seen first (`tools/glyph_check.py`), and the
-division sign has not been.
+The caption in parentheses says that $`F_I`$ is the modelled circuit, not the
+vaporizer dial.
 
-**The clinical references and the control marks do not respond to a hover,
-and the reason is interaction rather than content.** The 1 MAC line spans the
-plot horizontally, and the MAC-awake band is a horizontal region. The control
-marks are vertical and full height. All three cross every trace. Making them
-hoverable would therefore put an annotation under the pointer whenever a
-reader aims at a trace that passes behind one. And the annotations are exactly
-where a reader is most likely to want a reading, since a trace crossing 1 MAC
-is the event that the reference is drawn for. What they would report is also
-already on screen. The divisor is stated beside the chart, and the input
-timeline lists each control change with its old and new value.
+The 1 MAC line, the MAC-awake band and the control marks do not respond. The line
+and the band run across the plot, and the control marks are vertical and full
+height, so all three cross every trace. If they responded, an annotation would
+appear under the pointer wherever a reader aims at a trace that passes behind one
+of them. That is exactly where a reading is most wanted: a trace crossing 1 MAC is
+the event the line is drawn for. What the three would report is already on
+screen. The MAC value that the MAC multiples divide by is stated beside the chart,
+and the input timeline lists each control change with its old and new value.
+
+**For developers.** The ratio has its own formatter (`format_wash_in_ratio`), and
+the caption is the one in `app/wash_in.py`. It uses a solidus rather than a
+division sign because every non-ASCII character that reaches a reader must first
+have been rendered and seen (`tools/glyph_check.py`), and the division sign has
+not been.
 
 #### When it answers
 
-The hover responds whenever the pointer is over the plot, whether the run is
-playing or paused.
+The box appears whenever the pointer is over a trace, whether the run is playing
+or paused. At high playback speed its value moves with the run, as every other
+readout does, and a reader who wants to study a value pauses. Moving the pointer
+off the plot removes the box at once, so a value that moves with the run is always
+one that the reader is pointing at.
 
-**This reverses a restriction that came from the toolkit rather than from the
-affordance.** `PL-KP7H` withdrew the hover while a run plays. The reason was
-that Flet's control-tree diff descends into every point's tooltip object on
-every frame, and the tooltips were half the cost of a saturated frame. A hover
-that responds only while paused is a hidden mode. A reader who tries it during
-a run gets nothing, concludes that the chart is not interactive, and never
-finds the hover again.
+**For developers.** The box is built on pyqtgraph and reports the drawn points
+within the hover radius (`PL-G59B`, 2026-09-14). The code that shows it is in
+`app/qt_chart.py`, and an integration test checks the rendered box against a real
+run (`tests/integration/test_qt_chart.py`).
 
-Qt has no such cost to avoid, by either route the readout could be built on. A
-crosshair is driven by the scene's own `sigMouseMoved`, rate-limited through a
-`SignalProxy`. Hoverable points carry a `tip` callable that is evaluated when
-the pointer arrives, rather than a tooltip object stored for each point. Both
-routes cost work per pointer event, and neither cost depends on how many
-points are drawn. Nothing has to be withdrawn, so there is no mode to announce
-and no caption to write. The affordance is discoverable because it is present.
+A hover that responds only while paused is a hidden mode: a reader who tries it
+during a run gets nothing, concludes that the chart is not interactive, and never
+finds the hover again. An earlier change had withdrawn the hover while a run plays
+(`PL-KP7H`), because Flet's control-tree diff visits every point's tooltip object
+on every frame, and the tooltips were half the cost of a saturated frame.
 
-**The hover is not a default, though, and that has to be checked rather than
-assumed.** `ScatterPlotItem` ships with `hoverable` set to `False`, and a
-plotted line carries no hover of its own at all. So a port that says nothing
-about the hover loses it outright rather than inheriting it. The Qt build owes
-the hover under the parity rule "Every capability the Flet build has, the Qt
-build has".
+Qt has no such cost by either route the box could be built on. One route drives a
+crosshair from the scene's own mouse-move signal (`sigMouseMoved`), rate-limited
+through a signal proxy (`SignalProxy`). The other gives each hoverable point a
+callable (`tip`) that runs when the pointer arrives, with no tooltip object stored
+for each point. Both cost work per pointer event, whatever the number of points
+drawn.
 
-At high playback speed, the reported value moves as the run does. That is
-correct, not a defect to design around. Every other readout in the interface
-moves too, and a reader who wants to study a value pauses, as they would in
-any case. What is not acceptable is the affordance being absent while the
-reader looks for it.
+The Qt build must provide the hover, under the parity rule "Every capability the
+Flet build has, the Qt build has", and it does not come by default. A pyqtgraph
+scatter plot (`ScatterPlotItem`) ships with `hoverable` set to `False`, and a
+plotted line has no hover of its own, so a port that says nothing about the hover
+loses it.
 
-**The hover responds only to a pointer that is actually there.** Leaving the
-plot takes the box down at once, along with any pointer move still waiting to
-be handled. So a value that moves with the run is always one that the reader
-is pointing at. If the box stayed up at the last point the pointer crossed, it
-would recompute its value every frame. While a run played, it would climb with
-the run like a live readout of the state being watched, for an instant that
-nobody is looking at (`PL-LTKL`).
-
-**Built on pyqtgraph, over the drawn points within a pixel radius**
-(`PL-G59B`, 2026-09-14). The radius stopped choosing between runs with
-`PL-JVHL` (2026-09-19) and between compartments with `PL-0RZ0` (2026-09-20).
-The pointer's height stopped choosing the instant with `PL-1K9G`
-(2026-09-22). `app/chart_frame.py` holds the derivation above as code.
-`format_trace_hover` and `format_wash_in_hover` produce the three-line form,
-and `format_compared_trace_hover` and `format_compared_wash_in_hover` produce
-the compared one. `nearest_trace_point` responds only for a compartment that
-the reader has left shown. It also responds only within a pixel radius of the
-point that the plot draws at the instant the pointer names. `app/qt_chart.py`
-shows the readout wherever the pointer is, running or paused. Every instant
-that the readout prints is stated at the step by which the run advances,
-`HOVER_INSTANT_RESOLUTION_S`. A drawn column sits wherever the anchored grid
-puts it, and the state reported is the state at exactly that instant. But
-printing the instant to four decimals would claim a resolution that no other
-display on the screen has. `tests/unit/test_chart_frame.py` holds both worked
-examples above verbatim, and `tests/integration/test_qt_chart.py` tests the
-rendered readout against a real run.
+Besides removing the box, leaving the plot discards any pointer move still waiting
+to be handled. A box left at the last point the pointer crossed would recompute
+its value every frame. While a run played, it would climb with the run like a live
+readout, for an instant that nobody is looking at (`PL-LTKL`).
 
 ### A preview of an unapplied setting
 
-While a learner holds a slider's thumb, the chart draws the trajectory that the
-run would take if the value under the thumb were applied where the run stands
-now (`PL-5B1N`). This section says what that drawing is, how it is computed and
-what it may imply.
+While a learner holds a slider's handle, the chart draws the trajectory that the
+run would take if the value under the handle were applied at the run's current
+time (`PL-5B1N`). Both plots draw it, so they never show two different futures.
+On the F_A/F_I plot the preview is the predicted ratio. A dot marks where a
+stretch of it stops, as on the run's curve.
 
-**A preview is a third kind of value.** It is not a modelled state of the run,
-because the run has not passed through it. It is not a measurement either. It
-is a prediction, conditional on a setting that the learner has not applied and
-may never apply. A preview drawn with the run's weight and no label would read
-as a run that happened. So everything below exists to keep it from reading
-that way.
+**A preview is a prediction.** The run has not passed through it, so it is not a
+modelled state of the run. It is not a measurement either. It depends on a
+setting that the learner has not applied and may never apply. Drawn with the
+run's line width and no label, it would look like a run that happened.
 
-**How it is computed.** `SimulationController.preview_window` opens a second
-run definition at the run's reach. It starts from the run's canonical state
-there (§ "The canonical evaluation rule"), under the settings that applying the
-value would give. Those settings are built the way a branch builds its own: a
-trial run is rebuilt from the settings in force, checked to hold every value
-the run holds, and given the value through its own setter
-(`SimulationController.preview_settings`). So the value is checked by the core
-setter that would apply it, and a cardiac output moves every tissue flow
-exactly as applying it would. It is the same model and version as the run, it
-is deterministic, and nothing of the run is written. At the run's own setting
-the preview coincides with what the run then draws, to within floating-point
-composition error. The preview is evaluated on the run's own grid. It ends at
-the axis's right edge, or at the end of the supported run length if that comes
-first. While the run plays, it is evaluated again on every frame from the run's
-new reach.
+**Four cues mark a preview, and none of them is colour.** Its curves keep each
+compartment's colour and dash pattern, because those are what tell the six
+compartments apart.
 
-**Four cues mark it, and none of them is colour.**
-
-1. **Position.** The preview lies wholly to the right of the run's reach,
-   inside a tinted region. The region's left edge is a stroke at the reach,
-   where the run stands now. The run that the preview belongs to never enters
-   the region.
+1. **Position.** The preview lies wholly to the right of the run's current time,
+   inside a tinted region. A line at the run's current time is the region's left
+   edge. The preview ends at the right edge of the time axis, or at the end of the
+   longest run the simulator supports if that comes first. The run that the
+   preview belongs to never enters the region, but when runs are compared, a run
+   that has gone further may be drawn inside it.
 2. **A label in the plot**, such as "Preview: Fresh gas flow 6.0 L/min, not
-   applied". It names the control and the value tried in the slider's own
-   words, and it names the run while runs are compared. It is drawn inside
-   the region, so a screenshot taken during a drag carries it.
-3. **Width.** Each preview curve is one pixel thinner than a lone run's curve
-   of the same compartment, and never thinner than 2 px, below which an
-   antialiased line renders under 3:1 against the panel
-   (§ "The six compartment traces: what separates them"). The two 3 px traces
-   preview at 2 px. The four 2 px traces preview at 2 px, so for them the other
-   three cues carry the distinction. In compare mode the first run is drawn one
-   step wider, but its preview keeps the lone-run width. Otherwise the preview
-   would be wider than the other run's real curve of the same compartment, and
-   the width cue would point the wrong way.
-4. **Binding to the drag.** The preview exists only while the thumb is held.
-   It appears when the thumb is pressed, and the frame drawn at the release no
-   longer has it. Nothing decays or lingers.
+   applied". It names the control and the value tried, in the slider's own words.
+   It is drawn inside the region, so a screenshot taken during a drag includes
+   it. Each compared run has its own controls, so only the run whose slider
+   handle is held shows a preview. The label names that run.
+3. **Width.** Each preview curve is one pixel thinner than the same compartment's
+   curve in a run shown alone, but never thinner than 2 px. The two compartments
+   drawn at 3 px therefore have 2 px preview curves, and so do the four drawn at
+   2 px. For those four, the other three cues mark the preview. When runs are
+   compared, the first run's curves are drawn one step wider, but its preview
+   curves keep the width they have when the run is shown alone. The preview is
+   then no wider than the other run's curve of the same compartment.
+4. **Timing.** The preview exists only while the handle is held. It appears at
+   the press and is gone from the frame drawn at release.
 
-**The curves keep each compartment's colour and dash pattern, deliberately.**
-Those two channels are what tell the six compartments apart, and inside the
-preview they have to do the same work. Dash pattern cannot carry "predicted"
-instead: the muscle trace is already dotted, and a solid run with a dotted
-preview would flatten the five dashed traces into one style. Reduced opacity
-cannot carry it either. Blended over the panel at 0.85 opacity, the alveolar
-and muscle traces fall to 2.93 and 2.83 against it, under SC 1.4.11's 3:1, and
-at 0.75 four of the six do. The region's fill is decoration, on the same ground
-as the MAC-awake band's: its edge and the label carry the information
-(`theme.PREVIEW_REGION_FILL_OPACITY`).
+**The preview comes from the same model and version as the run.** It starts from
+the run's state at its current time, as § "The canonical evaluation rule"
+defines that state. The value goes through the same checks as when it is
+applied. A new cardiac output moves every tissue flow exactly as applying it
+would. The same inputs always give the same preview. Computing a preview changes
+nothing in the run. When the value under the handle is the setting already in
+force, the preview matches what the run then draws, to within the computer's
+rounding error. While the run plays, the preview is computed again on every
+frame from the run's new current time.
 
-**What a drag does to the run.** A pointer drag applies its value when the thumb
-is released, and the control-input timeline records one change there. Until
-then the run keeps the setting in force, and the value printed beside the
-slider is that setting. The value is applied before the preview ends, so the
-frame drawn at the release shows the run under its new setting. A key press, a wheel step or a click on the groove is
-one discrete input, so it applies at once and draws no preview.
+**A drag applies its value only when the handle is released.** The run records
+one setting change at that moment. Until then the run keeps the setting in force,
+and the value printed beside the slider is that setting. The value is applied
+before the preview ends, so the frame drawn at release already shows the run
+under its new setting. A key press, one notch of the scroll wheel or a click on
+the slider away from its handle is a single input, so it applies at once and
+draws no preview. A run stops when it fails or reaches the end of the longest
+run the simulator supports. A stopped run accepts no new setting and draws no
+preview.
 
-**The window keeps its width during a preview.** It slides so that the run's
-reach sits at mid-plot: half the window shows the run that happened, and half
-shows the prediction (`chart_time_base.preview_window`). Early in a run the
-window stops at zero, and the reach sits left of the middle. Widening the axis
-to make room would rescale every slope, which § "The chart's time base"
-refuses. The window returns to following the run at the release.
+**The time window keeps its width during a preview.** It slides so that the
+run's current time sits at mid-plot: half the window shows the run that
+happened, and half shows the prediction. Early in a run the window stops at
+zero, and the current time sits left of the middle. Widening the window to make
+room would rescale every slope, which § "The chart's time base" rules out. When
+runs are compared, the window centres on the current time of the run whose
+slider handle is held. At release, the window goes back to following the run.
 
-**What a preview does not do.** The hover never answers from it, so no value on
-a preview curve is ever printed as a reading. A preview that goes above the
-top of the concentration axis is cut off there, as a run's trace is. The
-off-scale notice then names each clipped prediction with its highest
-predicted value in view, because the readouts give only the run's values
-(`dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`). A predicted F_A/F_I
-stretch that stops ends in a dot, by the same rule as the run's. A stopped run, failed or at the
-supported run length, refuses every setting and draws no preview. Both plots
-draw it: the F_A/F_I plot shows the predicted ratio, so the two plots never
-show two different futures. Each compared run has its own controls, so only
-the run whose thumb is held previews, and the window centres on that run's
-reach. A compared run further along may then be drawn inside the region; the
-label names the run the preview belongs to.
+**No value on a preview curve is printed as a reading.** A value shown when the
+pointer hovers over the chart never comes from a preview. A preview that goes
+above the top of the concentration axis is cut off there, as a run's curve is.
+The off-scale notice then names each preview curve that is cut off, with its
+highest value in view, because the readouts give only the run's values.
+
+**For developers.** The preview has a run definition of its own
+(`SimulationController.preview_window`). It is evaluated on the run's own time
+grid. Its settings are built the way a branch, a run taken from another run,
+builds its own (`SimulationController.preview_settings`). A trial run is rebuilt
+from the settings in force and checked to match the run in every value. It then
+takes the new value through the same setter that applies a value to the run. The
+centred time window comes from `chart_time_base.preview_window`, and the wording
+of the off-scale notice from `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
+
+The 2 px minimum width for a preview curve is there because an antialiased line
+thinner than 2 px has less than 3:1 contrast against the panel
+(§ "The six compartment traces: what separates them").
+
+Neither dash pattern nor reduced opacity can mark a curve as predicted. The
+muscle curve is already dotted, and drawing the run solid with a dotted preview
+would flatten the five dashed curves into one style. At 0.85 opacity, the
+alveolar and muscle curves fall to contrasts of 2.93 and 2.83 against the panel,
+less than the 3:1 that WCAG success criterion 1.4.11 sets. At 0.75, four of the
+six fall below 3:1.
+
+The region's tint is decoration, as the MAC-awake band's is, because the
+region's edge and the label carry the information. Its opacity is
+`theme.PREVIEW_REGION_FILL_OPACITY`.
 
 ### A cost at the reader's price
 
-This section specifies what a stored agent price carries, and what a readout
-that shows a cost must show beside it (`PL-VJZK`). `app/preferences.py`
-stores a price (`PL-93B3`). The agent cost View shows the cost, and its form
-sets the price (`PL-1P15`, `app/agent_cost.py`).
+The agent cost View shows what the delivered agent costs, at a price that the
+reader sets in its form. The readout shows which part of the cost is the model's
+and which part is the reader's (`PL-VJZK`). A price is neither modelled nor
+measured, because the reader supplies it. Every other value the interface shows
+today is modelled. A cost is a modelled amount times that price, so a wrong
+price makes a correct amount lead to a wrong conclusion.
 
-**A price is neither modelled nor measured.** This document separates
-modelled values from measured ones, and every value the interface shows today
-is modelled. A price is a third kind of value: a number the reader supplies.
-A cost multiplies a modelled amount by that number. A wrong price therefore
-makes a correct amount lead to a wrong conclusion. So the readout must show
-which part of a cost is the model's and which part is the reader's. That is
-why the safety standard in `CLAUDE.md` applies to a cost, although money is
-not a clinical quantity.
+**The project ships no price.** Until the reader sets a price, the readout says
+that no price is set, and it shows no cost. A shipped price goes stale, and it
+differs from one institution to the next. Gas Man shows both problems. Its
+default price for isoflurane is $20.47 for a 100 mL bottle (Philip JH,
+*Workbook for Gas Man*, Appendix C, printed p. 171). The book calls its
+defaults "USA bottle volume and bottle cost as of March 5, 2008" (printed
+p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008" (printed
+p. 141).
 
-**The project ships no price.** A shipped price goes stale, and it differs
-from one institution to the next. The reference implementation shows both
-problems. Gas Man's parameter file prices isoflurane at $20.47 for a 100 mL
-bottle (Philip JH, *Workbook for Gas Man*, Appendix C, printed p. 171). The
-book calls its defaults "USA bottle volume and bottle cost as of March 5, 2008"
-(printed p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008"
-(printed p. 141). Chapter 14's first exercise prints its costs beside the
-price they used, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). The
-costs of both isoflurane exercises are reproduced at that price
-(`tests/reference/test_published_vapour_to_liquid.py`). Without the price
-beside them, a reader could not tell which of the two prices produced those
-costs. So, until the reader sets a price, the readout says that no price is
-set, and it shows no cost.
+**What a cost readout shows.** A cost is never shown alone. Beside it, the
+readout shows these six things:
 
-**What a stored price carries.** The store holds at most one price for each
-agent. Each price records five things:
+1. the delivered agent in millilitres of liquid equivalent, labelled as
+   delivered and as liquid. This is the modelled figure that the cost is
+   computed from. It stays on screen even where the reader has chosen to show
+   the View's amounts in litres of vapour (`ROADMAP.md`, v0.7.0 entry 8), so
+   that the modelled amount never appears only inside a figure that includes
+   the reader's price;
+2. the price per millilitre of liquid that the cost uses, so that the reader
+   can check the product by eye;
+3. the bottle price and the bottle volume that the price per millilitre came
+   from;
+4. the currency's code, on the cost and on each price;
+5. the date on which the price applied; and
+6. words saying that the cost is at the reader's price, not only a colour or a
+   style, so that no reader misses the statement.
+
+**A bare "mL" does not say enough.** The schematic labels its amounts in
+millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1). Gas Man quotes its price
+as "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
+about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
+factor.
+
+**The simulator reproduces the costs of both of Gas Man's isoflurane
+exercises.** It does so at the price that the book prints beside the costs of
+Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). Without
+that price, a reader could not tell which of the book's two prices produced
+those costs. For Exercise 14-1 at 60 min, the readout could read "39 mL of
+liquid x USD 0.2047 per mL of liquid = USD 8.07, at your price of USD 20.47
+per 100 mL bottle, as of 2008-03-05". The wording and the layout are
+placeholders, and the six facts are the requirement. The book prints $8.06,
+because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
+(§ "Agent amount"). The two figures shown multiply to USD 7.98, because the
+cost uses the unrounded 39.42 mL.
+
+**How the cost is computed.** The cost is the delivered agent's liquid
+equivalent times the price per millilitre. It uses the delivered agent because
+that is what left the bottle (`ROADMAP.md`, planned-milestone item 28, and
+`PL-H4N8`). The conversion to liquid is exact (§ "Agent amount"). The cost
+depends only on the delivered amount, the agent's vapour-to-liquid ratio and
+the price stored for that agent. That same stored price supplies the bottle
+price and volume, the price per millilitre, the currency and the date shown
+beside the cost. The date is never used to compute the cost, and neither is
+today's date. When two runs are compared, each run's cost uses the price of its
+own agent. A cost is never added to, or subtracted from, a cost in another
+currency.
+
+**The figures beside a cost are rounded, and the readout says so.** The cost is
+computed from the unrounded liquid volume and price per millilitre, and the
+readout says that too (`PL-1P15`). It shows the cost to three significant
+figures and never finer than a hundredth, and the price per millilitre to four
+significant figures (§ "Displayed precision"). The liquid volume is shown in
+whole millilitres, so the product of the figures shown can differ from the cost
+by more than one unit of the cost's last digit. At USD 115.13 per 240 mL bottle,
+60 min of desflurane at 6 % and 1 L/min costs USD 8.23. Shown as 17 mL and
+USD 0.4797 per mL, the two figures multiply to USD 8.15.
+
+<!-- not-restated: 6 % -->
+
+**What a stored price carries.** The simulator keeps at most one price for
+each agent. Each price records five things:
 
 - the agent it prices;
 - the price of one bottle, in the price's currency;
@@ -11501,289 +11465,256 @@ agent. Each price records five things:
 - the currency, as its three-letter ISO 4217 code, such as `USD` or `EUR`;
   and
 - the date on which the price applied, as an ISO 8601 calendar date, such as
-  `2008-03-05`. The reader gives it, and the entry offers the day of entry
-  for the reader to change. A price goes stale from the day it was quoted,
-  not from the day it was typed in, so the date records the quote.
-
-Every stored price is the reader's own, because the project ships none. So
-the record has no field that says who set the price. If a release ever ships
-a default price, the record gains that field. The readout must then mark a
-default price as one the project supplied, with its date.
+  `2008-03-05`. The form's date field writes dates this way and fills in the
+  day of entry. The reader should change it to the day the price was quoted,
+  because a price goes stale from that day, not from the day it was typed in.
 
 **The price is taken per bottle, and the price per millilitre is derived**
 (decided by `PL-VJZK` on 2026-10-26, over asking for a price per millilitre).
 An institution buys agent by the bottle, and its pharmacy quotes a price per
-bottle. Gas Man's Set Cost command takes "the bottle volume and bottle cost"
-in the same way (printed p. 15). A field that asked for a price per
-millilitre would make the reader divide first. A bottle price typed into such
-a field would multiply every cost by the bottle's volume in millilitres. That
-volume is 100 to 250 for the volatile agents in Gas Man's defaults (printed
-pp. 171-172). Taking the bottle price and the bottle volume removes that
-mistake. The per-bottle form still allows three mistakes of its own. A price
-per millilitre typed as the bottle price gives a cost 100 to 250 times too
-low. A bottle volume typed in litres, such as 0.25, or as 1 for one bottle,
-gives a cost 100 to 1000 times too high. Swapping the price and the volume
-inverts the price per millilitre. So the field for the bottle volume names its
-unit, millilitres of liquid. The readout also shows the price per millilitre
-that the two figures give. Each of the first two mistakes makes that price 100
-to 1000 times the true one. A swap shows only where the two numbers differ
-widely. At Gas Man's sevoflurane default of 240.34 for a 250 mL bottle
-(printed p. 172), a swap changes the cost by 8 %, and nothing on screen would
-show it. One function derives the price per millilitre from the two
-stored figures. The store never holds it, so it cannot disagree with them.
-The store refuses no positive finite bottle volume, whatever its size,
-because no source gives the sizes in which the agents are sold (`PL-93B3`,
-2026-11-01). A volume typed in litres or as a count of bottles is caught on
-screen instead: it makes the price per millilitre, which the readout shows
-beside every cost, 100 to 1000 times the true one.
+bottle. The price per millilitre is never stored, so it cannot disagree with
+the bottle price and volume. The form still allows three mistakes:
+
+- a price per millilitre typed as the bottle price. The cost is then 100 to
+  250 times too low, because the bottles in Gas Man's defaults hold 100 to
+  250 mL of the volatile agents (printed pp. 171-172);
+- a bottle volume typed in litres, such as 0.25, or as 1 for one bottle. The
+  cost is then 100 to 1000 times too high; and
+- the price and the volume swapped. The price per millilitre is then inverted.
+
+The field for the bottle volume therefore names its unit, millilitres of liquid.
+The first mistake makes the price per millilitre on the readout 100 to 250 times
+too low, and the second makes it 100 to 1000 times too high. A swap stands out
+only where the two numbers differ widely. At Gas Man's sevoflurane default of
+240.34 for a 250 mL bottle (printed p. 172), a swap changes the cost by 8 %, and
+nothing on screen would show it.
 
 <!-- not-restated: 8 % -->
 
-**Why a currency code, and why that form of date.** The sign "$" names the
-United States, Canadian and Australian dollars, among others. So a cost in "$"
-does not say which currency it is in. Gas Man shows the problem: its parameter
-file labels each bottle cost "Bottle cost in $US" (printed p. 171), while its
-menu says the cost is typed "in the local currency" (printed p. 15). An
-ISO 4217 code names exactly one currency. A date written 03/05/2008 means
-March or May depending on the reader's country, and the ISO 8601 form
-2008-03-05 does not. Both standards are cited here by their numbers,
-ISO 4217:2015 and ISO 8601-1:2019, and neither was read for this section.
+**What is refused.** A bottle price or a bottle volume must be a positive
+finite number. A price of zero is refused because it is far more likely to be
+an empty field than an agent given away. The currency must be three capital
+letters, and the date a real calendar date. The simulator checks each of these
+at entry, and again when it reads its preferences file. The three letters are
+not checked against the codes that ISO 4217 assigns, but a mistyped code shows
+beside every cost and price, where the reader sees it. The reader types the
+bottle price and the bottle volume as digits with at most one decimal point. A
+sign, an exponent, a thousands separator or a decimal comma is refused rather
+than guessed at, because "1,250" could mean 1250 or 1.25.
 
-**What the store refuses.** It refuses a bottle price or a bottle volume that
-is not a positive finite number. A price of zero is refused too, because it is
-far more likely to be an empty field than an agent given away. It refuses a
-currency that is not three capital letters, and a date that is not a real
-calendar date. It refuses each of these when the reader enters it, and again
-when it reads the preferences file. A refused entry leaves the stored price
-as it was, so the readout goes on showing the cost at that earlier price, with
-that price beside it. A price refused when the preferences file is read is not
-used, and it is never replaced by a default. The readout then says that no
-valid price is set for the agent.
-The store does not also check the three letters against the codes that
-ISO 4217 assigns (`PL-93B3`, 2026-11-01). That list changes several times a
-year, so the check would need a dated copy of it with its own provenance, and
-a copy that fell out of date would refuse a real currency. Any three letters
-remove the ambiguity of "$", and a mistyped code is shown beside every cost and
-price, where the reader sees it.
+**A refused entry changes nothing.** The form says why it refused the entry,
+and the readout goes on showing the cost at the price already stored, with
+that price beside it.
 
-**What a cost readout shows.** A cost is never shown alone. Beside it, the
-readout shows these six things:
-
-1. the delivered agent in millilitres of liquid equivalent, labelled as
-   delivered and as liquid. This is the modelled figure that the cost
-   multiplies. It stays on screen, so that a number the reader supplied is
-   never the only carrier of a modelled quantity. This holds even where the
-   reader has chosen to show the View's amounts in litres of vapour
-   (`ROADMAP.md`, v0.7.0 entry 8);
-2. the price per millilitre of liquid that it multiplied by, so that a reader
-   can check the product by eye;
-3. the bottle price and the bottle volume that the price per millilitre came
-   from;
-4. the currency's code, on the cost and on each price;
-5. the date on which the price applied; and
-6. words saying that the cost is at the reader's price. Words are required,
-   not only a colour or a style, so that the statement reaches every reader.
-
-A bare "mL" does not say whether an amount is liquid or vapour. The schematic
-labels its amounts in millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1), and
-Gas Man prices "Cost/mL vapor" (printed p. 174). One millilitre of liquid
-isoflurane gives about 196 mL of vapour, so a volume or a price read as vapour
-is wrong by that factor. For Gas Man's Exercise 14-1 at 60 min, the readout
-could read "39 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
-price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The book prints
-$8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
-(§ "Agent amount"). The two figures shown multiply to USD 7.98, because the
-cost uses the unrounded 39.42 mL. The wording and the layout are placeholders,
-and the six facts are the requirement.
-
-**How the cost is computed.** The cost is the delivered agent's liquid
-equivalent times the price per millilitre. The delivered agent is the basis,
-because it is what left the bottle (`ROADMAP.md`, planned-milestone item 28,
-and `PL-H4N8`). Its conversion to liquid is exact (§ "Agent amount"). The price
-is the one stored for the agent whose amount is priced. The cost depends only on
-the delivered amount, the agent's vapour-to-liquid ratio and the stored price.
-The date is shown and never used in the arithmetic, and nothing reads the clock
-to compute a cost. The cost is computed from the unrounded liquid volume and
-price per millilitre, and it is rounded only for display. So the product of the
-two figures shown beside it can differ from the cost. The difference is at most
-half a unit of the volume's last shown digit times the price per millilitre,
-plus the volume times half a unit of the price's last shown digit. Desflurane at
-USD 115.13 per 240 mL bottle, run at 6 % and 1 L/min for 60 min, costs USD 8.23.
-Shown as 17 mL and USD 0.4797 per mL, the two figures multiply to USD 8.15.
-
-<!-- not-restated: 6 % -->
-
-**When no cost is shown.** The readout shows no cost, and says why, in each
-of these cases:
+**When no cost is shown.** The readout shows no cost, and says why, in each of
+these cases:
 
 - no price is set for the agent;
-- the stored price was refused;
-- the price per millilitre is not a positive finite number, or the cost is
-  not finite, which entries such as a bottle price of 1e308 for a 0.5 mL
-  bottle can cause; or
+- the stored price was refused when the simulator read its preferences file.
+  No default replaces it, and the readout says that no valid price is set for
+  the agent;
+- the price per millilitre is not a positive finite number, or the cost is not
+  finite, which extreme entries can cause, such as a bottle price of 10 to the
+  power 308 for a 0.5 mL bottle; or
 - the delivered amount cannot be converted to liquid (§ "Agent amount").
 
-The readout never shows a cost of zero in place of one of these cases. It never
-shows a cost left over from an earlier instant, another agent or an earlier
-price. A change to the price redraws the cost at once, whether or not the run
-is advancing. The cost and the facts shown beside it are read from one price
-record, so they cannot come from two different prices. When two runs are
-compared, each run's cost uses the price of its own agent. A cost is never
-added to, or subtracted from, a cost in another currency.
+The readout never shows a cost of zero in place of one of these cases. Nor does
+it show a cost left over from an earlier instant, another agent or an earlier
+price. When the price changes, the readout redraws the cost at once, whether or
+not the run is advancing.
 
-**Displayed precision.** The decimals a cost can justify depend on the price,
-so its precision is not a fixed number of decimals (`PL-0S0V`). A cost is shown
-to three significant figures and never finer than a hundredth, and the price
-per millilitre to four significant figures
-(§ "Agent amounts in millilitres, and the cost"). Because the liquid volume is
-shown to the whole millilitre, the product of the figures shown can still
-differ from the cost by more than one unit of the cost's last digit. So the
-readout always says that the figures beside the cost are rounded, and that the
-cost is computed before rounding (`PL-1P15`).
+**For developers.** The agent cost View and its form live in
+`app/agent_cost.py` (`PL-1P15`). The preferences module in `app/preferences.py`
+stores each price (`PL-93B3`). The safety standard in `CLAUDE.md` applies to a
+cost, although money is not a clinical quantity.
 
-**What the form takes.** The reader types the bottle price and the bottle
-volume as digits with at most one decimal point. A sign, scientific notation, a
-thousands separator or a decimal comma is refused rather than guessed at,
-because "1,250" could mean 1250 or 1.25. The form says why it refused an entry.
-The date field writes the date as ISO 8601 does.
+A stored price has no field that says who set it, because the project ships
+none. If a release ever ships a default price, each stored price gains that
+field, and the readout must then mark a default price as one the project
+supplied, with its date.
 
-**Tests.** The two rows in the hazard table (§ "Reasonably foreseeable misuse,
-and the hazards the presentation carries") name the tests that enforce this
-section. `test_the_displayed_cost_reproduces_gas_man_s_printed_costs` runs both
-of Gas Man's isoflurane exercises from the patient inputs to the drawn cost,
-at the book's price, and checks the four printed costs.
+The form asks for a bottle price because a field for a price per millilitre
+would make the reader divide first, and a bottle price typed into it would
+multiply every cost by the bottle's volume in millilitres. Gas Man's Set Cost
+command likewise takes "the bottle volume and bottle cost" (printed p. 15). One
+function derives the price per millilitre from the bottle price and volume. The
+preferences module accepts any positive finite bottle volume, because no source
+gives the sizes in which the agents are sold (`PL-93B3`, 2026-11-01).
+
+The readout names a currency by its code because the sign "$" names the United
+States, Canadian and Australian dollars, among others. Gas Man shows the
+problem. Its defaults label each bottle cost "Bottle cost in $US" (printed
+p. 171). Its menu says the cost is typed "in the local currency" (printed
+p. 15). A code from ISO 4217:2015 names exactly one currency. The currency check
+stops at three capital letters (`PL-93B3`, 2026-11-01) because ISO 4217's list
+of codes changes several times a year. Checking against the list would need a
+dated copy of it with a record of its source, and a copy that fell out of date
+would refuse a real currency. Any three letters still remove the ambiguity of
+"$".
+
+The date follows ISO 8601-1:2019, as in 2008-03-05, because 03/05/2008 means
+March or May depending on the reader's country. Neither this standard nor
+ISO 4217:2015 was read for this section.
+
+The product of the liquid volume and the price per millilitre, as shown,
+differs from the cost by at most half a unit of the volume's last shown digit
+times the price per millilitre, plus the volume times half a unit of the
+price's last shown digit. The cost's precision is not a fixed count of
+decimals, because how many decimals a cost can justify depends on the price
+(§ "Displayed precision", `PL-0S0V`).
+
+When the simulator runs Gas Man's two isoflurane exercises from their patient
+inputs, at US$20.47 per 100 mL bottle, the displayed cost reproduces the four
+costs printed in them. The conversion to liquid alone is checked against the
+same exercises.
+
+**For developers.** The two rows in the hazard table (§ "Reasonably foreseeable
+misuse, and the hazards the presentation carries") name the tests for this
+section. The cost is checked in `tests/integration/test_agent_cost_view.py`
+(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`), and the
+conversion to liquid in `tests/reference/test_published_vapour_to_liquid.py`.
 
 ### The compartment schematic: what its heights, amounts and share bar assert
 
-The compartment schematic draws the circuit, the alveoli, venous blood, the
-vessel-rich group, muscle and fat as containers, in the readout row's order
-(`PL-RNYV`). This subsection says what each mark on it asserts,
-before any of it is drawn (`PL-2881`, 2026-11-01). It also governs every
-other View that shows an agent amount: the schematic's share bar (`PL-S79P`)
-and the agent cost View (`PL-B396`). Gas Man's Picture draws the same
-containers to show where the tension is. This schematic adds the amounts and
-the share bar to show where the agent is, which the readouts and the chart do
-not show. `ROADMAP.md` § "v0.7.0 - the schematic" records that design and
-what it was chosen over.
+The compartment schematic draws six compartments as containers: the circuit,
+the alveoli, venous blood, the vessel-rich group, muscle and fat, in the
+readout row's order (`PL-RNYV`). Like Gas Man's Picture, it shows where the
+tension is. It also shows where the agent is, which neither the readouts nor
+the concentration chart does. It prints the amount of agent each container
+holds, and its share bar gives each compartment's part of all the agent.
 
-**A container's fill height is the compartment's modelled tension, and it is
-not an amount.** Every container of one run fills against one scale. That
-scale is the concentration chart's percent axis, from zero at the bottom to
-`chart_axis_top_percent` at the top, which is 3 MAC of the running agent for
-every agent (`CHART_AXIS_TOP_MAC`). So a height on the schematic and a height
-on the chart are the same tension, and a learner who moves between the two
-Views reads one ruler. The schematic reads the top from that function and
-does not choose a second one. A container that holds more agent can stand
-lower than one that holds less. With sevoflurane at a 1 MAC dial, fat stands
-at 0.03% atm at 60 min, under 1% of its container's height, while it holds a
-fifth of the stored agent (`ROADMAP.md` § "v0.7.0 - the schematic").
+**A container's fill height is the compartment's modelled tension, not an
+amount.** All containers of one run fill against one scale: the concentration
+chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
+the top. So a height on the schematic and a height on the chart show the same
+tension. A container that holds more agent can stand lower than one that holds
+less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
+all the agent in the run, but its tension of 0.03% atm fills less than 1% of
+its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). Every
+container is drawn at one width, so its filled area is not an amount either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-Every container is drawn at one width, so its filled area is not an amount
-either. Drawn to scale, fat's container would take about 500 px of a View
-600 px wide, and four of the others between 1 and 7 px each, which is why
-`ROADMAP.md` records that drawing to scale was refused. A tension above the
-top of the scale fills its container to the top and is marked as off the
-scale, as the chart names a clipped trace in its off-scale notice. The
-container's label still prints the tension, so no value is lost. A
-sevoflurane dial at its 8% maximum puts the circuit at 4 MAC, so this case is
+A tension above the top of the scale fills its container to the top, and the
+schematic marks the container as off the scale. The concentration chart does
+the same for a trace above its axis, in its off-scale notice. The container's
+label still prints the tension. The circuit reaches 4 MAC, above the top, when
+a sevoflurane dial is at its 8% maximum.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-reachable.
 
-**A container's amount is the compartment's modelled agent, and its label says
-it is vapour.** The amount is $`M_x`$ of § "Agent amount": the equivalent
-volume of pure agent vapour at 20 °C and 760 mmHg, dry, shown in millilitres.
-It is a statement about the model's store, not about gas in the body. The
-agent in blood and fat is dissolved, and the reference condition names the
-unit, not where any of the gas is. Each amount is read from the snapshot's
-record for its compartment (`PL-KFTM`), which reads that compartment's
-`agent_amount_l` in `core/`. The schematic does not compute an amount of its
-own. Its precision is derived in § "Displayed precision".
+**A container's amount is the agent that the model holds in that compartment,
+counted as vapour.** It is the equivalent volume of pure agent vapour at a
+reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$ in
+§ "Agent amount"). The agent in blood and fat is dissolved, so the volume
+expresses an amount of agent, not gas present in the body. This subsection's
+rules for an agent amount also apply to every other View that shows one,
+including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`). §
+"Displayed precision" derives the precision at which amounts are shown.
 
-**How the interface names the unit of an agent amount, once for every View.**
-Two units count agent in millilitres, and they differ by a factor of about
-180 to 210, by agent. At the reference condition, 1 mL of liquid gives about
-183 mL of sevoflurane vapour and about 210 mL of desflurane vapour
-(§ "Agent amount"). So no View prints a bare "mL" beside an
-agent amount. A vapour amount is written "mL vapour", as in "38 mL vapour". A
-liquid amount is written "mL of liquid", as in "4.2 mL of liquid". The model
-holds no liquid, so this figure is worked out: it is the volume of liquid
-agent that would give that much vapour, which is what a vaporizer uses up.
-The spelling was "mL liquid equiv." until the project owner found it awkward
-on 2026-11-01. The caption under the figure says that the vaporizer used
-this liquid. `DisplayUnit` in `app/display_units.py` holds each spelling,
-from the first View that prints it, so every View reads it there and none
-writes its own. The schematic added "mL vapour" (`PL-RNYV`). The wording is a
-placeholder while the interface is being built. The rule is not: every
-spelling of an agent amount's unit names vapour or liquid. The accounting
-View's litres keep their caption, "Litres of equivalent pure agent gas", which
-names the vapour in other words.
+**An agent amount's unit always names vapour or liquid, and is never a bare
+"mL".** Millilitres of vapour and millilitres of liquid differ by a factor of
+about 180 to 210, depending on the agent. At the reference condition, 1 mL of
+liquid gives about 183 mL of sevoflurane vapour or about 210 mL of desflurane
+vapour (§ "Agent amount"). A vapour amount is written "mL vapour", as in
+"38 mL vapour". A liquid amount is written "mL of liquid", as in
+"4.2 mL of liquid". The model holds no liquid, so this number is worked out
+from a vapour amount. It is the volume of liquid agent that would give that
+vapour, which is what a vaporizer uses up. A caption under the number says
+that the vaporizer used this liquid. The accounting View shows amounts in
+litres, under the caption "Litres of equivalent pure agent gas", which marks
+them as vapour. These spellings may change while the interface is being built.
 
-**What the share bar shows.** The schematic has one bar, divided into six
-segments in the containers' order. Each segment's length is that
-compartment's amount as a share of all the agent the run holds, circuit
-included:
+**The share bar shows each compartment's share of all the agent the run holds,
+circuit included.** The bar is divided into six segments, in the containers'
+order. Each segment's length is that compartment's amount divided by the sum of
+the six amounts:
 
 ```math
 s_x = \frac{M_x}{\sum_y M_y}
 ```
 
-The sum runs over the six compartments, and it is the snapshot's
-`stored_agent_l`. So the six shares fill the whole bar. Each segment is named
-in text, never by colour alone. A share printed in text is shown in whole
-percent, derived in § "Displayed precision". When a run starts, it holds no
-agent, so no share exists. The bar is then drawn empty and prints no share,
-rather than dividing by zero or showing six zeros as if they were shares. The
-bar is used instead of the containers' areas because a position along a
-common scale is judged more accurately than an area (Cleveland WS, McGill R,
-"Graphical perception: theory, experimentation, and application to the
-development of graphical methods", *J Am Stat Assoc* 1984;79(387):531-554,
-https://doi.org/10.1080/01621459.1984.10478080). Only the first segment
-starts at the bar's baseline. Each of the others is judged by its length,
-which their ranking still places above area.
+The six segments therefore fill the whole bar. Each segment is named in text,
+never by colour alone. A share printed in text is shown in whole percent
+(§ "Displayed precision"). A run holds no agent when it starts, so the bar is
+then drawn empty and prints no share.
 
-**How the containers are joined.** The containers stand in one row, in the
-readout row's order. A line joins the circuit to the alveoli, which is
+**Lines between the containers show ventilation and blood flow.** The
+containers stand in one row. A line joins the circuit to the alveoli for
 ventilation. A line above the row carries arterial blood from the alveoli to
-each tissue group, and a line below it carries each tissue group's venous
-blood to the venous container, which a line joins back to the alveoli. So the
-three tissue groups are drawn in parallel, as § "Assumptions" perfuses them.
-A row of containers joined one to the next would draw agent passing from the
-vessel-rich group through muscle into fat, which is the intertissue route this
-model omits (`PL-RNYV`). Each schematic shows its run's current instant, and
-the line over it states that instant as the readouts' clock prints it. Two
-compared runs can stand at different times, as a branch taken at an earlier
-mark does, so a difference between two schematics may be elapsed time rather
-than the change the branch made. The run writes its schematic where it writes
-its readouts, from the same snapshot, and withholds the schematic's values
-where it withholds the readouts', after a Reset or an agent change that no
-frame has been drawn since. While runs are compared, the same line names the
-run, as the hazard table's row on reading one run's value as the other's
-requires.
+each tissue group. A line below the row carries each tissue group's venous
+blood to the venous blood container, and a line joins that container back to
+the alveoli. So the three tissue groups are drawn in parallel, as the model
+perfuses them (§ "Assumptions"). The containers are not joined one to the next,
+because that would draw agent passing from the vessel-rich group through muscle
+into fat, a route between tissues that this model omits (`PL-RNYV`).
 
-**Why no container is drawn for arterial blood.** This model gives arterial
-blood no volume, capacity or amount of its own, because
-$`F_a \equiv F_A`$ at every instant (§ "Blood compartments"). Gas Man's
-Picture draws an arterial container. Here it would show agent that the model
-does not hold, and its segment on the share bar would be a share of nothing.
-Arterial tension equals alveolar tension, which the alveolar container
-already shows.
+**No container is drawn for arterial blood.** The model sets arterial tension
+equal to alveolar tension at every instant ($`F_a \equiv F_A`$,
+§ "Blood compartments"), so it gives arterial blood no volume, capacity or
+amount of its own. The alveolar container therefore shows arterial tension as
+well. Gas Man's Picture draws an arterial container. Here such a container
+would show agent that the model does not hold.
 
-**What the schematic does not assert.** Every height, amount and share on it
-is a model output, so the schematic carries the interpretation statement,
-"Model outputs — not measurements.", once, in its own heading, as the readout
-section does. No amount is a prediction about a patient to its last digit,
-for the reason § "Displayed precision" gives for the readouts.
+**Each schematic shows its run at the same instant as the readouts.** A line
+of text above the schematic gives that instant as the readouts' clock prints
+it. While runs are compared, that line also names the run, so that a reader
+does not take one run's value for the other's. Two compared runs can be at
+different times, as when one is a branch taken at an earlier point. A
+difference between their schematics may then come from elapsed time rather
+than from the change the branch made. The schematic withholds its values
+whenever the readouts withhold theirs: after a Reset or an agent change, until
+the screen is next redrawn.
+
+**Every height, amount and share on the schematic is a model output.** The
+schematic therefore prints "Model outputs — not measurements." once, in its
+own heading, as the readout section does. No amount is a prediction about a
+patient to its last digit, for the reason § "Displayed precision" gives for
+the readouts.
+
+**For developers.** The schematic takes the top of its scale from the function
+that sets the concentration chart's top (`chart_axis_top_percent`) and sets no
+top of its own. The top's MAC multiple is a constant (`CHART_AXIS_TOP_MAC`), and
+§ "MAC multiples as a display unit" gives the reason for 3 MAC.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+The containers' common width is there because fat's container, drawn to scale,
+would take about 500 px of a View 600 px wide, and four of the others would
+take between 1 and 7 px each. The roadmap records the designs that the
+schematic was chosen over (`ROADMAP.md` § "v0.7.0 - the schematic").
+
+The run writes the schematic where it writes its readouts, from the same
+snapshot of its state. Each amount comes from the snapshot's record for its
+compartment (`PL-KFTM`), and that record is read from the amount of agent that
+the model holds in the compartment (`agent_amount_l` in `core/`). The schematic
+computes no amount of its own. The sum in the share formula is the snapshot's
+total of stored agent (`stored_agent_l`).
+
+Each spelling of an amount's unit is defined once, in `app/display_units.py`
+(`DisplayUnit`). Whoever writes the first View to print a spelling adds it
+there. Every View reads its spellings from that file and defines none of
+its own.
+
+The empty bar at a run's start is there because computing a share would then
+divide by zero, and six zeros would look like real shares.
+
+Shares are shown on a bar rather than by the containers' areas because a
+position along a common scale is judged more accurately than an area
+(Cleveland WS, McGill R, "Graphical perception: theory, experimentation, and
+application to the development of graphical methods", *J Am Stat Assoc*
+1984;79(387):531-554, https://doi.org/10.1080/01621459.1984.10478080). Only the
+first segment starts at the bar's baseline, but each of the others is judged by
+its length, which Cleveland and McGill's ranking still places above area.
+
+The hazard table requires the run's name in the line above the schematic, in
+its row on reading one run's value as the other's.
 
 ## Assumptions
 
 This model assumes:
 
 - every modeled compartment is perfectly mixed;
-- each tissue group is perfusion limited, and exchanges agent only with the
-  blood flowing through it. No agent passes directly from one tissue group to
-  another, which is the intertissue diffusion that "Known limitations" lists
-  as omitted;
+- each tissue group exchanges agent only with the blood flowing through it, so
+  no agent passes directly from one tissue group to another. "Known limitations"
+  lists that route, intertissue diffusion, as omitted;
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
@@ -11843,12 +11774,12 @@ level. A model that adds ambient pressure will need one.
 
 ## Known limitations
 
-This model does not model:
+This model does not represent:
 
-- a separate arterial blood-mixing compartment. The lung is perfusion limited,
-  so arterial blood carries the alveolar partial pressure at every instant, as
-  in the Gas Man reference simulator's mammillary structure
-  (see § "Model boundary");
+- a separate arterial blood-mixing compartment. Arterial blood carries the
+  alveolar partial pressure at every instant (see § "Model boundary"), because
+  the lung's exchange with blood is perfusion-limited and the model omits shunt
+  and ventilation-perfusion mismatch (both below);
 - lung tissue and pulmonary blood. No compartment represents either, and
   together they are a store worth about a fifth of every agent's fast pool
   (sized below);
@@ -11875,7 +11806,8 @@ This model does not model:
 - multiple alveolar units;
 - shunt;
 - ventilation-perfusion mismatch;
-- diffusion limitation;
+- diffusion-limited exchange, in the lung or in a tissue group (§ "Model
+  boundary" defines it);
 - intertissue diffusion, which is agent passing directly from a lean tissue
   into fat lying against it. It is a route between two tissues, separate from
   the blood-to-tissue diffusion limitation above (measured below);

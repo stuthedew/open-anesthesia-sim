@@ -216,6 +216,12 @@ def test_a_comma_that_is_not_a_thousands_separator_is_never_paired() -> None:
     assert number_value("1,5") is None
 
 
+def test_a_section_number_with_two_decimal_points_is_never_paired() -> None:
+    """WCAG's "1.4.11" crashed `lost` on a rewrite that restated it (`PL-XT53`)."""
+
+    assert number_value("1.4.11") is None
+
+
 RESTATED = """\
 # Model
 

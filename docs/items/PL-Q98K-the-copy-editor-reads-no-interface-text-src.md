@@ -5,7 +5,8 @@ priority: P2
 effort: M
 status: done
 classes: feature
-feature: reader-first-prose
+feature: copy-editor
+milestone: v0.6.15
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, .claude/rules/plain-writing.md
 added: 2026-11-04
 closed: 2026-11-04

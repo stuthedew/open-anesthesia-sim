@@ -80,9 +80,9 @@ def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value() -
     """The tier is chosen by the substance, so none of the inhaled instance leaks into the set.
 
     The instance is a hypothetical intravenous drug with no tier of its own
-    written yet: `docs/MODEL.md` says such a run "owes its own instance of the
-    same test instead, named where that substance's model is specified", and
-    no such model is specified. This test checks that nothing outside the
+    written yet: `docs/MODEL.md` says that such a run's own values "are named
+    where its substance's model is specified", and no such model is
+    specified. This test checks that nothing outside the
     instance, meaning the invariant tier and the record, carries a value that
     only a volatile agent has. So a later intravenous run is never asked for
     one.
@@ -158,10 +158,9 @@ _WINDOW_COUNTS = (1, 2, 3, 4)
 def test_every_window_region_carries_the_invariant_tier_and_its_run_name(window_count: int) -> None:
     """Every window shows the five invariant values, and names its run once it is not alone.
 
-    `docs/MODEL.md` § "What a second top-level window owes, and it is not the
-    whole set": "Every top-level window the application owns carries the
-    invariant tier ... together with the name of the run that window is
-    showing". A lone main window has no other window whose run must be told
+    `docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+    set": "Every window of the application carries the invariant tier and the
+    name of the run it shows". A lone main window has no other window whose run must be told
     apart from its own, so it needs no name (`PL-W54S`).
     """
 
@@ -180,7 +179,7 @@ def test_the_per_substance_tier_and_the_record_live_only_in_the_main_window(
 ) -> None:
     """The concentrations, the 1 MAC and the control-input record have one home.
 
-    `docs/MODEL.md`: "The per-substance tier lives once, in the main window".
+    `docs/MODEL.md`: "The per-substance tier appears once, in the main window".
     The record goes with it, because the record is a statement about the
     whole run rather than about one surface. A broken-out window shows only
     the invariant tier and the run's name, so a small window does not have to

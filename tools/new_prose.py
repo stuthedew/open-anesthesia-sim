@@ -29,10 +29,11 @@ reads it, from the commit where the branch forked from the default branch to
 the working tree, including files that git does not track yet. A file that is
 new on the branch has every line changed.
 
-**What is reviewed.** Each passage that `changed_passages` finds is reviewed
-when it has `MIN_WORDS` words or more now. In `PL-Y55Q`'s blind re-measure,
-short units were awkward in 25% of verdicts and long ones in 61%, so the long
-ones are where a review pays (project owner, 2026-10-18, ratified, `PL-PRCS`).
+**What is reviewed.** Each passage that `changed_passages` finds is reviewed,
+whatever its length, when `reviewable` accepts one of its units now (project
+owner, 2026-11-04, ratified, over `PL-PRCS`'s floor of 30 words). Short units
+were awkward in 25% of `PL-Y55Q`'s blind verdicts, and many of the messages a
+learner reads are short, so a short passage needs the review too (`PL-HGZS`).
 In a Markdown file, the copy editor reads the passage's whole section, from the
 heading above it to the next heading. It may rewrite the passage and the one
 unit on each side of it inside that section, so it can fold new text into the
@@ -40,8 +41,8 @@ paragraph beside it. It may not rewrite the rest of the section, because
 `docs/MODEL.md` § "Displayed precision" runs to about 8,000 words, and a
 one-sentence fix there would become a rewrite of all of them. That limit is a
 placeholder for the owner to overrule (`PL-22T5`). Two passages that would
-share a unit are reviewed as one. In a Python file, each long unit is reviewed
-alone, with `CONTEXT_ROWS` rows of code on each side.
+share a unit are reviewed as one. In a Python file, each changed unit is
+reviewed alone, with `CONTEXT_ROWS` rows of code on each side.
 
 **Who reads each passage.** `.claude/rules/plain-writing.md` holds a table that
 names the readers of each kind of text: what each knows, what each does not
@@ -63,16 +64,36 @@ before it is sent.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
 when no row's first cell contains WORDS.
 
+**`--section FILE --heading TEXT` prints one Markdown section as passage 1,
+with every row open to rewrite.** A changed passage may be rewritten only with
+the unit beside it, so a fact that two paragraphs of a section both give, or a
+paragraph in the wrong place, needs a review of the whole section. A section
+runs from its heading to the next heading of the same or a higher level, so it
+holds its subsections. The section rewrites that wait on the copy editor, and
+the copy editor's own tests, use this mode (project owner, 2026-11-04,
+`PL-HGZS`). It exits 1 when the file is not Markdown, no row of the reader
+table names it, or the heading text does not name one section.
+
+**A whole document is reviewed in two parts** (project owner, 2026-11-04,
+`PL-HGZS`), and `tools/copy_edit.py` runs both. The first is a structure read,
+from `structure_reports`, with every row marked `|`: the copy editor lists the
+facts given in two places, the passages in the wrong place and the sections out
+of order, and rewrites nothing. A document longer than `REQUEST_LIMIT_WORDS`
+is read a chapter at a time, as `chapters` splits it. Once the findings are
+applied, the second part line-edits each section alone, from `part_reports`.
+There a section is its own rows, from its heading to the next heading of any
+level, so no row is edited twice.
+
 **`--count` prints only how many units need a review, for `bin/docket arm`.**
 `arm` holds a branch that waits on the owner's review until step 8's review is
 recorded as a `Prose-review:` trailer, and it runs this tool through
-`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts long units
-rather than passages, so a passage of several short paragraphs is reviewed and
-not counted. It reads the committed branch, from the fork to `HEAD`, because
-`arm` judges commits and not the working tree.
+`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts the units
+that `reviewable` accepts, rather than passages. It reads the committed
+branch, from the fork to `HEAD`, because `arm` judges commits and not the
+working tree.
 `--count REV` names the commit that carries the newest `Prose-review:` trailer.
 A unit then counts only when its text is not a unit of the same file at `REV`, so
-a code fix after the review needs no second review, while a new or reworded long
+a code fix after the review needs no second review, while a new or reworded
 unit does. Comparing texts rather than diffing from `REV` keeps out the prose
 that a merge of the default branch brings in, because that prose is not in the
 branch's own diff from the fork. The count is one line holding a whole number.
@@ -103,6 +124,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -111,6 +133,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.digits import whole_number  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PARAGRAPH, TABLE, Heading, headings, tables  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
@@ -137,11 +160,14 @@ from model_rewrite import (  # noqa: E402
     report_gone,
 )
 
-#: The fewest words a unit needs to be printed. `PL-Y55Q` drew its line between
-#: short and long units here.
-MIN_WORDS = 30
 #: The kind of a unit that is a string literal in code, other than a docstring.
 STRING_KIND = "string"
+#: The fewest words a string literal needs to be reviewed. A string of one word,
+#: such as `"utf-8"`, `"mL/h"` or a dictionary key, is a value that the code
+#: reads, and a rewrite of it would change what the program does. Every other
+#: unit is reviewed when it holds a word at all (project owner, 2026-11-04,
+#: ratified, over `PL-PRCS`'s floor of 30 words for every unit).
+STRING_MIN_WORDS = 2
 #: The words that mark a reader row as one for string literals. Such a row
 #: applies only to string units, and every other row applies to every other kind,
 #: so an interface notice and the docstring beside it get different readers.
@@ -153,6 +179,39 @@ RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: against the paragraphs the owner rejected or named gold standards (`PL-FYGJ`,
 #: `PL-556C`, `PL-22T5`).
 PROMPT = ROOT / ".claude" / "agents" / "copy-editor.md"
+#: The line between the writing rule and the prose in every request. The copy
+#: editor's instructions name it, and `tools/copy_edit.py` finds the passages
+#: below it.
+RULE_END = "The writing rule ends here, and the prose to review follows."
+#: A whole document is reviewed in two parts: a structure read, and then a line
+#: edit of each section alone (project owner, 2026-11-04, `PL-HGZS`). These
+#: lines open the prose of a structure read's request, and the copy editor's
+#: instructions say what to do with each. A document of at most
+#: `REQUEST_LIMIT_WORDS` words is read whole. A longer one is read a chapter
+#: at a time, and each chapter read ends with a reverse outline, which
+#: `tools/copy_edit.py` hands to one read of the whole document's outline.
+STRUCTURE_READ = (
+    "Structure read. One whole document follows, as passage 1. Every row is marked |, "
+    "so rewrite none of it."
+)
+CHAPTER_READ = (
+    "Structure read of one chapter. One chapter of a longer document follows, as passage "
+    "1. Every row is marked |, so rewrite none of it, and end with its outline."
+)
+OUTLINE_READ = (
+    "Structure read of an outline. The reverse outlines of every chapter of one document "
+    "follow, in order, as passage 1. Report only what crosses chapters."
+)
+#: The most words one request of a document's review holds, for a structure
+#: read or a line edit. A longer document is read a chapter at a time, a longer
+#: chapter is split into its subsections, and a longer section with none is cut
+#: into runs of whole blocks. The figure covers the largest section that the
+#: copy editor had read during its debugging on 2026-11-04 (5,801 words,
+#: `PL-HGZS`). A model reads a long request less closely even when it finds the
+#: passage it needs (Du et al., 2025, https://arxiv.org/abs/2510.05381), so a
+#: higher figure trades close reading for fewer requests, and a lower one the
+#: reverse.
+REQUEST_LIMIT_WORDS = 6000
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
     "Kind of text",
@@ -364,15 +423,23 @@ def units_of(path: str, source: str) -> list[Unit]:
     )
 
 
+def reviewable(unit: Unit) -> bool:
+    """Whether the copy editor reviews `unit` when the branch changes it.
+
+    A string literal needs `STRING_MIN_WORDS` words, and any other unit one.
+    """
+    return unit.words >= (STRING_MIN_WORDS if unit.kind == STRING_KIND else 1)
+
+
 def changed_units(path: str, source: str, rows: set[int] | None) -> list[Unit]:
-    """The units of `MIN_WORDS` or more in `source` that a changed row falls inside.
+    """The units in `source` that `reviewable` accepts and that a changed row falls inside.
 
     `rows` is `None` where the whole file is new, as `changed_rows` returns it.
     """
     return [
         unit
         for unit in units_of(path, source)
-        if unit.words >= MIN_WORDS
+        if reviewable(unit)
         and (rows is None or any(unit.first <= row <= unit.last for row in rows))
     ]
 
@@ -384,7 +451,7 @@ def may_review(path: str) -> bool:
 
 @dataclass
 class Found:
-    """The long units the branch changed in the files that the reader table names."""
+    """The units the branch changed in the files that the reader table names."""
 
     against: str
     units: list[Unit]
@@ -395,10 +462,10 @@ class Found:
 def branch_prose(
     root: Path, base: str, table: Sequence[Reader] | None = None, *, committed: bool = False
 ) -> Found:
-    """The long units changed between the fork from `base` and the working tree.
+    """The units changed between the fork from `base` and the working tree.
 
     Only a file that a row of `table` names is read, and `table` defaults to the
-    reader table in the rule. With `committed`, it returns the units changed
+    reader table in the rule. With `committed`, the units are those changed
     between the fork and `HEAD`, read from the commits alone, so an uncommitted
     edit counts for nothing.
     """
@@ -663,13 +730,89 @@ def compare_report(found: Comparison) -> str:
     return "\n".join(out)
 
 
+def row_line(number: int, mark: str, text: str) -> str:
+    """One row of a passage as the copy editor gets it, with its number, mark and text.
+
+    The mark is `>` for a row the copy editor may rewrite and `|` for a row it
+    only reads. `read_row` reads the row back.
+    """
+    return f"{number:>5} {mark} {text}"
+
+
+# regex: a row is a right-aligned number, a one-character mark and free text,
+# a flat shape that only `row_line` writes and that no parser reads.
+ROW_RE = re.compile(r" *([0-9]+) ([>|])(?: (.*))?")
+# regex: the span "rows FIRST-LAST" that `rows_span` writes into a passage
+# header or a section title, a flat token inside free text.
+ROWS_SPAN_RE = re.compile(r", rows ([0-9]+)-([0-9]+)")
+
+
+def read_row(line: str) -> tuple[int, str, str] | None:
+    """The number, mark and text of a row that `row_line` wrote, or `None` for any other line."""
+    match = ROW_RE.fullmatch(line)
+    if match is None:
+        return None
+    return int(match.group(1)), match.group(2), match.group(3) or ""
+
+
+def rows_span(where: str, first: int, last: int) -> str:
+    """`where` and its rows, in the form that passage headers and section titles use."""
+    return f"{where}, rows {first}-{last}"
+
+
+def read_span(line: str) -> tuple[int, int] | None:
+    """The first and last row of the first span that `rows_span` wrote into `line`."""
+    match = ROWS_SPAN_RE.search(line)
+    return None if match is None else (int(match.group(1)), int(match.group(2)))
+
+
+def respan(line: str, first: int, last: int) -> str:
+    """`line`, a passage header or a section title, with its span set to `first` to `last`."""
+    return ROWS_SPAN_RE.sub(lambda _: rows_span("", first, last), line, count=1)
+
+
+def passage_number(line: str) -> int | None:
+    """The number of the passage that `line` heads, or `None` where `line` is not a header.
+
+    Every header opens with the passage's number in brackets, then its span.
+    """
+    number, bracket, rest = line.removeprefix("[").partition("] ")
+    if not line.startswith("[") or not bracket or read_span(rest) is None:
+        return None
+    return whole_number(number)
+
+
+def passage_place(line: str) -> str | None:
+    """The file and section that the passage header `line` names before its span, or `None`."""
+    if passage_number(line) is None:
+        return None
+    rest = line.partition("] ")[2]
+    match = ROWS_SPAN_RE.search(rest)
+    return None if match is None else rest[: match.start()]
+
+
+#: What opens the line that heads the readers of a file, or of a kind of text.
+READERS_OF = "Readers of "
+
+
+def readers_heading(name: str) -> str:
+    """The line that heads the readers of `name`, a file or a kind of text, in a request."""
+    return f"{READERS_OF}{name}:"
+
+
+def read_readers_heading(line: str) -> str | None:
+    """The name in a line that `readers_heading` wrote, or `None` for any other line."""
+    if not (line.startswith(READERS_OF) and line.endswith(":")):
+        return None
+    return line.removeprefix(READERS_OF).removesuffix(":")
+
+
 def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
     """The unit's rows marked `>`, with `CONTEXT_ROWS` rows of code each side marked `|`."""
     start = max(1, unit.first - CONTEXT_ROWS)
     end = min(len(lines), unit.last + CONTEXT_ROWS)
     for row in range(start, end + 1):
-        mark = ">" if unit.first <= row <= unit.last else "|"
-        yield f"{row:>5} {mark} {lines[row - 1]}"
+        yield row_line(row, ">" if unit.first <= row <= unit.last else "|", lines[row - 1])
 
 
 def describe(readers: Iterable[Reader]) -> list[str]:
@@ -689,7 +832,7 @@ def reader_lines(table: Sequence[Reader], paths: Iterable[str]) -> list[str]:
     """For each file in `paths`, in order and once, the full row of each of its readers."""
     out: list[str] = []
     for path in dict.fromkeys(paths):
-        out += ["", f"Readers of {path}:", *describe(readers_of(table, path))]
+        out += ["", readers_heading(path), *describe(readers_of(table, path))]
     return out
 
 
@@ -698,7 +841,7 @@ def unit_lines(number: int, unit: Unit, rows: Iterable[str], table: Sequence[Rea
     who = "; ".join(reader.who for reader in readers_of(table, unit.path, unit.kind))
     return [
         "",
-        f"[{number}] {unit.path}, rows {unit.first}-{unit.last}, "
+        f"[{number}] {rows_span(unit.path, unit.first, unit.last)}, "
         f"{unit.kind}, {unit.words} words, for: {who}",
         *rows,
     ]
@@ -752,7 +895,7 @@ def section_bounds(marks: Sequence[Heading], row: int, total: int) -> tuple[int,
 
 
 def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Review]:
-    """A review of each passage that `patch` changed in `after` and that has `MIN_WORDS` words now.
+    """A review of each changed passage in `after` with a unit that `reviewable` accepts now.
 
     `before` is the file at the fork, `None` where the branch added it, and
     `patch` is the `-U0` diff between the two.
@@ -760,7 +903,7 @@ def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Re
     passages = [
         passage
         for passage in changed_passages(path, before, after, patch)
-        if passage.words_after >= MIN_WORDS
+        if any(reviewable(unit) for unit in passage.after)
     ]
     total = len(split_lines(after))
     if not is_document(path):
@@ -777,7 +920,7 @@ def reviews_of(path: str, before: str | None, after: str, patch: str) -> list[Re
             )
             for passage in passages
             for unit in passage.after
-            if unit.words >= MIN_WORDS
+            if reviewable(unit)
         ]
     units = units_of(path, after)
     marks = headings(markdown_lines(after))
@@ -867,7 +1010,7 @@ def review_header(number: int, review: Review, base: str, table: Sequence[Reader
         reader.who for reader in readers_of(table, review.path, review.editable[0].kind)
     )
     return (
-        f"[{number}] {review.path}, rows {review.top}-{review.bottom}. "
+        f"[{number}] {rows_span(review.path, review.top, review.bottom)}. "
         f"Changed text: {words}. For: {who}"
     )
 
@@ -886,7 +1029,7 @@ def section_rows(
         if row in starts:
             yield review_header(starts[row], numbered[starts[row]], base, table)
         inside = any(review.top <= row <= review.bottom for review in numbered.values())
-        yield f"{row:>5} {'>' if inside else '|'} {lines[row - 1]}"
+        yield row_line(row, ">" if inside else "|", lines[row - 1])
 
 
 def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
@@ -894,7 +1037,7 @@ def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
     out: list[str] = []
     if found.reviews:
         out.append(
-            f"{len(found.reviews)} passages of {MIN_WORDS} words or more changed, against "
+            f"{len(found.reviews)} passages changed, against "
             f"{found.against}. Each has a numbered header. The rows marked > under it are the "
             "rows you may rewrite: the changed text, and in a Markdown file the paragraph or "
             "table row on each side of it. Rows marked | are there to be read: the rest of the "
@@ -912,12 +1055,11 @@ def report(root: Path, found: Reviewed, table: Sequence[Reader]) -> str:
                 texts[path] = split_lines((root / path).read_text(encoding="utf-8"))
             section = next(iter(numbered.values())).section
             where = f'{path} § "{section}"' if section else path
-            out += ["", f"{where}, rows {first}-{last}:"]
+            out += ["", f"{rows_span(where, first, last)}:"]
             out += section_rows(texts[path], first, last, numbered, found.base, table)
     else:
         out.append(
-            f"No passage of {MIN_WORDS} words or more changed in a file that the reader table "
-            f"names, against {found.against}."
+            f"No passage changed in a file that the reader table names, against {found.against}."
         )
     if found.unnamed:
         out += ["", f"Not reviewed, because no row of the reader table in {RULE.name} names it:"]
@@ -943,12 +1085,345 @@ def draft_report(path: Path, kind: str, table: Sequence[Reader]) -> str | None:
             "One draft follows, as passage 1. Every row is marked >, and you may rewrite all "
             "of them. Judge it for the readers below, as the list describes them.",
             "",
-            f"Readers of {kind}:",
+            readers_heading(kind),
             *describe(readers),
             "",
-            f"[1] {path.name}, rows 1-{len(lines)}. Draft: {words} words. "
+            f"[1] {rows_span(path.name, 1, len(lines))}. Draft: {words} words. "
             f"For: {'; '.join(reader.who for reader in readers)}",
-            *(f"{row:>5} > {line}" for row, line in enumerate(lines, start=1)),
+            *(row_line(row, ">", line) for row, line in enumerate(lines, start=1)),
+        ]
+    )
+
+
+def whole_bounds(lines: Sequence[str], heading: str | None) -> tuple[int, int]:
+    """The first and last rows of the section headed `heading`, or of the whole document.
+
+    A section runs from its heading to the row before the next heading of the
+    same or a higher level, so it holds its subsections. Where `heading` is
+    `None`, the rows are the whole document below any front matter. Trailing
+    blank rows are left out. Raises `ValueError` where no heading, or more than
+    one, has the text `heading`.
+    """
+    marks = headings(lines)
+    first, last = 1, len(lines)
+    if heading is None:
+        while first <= last and not lines[first - 1].strip():
+            first += 1
+    else:
+        found = [index for index, mark in enumerate(marks) if mark.title == heading.strip()]
+        if len(found) != 1:
+            rows = ", ".join(str(marks[index].line + 1) for index in found)
+            raise ValueError(
+                f"{len(found)} headings read {heading!r}" + (f", at rows {rows}" if rows else "")
+            )
+        mark = marks[found[0]]
+        first = mark.line + 1
+        later = (other for other in marks[found[0] + 1 :] if other.level <= mark.level)
+        last = next((other.line for other in later), len(lines))
+    while last > first and not lines[last - 1].strip():
+        last -= 1
+    return first, last
+
+
+@dataclass(frozen=True)
+class Part:
+    """One section's own rows in a document, with its heading's text and its first and last row.
+
+    `title` is empty for the rows above the document's first heading.
+    """
+
+    title: str
+    first: int
+    last: int
+
+
+def own_parts(lines: Sequence[str]) -> list[Part]:
+    """Each section's own rows, in order, for a line edit of one section at a time.
+
+    A section's own rows run from its heading to the row before the next heading
+    of any level, so no row is in two parts. The rows above the first heading,
+    below any front matter, are a part of their own. Trailing blank rows are
+    left out, and so is a part that holds only its heading and blank rows,
+    since it has no prose to edit.
+    """
+    marks = headings(lines)
+    starts = [(mark.title, mark.line + 1, mark.end) for mark in marks]
+    top, _ = whole_bounds(lines, None)
+    if not starts or top < starts[0][1]:
+        starts.insert(0, ("", top, top - 1))
+    found: list[Part] = []
+    for index, (title, first, heading_end) in enumerate(starts):
+        last = starts[index + 1][1] - 1 if index + 1 < len(starts) else len(lines)
+        while last > first and not lines[last - 1].strip():
+            last -= 1
+        if any(lines[row - 1].strip() for row in range(heading_end + 1, last + 1)):
+            found.append(Part(title, first, last))
+    return found
+
+
+def readers_or_refusal(path: str, table: Sequence[Reader]) -> list[Reader]:
+    """The rows of `table` that name the Markdown file at `path`.
+
+    Raises `ValueError` where the file is not Markdown or no row names it.
+    """
+    if not is_document(path):
+        raise ValueError(f"{path} is not a Markdown file")
+    readers = readers_of(table, path)
+    if not readers:
+        raise ValueError(f"no row of the reader table names {path}")
+    return readers
+
+
+def whole_passage(
+    path: str,
+    shown: Sequence[str],
+    lines: Sequence[str],
+    span: tuple[int, int],
+    title: str | None,
+    mark: str,
+    table: Sequence[Reader],
+) -> list[str]:
+    """The readers list, and passage 1 with rows `span` of the file at `path` marked `mark`.
+
+    `title` names the section, or is `None` for the whole document. `lines` are
+    the rows with the front matter blank, for the word count, and `shown` the
+    rows as the file holds them.
+    """
+    first, last = span
+    words = sum(len(line.split()) for line in lines[first - 1 : last])
+    if title is None:
+        what, where = "document", path
+    else:
+        what = "section"
+        where = f'{path} § "{title.strip()}"' if title else path
+    readers = readers_of(table, path)
+    return [
+        *reader_lines(table, [path]),
+        "",
+        f"[1] {rows_span(where, first, last)}. Whole {what}: {words} words. "
+        f"For: {'; '.join(reader.who for reader in readers)}",
+        *(row_line(row, mark, shown[row - 1]) for row in range(first, last + 1)),
+    ]
+
+
+def section_report(root: Path, path: str, heading: str, table: Sequence[Reader]) -> str:
+    """The section of the Markdown file at `path` headed `heading`, as passage 1.
+
+    Every row is marked `>`, so the copy editor may rewrite the section as a
+    whole: merge paragraphs that repeat a fact, and move a passage to where its
+    reader looks for it (project owner, 2026-11-04, `PL-HGZS`). Raises
+    `ValueError` where the file is not Markdown, no row of `table` names it, or
+    `heading` does not name one section.
+    """
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    span = whole_bounds(lines, heading)
+    return "\n".join(
+        [
+            "One whole section follows, as passage 1. Every row is marked >, and you may "
+            "rewrite all of them. Edit the section as a whole, then paragraph by paragraph, "
+            "for the readers below.",
+            *whole_passage(path, split_lines(source), lines, span, heading, ">", table),
+        ]
+    )
+
+
+def part_reports(root: Path, path: str, table: Sequence[Reader]) -> list[tuple[Part, str]]:
+    """Each section's own rows in the Markdown file at `path`, as separate requests.
+
+    These requests are the second part of a document's review. Once the
+    structure read's findings are applied, each section is line-edited alone,
+    because the copy editor reads a short request more closely than a long one
+    (project owner, 2026-11-04, `PL-HGZS`). A section longer than
+    `REQUEST_LIMIT_WORDS` is cut into runs by `fits`. In each request, every row
+    of the part is marked `>`. Raises `ValueError` where the file is not
+    Markdown or no row of `table` names it.
+    """
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    shown = split_lines(source)
+    return [
+        (
+            part,
+            "\n".join(
+                [
+                    "One section follows, as passage 1, without its subsections. Every row is "
+                    "marked >, and you may rewrite all of them. Edit the section as a whole, "
+                    "then paragraph by paragraph, for the readers below.",
+                    *whole_passage(
+                        path, shown, lines, (part.first, part.last), part.title, ">", table
+                    ),
+                ]
+            ),
+        )
+        for whole in own_parts(lines)
+        for part in fits(lines, whole, REQUEST_LIMIT_WORDS)
+    ]
+
+
+def words_in(lines: Sequence[str], part: Part) -> int:
+    """How many words the rows of `part` hold."""
+    return sum(len(line.split()) for line in lines[part.first - 1 : part.last])
+
+
+def has_prose(lines: Sequence[str], marks: Sequence[Heading], part: Part) -> bool:
+    """Whether `part` holds a row with text that is not a heading."""
+    heading_rows = {row for mark in marks for row in range(mark.line + 1, mark.end + 1)}
+    rows = range(part.first, part.last + 1)
+    return any(lines[row - 1].strip() and row not in heading_rows for row in rows)
+
+
+def trimmed(lines: Sequence[str], title: str, first: int, last: int) -> Part:
+    """The part from row `first` to row `last`, less its trailing blank rows."""
+    while last > first and not lines[last - 1].strip():
+        last -= 1
+    return Part(title, first, last)
+
+
+def fits(lines: Sequence[str], part: Part, limit: int) -> list[Part]:
+    """`part` as it is, or its runs of whole blocks where it holds more than `limit` words.
+
+    A section with no subsection to split at can still be longer than one
+    request should be. It is cut at blank rows outside a fenced block, into
+    runs of at most `limit` words unless one block alone holds more. Each run's
+    title says which run of how many it is.
+    """
+    if words_in(lines, part) <= limit:
+        return [part]
+    runs: list[tuple[int, int]] = []
+    start, words, fence = part.first, 0, ""
+    for row in range(part.first, part.last + 1):
+        line = lines[row - 1]
+        opening = line.lstrip()[:3]
+        if opening in ("```", "~~~") and len(line) - len(line.lstrip()) < 4:
+            fence = "" if fence == opening else (fence or opening)
+        if not line.strip() and not fence and words > limit // 2 and row > start:
+            ahead = sum(len(lines[later - 1].split()) for later in range(row, part.last + 1))
+            block_end = next(
+                (later for later in range(row + 1, part.last + 1) if not lines[later - 1].strip()),
+                part.last + 1,
+            )
+            block = sum(len(lines[later - 1].split()) for later in range(row, block_end))
+            if words + block > limit and ahead:
+                runs.append((start, row - 1))
+                start, words = row + 1, 0
+                continue
+        words += len(line.split())
+    runs.append((start, part.last))
+    pieces = [trimmed(lines, part.title, first, last) for first, last in runs if first <= last]
+    if len(pieces) == 1:
+        return pieces
+    return [
+        Part(f"{part.title} (run {index} of {len(pieces)})", piece.first, piece.last)
+        for index, piece in enumerate(pieces, start=1)
+    ]
+
+
+def chapters(lines: Sequence[str], limit: int | None = None) -> list[Part]:
+    """The pieces a structure read takes one at a time, the whole document or its chapters.
+
+    By default, `limit` is `REQUEST_LIMIT_WORDS`. A document of at most `limit`
+    words is one piece. A longer one splits at the next level of heading inside
+    it: its rows above the first heading at that level make one piece, and each
+    section at that level makes another. A piece still longer than `limit`
+    splits the same way. A section with no subsection left is cut into runs of
+    whole blocks by `fits`. Where the rows above the first subsection hold only
+    a heading, they go with that subsection, so every row of the document
+    belongs to one piece.
+    """
+    limit = REQUEST_LIMIT_WORDS if limit is None else limit
+    marks = headings(lines)
+    top, bottom = whole_bounds(lines, None)
+
+    def split(part: Part, head: int) -> list[Part]:
+        # `head` is the row of the part's own heading, or the row before the
+        # part where it has none. The part's rows above `head` hold only the
+        # headings of sections that had no text of their own.
+        if not has_prose(lines, marks, part):
+            return []
+        if words_in(lines, part) <= limit:
+            return [part]
+        inner = [mark for mark in marks if head < mark.line + 1 <= part.last]
+        if not inner:
+            return fits(lines, part, limit)
+        level = min(mark.level for mark in inner)
+        kids = [mark for mark in inner if mark.level == level]
+        found = split(trimmed(lines, part.title, part.first, kids[0].line), head)
+        for index, kid in enumerate(kids):
+            last = kids[index + 1].line if index + 1 < len(kids) else part.last
+            # A heading with no text of its own goes with its first subsection,
+            # so that the structure read still sees it.
+            first = part.first if index == 0 and not found else kid.line + 1
+            found += split(trimmed(lines, kid.title, first, last), kid.end)
+        return found
+
+    return split(trimmed(lines, "", top, bottom), top - 1)
+
+
+def structure_reports(root: Path, path: str, table: Sequence[Reader]) -> list[tuple[Part, str]]:
+    """The first part of a document's review: its structure read, as one request or one per chapter.
+
+    Every row is marked `|`, because a structure read rewrites nothing: it
+    finds facts given twice, passages in the wrong place and sections out of
+    order, and the line edit of each section follows once its findings are
+    applied (project owner, 2026-11-04, `PL-HGZS`). A document that `chapters`
+    keeps whole is one request that opens with `STRUCTURE_READ`. Otherwise each
+    chapter is a request that opens with `CHAPTER_READ`. Raises `ValueError`
+    where the file is not Markdown or no row of `table` names it.
+    """
+    readers_or_refusal(path, table)
+    source = (root / path).read_text(encoding="utf-8")
+    lines = markdown_lines(source)
+    shown = split_lines(source)
+    pieces = chapters(lines)
+    whole = len(pieces) == 1
+    return [
+        (
+            piece,
+            "\n".join(
+                [
+                    STRUCTURE_READ if whole else CHAPTER_READ,
+                    *whole_passage(
+                        path,
+                        shown,
+                        lines,
+                        (piece.first, piece.last),
+                        None if whole else piece.title,
+                        "|",
+                        table,
+                    ),
+                ]
+            ),
+        )
+        for piece in pieces
+    ]
+
+
+def outline_report(path: str, table: Sequence[Reader], outlines: Sequence[tuple[Part, str]]) -> str:
+    """The reverse outlines of the chapters of the file at `path`, as passage 1 of one request.
+
+    Each chapter read of a long document ends with its outline, one line for
+    each paragraph's point and facts. One read of them all then finds what
+    crosses chapters: a fact two chapters give, a paragraph in the wrong
+    chapter, and chapters out of order (`PL-HGZS`). Each outline row is
+    indented, so that no row is mistaken for a passage header.
+    """
+    readers = readers_of(table, path)
+    body: list[str] = []
+    for part, outline in outlines:
+        section = f' § "{part.title}"' if part.title else ""
+        body += [f"Chapter: {path}{section}, rows {part.first}-{part.last}"]
+        body += [f"  {line}" for line in split_lines(outline.strip()) if line.strip()]
+    return "\n".join(
+        [
+            OUTLINE_READ,
+            *reader_lines(table, [path]),
+            "",
+            f"[1] {path}, the outlines of its {len(outlines)} chapters. "
+            f"For: {'; '.join(reader.who for reader in readers)}",
+            *body,
         ]
     )
 
@@ -956,7 +1431,7 @@ def draft_report(path: Path, kind: str, table: Sequence[Reader]) -> str | None:
 def with_rule(text: str) -> str:
     """`text` after the plain-writing rule, which the copy editor does not otherwise have."""
     rule = RULE.read_text(encoding="utf-8").rstrip("\n")
-    return f"{rule}\n\nThe writing rule ends here, and the prose to review follows.\n\n{text}"
+    return f"{rule}\n\n{RULE_END}\n\n{text}"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -990,12 +1465,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="with --draft, words from the first cell of the reader rows the draft is for, "
         "such as 'replies' or 'pull request'",
     )
+    modes.add_argument(
+        "--section",
+        metavar="FILE",
+        help="print the section of the Markdown file FILE that --heading names as one "
+        "passage that the copy editor may rewrite whole",
+    )
+    parser.add_argument(
+        "--heading",
+        help="with --section, the exact text of the heading whose section to print, "
+        "subsections included",
+    )
     args = parser.parse_args(argv)
     if (args.draft is None) != (args.kind is None):
         parser.error("--draft and --kind go together")
+    if (args.heading is None) != (args.section is None):
+        parser.error(
+            "--section and --heading go together; review a whole document with "
+            "tools/copy_edit.py --structure FILE, then --sections FILE"
+        )
     root = args.root.resolve()
     try:
         table = rule_table()
+        if args.section is not None:
+            try:
+                whole = section_report(root, args.section, args.heading, table)
+            except ValueError as error:
+                print(f"new_prose: no answer: {error}", file=sys.stderr)
+                return 1
+            print(with_rule(whole))
+            return 0
         if args.draft is not None:
             text = draft_report(args.draft, args.kind, table)
             if text is None:

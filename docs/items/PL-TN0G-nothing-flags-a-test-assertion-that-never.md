@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, infra
 feature: dead-test-limits
+milestone: v0.6.15
 touches: .claude/rules/dead-ends-apparatus.md, .claude/rules/test-oracles.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, waiting on the owner's answer
 added: 2026-11-03

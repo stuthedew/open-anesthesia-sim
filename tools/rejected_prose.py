@@ -1,90 +1,93 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` gives the copy
-editor, whose prompt is `.claude/agents/copy-editor.md`, each long passage a
-branch changed, and it judges each one for its named reader.
-The owner is the only clinician who reads this project's prose. When the owner
-rejects a paragraph that the review passed, the paragraph becomes an entry
-in `docs/prose-review/rejected/`. Each change to the prompt is then run on the
-set, and the agent must flag every rejected entry, so the review cannot pass
-again a kind of text the owner has already turned down (`PL-FYGJ`, from
-`PL-H76S`'s design round). When the owner names a paragraph a gold standard, in
-those words, it becomes an entry in `docs/prose-review/gold/`, and the review
-must keep it. Without those entries, a review that flagged every paragraph
-would pass (`PL-556C`). A paragraph the owner finds acceptable, or says needs
-no change, stays out. A rewrite could still improve it, and the review must
-stay free to propose one (project owner, 2026-11-03).
+At close-out step 8 in `.claude/skills/docket/modes/close-out.md`, the copy
+editor reads each long passage that a branch changed and judges it for its
+named reader. The copy editor's prompt is `.claude/agents/copy-editor.md`.
 
-**An entry** is one Markdown file named `KIND-DATE-SLUG.md`. Its front matter
-gives three fields. `kind` is one of `FAILURE_KINDS`. `file` is the document
-the paragraph came from, which decides its readers through the table in
+The owner is the only clinician who reads this project's prose. When the owner
+rejects a paragraph that the review passed, the paragraph becomes an entry in
+`docs/prose-review/rejected/`. Each changed prompt is then run on the set, and
+the copy editor must flag every rejected entry, so the review can never again
+pass a kind of text that the owner has turned down (`PL-FYGJ`, from `PL-H76S`'s
+design round).
+
+When the owner names a paragraph a gold standard, in those words, it becomes an
+entry in `docs/prose-review/gold/`, and the review must keep it. Without those
+entries, a review that flagged every paragraph would pass this tool's `check`
+command (`PL-556C`). A paragraph the owner finds acceptable, or says needs no
+change, is left out. A rewrite could still improve it, and the review must stay
+free to propose one (project owner, 2026-11-03).
+
+**Every entry** is one Markdown file that records one paragraph. The paragraph
+sits in a fenced block, exactly as it stood in the document it came from. It
+must read as one unit that `tools/new_prose.py` would print from that document,
+because the review never sees any other.
+
+**A rejected entry** is named `KIND-DATE-SLUG.md`. Its front matter gives three
+fields. `kind` is one of `FAILURE_KINDS`. `file` is the document the paragraph
+came from, which decides its readers through the table in
 `.claude/rules/plain-writing.md`. `rejected` is the date of the owner's
 rejection. The entry's body has three sections and may have a fourth, as
-`REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them. The paragraph sits in a
-fenced block, exactly as it stood in its file. It must read as one unit of
-`MIN_WORDS` words or more, as `tools/new_prose.py` reads that file, because the
-review never sees a shorter unit. A shorter rejected paragraph is a miss of
-that word limit rather than of the prompt, so it belongs in an item.
+`REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them.
 
 **A gold-standard entry** is named `gold-DATE-SLUG.md`. Its front matter gives
-`file` and `named`, the date the owner named the paragraph a gold standard, and
-its body has the three required sections only. `GOLD_KIND` is never one of
+`file` and `named`, the date the owner named the paragraph a gold standard. Its
+body has the three required sections only. `GOLD_KIND` is never one of
 `FAILURE_KINDS`, so the start of an entry's name says which folder it belongs
 to, in a run's record as well.
 
 **How the set stays small.** A rejected entry is added only for a miss: a
 paragraph that the review passed and the owner then rejected. A kind holds at
-most `CAP_PER_KIND` entries. A new entry of a full kind replaces the oldest
-entry, and git history keeps the one replaced. If the review flags all 59
-entries of a kind, the chance that it misses a paragraph of that kind is below
-5%, at 95% confidence. The bound after no misses in n tries is 1 - 0.05^(1/n)
-(Hanley JA, Lippman-Hand A. If nothing goes wrong, is everything all right?
-Interpreting zero numerators. JAMA. 1983;249(13):1743-1745). It treats the
-entries as independent, so it is a best case. The owner set the cap (project
-owner, 2026-11-03). The gold-standard entries count as one more kind under the
-same cap. The same bound then applies to the chance that the review flags a
-gold-standard paragraph.
+most `CAP_PER_KIND` entries (project owner, 2026-11-03). A new entry of a full
+kind replaces the oldest entry, and git history keeps the one replaced. If the
+review flags all 59 entries of a kind, the chance that it misses a paragraph of
+that kind is below 5%, at 95% confidence. The bound after no misses in n tries
+is 1 - 0.05^(1/n) (Hanley JA, Lippman-Hand A. If nothing goes wrong, is
+everything all right? Interpreting zero numerators. JAMA. 1983;249(13):1743-1745).
+It treats the entries as independent, so it is a best case. The gold-standard
+entries count as one more kind under the cap, so the bound applies as well to
+the chance that the review flags a gold-standard paragraph.
 
 The tool has three commands.
 
-- `show` prints what the reviewer is given. First comes the text of
+- `show` prints what the copy editor is given. First comes the text of
   `.claude/rules/plain-writing.md`, as `tools/new_prose.py` prints it, then the
   readers of each entry's file, then each entry's paragraph as a numbered unit
   in `tools/new_prose.py`'s format, with every row marked `>`. It prints the
-  paragraph without its kind or the owner's words, so the reviewer judges it as
-  it would any branch's prose. Unlike a real review, no lines of the file
-  around the paragraph are shown, because the entry does not keep them. The
-  units come in the order of each entry's name hashed with SHA-256, so a unit's
-  position does not show which folder it came from. A rejected entry's accepted
-  rewrite is not shown. Beside its rejected original, it would let the reviewer
-  compare two versions of one paragraph, which a real review never can.
-- `record REPLY` reads the reviewer's whole reply from the file REPLY and finds
-  its "[N] keep" or "[N] rewrite" verdict for each entry. It writes one record
-  to `docs/prose-review/runs/`, holding the reply, the entries in the order
-  `show` numbered them, and a SHA-256 hash of the prompt and of each entry
-  file's rows in the reader table. It refuses a reply that gives an entry no
-  verdict, or two different ones, so a reply cut short is never recorded. This
-  tool is the only writer of those records.
-- `check` exits 1 when an entry does not parse, names a kind that
-  `FAILURE_KINDS` does not hold, or names a file that no row of the reader table
-  names. It also exits 1 when a kind holds more than `CAP_PER_KIND` entries, or
-  when a gold-standard entry repeats a rejected paragraph or an accepted
-  rewrite. It exits 1 when the current prompt and readers have no run, or have
-  a run that kept a rejected entry, flagged a gold-standard one, or wrote a
-  rewrite that does not parse as its file. Last, it exits 1 when no run of them
-  read a gold-standard entry. `make check` and CI run it.
+  paragraph without its kind or the owner's words, so the copy editor judges the
+  paragraph as it would any branch's prose. Unlike a real review, `show`
+  includes no lines of the file around the paragraph, because the entry does not
+  keep them. The units come in the order of each entry's name hashed with
+  SHA-256, so a unit's position does not show which folder it came from. A
+  rejected entry's accepted rewrite is not shown. Beside its rejected original,
+  it would let the copy editor compare two versions of one paragraph, which a
+  real review never can.
+- `record REPLY` reads the copy editor's whole reply from the file REPLY and
+  finds its "[N] keep" or "[N] rewrite" verdict for each entry. It writes one
+  record to `docs/prose-review/runs/`, holding the reply, the entries in the
+  order `show` numbered them, and a SHA-256 hash of the prompt and of the reader
+  table's rows for each entry's file. It refuses a reply that gives an entry no
+  verdict, or two different ones, so a reply cut short is never recorded. Only
+  this tool writes those records.
+- `check` runs in `make check` and in CI. It exits 1 when an entry does not
+  parse, names a kind that `FAILURE_KINDS` does not hold, or names a file that
+  no row of the reader table names. It also exits 1 when a kind holds more than
+  `CAP_PER_KIND` entries, or when a gold-standard entry repeats a rejected
+  paragraph or an accepted rewrite. It exits 1 when the current prompt and
+  readers have no run, or none that read a gold-standard entry. It exits 1 as
+  well when any one of their runs kept a rejected entry, flagged a gold-standard
+  one, or wrote a rewrite that does not parse as its file. Running the same
+  prompt again until a run passes therefore does not clear the failure: the
+  prompt has to change.
 
-**What a run covers.** The prompt and the readers' rows are what tell the
-reviewer what to look for, so a change to either needs a new run. A new
-rejected entry needs none, because only a miss is added, and the next change to
-the prompt must flag it. A new gold-standard entry does need one, because nobody
-knows whether the current prompt keeps it until a run reads it. A new row for a
-file that no run read needs no run either. Every run of the current prompt and
-readers must have judged every entry it read as the owner did. So a miss stays
-on record, and running the same prompt again until it passes does not clear it:
-the prompt has to change.
+**Which changes need a new run.** The prompt and the readers' rows tell the copy
+editor what to look for, so a change to either needs a new run. A new rejected
+entry needs none, because only a miss is added, and the run after the next
+change to the prompt must flag the entry. A new row for a file that no run read
+needs none either. A new gold-standard entry does need one, because nobody knows
+whether the current prompt keeps it until a run reads it.
 
-Standard library only, like every tool under `tools/`.
+This tool uses only the standard library, like every tool under `tools/`.
 """
 
 from __future__ import annotations
@@ -111,7 +114,7 @@ from docket.model import parse_front_matter  # noqa: E402
 from docket.python import UNTOKENIZABLE, refusal  # noqa: E402
 
 import new_prose  # noqa: E402
-from new_prose import MIN_WORDS, Reader, Unit, excerpt, reader_lines, readers_of  # noqa: E402
+from new_prose import Reader, Unit, excerpt, reader_lines, readers_of, reviewable  # noqa: E402
 
 #: Each kind of failure an entry can record, with what it means. A miss that
 #: fits none of them adds a kind here, with its meaning.
@@ -154,6 +157,9 @@ RUN_KEYS = ("recorded", "prompt", "readers", "entries", "reply")
 #: One verdict in the reviewer's reply, as the prompt asks for it. Emphasis and
 #: code marks are removed from a line before it is matched.
 VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
+# regex: a passage number in brackets inside free prose, with the emphasis and
+# code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
+MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
 
 
 def expected_verdict(name: str) -> str:
@@ -260,10 +266,9 @@ def _unit(path: str, lines: Sequence[str]) -> Unit:
         raise ValueError(f"the paragraph {error}") from None
     if len(units) != 1:
         raise ValueError(f"the paragraph reads as {len(units)} units of {path}, not one")
-    if units[0].words < MIN_WORDS:
+    if not reviewable(units[0]):
         raise ValueError(
-            f"the paragraph has {units[0].words} words, and the review reads only units of "
-            f"{MIN_WORDS} or more"
+            f"the paragraph has too few words for the review to read it: {units[0].words}"
         )
     return Unit(path, units[0].kind, 1, len(lines), units[0].text)
 
@@ -378,7 +383,7 @@ def repeats(entries: Sequence[Entry]) -> list[str]:
 def show(entries: Sequence[Entry], table: Sequence[Reader]) -> str:
     """What the reviewer is given: the rule, the readers, then each entry as a numbered unit."""
     out = [
-        f"{len(entries)} document paragraphs of {MIN_WORDS} words or more. Rows marked > are "
+        f"{len(entries)} document paragraphs. Rows marked > are "
         "the unit. Judge each unit for the readers its header names, as the list below "
         "describes them."
     ]
@@ -406,6 +411,11 @@ def verdicts(reply: str, count: int) -> list[str]:
     if problems:
         raise ValueError("; ".join(problems))
     return [found[number].pop() for number in range(1, count + 1)]
+
+
+def unmarked(text: str) -> str:
+    """`text` with each bracketed passage number written "Passage N", so `verdicts` finds none."""
+    return MARK_RE.sub(r"Passage \1", text)
 
 
 def rewrites(reply: str) -> dict[int, tuple[str, ...]]:

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: owner-ask-refusals
+milestone: v0.6.15
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03

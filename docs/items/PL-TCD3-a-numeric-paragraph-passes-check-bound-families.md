@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
+milestone: v0.6.15
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/items
 deferred-from: v0.7.0 - filed 2026-11-02 from PL-B6YV's blind review; a question about the check's rule that the schematic does not wait on
 added: 2026-11-02

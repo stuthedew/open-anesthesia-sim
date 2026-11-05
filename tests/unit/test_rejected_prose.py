@@ -18,7 +18,7 @@ from pathlib import Path
 
 import new_prose
 import pytest
-from new_prose import MIN_WORDS, reader_table
+from new_prose import reader_table
 from rejected_prose import (
     CAP_PER_KIND,
     FAILURE_KINDS,
@@ -37,6 +37,7 @@ from rejected_prose import (
     record,
     rewrites,
     show,
+    unmarked,
     verdicts,
 )
 
@@ -48,6 +49,9 @@ READERS = """\
 """
 TABLE = reader_table(READERS)
 PROMPT = "Review the prose below.\n"
+#: The number of words in `PARAGRAPH`. The review reads a paragraph of any
+#: length, so the number only sizes the fixtures.
+MIN_WORDS = 30
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
 #: A paragraph the owner named a gold standard, which differs from every rejected one.
 KEPT = " ".join(["plain"] * MIN_WORDS)
@@ -185,8 +189,8 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
         ),
         (
             "jargon-2026-11-02-a.md",
-            _entry(paragraph=" ".join(["word"] * (MIN_WORDS - 1))),
-            f"the review reads only units of {MIN_WORDS} or more",
+            _entry(path="src/pkg/model.py", paragraph='ENCODING = "utf-8"'),
+            "the paragraph has too few words for the review to read it: 1",
         ),
         (
             "jargon-2026-11-02-a.md",
@@ -556,3 +560,13 @@ def test_the_gold_standard_entries_share_the_cap_of_a_kind(tmp_path: Path) -> No
         f"kind gold holds {CAP_PER_KIND + 1} entries, more than {CAP_PER_KIND}: delete the "
         "oldest, gold-2026-11-05-0.md, which git history keeps"
     ]
+
+
+def test_unmarked_text_gives_no_passage_a_verdict() -> None:
+    notes = "**[1] rewrite** cut a repeat; [`2`] keep; see [_3_]."
+
+    plain = unmarked(notes)
+
+    assert plain == "**Passage 1 rewrite** cut a repeat; Passage 2 keep; see Passage 3."
+    with pytest.raises(ValueError, match="no verdict"):
+        verdicts(plain, 1)

@@ -4,7 +4,8 @@ title: The prose review's rejected-paragraph test passes when the review flags e
 priority: P1
 effort: M
 status: done
-feature: reader-tested-prose
+feature: copy-editor
+milestone: v0.6.15
 touches: docs/prose-review, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, .claude/skills/docket/modes/close-out.md, docs/apparatus.md
 deferred-from: v0.7.0 - apparatus for the prose review, ranked through its generator PL-H76S rather than by the release gate, as that head's other members were
 added: 2026-11-03

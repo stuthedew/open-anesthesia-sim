@@ -1509,3 +1509,24 @@ would have loaded too late. The paragraphs stay with the rest of the rule.
 replaced by one that says where a fact may go. The rule grew from 10,211 to
 11,763 characters. Nothing else in the rule says when to decide a paragraph's
 point or where a value's reason comes from, so nothing could be cut for them.
+
+## When a model limitation earns a sentence, added 2026-11-04
+
+`PL-BS6N` added one sentence to the resident `.claude/rules/plain-writing.md`,
+at the end of the paragraph that opens "Write what the reader needs to act on,
+and stop". It says to state a model limitation only where it could change what
+a clinician concludes from a displayed value. On 2026-11-04 the project owner
+had a warning about an error smaller than one count of the last digit taken
+out of `PL-J37P`'s text.
+
+**The carrier test.** The sentence applies to replies as well as to
+`docs/MODEL.md`. A path scope would miss replies, because a session reads no
+file before it writes one, so the sentence stays in the resident rule.
+
+**What was replaced, and the cost.** Nothing was replaced. The rule grew from
+14,653 to 14,768 characters. A first version had two sentences and 371
+characters, and named the one kind of limitation to leave out. The owner judged
+it too specific for a file every session loads, and it read as requiring every
+larger limitation to be stated. The rule's closing paragraph still says that
+the safety-critical standard decides which facts a text must give, and that
+this rule never cuts one.

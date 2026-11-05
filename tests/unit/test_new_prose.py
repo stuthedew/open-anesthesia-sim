@@ -18,7 +18,6 @@ import new_prose
 import pytest
 from docket.config import load
 from new_prose import (
-    MIN_WORDS,
     ROOT,
     RULE,
     Unit,
@@ -32,8 +31,11 @@ from new_prose import (
     reviews_of,
 )
 
+#: The number of words in `LONG`, which only has to be longer than `SHORT`. The
+#: review reads units of any length, so it treats the two alike.
+MIN_WORDS = 30
 LONG = " ".join(["word"] * MIN_WORDS)
-SHORT = " ".join(["word"] * (MIN_WORDS - 1))
+SHORT = "Two words."
 
 SOURCE = f'''\
 """{LONG}"""
@@ -89,10 +91,10 @@ def test_prose_units_reads_docstrings_and_joined_comment_runs() -> None:
     ]
 
 
-def test_only_a_long_unit_that_a_changed_row_falls_inside_is_printed(repo: Path) -> None:
+def test_only_a_unit_that_a_changed_row_falls_inside_is_printed(repo: Path) -> None:
     model = repo / "src/pkg/model.py"
-    # A change to code beside a long docstring, a change inside a short one,
-    # and a change inside a long comment.
+    # Change code beside a docstring, and the text inside a short docstring
+    # and a long comment.
     text = SOURCE.replace("x * LIMIT", "x * LIMIT * 2").replace(
         f'"""{SHORT}"""', f'"""{SHORT} more"""'
     )
@@ -100,12 +102,12 @@ def test_only_a_long_unit_that_a_changed_row_falls_inside_is_printed(repo: Path)
 
     found = branch_prose(repo, "main")
 
-    # The short docstring now has 30 words, so it is printed too.
+    # The short docstring is printed: the review reads a unit of any length.
     assert [(unit.kind, unit.first) for unit in found.units] == [("docstring", 12), ("comment", 13)]
     assert found.unread == []
 
 
-def test_a_new_file_has_every_long_unit_printed(repo: Path) -> None:
+def test_a_new_file_has_every_unit_printed_short_ones_included(repo: Path) -> None:
     _write(repo, "src/pkg/fresh.py", SOURCE)
 
     found = branch_prose(repo, "main")
@@ -113,6 +115,7 @@ def test_a_new_file_has_every_long_unit_printed(repo: Path) -> None:
     assert [(unit.path, unit.first) for unit in found.units] == [
         ("src/pkg/fresh.py", 1),
         ("src/pkg/fresh.py", 7),
+        ("src/pkg/fresh.py", 12),
         ("src/pkg/fresh.py", 13),
     ]
 
@@ -151,14 +154,12 @@ def test_excerpt_marks_the_unit_and_the_code_around_it() -> None:
     assert shown[-1] == "   15 | line 15"
 
 
-def test_main_says_so_when_nothing_long_changed(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_main_says_so_when_no_prose_changed(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (repo / "src/pkg/model.py").write_text(SOURCE.replace("LIMIT = 3", "LIMIT = 4"), "utf-8")
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     assert capsys.readouterr().out.startswith(
-        "No passage of 30 words or more changed in a file that the reader table names"
+        "No passage changed in a file that the reader table names"
     )
 
 
@@ -172,12 +173,11 @@ def test_main_numbers_each_unit_with_its_rows(
     rule = RULE.read_text(encoding="utf-8").rstrip("\n")
     assert out.startswith(rule)
     assert out[len(rule) :].startswith(
-        "\n\nThe writing rule ends here, and the prose to review follows.\n\n"
-        "3 passages of 30 words or more changed"
+        "\n\nThe writing rule ends here, and the prose to review follows.\n\n4 passages changed"
     )
     assert "src/pkg/fresh.py, rows 1-5:\n" in out
     assert f"[1] src/pkg/fresh.py, rows 1-1. Changed text: new, {MIN_WORDS} words." in out
-    assert "[3] src/pkg/fresh.py, rows 13-13." in out
+    assert "[4] src/pkg/fresh.py, rows 13-13." in out
     assert f"   13 >     # {LONG}\n   14 |     return y" in out
 
 
@@ -193,14 +193,14 @@ def _count(repo: Path, capsys: pytest.CaptureFixture[str], *extra: str) -> tuple
 
 
 def test_counts_units_since_commit(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """`--count` counts committed long units, leaving out those already at a given commit.
+    """The `--count` option counts committed units, leaving out those already at a given commit.
 
-    This is what `bin/docket arm` reads (`PL-W04Z`). A code fix after the
-    review must not ask for a second review, and a new long unit must.
+    The workflow command `bin/docket arm` reads this count (`PL-W04Z`). A code fix
+    after the review must not trigger a second review, and a new unit must.
     """
     _write(repo, "src/pkg/fresh.py", SOURCE)
-    _commit(repo, "add a file with three long units")
-    assert _count(repo, capsys) == (0, "3")
+    _commit(repo, "add a file with four units")
+    assert _count(repo, capsys) == (0, "4")
 
     reviewed = _commit(repo, "record the review")
     (repo / "src/pkg/fresh.py").write_text(SOURCE.replace("x * LIMIT", "x * LIMIT * 2"), "utf-8")
@@ -208,7 +208,7 @@ def test_counts_units_since_commit(repo: Path, capsys: pytest.CaptureFixture[str
     assert _count(repo, capsys, reviewed) == (0, "0")
 
     _write(repo, "src/pkg/fresh.py", SOURCE + f'\n\ndef later():\n    """{LONG} again"""\n')
-    _commit(repo, "a new long docstring")
+    _commit(repo, "a new docstring")
     assert _count(repo, capsys, reviewed) == (0, "1")
 
 
@@ -246,18 +246,15 @@ def test_count_exits_2_when_a_changed_file_will_not_parse(
 
 
 def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
-    """`bin/docket arm` runs this tool under the project interpreter, which parses all of `src/`.
+    """The workflow command `bin/docket arm` runs this tool under the project interpreter.
 
-    A bare `python3` is the tools interpreter, held to a 3.11 floor, and `src/`
-    targets 3.14. Under the bare one the count exits 2 on any branch that
-    changes a file written in newer syntax, such as the PEP 758 `except` in
-    `app_metadata.py`, and `arm` then holds correct work (`PL-Q508`). The
-    setting is empty while the copy editor is paused (`PL-HJFX`), and must
-    take this form when it comes back.
+    That interpreter parses all of `src/`, which targets 3.14. A bare `python3`
+    runs `tools/` and may be as old as 3.11. Under such an interpreter, the
+    count fails with exit status 2 on any branch that changes a file written in
+    newer syntax, such as the PEP 758 `except` in `app_metadata.py`. The
+    workflow command then blocks correct work (`PL-Q508`).
     """
     command = load(ROOT).prose_count_command.split()
-    if not command:
-        return
     assert command[:3] == ["uv", "run", "python"]
     assert "tools/new_prose.py" in command
 
@@ -418,7 +415,7 @@ def test_a_passage_in_a_file_no_row_names_is_listed_as_not_reviewed(
 
     assert main(["--root", str(repo), "--base", "main"]) == 0
     out = capsys.readouterr().out
-    assert out.startswith("No passage of 30 words or more changed")
+    assert out.startswith("No passage changed")
     assert out.endswith(
         "Not reviewed, because no row of the reader table in rule.md names it:\n"
         "  src/pkg/fresh.py\n"
@@ -698,6 +695,181 @@ def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passa
     assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err
 
 
+#: A model document whose section holds a subsection.
+NESTED = f"""\
+---
+title: front matter
+---
+
+# Model
+
+## Displayed precision
+
+{LONG} first.
+
+### Readouts
+
+{LONG} second.
+
+## Next
+
+{LONG} other.
+
+"""
+
+
+@pytest.fixture
+def nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A repository root holding `NESTED` as `docs/MODEL.md`, with `READERS` as the rule file."""
+    rule = tmp_path / "rule.md"
+    rule.write_text(READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(tmp_path, "docs/MODEL.md", NESTED)
+    return tmp_path
+
+
+def test_section_prints_a_section_and_its_subsections_as_one_passage_to_rewrite(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The copy editor may rewrite the whole section, to merge a fact repeated across paragraphs."""
+    argv = ["--root", str(nested), "--section", "docs/MODEL.md", "--heading", "Displayed precision"]
+
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    shown = out.partition("The writing rule ends here")[2]
+    assert "Readers of docs/MODEL.md:\n  - A clinician.\n" in shown
+    assert "  - A forker.\n" in shown
+    assert "The owner" not in shown
+    assert (
+        '[1] docs/MODEL.md § "Displayed precision", rows 7-13. Whole section: 67 words. '
+        "For: A clinician; A forker\n"
+    ) in shown
+    assert f"    7 > ## Displayed precision\n    8 > \n    9 > {LONG} first." in shown
+    assert f"   13 > {LONG} second." in shown
+    assert "other." not in shown
+    assert "|" not in shown.partition("[1]")[2]
+
+
+def test_section_without_a_heading_is_refused_and_names_the_two_part_review(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A whole document is never line-edited in one request (project owner, 2026-11-04)."""
+    with pytest.raises(SystemExit) as stopped:
+        main(["--root", str(nested), "--section", "docs/MODEL.md"])
+
+    assert stopped.value.code == 2
+    assert "tools/copy_edit.py --structure FILE, then --sections FILE" in capsys.readouterr().err
+
+
+def test_each_section_s_own_rows_are_one_part_and_a_heading_alone_is_none() -> None:
+    lines = new_prose.markdown_lines(NESTED)
+
+    assert new_prose.own_parts(lines) == [
+        new_prose.Part("Displayed precision", 7, 9),
+        new_prose.Part("Readouts", 11, 13),
+        new_prose.Part("Next", 15, 17),
+    ]
+
+
+def test_a_document_within_the_limit_is_one_chapter() -> None:
+    lines = new_prose.markdown_lines(NESTED)
+
+    assert new_prose.chapters(lines, limit=1000) == [new_prose.Part("", 5, 17)]
+
+
+def test_a_longer_document_splits_by_level_and_keeps_every_row_once() -> None:
+    """A heading with no text of its own goes with its first subsection, and no row is lost."""
+    lines = new_prose.markdown_lines(NESTED)
+
+    found = new_prose.chapters(lines, limit=40)
+
+    assert found == [
+        new_prose.Part("Displayed precision", 5, 9),
+        new_prose.Part("Readouts", 11, 13),
+        new_prose.Part("Next", 15, 17),
+    ]
+
+
+def test_a_section_with_no_subsection_is_cut_into_runs_of_whole_blocks() -> None:
+    lines = new_prose.markdown_lines(f"# Long\n\n{LONG}\n\n```\ncode\n\nmore\n```\n\n{LONG}\n")
+
+    found = new_prose.chapters(lines, limit=MIN_WORDS + 5)
+
+    assert found == [
+        new_prose.Part("Long (run 1 of 2)", 1, 9),
+        new_prose.Part("Long (run 2 of 2)", 11, 11),
+    ]
+
+
+def test_a_structure_read_marks_every_row_read_only(nested: Path) -> None:
+    [(part, request)] = new_prose.structure_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert part == new_prose.Part("", 5, 17)
+    assert request.startswith(new_prose.STRUCTURE_READ + "\n")
+    assert "[1] docs/MODEL.md, rows 5-17. Whole document: 102 words." in request
+    assert "    5 | # Model" in request
+    assert " > " not in request.partition("[1]")[2]
+
+
+def test_a_long_document_s_structure_read_is_one_request_per_chapter(
+    nested: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(new_prose, "REQUEST_LIMIT_WORDS", 40)
+
+    found = new_prose.structure_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert [part.title for part, _ in found] == ["Displayed precision", "Readouts", "Next"]
+    assert all(request.startswith(new_prose.CHAPTER_READ) for _, request in found)
+    assert '[1] docs/MODEL.md § "Readouts", rows 11-13. Whole section' in found[1][1]
+
+
+def test_each_section_is_a_request_of_its_own_rows_to_rewrite(nested: Path) -> None:
+    found = new_prose.part_reports(nested, "docs/MODEL.md", new_prose.rule_table())
+
+    assert [part.title for part, _ in found] == ["Displayed precision", "Readouts", "Next"]
+    first = found[0][1].partition("[1]")[2]
+    assert f"    9 > {LONG} first." in first
+    assert "second." not in first
+
+
+def test_the_outline_request_indents_each_chapter_s_outline_under_its_place(nested: Path) -> None:
+    outlines = [(new_prose.Part("Readouts", 11, 13), "rows 13: a point.\n\nrows 14: another.")]
+
+    text = new_prose.outline_report("docs/MODEL.md", new_prose.rule_table(), outlines)
+
+    assert text.startswith(new_prose.OUTLINE_READ + "\n")
+    assert "[1] docs/MODEL.md, the outlines of its 1 chapters. For: A clinician; A forker" in text
+    assert text.endswith(
+        'Chapter: docs/MODEL.md § "Readouts", rows 11-13\n  rows 13: a point.\n  rows 14: another.'
+    )
+
+
+@pytest.mark.parametrize(
+    ("asked", "reason"),
+    [
+        (["--section", "docs/MODEL.md", "--heading", "Nowhere"], "0 headings read 'Nowhere'"),
+        (["--section", "src/step.py", "--heading", "X"], "src/step.py is not a Markdown file"),
+    ],
+)
+def test_section_refuses_a_heading_it_cannot_find_and_a_file_that_is_not_markdown(
+    nested: Path, capsys: pytest.CaptureFixture[str], asked: list[str], reason: str
+) -> None:
+    assert main(["--root", str(nested), *asked]) == 1
+
+    assert reason in capsys.readouterr().err
+
+
+def test_section_refuses_a_file_that_no_reader_row_names(
+    nested: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(nested, "docs/OTHER.md", NESTED)
+
+    assert main(["--root", str(nested), "--section", "docs/OTHER.md", "--heading", "Next"]) == 1
+
+    assert "no row of the reader table names docs/OTHER.md" in capsys.readouterr().err
+
+
 #: A reader table with a row for string literals in an interface package, for
 #: the string-unit tests (`PL-Q98K`).
 STRING_READERS = READERS.replace(
@@ -750,6 +922,33 @@ def test_a_long_interface_string_literal_is_printed_for_its_own_reader(
     )
 
 
+def test_a_short_notice_is_printed_and_a_one_word_string_is_not(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A notice of two words is prose a learner reads. A one-word string is a value the code uses.
+
+    The review reads a changed passage of any length (project owner,
+    2026-11-04, `PL-HGZS`), but a rewrite of `"mL/h"` or a dictionary key would
+    change what the program does.
+    """
+    rule = tmp_path / "rule.md"
+    rule.write_text(STRING_READERS, encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/app/units.py", 'RATE = {"unit": "mL/h"}\nPAUSED = "Simulation paused."\n')
+
+    found = branch_prose(repo, "main")
+
+    assert [(unit.kind, unit.text) for unit in found.units] == [("string", "Simulation paused.")]
+
+
+def test_reviewable_needs_two_words_of_a_string_and_one_of_anything_else() -> None:
+    assert new_prose.reviewable(Unit("a.md", "paragraph", 1, 1, "Paused."))
+    assert new_prose.reviewable(Unit("a.py", "comment", 1, 1, "why"))
+    assert not new_prose.reviewable(Unit("a.py", "string", 1, 1, "mL/h"))
+    assert new_prose.reviewable(Unit("a.py", "string", 1, 1, "Simulation paused."))
+    assert not new_prose.reviewable(Unit("a.md", "table row", 1, 1, ""))
+
+
 def test_a_long_string_is_not_printed_where_no_string_row_names_its_file(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -781,3 +980,22 @@ def test_a_refusal_that_loses_its_value_is_reported(
     assert main(["--root", str(repo), "--base", "main", "--compare"]) == 0
     out = capsys.readouterr().out
     assert "gone  0.2" in out
+
+
+def test_a_row_reads_back_as_its_number_mark_and_text() -> None:
+    assert new_prose.read_row(new_prose.row_line(7, ">", "Some text.")) == (7, ">", "Some text.")
+    assert new_prose.read_row(new_prose.row_line(123456, "|", "")) == (123456, "|", "")
+    assert new_prose.read_row("Readers of docs/MODEL.md:") is None
+    assert new_prose.read_row("   12 * not a mark") is None
+
+
+def test_a_header_gives_its_passage_number_and_a_title_gives_none() -> None:
+    header = f"[3] {new_prose.rows_span('doc.md', 4, 9)}. Draft: 5 words. For: A reader"
+    title = f"{new_prose.rows_span('doc.md § "Part"', 1, 20)}:"
+
+    assert new_prose.passage_number(header) == 3
+    assert new_prose.read_span(header) == (4, 9)
+    assert new_prose.respan(header, 4, 6).startswith("[3] doc.md, rows 4-6. Draft:")
+    assert new_prose.passage_number(title) is None
+    assert new_prose.passage_number("[x] doc.md, rows 1-2.") is None
+    assert new_prose.passage_number("[3] keep") is None
