@@ -175,6 +175,14 @@ does not know this repository's names either.
      from the rounding)", or cut it whole where the item it names holds the
      decision. Never shorten it: without "ratified", the tag records a
      different kind of decision.
+     The developer reads the paragraphs above the note as well, so give each
+     fact once. Where a guarantee for the clinician and a rule for writers
+     say the same fact, such as "a statement that no test backs says
+     `no test yet`" and "write a missing link as `no test yet`", keep it in
+     the clinician's text and give the note only what a writer needs beyond
+     it: the exact form, which statements the check reads, and what it
+     refuses. A numbered list of rules that another sentence points to is no
+     reason to keep a fact twice: write the thing in place of the pointer.
      When you move a paragraph's detail, leave in this reader's text the
      sentence they need from it, such as what the detail guarantees them.
      Edit what you move as you edit the rest, for its new reader, and cut
@@ -348,7 +356,8 @@ does not know this repository's names either.
    - Each change has one of the reasons above. Undo any change that has none.
    - The edit is shorter than the original, unless an added word carries a fact
      the reader needs and the original lacked. Name each such fact under the
-     block, or cut the words. Work to no word count beyond that.
+     block, or cut the words. Where the edit is longer, look first for a fact
+     that both the clinician's text and the note for developers state. Work to no word count beyond that.
    - Read every sentence of your edit aloud as this reader, including each
      sentence you did not change. Rewrite any sentence they would not
      understand on first reading, any whose clauses stack or whose subject sits
