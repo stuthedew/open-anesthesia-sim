@@ -31,7 +31,8 @@ it replaces. A rewrite that changes code, a fenced block or a heading, alters an
 comment or writes one the passage does not hold, or writes a code name the
 passage does not hold, is refused
 and printed as `[N] keep`, with the reason under "Code check:". A code name
-that a rewrite dropped, and a comment that it cut whole, are listed there too
+that a rewrite dropped, a comment that it cut whole, and an item whose
+decision's tag it cut without keeping the item's id, are listed there too
 (project owner, 2026-11-04, `PL-HGZS`).
 
 **A whole document is reviewed in two parts** (project owner, 2026-11-04,
@@ -77,6 +78,7 @@ from docket.markdown import FENCE, headings  # noqa: E402
 from docket.markdown import read as read_markdown  # noqa: E402
 from docket.model import FRONT_MATTER_RE  # noqa: E402
 from docket.release import code_spans  # noqa: E402
+from docket.store import CITED_ID_RE  # noqa: E402
 
 from new_prose import (  # noqa: E402
     PROMPT,
@@ -350,6 +352,7 @@ class CodeCheck:
     refused: tuple[str, ...] = ()
     dropped: tuple[str, ...] = ()
     cut_comments: tuple[str, ...] = ()
+    lost_decisions: tuple[str, ...] = ()
 
 
 #: Python tokens that are prose or layout, which a copy edit may change. Every
@@ -368,6 +371,8 @@ PROSE_TOKENS = frozenset(
         tokenize.ENDMARKER,
     }
 )
+# regex: a decision's tag, such as "(project owner, 2026-10-18, ratified, over X, `PL-W5WX`)"
+DECISION_TAG_RE = re.compile(r"\(project owner,[^()]*\)")
 # regex: an HTML comment, which a Markdown file uses for its provenance markers
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 
@@ -440,7 +445,22 @@ def check_code(
         )
     dropped = tuple(sorted({span for span in old_spans if span not in new_spans}))
     cut = tuple(sorted((old_comments - new_comments).elements()))
-    return CodeCheck(tuple(refused), dropped, cut)
+    return CodeCheck(tuple(refused), dropped, cut, lost_decisions(before, after))
+
+
+def lost_decisions(before: Sequence[str], after: Sequence[str]) -> tuple[str, ...]:
+    """Each item that a decision's tag in `before` names and `after` no longer names.
+
+    The copy editor may cut a decision's tag whole, but only where the item it
+    names holds the decision, and the item's id must stay beside the decision.
+    Without the id, nothing in the text leads to the record of who decided and
+    what was chosen over what. A blind judge preferred the original of one
+    section for this alone (`PL-HGZS`).
+    """
+    old = " ".join(" ".join(before).split())
+    new = " ".join(after)
+    named = {item for tag in DECISION_TAG_RE.findall(old) for item in CITED_ID_RE.findall(tag)}
+    return tuple(sorted(item for item in named if item not in new))
 
 
 def passage_texts(request: str) -> dict[int, tuple[str, list[str], list[str]]]:
@@ -508,6 +528,11 @@ def merge(
             checked.append(
                 f"- Passage {number}: the rewrite no longer names `{span}`. "
                 "Check that its reader does not need it."
+            )
+        for item in result.lost_decisions:
+            checked.append(
+                f"- Passage {number}: the rewrite cut the decision that `{item}` records "
+                "without naming the item. Put the id back beside the decision."
             )
         for comment in result.cut_comments:
             checked.append(
