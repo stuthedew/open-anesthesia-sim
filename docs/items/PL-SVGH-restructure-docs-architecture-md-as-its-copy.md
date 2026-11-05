@@ -1,0 +1,131 @@
+---
+id: PL-SVGH
+title: Restructure docs/ARCHITECTURE.md as its copy editor's structure read proposes: state each repeated fact once, move failures and halts out of Data flow, define Area, View and Workspace where they first appear (copy editor structure read, 2026-11-05)
+status: untriaged
+feature: architecture-md-structure
+added: 2026-11-05
+---
+
+**Problem.** Restructure docs/ARCHITECTURE.md as its copy editor's structure read proposes: state each repeated fact once, move failures and halts out of Data flow, define Area, View and Workspace where they first appear (copy editor structure read, 2026-11-05)
+
+**The findings, as the structure read gave them** (row numbers are docs/ARCHITECTURE.md at cfb15a4a, before the line edit; the queries are filed as PL-G1J9, PL-6G7N, PL-HLTR, PL-4CZW, PL-GSPR and PL-SMKL). The project owner chose on 2026-11-05 to line edit each document first and restructure later, so this item works on the line-edited text.
+
+- **Repeated, presentation modules (Data flow 317-331 and Package map 117-133).** Data flow 317-331 lists the presentation modules a second time, with the Package map's wording. For example, "`app/playback.py` turns a selected playback rate into the number of whole simulation steps per tick" repeats map row 121, "Turns the playback rate into whole simulation steps per tick". "`app/control_timeline.py` turns recorded control changes into the adjustments a reader sees" repeats row 132, "the acts a user sees". `formatting.py` (118), `dashboard_frame.py` (122), `chart_frame.py` (123), `qt_chart.py` (130) and `qt_widgets.py` (117) are repeated the same way. Each module's role belongs in § "Package map". Data flow 317-331 keeps only the pointer to `docs/MODEL.md` § "Displayed precision". Rows 333-346 then name each module in its own sentence, because "the last three modules" would point at nothing.
+- **Repeated, the atomic write (three chapters).** Three chapters give its steps:
+  - Package map 76: "write and fsync a temporary file, call os.replace, then fsync the directory".
+  - § "User state: the saved Workspaces" 950-962: "A save writes a temporary file beside the target and calls `fsync` on it ... Finally it calls `os.replace` on the target".
+  - § "User state: the reader's preferences" 1008-1015: "A save writes a temporary file, `fsync`s it and `os.replace`s the target, through `user_files.py`".
+
+  The steps belong once, in the saved-Workspaces chapter. They should include the directory fsync, which only the Package map gives. The preferences chapter keeps "the same atomic write as the Workspaces (`user_files.py`), with no previous version kept". The Package map keeps "the atomic write of a user's file, shared by both stores".
+- **Repeated, what the loader rejects (Data flow 176-183 and Data files 897-906).** Data flow 176-183 says the loader checks "the schema version, required fields, units and ranges" and that "A key the schema does not declare fails the load". Data files 897-906 lists the same rejections, including "a key the schema does not declare, including inside a nested object". The list belongs in § "Data files (`data/`)". Data flow keeps three things: `core/parameters.py` is the only module that reads the files, it checks them before building the parameter objects, and a pointer to the list. That list leaves out one rejection, "reject a formula where a number is expected", which only Layering 60-70 gives. Add it to the list, and give Layering a pointer.
+- **Repeated, adding a profile (Data files 906-908 and Where new code belongs 1171-1174).** Data files 906-908 says "Adding an agent, patient or machine profile means adding a new validated, cited JSON file, plus any new parsing support in `parameters.py`, and never constants in `core/`". Where new code belongs 1171-1174 says "A new agent, patient or machine profile is a new validated, cited file under the matching subdirectory of `data/`. Its values are never hardcoded in `core/`". This belongs in § "Where new code belongs", where it gains the parsing-support clause. Data files keeps nothing of it.
+- **Repeated, `data/` described in Layering (45-58) and Data files.** Layering 45-58 describes `data/` in detail: the "versioned, schema-validated JSON parameter files with citations, in three kinds", how `for_agent()` passes each value explicitly, and the `core/` defaults with the tests that pin them. § "Data files (`data/`)" covers the same ground (882-883, 910-916). Layering keeps one sentence: `data/` holds the cited parameter files that `core/` reads, and the shipped Workspaces, which `layout/` reads. The rest moves to Data files, with the reason that the documentation check's provenance walk sees only constants in a data file. Data files says "There are three kinds of file" but never mentions `data/workspaces/`. It should say that this directory holds layout rather than parameters, and point to § "User state: the saved Workspaces", whose rows 986-992 describe the shipped set.
+- **Repeated, `PL-4YY1` history (Layering 45-58 and Data files 914-916).** Layering 45-58 says "`PL-4YY1` added the machine file and the first pins, after finding that the circuit's volume and flow were taken from `core/circuit.py`". Data files 914-916 says "For that reason `PL-4YY1` added a third directory instead of a field in `reference_adult.json`". This is decision history, so it belongs in item `PL-4YY1`, and both places cut it. Data files keeps the reason: filing a machine parameter under the patient would say something false about where it came from.
+- **Repeated, the interface computes nothing (four places).** The rule appears in:
+  - Layering 29-32: "It never performs a physiological or unit calculation".
+  - Layering 60-70, rule 2: "no simulation calculation in a UI callback".
+  - Data flow 308-315: "Neither performs a physiological or unit calculation of its own".
+  - Where new code belongs 1203-1236: "A value the interface needs that does not exist yet is added in `app/controller.py` and computed in `core/`, never in the view".
+
+  The rule belongs in Layering, as rule 2. Data flow keeps what the two views read, the snapshot and `drawn_window`. Where new code belongs keeps where to add a missing value.
+- **Repeated, asking `drawn_window` for the span drawn (Data flow and Where new code belongs).** Data flow 229-242 and 516-530 say the view asks `drawn_window` for "the states at the instants it is about to plot". Where new code belongs 1203-1236 says a panel "asks `SimulationController.drawn_window(start_s, stop_s, columns)` for the span it draws ... so the amount of data crossing that boundary depends on the display, not the run's length". The reason belongs in Data flow. Where new code belongs keeps the instruction and points to § "Data flow" for why.
+- **Repeated, series outside the trace table (Data flow 348-361 and Where new code belongs 1277-1303).** Data flow 348-361 says a reference "is not in `chart_frame.COMPARTMENT_TRACES` ... because it reads no state of the run" and a control mark "is likewise outside that table". Where new code belongs 1277-1303 says "A series that draws no state of the run (a clinical reference, a control mark) stays out of the table". This belongs in § "Where new code belongs", where a contributor adding a series looks. Data flow cuts both bullets.
+- **Repeated, `libegl1` (Tests 1119-1137 and Dependencies 1072-1078).** Tests 1119-1137 says "On Linux the plugin needs `libegl1` from the OS. `.github/workflows/quality.yml` installs it ... (`PL-VHLZ`)". Dependencies 1072-1078 says "Only `libegl1` is normally absent ... `.github/workflows/quality.yml` installs only `libegl1` ... (`PL-VHLZ`)". This belongs in § "Dependencies". Tests keeps a pointer: on Linux the offscreen plugin needs the OS libraries that § "Dependencies" lists.
+- **Split, what the import check rejects (Layering and Dependencies).** Layering gives part of the list: the check rejects "a toolkit import under `core/` and a `core/` import of `app/`" (15-17, 60-70), and `layout/` imports no toolkit (33-44). Dependencies gives the rest: the same check allows `flet` in no module under `src/` (1039-1044) and numpy in no module under `core/` (1046-1056). A contributor deciding where an import may go needs the whole list in one place. Put it in § "Layering". Dependencies keeps why each package is present, with a pointer.
+- **Repeated, first module to write outside the tree (Layering 33-44 and saved Workspaces 920-933).** Layering 33-44 says "`layout/store.py` is the one module in the package, and the first under `src/`, that writes outside the tree". The saved-Workspaces chapter, rows 920-933, says "The section replaces a `PL-CNJ1` measurement of 2026-09-15, which found that nothing under `src/` wrote to disk". Both give the same history, which belongs in `PL-CNJ1` and `PL-SSQW`. Layering keeps that `layout/store.py` writes the saved Workspaces, with its § pointer. Read today, "the first under `src/`" suggests it is still the only such writer, but `app/preferences.py` also writes outside the tree (996-1006).
+- **Repeated, the move from Flet to Qt (three chapters).** The history appears in:
+  - Package map 101: "in PySide6 and pyqtgraph since PL-25KS".
+  - Dependencies 1039-1044: "`flet` and `flet-charts` were removed by `PL-3SQT`, after `PL-25KS` deleted the last module that imported either".
+  - Data flow 516-530: "when the Flet client was patched per point".
+
+  The history belongs in `ROADMAP.md` § "Completed: v0.4.26 - the interface moves to Qt", which row 101 already names. Package map keeps "PySide6 and pyqtgraph" with that pointer. Dependencies keeps that the import check forbids Flet. Data flow keeps only the anchoring rule.
+- **Repeated, Package map lines that give behaviour the prose chapters give in full.** The behaviour belongs in the chapters. Each map line keeps the module's role, with a § pointer where a chapter gives more. The lines are:
+  - 107 "detects a crossing between two readings, which SimulationController.advance supplies each step" (Branch 694-712).
+  - 110 "The Layout menu and each tab's menu end with Save as default, Restore shipped Workspaces and Reset all layouts. A line under the tabs shows what the store reported" (saved Workspaces 950-966).
+  - 115 "An exception inside a slot halts that slot's run, or every run for SimulationView" (Data flow 451-462).
+  - 120 "Each setting is refused alone when invalid and kept for the next save. A newer or unreadable file turns saving off" (preferences 1016-1026).
+  - 136 "builds the BranchedCase and opens the dashboard over its trunk" (Branch 741-744). Row 136's loading steps are also in 935-949 and 1027-1035.
+- **Repeated, `tmp_path` (Tests 1111-1118 and saved Workspaces 935-949).** Tests 1111-1118 says "`test_layout_store.py` runs against `tmp_path`", and the saved-Workspaces chapter says "Tests pass `tmp_path`". This belongs in § "Tests (`tests/`)", and the saved-Workspaces chapter cuts it.
+- **Wrong place, the package-map check (Workflow apparatus 1098-1107).** These rows say `tools/doc_check.py` "checks the package map in an earlier section against the files on disk", and "`make check` fails when a module is added without a line in the map". Move this to the opening of § "Package map", where a contributor adding or deleting a module looks. The apparatus chapter keeps nothing of it.
+- **Wrong place, release planning (Where new code belongs 1255-1262).** These rows assign the change to v0.6.0 "As of 2026-09-16" and give the status of item 34, "unscheduled since 2026-09-26". This is release planning, which the Overview (3-11) says `ROADMAP.md` holds, so move it there. Where new code belongs keeps only the routing consequence: once a surface can open in a second window, routing also asks which window, and `docs/MODEL.md` § "Minimum displayed outputs" answers that.
+- **Wrong place, two `app/` modules in Layering 33-44.** The paragraph on `layout/` also describes two `app/` modules: "`app/area_layout.py` builds the widget tree from the layout" and "`app/view_registry.py` is the one list of View kinds that a layout may name". Package map 109 and 113 give both. Layering keeps only the fact that the layering needs: `layout/` holds no list of View kinds, so `app/` supplies it.
+- **Heading and order, failures and halts (Data flow 363-514).** These rows run from "Failure direction" through frames and timers after a halt, and are about failures and halts, which the heading "Data flow" does not cover. They also use "trunk", "branch" and "fork" (409-422, 487-502) before § "What a branch is, and what it shares with its parent" defines them (547-551). Make rows 363-514 a chapter of their own, such as "Failures and halts", placed after the branch chapter. Data flow then runs from loading (155) to the chart's evaluation (516-543).
+- **Order, the Data files chapter (880-916).** § "Data files (`data/`)" comes after Data flow, whose rows 159-183 load and check these files. It also comes after the branch chapter, which has no tie to it. Move it after § "Package map" and before § "Data flow", so the reader meets the files before they are loaded.
+- **Pointer missing from the Overview (3-11).** The Overview points to three other documents but not to § "Where new code belongs". That chapter answers this reader's main question, where a change belongs, and it is the last of twelve. Add the pointer to the Overview.
+- **Terms defined late: Area, View and Workspace.** All three terms are used from Layering 33-44 ("which View occupies which part of each window", "saved Workspaces") and in Package map 108-110. What each one is comes only later: a Workspace in Package map 142 ("a named layout with each View's saved state per Area and kind, and the run it is pinned to"), and an Area in Where new code belongs 1238-1253 ("An Area holds one View, and any View can occupy any Area"). Say what an Area, a View and a Workspace are in Layering 33-44, where they first appear.
+- **One person, three names.** The person using the simulator is called three things:
+  - "the user": Package map 76, 111, 120 and 132; Data flow 229-242 and 333-346.
+  - "the reader": Layering 33-44; both User state chapters; Data flow 317-331; Where new code belongs 1203-1236 and 1263-1266.
+  - "the learner": the branch chapter; saved Workspaces 986-992, "the learner's file".
+
+  Use one name throughout, for example "the learner", as the branch chapter does. The heading § "User state: the reader's preferences" keeps its text unless the files that cite it change with it.
+- **Heading, "The workflow apparatus" (1096).** The heading uses a word coined by this repository, which the reader does not know. Its rows describe the development scripts and hooks that agent sessions use. A heading that says so: "Development scripts and hooks". Rename it only together with any file that cites the heading.
+
+**Queries from the section line edits** (2026-11-05). The copy editor asked these while line editing each section; each read of a section may repeat a query in other words. Several are answered by defining Area, View, Workspace, `RunDefinition` and the four live controls once, as the findings above propose.
+
+- § "Architecture overview":
+  - the reader needs a few words on what the interface's "area and workspace model" is. The text does not explain it, and it is a term from Blender, an outside design that this reader does not know. Without that explanation, the contributor cannot tell whether an interface change they plan is covered by `docs/interface-provenance.md`.
+  - The reader needs to know what the interface's "area and workspace model" is, for example how the window is divided into parts, to tell whether their change touches it. The text does not say.
+- § "Layering":
+  - the reader needs to know which reads between layers are allowed. The diagram shows `data/` read only by `core/` and `layout/` reading nothing. But the `layout/` item says it reads `core/checked_number.py`, and the `data/` item says `layout/shipped.py` reads `data/workspaces/` while `core/` does not. The text does not say whether the diagram should show these reads. I left the diagram unchanged.
+- § "Data flow":
+  - a contributor needs to know what § "The run is that record, and every state is derived from it" "gives the measurements" of (accuracy over long horizons, or cost?), and whether these are results from simulated runs rather than measurements. The text does not say.
+  - a contributor needs to know what "the supported limit" covers (rows 447-452 and 464-469). It may be the supported run length alone, or any limit that raises `SimulationDomainLimitError`, such as one reached by a setting. The status wording says "run length", and the text does not settle it.
+  - "the settings record" (row 473) is not explained anywhere in the section.
+  - a contributor needs an example of a chart "reference" (rows 325 and 376), and the text does not give one.
+  - "the two evaluation paths" (row 300) reads as `evaluate` and `evaluate_anchored`. If it means another pair, such as stepping against evaluating, the text needs to say so.
+- § "What a branch is, and what it shares with its parent":
+  - the reader needs to know what a run definition (`RunDefinition`) is: what it holds, and how a state is evaluated from it. Nothing in the rows says so. The section relies on it throughout ("opens at a keyframe", "first segment", "evaluated there").
+  - the reader needs to know what a branch's "accounting" and "accounting period" cover, for example agent use or cost. Nothing in the rows says so.
+  - the reader needs to know which "four live controls" a branch inherits. Nothing in the rows names them.
+  - the reader needs to know what a run definition (`RunDefinition`) is, and what "evaluated at an instant" means, because a branch's state and the fork construction rest on it. The section does not say.
+  - the reader needs to know which controls are "the four live controls", and what "the dial" means when there are four controls. The text does not give either.
+  - the reader needs to know what "accounting" and "the branch's accounting period" track. The text does not say.
+  - the reader needs to know what "the agent's displayed references" are. The text does not say.
+- § "How a learner takes one, and how a comparison ends":
+  - the intro says "Three things follow from this", but four list items follow. The text does not say whether the "Two controls" item belongs to the first item or the count is wrong. I left the count as it stands.
+  - the reader needs to know which three locks `dashboard_frame.transport` carries, and which of them Pause lifts. The text does not give either.
+  - the reader needs to know which instants the case's list of fork points holds, that is, when the trunk records a keyframe. The text does not give it.
+  - anyone thinking of raising the two-run cap (`MAX_DISPLAYED_RUNS`) needs to know why it is two and what raising it would change or require. The text gives neither.
+  - the reader does not know what Gas Man is (the readers list counts outside designs as unknown), and the text does not say. The term sits inside a decision tag, which stays whole.
+- § "What a branch comparison asserts, and which part of it is structural":
+  - the reader needs to know which "four live controls" a branch inherits up to the fork, and this section does not say. If an earlier section names them, the paragraph needs a pointer to it by heading.
+  - the reader needs to know which "four live controls" a branch inherits up to the fork, and the text does not name them.
+  - to know what a change must keep, the reader needs to know which four live controls a branch inherits up to the fork. This section neither names them nor points to where they are named.
+- § "Data files (`data/`)":
+  - The reader needs to know what "the provenance table" is and where it lives, so they can name a stored value in `authority_for` correctly. The text does not say.
+  - the reader needs to know what "the provenance table" is and where it is, or an example of a dotted key path, and the text gives neither.
+  - the reader needs to know whether "primary source" means a source whose `tier` is the primary tier, and the text names none of the three tiers.
+  - the reader needs to know whether a change that adds or re-sources a stored value must update the counts in `docs/MODEL.md` by hand, since nothing checks them, and the text does not say.
+  - the contributor needs to know what "the provenance table" is and where to find it, so they can write the key paths in `authority_for` correctly. Ideally they also need one example of a dotted key path. The text gives neither.
+- § "User state: the saved Workspaces":
+  - the reader needs to know what a Workspace, a View (and its "kind"), an Area and a pinned run are. This section does not say. If no earlier section of `docs/ARCHITECTURE.md` defines them, this section should say where they are defined.
+  - the reader needs to know what "the one-version rule in `core/parameters.py`" is, and the text does not say. Read beside the shipped-set bullet, it seems to mean that a file is accepted only at the current version. The author should confirm this and state it in words.
+  - the reader needs to know what a Workspace, a View, an Area and a pinned run are. These are this repository's own names, and this section does not explain them. If an earlier section defines them, a § pointer would answer this.
+  - the reader needs to know what "the one-version rule in `core/parameters.py`" is, and the text does not say.
+  - the reader needs to know what case *none* means, and the text does not say. It may mean that no saved file exists.
+  - the reader needs the saved file's name. The text gives it only through `workspaces.json.previous`.
+- § "User state: the reader's preferences":
+  - the reader needs to know what the Workspaces store keeps. The edit takes `workspaces.json` to be the file of the reader's layouts, because the first sentence sets a preference against a layout. The author should confirm this before "the layouts file" stays.
+- § "Dependencies":
+  - the reader needs pydantic's licence, and whether its wheel ships the licence text. The section declares four runtime dependencies but gives licences for only three.
+  - the reader needs to know why the import check forbids `flet` and `flet-charts`, meaning what they were and what goes wrong if one comes back. They need that before they keep or lift the ban, and the text says only that these are former dependencies.
+  - the reader needs to know what a chart frame is (rows 1050–1052). The text says only that "a frame holds plain values".
+  - the reader needs pydantic's licence, and whether its wheel ships the licence text, to plan a bundled build. The text does not give them. The section gives licences for PySide6, pyqtgraph and numpy (three of the four declared dependencies) and for `shiboken6`, but not for `pydantic`.
+- § "The workflow apparatus":
+  - the reader does not know what the "specialist standard" is. The section names where `CLAUDE.md` sets it but not what it requires. A contributor who changes `docs/apparatus.md` needs a few words on how it differs from `.claude/rules/apparatus-standard.md`.
+  - "the third-party text that their tests read" does not say what this text is. The reader needs one example to recognise it, and the section gives none.
+  - the reader needs a few words on what `.claude/rules/apparatus-standard.md` requires. They also need to know how that differs from the specialist standard that `CLAUDE.md` sets for this document. Without both, they can't tell what a change to a tool or hook must keep, and the text does not say.
+- § "Tests (`tests/`)":
+  - the reader needs to know what "the area layout" is to find where a layout change belongs, and the section does not say.
+  - the reader needs to know what "the area layout" is to judge whether a change belongs in the five `test_layout_*` files, and the section does not say.
+  - the reader needs to know what the area layout is, or which section of the file describes it, and these rows give neither.
+  - the reader needs to know why "the code under test declares palettes" means this test must set the host's palette on the `QApplication` and not on one widget, and the text does not say. Perhaps a palette set on a widget would replace the declarations being tested, but only the author can confirm that.
+- § "Where new code belongs":
+  - the list of panels for one run (row 1223) gives "settings" as an example of a panel placed per run. Rows 1213-1214 say "The setting controls are a View", and anything an Area holds is a View. The text does not say whether "settings" means a separate read-out of the settings, or which statement is right. Both are left as they stand.
+  - the reader needs to know what "the trunk", "keyframes" and "a control that could only refuse" mean (row 1235). The text does not explain them.
+  - the reader needs to know where item 34 is listed. The text does not say.
+  - the reader needs to know what "the drawn-point rule" is (row 1306). The text does not explain it.
+  - the reader needs to know which list holds "item 34" and what its first half is. The text does not say.
+  - the per-run examples list "settings", but the same entry says "The setting controls are a View", and every View sits in an Area. Only the author knows whether "settings" means something other than the setting controls or should be cut. I left it as it stands.
+  - the reader needs to know what "the drawn-point rule" is, and the text does not say.
