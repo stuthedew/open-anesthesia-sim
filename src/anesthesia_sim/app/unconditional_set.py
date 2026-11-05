@@ -21,7 +21,8 @@ The set has two tiers, plus the control-input record:
   as a `SubstanceInstance` rather than written into the set.
 - **The control-input record** is unconditional on its own terms: the list
   of settings changed during the run, which `docs/MODEL.md` states apart from
-  both tiers ("The control-input timeline splits the same way").
+  both tiers ("The control-input record is unconditional, and its chart marks
+  are conditional").
 
 The agent accounting is deliberately not here. It is required to be
 reachable, not to be visible, so it belongs to the View registry (`PL-50PZ`).

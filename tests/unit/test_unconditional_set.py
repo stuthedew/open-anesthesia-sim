@@ -80,9 +80,9 @@ def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value() -
     """The tier is chosen by the substance, so none of the inhaled instance leaks into the set.
 
     The instance is a hypothetical intravenous drug with no tier of its own
-    written yet: `docs/MODEL.md` says such a run "owes its own instance of the
-    same test instead, named where that substance's model is specified", and
-    no such model is specified. This test checks that nothing outside the
+    written yet: `docs/MODEL.md` says that such a run's own values "are named
+    where its substance's model is specified", and no such model is
+    specified. This test checks that nothing outside the
     instance, meaning the invariant tier and the record, carries a value that
     only a volatile agent has. So a later intravenous run is never asked for
     one.

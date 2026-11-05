@@ -7780,8 +7780,10 @@ surveys a range of managements or ranks them, because only two were run.
 - **Every setting up to the fork.** The branch's settings are replayed from the
   trunk's record of setting changes, then checked against the trunk's own
   settings at the fork.
-- **The bookmarks.** Both runs carry the same bookmarks. A run halts when it
-  reaches a bookmark, which marks an instant or a height on a curve.
+- **The bookmarks set before the fork.** The branch opens with the trunk's
+  bookmarks. A bookmark added after the fork belongs only to the run it was
+  added to. A run halts when it reaches a bookmark, which marks an instant or a
+  height on a curve.
 - **The time frame.** Both runs count time from induction. The chart anchors
   both to induction rather than to either run's own start, so the two traces
   are compared at the same instants.
@@ -7885,10 +7887,12 @@ breaking. Two tests cover a fork on a keyframe and a fork between two keyframes
 test both through the controller, at case instants and at drawn columns
 (`test_a_branch_reproduces_its_parent_at_every_instant_they_share`,
 `test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`).
-Over the 240 shared columns that the last of these tests compares, the worst
-difference between a branch forked at a bookmark and its trunk is 2.7e-15, a
-rounding error from the order of the floating-point operations.
-§ "The canonical evaluation rule" tabulates it. A branch that restarts at the
+Over the 251 shared columns that the last of these tests compares, the worst
+difference between a branch forked at a bookmark and its trunk was 5.3e-16 on
+2026-10-26, a rounding error from the order of the floating-point operations.
+Before `PL-T5NJ` put the columns on whole hundredths of a second, it was
+2.7e-15 over 240 columns, the figure § "The canonical evaluation rule"
+tabulates. A branch that restarts at the
 fork would not reproduce its trunk
 (`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`).
 No branch that this program builds takes that route.
@@ -8069,9 +8073,7 @@ or paused. Two rules set where the drawn instants fall:
   A run branched from another therefore draws at the same instants as the run
   it branched from, and the two can be compared point for point. Each drawn
   instant falls on a whole hundredth of a second, so the hover readout can give
-  the exact time of the state it shows. The one exception is when drawn
-  instants are less than a hundredth of a second apart, which needs a
-  one-minute axis more than 6000 px wide.
+  the exact time of the state it shows.
 - **Every control change inside the window is a drawn instant.** Between
   control changes each compartment's value is a sum of exponentials, with
   bounded curvature and no hidden transients, so every sharp feature of a run
@@ -8081,16 +8083,18 @@ or paused. Two rules set where the drawn instants fall:
   chart therefore shows every control change exactly, to the last digit the
   readouts display.
 
-**Between control changes, the drawn line is never further from the run than
-the time that one pixel of the plot spans, except at a peak or a trough.** It
-passes through the run's exact state at every drawn instant, and drawn instants
-are no more than a pixel apart. Where the run only rises or only falls between
-two drawn instants, the run and the straight segment drawn between them cross
-every level inside the same pixel. This one-pixel guarantee is in time, not in
-percentage points. Where a trace is steep, the run can change by many
-percentage points within one pixel of time. No display shows a value between
-drawn instants: the hover readout gives a value only at a point that the plot
-draws (§ "The chart's hover readout").
+**Between control changes, the drawn line is never further from the run than the
+time that one pixel of the plot spans, except at a peak or a trough.** It passes
+through the run's exact state at every drawn instant, and drawn instants are no
+more than a pixel apart. The one exception is a one-minute axis more than 6000
+px wide, where drawn instants a hundredth of a second apart span more than a
+pixel. Where the run only rises or only falls between two drawn instants, the
+run and the straight segment drawn between them cross every level inside the
+same pixel. This one-pixel guarantee is in time, not in percentage points. Where
+a trace is steep, the run can change by many percentage points within one pixel
+of time. No display shows a value between drawn instants: the hover readout
+gives a value only at a point that the plot draws (§ "The chart's hover
+readout").
 
 The straight segment between two drawn instants starts and ends on the run's
 curve, but can lie above or below the curve in between. The table gives that
@@ -8292,17 +8296,18 @@ in `app/chart_frame.py`, `PL-GS3R`). The spacing is the time base divided by
 that number, rounded down onto whole hundredths of a second, and onto whole
 tenths of a second where that adds at most 10% more instants (`grid_spacing_s`
 in `app/chart_time_base.py`, `PL-T5NJ`). Rounding down keeps each segment within
-a pixel of time. Where the spacing is 1 s or more, rounding onto tenths makes
-each drawn instant one that the clock also shows. The floor of 150 drawn
-instants is the old fixed budget's number, kept because no smaller count has
-been measured. A plot is redrawn when it grows wider than the width its frame
-was sampled for (`resample_owed`, `PL-9LNF`). The grid sits at absolute
-multiples of the spacing, so a window that follows the run keeps every drawn
-instant it had and gains at most one, and a steady trace is not redrawn on
-every frame. A grid anchored to the viewport would move on every scroll and
-resize, and rewrite the whole chart on every frame. A grid anchored to each
-run's own start put a branch forked at 55.3 s on 55.3, 65.3, 75.3 … while the
-run it branched from drew 0, 10, 20 ….
+a pixel of time, except on that one-minute axis more than 6000 px wide. Where
+the spacing is 1 s or more, rounding onto tenths makes each drawn instant one
+that the clock also shows. The floor of 150 drawn instants is the old fixed
+budget's number, kept because no smaller count has been measured. A plot is
+redrawn when it grows wider than the width its frame was sampled for
+(`resample_owed`, `PL-9LNF`). The grid sits at absolute multiples of the
+spacing, so a window that follows the run keeps every drawn instant it had and
+gains at most one, and a steady trace is not redrawn on every frame. A grid
+anchored to the viewport would move on every scroll and resize, and rewrite the
+whole chart on every frame. A grid anchored to each run's own start put a branch
+forked at 55.3 s on 55.3, 65.3, 75.3 … while the run it branched from drew 0,
+10, 20 ….
 <!-- not-restated: 1 s -->
 
 Each control change is a drawn instant because the run has a kink there: the
@@ -8484,7 +8489,7 @@ that draws it has gone. Three entries have no field in the snapshot at all. The
 playback rate and the chart's span are view settings, and $`F_A/F_I`$ is
 computed when the plot is drawn.
 
-ThThe test names in each entry make this list a bound family under
+The test names in each entry make this list a bound family under
 § "How this document is held to the tree". The documentation check fails when
 an entry names nothing that backs it, or names a test that does not exist.
 
@@ -9053,9 +9058,10 @@ and a dozen lines of text between the reader and the plot cost more than they
 gave (`PL-6580`).
 
 The stored 1 MAC (`mac_percent`) is a tier-3 value under § "Source hierarchy:
-what may be cited as the authority for a value". Each agent's data file
-cites Mapleson 1996, the source for the fall in MAC with age, in its `sources`
-list.
+what may be cited as the authority for a value". Its authority in each agent's
+data file is De Wolf et al. 2012, which reports the flat adult MAC that Gas Man
+uses. Each data file also cites Mapleson 1996, the source for the fall in MAC
+with age, in its `sources` list.
 
 The ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
 desflurane's dial maximum divided by its 1 MAC. It therefore rests on a real
@@ -9476,11 +9482,12 @@ first value to the last. A control moved and moved back within one step is no
 change at all. Recording the values in between would describe a run that did
 not happen.
 
-**One drag of a control is shown as one adjustment.** A slider reports its
-value continuously while it is dragged, so one drag arrives at the model as a
-series of settings. The model ran under each of them, and the timeline keeps
-them all, because reproducing the run needs every one. A change made without a
-drag, such as a key press on a slider, is an adjustment of its own.
+**One drag of a control is one adjustment, and it applies once.** While the
+slider's handle is held, the run keeps its setting and the chart draws a preview
+(§ "A preview of an unapplied setting"). Releasing the handle applies the value
+once, so a drag records one setting change. A key press, one notch of the scroll
+wheel or a click on the slider away from its handle is a single input, and is an
+adjustment of its own.
 
 A displayed adjustment states the interval it spans and how many settings the
 model ran under during it. The count is shown because an adjustment made over
@@ -9539,18 +9546,19 @@ would also leave memory use unbounded, because the run itself holds one stretch
 and one keyframe for each accepted change and has no limit either
 (§ "The run is that record, and every state is derived from it").
 
-An unlimited timeline is affordable because it grows with the time spent
-changing settings, not with the length of the run. A drag adds at most one
-entry per simulation step, however fast the slider reports. The number of
-entries per real second depends on the tick rather than on simulated time, so
-it is the same at every playback multiplier. A measurement on 2026-09-14 under
-`PL-1PSX` found that continuous dragging gave ten entries per real second at
-1×, 5×, 20×, 60× and 300× alike. A drag made while the run was paused gave one
-entry. Grouping the entries for display costs 0.9 ms per frame at a thousand
-entries and 8.8 ms at ten thousand, against a 200 ms frame. The grouping is
-recomputed only when the timeline changes. At a hundred thousand entries it
-would cost half a frame. Reaching that many takes about three hours of unbroken
-dragging, and the timeline would then be smaller than 9 MB.
+An unlimited timeline is affordable because it grows with the number of settings
+changed, not with the length of the run. Since `PL-5B1N`, a drag adds one entry,
+on release. Before that change, a drag added at most one entry per simulation
+step, however fast the slider reported. The number of entries per real second
+depends on the tick rather than on simulated time, so it is the same at every
+playback multiplier. A measurement on 2026-09-14 under `PL-1PSX` found that
+continuous dragging gave ten entries per real second at 1×, 5×, 20×, 60× and
+300× alike. A drag made while the run was paused gave one entry. Grouping the
+entries for display costs 0.9 ms per frame at a thousand entries and 8.8 ms at
+ten thousand, against a 200 ms frame. The grouping is recomputed only when the
+timeline changes. At a hundred thousand entries it would cost half a frame.
+Reaching that many took about three hours of unbroken dragging under the old
+behaviour, and the timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 ### F_A/F_I as a displayed ratio
@@ -9997,8 +10005,9 @@ separate by shape. The next pair gets the next easiest, and so on. Fat's
 dash-dot therefore differs in dash length, gap length and rhythm from both the
 vessel-rich even dash and the mixed venous short dash. The one pair of styles
 that a reader could confuse is dotted, with 2 px dots, and short dash, with 4 px
-dashes. That pair goes to muscle and mixed venous, whose colors are the most
-widely separated of any pair among these six.
+dashes. That pair goes to muscle and mixed venous, whose colors are the second
+most widely separated pair among these six (1.45 in the table below, after
+circuit and alveolar at 1.62).
 
 **With two runs on the plot, at most two compartments are drawn** (`PL-HLD5`,
 `PL-8PSW`). The cap applies to the plot only. All six readouts stay on screen for
