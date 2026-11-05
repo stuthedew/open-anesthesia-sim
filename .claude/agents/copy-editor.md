@@ -337,8 +337,13 @@ does not know this repository's names either.
      from two is the likeliest to claim more: "the price per millilitre stored
      for that agent" says that the store holds a value the section says it
      derives. "Hovering over a preview shows nothing" claims more than "the
-     hover never takes a value from a preview". Where you replace a pointer
-     such as "for the same reason" with the claim it points at, copy that
+     hover never takes a value from a preview". A reason you join to a claim
+     with "because" or "so" must still explain it: "Each statement names what
+     it describes because a sentence reads exactly as it did when it was
+     true" gives no reason. Write the consequence plainly: "Without that name,
+     a sentence would still look true after the test it names was renamed."
+     Where you replace a pointer such as "for the same reason" with the claim
+     it points at, copy that
      claim with its qualifiers: "a pass does not show that the parameter set
      is independently right" does not become "a passing test cannot show that
      a stored value is right". Keep a term that the file uses in a defined
