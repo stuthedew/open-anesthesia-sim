@@ -281,10 +281,7 @@ page and decides which file a session reads.
    2026-10-17, ratified, over a whole-tree mutation score as a target,
    `PL-Y1PS`).
 
-8. **Paused: skip this step** (project owner, 2026-11-04, until `PL-HGZS` is
-   fixed and the owner agrees to bring it back). `bin/docket arm` no longer
-   holds a branch for it. The step as it stood follows.
-   **Have the copy editor edit the prose that the branch changed, before step
+8. **Have the copy editor edit the prose that the branch changed, before step
    5's audit.** Do this step on every branch. Save the output of
    `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
    each passage that the branch changed, whatever its length, because short

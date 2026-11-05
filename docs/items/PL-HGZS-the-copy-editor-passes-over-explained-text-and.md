@@ -3,15 +3,17 @@ id: PL-HGZS
 title: The copy editor passes over-explained text and lengthens it: on PL-SP6H it kept a 250-word model-specification paragraph's derivation whole, made a 539-word reply one word longer and a pull request body 12 words longer, and six second-pass rewrites added 14 to 78 words each, because it asks whether each sentence is clear and each fact present, never whether the reader needs the fact; the owner then judged all of it too verbose
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: copy-editor
 touches: .claude/agents/copy-editor.md, docs/prose-review, tools/rejected_prose.py, tools/new_prose.py, tests/unit/test_new_prose.py, tools/copy_edit.py, tests/unit/test_copy_edit.py, tests/unit/test_rejected_prose.py, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/agents/prose-judge.md, tools/prose_judge.py, tests/unit/test_prose_judge.py, docket.toml, docs/items/PL-HGZS-the-copy-editor-passes-over-explained-text-and.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py
 added: 2026-11-04
+closed: 2026-11-05
+pr: 2038
 payoff: a passage the copy editor passes is one its reader can act on without padding, so the rewrites it reviews stop growing
 verify: grep -qi 'do without' .claude/agents/copy-editor.md && grep -q 'def section_report' tools/new_prose.py && grep -q '^## Judging edits blind' docs/prose-review/README.md && grep -q '^\*\*Blind judge result\.\*\*' docs/items/PL-HGZS-the-copy-editor-passes-over-explained-text-and.md
 root-cause-of: PL-HRPK, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0
-generator: live - the copy editor reviews every rewrite, and its only cut keeps every fact, so each rewrite it passes can grow
+generator: spent - the instructions now cut repeated facts, words a fact does not need and facts for another reader, and the blind judge preferred the edited text for six of seven untuned sections
 misread: that a passage the copy editor passed is plain enough for its reader
 ---
 

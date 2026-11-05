@@ -3,7 +3,7 @@ id: PL-XT53
 title: Make docs/MODEL.md § "The control-input timeline" through § "The six compartment traces: what separates them" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md

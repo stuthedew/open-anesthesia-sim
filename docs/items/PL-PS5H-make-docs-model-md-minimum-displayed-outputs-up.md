@@ -3,7 +3,7 @@ id: PL-PS5H
 title: Make docs/MODEL.md § "Minimum displayed outputs" up to § "The control-input timeline" readable for a clinician: move its decision history to the items and rewrite its phrasing
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
