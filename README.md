@@ -1,7 +1,7 @@
 [![quality](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml/badge.svg)](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml)
 
 > [!WARNING]
-> **Pre-release: work in progress.** Features, settings and displayed values
+> **Pre-release: the simulator is unfinished.** Features, settings and displayed values
 > may change before the first release.
 
 # Open Anesthesia Simulator
@@ -72,20 +72,22 @@ accounting, the compartment schematic and the agent cost. An arrangement is kept
 as a Workspace, and you switch between Workspaces by their tabs. Three come with
 the simulator: Default, Induction and Maintenance.
 
-A region outside the Areas shows the simulated time, the playback rate, whether
+A region outside the Areas shows the simulated time, the playback speed, whether
 the simulation is running or halted and why, the agent and its 1 MAC, the
 delivered concentration, each compartment's concentration, and the list of
 settings changed during the run, with when each took effect and its value. You
 need these values to read any other number, so no arrangement can remove them.
-The agent appears by name and in its ISO 5360 vaporizer color. Every
-concentration is given in percent **and** as a multiple of the agent's 1 MAC. The same percentage is a different MAC multiple
-for each agent, so neither unit is safe alone.
 
-While a case runs, the window also shows the following.
+The agent appears by name and in its ISO 5360 vaporizer color. Every
+concentration is given in percent **and** as a multiple of the agent's 1 MAC.
+The same percentage is a different MAC multiple for each agent, so neither unit
+is safe alone.
+
+While a case runs, the window shows the following.
 
 - The agent accounting View shows the agent delivered, exhausted and stored,
-  and the mass-balance residual. None of the three Workspaces includes this
-  View.
+  and any agent left unaccounted for. None of the three Workspaces includes
+  this View.
 - The compartment schematic View shows where the agent is. Each compartment is
   drawn as a container, filled to its tension on the concentration chart's
   scale and labelled with its tension and its amount in mL of vapour. One bar
@@ -103,18 +105,18 @@ While a case runs, the window also shows the following.
   price per millilitre that were multiplied to give it.
 - Each setting changed during the run is marked on the concentration chart at
   the simulated time it took effect.
-- The wash-in plot draws $`F_A/F_I`$, the wash-in curve used in the literature
-  and in teaching, on a dimensionless axis of its own. Its $`F_I`$ is the
-  *modeled* inspired concentration, not the vaporizer dial setting. The
-  Induction Workspace includes this plot.
+- The wash-in plot draws $`F_A/F_I`$ on a dimensionless axis of its own. Its
+  $`F_I`$ is the *modeled* inspired concentration, not the vaporizer dial
+  setting. The Induction Workspace includes this plot.
 - The running agent's population MAC-awake is drawn as a labelled band, and its
   nominal 1 MAC as a line.
 - Hovering over a drawn point of a trace opens a readout. Its first line says
-  the value is modelled and names the agent and the simulated time, and, while
-  more than one run is drawn, which run the point belongs to. Below that is the
-  value: for a compartment, its name and value in both units at the readouts'
-  own resolution, and for the wash-in curve, the ratio. Nothing is shown between drawn points, or over a reference band or line,
-  or a mark for a changed setting.
+  that the value is modeled, and names the agent and the simulated time. While
+  more than one run is drawn, the first line also names the run that the point
+  belongs to. Below that is the value: for a compartment, its name and value in
+  both units at the readouts' own resolution, and for the wash-in curve, the
+  ratio. Hovering shows nothing between drawn points, over a reference band or
+  line, or over a mark for a changed setting.
 
 ### Playback speed and time base
 
@@ -124,9 +126,9 @@ displayed wherever simulated time is, even at 1×. The same case gives identical
 values, sample for sample, at 1× and at 300×, because the simulator plays faster
 by computing more steps of the same size each second.
 
-The reader chooses each chart's **time base**: how much of the case is in view,
-from fifteen minutes to twelve hours, or the whole run so far. The time base
-affects only what is drawn.
+You choose each chart's **time base**: how much of the case is in view, from
+fifteen minutes to twelve hours, or the whole run so far. The time base affects
+only what is drawn.
 
 ## What it does not simulate
 
@@ -150,8 +152,8 @@ A MAC multiple here is therefore a **partial-pressure ratio, not a depth of
 anesthesia**. A multiple of *N* means that a compartment's partial pressure
 equals *N* times the alveolar concentration that would be 1 MAC in a population.
 
-The full list is in `docs/MODEL.md` under "Known limitations" and
-"Model boundary", with the simplifications behind each item. For what the
+The full list is in `docs/MODEL.md` § "Known limitations" and
+§ "Model boundary", with the simplifications behind each item. For what the
 simulator models today and what is planned next, see [`ROADMAP.md`](ROADMAP.md).
 
 ## How the model is checked
