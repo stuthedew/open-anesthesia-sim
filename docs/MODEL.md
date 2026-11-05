@@ -10790,33 +10790,23 @@ change to this section.
 
 ### The chart's hover readout: what the tooltip may show
 
-When a pointer is held over a trace, a small floating readout appears. This
-section derives the readout's contents in the same way that
-§ "Displayed precision" above derives the contents of the numeric readouts,
-and for the same reason. What a hover reports is a clinically meaningful displayed value.
-So what it may show is a claim about the model, not a formatting convention.
+When the pointer rests over a trace, a small box appears with the value under the
+pointer. This box, the hover readout, supplies for itself every qualifier that the
+readout panel takes from its surroundings. The panel's six values sit under a
+heading that names the agent and calls them modelled, beside a legend that names
+each compartment. The panel's alveolar entry also carries the gloss
+`end-tidal-equivalent`. The box floats over the plot and can cover the heading it
+would otherwise be read under. It is the one place in the interface where a number
+appears with nothing around it.
 
-**It needs a derivation of its own because it is read detached from everything
-that qualifies it.** The six numeric readouts sit under a heading that names
-the agent and calls the values modelled. They sit beside a legend that names
-each compartment. They are on a panel whose alveolar entry carries the
-`end-tidal-equivalent` gloss that this document requires above. A floating box
-carries none of that context. It appears over the plot, and it can cover the
-heading that it would otherwise be read under. It is the one place in this
-interface where a number is presented with nothing around it. So the box has
-to supply for itself every qualifier that the readout row gets from its
-surroundings.
-
-**And it is the display a reader has most deliberately stopped to consult.** A
-reader glances at a value in the readout row while a run plays. A value under
-a cursor is one that somebody went looking for. That makes the hover readout
-the display most likely to be written down. It is also the display where being
-mistaken for a measurement costs most.
+The box is also the display that a reader consults most deliberately. A value in
+the readout panel is glanced at while a run plays, but a value under the pointer
+is one that somebody went looking for. So the box is the display most likely to
+be written down, and the one where a value mistaken for a measurement costs most.
 
 #### What it shows
 
-The box has three lines. The first gives the run context, the second says what
-the value is, and the third gives the value.
+The box has three lines: the run context, what the value is, and the value.
 
 ```
 Modelled sevoflurane · 20m8s
@@ -10824,52 +10814,46 @@ Alveolar (end-tidal-equivalent)
 1.43%   0.71 ×MAC
 ```
 
-**The order carries the safety argument. It is not a matter of typography.**
-The qualifiers come before the number. So a reader reaches `1.43%` only after
-passing "modelled" and the compartment the value belongs to, rather than
-meeting them afterwards. `.claude/rules/expert-review.md` states the general
-form: prefer an interface that prevents an error to one that warns after it. A
-hedge placed below the number it hedges is a warning, because the number has
-already been read.
+The qualifiers come first, so a reader reaches `1.43%` only after passing
+"Modelled" and the compartment. A qualifier below the number would come too late,
+because the number has already been read.
 
-Each line, and the reason it must be there:
+1. **Run context: "Modelled", the agent, the run when more than one is drawn, and
+   the instant.** "Modelled" appears on every hover, not only for the compartments
+   that a monitor also measures. The agent is there because one percentage means
+   different things under different agents: 1.43% is 0.71 MAC of sevoflurane and
+   0.24 MAC of desflurane. The instant is printed to the hundredth of a second, in
+   the form that the clock, the time axis and the time stamp of each control change
+   also use, such as `20m8s`. It is the exact instant of the value beside it, not a
+   rounding of it.
+2. **What the value is: the compartment, with its gloss where the readout panel
+   has one.** Two compartments carry a gloss, `Alveolar (end-tidal-equivalent)`
+   and `Circuit (inspired)`, because a clinician would most readily set those two
+   beside a monitor reading (§ "Minimum displayed outputs"). The other four carry
+   none, as in the readout panel.
+3. **The value, in percent and as a MAC multiple.** The readout panel shows the
+   same pair. The chart has an axis for each, and a single number could be read
+   against either.
 
-1. **Run context: the modelled marker, the agent, the run where more than one
-   is drawn, and the instant.** The marker appears on every hover, not only on
-   the compartments that have a measured twin. The reason is that the box is
-   detached from the heading that would otherwise carry the marker. The agent
-   is there because the same percentage means different things under different
-   agents. For example, 1.43% is 0.71 MAC of sevoflurane and 0.24 MAC of
-   desflurane. A floating box cannot rely on the header being visible behind
-   it. The instant is given in the compound form of `format_elapsed`, to the
-   hundredth of a second that the chart's columns are laid on. So the printed
-   instant is the instant of the state printed beside it, not a rounding of
-   it (`PL-T5NJ`). The clock, every control stamp and the time axis use the
-   same form.
-2. **What the value is: the compartment, with its gloss where the readout row
-   has one.** The two glossed compartments are
-   `Alveolar (end-tidal-equivalent)` and `Circuit (inspired)`. The other four
-   carry no gloss, because the readout row gives them none. Those two glosses
-   exist for the two compartments that a clinician would most readily set
-   beside a monitor reading. § "Minimum displayed outputs" made that decision,
-   and the box reuses it rather than taking it again.
-3. **The value, in both units the chart carries.** The value is given as a
-   percent and as a MAC multiple, the same pair that the readout panel shows.
-   The reason is that the chart itself has two axes, and a single number could
-   be read against either one.
+Every number in the box is formatted as the readout panel formats it, never left to
+the charting software's default (§ "What a chart library prints instead, measured").
+The MAC multiple divides by the same MAC as the MAC axis and the readout panel.
 
-**Every number in the box is produced by `app/formatting.py`, never by the
-chart library.** The box uses only `format_percent`, `format_mac_multiple` and
-`format_elapsed`. The rest of this section exists to justify this rule, and the
-rule is not a style preference. A charting library formats a coordinate, and
-formatting a coordinate is different from formatting a clinical value. Every
-default this project has met formats the coordinate.
+**For developers.** Two functions in `app/chart_frame.py` produce the three-line
+form (`format_trace_hover` and `format_wash_in_hover`). Every number in it comes
+from `app/formatting.py`: `format_percent`, `format_mac_multiple` and
+`format_elapsed`. The multiple divides by the snapshot's own MAC (`mac_percent`).
+Any other divisor would be the traceability failure that `CLAUDE.md` forbids,
+arriving through the display that looks least like a calculation. The qualifiers
+lead because of the general rule in `.claude/rules/expert-review.md`: prefer an
+interface that prevents an error to one that warns after it.
 
-The MAC multiple is computed against the snapshot's own `mac_percent`, exactly
-as the MAC axis and the readout row compute theirs. A hover that reported a MAC
-multiple computed from any other divisor would be the traceability failure that
-`CLAUDE.md` forbids. It would arrive through the one display that looks least
-like a calculation.
+The printed instant is exact because the chart's columns are laid on hundredths
+of a second (`PL-T5NJ`). The box prints each instant to the resolution of the step
+by which the run advances (`HOVER_INSTANT_RESOLUTION_S`). A drawn column sits
+wherever the anchored grid puts it, and the state reported is the state at
+exactly that instant. But printing the instant to four decimals would claim a
+resolution that no other display on the screen has.
 
 #### The hover and the run it belongs to
 
@@ -10884,26 +10868,53 @@ Alveolar (end-tidal-equivalent)
 1.43%   0.71 ×MAC
 ```
 
-**The hover is a displayed concentration, so § "Minimum displayed outputs"
-already decides the principle**: "The run is named in text, not carried by
-colour or by position… Text has no width analogue… A concentration that does
-not say which management produced it is the correct number under the wrong
-patient context." That paragraph was written about the numeric readouts. Every
-reason it gives applies to the hover with more force, not less. The readouts
-sit in a labelled block beside the run's own panel. The hover box floats over
-the plot with nothing around it. That is the same argument that the start of
-this section makes for why the modelled marker travels with the value.
+The box follows the rule that § "Minimum displayed outputs" sets for the readout
+panel: "The run is named in text, not carried by colour or by position… A
+concentration that does not say which management produced it is the correct
+number under the wrong patient context." The rule matters more for the box than
+for the panel, which sits in a labelled block.
 
-**The argument that the pointer is already over one curve is false, and this
-was measured.** At the time, `nearest_trace_point` kept the single globally
-nearest drawn point across *every* run on the frame. (`PL-JVHL` retired that
-rule, as described below.) Wherever two runs' curves for one compartment run
-close together, the pointer is within reach of both runs. The measurement was
-made on 2026-09-17 on a branched sevoflurane case. It used the reference adult,
-with the trunk held at 1 MAC and the branch forked at 10 min. The axis covered
-60 minutes and was 900 px wide and 360 px tall, so the scale was 4.00 s/px and
-0.0167 %/px. The table gives the share of the shared axis on which both runs'
-points for one compartment sit inside the 12 px hover radius:
+Pointing at one trace does not pick out one run. Where two runs' traces for one
+compartment lie close together, the pointer is within the hover radius, 12 pixels
+(px), of both. The percent axis tops out at 3 MAC for every agent, so the slow
+compartments lie close to zero. Through a case's first hour, fat stays in about
+the bottom 1% of the axis height. All along the time axis, a pointer within reach
+of one run's fat trace is within reach of the other's too, even under the widest
+difference in management that the interface permits. The two runs' fat values
+can still differ. Take a sevoflurane case held at 1 MAC, with a second run (the
+branch) forked from the first (the trunk) at 10 min with the vaporizer turned
+off. At 3492 s the fat value reads either `0.03%   0.02 ×MAC` or
+`0.01%   <0.01 ×MAC`, depending on the run. That is a threefold difference in
+stored agent, between a run still carrying agent and a run 48 minutes into
+emergence. The slow compartments are the ones this chart exists to teach.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+A single run goes unnamed because there is nothing to tell it apart from, and a
+name would suggest a comparison that is not on screen. A reader always sees when
+a second run is drawn, because it brings a second legend entry, a second readout
+panel and a second set of traces.
+
+**For developers.** The run goes on line 1, which already gives the run context,
+so the box keeps its three lines. While two runs are compared, the run name is
+the only part of that line that tells them apart. The agent is always the same:
+the code that assembles the chart refuses runs that differ in agent
+(`assemble_chart_frame`), because they share one MAC axis and one set of clinical
+references. The one argument for a fourth line is that a reader scans a separate
+line but may miss a word in the middle of one. That matters because the run under
+a resting pointer can change. But the value on line 3 changes at the same moment,
+so the reader gets two cues.
+
+The run name appears on the same condition as the difference in line width
+between runs: the code that styles each run's trace widens none until a second
+run exists (`run_trace_style`).
+
+The table gives the share of the axis on which both runs' points for one
+compartment lie inside the hover radius. The figures come from simulating the
+branched case on 2026-09-17 on the reference adult, with the branch's management
+at the fork varied. The 60-minute axis was 900 px wide and 360 px tall, a scale of
+4.00 s and 0.0167% per pixel. The percent axis had its shipped top
+(`CHART_AXIS_TOP_MAC`). At the time, the hover reported the single drawn point
+nearest the pointer across every run (`nearest_trace_point`).
 
 | Branch's management at the fork | Alveolar | Fat |
 | --- | ---: | ---: |
@@ -10911,45 +10922,12 @@ points for one compartment sit inside the 12 px hover radius:
 | raised to 1.25 MAC | 8.5% | 100% |
 | vaporizer turned off | 1.6% | 100% |
 
-The fat figure is 100% in every case, even against the widest difference in
-management that the interface permits. The reason is that the percent axis is
-fixed at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`), and the slow
-compartments sit near zero on it. Through a case's first hour, fat stays within
-about 1% of the axis height. Those slow compartments are the ones this chart
-exists to teach. The problem is consequential, not cosmetic. Of the hovers that
-could report either run, 83.3–95.3% (alveolar) and 43.8–81.4% (fat) would print
-*different* text. On the emergence case, the fat hover at 3492 s shows either
-`0.03%   0.02 ×MAC` or `0.01%   <0.01 ×MAC`, depending on which run it
-reported. That is a threefold difference in stored agent, between a run still
-carrying agent and a run 48 minutes into emergence.
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-
-**The run goes on line 1 rather than on a fourth line.** This section already
-calls line 1 the *run context*, so naming the run completes that line. It does
-not change the three-line form that the rest of this section derives. While two
-runs are compared, the run name is also the only token on that line that tells
-them apart. `assemble_chart_frame` refuses a frame whose runs differ in agent,
-because the runs share one MAC axis and one set of clinical references. So the
-agent is the same across the runs being compared. Without the run name, the
-line would spend its distinguishing slot on a constant. The one argument for a
-fourth line is that a reader scans a separate line but may miss a token in the
-middle of a line. That matters because the run under a resting pointer can
-change. The answer is that the value on line 3 changes at the same moment, so
-the reader has two cues rather than none.
-
-**The run name is conditional, and that is not a hidden mode.** A single run
-has nothing to be told apart from. A name on the only run drawn would imply a
-comparison that is not on screen. The condition is the same one that the width
-channel already uses: `run_trace_style` widens nothing until a second run
-exists. The condition is also visible on its face. A second run brings a second
-legend entry, a second readout panel and a second set of curves with it. A
-reader cannot be in the two-run state without seeing the two runs.
-
-**Naming the run made the choice between runs *visible*. It did not make the
-hover report the curve the reader aimed at.** In the measurement above, moving
-the pointer by 2 px changed which run the hover reported on 75.4–99.9% of the
-fat axis. That is a question of targeting, not of the readout, and the next
-subsection describes how it was settled (`PL-JVHL`).
+Of the hovers that could report either run, 83.3–95.3% (alveolar) and
+43.8–81.4% (fat) would print different text. Naming the run made visible which
+run the nearest-point rule chose, but did not make the box report the trace the
+reader aimed at: a 2 px move changed which run it reported on 75.4–99.9% of the
+fat axis. § "Where more than one trace answers" gives the rule that replaced the
+nearest-point rule (`PL-JVHL`).
 
 #### Where more than one trace answers
 
@@ -10965,91 +10943,14 @@ Run 1 · 20m8s   1.43%   0.71 ×MAC
 Run 2 · 20m8s   1.45%   0.73 ×MAC
 ```
 
-**The rule is "stop choosing". It is that because the two targeting rules that
-would have chosen better were measured, and they change nothing.** The rules
-were scored on the branched sevoflurane case above, with the reader showing
-alveolar and fat. That is the pair that `COMPARED_COMPARTMENT_CAP` admits on a
-two-run frame. The metric is narrower than the 75.4–99.9% figure above and
-cannot be compared with it. It takes the hovers where both runs are inside the
-radius *before and after* a 2 px move, and gives the share of them whose
-reported run changed. The earlier figure counts axis columns. This one counts
-hovers that could have gone either way.
-
-| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
-| --- | ---: | ---: | ---: |
-| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
-| nearest curve measured along its length | 9.2% | 9.0% | 9.2% |
-| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
-| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
-| every run inside the radius answers | 0.0% | 0.0% | 0.0% |
-
-The results are identical to the digit, for two reasons. Both reasons are facts
-about this chart, not about any implementation. First, the trace is drawn at
-about one sample per 4 s against a 12 px radius. So the pointer's distance to
-the polyline and its distance to the nearest vertex differ by a fraction of a
-pixel. Here, "nearest along its length" gives the same number as
-"nearest drawn point", however real the distinction is on a sparse, steep
-curve. Second, both runs' fat points are inside the radius over 94.5–98.0% of
-the hoverable area. So "inside a run's own band" has to break the tie by the
-rule it was meant to replace, exactly where the defect lives.
-
-**Breaking near-ties toward the trunk also reaches 0.0%, and it was refused
-because of what it costs.** A tie window does not remove the boundary. It adds
-a second boundary, where the pointer crosses out of the window. On the alveolar
-trace of the 1.25 MAC case, the tie window raises the share of contended axis
-columns that flip from 58.5% to 98.4%. It also makes the branch's value
-unreachable wherever the curves lie inside the window, which is most of the fat
-trace. A displayed value that a reader cannot reach is worse than one that is
-hard to aim at.
-
-**Distance settles nothing, including which compartment is reported** (project
-owner, 2026-09-20, ratified, over recording the measurement and leaving the
-flip to the axis fix). Before this decision, the nearest drawn point picked the
-trace, on the reasoning that a reader aims at a curve. `PL-0RZ0` measured what
-the same compression does to that reasoning. Two or more compartments sit
-inside the radius over 15.2–45.7% of the two-run chart's hoverable area, and
-over 37.0% of the single-run chart's. Across the contended pointer pairs 2 px
-apart, the aimed-at compartment changed on 6.6–13.6% of pairs. On 99.9% of
-those, the hover printed a different number, by a median of 17.1–17.9× for
-muscle against fat.
-
-| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
-| --- | --- | ---: | ---: |
-| one run | all six | 37.0% | 12.7% |
-| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
-| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
-| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
-| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
-
-**There is no aim to respect at that separation**, which is why the reasoning
-above did not survive its own measurement. At a flip, the two winning points
-are a median 0.9 px apart, and 100% of them are within 2 px. The box hangs from
-the aimed-at point, and the two points are this close, so the box does not
-move. Only the compartment's name and the
-numbers change, and the reader has already read past the name. `PL-QYBW` states
-this second consequence in its own terms: at 0.2–1.4 px, no targeting rule can
-let a reader aim at one trace rather than another. A rule that picked one would
-be picking arbitrarily, not honouring an aim.
-
-**No value became unreachable under the old rule, and recording that is part of
-the case.** This section refuses the near-tie tie-break partly because it made
-a value unreachable. Measured across the same cases, every compartment was
-reported somewhere on 98% or more of the axis columns where it is drawn. The
-worst was muscle, at 2.0% on the single-run chart. The defect was that the
-reader got the wrong trace, never that a trace could not be reached.
-<!-- not-restated: 2.0 % -->
-
-So every run and every compartment whose drawn point is inside the radius is
-reported. Nothing is left for a hand movement too small to aim with to decide.
-That is what takes the flip rate to zero on both axes.
-
-**The box keeps the form it had wherever one compartment is reported.** That is
-54.3–99.5% of hovers across the measured cases, and 63.0% on the single-run
-chart. The form is the agent, then the compartment, then one value line per
-run. Where the readings span several compartments, one heading cannot stand for
-them all, so the compartment heading is dropped. Each value line then opens
-with its own compartment, with the gloss that `docs/MODEL.md` requires wherever
-a compartment is named. The run follows, while more than one run is drawn:
+**Every compartment whose drawn point is inside the radius is also reported**
+(project owner, 2026-09-20, ratified, over recording the measurement and leaving
+the flip to the axis fix). Where every reading in reach belongs to one
+compartment, which is most hovers, the box keeps the form above: the agent, the
+compartment, then one value line per run. Where the readings span several
+compartments, the compartment line is dropped. Each value line then opens with
+its own compartment, with its gloss where it has one, followed by the run while
+more than one run is drawn:
 
 ```
 Modelled sevoflurane
@@ -11059,28 +10960,127 @@ Fat · Run 1 · 20m   0.01%   0.01 ×MAC
 Fat · Run 2 · 20m   0.01%  <0.01 ×MAC
 ```
 
-The lines are ordered by compartment first, following the trace table, and then
-by run. Both orders are the frame's own drawing order, so the box is read in
-the same direction as the legend beside it. The box carries one value line on
-21–93% of hovers. It never carries more than four on the two-run chart, or more
-than three on the single-run chart. That small number of lines is what made it
-affordable to stop choosing here.
+The box reports every trace in reach because, where traces crowd together, no
+hand can aim at one rather than another. Two runs' fat traces lie 0.2–1.4 px
+apart, and at that separation no rule for picking one trace can follow the
+reader's aim (`PL-QYBW`). The earlier rule reported only the nearest point, so a
+2 px movement could switch the box to another run or compartment, and to a
+different number. The box itself stayed put. Only the name and the numbers
+changed, and the reader had already read past the name. Now no movement too
+small to aim with decides what the box shows.
 
-**The pointer names the instant, and the radius decides only what is in reach**
-(`PL-1K9G`, 2026-09-22). Each run is reported at its drawn instant nearest the
-pointer in time, and a tie goes to the earlier instant. Each of the run's
-compartments is reported at that instant if its point there is inside the
+Lines are ordered by compartment and then by run, both in the chart's drawing
+order, so the box follows the legend and the readout panels beside it. Distance
+from the pointer never sets the order, because lines ordered by distance would
+swap places under movements too small to aim with. The box is placed at the first
+reported run's point.
+
+A dot marks every reported point, because a single dot would mark one run's trace
+while the text reported several.
+
+When only one run is in reach, which is the usual case once the reader has
+aimed, the box uses the three-line form, naming the run if two are drawn. The
+box gains a line when a run comes into reach and loses it when the reader moves
+away, so the reader sees each run arrive and leave. It never holds more than four
+value lines on a two-run chart, or three on a single-run chart.
+
+**The pointer's place along the time axis names the instant, and the radius
+decides only what is in reach** (`PL-1K9G`, 2026-09-22). The chart draws each
+run as columns of points: one column every 4 s on a 60-minute axis and every
+48 s on a 12-hour axis, plus a column at each of that run's control changes. A
+branch draws none before its fork. Each run is reported at its drawn instant
+nearest the pointer in time, and a tie goes to the earlier instant. Each of that
+run's compartments is reported if its point at that instant is inside the
 radius. So every compartment of one run is reported at one instant. Moving the
-pointer up or down the percent axis can change what is in reach, but never the
-instant that a value is labelled with.
+pointer up or down can change what is in reach, but never the instant printed.
+The wash-in plot follows the same rule.
 
-Before that change, each trace kept its own drawn point nearest the pointer,
-measured in both dimensions. So on a sloped trace, the pointer's height chose
-the column. This was measured on the branched case above. It was also measured
-on a two-hour single run, both on its fitted 2-hour axis and on the 12-hour
-axis, where a dial change draws a near-vertical step. The scan covered every
-pixel of height at four sub-pixel phases per column. Before any number was
-kept, the scan's selection was checked against the shipped function:
+Each line prints its own instant, because two runs' nearest instants can differ
+by up to one column, and the printed form shows the difference. One instant
+above several values would claim that they are simultaneous when they may not be.
+
+**The chart keeps its linear percent axis, which is what crowds the slow
+compartments together** (project owner, 2026-09-23, ratified, over a
+reader-selected logarithmic scale, `PL-QYBW`). Only fat stays crowded for long.
+At a 1 MAC dial, across the simulator's three agents, muscle spans 25–48 px of
+the 360 px plot at one hour, and fat spans 1.5–3.7 px. Fat's trace near zero is
+its true partial pressure, and partial pressure is what drives effect. So one
+linear axis serves all six compartments, and reporting every trace in reach
+copes with the crowding without a change of scale. The fat trace cannot show how
+much agent fat holds: a fifth of the stored agent at one hour, and a third at
+three hours. A planned schematic view will show that amount (planned-milestone
+item 27).
+
+**For developers.** Five targeting rules were scored on the branched case, with
+alveolar and fat displayed, a pair that the limit on a two-run chart's
+compartments allows (`COMPARED_COMPARTMENT_CAP`). The score is the share of
+hovers whose reported run changed after a 2 px move, among hovers with both runs
+inside the radius before and after the move. It counts hovers that could go
+either way, so it cannot be compared with the 75.4–99.9% figure under
+§ "The hover and the run it belongs to", which is a share of axis columns.
+
+| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
+| --- | ---: | ---: | ---: |
+| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
+| nearest trace measured along its length | 9.2% | 9.0% | 9.2% |
+| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
+| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
+| every run inside the radius is reported | 0.0% | 0.0% | 0.0% |
+
+The first three rules score the same to the digit, for two reasons that belong
+to this chart's geometry. First, the trace is drawn at about one sample per 4 s
+against a 12 px radius, so the pointer's distance to the polyline and to the
+nearest vertex differ by a fraction of a pixel. Nearest along the length would
+differ from nearest drawn point only on a sparse, steep trace. Second, both
+runs' fat points lie inside the radius over 94.5–98.0% of the hoverable area, so
+a band rule must break its tie by the nearest-point rule it was meant to
+replace, exactly where the reported run flips.
+
+Breaking near-ties toward the trunk scores 0.0%, as reporting every run does, but
+was refused for its costs. A tie window keeps the boundary between the runs and
+adds a second one, where the pointer leaves the window. Among axis columns with
+both runs in reach on the alveolar trace of the 1.25 MAC case, it raises the share
+on which the reported run flips from 58.5% to 98.4%. It also makes the branch's
+value unreachable wherever the two runs' traces lie inside the window, which is
+most of the fat trace. A value that a reader cannot reach is worse than one that
+is hard to aim at.
+
+Before every compartment in reach was reported (`PL-0RZ0`), the nearest drawn point
+picked the compartment, on the reasoning that a reader aims at a trace. The
+crowding near zero defeats that reasoning. Two or more compartments lie inside the
+radius over 15.2–45.7% of the two-run chart's hoverable area, and over 37.0% of
+the single-run chart's. Across pairs of pointer positions 2 px apart with more
+than one compartment in reach, the compartment reported changed on 6.6–13.6% of
+pairs. On 99.9% of those, the box printed a different number, by a median of
+17.1–17.9× for muscle against fat. At a change, the two nearest points were a
+median 0.9 px apart, and all were within 2 px.
+
+| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
+| --- | --- | ---: | ---: |
+| one run | all six | 37.0% | 12.7% |
+| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
+| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
+| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
+| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
+
+The nearest-point rule never made a value unreachable, which matters because the
+tie-break above was refused partly for doing so. Across the same cases, every
+compartment was reported on 98% or more of the axis columns where it is drawn.
+The worst was muscle on the single-run chart, unreported on 2.0% of its columns.
+<!-- not-restated: 2.0 % -->
+
+Reporting every trace in reach was affordable because the box stays short. One
+compartment alone is in reach on 54.3–99.5% of hovers across these cases, and
+63.0% on the single-run chart. The box carries one value line on 21–93% of hovers.
+
+Before the pointer's time alone named the instant (`PL-1K9G`), each trace reported
+its own drawn point nearest the pointer in both dimensions, so on a sloped trace
+the pointer's height chose the column. The scan behind that change covered the
+branched case, and a two-hour single run on its fitted 2-hour axis and on the
+12-hour axis, where a dial change draws a near-vertical step. It tried every pixel
+of height at four sub-pixel phases per column, and its selection was checked
+against the shipped function before any number was kept. The whole scan is in
+`PL-1K9G`.
 
 | Chart | Boxes holding 2+ of one run's readings that mixed instants | Spread, median / max | A vertical 2 px move changed the instant / the printed value |
 | --- | ---: | ---: | ---: |
@@ -11091,150 +11091,95 @@ kept, the scan's selection was checked against the shipped function:
 
 <!-- not-restated: 13.0 -->
 
-The premise that made the problem look cosmetic was that two adjacent columns
-usually print the same value. That premise holds for fat, and mostly for
-muscle, which is the pair on which the problem was first observed. It fails for
-the other four compartments. On the 60-minute axis, 44.0–93.3% of adjacent
-columns of the circuit, alveolar, mixed venous and vessel-rich traces print
-different values. The figure is 3.3–16.0% for muscle and 0.7–1.3% for fat. Nor
-was the spread one grid column, as this section used to say. A sloped trace's
-nearest point can lie as far to the side as the radius reaches, which is
-fifteen minutes on the 12-hour axis. `PL-1K9G` holds the whole scan.
+Mixed instants matter because adjacent columns often print different values. On
+the 60-minute axis, the share of adjacent columns that differ is 44.0–93.3% on the
+circuit, alveolar, mixed venous and vessel-rich traces, against 3.3–16.0% on
+muscle and 0.7–1.3% on fat. Under the old rule, a sloped trace's nearest point
+could lie as far to the side as the radius reaches, which is fifteen minutes on
+the 12-hour axis.
 
-**The radius is measured at the named instant, not to the nearest of the
-trace's points.** The alternative was to keep the old reach and report the
-point at the named instant. That would also have made the instant depend on the
-pointer's time alone, and it would have kept every value that the old rule
-reported. But where this rule reports nothing, the alternative would have
-reported a point a median 13.5 px and up to 42.5 px from the pointer on the
-60-minute axis, and up to 146 px on the 12-hour axis. The dot and the box would
-then hang on a value the reader is nowhere near. So every value the box reports
-is at the instant the pointer names *and* within reach of the pointer. The cost
-is aim beside a steep segment. There, a pointer level with a point several
-columns along no longer reports that point. Of the area over which each trace
-was reported, 84–100% is kept on the 60-minute and 2-hour axes, and 45–54% for
-the four fast compartments on the 12-hour axis. Nothing is reported that the
-old rule did not report, and no drawn instant becomes unreachable.
+The alternative to measuring the radius at the named instant was to keep the old
+reach and report the point at that instant. Like the chosen rule, that would have
+made the instant depend on time alone, and it would have kept every value that
+the old rule reported. But where the chosen rule reports nothing, the alternative
+would have reported a point a median 13.5 px and up to 42.5 px from the pointer on
+the 60-minute axis, and up to 146 px on the 12-hour axis. The dot and the box would
+then hang on a value the reader is nowhere near. The chosen rule's cost comes
+beside a steep segment, where a pointer level with a point several columns along
+no longer reports that point. Even so, the chosen rule keeps 84–100% of the area
+over which the old rule reported each trace on the 60-minute and 2-hour axes, and
+45–54% for the four fast compartments on the 12-hour axis. It reports nothing the
+old rule did not, and leaves no drawn instant unreachable.
 
-The wash-in plot reports values by the same rule, and it treats a run's
-stretches as one set of drawn instants. It draws one trace per run, so no box
-there mixed instants. But the same vertical movement moved its one instant on
-23.9–44.4% of movements.
+On the wash-in plot, the old rule let 23.9–44.4% of vertical 2 px moves change a
+box's instant. No box there mixed instants, because the plot draws one trace per
+run. The plot treats a run's stretches as one set of drawn instants.
 
-**The instant is stated on each line rather than once for the box.** Every
-compartment of one run shares the instant, but two runs need not. Each run also
-draws the columns that its own control events fall on, and a branch draws no
-columns before its fork. So the instants nearest one pointer can differ between
-runs. Where both runs are drawn, they can differ by up to one grid column. That
-is 4 s on the 60-minute axis and 48 s on the 12-hour one, and `format_elapsed`
-shows both. A single instant above a column of values would assert a
-simultaneity that the readings do not have. This is the same rule that makes
-the modelled marker travel with the value rather than sit in a heading: a
-qualifier belongs to the number it qualifies.
-
-**The lines are ordered by run, not by distance**, and so is the box's own
-position, which hangs from the point of the first run reported. Ordering by
-distance would put this defect back into the layout. The numbers would swap
-places under a hand movement too small to aim with, which is what the rule
-exists to stop. Run order is the order of the legend and of the readout panels,
-so the box is read in the same direction as everything beside it.
-
-**A dot is drawn on every point that is reported**, not one dot for the box. A
-single dot would mark one run's curve while the text reported several runs.
-That is the attribution failure that § "The hover and the run it belongs to"
-closes, arriving through the marker instead of through the words.
-
-**When one run is reported, the box uses the three-line form, unchanged.** Two
-runs drawn with only one inside the radius is the ordinary case, because the
-reader has aimed successfully. That case gets the form that the rest of this
-section derives, still naming the run because two are drawn. The box gaining
-and losing a line as the pointer moves is not a hidden mode. It is a display of
-what is in reach. A run leaves the radius because the reader moved
-deliberately, and the box shows this by losing that run's line. That event is
-visible, whereas the silent swap it replaces was not.
-
-**The root cause is the axis, and the axis stays** (project owner, 2026-09-23,
-ratified, over a reader-selected logarithmic scale, `PL-QYBW`). The slow
-compartments are compressed near zero because the percent axis is fixed at
-3 MAC for every agent (`CHART_AXIS_TOP_MAC`). That compression puts two runs' fat
-points 0.2–1.4 px apart and makes them contend almost everywhere. Only fat
-stays compressed for long. At a 1 MAC dial on the three shipped agents, muscle
-spans 25–48 px of the 360 px plot at one hour, and fat spans 1.5–3.7 px. Fat's
-trace near zero is its true partial pressure, and partial pressure is what
-drives effect. So the chart keeps one linear axis for all six compartments, and
-the rule above resolves the contention without a change of scale. What the
-trace cannot show is how much agent fat holds: a fifth of the stored agent at
-one hour, and a third at three. That is a question of amount, and
-planned-milestone item 27's schematic is the view that shows it. A logarithmic
-scale was the alternative weighed. Fixed from 0.001 to 3 MAC, it would put the
-two runs' fat 23–75 px apart, but it has three costs. It draws below the
-0.01-point resolution of § "Displayed precision". It is a display mode on a
-chart of clinical values. And it would arrive ahead of the v0.6.0 View contract
-that decides where a View's own settings live. Its strongest use, the washout
-tail, is a candidate for item 36's catalogue of views rather than a mode on
-this chart.
+A logarithmic axis fixed from 0.001 to 3 MAC would put two runs' fat 23–75 px
+apart, but it has three costs. It draws below the 0.01-point resolution of
+§ "Displayed precision". It is a display mode on a chart of clinical values. And
+it would arrive ahead of the v0.6.0 View contract, which decides where a View's
+own settings live. Its strongest use, the washout tail, is a candidate for the
+catalogue of views (planned-milestone item 36) rather than a mode on this chart.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-`chart_frame.format_compared_trace_hover` and
-`chart_frame.format_compared_wash_in_hover` produce both forms above. Like
-every other number here, they go through `app/formatting.py`, using
-`format_percent`, `format_mac_multiple` and `format_elapsed`.
-`nearest_trace_point` and `nearest_wash_in_point` collect the traces within
-reach at the instant that the pointer names. `tests/unit/test_chart_frame.py`
-holds both worked examples above verbatim. Beside them it holds the measured
-fat and muscle cases from which the run rule and the compartment rule were
-decided, and the geometry from which the instant rule was decided
+Two functions produce the forms above that list several runs or compartments
+(`chart_frame.format_compared_trace_hover` and
+`chart_frame.format_compared_wash_in_hover`), and their numbers come from
+`app/formatting.py` like every other number in the box. Two more collect the
+traces within reach at the instant that the pointer names (`nearest_trace_point`
+and `nearest_wash_in_point`), and the first of them skips hidden compartments.
+The unit tests in `tests/unit/test_chart_frame.py` contain both worked examples
+above verbatim. They also contain the fat and muscle cases behind the decisions to
+report every run and every compartment in reach, and the geometry behind the
+decision that the pointer's time alone names the instant
 (`test_every_compartment_of_one_run_answers_at_one_instant`).
 
 #### Resolution: the readouts' derivation applies unchanged
 
-The hover prints two decimals of a percent and two decimals of a MAC multiple,
-with the below-resolution forms `<0.01%` and `<0.01 ×MAC`.
-§ "Displayed precision" derives both. Nothing in that derivation depends on
-where the number appears. The ceiling is one measured standard deviation of a
-partition coefficient, which displaces a trajectory rather than a display. The floor is
-a teaching judgment about what a reader can learn from the slow compartments.
+The box prints a percent and a MAC multiple to two decimals each, as `<0.01%`
+and `<0.01 ×MAC` below that. § "Displayed precision" derives both forms for the
+readout panel, and nothing in that derivation depends on where the number
+appears. Its upper limit on precision is one measured standard deviation of a
+partition coefficient, which shifts the modelled trajectory itself, whatever
+display shows it. Its lower limit is a teaching judgment about what a reader can
+learn from the slow compartments.
 
-**The one argument for a finer hover readout is answered here on its own
-terms, rather than inherited from the readouts.** That section separates two questions
-that a printed digit could be answering. The first is how finely two moments
-*within one run* can be told apart. That is about nine decimal places finer
-than the readout shows. The second is how finely this model resolves a
-concentration *in a patient*, which is much coarser. A hover is closer to the
-first question than the readout row is. It reports one trace at one instant,
-which is the shape of a within-run comparison, and the within-run question
-would justify a third decimal.
+**The box gets no third decimal.** A printed digit could answer either of two
+questions. One is how finely two moments within one run can be told apart, which
+is about nine decimal places finer than the readout panel shows. The other is how
+finely this model resolves a concentration in a patient, which is much coarser.
+The box is closer than the readout panel to the first question, because it reports
+one trace at one instant, the form a within-run comparison takes. That question
+alone would justify a third decimal. But a reader cannot tell which question a
+digit answers, and the box makes the confusion worse. It is the display most
+likely to be written down, it floats over a chart whose whole subject is a
+patient, and it is read without the readout panel's five other compartments,
+which show that a within-run comparison is on offer.
 
-The hover does not get a third decimal, for the same reason that settles the
-readouts: a reader cannot tell which of the two questions a printed digit is
-answering. The hover makes that confusion worse rather than better. It is the
-display most likely to be transcribed. It appears over a chart whose whole
-subject is a patient. And it is read without the row of five other
-compartments, which make it obvious that a within-run comparison is what is on
-offer. So the display most exposed to the patient reading is the last one
-that should carry a digit that only the within-run reading supports.
-
-**The below-resolution form is required here, not optional.** At 1 MAC
-sevoflurane, fat stays below 0.01% for the first thirteen minutes, and muscle
-stays below it for the first two. Those minutes are the slow-compartment
-wash-in that the chart exists to show. `<0.01%` says what is known. A hover
-that printed a number there would claim a resolution the model does not have.
-It would do so on the compartment where a reader is least able to notice.
+**The below-resolution form is required here.** At 1 MAC sevoflurane, fat stays
+below 0.01% for the first thirteen minutes, and muscle for the first two. Those
+minutes are the slow-compartment wash-in that the chart exists to show. `<0.01%`
+says what is known. A number there would claim a resolution the model does not
+have, on the compartment where a reader is least able to notice.
 
 #### What a chart library prints instead, measured
 
-The default matters for two reasons. It is what ships if nothing overrides it.
-And both toolkits this project has used default to formatting the coordinate.
-`flet_charts.LineChartDataPoint` defaults to a `LineChartDataPointTooltip`
-whose `text` this application never writes into. `pyqtgraph.ScatterPlotItem`
-defaults `tip`, which is the formatter for the hoverable-points route, to
-`'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`.
+Left to its default, the charting software's own tooltip prints the plotted
+coordinate instead of a clinical value. It prints no unit, it prints a number where
+the box prints `<0.01%`, and it prints more decimals the smaller the value.
 
-These values were measured on 2026-09-14. The case was the reference adult,
-with sevoflurane delivered at 0.02 (1 MAC) and the shipped column budget over
-a one-hour axis. `.3g` was applied to the drawn y as `ScatterPlotItem` would
-apply it, and `format_percent` was applied to the same value. The table shows
-four instants of the first hour:
+**For developers.** The default matters because it is what ships if nothing
+overrides it, and both toolkits this project has used format the coordinate. In
+Flet, a chart's data point (`flet_charts.LineChartDataPoint`) defaults to a
+tooltip (`LineChartDataPointTooltip`) whose `text` this application never writes
+into. In pyqtgraph, a scatter plot (`pyqtgraph.ScatterPlotItem`) defaults its
+formatter for hoverable points, `tip`, to
+`'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`. The table shows `.3g` applied to
+the drawn y, as that scatter plot would apply it, and `format_percent` applied to
+the same value, at four instants of the first hour. The values come from a run on
+2026-09-14 on the reference adult, with sevoflurane delivered at 0.02 (1 MAC) and
+the shipped number of columns over a one-hour axis.
 
 | Instant | Compartment | `.3g` on the drawn y | This readout |
 | --- | --- | ---: | ---: |
@@ -11245,30 +11190,23 @@ four instants of the first hour:
 | 1208.1 s | Fat | `0.00888` | `0.01%` |
 | 3600.0 s | Alveolar | `1.54` | `1.54%` |
 
-The default has three separate defects, and the third is the one that would
-go unnoticed:
-
-- **Resolution.** `3.52e-05` carries five decimal places beyond the resolution
-  that this document derives. It does so on the compartment where the readout
-  row deliberately refuses to print a number at all. A reader comparing the
-  hover with the panel would find the two disagreeing about whether the value
-  is known.
-- **Units.** `.3g` prints no unit. The chart carries a percent axis and a MAC
-  axis. So a bare `1.54` could belong to either of two scales, which differ by
-  a factor of about two for sevoflurane. `3.52e-05` is worse, because it reads
-  equally well as a fraction of an atmosphere, which is a hundredfold out.
-- **A varying number of decimals.** Three significant figures give two
-  decimals at `1.54`, three at `0.262` and six at `0.000656`. The readout row
-  is fixed at two decimals. The whole of § "Displayed precision" is the
-  argument for a *uniform* resolution. A display whose precision changes with
-  the size of the value it shows claims that the model resolves small values
-  more finely than large ones. That is the opposite of the truth.
+- `3.52e-05` carries five decimal places beyond the resolution of § "Displayed
+  precision", on the compartment where the readout panel prints no number at all.
+  A reader comparing that number with the panel would find them disagreeing about
+  whether the value is known.
+- With no unit, a bare `1.54` could belong to either axis, and the two differ by a
+  factor of about two for sevoflurane. `3.52e-05` is worse, because it reads
+  equally well as a fraction of an atmosphere, a hundredfold out.
+- Three significant figures give two decimals at `1.54`, three at `0.262` and six
+  at `0.000656`. A display whose precision changes with the size of the value
+  claims that the model resolves small values more finely than large ones, the
+  opposite of the truth. This fault is the one that would go unnoticed.
 
 #### Which series answer a hover, and which do not
 
-The six compartment traces respond to a hover, in the form above. The wash-in
-trace responds in its own units, because $`F_A/F_I`$ is dimensionless and has
-neither a percent nor a MAC reading:
+The six compartment traces respond to a hover in the form above, unless the
+reader has hidden the compartment. The wash-in trace responds with a plain ratio,
+because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading:
 
 ```
 Modelled sevoflurane · 20m8s
@@ -11276,84 +11214,60 @@ Wash-in F_A/F_I (alveolar / modelled circuit)
 0.71
 ```
 
-`format_wash_in_ratio` produces the number. The parenthesis is the caption that
-`app/wash_in.py` already carries, for the reason stated there: $`F_I`$ is the
-modelled circuit rather than the vaporizer dial. The caption uses a solidus
-rather than a division sign, because every non-ASCII character that reaches a
-reader must have been rendered and seen first (`tools/glyph_check.py`), and the
-division sign has not been.
+The caption in parentheses says that $`F_I`$ is the modelled circuit, not the
+vaporizer dial.
 
-**The clinical references and the control marks do not respond to a hover,
-and the reason is interaction rather than content.** The 1 MAC line spans the
-plot horizontally, and the MAC-awake band is a horizontal region. The control
-marks are vertical and full height. All three cross every trace. Making them
-hoverable would therefore put an annotation under the pointer whenever a
-reader aims at a trace that passes behind one. And the annotations are exactly
-where a reader is most likely to want a reading, since a trace crossing 1 MAC
-is the event that the reference is drawn for. What they would report is also
-already on screen. The divisor is stated beside the chart, and the input
-timeline lists each control change with its old and new value.
+The 1 MAC line, the MAC-awake band and the control marks do not respond. The line
+and the band run across the plot, and the control marks are vertical and full
+height, so all three cross every trace. If they responded, an annotation would
+appear under the pointer wherever a reader aims at a trace that passes behind one
+of them. That is exactly where a reading is most wanted: a trace crossing 1 MAC is
+the event the line is drawn for. What the three would report is already on
+screen. The MAC value that the MAC multiples divide by is stated beside the chart,
+and the input timeline lists each control change with its old and new value.
+
+**For developers.** The ratio has its own formatter (`format_wash_in_ratio`), and
+the caption is the one in `app/wash_in.py`. It uses a solidus rather than a
+division sign because every non-ASCII character that reaches a reader must first
+have been rendered and seen (`tools/glyph_check.py`), and the division sign has
+not been.
 
 #### When it answers
 
-The hover responds whenever the pointer is over the plot, whether the run is
-playing or paused.
+The box appears whenever the pointer is over a trace, whether the run is playing
+or paused. At high playback speed its value moves with the run, as every other
+readout does, and a reader who wants to study a value pauses. Moving the pointer
+off the plot removes the box at once, so a value that moves with the run is always
+one that the reader is pointing at.
 
-**This reverses a restriction that came from the toolkit rather than from the
-affordance.** `PL-KP7H` withdrew the hover while a run plays. The reason was
-that Flet's control-tree diff descends into every point's tooltip object on
-every frame, and the tooltips were half the cost of a saturated frame. A hover
-that responds only while paused is a hidden mode. A reader who tries it during
-a run gets nothing, concludes that the chart is not interactive, and never
-finds the hover again.
+**For developers.** The box is built on pyqtgraph and reports the drawn points
+within the hover radius (`PL-G59B`, 2026-09-14). The code that shows it is in
+`app/qt_chart.py`, and an integration test checks the rendered box against a real
+run (`tests/integration/test_qt_chart.py`).
 
-Qt has no such cost to avoid, by either route the readout could be built on. A
-crosshair is driven by the scene's own `sigMouseMoved`, rate-limited through a
-`SignalProxy`. Hoverable points carry a `tip` callable that is evaluated when
-the pointer arrives, rather than a tooltip object stored for each point. Both
-routes cost work per pointer event, and neither cost depends on how many
-points are drawn. Nothing has to be withdrawn, so there is no mode to announce
-and no caption to write. The affordance is discoverable because it is present.
+A hover that responds only while paused is a hidden mode: a reader who tries it
+during a run gets nothing, concludes that the chart is not interactive, and never
+finds the hover again. An earlier change had withdrawn the hover while a run plays
+(`PL-KP7H`), because Flet's control-tree diff visits every point's tooltip object
+on every frame, and the tooltips were half the cost of a saturated frame.
 
-**The hover is not a default, though, and that has to be checked rather than
-assumed.** `ScatterPlotItem` ships with `hoverable` set to `False`, and a
-plotted line carries no hover of its own at all. So a port that says nothing
-about the hover loses it outright rather than inheriting it. The Qt build owes
-the hover under the parity rule "Every capability the Flet build has, the Qt
-build has".
+Qt has no such cost by either route the box could be built on. One route drives a
+crosshair from the scene's own mouse-move signal (`sigMouseMoved`), rate-limited
+through a signal proxy (`SignalProxy`). The other gives each hoverable point a
+callable (`tip`) that runs when the pointer arrives, with no tooltip object stored
+for each point. Both cost work per pointer event, whatever the number of points
+drawn.
 
-At high playback speed, the reported value moves as the run does. That is
-correct, not a defect to design around. Every other readout in the interface
-moves too, and a reader who wants to study a value pauses, as they would in
-any case. What is not acceptable is the affordance being absent while the
-reader looks for it.
+The Qt build must provide the hover, under the parity rule "Every capability the
+Flet build has, the Qt build has", and it does not come by default. A pyqtgraph
+scatter plot (`ScatterPlotItem`) ships with `hoverable` set to `False`, and a
+plotted line has no hover of its own, so a port that says nothing about the hover
+loses it.
 
-**The hover responds only to a pointer that is actually there.** Leaving the
-plot takes the box down at once, along with any pointer move still waiting to
-be handled. So a value that moves with the run is always one that the reader
-is pointing at. If the box stayed up at the last point the pointer crossed, it
-would recompute its value every frame. While a run played, it would climb with
-the run like a live readout of the state being watched, for an instant that
-nobody is looking at (`PL-LTKL`).
-
-**Built on pyqtgraph, over the drawn points within a pixel radius**
-(`PL-G59B`, 2026-09-14). The radius stopped choosing between runs with
-`PL-JVHL` (2026-09-19) and between compartments with `PL-0RZ0` (2026-09-20).
-The pointer's height stopped choosing the instant with `PL-1K9G`
-(2026-09-22). `app/chart_frame.py` holds the derivation above as code.
-`format_trace_hover` and `format_wash_in_hover` produce the three-line form,
-and `format_compared_trace_hover` and `format_compared_wash_in_hover` produce
-the compared one. `nearest_trace_point` responds only for a compartment that
-the reader has left shown. It also responds only within a pixel radius of the
-point that the plot draws at the instant the pointer names. `app/qt_chart.py`
-shows the readout wherever the pointer is, running or paused. Every instant
-that the readout prints is stated at the step by which the run advances,
-`HOVER_INSTANT_RESOLUTION_S`. A drawn column sits wherever the anchored grid
-puts it, and the state reported is the state at exactly that instant. But
-printing the instant to four decimals would claim a resolution that no other
-display on the screen has. `tests/unit/test_chart_frame.py` holds both worked
-examples above verbatim, and `tests/integration/test_qt_chart.py` tests the
-rendered readout against a real run.
+Besides removing the box, leaving the plot discards any pointer move still waiting
+to be handled. A box left at the last point the pointer crossed would recompute
+its value every frame. While a run played, it would climb with the run like a live
+readout, for an instant that nobody is looking at (`PL-LTKL`).
 
 ### A preview of an unapplied setting
 
