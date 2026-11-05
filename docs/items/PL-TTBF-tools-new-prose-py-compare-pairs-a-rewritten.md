@@ -2,7 +2,7 @@
 id: PL-TTBF
 title: tools/new_prose.py --compare pairs a rewritten section by diff hunk, so a rewrite that adds subheadings shows growth the text did not have: PL-J37P's 'Why the readouts show two decimals' read 854 to 1,050 words while the next subsection read 2,093 to 1,561
 status: untriaged
-feature: reader-first-prose
+feature: copy-editor
 added: 2026-11-04
 ---
 

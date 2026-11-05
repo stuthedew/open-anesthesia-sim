@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: reader-first-prose
+feature: copy-editor
 milestone: v0.6.15
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py, docket.toml, .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, .claude/rules/instruction-writing.md, docs/prose-review/README.md, docs/apparatus.md, tools/new_prose.py, tools/rejected_prose.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; fixed on its own branch the day it was filed

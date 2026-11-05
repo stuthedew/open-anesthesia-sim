@@ -498,6 +498,7 @@ workflow_paths = [
   "tests/unit/test_model_rewrite.py",
   "tests/unit/test_copy_edit.py",
   "tests/unit/test_new_prose.py",
+  "tests/unit/test_prose_judge.py",
   "tests/unit/test_blind_review.py",
   "tests/unit/test_blind_review_report.py",
   "tests/unit/test_import_boundary_check.py",
@@ -694,10 +695,9 @@ open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 # bare interpreter is the 3.11 tools floor, which cannot parse every file
 # under `src/`, so the count exited 2 and `arm` held correct work (`PL-Q508`).
 # The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
-# Paused with close-out step 8 (project owner, 2026-11-04, until PL-HGZS is
-# fixed and the owner agrees to bring it back). The command it held was
-# "uv run python tools/new_prose.py --count".
-prose_count_command = ""
+# Paused with close-out step 8 from 2026-11-04 until the owner brought the copy
+# editor back on 2026-11-05 (PL-HGZS).
+prose_count_command = "uv run python tools/new_prose.py --count"
 
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
@@ -928,3 +928,10 @@ model = "claude-sonnet-5-5"
 [[models.rule]]
 match = { role = "exploration" }
 model = "opus"
+
+# The copy editor runs at extra high effort (project owner, 2026-11-04,
+# ratified, over the default high, `PL-HGZS`): its misses while it was being
+# debugged were reading misses that the extra high session caught.
+[[models.rule]]
+match = { role = "copy-editor" }
+effort = "xhigh"
