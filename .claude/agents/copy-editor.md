@@ -247,8 +247,11 @@ does not know this repository's names either.
      writing rule's fifth point asks of item ids. Say in words what the named
      thing is or does, and give the name after it as a pointer: "the list of
      sections that the check reads (`check_bound_families`)", not
-     "`check_bound_families`'s table". Treat a phrase that the file coined in
-     the same way. Where "an assertion that names nothing" stands away from
+     "`check_bound_families`'s table". A sentence whose subject is a code
+     name breaks this rule in a note for developers too: "The function
+     `check_bound_families` reads a table of sections" becomes "The
+     documentation check reads a table of sections (`check_bound_families`)".
+     Treat a phrase that the file coined in the same way. Where "an assertion that names nothing" stands away from
      the heading that explains it, say what it means: "a statement that names
      no test, file or value".
    - Never coin a phrase. Use the text's own words, or plain words in their
@@ -338,7 +341,7 @@ does not know this repository's names either.
      check reads them. Each heading keeps its text, because other files cite a
      section by its heading. A reference to another section keeps the file's
      form, § "Heading", so that the check finds it.
-   - A hidden marker, such as `<!-- provenance: ... = 0.31 -->`, stays under
+   - A source comment, such as `<!-- provenance: ... = 0.31 -->`, stays under
      the paragraph that states its number. Where you move the number to
      another paragraph, move its marker with it. Where you cut the number,
      cut its marker.
@@ -352,7 +355,8 @@ does not know this repository's names either.
      far from its verb, and any that uses a term they do not know. Rewrite,
      too, any phrase that a careful writer would not say, such as
      "§ "Supported simulation step" gives why the step is set at the limit"
-     for "explains why".
+     for "explains why", or "the open item that is to add the test" for "the
+     open item for adding the test".
    - Read each sentence together with the one before it. Where the second
      repeats a word or a fact of the first, cut or reword one of them, unless
      the word is a term the text must keep. "Common settings exceed the
