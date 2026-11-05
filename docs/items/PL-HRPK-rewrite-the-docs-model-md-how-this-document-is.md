@@ -3,12 +3,14 @@ id: PL-HRPK
 title: Rewrite the docs/MODEL.md § 'How this document is held to the tree' paragraph on numeric paragraphs for its two readers: the clinician needs only that each number with a unit in a listed section is backed by a test, a date, a published source or a declared gap, and the check's mechanics (its function name, the marker kinds, the author-year exclusion, how a developer note holds paragraphs) belong in a developer note the section does not yet have; the PL-W8FL prose review proposed this on 2026-11-04 and it was left for its own item because it rewrites sentences that branch did not change
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-HGZS
 added: 2026-11-04
+closed: 2026-11-05
+pr: 2040
 payoff: a clinician reading how the specification is checked learns what backs each number without reading the check's internals
 verify: ! grep -q '`check_bound_families` enforces this rule one section at a time' docs/MODEL.md
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it. Readability for a clinician is judged by a person: no command can tell whether the paragraph now leads with what that reader needs.
