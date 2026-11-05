@@ -8566,8 +8566,8 @@ def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_pat
     """The declared-none form took a four-character id only, so `PL-001` failed it.
 
     43 of the store's ids are three digits, and against one of them the fixed
-    parenthesis `docs/MODEL.md` clause 3 prescribes read as no declaration at
-    all - a hard error on a row that had done exactly what the clause asks
+    parenthesis that `docs/MODEL.md` prescribes for a missing test read as no declaration at
+    all - a hard error on a row that had done exactly what the document asks
     (`PL-KYW3`).
     """
     root = _family_repo(tmp_path, "no test yet (`PL-001`)", items={"PL-001": "ready"})
