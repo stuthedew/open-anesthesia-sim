@@ -969,7 +969,7 @@ area system exists.
 reasoning applies to the container: isolation has to be built (`PL-C842` has
 the recommendation and the evidence).
 
-**Prune a View's contract instead of letting it grow.** Blender's contract for
+**Prune the contract of a View instead of letting it grow.** Blender's contract for
 an editor (`SpaceType`) has hooks that nothing implements and a field that
 nothing assigns, and the design gives no sign that they are unused. Recheck this
 project's contract for a View against the Views that implement it.
