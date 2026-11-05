@@ -362,6 +362,26 @@ def test_a_passage_that_never_settles_stops_at_max_reads(
     assert rejected_prose.rewrites(reply) == {1: (f"Edit {copy_edit.MAX_READS}.",)}
 
 
+def test_an_audit_whose_reply_cannot_be_read_is_left_out_and_the_earlier_reads_kept(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reply cut off before its verdicts ends the audits without losing the reads before it."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    second = "[1] rewrite\n\n```\nSecond edit.\n```\n"
+    cut_off = "the end of a reply whose verdicts were lost\n"
+    monkeypatch.setenv(
+        "FAKE_REPLIES", json.dumps(["[1] rewrite\n\n```\nFirst.\n```\n", second, cut_off, "unused"])
+    )
+
+    reply, counts = copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 3
+    assert rejected_prose.rewrites(reply) == {1: ("Second edit.",)}
+    assert "Notes from the third read:" not in reply
+    assert counts.endswith("third read: reply unreadable, so it was left out ([1] has no verdict)")
+
+
 def test_a_first_read_that_rewrites_nothing_is_the_whole_reply(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

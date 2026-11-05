@@ -640,9 +640,11 @@ def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str
 
     Returns its merged reply and the counts. The first read edits. Each later
     read audits the text as the earlier reads left it, and runs only while the
-    last read changed a passage, up to `MAX_READS` reads. Where `reads` names a
-    directory, each read's request and reply are also written there, so that
-    what each audit changed can be judged alone.
+    last read changed a passage, up to `MAX_READS` reads. An audit whose reply
+    cannot be read ends the audits, and the counts say so: the reads before it
+    are kept, because each of them gave every passage a verdict. Where `reads`
+    names a directory, each read's request and reply are also written there,
+    so that what each audit changed can be judged alone.
     """
     first, first_counts = editor.read(text, READ_NAMES[0], reads)
     try:
@@ -656,12 +658,16 @@ def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str
     counts = [first_counts]
     for name in READ_NAMES[1:MAX_READS]:
         reply, reply_counts = editor.read(second_request(text, current), name, reads)
-        replies.append(reply)
         counts.append(f"{name} read: {reply_counts.removeprefix('copy_edit: ')}")
         try:
+            verdicts(reply, count)
             made = rewrites(reply)
         except ValueError as error:
-            raise Refused(f"the {name} read's reply cannot be read: {error}") from error
+            # An audit that returns no readable reply changes nothing, so the
+            # reads before it still give every passage its verdict.
+            counts.append(f"{name} read: reply unreadable, so it was left out ({error})")
+            break
+        replies.append(reply)
         changed = {number: rows for number, rows in made.items() if current.get(number) != rows}
         if not changed:
             break
