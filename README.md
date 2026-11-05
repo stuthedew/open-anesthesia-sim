@@ -1,8 +1,8 @@
 [![quality](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml/badge.svg)](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml)
 
 > [!WARNING]
-> # PRE-RELEASE
-> # Work in Progress
+> **Pre-release: work in progress.** Features, settings and displayed values
+> may change before the first release.
 
 # Open Anesthesia Simulator
 
@@ -43,139 +43,173 @@ with.
 
 ## What it simulates
 
-One reference adult and one volatile agent at a time — sevoflurane, isoflurane
-or desflurane — carried from the vaporizer through an explicit breathing
-circuit into alveolar gas, blood, and three tissue groups, with mixed-venous
-return to the lungs:
+### The model
+
+The model follows one volatile agent at a time (sevoflurane, isoflurane or
+desflurane) in a built-in reference adult, who cannot be changed. The agent
+passes from the vaporizer through an explicit breathing circuit into alveolar
+gas, blood and three tissue groups, with mixed-venous return to the lungs:
 
 ```text
 delivered agent -> breathing circuit -> alveolar gas -> blood
                 -> vessel-rich group / muscle / fat -> mixed venous return
 ```
 
-Four settings change during a run without disturbing what is already in the
-patient: **fresh gas flow, delivered concentration, alveolar ventilation and
-cardiac output**. Each is supported over a stated interval, and a setting
-outside it is *refused* rather than quietly clamped, because a clamped setting
-would simulate and display a case nobody asked for. A change the model cannot
-continue past halts the run and says why, instead of leaving the display
-reading "Running" over numbers that have stopped advancing.
+You can change four settings during a run without disturbing what is already in
+the patient: **fresh gas flow, delivered concentration, alveolar ventilation and
+cardiac output**. Each has a supported range, listed in
+[`docs/MODEL.md`](docs/MODEL.md) § "Supported input ranges". The simulator
+refuses a setting outside its range, rather than quietly using the nearest value
+in range and showing a case nobody asked for. When the model cannot continue
+after a change, the simulator stops the run and says why.
 
-The window is divided into Areas that the reader can split, join, resize, swap
-and close, and each Area holds one View: the concentration chart, the wash-in
-plot, the parameter controls, the agent accounting, the compartment
-schematic or the agent cost. Arrangements are kept as
-Workspaces, switched by tab, and three ship: Default, Induction and
-Maintenance. The values a reader needs to read any other number are drawn in a
-region outside the Areas, so no arrangement can remove them.
+### The window
 
-While a case runs, the interface shows:
+The window is divided into Areas, which you can split, join, resize, swap and
+close. Each Area holds one View, and its View chooser offers all six: the
+concentration chart, the wash-in plot, the parameter controls, the agent
+accounting, the compartment schematic and the agent cost. An arrangement is kept
+as a Workspace, and you switch between Workspaces by their tabs. Three come with
+the simulator: Default, Induction and Maintenance.
 
-- every compartment concentration, in percent **and** as a multiple of the
-  running agent's 1 MAC, with that agent's 1 MAC stated on screen — the same
-  percentage is a different MAC multiple for each agent, so neither unit is
-  safe alone;
-- the agent that is running, by name and by its ISO 5360 vaporizer color;
-- agent delivered, exhausted and stored, with the mass-balance residual,
-  in the agent accounting View, which no shipped Workspace shows but every
-  Area's View chooser offers;
-- where the agent is, in the compartment schematic View, which the
-  Maintenance Workspace shows: each compartment as a container filled to its tension
-  on the chart's scale and labelled with its tension and its amount in mL of
-  vapour, and one bar of each compartment's share of all the agent the run
-  holds, so fat's growing share shows while its tension stays near zero;
-- the agent delivered, in the agent cost View, which every Area's View
-  chooser offers: in mL of liquid, the liquid agent that the vaporizer turned
-  into vapour, or in litres of vapour if the reader chooses, with the unit named on the value; the choice is kept in the
-  reader's preferences file and survives a restart;
-- what the delivered agent cost, on the same View, at a price per bottle that
-  the reader sets for each agent, with its currency code and the date the
-  price applied; the project ships no price, so until one is set the View
-  says why no cost is shown, and beside each cost it shows the liquid volume
-  and the price per millilitre that it multiplied;
-- every setting changed during the run, marked on the chart at the simulated
-  time it took effect;
-- the wash-in curve the literature is taught from, $`F_A/F_I`$, on a
-  dimensionless axis of its own, drawn against the *modeled* inspired
-  concentration rather than the vaporizer dial, in the wash-in View that the
-  Induction Workspace shows;
-- the running agent's population MAC-awake as a labelled band, and its nominal
-  1 MAC as a line;
-- on hovering a drawn point of a compartment trace, which compartment and
-  instant that point is, which run it belongs to while more than one run is
-  drawn, and its value in both units, at the readouts' own resolution; on
-  hovering a drawn point of the wash-in curve, the same run context and the
-  ratio — nothing is reported between drawn points, and the references and
-  control marks report nothing.
+A region outside the Areas shows the simulated time, the playback rate, whether
+the simulation is running or halted and why, the agent and its 1 MAC, and each
+compartment's concentration. You need these values to read any other number, so
+no arrangement can remove them. The agent appears by name and in its ISO 5360
+vaporizer color. Every compartment concentration is given in percent **and** as
+a multiple of the agent's 1 MAC. The same percentage is a different MAC multiple
+for each agent, so neither unit is safe alone.
 
-Because muscle and fat cannot be watched in real time, a run can be played at
-**1×, 5×, 20×, 60× or 300× real time**. The rate is a mode, so it is displayed
-wherever simulated time is displayed and at every rate including real time.
-Playing a run faster takes more of the same steps per tick rather than larger
-steps: the same case at 1× and at 300× is the same arithmetic, sample for
-sample. Separately, the **chart's time base** — how much of the case is in view,
-from fifteen minutes to twelve hours, or the whole run so far — is chosen by the
-reader for each chart and changes only what is drawn.
+While a case runs, the window also shows the following.
 
-For what this models today and what is planned next, see
-[`ROADMAP.md`](ROADMAP.md).
+- The agent accounting View shows the agent delivered, exhausted and stored,
+  and the mass-balance residual. None of the three Workspaces includes this
+  View.
+- The compartment schematic View shows where the agent is. Each compartment is
+  drawn as a container, filled to its tension on the concentration chart's
+  scale and labelled with its tension and its amount in mL of vapour. One bar
+  shows each compartment's share of all the agent in the run, so fat's share
+  can be seen growing while its tension stays near zero. The Maintenance
+  Workspace includes this View.
+- The agent cost View shows the agent delivered, in mL of the liquid that the
+  vaporizer turned into vapour. You can choose litres of vapour instead, and the
+  unit is named on the value. Your choice is saved in your preferences file and
+  still applies after a restart.
+- The agent cost View also shows what the delivered agent cost. You set a price
+  per bottle for each agent, with a currency code and the date the price
+  applied. The simulator comes with no prices, so until you set one, the View
+  says why it shows no cost. Beside each cost are the liquid volume and the
+  price per millilitre that were multiplied to give it.
+- Each setting changed during the run is marked on the concentration chart at
+  the simulated time it took effect.
+- The wash-in plot draws $`F_A/F_I`$, the wash-in curve used in the literature
+  and in teaching, on a dimensionless axis of its own. Its $`F_I`$ is the
+  *modeled* inspired concentration, not the vaporizer dial setting. The
+  Induction Workspace includes this plot.
+- The running agent's population MAC-awake is drawn as a labelled band, and its
+  nominal 1 MAC as a line.
+- Hovering over a drawn point of a compartment trace shows the point's
+  compartment and simulated time, and its value in both units at the readouts'
+  own resolution. On a drawn point of the wash-in curve, it shows the ratio.
+  While more than one run is drawn, it also shows which run the point belongs
+  to. Nothing is shown between drawn points, or over a reference band or line,
+  or a mark for a changed setting.
+
+### Playback speed and time base
+
+A run can be played at **1×, 5×, 20×, 60× or 300× real time**, because changes
+in muscle and fat are too slow to watch as they happen. The playback speed is
+displayed wherever simulated time is, even at 1×. The same case gives identical
+values, sample for sample, at 1× and at 300×, because the simulator plays faster
+by computing more steps of the same size each second.
+
+The reader chooses each chart's **time base**: how much of the case is in view,
+from fifteen minutes to twelve hours, or the whole run so far. The time base
+affects only what is drawn.
 
 ## What it does not simulate
 
-Reading a value here as more than it is would be the likeliest way to be misled
-by it, so the boundary is stated rather than left to be discovered:
-
 - **Nitrous oxide, any second gas, and concentration or second-gas effects.**
-- **Switching agents mid-run.** Choosing a different agent starts a new run;
-  residual washout of the previous agent is not modeled.
-- **Regional gas exchange** — no dead space, shunt, ventilation–perfusion
-  mismatch, diffusion limitation, or airway sampling delay.
+  Nitrous oxide is planned.
+- **Switching agents mid-run.** Choosing a different agent starts a new run.
+  Washout of the previous agent is not modeled.
+- **Regional gas exchange.** There is no dead space, shunt,
+  ventilation–perfusion mismatch, or diffusion limitation.
+- **Airway sampling delay.**
 - **Metabolism, degradation, or reaction with circuit materials.**
 - **Intravenous agents, effect-site compartments, and any measure of
-  anesthetic depth** — no BIS, no age-dependent MAC, no summing of MAC across
-  agents.
+  anesthetic depth.** There is no BIS, no age-dependent MAC, and no summing of
+  MAC across agents.
 - **Alarms, thresholds, and recommendations of any kind.**
 
 A MAC multiple here is therefore a **partial-pressure ratio, not a depth of
-anesthesia**: it says a compartment's partial pressure equals *N* times the
-alveolar concentration that would be 1 MAC in a population, and nothing about
-the simulated patient's state of consciousness. The full list, with the
-simplifications each one rests on, is in `docs/MODEL.md` under "Known
-limitations" and "Model boundary".
+anesthesia**. A multiple of *N* means that a compartment's partial pressure
+equals *N* times the alveolar concentration that would be 1 MAC in a population.
 
-**The scope word differs between this page and the package, deliberately.**
-This page and the repository description say *inhaled*, which names the subject
-the project teaches and the direction it is going — nitrous oxide is a planned
-substance rather than a reshaping of the record. `pyproject.toml`'s package
-description says *volatile*, which names what the release actually models. A
-package summary describes the artifact it ships with, so the narrower word is
-the accurate one there and the broader one would over-claim the wheel. The
-bullet above is the boundary either word is read against (`PL-XF89`).
+The full list is in `docs/MODEL.md` under "Known limitations" and
+"Model boundary", with the simplifications behind each item. For what the
+simulator models today and what is planned next, see [`ROADMAP.md`](ROADMAP.md).
+
+## How the model is checked
+
+The tests are organized around two questions. **Verification** asks whether the
+code solves the intended equations correctly. **Validation** asks whether those
+equations describe the real physiology. A model can solve its equations without
+error and still be physiologically wrong, so verification tests alone cannot
+answer the second question.
+
+Verification uses these tests:
+
+- a comparison with an independently written solution of the model's equations
+- a comparison with an exact solution for the breathing circuit
+- a check of mass balance, to within a documented tolerance
+- checks at zero flow and at equilibrium
+- checks that changing solubility or ventilation moves the results in the
+  expected direction
+- a check that replaying a case gives identical results
+
+Validation is one test (`tests/reference/test_published_wash_in_and_elimination.py`).
+It compares each agent's $`F_A/F_I`$ at 30 minutes with the volunteer
+measurements of Yasuda et al. All three agents' simulated values fall inside the
+measured spread. The volunteers, however, were breathing nitrous oxide, which
+this model cannot reproduce. The model's partition coefficients also come from
+the same line of research as the volunteer data. A pass shows that the model
+reproduces what its parameter set is meant to give, not that the parameter set
+is independently right.
+
+The model's documentation (`docs/MODEL.md`) therefore grades the cited source of
+every value as a primary measurement, a secondary synthesis, or the parameter set
+of another simulator used as a reference. Moving the remaining values onto primary
+sources is open work, tracked in [`ROADMAP.md`](ROADMAP.md).
+
+A further test compares simulated elimination with the mean washout curves that
+Yasuda et al. published (`tests/reference/test_late_washout_against_published_fits.py`).
+It covers 24 hours, the most the simulator allows. It records where the model's
+tail lies above and below those curves. It passes whether or not the two agree.
+The model's documentation gives the result (`docs/MODEL.md` §
+"The first 24 hours of elimination against the published mean curves").
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ## Running it
 
-**There is no packaged application yet.** Installers, code signing and
-distribution are planned but deliberately out of scope for now, which means
-that today the only way to run the simulator is to build it from source. If you
-want to *use* it rather than work on it, that is the honest answer rather than a
-shortcut being withheld, and [`ROADMAP.md`](ROADMAP.md) is where the packaging
-work is tracked.
+**There is no packaged application yet.** The only way to run the simulator is
+to build it from source. Installers, code signing and distribution are planned
+but out of scope for now, and [`ROADMAP.md`](ROADMAP.md) tracks that work.
 
-Building from source needs two things:
+Building from source needs:
 
-- **Python 3.14** — `.python-version` names the exact patch release, and `uv`
-  installs it for you.
-- **[uv](https://docs.astral.sh/uv/) 0.12.5 or newer.** `required-version` in
-  `pyproject.toml` is a floor, so an older build stops with a clear message
-  rather than quietly resolving the interpreter pin against a list that
-  predates it.
-- **On Linux, `libegl1`** (`apt install libegl1`), which the Qt interface
-  needs and the PySide6 wheels do not carry. Nothing
-  else on an ordinary desktop: the four other OS libraries Qt links -
-  `libgl1`, `libxkbcommon0`, `libdbus-1-3` and `libfontconfig1` - are already
-  there, and macOS and Windows need nothing extra. On a minimal container,
-  where they may not be, `docs/ARCHITECTURE.md` § "Dependencies" has the
-  measured list of what the wheels expect from the OS.
+- **[uv](https://docs.astral.sh/uv/) 0.12.5 or newer.** An older uv stops with a
+  message, because the project's settings require this minimum
+  (`required-version` in `pyproject.toml`).
+- **Python 3.14**, which uv installs for you. The file `.python-version` names
+  the exact patch release.
+- **On Linux, `libegl1`** (`apt install libegl1`). The Qt interface requires it,
+  and the PySide6 wheels do not carry it. An ordinary desktop needs nothing
+  else, because it already has the four other system libraries that Qt links:
+  `libgl1`, `libxkbcommon0`, `libdbus-1-3` and `libfontconfig1`. For a minimal
+  container, which may lack them, `docs/ARCHITECTURE.md` § "Dependencies" has
+  the measured list of what the wheels expect from the system.
+- **On macOS and Windows, nothing extra.**
 
 ```bash
 git clone https://github.com/stuthedew/open-anesthesia-sim.git
@@ -184,66 +218,19 @@ uv sync --locked --dev
 make run          # or: uv run anesthesia-sim
 ```
 
-For development, `make check` runs CI's checks — formatting, linting, strict
-type checking, and the full test suite under a 100% statement and branch
-coverage gate on the simulation core — and must pass before a change is
-complete. A few checks run in only one of the two gates; `GATE_ONLY` in
-[`tools/doc_check.py`](tools/doc_check.py) lists them, so a green `make check`
-does not promise a green CI run. `make test` is the suite alone, without the coverage gate;
-`make fix` applies the formatter and the safe lint fixes.
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the map of where new code
-belongs.
-
-## How the model is checked
-
-The distinction the test suite is organized around is between **verification**
-— the implementation solves the intended equations correctly — and
-**validation** — those equations describe the phenomenon. A model can be
-numerically flawless and physiologically wrong, and a suite made only of the
-first would report that as though it had settled the second.
-
-Verification is an independent from-scratch solution of the same system, an
-analytic circuit solution preserved from before there was a patient, mass
-balance closed to a documented tolerance, the zero-flow and equilibrium limits,
-directional tests on solubility and ventilation, and a deterministic-replay
-test.
-
-Validation is one test, and it is deliberately not oversold:
-`tests/reference/test_published_wash_in_and_elimination.py` compares each agent's $`F_A/F_I`$
-at 30 minutes against the volunteer measurements of Yasuda et al., and all
-three land inside the measured spread. That module states its own caveats at
-length — the published subjects were breathing nitrous oxide, which this model
-cannot reproduce, and the shipped partition coefficients descend from the same
-lineage as the data being compared against. Passing it shows this implementation
-reproduces its parameter set's intent, not that the parameter set is
-independently right. Beside it,
-`tests/reference/test_late_washout_against_published_fits.py` measures the
-elimination, to the end of the supported 24 hours, against the same papers'
-published mean washout curves and records where the modelled tail runs above
-and below them; it asserts nothing about agreement, and `docs/MODEL.md` carries the reading.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-That last point generalizes, and it is why parameter provenance is graded
-rather than merely cited. `docs/MODEL.md` distinguishes a primary measurement
-from a secondary synthesis from a reference implementation's parameter set, and
-says which tier each shipped number actually sits on. Moving the remaining
-values onto primary sources is open work, tracked in
-[`ROADMAP.md`](ROADMAP.md).
-
 ## Documentation
 
 - [`docs/MODEL.md`](docs/MODEL.md) — the scientific specification: equations,
-  units, conventions, parameter provenance, numerical method, required
-  invariants and tests, interface requirements, assumptions and known
-  limitations. If a statement's truth depends on the model version, it lives
-  here rather than in this file.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how `core/`, `app/` and
-  `data/` fit together, and where new code belongs.
+  units, conventions, parameter provenance, numerical method, properties the
+  model must always keep, required tests, interface requirements, assumptions
+  and known limitations.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the folders `core/`,
+  `app/` and `data/` fit together, and where new code belongs.
 - [`ROADMAP.md`](ROADMAP.md) — the authoritative version and milestone map.
-- [`docs/items/`](docs/items) — the development queue, one file per item, each
-  carrying a brief written for someone who has never seen it.
+- [`docs/items/`](docs/items) — the development queue, one file per work item,
+  each with a brief written for someone new to the item.
 - [`CLAUDE.md`](CLAUDE.md) — the engineering and safety-critical standards this
-  repository is developed under.
+  project is developed under.
 
 ## Contributing and getting help
 
@@ -251,30 +238,43 @@ Questions, bug reports and suggestions belong in
 [GitHub issues](https://github.com/stuthedew/open-anesthesia-sim/issues). The
 project is maintained by [Stuart Feichtinger](https://github.com/stuthedew).
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) is the short version: what CI checks, what
-a change is held to, and how to add a source document. You do not need to know
-anything about the development queue to send one — the `PL-XXXX` pull request
-titles are a maintainer's bookkeeping, and nothing checks yours for an id.
-
 Corrections to the science are especially welcome, and the more specific the
-better: `docs/MODEL.md` cites its sources precisely so that a disagreement can
-be about a measurement rather than about a recollection.
+better. The model description in `docs/MODEL.md` cites its sources precisely, so
+a disagreement can be about a measurement rather than a recollection.
+
+The short guide in [`CONTRIBUTING.md`](CONTRIBUTING.md) sets out the
+requirements for a change and how to add a source document. The map in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) shows where new code belongs.
+
+You can send a change without knowing anything about the development queue.
+The `PL-XXXX` ids in the project's pull request titles are the maintainer's
+bookkeeping, and nothing checks your title for one.
+
+A change is complete only when `make check` passes. It runs CI's checks:
+formatting, linting, strict type checking, and the full test suite with a 100%
+statement and branch coverage gate on the simulation core. A few checks run in
+only one of `make check` and CI, so a passing `make check` does not guarantee a
+passing CI run. A list in [`tools/doc_check.py`](tools/doc_check.py)
+(`GATE_ONLY`) names them.
+
+Run `make test` for the test suite alone, without the coverage gate. Use
+`make fix` to apply the formatter and the safe lint fixes.
 
 ## Citation
 
-If you use this software, cite it through
-[`CITATION.cff`](CITATION.cff) — GitHub renders it into APA and BibTeX from the
-**Cite this repository** button in the sidebar.
+If you use this software, cite it. The **Cite this repository** button in
+GitHub's sidebar formats the citation in [`CITATION.cff`](CITATION.cff) as APA
+and BibTeX.
 
 ## Acknowledgements
 
-The interface's layout model is modelled on Blender's workspace, area and
-editor model. The design was studied from Blender's published source and its
-design documentation. Blender is developed by the Blender Foundation and its
-contributors. No Blender code is used in this project, and none of its
-documentation is reproduced here.
-[`docs/interface-provenance.md`](docs/interface-provenance.md) records what was
-adopted, what was changed and what was refused, with Blender's licences.
+The interface's layout follows Blender's model of workspaces, areas and
+editors. Blender is developed by the Blender Foundation and its contributors.
+Blender's design was studied from its published source code and design
+documentation. This project uses no Blender code and reproduces none of
+Blender's documentation. See
+[`docs/interface-provenance.md`](docs/interface-provenance.md) for what was
+adopted, changed and refused, and for Blender's licences.
 
 ## License
 
