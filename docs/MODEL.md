@@ -11271,128 +11271,179 @@ readout, for an instant that nobody is looking at (`PL-LTKL`).
 
 ### A preview of an unapplied setting
 
-While a learner holds a slider's thumb, the chart draws the trajectory that the
-run would take if the value under the thumb were applied where the run stands
-now (`PL-5B1N`). This section says what that drawing is, how it is computed and
-what it may imply.
+While a learner holds a slider's handle, the chart draws the trajectory that the
+run would take if the value under the handle were applied at the run's current
+time (`PL-5B1N`). Both plots draw it, so they never show two different futures.
+On the F_A/F_I plot the preview is the predicted ratio. A dot marks where a
+stretch of it stops, as on the run's curve.
 
-**A preview is a third kind of value.** It is not a modelled state of the run,
-because the run has not passed through it. It is not a measurement either. It
-is a prediction, conditional on a setting that the learner has not applied and
-may never apply. A preview drawn with the run's weight and no label would read
-as a run that happened. So everything below exists to keep it from reading
-that way.
+**A preview is a prediction.** The run has not passed through it, so it is not a
+modelled state of the run. It is not a measurement either. It depends on a
+setting that the learner has not applied and may never apply. Drawn with the
+run's line width and no label, it would look like a run that happened.
 
-**How it is computed.** `SimulationController.preview_window` opens a second
-run definition at the run's reach. It starts from the run's canonical state
-there (§ "The canonical evaluation rule"), under the settings that applying the
-value would give. Those settings are built the way a branch builds its own: a
-trial run is rebuilt from the settings in force, checked to hold every value
-the run holds, and given the value through its own setter
-(`SimulationController.preview_settings`). So the value is checked by the core
-setter that would apply it, and a cardiac output moves every tissue flow
-exactly as applying it would. It is the same model and version as the run, it
-is deterministic, and nothing of the run is written. At the run's own setting
-the preview coincides with what the run then draws, to within floating-point
-composition error. The preview is evaluated on the run's own grid. It ends at
-the axis's right edge, or at the end of the supported run length if that comes
-first. While the run plays, it is evaluated again on every frame from the run's
-new reach.
+**Four cues mark a preview, and none of them is colour.** Its curves keep each
+compartment's colour and dash pattern, because those are what tell the six
+compartments apart.
 
-**Four cues mark it, and none of them is colour.**
-
-1. **Position.** The preview lies wholly to the right of the run's reach,
-   inside a tinted region. The region's left edge is a stroke at the reach,
-   where the run stands now. The run that the preview belongs to never enters
-   the region.
+1. **Position.** The preview lies wholly to the right of the run's current time,
+   inside a tinted region. A line at the run's current time is the region's left
+   edge. The preview ends at the right edge of the time axis, or at the end of the
+   longest run the simulator supports if that comes first. The run that the
+   preview belongs to never enters the region, but when runs are compared, a run
+   that has gone further may be drawn inside it.
 2. **A label in the plot**, such as "Preview: Fresh gas flow 6.0 L/min, not
-   applied". It names the control and the value tried in the slider's own
-   words, and it names the run while runs are compared. It is drawn inside
-   the region, so a screenshot taken during a drag carries it.
-3. **Width.** Each preview curve is one pixel thinner than a lone run's curve
-   of the same compartment, and never thinner than 2 px, below which an
-   antialiased line renders under 3:1 against the panel
-   (§ "The six compartment traces: what separates them"). The two 3 px traces
-   preview at 2 px. The four 2 px traces preview at 2 px, so for them the other
-   three cues carry the distinction. In compare mode the first run is drawn one
-   step wider, but its preview keeps the lone-run width. Otherwise the preview
-   would be wider than the other run's real curve of the same compartment, and
-   the width cue would point the wrong way.
-4. **Binding to the drag.** The preview exists only while the thumb is held.
-   It appears when the thumb is pressed, and the frame drawn at the release no
-   longer has it. Nothing decays or lingers.
+   applied". It names the control and the value tried, in the slider's own words.
+   It is drawn inside the region, so a screenshot taken during a drag includes
+   it. Each compared run has its own controls, so only the run whose slider
+   handle is held shows a preview. The label names that run.
+3. **Width.** Each preview curve is one pixel thinner than the same compartment's
+   curve in a run shown alone, but never thinner than 2 px. The two compartments
+   drawn at 3 px therefore have 2 px preview curves, and so do the four drawn at
+   2 px. For those four, the other three cues mark the preview. When runs are
+   compared, the first run's curves are drawn one step wider, but its preview
+   curves keep the width they have when the run is shown alone. The preview is
+   then no wider than the other run's curve of the same compartment.
+4. **Timing.** The preview exists only while the handle is held. It appears at
+   the press and is gone from the frame drawn at release.
 
-**The curves keep each compartment's colour and dash pattern, deliberately.**
-Those two channels are what tell the six compartments apart, and inside the
-preview they have to do the same work. Dash pattern cannot carry "predicted"
-instead: the muscle trace is already dotted, and a solid run with a dotted
-preview would flatten the five dashed traces into one style. Reduced opacity
-cannot carry it either. Blended over the panel at 0.85 opacity, the alveolar
-and muscle traces fall to 2.93 and 2.83 against it, under SC 1.4.11's 3:1, and
-at 0.75 four of the six do. The region's fill is decoration, on the same ground
-as the MAC-awake band's: its edge and the label carry the information
-(`theme.PREVIEW_REGION_FILL_OPACITY`).
+**The preview comes from the same model and version as the run.** It starts from
+the run's state at its current time, as § "The canonical evaluation rule"
+defines that state. The value goes through the same checks as when it is
+applied. A new cardiac output moves every tissue flow exactly as applying it
+would. The same inputs always give the same preview. Computing a preview changes
+nothing in the run. When the value under the handle is the setting already in
+force, the preview matches what the run then draws, to within the computer's
+rounding error. While the run plays, the preview is computed again on every
+frame from the run's new current time.
 
-**What a drag does to the run.** A pointer drag applies its value when the thumb
-is released, and the control-input timeline records one change there. Until
-then the run keeps the setting in force, and the value printed beside the
-slider is that setting. The value is applied before the preview ends, so the
-frame drawn at the release shows the run under its new setting. A key press, a wheel step or a click on the groove is
-one discrete input, so it applies at once and draws no preview.
+**A drag applies its value only when the handle is released.** The run records
+one setting change at that moment. Until then the run keeps the setting in force,
+and the value printed beside the slider is that setting. The value is applied
+before the preview ends, so the frame drawn at release already shows the run
+under its new setting. A key press, one notch of the scroll wheel or a click on
+the slider away from its handle is a single input, so it applies at once and
+draws no preview. A run stops when it fails or reaches the end of the longest
+run the simulator supports. A stopped run accepts no new setting and draws no
+preview.
 
-**The window keeps its width during a preview.** It slides so that the run's
-reach sits at mid-plot: half the window shows the run that happened, and half
-shows the prediction (`chart_time_base.preview_window`). Early in a run the
-window stops at zero, and the reach sits left of the middle. Widening the axis
-to make room would rescale every slope, which § "The chart's time base"
-refuses. The window returns to following the run at the release.
+**The time window keeps its width during a preview.** It slides so that the
+run's current time sits at mid-plot: half the window shows the run that
+happened, and half shows the prediction. Early in a run the window stops at
+zero, and the current time sits left of the middle. Widening the window to make
+room would rescale every slope, which § "The chart's time base" rules out. When
+runs are compared, the window centres on the current time of the run whose
+slider handle is held. At release, the window goes back to following the run.
 
-**What a preview does not do.** The hover never answers from it, so no value on
-a preview curve is ever printed as a reading. A preview that goes above the
-top of the concentration axis is cut off there, as a run's trace is. The
-off-scale notice then names each clipped prediction with its highest
-predicted value in view, because the readouts give only the run's values
-(`dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`). A predicted F_A/F_I
-stretch that stops ends in a dot, by the same rule as the run's. A stopped run, failed or at the
-supported run length, refuses every setting and draws no preview. Both plots
-draw it: the F_A/F_I plot shows the predicted ratio, so the two plots never
-show two different futures. Each compared run has its own controls, so only
-the run whose thumb is held previews, and the window centres on that run's
-reach. A compared run further along may then be drawn inside the region; the
-label names the run the preview belongs to.
+**No value on a preview curve is printed as a reading.** A value shown when the
+pointer hovers over the chart never comes from a preview. A preview that goes
+above the top of the concentration axis is cut off there, as a run's curve is.
+The off-scale notice then names each preview curve that is cut off, with its
+highest value in view, because the readouts give only the run's values.
+
+**For developers.** The preview is a second run definition
+(`SimulationController.preview_window`), evaluated on the run's own time grid.
+Its settings are built the way a branch, a run taken from another run, builds
+its own (`SimulationController.preview_settings`). A trial run is rebuilt from
+the settings in force, checked to match the run in every value, and given the
+new value through the same setter that applies a value to the run. The centred
+time window comes from `chart_time_base.preview_window`, and the off-scale
+notice's wording from `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
+
+The 2 px minimum width for a preview curve is there because an antialiased line
+thinner than 2 px has less than 3:1 contrast against the panel
+(§ "The six compartment traces: what separates them").
+
+Neither dash pattern nor reduced opacity can mark a curve as predicted. The
+muscle curve is already dotted, and drawing the run solid with a dotted preview
+would flatten the five dashed curves into one style. At 0.85 opacity, the
+alveolar and muscle curves fall to contrasts of 2.93 and 2.83 against the panel,
+less than the 3:1 that WCAG success criterion 1.4.11 sets. At 0.75, four of the
+six fall below 3:1.
+
+The region's tint is decoration, as the MAC-awake band's is, because the
+region's edge and the label carry the information. Its opacity is
+`theme.PREVIEW_REGION_FILL_OPACITY`.
 
 ### A cost at the reader's price
 
-This section specifies what a stored agent price carries, and what a readout
-that shows a cost must show beside it (`PL-VJZK`). `app/preferences.py`
-stores a price (`PL-93B3`). The agent cost View shows the cost, and its form
-sets the price (`PL-1P15`, `app/agent_cost.py`).
+The agent cost View shows what the delivered agent costs, at a price that the
+reader sets in its form. The readout shows which part of the cost is the model's
+and which part is the reader's (`PL-VJZK`). A price is neither modelled nor
+measured, because the reader supplies it. Every other value the interface shows
+today is modelled. A cost is a modelled amount times that price, so a wrong
+price makes a correct amount lead to a wrong conclusion.
 
-**A price is neither modelled nor measured.** This document separates
-modelled values from measured ones, and every value the interface shows today
-is modelled. A price is a third kind of value: a number the reader supplies.
-A cost multiplies a modelled amount by that number. A wrong price therefore
-makes a correct amount lead to a wrong conclusion. So the readout must show
-which part of a cost is the model's and which part is the reader's. That is
-why the safety standard in `CLAUDE.md` applies to a cost, although money is
-not a clinical quantity.
+**The project ships no price.** Until the reader sets a price, the readout says
+that no price is set, and it shows no cost. A shipped price goes stale, and it
+differs from one institution to the next. Gas Man shows both problems. Its
+default price for isoflurane is $20.47 for a 100 mL bottle (Philip JH,
+*Workbook for Gas Man*, Appendix C, printed p. 171). The book calls its
+defaults "USA bottle volume and bottle cost as of March 5, 2008" (printed
+p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008" (printed
+p. 141).
 
-**The project ships no price.** A shipped price goes stale, and it differs
-from one institution to the next. The reference implementation shows both
-problems. Gas Man's parameter file prices isoflurane at $20.47 for a 100 mL
-bottle (Philip JH, *Workbook for Gas Man*, Appendix C, printed p. 171). The
-book calls its defaults "USA bottle volume and bottle cost as of March 5, 2008"
-(printed p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008"
-(printed p. 141). Chapter 14's first exercise prints its costs beside the
-price they used, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). The
-costs of both isoflurane exercises are reproduced at that price
-(`tests/reference/test_published_vapour_to_liquid.py`). Without the price
-beside them, a reader could not tell which of the two prices produced those
-costs. So, until the reader sets a price, the readout says that no price is
-set, and it shows no cost.
+**What a cost readout shows.** A cost is never shown alone. Beside it, the
+readout shows these six things:
 
-**What a stored price carries.** The store holds at most one price for each
-agent. Each price records five things:
+1. the delivered agent in millilitres of liquid equivalent, labelled as
+   delivered and as liquid. This is the modelled figure that the cost is
+   computed from. It stays on screen even where the reader has chosen to show
+   the View's amounts in litres of vapour (`ROADMAP.md`, v0.7.0 entry 8), so
+   that the modelled amount never appears only inside a figure that includes
+   the reader's price;
+2. the price per millilitre of liquid that the cost uses, so that the reader
+   can check the product by eye;
+3. the bottle price and the bottle volume that the price per millilitre came
+   from;
+4. the currency's code, on the cost and on each price;
+5. the date on which the price applied; and
+6. words saying that the cost is at the reader's price, not only a colour or a
+   style, so that no reader misses the statement.
+
+**A bare "mL" does not say enough.** The schematic labels its amounts in
+millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1). Gas Man quotes its price
+as "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
+about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
+factor.
+
+**The simulator reproduces the costs of both of Gas Man's isoflurane
+exercises.** It does so at the price that the book prints beside the costs of
+Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). Without
+that price, a reader could not tell which of the book's two prices produced
+those costs. For Exercise 14-1 at 60 min, the readout could read "39.4 mL of
+liquid x USD 0.2047 per mL of liquid = USD 8.07, at your price of USD 20.47
+per 100 mL bottle, as of 2008-03-05". The wording and the layout are
+placeholders, and the six facts are the requirement. The book prints $8.06,
+because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
+(§ "Agent amount").
+
+**How the cost is computed.** The cost is the delivered agent's liquid
+equivalent times the price per millilitre. It uses the delivered agent because
+that is what left the bottle (`ROADMAP.md`, planned-milestone item 28, and
+`PL-H4N8`). The conversion to liquid is exact (§ "Agent amount"). The cost
+depends only on the delivered amount, the agent's vapour-to-liquid ratio and
+the price stored for that agent. That same stored price supplies the bottle
+price and volume, the price per millilitre, the currency and the date shown
+beside the cost. The date is never used to compute the cost, and neither is
+today's date. When two runs are compared, each run's cost uses the price of its
+own agent. A cost is never added to, or subtracted from, a cost in another
+currency.
+
+**The figures beside a cost are rounded, and the readout says so.** The cost is
+computed from the unrounded liquid volume and price per millilitre, and the
+readout says that too (`PL-1P15`). It shows the cost to three significant
+figures and never finer than a hundredth, and the price per millilitre to four
+significant figures (§ "Displayed precision"). The liquid volume is shown to
+0.1 mL, so the product of the figures shown can differ from the cost by more
+than one unit of the cost's last digit. At USD 115.13 per 240 mL bottle, 60 min
+of desflurane at 6 % and 1 L/min costs USD 8.23. Shown as 17.2 mL and USD 0.4797
+per mL, the two figures multiply to USD 8.25.
+
+<!-- not-restated: 6 % -->
+
+**What a stored price carries.** The simulator keeps at most one price for
+each agent. Each price records five things:
 
 - the agent it prices;
 - the price of one bottle, in the price's currency;
@@ -11400,280 +11451,243 @@ agent. Each price records five things:
 - the currency, as its three-letter ISO 4217 code, such as `USD` or `EUR`;
   and
 - the date on which the price applied, as an ISO 8601 calendar date, such as
-  `2008-03-05`. The reader gives it, and the entry offers the day of entry
-  for the reader to change. A price goes stale from the day it was quoted,
-  not from the day it was typed in, so the date records the quote.
-
-Every stored price is the reader's own, because the project ships none. So
-the record has no field that says who set the price. If a release ever ships
-a default price, the record gains that field. The readout must then mark a
-default price as one the project supplied, with its date.
+  `2008-03-05`. The form's date field writes dates this way and fills in the
+  day of entry. The reader should change it to the day the price was quoted,
+  because a price goes stale from that day, not from the day it was typed in.
 
 **The price is taken per bottle, and the price per millilitre is derived**
 (decided by `PL-VJZK` on 2026-10-26, over asking for a price per millilitre).
 An institution buys agent by the bottle, and its pharmacy quotes a price per
-bottle. Gas Man's Set Cost command takes "the bottle volume and bottle cost"
-in the same way (printed p. 15). A field that asked for a price per
-millilitre would make the reader divide first. A bottle price typed into such
-a field would multiply every cost by the bottle's volume in millilitres. That
-volume is 100 to 250 for the volatile agents in Gas Man's defaults (printed
-pp. 171-172). Taking the bottle price and the bottle volume removes that
-mistake. The per-bottle form still allows three mistakes of its own. A price
-per millilitre typed as the bottle price gives a cost 100 to 250 times too
-low. A bottle volume typed in litres, such as 0.25, or as 1 for one bottle,
-gives a cost 100 to 1000 times too high. Swapping the price and the volume
-inverts the price per millilitre. So the field for the bottle volume names its
-unit, millilitres of liquid. The readout also shows the price per millilitre
-that the two figures give. Each of the first two mistakes makes that price 100
-to 1000 times the true one. A swap shows only where the two numbers differ
-widely. At Gas Man's sevoflurane default of 240.34 for a 250 mL bottle
-(printed p. 172), a swap changes the cost by 8 %, and nothing on screen would
-show it. One function derives the price per millilitre from the two
-stored figures. The store never holds it, so it cannot disagree with them.
-The store refuses no positive finite bottle volume, whatever its size,
-because no source gives the sizes in which the agents are sold (`PL-93B3`,
-2026-11-01). A volume typed in litres or as a count of bottles is caught on
-screen instead: it makes the price per millilitre, which the readout shows
-beside every cost, 100 to 1000 times the true one.
+bottle. The price per millilitre is never stored, so it cannot disagree with
+the bottle price and volume. The form still allows three mistakes:
+
+- a price per millilitre typed as the bottle price. The cost is then 100 to
+  250 times too low, because the bottles in Gas Man's defaults hold 100 to
+  250 mL of the volatile agents (printed pp. 171-172);
+- a bottle volume typed in litres, such as 0.25, or as 1 for one bottle. The
+  cost is then 100 to 1000 times too high; and
+- the price and the volume swapped. The price per millilitre is then inverted.
+
+The field for the bottle volume therefore names its unit, millilitres of liquid.
+The first mistake makes the price per millilitre on the readout 100 to 250 times
+too low, and the second makes it 100 to 1000 times too high. A swap stands out
+only where the two numbers differ widely. At Gas Man's sevoflurane default of
+240.34 for a 250 mL bottle (printed p. 172), a swap changes the cost by 8 %, and
+nothing on screen would show it.
 
 <!-- not-restated: 8 % -->
 
-**Why a currency code, and why that form of date.** The sign "$" names the
-United States, Canadian and Australian dollars, among others. So a cost in "$"
-does not say which currency it is in. Gas Man shows the problem: its parameter
-file labels each bottle cost "Bottle cost in $US" (printed p. 171), while its
-menu says the cost is typed "in the local currency" (printed p. 15). An
-ISO 4217 code names exactly one currency. A date written 03/05/2008 means
-March or May depending on the reader's country, and the ISO 8601 form
-2008-03-05 does not. Both standards are cited here by their numbers,
-ISO 4217:2015 and ISO 8601-1:2019, and neither was read for this section.
+**What is refused.** A bottle price or a bottle volume must be a positive
+finite number. A price of zero is refused because it is far more likely to be
+an empty field than an agent given away. The currency must be three capital
+letters, and the date a real calendar date. The simulator checks each of these
+at entry, and again when it reads its preferences file. The three letters are
+not checked against the codes that ISO 4217 assigns, but a mistyped code shows
+beside every cost and price, where the reader sees it. The reader types the
+bottle price and the bottle volume as digits with at most one decimal point. A
+sign, an exponent, a thousands separator or a decimal comma is refused rather
+than guessed at, because "1,250" could mean 1250 or 1.25.
 
-**What the store refuses.** It refuses a bottle price or a bottle volume that
-is not a positive finite number. A price of zero is refused too, because it is
-far more likely to be an empty field than an agent given away. It refuses a
-currency that is not three capital letters, and a date that is not a real
-calendar date. It refuses each of these when the reader enters it, and again
-when it reads the preferences file. A refused entry leaves the stored price
-as it was, so the readout goes on showing the cost at that earlier price, with
-that price beside it. A price refused when the preferences file is read is not
-used, and it is never replaced by a default. The readout then says that no
-valid price is set for the agent.
-The store does not also check the three letters against the codes that
-ISO 4217 assigns (`PL-93B3`, 2026-11-01). That list changes several times a
-year, so the check would need a dated copy of it with its own provenance, and
-a copy that fell out of date would refuse a real currency. Any three letters
-remove the ambiguity of "$", and a mistyped code is shown beside every cost and
-price, where the reader sees it.
+**A refused entry changes nothing.** The form says why it refused the entry,
+and the readout goes on showing the cost at the price already stored, with
+that price beside it.
 
-**What a cost readout shows.** A cost is never shown alone. Beside it, the
-readout shows these six things:
-
-1. the delivered agent in millilitres of liquid equivalent, labelled as
-   delivered and as liquid. This is the modelled figure that the cost
-   multiplies. It stays on screen, so that a number the reader supplied is
-   never the only carrier of a modelled quantity. This holds even where the
-   reader has chosen to show the View's amounts in litres of vapour
-   (`ROADMAP.md`, v0.7.0 entry 8);
-2. the price per millilitre of liquid that it multiplied by, so that a reader
-   can check the product by eye;
-3. the bottle price and the bottle volume that the price per millilitre came
-   from;
-4. the currency's code, on the cost and on each price;
-5. the date on which the price applied; and
-6. words saying that the cost is at the reader's price. Words are required,
-   not only a colour or a style, so that the statement reaches every reader.
-
-A bare "mL" does not say enough. The schematic labels its amounts in
-millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1), and Gas Man prices
-"Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
-about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
-factor. For Gas Man's Exercise 14-1 at 60 min, the readout could read
-"39.4 mL of liquid x USD 0.2047 per mL of liquid = USD 8.07, at your
-price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The wording and the
-layout are placeholders, and the six facts are the requirement. The book
-prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to
-196 (§ "Agent amount").
-
-**How the cost is computed.** The cost is the delivered agent's liquid
-equivalent times the price per millilitre. The delivered agent is the basis,
-because it is what left the bottle (`ROADMAP.md`, planned-milestone item 28,
-and `PL-H4N8`). § "Agent amount" converts the delivered agent to liquid
-exactly. The price is the one stored for the agent whose amount is priced.
-The cost depends only on the delivered amount, the agent's vapour-to-liquid
-ratio and the stored price. The date is shown and never used in the
-arithmetic, and nothing reads the clock to compute a cost. The cost is
-computed from the unrounded liquid volume and price per millilitre, and it is
-rounded only for display. So the product of the two figures shown beside it
-can differ from the cost. The difference is at most half a unit of the
-volume's last shown digit times the price per millilitre, plus the volume
-times half a unit of the price's last shown digit. Desflurane at USD 115.13
-per 240 mL bottle, run at 6 % and 1 L/min for 60 min, costs USD 8.23. Shown as
-17.2 mL and USD 0.4797 per mL, the two figures multiply to USD 8.25.
-
-<!-- not-restated: 6 % -->
-
-**When no cost is shown.** The readout shows no cost, and says why, in each
-of these cases:
+**When no cost is shown.** The readout shows no cost, and says why, in each of
+these cases:
 
 - no price is set for the agent;
-- the stored price was refused;
-- the price per millilitre is not a positive finite number, or the cost is
-  not finite, which entries such as a bottle price of 1e308 for a 0.5 mL
-  bottle can cause; or
+- the stored price was refused when the simulator read its preferences file.
+  No default replaces it, and the readout says that no valid price is set for
+  the agent;
+- the price per millilitre is not a positive finite number, or the cost is not
+  finite, which extreme entries can cause, such as a bottle price of 10 to the
+  power 308 for a 0.5 mL bottle; or
 - the delivered amount cannot be converted to liquid (§ "Agent amount").
 
-It never shows a cost of zero in place of one of these cases. It never shows
-a cost left over from an earlier instant, another agent or an earlier price.
-A change to the price redraws the cost at once, whether or not the run is
-advancing. The cost and the facts shown beside it are read from one price
-record, so they cannot come from two different prices. When two runs
-are compared, each run's cost uses the price of its own agent. A cost is
-never added to, or subtracted from, a cost in another currency.
+The readout never shows a cost of zero in place of one of these cases. Nor does
+it show a cost left over from an earlier instant, another agent or an earlier
+price. When the price changes, the readout redraws the cost at once, whether or
+not the run is advancing.
 
-**Displayed precision.** How many decimals a cost can justify depends on the
-price, so it is not a count of decimals (`PL-0S0V`). § "Displayed precision"
-derives two precisions, in its paragraph on a cost and a price per millilitre: the cost
-is shown to three significant figures and never finer than a hundredth, and
-the price per millilitre to four significant figures. The product of the
-figures shown can still differ from the cost by more than one unit of its
-last digit, because the liquid volume is shown to 0.1 mL. So the readout
-always says that the figures beside the cost are rounded, and that the cost
-is computed before rounding (`PL-1P15`).
+**For developers.** The agent cost View and its form live in
+`app/agent_cost.py` (`PL-1P15`). The preferences module in `app/preferences.py`
+stores each price (`PL-93B3`). The safety standard in `CLAUDE.md` applies to a
+cost, although money is not a clinical quantity.
 
-**What the form takes.** The reader types the bottle price and the bottle
-volume as digits with at most one decimal point. A sign, an exponent, a
-thousands separator or a decimal comma is refused rather than guessed at,
-because "1,250" could mean 1250 or 1.25. A refused entry changes nothing, and
-the form says why. The date field writes the date as ISO 8601 does, and starts
-at the day of entry.
+A stored price has no field that says who set it, because the project ships
+none. If a release ever ships a default price, each stored price gains that
+field, and the readout must then mark a default price as one the project
+supplied, with its date.
 
-**Tests.** The two rows in the hazard table (§ "Reasonably foreseeable misuse,
-and the hazards the presentation carries") name the tests that enforce this
-section. `test_the_displayed_cost_reproduces_gas_man_s_printed_costs` runs both
-of Gas Man's isoflurane exercises from the patient inputs to the drawn cost,
-at the book's price, and checks the four printed costs.
+The form asks for a bottle price because a field for a price per millilitre
+would make the reader divide first, and a bottle price typed into it would
+multiply every cost by the bottle's volume in millilitres. Gas Man's Set Cost
+command likewise takes "the bottle volume and bottle cost" (printed p. 15). One
+function derives the price per millilitre from the bottle price and volume. The
+preferences module accepts any positive finite bottle volume, because no source
+gives the sizes in which the agents are sold (`PL-93B3`, 2026-11-01).
+
+The readout names a currency by its code because the sign "$" names the United
+States, Canadian and Australian dollars, among others. Gas Man shows the
+problem. Its defaults label each bottle cost "Bottle cost in $US" (printed
+p. 171). Its menu says the cost is typed "in the local currency" (printed
+p. 15). A code from ISO 4217:2015 names exactly one currency. The currency check
+stops at three capital letters (`PL-93B3`, 2026-11-01) because ISO 4217's list
+of codes changes several times a year. Checking against the list would need a
+dated copy of it with a record of its source, and a copy that fell out of date
+would refuse a real currency. Any three letters still remove the ambiguity of
+"$".
+
+The date follows ISO 8601-1:2019, as in 2008-03-05, because 03/05/2008 means
+March or May depending on the reader's country. Neither this standard nor
+ISO 4217:2015 was read for this section.
+
+The product of the liquid volume and the price per millilitre, as shown,
+differs from the cost by at most half a unit of the volume's last shown digit
+times the price per millilitre, plus the volume times half a unit of the
+price's last shown digit. The cost's precision is not a fixed count of
+decimals, because how many decimals a cost can justify depends on the price
+(§ "Displayed precision", `PL-0S0V`).
+
+The two rows in the hazard table (§ "Reasonably foreseeable misuse, and the
+hazards the presentation carries") name the tests for this section. A test in
+`tests/reference/test_published_vapour_to_liquid.py` runs both of Gas Man's
+isoflurane exercises from the patient inputs to the drawn cost, at US$20.47 per
+100 mL bottle, and checks the four printed costs
+(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`).
 
 ### The compartment schematic: what its heights, amounts and share bar assert
 
-The compartment schematic draws the circuit, the alveoli, venous blood, the
-vessel-rich group, muscle and fat as containers, in the readout row's order
-(`PL-RNYV`). This subsection says what each mark on it asserts,
-before any of it is drawn (`PL-2881`, 2026-11-01). It also governs every
-other View that shows an agent amount: the schematic's share bar (`PL-S79P`)
-and the agent cost View (`PL-B396`). Gas Man's Picture draws the same
-containers to show where the tension is. This schematic adds the amounts and
-the share bar to show where the agent is, which the readouts and the chart do
-not show. `ROADMAP.md` § "v0.7.0 - the schematic" records that design and
-what it was chosen over.
+The compartment schematic draws six compartments as containers: the circuit,
+the alveoli, venous blood, the vessel-rich group, muscle and fat, in the
+readout row's order (`PL-RNYV`). Like Gas Man's Picture, it shows where the
+tension is. It also shows where the agent is, which neither the readouts nor
+the concentration chart does. It prints the amount of agent each container
+holds, and its share bar gives each compartment's part of all the agent.
 
-**A container's fill height is the compartment's modelled tension, and it is
-not an amount.** Every container of one run fills against one scale. That
-scale is the concentration chart's percent axis, from zero at the bottom to
-`chart_axis_top_percent` at the top, which is 3 MAC of the running agent for
-every agent (`CHART_AXIS_TOP_MAC`). So a height on the schematic and a height
-on the chart are the same tension, and a learner who moves between the two
-Views reads one ruler. The schematic reads the top from that function and
-does not choose a second one. A container that holds more agent can stand
-lower than one that holds less. With sevoflurane at a 1 MAC dial, fat stands
-at 0.03% atm at 60 min, under 1% of its container's height, while it holds a
-fifth of the stored agent (`ROADMAP.md` § "v0.7.0 - the schematic").
+**A container's fill height is the compartment's modelled tension, not an
+amount.** All containers of one run fill against one scale: the concentration
+chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
+the top. So a height on the schematic and a height on the chart show the same
+tension. A container that holds more agent can stand lower than one that holds
+less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
+all the agent in the run, but its tension of 0.03% atm fills less than 1% of
+its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). Every
+container is drawn at one width, so its filled area is not an amount either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-Every container is drawn at one width, so its filled area is not an amount
-either. Drawn to scale, fat's container would take about 500 px of a View
-600 px wide, and four of the others between 1 and 7 px each, which is why
-`ROADMAP.md` records that drawing to scale was refused. A tension above the
-top of the scale fills its container to the top and is marked as off the
-scale, as the chart names a clipped trace in its off-scale notice. The
-container's label still prints the tension, so no value is lost. A
-sevoflurane dial at its 8% maximum puts the circuit at 4 MAC, so this case is
+A tension above the top of the scale fills its container to the top, and the
+schematic marks the container as off the scale. The concentration chart does
+the same for a trace above its axis, in its off-scale notice. The container's
+label still prints the tension. The circuit reaches 4 MAC, above the top, when
+a sevoflurane dial is at its 8% maximum.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-reachable.
 
-**A container's amount is the compartment's modelled agent, and its label says
-it is vapour.** The amount is $`M_x`$ of § "Agent amount": the equivalent
-volume of pure agent vapour at 20 °C and 760 mmHg, dry, shown in millilitres.
-It is a statement about the model's store, not about gas in the body. The
-agent in blood and fat is dissolved, and the reference condition names the
-unit, not where any of the gas is. Each amount is read from the snapshot's
-record for its compartment (`PL-KFTM`), which reads that compartment's
-`agent_amount_l` in `core/`. The schematic does not compute an amount of its
-own. Its precision is derived in § "Displayed precision".
+**A container's amount is the agent that the model holds in that compartment,
+counted as vapour.** It is the equivalent volume of pure agent vapour at a
+reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$
+in § "Agent amount"). The agent in blood and fat is dissolved, so the volume
+expresses an amount of agent, not gas present in the body. An agent amount has
+this meaning in every View that shows one, including the share bar
+(`PL-S79P`) and the agent cost View (`PL-B396`). § "Displayed precision"
+derives the precision at which amounts are shown.
 
-**How the interface names the unit of an agent amount, once for every View.**
-Two units count agent in millilitres, and they differ by a factor of about
-180 to 210, by agent. At the reference condition, 1 mL of liquid gives about
-183 mL of sevoflurane vapour and about 210 mL of desflurane vapour
-(§ "Agent amount"). So no View prints a bare "mL" beside an
-agent amount. A vapour amount is written "mL vapour", as in "38 mL vapour". A
-liquid amount is written "mL of liquid", as in "4.2 mL of liquid". The model
-holds no liquid, so this figure is worked out: it is the volume of liquid
-agent that would give that much vapour, which is what a vaporizer uses up.
-The spelling was "mL liquid equiv." until the project owner found it awkward
-on 2026-11-01. The caption under the figure says that the vaporizer used
-this liquid. `DisplayUnit` in `app/display_units.py` holds each spelling,
-from the first View that prints it, so every View reads it there and none
-writes its own. The schematic added "mL vapour" (`PL-RNYV`). The wording is a
-placeholder while the interface is being built. The rule is not: every
-spelling of an agent amount's unit names vapour or liquid. The accounting
-View's litres keep their caption, "Litres of equivalent pure agent gas", which
-names the vapour in other words.
+**An agent amount's unit always names vapour or liquid, and is never a bare
+"mL".** Millilitres of vapour and millilitres of liquid differ by a factor of
+about 180 to 210, depending on the agent. At the reference condition, 1 mL of
+liquid gives about 183 mL of sevoflurane vapour or about 210 mL of desflurane
+vapour (§ "Agent amount"). A vapour amount is written "mL vapour", as in
+"38 mL vapour". A liquid amount is written "mL of liquid", as in
+"4.2 mL of liquid". The model holds no liquid, so this number is worked out
+from a vapour amount. It is the volume of liquid agent that would give that
+vapour, which is what a vaporizer uses up. A caption under the number says
+that the vaporizer used this liquid. The accounting View shows amounts in
+litres, under the caption "Litres of equivalent pure agent gas", which marks
+them as vapour. These spellings may change while the interface is being built.
 
-**What the share bar shows.** The schematic has one bar, divided into six
-segments in the containers' order. Each segment's length is that
-compartment's amount as a share of all the agent the run holds, circuit
-included:
+**The share bar shows each compartment's share of all the agent the run holds,
+circuit included.** The bar is divided into six segments, in the containers'
+order. Each segment's length is that compartment's amount divided by the sum of
+the six amounts:
 
 ```math
 s_x = \frac{M_x}{\sum_y M_y}
 ```
 
-The sum runs over the six compartments, and it is the snapshot's
-`stored_agent_l`. So the six shares fill the whole bar. Each segment is named
-in text, never by colour alone. A share printed in text is shown in whole
-percent, derived in § "Displayed precision". When a run starts, it holds no
-agent, so no share exists. The bar is then drawn empty and prints no share,
-rather than dividing by zero or showing six zeros as if they were shares. The
-bar is used instead of the containers' areas because a position along a
-common scale is judged more accurately than an area (Cleveland WS, McGill R,
-"Graphical perception: theory, experimentation, and application to the
-development of graphical methods", *J Am Stat Assoc* 1984;79(387):531-554,
-https://doi.org/10.1080/01621459.1984.10478080). Only the first segment
-starts at the bar's baseline. Each of the others is judged by its length,
-which their ranking still places above area.
+The six segments therefore fill the whole bar. Each segment is named in text,
+never by colour alone. A share printed in text is shown in whole percent
+(§ "Displayed precision"). A run holds no agent when it starts, so the bar is
+then drawn empty and prints no share.
 
-**How the containers are joined.** The containers stand in one row, in the
-readout row's order. A line joins the circuit to the alveoli, which is
+**Lines between the containers show ventilation and blood flow.** The
+containers stand in one row. A line joins the circuit to the alveoli for
 ventilation. A line above the row carries arterial blood from the alveoli to
-each tissue group, and a line below it carries each tissue group's venous
-blood to the venous container, which a line joins back to the alveoli. So the
-three tissue groups are drawn in parallel, as § "Assumptions" perfuses them.
-A row of containers joined one to the next would draw agent passing from the
-vessel-rich group through muscle into fat, which is the intertissue route this
-model omits (`PL-RNYV`). Each schematic shows its run's current instant, and
-the line over it states that instant as the readouts' clock prints it. Two
-compared runs can stand at different times, as a branch taken at an earlier
-mark does, so a difference between two schematics may be elapsed time rather
-than the change the branch made. The run writes its schematic where it writes
-its readouts, from the same snapshot, and withholds the schematic's values
-where it withholds the readouts', after a Reset or an agent change that no
-frame has been drawn since. While runs are compared, the same line names the
-run, as the hazard table's row on reading one run's value as the other's
-requires.
+each tissue group. A line below the row carries each tissue group's venous
+blood to the venous blood container, and a line joins that container back to
+the alveoli. So the three tissue groups are drawn in parallel, as the model
+perfuses them (§ "Assumptions"). The containers are not joined one to the next,
+because that would draw agent passing from the vessel-rich group through muscle
+into fat, a route between tissues that this model omits (`PL-RNYV`).
 
-**Why no container is drawn for arterial blood.** This model gives arterial
-blood no volume, capacity or amount of its own, because
-$`F_a \equiv F_A`$ at every instant (§ "Blood compartments"). Gas Man's
-Picture draws an arterial container. Here it would show agent that the model
-does not hold, and its segment on the share bar would be a share of nothing.
-Arterial tension equals alveolar tension, which the alveolar container
-already shows.
+**No container is drawn for arterial blood.** The model sets arterial tension
+equal to alveolar tension at every instant ($`F_a \equiv F_A`$,
+§ "Blood compartments"), so it gives arterial blood no volume, capacity or
+amount of its own. The alveolar container therefore shows arterial tension as
+well. Gas Man's Picture draws an arterial container. Here such a container
+would show agent that the model does not hold.
 
-**What the schematic does not assert.** Every height, amount and share on it
-is a model output, so the schematic carries the interpretation statement,
-"Model outputs — not measurements.", once, in its own heading, as the readout
-section does. No amount is a prediction about a patient to its last digit,
-for the reason § "Displayed precision" gives for the readouts.
+**Each schematic shows its run at the same instant as the readouts.** A line
+of text above the schematic gives that instant as the readouts' clock prints
+it. While runs are compared, that line also names the run, so that a reader
+does not take one run's value for the other's. Two compared runs can be at
+different times, as when one is a branch taken at an earlier point. A
+difference between their schematics may then come from elapsed time rather
+than from the change the branch made. The schematic withholds its values
+whenever the readouts withhold theirs: after a Reset or an agent change, until
+the screen is next redrawn.
+
+**Every height, amount and share on the schematic is a model output.** The
+schematic therefore prints "Model outputs — not measurements." once, in its
+own heading, as the readout section does. No amount is a prediction about a
+patient to its last digit, for the reason § "Displayed precision" gives for
+the readouts.
+
+**For developers.** The schematic takes the top of its scale from the function
+that sets the concentration chart's top (`chart_axis_top_percent`) and sets no
+top of its own. The top's MAC multiple is a constant (`CHART_AXIS_TOP_MAC`), and
+§ "MAC multiples as a display unit" gives the reason for 3 MAC.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+The containers' common width is there because fat's container, drawn to scale,
+would take about 500 px of a View 600 px wide, and four of the others would
+take between 1 and 7 px each. The roadmap records the designs that the
+schematic was chosen over (`ROADMAP.md` § "v0.7.0 - the schematic").
+
+The run writes the schematic where it writes its readouts, from the same
+snapshot of its state. Each amount comes from the snapshot's record for its
+compartment (`PL-KFTM`), and that record is read from the amount of agent that
+the model holds in the compartment (`agent_amount_l` in `core/`). The schematic
+computes no amount of its own. The sum in the share formula is the snapshot's
+total of stored agent (`stored_agent_l`).
+
+Each spelling of an amount's unit is defined once, in `app/display_units.py`
+(`DisplayUnit`). Whoever writes the first View to print a spelling adds it
+there. Every View reads its spellings from that file and defines none of
+its own.
+
+The empty bar at a run's start is there because computing a share would then
+divide by zero, and six zeros would look like real shares.
+
+Shares are shown on a bar rather than by the containers' areas because a
+position along a common scale is judged more accurately than an area
+(Cleveland WS, McGill R, "Graphical perception: theory, experimentation, and
+application to the development of graphical methods", *J Am Stat Assoc*
+1984;79(387):531-554, https://doi.org/10.1080/01621459.1984.10478080). Only the
+first segment starts at the bar's baseline, but each of the others is judged by
+its length, which Cleveland and McGill's ranking still places above area.
+
+The hazard table requires the run's name in the line above the schematic, in
+its row on reading one run's value as the other's.
 
 ## Assumptions
 
