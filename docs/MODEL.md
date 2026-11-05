@@ -9555,181 +9555,186 @@ dragging, and the timeline would then be smaller than 9 MB.
 
 ### F_A/F_I as a displayed ratio
 
-**What it is.** It is a second plot under the compartment chart, on the same
-time window. It draws $`F_A/F_I`$, the modelled alveolar fraction divided by
-the modelled inspired fraction, on a dimensionless axis fixed from 0 to 1. It
-is a *displayed* quantity. `core/` computes it nowhere, no governing equation
-reads it, and it is no part of the run's definition. `app/wash_in.py` is the
-code in which this section ends, in the same way that `app/formatting.py` is
-the code in which "Displayed precision" ends. `app/wash_in.py` holds the
-arithmetic and the domain, and nothing else. `tests/unit/test_wash_in.py` pins
-both.
+**A second plot, under the compartment chart, draws $`F_A/F_I`$.** It shows the
+modelled alveolar fraction divided by the modelled inspired fraction, over the
+same time window, on a fixed, dimensionless axis labelled from 0 to 1. The
+uptake literature is taught from this curve, and every wash-in figure a reader
+has seen shows it. The six compartment concentrations on the chart above cannot
+be laid beside a published figure, but this ratio can. The validation compares
+the plotted ratio with human measurements at 30 minutes, for all three agents in
+the simulator (§ "Published wash-in and elimination validation test"). The ratio
+is computed only for display, and no equation of the model uses it.
 
-**Why the interface owes it.** The uptake literature is taught from this
-curve, and every wash-in figure a reader has seen is drawn as this curve. It
-is also the quantity on which this model has been compared against human
-measurement. The section "Published wash-in and elimination validation test"
-checks $`F_A/F_I`$ at 30 minutes for all three shipped agents. So the trace
-and the validation are the same number.
-`test_the_displayed_ratio_is_the_quantity_this_file_validates` asserts this,
-rather than leaving it to inspection. Six absolute concentrations cannot be
-laid beside a published figure, but this ratio can.
+**The ratio is a modelled value, not a measurement.** It has the alveolar
+compartment's limitation: this model has no airway sampling delay and no dead
+space. It is not a depth of anesthesia, a time to any endpoint, or a
+prediction for an individual patient.
 
 **The denominator is the modelled inspired concentration, not the vaporizer
-dial.** The inspired fraction here is the breathing circuit's own. That is an
-assumption of this circuit model rather than a general fact (see § "Model
-boundary"). The distinction from the dial is not pedantic. The circuit
-approaches the delivered concentration only over its own time constant. So
-early in a run the two differ substantially, and dividing by the dial would
-understate the ratio for as long as the difference lasted. The interface
-states which one it uses at the point of display.
+dial.** This model assumes that the inspired fraction is the concentration in
+the breathing circuit (§ "Model boundary"). The circuit approaches the
+delivered concentration only over its own time constant, so early in a run the
+two differ substantially. Dividing by the dial would understate the ratio for
+as long as they differed. The interface says beside the plot which denominator
+the ratio uses.
 
 **The curve is the textbook wash-in curve only while the inspired
-concentration is held constant.** If the vaporizer or the fresh gas flow moves
-mid-run, $`F_A/F_I`$ remains a well-defined ratio of two modelled states. But
-it stops being a wash-in fraction of anything a reader can name. A rise across
-such a change is the setting moving, not uptake slowing. The control marks of
-"The control-input timeline" are drawn on this plot as well as on the
-compartment chart above it. Both sets of marks are drawn in the same pass over
-the same adjustments. So the plot that could be misread is the plot that
-carries the annotation.
+concentration is held constant.** If the vaporizer setting or the fresh gas
+flow changes mid-run, the ratio is no longer the wash-in fraction of anything a
+reader can name. A rise across such a change shows the setting moving, not
+uptake slowing. This plot therefore carries the compartment chart's control
+marks, which show where each setting changed (§ "The control-input timeline").
 
-**The plotted domain, and why it has two boundaries.** A drawn column
-contributes a point only where both of these conditions are true:
+**A point is drawn only inside two boundaries.** The plot samples the run at a
+series of instants, called columns. A column is inside the boundaries when both
+of these conditions are true:
 
-1. $`F_I \geq 10^{-4}`$, one displayed unit of concentration. $`F_I`$ is
-   exactly zero before any agent reaches the circuit. That is true at the
+1. $`F_I \geq 10^{-4}`$ (0.01%), the smallest step of the concentration
+   display. $`F_I`$ is exactly zero until agent reaches the circuit: at the
    start of every run, and throughout a run whose vaporizer is never opened.
-   There the quotient is $`0/0`$. This lower limit is derived from
-   `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen beside it. So
-   the ratio is never formed from a denominator that the interface itself
-   renders as `0.00%`.
-2. $`F_A/F_I \leq 1`$. The condition $`F_A \leq F_I`$ is exactly the uptake
-   regime. Alveolar gas gives up agent to blood, so the alveolar fraction
-   stays below the inspired one and reaches it only at equilibrium. Above 1,
-   the tissues are returning agent faster than it is being delivered. That is
-   elimination, not wash-in. Equilibrium is drawn on the chart as a labelled
-   reference line.
+   There the ratio is $`0/0`$. With this limit, the ratio is never formed
+   from an inspired concentration that the display shows as `0.00%`.
+2. $`F_A/F_I \leq 1`$, which is the uptake regime. Alveolar gas gives up agent
+   to blood, so the alveolar fraction stays below the inspired one and reaches
+   it only at equilibrium. Above 1, the tissues are returning agent faster
+   than it is delivered, which is elimination, not wash-in. The chart draws
+   equilibrium as a labelled reference line.
 
-   The comparison allows `WASH_IN_ROUNDING_ALLOWANCE`, 1e-6, above 1 for
-   rounding (`PL-N559`). At zero cardiac output the exact solution has
-   $`F_A`$ rise to $`F_I`$ and stop. The stepped run instead settles onto a
-   floating-point fixed point within about 1e-13 of that, and in some runs
-   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at a fresh gas flow of
-   10 L/min settles
-   at 1 + 2.2e-14, which the plot once captioned as the patient returning
-   agent. Once a run reaches its fixed point, every later step returns the
-   same state, so the overshoot does not grow with run length. On 2026-10-26
-   it was the same at 96 h as at 1 h.
+   This boundary allows the ratio up to 1.000001. At zero cardiac output the
+   exact ratio rises to 1 and stops, but the simulation's rounding can leave
+   it a hair above 1. If the ratio stayed at 1.000001 for a whole run of the
+   longest supported length, the run would lose less than 1% of the agent in
+   alveolar gas, venous blood and the vessel-rich group.
+
+Outside either boundary nothing is drawn, so the trace breaks into separate
+stretches. No value is pinned to the edge of the axis or replaced by a
+default, and no line bridges a gap. A ratio held at 1.0 would show a completed
+wash-in that the run never reached. A line joining the wash-in on either side
+of a washout would show values that the run never produced.
+
+**Each stretch is extended by one column at each end, so a reader can see
+where it stops.** That extra column is the stretch's *crossing column*: the
+neighbouring column that has a ratio but lies outside the boundaries. Without
+it, the trace would stop at its last column inside the boundaries. That
+column can lie below the equilibrium line by as much as the trace rises between
+two columns. A trace that stops in clear space short of the line looks exactly
+like one cut off by the edge of the plot. This trace is still climbing steeply
+when it stops. With the crossing column drawn, the trace meets the equilibrium
+line and ends on it, with a point marker that shows the trace ended rather than
+ran out of view.
+
+A crossing column whose ratio is above a fixed ceiling is not drawn at all. Its
+stretch then ends at its last column inside the boundaries, with no point moved
+onto the ceiling and no line drawn toward it.
+
+**The crossing column is drawn, but its value is not shown as wash-in.** Its
+ratio is above 1. Hovering over it shows "Past equilibrium: not a wash-in
+fraction" under the wash-in label, in place of the ratio. A value such as 1.03
+shown there would teach a wash-in past completion, at the point marker, where
+a reader is most likely to look.
+
+**The caption beside the plot says why the trace is blank.** "No agent has
+reached the circuit yet" and "the patient is returning agent" are opposite
+situations, and an absent trace alone cannot show which applies. While the
+trace is drawn, the caption gives the value at its right-hand end. One
+calculation produces both the caption and the trace, so they cannot disagree.
+
+**The gridlines and labels stop at 1, with a little space above them.** Every
+published wash-in figure uses a scale of 0 to 1, and matching those figures is
+the point of this plot. The space above keeps a trace that ends at equilibrium
+off the top edge, where it would look cut off. Because that space is
+unlabelled, a reader does not take it for a range the ratio can reach.
+
+**The axis is fixed rather than fitted.** An axis that grew to fit the ratio
+during elimination would redraw the wash-in curve at a smaller height partway
+through a lesson, and a reader would attribute that change of shape to the
+model. Such an axis would also have no stable height. During elimination the
+circuit is fed by agent-free fresh gas and by rebreathed alveolar gas, so the
+ratio settles near $`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which the
+supported input ranges do not bound.
+
+**The ratio is shown to two decimals, to match the published spread.** Yasuda
+et al. report 0.850, 0.733 and 0.90, with standard deviations of 0.018, 0.027
+and 0.01, so a third decimal would be finer than that spread. See
+§ "Published wash-in and elimination validation test".
+
+**For developers.** The ratio and its two boundaries are computed only in
+`app/wash_in.py`, a module that contains nothing else. Unit tests cover both
+(`tests/unit/test_wash_in.py`). The ratio is no part of a run's definition. A
+test checks that the plotted ratio is the quantity that the validation compares
+(`test_the_displayed_ratio_is_the_quantity_this_file_validates`).
+
+The control marks on both plots are drawn in one pass over the same
+adjustments.
+
+The 0.01% limit on $`F_I`$ is derived from the concentration display's
+resolution (`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`), so it follows that
+resolution if the display changes.
+
+The rounding allowance of 1e-6 (`WASH_IN_ROUNDING_ALLOWANCE`, `PL-N559`) is
+there because, at zero cardiac output, the stepped run settles on a
+floating-point fixed point within about 1e-13 of the exact solution. A fixed
+point is a state that every later step returns unchanged. In some runs that
+state has $`F_A`$ above $`F_I`$. An isoflurane run at a fresh gas flow of
+10 L/min settles at a ratio of 1 + 2.2e-14, which the plot once captioned as
+the patient returning agent. Because later steps return the same state, the
+overshoot does not grow with run length. On 2026-10-26 it was the same at 96 h
+as at 1 h. A test checks the fixed point against the exact solution for each
+shipped agent
+(`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-   The value comes from a clinical requirement rather than from the rounding
-   (project owner, 2026-10-26, ratified, over 1e-9 sized from the rounding
-   and over deriving the value in code). A whole run of the longest supported
-   length, held at a quotient of 1 + 1e-6, must lose less than 1% of the
-   agent in the fast pool: alveolar gas, venous blood and the vessel-rich
-   group. Agent then leaves at alveolar ventilation times $`F_I`$ times
-   1e-6, and the concentration cancels against the pool. The worst case is
-   desflurane at an alveolar ventilation of 12 L/min, which loses about 0.3%
-   in 24 h.
-   `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
-   checks this for every shipped agent from the run-length limit, the
-   ventilation limit and the data files, so extending any of them fails it.
-   The allowance is also about 10 million times the largest overshoot
-   measured, 9.6e-14.
-   `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`
-   checks the fixed point against the closed form for each shipped agent.
+The allowance is sized from the 1% limit above, a clinical requirement, rather
+than from the rounding (project owner, 2026-10-26, ratified, over 1e-9 sized
+from the rounding and over deriving the value in code). At a ratio of
+1 + 1e-6, agent leaves at a rate of alveolar ventilation times $`F_I`$ times
+1e-6. The agent held in alveolar gas, venous blood and the vessel-rich group
+also scales with $`F_I`$, so the fraction lost is the same at any $`F_I`$. The
+worst case is desflurane at an alveolar ventilation of 12 L/min, where a run
+loses about 0.3% in 24 h. A test checks the loss for every shipped agent from
+the run-length limit, the ventilation limit and the data files, so extending
+any of them fails it
+(`test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`). The
+allowance is also about 10 million times the largest overshoot seen in a run,
+9.6e-14.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-Outside either boundary nothing is drawn. The value is not clamped to the
-axis, not interpolated across, and not replaced by a default. A ratio pinned
-to 1.0 would draw a completed wash-in that the run never reached. A line
-joining the wash-in on either side of a washout would draw values that the run
-never produced. So the trace is a set of segments rather than one polyline,
-and it breaks where the domain does.
+The chart code works out the stretches again in each frame, from the columns
+that frame draws, rather than keeping them as the run goes. A boundary can
+therefore fall only on an instant that the chart plots (`app/chart_frame.py`,
+PL-2FM6).
 
-**One point past the boundary, so the ending is legible.** Each stretch is
-extended at each end by its *crossing* column. The crossing column is the
-neighbouring drawn column that has a ratio but sits outside the domain.
-Without it, the curve stops at the last column at or below equilibrium. That
-column can sit a whole column spacing's rise below the equilibrium line that
-the curve stopped short of. A trace that halts in clear space short of a
-boundary looks exactly like one that the frame cut off. This trace is still
-climbing steeply when it stops. With the crossing column drawn, the trace
-meets the equilibrium reference and ends on it. It carries a point marker that
-says the series ended rather than ran out of view. The stretches are
-classified over the columns that each frame draws, rather than maintained as
-the run goes. So a boundary can fall only on an instant that the chart
-actually plots (`app/chart_frame.py`, PL-2FM6).
-
-That extension is bounded by a stated ceiling, not by a property of the
-model. A run stepped at 0.1 s crosses equilibrium by only a hair. This was
-measured across every shipped agent and every supported alveolar ventilation
-and cardiac output, at the maximum fresh gas flow. The first stepped state
-above equilibrium reaches 1.00235. But the ratio is not continuous in general.
-`BreathingCircuit.set_circuit_volume` conserves the agent in the circuit while
-it changes the volume that the agent is divided by. So a circuit volume
-doubled between two steps halves $`F_I`$ and doubles the ratio. No interface
-control does that today. A rule that holds only because a slider is absent is
-not one to build on. So a crossing column above the ceiling is not drawn at
-all, and the stretch ends where it would have ended without it. The stretch is
-not clamped onto the ceiling and not interpolated onto it.
+The crossing column has a ceiling because the ratio can jump. Runs stepped at
+0.1 s cross equilibrium by only a hair. Across every shipped agent and every
+supported alveolar ventilation and cardiac output, at the maximum fresh gas
+flow, the first value above equilibrium is at most 1.00235. But changing the
+circuit volume (`BreathingCircuit.set_circuit_volume`) keeps the agent in the
+circuit and changes the volume it is divided by, so doubling the volume between
+two steps halves $`F_I`$ and doubles the ratio. No interface control changes the
+circuit volume today, but the plot should not rely on that control staying
+absent. The ceiling is 1.05 (`WASH_IN_TERMINUS_CEILING` in
+`app/chart_frame.py`), below the axis top of 1.15 (`WASH_IN_AXIS_MAXIMUM`), so
+even the widest crossing it allows still has clear space above it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: app/chart_frame.py WASH_IN_TERMINUS_CEILING = 1.05 -->
+<!-- provenance: app/chart_frame.py WASH_IN_AXIS_MAXIMUM = 1.15 -->
 
-**The crossing column is drawn, but its number is not printed as wash-in.**
-Its quotient is above 1, so it is elimination rather than a wash-in fraction.
-The chart's hover at that column says "Past equilibrium: not a wash-in
-fraction" under the wash-in label instead of printing the quotient
+The hover text past equilibrium is set in the chart code
 (`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT` in `app/chart_frame.py`, `PL-YH6Z`).
-Printed there, a value such as 1.03 would teach a wash-in past completion, at
-the dot a reader is most likely to point at.
 
-**A blank stretch says which boundary it is.** "No agent has reached the
-circuit yet" and "the patient is returning agent" are opposite situations. A
-reader shown only an absent trace cannot tell which of the two applies. The
-line beside the plot names the case. Where the trace is drawing, that line
-also gives the value at which the trace's right-hand end sits. One evaluation
-of one rule produces both, so the sentence and the curve cannot disagree.
-
-**Why the axis is fixed rather than fitted, and why it does not stop at 1.**
-0 to 1 is the scale of every published wash-in figure, and matching those
-figures is the point of drawing this curve at all. So the ruling and the
-labels stop at 1. The axis itself extends a little above 1. That headroom is
-required for legibility, and it is not a margin. If the axis topped out at
-equilibrium, the trace's ending would land on the frame. There, a line that
-stopped and a line that the plot cut off look exactly alike. The top of the
-frame is deliberately unlabelled. So the readable scale remains 0 to 1, and
-the space above it is not taken as a range the ratio can reach. An axis that
-instead grew to fit the elimination excursion would redraw the wash-in curve
-at a smaller height partway through a lesson. A reader would attribute that
-change of shape to the model rather than to the axis. Such an axis would also
-have no stable height to grow to. During elimination the circuit is fed by
-agent-free fresh gas and by rebreathed alveolar gas. So the ratio settles near
-$`1 + \dot V_{\mathrm{FGF}} / \dot V_A`$, which the supported input ranges do
-not bound. This was measured on sevoflurane, by closing the vaporizer at
-10 L/min after a 30-minute wash-in. The ratio was 3.47 at the reference
-adult's 4.0 L/min of alveolar ventilation, 1.83 at 12.0, 5.93 at 2.0 and 20.11
-at 0.5. The predictions were 3.50, 1.83, 6.00 and 21.00. Values above 1 are
-excluded because they are not wash-in fractions. That they are also unbounded
-is why no fitted axis would help.
+The formula for the ratio during elimination was checked on sevoflurane by
+closing the vaporizer at a fresh gas flow of 10 L/min after a 30-minute wash-in.
+The ratio was 3.47 at the reference adult's 4.0 L/min of alveolar ventilation,
+1.83 at 12.0, 5.93 at 2.0 and 20.11 at 0.5, against predictions of 3.50, 1.83,
+6.00 and 21.00.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4.0 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-**Displayed precision.** The ratio is shown to two decimals. This figure is
-deliberately *not* derived from the concentration resolution. The quotient's
-own resolution depends on its denominator. So a run early in wash-in knows the
-ratio far less finely than a run at equilibrium, and a single derived figure
-would over-claim at one end. The figure is set instead by what the quantity is
-compared against. Yasuda et al. report 0.850, 0.733 and 0.90, with standard
-deviations of 0.018, 0.027 and 0.01. So a third decimal would be finer than
-the published spread. See
-§ "Published wash-in and elimination validation test".
-
-**What it does not assert.** The ratio is a modelled ratio, not a
-measurement. It carries the alveolar compartment's own limitation: this model
-has no airway sampling delay and no dead space. And it is not a depth of
-anesthesia, a time to any endpoint, or a prediction for an individual patient.
+The two decimals are not derived from the concentration display's resolution,
+because the ratio's resolution depends on its denominator. It is far coarser
+early in wash-in than at equilibrium, so any single derived figure would
+over-claim at one end.
 
 ### Color contrast, and the standard this interface is held to
 
