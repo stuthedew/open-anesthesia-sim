@@ -325,9 +325,9 @@ test also reads the figure from this document and compares it with the model's
 output, the document cannot drift from the model without the test failing.
 
 The documentation check looks for a missing name only in some parts of this
-document and `README.md`. It checks every entry of the hazard table and of the
-other lists whose headings promise an entry for each member of a set, such as
-each output in the displayed-outputs list. In the sections that it reads
+document. It checks every row of the hazard table, every output in the
+displayed-outputs list and every subsection of the required tests. It does not
+yet check the entries of the required invariants. In the sections that it reads
 paragraph by paragraph, every paragraph that states a number with a unit gives a
 test, the fixed form, a date or a published source, or links each number to the
 simulator's data behind it. Elsewhere, only the documentation review before a
@@ -341,12 +341,14 @@ released version's section, it records what was true on that date. It need not
 name a test, and nothing checks it against the code. A later fact gets its own
 date, and the dated statement is never changed to carry it.
 
-A count in the text is either dated or tied by a check to what it counts, such
-as a heading's count of the entries under it.
+A count in the text is dated, tied by a check to what it counts, such as a
+heading's count of the entries under it, or copied from a tool that prints it.
+Nothing checks a copied count against the text, so it can go out of date.
 
 **For developers.** These rules apply in part to the project's other documents.
-The documentation check already looks for a missing name in every entry of the
-frozen lists in `ROADMAP.md` and of the package map in `docs/ARCHITECTURE.md`.
+The frozen lists in `ROADMAP.md` and the package map in `docs/ARCHITECTURE.md`
+also promise an entry for each member, and each has checks of its own. The
+check of a frozen list reads only the lines that open with an item id.
 The prose of `ROADMAP.md` is treated as dated. Every thread in
 `docs/WORKING_NOTES.md` is dated, so only the rule for dated statements applies
 to it. The rules do not apply to prose about the project's workflow tooling, in
@@ -404,10 +406,12 @@ can tie a count to what it counts. Any other count is dated, left out, or read
 from the tool that prints it. Under the rule on counts, this document never
 states the number of entries in the hazard table or in another list named above.
 The function that checks gate counts (`check_gate_counts`) applies the rule on
-counts in code. It checks each count that a frozen list states about itself, in a
-group heading or in a release table, against the list. It leaves a count in prose
-alone, because a sentence such as "frozen at seventeen entries" records a dated
-fact that must never change.
+counts in code. It checks each count that a frozen list states about itself
+against the list: in a group heading, in a release table, and in the sentence
+that says how many entries are marked `not-delegable`. It refuses a count
+written into a lower heading, which it cannot check. It leaves other counts in
+prose alone, because a sentence such as "frozen at seventeen entries" records a
+dated fact that must never change.
 
 These rules follow requirements traceability, which links each requirement to
 the tests and risk controls that cover it. It is the established practice for
