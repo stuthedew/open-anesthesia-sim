@@ -8488,402 +8488,283 @@ stated. It never requires that any particular width is in force.
 
 ### What this list requires once the layout is the reader's
 
-This list was written for one fixed layout. Since v0.6.0, `ROADMAP.md`
-planned-milestone item 34 has let the reader add, resize and remove the
-interface's areas. The two meet at the paragraph above. Hiding a compartment
-trace is safe *because* the value stays in the numeric readouts. So a layout
-that can remove the readouts removes the guarantee that the sentence rests on.
-Every show/hide affordance that this document permits then becomes unsafe at
-once. The failure is silent. The chart behaves exactly as documented while the
-display no longer meets this list.
+Since v0.6.0, the reader can add, resize and remove the interface's areas, the
+parts of the window that each show one view, such as a chart (`ROADMAP.md`
+planned-milestone item 34). This list was written for one fixed layout. It now
+divides its values into three parts, by what a reader could misread without
+them. Unconditional values stay on screen in every layout. From any layout, the
+reader can bring on screen the agent accounting, which tracks how much agent the
+model has delivered, exhausted and stored. Conditional values appear only with
+the chart they belong to.
 
-So the list divides into three parts. The division follows what a reader
-could misread a value without. It does not follow how the interface happens to
-be arranged today.
+The division stops a rearranged layout from breaking this list unnoticed.
+Hiding a compartment trace is safe because its value stays in the numeric
+readouts. A layout that could remove the readouts would make every show/hide
+control that this document permits unsafe at once, while the chart still
+behaved exactly as documented.
 
-**Unconditional - the values that no workspace may remove and nothing may
-cover.** The set is stated as a *test*, not as a list. The test is this: a
-value is unconditional when a reader could misread the run's other displayed
-numbers without it. Applying that test gives two tiers.
+**A value is unconditional when a reader could misread the run's other
+displayed numbers without it.** Nothing may cover such a value. The set is
+defined by this criterion, not by a fixed list, and the criterion gives two
+tiers.
 
-**Invariant, whatever is being simulated.** This tier is simulated time, the
-rate at which it is advancing, run state, why a run halted (when one has), and
-what is being administered. Once more than one top-level window can exist, the
-tier also includes the name of the run that the window is showing. See
-§ "What a second top-level window owes" below. That section is where the last
-value comes from. It also explains why this tier and the next are allocated to
-windows differently. None of these values depends on the substance or the
-model. A concentration with no time, no run state and no named drug is the
-correct number under the wrong patient. This document treats that as a display
-failure, not as a missing convenience.
+**The invariant tier is the same whatever is simulated.** It holds simulated
+time, the rate at which it is advancing, the run state, why the run halted (when
+it has), and what is being administered. A concentration shown with no time, no
+run state and no named drug is the correct number under the wrong patient, which
+is a display failure.
 
-**Instantiated per modelled substance, and the current instance is not the
-rule** (project owner, 2026-09-16). For the inhaled-agent model that this
-document specifies, the test selects the delivered concentration and the six
-compartment concentrations. Each is shown in both units, with that agent's 1
-MAC in percent stated. **That instance applies only while an inhaled agent is
-what the run models.** A run that administers no volatile agent owes no
-vaporizer dial, no circuit concentration and no MAC multiple, because it has no
-such quantity to misread. Examples are the intravenous models of `ROADMAP.md`
-planned-milestone item 13, or any later substance. Such a run owes its own
-instance of the same test instead. That instance is named where the substance's
-model is specified.
+**The per-substance tier depends on what the run models** (project owner,
+2026-09-16). For the inhaled-agent model that this document specifies, the
+criterion selects the delivered concentration and the six compartment
+concentrations, each in both units, with the agent's 1 MAC in percent. A run
+that gives no volatile agent need not show them, because it has no vaporizer
+dial, circuit concentration or MAC multiple to misread. That applies to a run
+of the planned intravenous models (`ROADMAP.md` planned-milestone item 13), and
+to a run of any later substance. The same criterion selects such a run's own
+values, which are named where its substance's model is specified.
 
-Writing today's instance as the permanent list is a specific error. This
-document has already made that error once, and it guards against it here. The
-error is to record a rule that is true of the model currently implemented as if
-it were a rule about the application. The test above is what generalises. The
-seven concentrations are what the test currently returns.
+Arterial concentration is **not** in this list. In this model the arterial
+fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
+§ "Model boundary"). A separate arterial readout would show the alveolar number
+a second time under another name, as though the model computed an arterial
+value of its own.
 
-**Reachable rather than simultaneously visible.** This tier is the agent
-accounting: cumulative delivered, cumulative exhausted, total stored, and the
-mass-balance residual with its absolute error. These values state whether the
-*model* is conserving mass. A reader does not titrate against them. Their
-absence from a particular workspace makes no clinical reading wrong, so a
-layout may leave them out. They must stay reachable in every layout, and they
-must not be removable from the application.
+The alveolar readout is labelled "Alveolar", with "end-tidal-equivalent" on the
+line below. It shows the concentration in the model's one well-mixed alveolar
+compartment, which is the value a monitor's end-tidal reading estimates in a
+real patient. The model has no dead space, airway sampling delay or shunt, so
+this readout is not a simulated end-tidal measurement.
 
-**What "reachable" means** (`PL-50PZ`, project owner, 2026-09-27, ratified,
-over leaving the word undefined). A View kind is reachable in a Workspace when
-a reader can bring it on screen from that Workspace through the interface
-alone, in a bounded number of steps, without a drag or a file edit. Two parts
-of the build make that true for every Workspace at once. First, every Area's
-header carries a View chooser. Its menu lists every View kind that the build
-registers, whatever the Workspace names, and choosing one shows it in that Area
-(`app/area_layout.py`). Second, the dashboard's page grows to give a chosen
-View the size it needs. So the choice shows the View itself, and never only the
-notice that the Area is too small for it (`PL-K285`). The registry,
-`app/view_registry.py`, marks the accounting View `required_reachable`. A build
-that does not register that View fails when the module is imported. A layout
-always contains at least one Area, so there is always a chooser to use. None of
-the shipped Workspaces names the accounting View, so the chooser is its route
-in the shipped set. `tests/integration/test_view_chooser.py` checks that route
-from every Area of each shipped Workspace. Each Area that names the accounting
-View builds a View of its own (`PL-TH35`). So when two Areas name it, both show
-the five amounts.
+**The agent accounting must stay reachable, though not always visible.** It
+consists of cumulative agent delivered, cumulative agent exhausted, total agent
+stored, and the mass-balance residual with its absolute error. These five
+amounts show whether the model is conserving mass, and a reader does not
+titrate against them. A Workspace is a saved layout, chosen by its tab. A
+Workspace may leave the amounts out, because their absence makes no clinical
+reading wrong. Nothing may remove them from the application.
 
-**Conditional. These bind a surface only when that surface is shown.** A
-concentration chart carries the MAC-awake band, the 1 MAC line and the control
-marks. It also states how much simulated time it is showing, and whether that
-width was chosen or fits the run. An $`F_A/F_I`$ plot carries its equilibrium
-rule and states where the ratio is not defined. A reference exists so that a
-*trace* is not read without its clinical anchor. Where no trace is drawn, there
-is nothing to anchor, and nothing is lost when the surface is absent. What must
-never happen is a surface shown without its references. That is what these
-entries have always been about.
+**"Reachable" means the reader can bring a view on screen through the interface
+alone** (`PL-50PZ`). They must be able to do it from the Workspace they are in,
+in a bounded number of steps, without dragging anything or editing a file.
+Every area's header has a view chooser, whose menu lists every kind of view the
+application has, whatever the Workspace. Choosing a view shows it in that area.
+The page grows to give the view the space it needs, so the reader sees the view
+itself, never only a notice that the area is too small (`PL-K285`). The
+application will not start if the accounting view is missing from the chooser's
+menu. Every layout has at least one area, so a chooser always offers the
+accounting view. None of the Workspaces supplied with the simulator includes the
+accounting view, so the chooser is how a reader reaches it.
 
-**The control-input timeline splits the same way.** The record itself is
-unconditional. The record is every setting changed during the run, with the
-simulated time it took effect, the control it changed and the values it moved
-between. Its **marks on the chart** are conditional on a chart being shown. The
-list carries the facts, and the marks carry the reading against the curve. That
-reading exists only where a curve does.
+**Conditional values are required only on a chart or plot that is shown.** A
+concentration chart shows the MAC-awake band, the 1 MAC line and the marks of
+control changes. It also states how much simulated time it shows, and whether
+that span was chosen or fits the run. An $`F_A/F_I`$ plot shows its equilibrium
+line and states where the ratio is not defined. These references exist so that a
+trace is never read without its clinical anchor. Where no trace is drawn there
+is nothing to anchor, so leaving the chart out loses nothing.
 
-**Where the unconditional set lives in the build.** `app/unconditional_set.py`
-states the two tiers and the control-input record as data, with the inhaled
-instance as `INHALED_AGENT`. Each run's values sit in one region across the top
-of the dashboard, outside the Areas that `app/area_layout.py` lays out. Since
-`PL-W9P6` (2026-10-18), the setting sections sit in a plain column between the
-region and the Areas, so they are not in an Area either. The dashboard refuses
-to place a run whose region lacks a declared value. So a value moved into an
-Area fails at once, rather than becoming something the reader's own Area
-operations can close (`PL-NWTM`, laid out to `PL-J8K2`).
+**The control-input record is unconditional, and its chart marks are
+conditional.** The record lists every change to a setting during the run, with
+the simulated time it took effect, the control it changed and the values it
+moved between. It gives the facts, and the marks place them against the curve.
 
-**Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The use
-disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one of
-this list's values, so `app/unconditional_set.py` does not declare it. Its home
-is the line across the foot of the window, outside the layout container. The
-project owner ratified that placement on 2026-10-11, together with the band
-across the top (`PL-J8K2`, Q1). No split, join, close or Workspace switch
-affects the line, so it is present in every Workspace a learner builds
-(`test_the_dashboard_carries_the_educational_disclaimer`). Once more than one
-top-level window can exist, each window carries the line in its own frame,
-beside its invariant tier. This is because a window read alone needs the
-statement of what the tool is for as much as it needs the run's time and agent.
+**The unconditional values sit outside the areas.** Each run's unconditional
+values are in one band across the top of the dashboard, the unconditional
+region. The setting sections are in a plain column between that region and the
+areas, so they are outside the areas too (`PL-W9P6`). Neither is affected by a
+change to the areas or a switch of Workspace, so no saved layout has to be
+checked against this list. The dashboard will not place a run whose region
+lacks a required value (`PL-NWTM`, laid out to `PL-J8K2`).
 
-*Always in view* (`PL-NNML`, 2026-10-20). The line sits at the foot of the
-window, below the part of the dashboard that scrolls. The unconditional region
-sits at the top, above that part. Only the Workspace tabs, the Areas and the
-case's controls scroll between them. So neither the window's height nor any
-scrolling takes the line out of view. Neither takes the region out of view
-either, nor the interpretation statement, `INTERPRETATION_DISCLAIMER_TEXT`, on
-the region's readout heading row. That includes the scroll to the concentration
-chart that happens when a branch is taken (`PL-562Z`). This is what the colour
-section below means by "always". Before this change, the whole page scrolled.
-Measured offscreen at 1366 px wide on 2026-10-20, the page was 1087 px tall in
-the Default Workspace and 1505 px in Induction and Maintenance. So in a 700 or
-900 px window, the line was below the visible part, and scrolling down to it
-moved the region off the top.
-`test_the_region_and_the_use_disclaimer_stay_in_the_viewport` checks both at
-700, 900 and 1100 px in each shipped Workspace.
+**The educational-use disclaimer is a line across the foot of the window,
+outside the layout** (`PL-JSY5`, `PL-J8K2` Q1). Like the unconditional region,
+it is unaffected by any change to the areas, so it is present in every Workspace
+a reader builds. Once a run can be shown in a separate window, each window will
+carry the line in its own frame, beside its invariant tier. A window read alone
+needs the statement of what the tool is for as much as it needs the run's time
+and agent.
 
-**The rule all three rest on is about occlusion, not about window types.** No
-value this list requires may be covered while the application still believes it
-is showing that value. This one sentence applies to a panel drawn over the
-dashboard. It applies to a second top-level window dragged over another
-window's invariant region, or over the main window's per-substance readouts. It
-applies to any later floating mechanism. It covers all three without being
-argued again for each. It is a property of the display rather than of a window type, which is why it
-is stated once, here.
+**The disclaimer line and the unconditional region are always in view**
+(`PL-NNML`). The line sits below the part of the dashboard that scrolls, and
+the region sits above it. Only the Workspace tabs, the areas and the case's
+controls scroll between them. The interpretation statement on the region's
+readout heading row stays in view with the line and the region, at any window
+height and through any scrolling. This is what "always" means in the paragraphs
+on the alert colour below.
 
-**What "the application believes" is bounded by what it can observe, and the
-boundary is stated rather than implied** (2026-09-16). The rule applies to the
-application's *own* windows and panels, which it creates, positions and can
-query. It makes no claim about a window that belongs to another application, or
-to the operating system, drawn on top of one of ours. That is not a loophole
-being reserved. It is the limit of what any application can enforce. Saying so
-stops a later reader from taking the sentence above as a guarantee against
-every way a value can be hidden. What the toolkit itself can report is narrower
-than it first appears, and this was measured rather than assumed (PySide6
-6.11.2 / Qt 6.11.2, 2026-09-16). `QWidget.isVisible()` is documented to stay
-true for a widget "obscured by other windows on the screen". So it reports the
-application's own show/hide bookkeeping, and never occlusion.
-`QWindow.visibility()` reports which of Hidden, Windowed, Minimized, Maximized
-or FullScreen a window occupies. That catches a minimized or hidden window and
-nothing else. The one signal close to occlusion, `QWindow.isExposed()`, is
-documented only as something that *might* change when a window is "made totally
-obscured by another window". The platform plugins also disagree about it. The
-macOS plugin drives it from `NSWindow.occlusionState`, while the Windows plugin
-deliberately keeps it true under occlusion for compatibility. So it is not a
-signal that a safety rule may rest on, and this document does not rest one on
-it. What the application must do is the half it can achieve. It must never go
-on *asserting* that it is showing a value when it can see that the value's own
-window is minimized or hidden.
+**No value this list requires may be covered while the application treats it
+as shown.** This occlusion rule applies to a panel drawn over the dashboard, a
+separate window dragged over another window's invariant tier or over the main
+window's per-substance readouts, and any floating element added later. It is a
+property of the display, so it is the same for every kind of window.
 
-**Guaranteed structurally, not by validating a saved layout.** Each top-level
-window's unconditional region sits outside *that window's* area system. So no
-split, join, close or workspace switch affects it, and no saved layout has to
-be checked against this list to be safe. Closing a window is also one of those
-operations, and it is the one operation that the area system does not own. The
-main window cannot be closed while any other window is open. That is what keeps
-the per-substance tier from being closed out from under a reader. Validating
-each workspace and refusing the ones that fail is the fallback for anything
-that cannot live in that region. Validation warns after the fact, where the
-structure prevents the failure. That makes validation the weaker of the two,
-which is why it is the fallback. Blender is the model for the *structure*, a
-region outside the area system, and explicitly not for its persistence.
-Blender's Topbar and Status Bar sit outside the area system as this region
-does, but neither is unconditionally present. *Focus Mode* (View -> Area ->
-Focus Mode, Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar and the
-editor's secondary regions together, for maximum screen space (Blender Manual,
-"Interface -> Window System -> Areas", read at the source 2026-09-16). That is
-the right trade for a 3D application and the wrong one here. Blender has no
-class of value whose absence is a safety failure, and this application does. So
-take the structure and refuse the escape hatch. Say so wherever a reader would
-otherwise assume that the whole precedent was copied.
+**The occlusion rule applies only to the application's own windows and panels**
+(2026-09-16). The application creates and places these, and can check their
+state. A window of another program or of the operating system can still cover a
+value, and no application can prevent that. The application can tell when one of
+its windows is minimized or hidden, but it has no reliable signal that a window
+is covered. It must never go on treating a value as shown once it can see that
+the value's window is minimized or hidden.
 
-**What a second top-level window owes, and it is not the whole set** (project
+**A separate window shows the invariant tier, not the whole set** (project
 owner, 2026-09-16, ratified - a recommendation put to them and agreed, chosen
 over the two live readings `PL-W54S` had written, and reopenable on ordinary
 evidence per `CLAUDE.md`; the occlusion rule above is not, being the safety
-floor rather than the arrangement). The guarantee above is stated against the
-area system's own operations. It stops at the frame of the window that carries
-the region. `ROADMAP.md` item 34 includes break-out as its second half, which
-is wanted but not yet scheduled (project owner, 2026-09-26). Break-out takes an
-area into its own top-level window, which is itself a full window with its own
-areas. The region that v0.6.0 builds has to be the right shape for break-out on
-the first attempt. `PL-WLWY` wrote three candidate readings of what such a
-window owes, and closed without choosing between them. The answer is a fourth
-reading. It splits the obligation the way this section has already split the
-list, because **the two tiers are unconditional for different reasons and those
-reasons travel differently**:
+requirement rather than the arrangement). Breaking an area out into a window
+of its own is the second half of `ROADMAP.md` planned-milestone item 34, and it
+is wanted but not yet scheduled (project owner, 2026-09-26). Such a window is a
+full window, with areas of its own. The two tiers are unconditional for
+different reasons, so each goes where its reason applies:
 
-- **Every top-level window the application owns carries the invariant tier
-  together with the name of the run that window is showing.** The invariant
-  tier is simulated time, the rate at which it is advancing, run state, why a
-  run halted (when one has), and what is being administered. The tier and the
-  name sit in a region outside *that* window's area system. The tier's own
-  justification above is that "a concentration with no time, no run state and
-  no named drug is the correct number under the wrong patient". That is a
-  property of any surface that displays a concentration, not of the display
-  taken as a whole. So the tier follows the concentration into whatever window
-  the concentration goes to. It is five values and a name. That is small enough
-  for a window holding one chart to carry it without the squeeze that
-  § "Diverged, and each divergence has a specific cause" of
-  `docs/interface-provenance.md` refuses.
-- **The per-substance tier lives once, in the main window**, which **cannot be
-  closed while any other top-level window is open**. Closing the main window
-  closes the others. This tier's justification is the other one: a reader could
-  misread the run's *other* displayed numbers without it. That is a statement
-  about the display taken as a whole, not about any one surface.
-- **The accounting tier is unchanged**, because it is already an obligation on
-  the application rather than on any layout or window.
+- **Every window of the application carries the invariant tier and the name of
+  the run it shows**, in a region outside that window's areas. Any view that
+  shows a concentration needs its time, run state and drug, so the tier goes
+  with the concentration into whatever window shows it. Five values and a name
+  fit, without squeezing, in a window that holds one chart.
+- **The per-substance tier appears once, in the main window**, which cannot be
+  closed while any other window is open. Closing the main window closes the
+  others. A reader could misread the run's other displayed numbers without this
+  tier, so it concerns the display as a whole rather than any one view.
+- **The agent accounting is unchanged**, because its requirement already applies
+  to the application rather than to any layout or window.
 
-**Why the other two readings were refused**, recorded so that they are not
-proposed again. *Every window carries the whole region* is not merely the
-stricter option. A broken-out window is typically small, such as one chart on a
-second screen. Forcing seven concentrations in two units into it has one of two
-results. Either they dominate the window, which defeats break-out, or they are
-squeezed, which is the failure the never-hidden divergence exists to refuse.
-*The main window carries everything and a broken-out window names only its run*
-leaves a window drawing compartment traces with no time, no rate, no run state
-and no agent. It also rests the guarantee on a window that the reader may not
-be able to see. `PL-WLWY` used that same property to rule out the reading that
-the contract applies to the application rather than to the window. A guarantee
-that rests on where the window manager has put things is the same guarantee in
-both cases.
-
-**This is the display side of an evidenced failure mode, not a house
-preference.** It is established that correct data read in the wrong context is
-a distinct class of clinical-information-system error. Ash, Berg and Coiera
-describe the "silent errors" that such systems foster rather than prevent (*J
-Am Med Inform Assoc* 2004;11(2):104-112, doi:10.1197/jamia.M1471). Magrabi and
-colleagues classified 42,616 reported incidents. Their classification makes
-information *output* a category in its own right, at 20% of computer-related
-problems (*J Am Med Inform Assoc* 2010;17(6):663-670,
-doi:10.1136/jamia.2009.002444). The closest measured analogue of the rule above
-is the wrong-patient order. Restoring one piece of patient context to the
-display banner, a photograph, was associated with lower wrong-patient order
-entry across 2,558,746 orders (adjusted OR 0.57, 95% CI 0.52-0.61; Salmasian et
-al., *JAMA Netw Open* 2020;3(11):e2019652,
+**The invariant tier answers a documented failure.** Correct data read in the
+wrong context is an established class of clinical-information-system error.
+Ash, Berg and Coiera describe the "silent errors" that such systems foster
+rather than prevent (*J Am Med Inform Assoc* 2004;11(2):104-112,
+doi:10.1197/jamia.M1471). Magrabi and colleagues classified 42,616 reported
+incidents, and their classification makes information *output* a category of
+its own, at 20% of computer-related problems (*J Am Med Inform Assoc*
+2010;17(6):663-670, doi:10.1136/jamia.2009.002444). The closest measured
+analogue is the wrong-patient order. Restoring one piece of patient context, a
+photograph, to the display banner was associated with fewer wrong-patient
+orders across 2,558,746 orders (adjusted OR 0.57, 95% CI 0.52-0.61; Salmasian
+et al., *JAMA Netw Open* 2020;3(11):e2019652,
 doi:10.1001/jamanetworkopen.2020.19652). That is the invariant tier's argument
-in a different clinical setting: context carried in the frame of the view,
-rather than assumed from elsewhere on the screen. Two things are deliberately
-*not* claimed here, because they were checked and not found. The first is that
-duplicating a live readout across windows is itself a named hazard. The one
-randomised trial of concurrently open records found no difference in
-wrong-patient errors (Adelman et al., *JAMA* 2019;321(18):1780-1787,
-doi:10.1001/jama.2019.3698). The second is that tiling is a published
-preference over overlapping windows. The only controlled comparison does not
-support that claim. The tiling argument rests on this project's own occlusion
-reasoning, as item 34 already records.
+in another clinical setting: context carried in the frame of the view, not
+assumed from elsewhere on the screen.
 
-**A stepping stone, and recorded as one** (project owner, 2026-09-15). This is
-deliberately the rigid version, with a fixed unconditional region and a
-conditional remainder. It was chosen to be correct while the layout apparatus
-is built, not to be the apparatus's final shape: "ultimately, will be able to
-resize everything however ... I'm ok with starting with a relatively more rigid
-structure as a stepping stone". So the particular split of this list is
-expected to be revisited as that apparatus matures. What must survive any
-revision is the occlusion rule above. That rule is the safety requirement,
-while the split is only the arrangement.
+**The division of this list is a first version** (project owner, 2026-09-15).
+The fixed unconditional region and the conditional remainder were chosen to be
+correct while the tools for arranging the layout are built, and the division is
+expected to change as those tools mature. Any change must keep the occlusion
+rule, because that rule is the safety requirement and the division is only the
+arrangement.
 
-**While two runs are shown, every readout names the run it describes, and all
-six compartments keep theirs** (`PL-1XPX`). This list is a requirement on the
-numeric readouts, and it does not become a smaller one in compare mode. The
-rule in the paragraph above says that a required value must not leave the
-display with the curve that draws it. That rule applies to the chart's
-two-compartment cap (`ROADMAP.md` v0.5.0, `PL-HLD5`) exactly as it applies to a
-reader hiding a trace. The cap is a colour-capacity limit on the chart, not a
-reduction of what the display owes. So while two runs are compared, the chart
-may draw two compartments and the readouts still carry six, for both runs. The
-readouts are what keep the other four on the display.
+**While two runs are shown, every readout names its run, and all six
+compartments keep their readouts for both runs** (`PL-1XPX`). A required value
+must not leave the display with the curve that draws it. That applies to the
+chart's limit of two compartments in compare mode (`ROADMAP.md` v0.5.0,
+`PL-HLD5`) just as it does when a reader hides a trace. The limit comes from how
+many colours the chart can use, and it does not reduce what the display must
+show.
 
-**The run is named in text, not carried by colour or by position.** Colour is
-spent on the compartment, and it cannot take a second meaning on either side of
-a mode change. "The six compartment traces" measures the worst
-trace-against-trace pair at 1.01:1 against a 3:1 requirement. That is why
-`PL-HLD5` put the run on line width rather than colour. Text has no equivalent
-of line width. Position alone fails the reader who has looked away and back,
-which is the stale-context failure that this requirement exists for. A
-concentration that does not say which management produced it is the correct
-number under the wrong patient context.
+**The run is named in text, not by colour or position.** Colour already
+identifies the compartment in both modes, so it cannot also identify the run.
+The worst contrast between two compartment traces is 1.01:1, against the 3:1
+required (§ "The six compartment traces"). The chart therefore shows the run by
+line width instead (`PL-HLD5`). Text has no equivalent of line width. Position
+alone fails a reader who looks away and back, which is the stale-context failure
+this requirement exists to prevent.
 
-**A run's name renders its identity, not its place** (`PL-7Z84`). Each run that
-the session places is given a number, counting from 1, and the name is "Run"
-followed by that number. A run keeps its number for as long as it holds its
-place on screen. For the trunk, that is from when the dashboard opens. For a
-branch, it is from its fork until it is dropped. The run's own Reset and a
-change of agent both keep the number, because both start a new run definition
-in the same place, after any confirmation that § "Agent-change behavior" asks
-for. No number is given out twice in a session. So a branch taken after a
-dropped one is "Run 3", never a second "Run 2". A reused name would let a
-Workspace pinned to the dropped run find a run of that name, and show its
-values as the dropped run's values. `src/anesthesia_sim/layout/run_identity.py`
-defines the identity, and `dashboard_frame.run_label` is the one place where it
-is rendered.
+**A run's name gives its identity, not its place** (`PL-7Z84`). Each run placed
+in a session gets a number, counting from 1, and its name is "Run" followed by
+that number. A run keeps its number for as long as it holds its place on screen.
+Branches fork from a run called the trunk, which holds its place from when the
+dashboard opens. A branch holds its place from its fork until it is dropped.
+Resetting a run and changing its agent both keep the number, because both start
+the run afresh in the same place, after any confirmation that
+§ "Agent-change behavior" asks for. No number is given out twice in a session,
+so a branch taken after a dropped one is "Run 3", never a second "Run 2". A
+Workspace can be pinned to a run, so that it shows that run. If a name were
+reused, a Workspace pinned to the dropped run would find a new run of that name
+and show its values as the dropped run's.
 
-A view shows the name of its run whenever a reader could mistake its values for
-another run's values. That applies in three cases: while another run is drawn
-anywhere in the application, while the view is pinned to a run, and always in a
-window broken out of the main one
-(§ "What a second top-level window owes, and it is not the whole set"). The
-old test was the number of runs on the dashboard. That test fails for a run
-shown alone in a pinned Area or in a window of its own. Break-out windows are not built, so the dashboard is the
-only window in which a run is drawn. In this version, therefore, the names are
-shown when two runs are compared, and a pinned Workspace shows its run's name
-in the header of every Area (`PL-2KXB`).
+A view shows its run's name whenever a reader could mistake its values for
+another run's: while another run is drawn anywhere in the application, while the
+view is pinned to a run, and always in a window broken out of the main one.
+Break-out windows are not built yet, so the dashboard is the only window that
+draws a run. In this version, therefore, the names appear when two runs are
+compared, and a pinned Workspace shows its run's name in the header of every
+area (`PL-2KXB`).
 
-**A Workspace pins a run by its identity, and an absent pin is stated**
+**A Workspace pins a run by its identity, and says when that run is absent**
 (`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
-number, and the random token of the session that placed the run. A run with
-the same number in a later session is therefore a different run. When a pinned
-run is not open, the Workspace's Areas show a named "run not present" state. They
-never show another run in its place, and the simulation is left untouched.
-`Workspace.shown_runs` decides which runs a Workspace's Views show. The tab
-strip (`PL-2KXB`) is where a reader sets a pin and sees the absent state.
+number, and a random code for the session that placed the run. A run with the
+same number in a later session is therefore a different run. When the pinned
+run is not open, the Workspace's areas show a named "run not present" state.
+They never show another run in its place, and the simulation is left untouched.
+The reader sets a pin on the row of Workspace tabs, and sees the absent state
+there (`PL-2KXB`).
 
-**Both runs are shown, rather than the selected one with the selection stated.**
-Showing only the selected run would make the readout block a mode. A stale
-selection in that mode would have no visual sign at all. The block looks the
-same whichever run is selected, so a reader who has forgotten the selection
-takes one management's number for the other's. Stating the selection only
-warns after the fact, whereas showing both runs prevents the error. Pairing the
-two values under one compartment label keeps this from doubling the block's
-height. The second run's value and its second unit sit under the first run's
-value in the same panel. Each value has its run's name on the line above it.
-So the block keeps one row of seven panels, and it grows by those name lines
-rather than by a second row (`PL-F2YS`). This preserves the one-row
-comparative reading for which this document requires the resolution to be
-uniform: a reader sees the circuit lead the alveoli, and the alveoli lead the
-tissues. The two values are stacked rather than placed side by side because
-stacking keeps each panel at its one-run width. That width keeps the row seven
-panels across at 1366 px. Placed side by side, the values would make each
-panel roughly twice as wide. Each run's delivered concentration sits on that
-run's own line, beside its name and its transport controls. The values that
-the two runs share are stated once, on the heading line above the paired
-block: the substance, the agent's 1 MAC, and the version and model. They are
-the same for both runs for two reasons. A second run must use the first run's
-agent, and a branch's MAC is checked against its trunk's MAC when the branch
-is opened (`PL-QLZ5`). `PL-3355` still applies. A readout panel reserves the
-width of the widest value it can show, so a value is never wrapped away from
-its unit at any width at which the row is laid out.
+**Both runs' values are shown, not only the selected run's.** Showing only the
+selected run would make the readout block a mode. The block would look the same
+whichever run was selected, so a stale selection would have no visual sign. A
+reader who had forgotten the selection would take one management's number for
+the other's. Stating the selection would only warn after the fact, whereas
+showing both runs prevents the error.
+
+Each compartment's panel holds both runs' values. The second run's value and its
+second unit sit under the first run's, and each value has its run's name on the
+line above it. The block therefore stays one row of seven panels and grows only
+by those name lines (`PL-F2YS`). The single row keeps the comparison for which
+this document requires uniform resolution: a reader sees the circuit lead the
+alveoli, and the alveoli lead the tissues. Each readout panel reserves the width
+of the widest value it can show, so a value is never wrapped away from its unit
+at any width at which the row is laid out (`PL-3355`).
+
+Each run's delivered concentration sits on that run's own line, beside its name
+and its controls, such as Start. The values the two runs share appear once, on
+the heading line above the block: the substance, the agent's 1 MAC, and the
+version and model. They are the same for both runs because a second run must use
+the first run's agent, and a branch's MAC is checked against its trunk's when
+the branch is opened (`PL-QLZ5`).
 
 **No difference readout is required, and none may be added without a stated
-sign convention.** The arithmetic difference of two alveolar fractions is not
-a quantity with a conventional clinical reading. Clinicians reason about depth
-in MAC multiples and in time-to-target. Displaying such a difference would
-imply a standard meaning that it does not have, and "Displayed precision"
-refuses that on grounds of interpretability. The chart already shows the
-comparison continuously, on the axis the reader is looking at.
+sign convention.** The arithmetic difference of two alveolar fractions has no
+conventional clinical reading, because clinicians reason about depth in MAC
+multiples and time to target. Displaying it would imply a standard meaning that
+it does not have, which § "Displayed precision" rules out on grounds of
+interpretability. The chart already shows the comparison continuously, on the
+axis the reader is looking at.
 
-Arterial concentration is deliberately **not** in this list. In this model, the
-arterial fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
-§ "Model boundary"). A separate arterial readout would therefore show the
-alveolar number a second time under a different name, as though the model
-computed an arterial value of its own. Earlier revisions of this document
-required an arterial readout. That requirement dates from before this
-simplification was made explicit, and it is withdrawn.
+Telling a halted run from a paused one is a required output. Both stop the
+numbers advancing, and under § "Step atomicity" both leave the simulation in a
+state that the reader can trust. A paused run continues when the reader asks,
+but a halted run cannot. A halted run shown as "Paused" would offer a Start
+control that fails at the first simulation step, and would present a stopped
+trajectory as one still in progress. That is the mode confusion that this
+document's interface rules exist to prevent. A display that merely freezes, with
+no change of state at all, is worse still.
 
-Showing which agent is running is a required output, not a convenience. A
-correct concentration attributed to the wrong agent is a presentation failure.
-The same number also means a different clinical depth for each agent: 2% is
-about 1 MAC of sevoflurane but roughly a third of a MAC of desflurane.
+Showing which agent is running is also a required output. A correct
+concentration attributed to the wrong agent is a display failure, and the same
+number means a different clinical depth for each agent: 2% is about 1 MAC of
+sevoflurane but roughly a third of a MAC of desflurane.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
-The agent selector and the header reinforce that written name with the
-agent-identification color specified by ISO 5360:2016 Table 2 ("Dimensions and
-colours of agent-specific bottle collars and connectors"): yellow for
-sevoflurane, purple for isoflurane, and blue for desflurane. Footnote b of that
-table is the reason the color appears here at all: "if a colour is used on a
-vaporizer, bottle, or package label to facilitate correct identification, it
-is important that only the colour for the appropriate anaesthetic agent be
-used". Displaying a color therefore obligates the application to display the
-correct one. Color is a redundant cue, never the only identifier. The agent
-name stays visible, and each foreground and background pair must meet WCAG 2.2
-AA contrast. The cited standard references, the screen-color approximations
-and the accessible foregrounds are kept together in `app/theme.py`, so that the
-mapping can be audited as one unit.
+The agent selector and the header back the written name with the
+agent-identification colour of ISO 5360:2016 Table 2 ("Dimensions and colours
+of agent-specific bottle collars and connectors"): yellow for sevoflurane,
+purple for isoflurane, and blue for desflurane. Footnote b of that table is why
+the colour appears at all: "if a colour is used on a vaporizer, bottle, or
+package label to facilitate correct identification, it is important that only
+the colour for the appropriate anaesthetic agent be used". Showing a colour
+therefore obliges the application to show the correct one. The colour is never
+the only cue: the agent name is always shown beside it, in the selector's
+options and in the header badge.
 
-The displayed fills are two approximations away from the standard's own value.
-They must not be read as an exact reproduction. Table 2 footnote c states that
-"Munsell colour is the original" and that the other color systems it lists
-"show the nearest available colour sample". The Pantone reference is therefore
-already ISO's approximation, and the sRGB `fill` approximates the Pantone in
-turn. Converting each Munsell original to sRGB independently (via Illuminant C,
-chromatically adapted to D65) gives the deviation of each displayed fill from
-the standard's original value:
+The displayed fills are two approximations away from the standard's own colour.
+Table 2 footnote c states that "Munsell colour is the original" and that the
+other colour systems it lists "show the nearest available colour sample". The
+Pantone reference is therefore already ISO's approximation, and each displayed
+fill is a screen colour (sRGB) that approximates the Pantone in turn. The
+sevoflurane and desflurane originals lie outside the range of sRGB colours, so
+no display can reproduce them exactly. Converting each Munsell original to sRGB
+directly gives each displayed fill's difference from the standard's original
+(ΔE00):
 
 | Agent | ISO Munsell original | Munsell as sRGB | Displayed fill | ΔE00 |
 | --- | --- | --- | --- | --- |
@@ -8893,454 +8774,488 @@ the standard's original value:
 
 <!-- not-restated: 2.1 -->
 
-The sevoflurane and desflurane originals fall outside the sRGB gamut. No
-display can reproduce them exactly, so some deviation is unavoidable rather
-than a choice. The Scope of ISO 5360 excludes desflurane's *dimensions*, and
-Table 2 records "N.S." for its collar angle. Its *colour* is specified in that
-same row, and that colour is what this application uses.
+Table 2 specifies a *colour* for desflurane, and this application uses it,
+even though the Scope of ISO 5360 excludes desflurane's *dimensions* and its
+row in that table records "N.S." for the collar angle.
 
-A known limitation of the standard is reproduced here deliberately. A user
-with a color vision deficiency cannot distinguish isoflurane's purple from
-desflurane's blue. For normal color vision the two differ by only 1.09 in
-luminance, so hue alone separates them. Simulating the three dichromacies
-removes the hue without supplying the luminance: 1.48 for protanopia, 1.06 for
-deuteranopia, and 1.11 for tritanopia. These values were measured by
-`tools/contrast_check.py` with the Brettel 1997 projection recorded under § "The
-six compartment traces" below. They are pinned by
-`tests/unit/test_contrast_check.py`, so this paragraph cannot go stale behind a
-color edit. Choosing more separable colors would break the correspondence to
-real vaporizers, so it is the worse option. The mitigation is that the agent
-name is always rendered alongside the color. `tests/unit/` asserts this for
-both the dropdown options and the header badge. Color must never be the only
-thing distinguishing two agents in this interface.
-
-Distinguishing a halted run from a paused one is required for the same
-reason. Both stop the numbers advancing, and under § "Step atomicity" both
-leave state that the reader can trust. But a paused run will continue when
-the reader asks, and a halted run cannot. A halted run displayed as "Paused"
-therefore offers a Start control that will fail on its first tick. It also
-presents a stopped trajectory as one still in progress. That is the
-mode-confusion failure that this specification's interface rules exist to
-prevent. A display that is merely frozen, with no change of state at all, is
-worse still.
-
-The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
+This application keeps a known limitation of the standard. A reader with a
+colour vision deficiency cannot tell isoflurane's purple from desflurane's blue.
+With normal colour vision the two differ by only 1.09 in luminance, so hue alone
+separates them. Simulating the three dichromacies removes the hue without
+supplying the luminance difference needed to tell them apart: 1.48 for
+protanopia, 1.06 for deuteranopia, and 1.11 for tritanopia. More separable
+colours would break the match with real vaporizers, so they are the worse
+option. For a reader with a colour vision deficiency, the agent name beside each
+colour identifies the agent instead.
 
 **The alert colour deliberately does not follow the medical alarm-colour
-convention** (project owner, 2026-09-14). The agent colours above are adopted
-*because* a standard obligates them. This is the opposite decision, about a
-different colour. The two are recorded together so that the difference is
-visible rather than inferred.
+convention** (project owner, 2026-09-14). This interface uses the alert colour
+only for bold coloured text: the run-status word, a transient notice line, the
+agent-accounting status word, the permanent educational disclaimer, and the
+case-discard dialog. The agent colours above follow a standard because it
+requires them, and nothing requires the alert colour.
 
 IEC 60601-1-8 governs *visual alarm signals*, which are indicators that encode
-priority by colour together with a flash rate. This interface has none. Every
-use of `WARNING` in `app/theme.py` is bold coloured text. Those uses are the
-run-status word, a transient notice line, the agent-accounting status word,
-the permanent educational disclaimer, and the case-discard dialog. There is no
-indicator lamp, no filled banner, no flashing element and no priority tier. So
-there is nothing to which the convention could apply.
+priority by colour together with a flash rate. This interface has no indicator
+lamp, filled banner, flashing element or priority tier, so the convention has
+nothing to apply to.
 
-The disclaimer is what settles the question, and it points away from adopting
-the convention rather than toward it. `WARNING` is the colour of a line that is
-on screen *always*. A monitor's alarm colours carry meaning precisely because
-they are absent until something is wrong. A permanent element painted in a
-high- or medium-priority alarm colour would teach the opposite of the
-convention it borrowed. The divergence is also chosen for its own sake. A
-teaching tool that looks unmistakably unlike a monitor cannot be mistaken for
-one, and this project's disclaimers already take that view.
+The disclaimer settles the question against the convention. The alert colour
+marks a line that is on screen *always*, while a monitor's alarm colours carry
+meaning because they are absent until something is wrong. A permanent element
+painted in a high- or medium-priority alarm colour would teach the opposite of
+the convention it borrowed. Departing from the convention is also wanted for its
+own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
+mistaken for one, which is the view this project's disclaimers already take.
 
 *"Always" names where the line lives, not that it is in view on every screen
 today* (`PL-JSY5`, 2026-10-18). Where the line lives, and the one gap in that,
-are stated in § "Minimum displayed outputs" -> "What this list requires once
-the layout is the reader's". The argument above needs only that the line is
-a permanent statement rather than a conditional one, and that is true at every
-window size.
+are stated in the paragraphs on the disclaimer line above. The argument above
+needs only that the line is a permanent statement, not a conditional one, and
+that is true at every window size.
 
-The interface applies the same economy of signals one level down. The
-supported-run-length boundary is `MUTED`, not `WARNING`, for two reasons.
-Colouring a correct model's declared boundary as a fault would teach a reader
-to distrust a number that is sound. It would also spend the one signal that
-this interface has.
+The boundary of the supported run length is shown in the muted colour, not the
+alert colour, for two reasons. Colouring a correct model's declared boundary as
+a fault would teach a reader to distrust a sound number. It would also spend the
+one signal this interface has.
 
-Two things apply regardless, and neither is in question. First, any colour
-chosen must still clear the contrast target that `tools/contrast_check.py`
-enforces. Second, the ISO 5360 agent colours are untouched. They identify an
-agent and carry no urgency. That is why Table 2 footnote b obligates them and
-nothing obligates this colour. **The decision binds the Qt port as much as the
-current interface**. The port decides the palette afresh, and it is the moment
-at which an indicator-shaped surface could first appear. The port must not
-arrive carrying a monitor's priority palette.
+**For developers.** The unconditional tiers and the control-input record are
+stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
+`INHALED_AGENT`. The educational-use disclaimer is a standing statement
+(`USE_DISCLAIMER_TEXT`) rather than one of this list's values, so that file
+does not declare it. The interpretation statement is
+`INTERPRETATION_DISCLAIMER_TEXT`.
 
-*The priority-to-colour mapping itself is deliberately not recorded here.* It
-could not be established from a primary source, and the secondary sources
-disagree. Three independent reports give the low-priority colour as cyan, as
-blue, and as "green or blue". Writing down a value that is wrong at least twice
-over would be worse than recording none. The decision above does not depend on
-the mapping.
+A code change that moves a required value into an area fails at once, because
+the dashboard then refuses to place the run. Otherwise the reader could close
+the value along with its area. Checking each saved Workspace and rejecting the
+ones that fail is the fallback for anything that cannot sit outside the areas.
+It is the weaker guarantee, because a check warns after the fact, while the
+structure prevents the failure.
+
+The view chooser is built in `app/area_layout.py`. The view registry marks the
+accounting view `required_reachable` (`app/view_registry.py`), and a build that
+does not register that view fails when the module is imported. Each area that
+shows the accounting view builds a copy of its own, so two such areas both show
+the five amounts (`PL-TH35`).
+
+A test checks the chooser's route to the accounting view from every area of
+each Workspace supplied with the simulator
+(`tests/integration/test_view_chooser.py`). Another checks that the disclaimer
+line is present in every Workspace
+(`test_the_dashboard_carries_the_educational_disclaimer`). A third checks that
+the unconditional region and the disclaimer line stay in view in windows 700,
+900 and 1100 px tall, in each supplied Workspace
+(`test_the_region_and_the_use_disclaimer_stay_in_the_viewport`). The region and
+the line must also stay in view through the scroll to the concentration chart
+that happens when a branch is taken (`PL-562Z`).
+
+Before the region and the line were fixed outside the scrolling part
+(`PL-NNML`), the whole page scrolled. At 1366 px wide, the page was 1087 px tall
+in the Default Workspace and 1505 px in Induction and Maintenance (measured
+offscreen, 2026-10-20). In a 700 or 900 px window, the disclaimer line was
+therefore below the visible part, and scrolling down to it moved the region off
+the top.
+
+Blender is the model for the region's structure, a region outside the areas,
+and not for its persistence. Blender's Topbar and Status Bar sit outside its
+areas as this region does, but neither is always present. Focus Mode (View ->
+Area -> Focus Mode, Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar and the
+editor's secondary regions together, for maximum screen space (Blender Manual,
+"Interface -> Window System -> Areas", read at the source 2026-09-16). That is
+the right trade for a 3D application and the wrong one here. Blender has no
+value whose absence is a safety failure, and this application does. Take the
+structure, and leave out any way to hide the region, such as Focus Mode. Say so
+wherever a reader would otherwise assume that the whole precedent was copied.
+
+The toolkit can report less about a covered window than first appears (measured
+on PySide6 6.11.2 / Qt 6.11.2, 2026-09-16). A widget's visibility flag
+(`QWidget.isVisible()`) is documented to stay true for a widget "obscured by
+other windows on the screen", so it reports the application's own show/hide
+bookkeeping and never occlusion. A window's visibility state
+(`QWindow.visibility()`) says which of Hidden, Windowed, Minimized, Maximized or
+FullScreen the window is in, so it catches a minimized or hidden window and
+nothing else. The one signal close to occlusion (`QWindow.isExposed()`) is
+documented only as something that *might* change when a window is "made totally
+obscured by another window", and the platform plugins disagree about it. The
+macOS plugin drives it from `NSWindow.occlusionState`, while the Windows plugin
+deliberately keeps it true under occlusion for compatibility. No safety rule may
+rest on that signal, which is why the occlusion rule asks only what the
+application can see.
+
+The region built in v0.6.0 must already have the right shape for separate
+windows, because its protection from changes to the areas stops at the frame of
+its own window.
+
+Two other readings of what a separate window must show were refused, and should
+not be proposed again. Giving every window the whole unconditional region fails
+because a broken-out window is typically small, such as one chart on a second
+screen. Seven concentrations in two units would either dominate it, which
+defeats breaking it out, or be squeezed, which
+§ "Diverged, and each divergence has a specific cause" of
+`docs/interface-provenance.md` rules out. Giving the main window everything, and
+a broken-out window only its run's name, leaves a window drawing compartment
+traces with no time, no rate, no run state and no agent. It also rests the
+guarantee on a window that the reader may not be able to see. In a third
+reading, the requirement applies to the application rather than to each window.
+It was ruled out on the same ground (`PL-WLWY`), because it too rests the
+guarantee on where the window manager has put things.
+
+The evidence checked does not name duplicating a live readout across windows
+as a hazard in itself. The one randomised trial of concurrently open records
+found no difference in wrong-patient errors (Adelman et al., *JAMA*
+2019;321(18):1780-1787, doi:10.1001/jama.2019.3698). Nor does the evidence show
+a published preference for non-overlapping areas over overlapping windows, and
+the only controlled comparison does not support one. The case for
+non-overlapping areas rests on this project's own reasoning about covered
+values, as `ROADMAP.md` planned-milestone item 34 records.
+
+The run identity is defined in `src/anesthesia_sim/layout/run_identity.py`, and
+the one place that renders a run's name is `dashboard_frame.run_label`. A
+Workspace's views show the runs that `Workspace.shown_runs` returns. An earlier
+rule showed run names only when more than one run was on the dashboard. That
+rule fails for a run shown alone in a pinned area or in a window of its own
+(`PL-2KXB`).
+
+Stacking the two runs' values leaves each panel at its one-run width, so the row
+stays seven panels across at 1366 px. Placed side by side, the values would make
+each panel roughly twice as wide (`PL-F2YS`).
+
+The cited standard references, the screen-colour approximations and the
+accessible foregrounds are kept together in `app/theme.py`, so that the
+agent-colour mapping can be audited as one unit. Every foreground and background
+pair must meet WCAG 2.2 AA contrast. Each Munsell original was converted to sRGB
+via Illuminant C, chromatically adapted to D65. The dichromacy figures were
+computed by `tools/contrast_check.py` with the Brettel 1997 projection recorded
+under § "The six compartment traces". A test pins them, so a colour change
+cannot leave them out of date (`tests/unit/test_contrast_check.py`). Tests in
+`tests/unit/` check that the agent name is shown beside its colour in the
+selector's options and in the header badge.
+
+The alert colour is `WARNING` in `app/theme.py`, and the muted colour is
+`MUTED`. Two requirements apply whatever alert colour is chosen. The chosen
+colour must still meet the interface's contrast target, which
+`tools/contrast_check.py` enforces. The ISO 5360 agent colours stay as they are,
+because they identify an agent and carry no urgency.
+
+The alert-colour decision applies to the Qt port as much as to the current
+interface. The port chooses its palette afresh, and an indicator-shaped element
+could first appear in it, so the port must not arrive with a monitor's priority
+palette.
+
+IEC 60601-1-8's mapping of priority to colour could not be established from a
+primary source, and the secondary sources disagree. Three independent reports
+give the low-priority colour as cyan, as blue, and as "green or blue". The
+alert-colour decision does not depend on the mapping.
 
 ### MAC multiples as a display unit
 
-Every compartment is displayed twice. One display is a percent of one
-atmosphere, and the other is a multiple of the running agent's 1 MAC. Both are
-shown at once: on every compartment, on the delivered-agent control, and on
-the chart. The chart carries a percent axis on the left and a MAC axis on the
-right. Each axis states its own unit in its title, `% of 1 atm` and `×MAC`.
-Until PL-6580, both units were stated in a caption above the plot instead.
-The percent unit is `% of 1 atm` and not `vol %`. A volumes percent is a
-gas-phase volume fraction. The circuit and alveolar compartments have one. The
-mixed-venous, vessel-rich, muscle and fat compartments do not. They hold a
-partial pressure instead, which convention quotes as a percentage of an
-atmosphere. An axis that titled all six as a volume fraction would claim, for
-four of them, a quantity they do not have.
+Every compartment is shown in two units at once: a percent of one atmosphere,
+and a multiple of 1 MAC of the agent in use. Both units appear on the readouts,
+on the delivered-agent control and on the chart. The chart has a percent axis
+on the left, titled `% of 1 atm`, and a MAC axis on the right, titled `×MAC`. It
+plots each trace once, in percent, and the MAC axis relabels that scale, so the
+two axes always agree about where a trace is.
 
-**Why the second unit exists.** A percent axis silently changes meaning when
-the agent changes. 2% is 1 MAC of sevoflurane and about a third of a MAC of
-desflurane. So two runs plotted in percent are two different clinical
-situations drawn at the same height. A learner who compares a desflurane
-wash-in to a sevoflurane one in percent is comparing nothing. MAC multiples
-are the unit that keeps its meaning when the agent changes, and they are the
-unit clinicians reason in.
+The percent unit is `% of 1 atm`, not `vol %`, because `vol %` is a gas-phase
+volume fraction and only the circuit and alveolar compartments have one. The
+mixed-venous, vessel-rich, muscle and fat compartments hold a partial pressure,
+which convention quotes as a percent of one atmosphere.
+
+**MAC multiples keep their meaning when the agent changes, and clinicians reason
+in them.** A percent changes meaning with the agent: 2% is 1 MAC of sevoflurane
+and about a third of a MAC of desflurane. A desflurane wash-in and a sevoflurane
+wash-in drawn at the same height in percent therefore show two different
+clinical situations.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
-**What a MAC multiple on a compartment asserts.** This is the whole difficulty
-of the unit, and the difficulty is not the arithmetic. MAC is defined for the
+**What a MAC multiple means depends on the compartment.** MAC is defined for the
 *alveolar* (end-tidal) concentration at one atmosphere in a nominal
 40-year-old. It is the population ED50 for immobility in response to a
 standardized surgical stimulus. So:
 
 - On the **alveolar** compartment, a MAC multiple has its conventional
-  meaning. It is subject to every limitation of the divisor recorded below.
+  meaning, subject to the limitations listed below.
 - On the **circuit, mixed-venous, vessel-rich, muscle and fat** compartments,
   it means only *this compartment's partial pressure equals N times the
   alveolar partial pressure that would be 1 MAC*. It is a ratio of partial
-  pressures. It is **not** a statement that the patient is at N MAC of
-  anesthetic depth. The two read identically on a label unless the label says
-  which one it means.
+  pressures, **not** a statement that the patient is at N MAC of anesthetic
+  depth.
 
-The display never presents the ratio as a depth, and the notation is what
-tells the reader so. The unit is written `×MAC` on every readout and on the
-chart's right-hand axis, for the reason given below. Until PL-6580, the
-distinction was also stated in prose beside the chart, in the terms above.
-That paragraph was removed with the rest of the panel's explanatory text. The
-reader of this display is an anesthesia provider. For that reader, what MAC is
-defined against is fundamental knowledge, not something to be taught at the
-top of a chart. A dozen lines of text between the reader and the plot cost
-more than they gave. This section is now the only full statement of the
-convention, which is why it is stated here at length.
+Three limitations apply to every compartment, including the alveolar one:
 
-Three further limitations apply to every compartment, including the alveolar
-one, and none of them is modeled here. First, MAC falls about 6% per decade of
-age (Mapleson 1996, cited in each agent's `sources`), and this model's
-reference adult has no age parameter. Second, the MAC multiples of
-co-administered agents are additive, and this model runs one agent at a time.
-Third, opioids, temperature and patient factors modify MAC, and none of them
-is represented.
+1. MAC falls about 6% per decade of age (Mapleson 1996), and the model's
+   reference adult has no age parameter.
+2. The MAC multiples of co-administered agents are additive, and the model runs
+   one agent at a time.
+3. Opioids, temperature and patient factors modify MAC, and the model
+   represents none of them.
 <!-- not-restated: 6 % -->
 
-**The unit is written `×MAC`, not `MAC`.** "0.80 MAC" is read as a depth.
-"0.80 ×MAC" is read as what the number is. The multiplication sign does safety
-work rather than typographic work, and that is why the readouts carry it. The
-chart's right-hand axis is titled `×MAC` for the same reason and in the same
-words. Its ticks show bare numbers, such as `0.5` and `1.0`. So the title is
-the only thing on the plot that says what they are. The title also labels six
-traces at once, and five of them are not the compartment that MAC is defined
-for. One unit is written as one token everywhere it appears.
+**The unit is written `×MAC`, not `MAC`.** A clinician reads "0.80 MAC" as a
+depth of anesthesia, and "0.80 ×MAC" as a multiple of 1 MAC, which is what the
+number is. Every readout carries the multiplication sign, and so does the MAC
+axis title. The axis ticks show bare numbers, such as `0.5` and `1.0`, so only
+the title says what they are. That title labels six traces at once, and five of
+them are not the alveolar compartment. No text on the display explains the
+difference between a ratio and a depth, so the sign is the only thing that
+marks it.
 
-**The divisor is displayed.** A MAC multiple has exactly one free parameter.
-`CLAUDE.md` requires a clinically meaningful displayed value to be traceable
-to the transformation that produced it. The interface therefore states the
-running agent's 1 MAC in percent beside the chart, as "1 MAC sevoflurane =
-2.0%". A reader who disagrees with the divisor can then see that they
-disagree. They can also convert back to the percent that the model actually
-computes.
+**The agent's 1 MAC is shown beside the chart**, for example as "1 MAC
+sevoflurane = 2.0%". Every MAC multiple on the display is a percent divided by
+the 1 MAC of the agent that produced that percent. A reader can compare the
+1 MAC shown with the value they use, and can convert back to the percent that
+the model computes. The 1 MAC is also the vaporizer's starting position.
+§ "Delivery-limit and MAC parameters" gives the source of each agent's 1 MAC,
+how far it is from the primary literature, and what that gap means for
+comparing agents.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 
-**Nothing in `core/` computes a MAC multiple.** The transformation lives in
-`app/formatting.py` and takes the divisor as an argument. The divisor reaches
-it through `SimulationSnapshot.agent_mac_percent`. That field sits beside the
-concentrations the divisor scales and the agent it belongs to. So a frame
-cannot pair one agent's compartment with another agent's MAC. The chart's
-plotted points remain in percent. The MAC axis relabels that same coordinate
-rather than carrying a second series, so the two axes cannot come to disagree
-about where a trace is. Both units are always shown rather than selected,
-because a unit selector would make the axis unit a mode, and a chart read under the
-wrong assumed unit is a misreading that no disclaimer catches.
-
-**The chart's vertical range is denominated in MAC, and fixed.** For every
-agent, the axis runs from 0 to **3 ×MAC** of the running agent, with a rule
-every half MAC. The axis is therefore one ruler: the same case drawn under two
-agents is drawn at the same height. That is the property the second unit
-exists to give, and the axis previously took it away. Until PL-CC23, the top
-of the axis was the agent's vaporizer dial maximum. That was 3.00 ×MAC of
-desflurane, 4.00 of sevoflurane and 4.17 of isoflurane. So a learner who
-compared a desflurane wash-in to a sevoflurane one was comparing shapes
-silently rescaled by 1.39×. The horizontal rules were also a fixed 2 percent
-apart. That is every 0.33 ×MAC under desflurane and every 1.67 ×MAC under
-isoflurane.
-<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
-<!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
-<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
-<!-- derived: 1.39 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
-<!-- derived: 1.39 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
-<!-- derived: 0.33 from data/agents/desflurane.json mac_percent = 6 -->
-<!-- derived: 1.67 from data/agents/isoflurane.json mac_percent = 1.2 -->
+**The chart's vertical range is set in MAC, and fixed.** For every
+agent, the axis runs from 0 to a ceiling of **3 ×MAC** of the agent in use, with
+a gridline every half MAC. A given MAC multiple is therefore drawn at the same
+height under any agent. The axis never grows to fit a trace. An axis that grew
+would redraw a rising curve smaller partway through a lesson, and a reader would
+take that change of shape for something the model did. The axis stays the same
+for the whole session, not only within a run, so two consecutive runs are
+comparable too.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**Why 3, and why fixed.** Three is exactly desflurane's dial maximum divided
-by its 1 MAC. So the shared ceiling is anchored to a real device limit rather
-than to a preference. The agent whose vaporizer is most limited also gets no
-dead band above its reachable range. The ceiling puts the 1 MAC line at a
-third of the plot height. That is inside the plot rather than on its frame,
-which a ceiling of 2 could not do. The ceiling also keeps on the plot the 2-3×
-MAC range that overpressure induction works in. The axis is fixed rather than
-fitted for the reason that "Why the axis is fixed rather than fitted" gives
-for the wash-in plot below. An axis that grew to fit an excursion would redraw
-a rising curve at a smaller height partway through a lesson. A reader would
-attribute that change of shape to the model. The axis is fixed across the
-session, not only within a run, so two consecutive runs are comparable too.
-
-**A trace above the ceiling is named, not left to look like a plateau.** A
-fixed ceiling can be exceeded, where a ceiling at the dial maximum could not.
-The setting that exceeds it is in common use, not an edge case. Sevoflurane's
-8% dial setting is 4.00 ×MAC and is a common inhalational-induction setting. A
-clipped trace draws as a horizontal line at the top of the frame, and a
-horizontal line is what a plateau looks like. So a reader would conclude that
-the concentration stopped rising at 3 ×MAC when the model says it did not.
-That is a wrong clinical reading of a correct model. The chart therefore names
-the compartments that are above the ceiling. It also says that the readouts,
-which are not clipped, keep showing their values. The comparison is made
-against the displayed resolution rather than against zero, so a trace sitting
-exactly at the ceiling is not reported. This matters because isoflurane's
-ceiling is 3 × 1.2, which in binary floating point is 3.5999999999999996.
+**The chart names each compartment whose trace is above the ceiling.** A trace
+above 3 ×MAC is cut off at the top of the frame, where it runs flat as a plateau
+would. If the chart did not name the compartment, a reader would conclude that
+the concentration stopped rising at 3 ×MAC when the model says it did not. The
+chart also says that the readouts are not cut off and keep showing their values.
+Sevoflurane's 8% dial setting is 4.00 ×MAC, above the ceiling, and is common for
+inhalational induction.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**What the divisor is worth.** `mac_percent` is a tier-3 value, and this
-section is where that matters most. The value is now the divisor of every MAC
-number on the display, not only the vaporizer's starting position.
-"Delivery-limit and MAC parameters" carries its provenance and the size of the
-gap against the primary literature. That includes the consequence for the
-cross-agent comparison that this unit exists to support.
+**For developers.** Nothing in the model's code (`core/`) computes a MAC
+multiple. The display code converts percent to MAC multiples
+(`app/formatting.py`) and takes the agent's 1 MAC as an argument. That 1 MAC
+travels in each snapshot of the simulation's state, beside the concentrations
+it scales and the agent it belongs to (`SimulationSnapshot.agent_mac_percent`).
+The display code therefore cannot pair one agent's concentrations with another
+agent's 1 MAC.
+
+Both units are shown because a unit selector would make the axis unit a mode,
+and a chart read under the wrong assumed unit is a misreading that no
+disclaimer catches. The agent's 1 MAC is shown because the project's rules
+(`CLAUDE.md`) require a clinically meaningful displayed value to be traceable to
+the transformation that produced it. The display carries no text explaining MAC
+because its reader, an anesthesia provider, knows what MAC is defined against,
+and a dozen lines of text between the reader and the plot cost more than they
+gave (`PL-6580`).
+
+The stored 1 MAC (`mac_percent`) is a tier-3 value under § "Source hierarchy:
+what may be cited as the authority for a value". Each agent's data file
+cites Mapleson 1996, the source for the fall in MAC with age, in its `sources`
+list.
+
+The ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
+desflurane's dial maximum divided by its 1 MAC. It therefore rests on a real
+device limit. Desflurane's vaporizer is the most limited, and the ceiling leaves
+no empty band above the range that vaporizer can reach. The ceiling puts the
+1 MAC line at a third of the plot height, inside the plot rather than on its
+frame, which a ceiling of 2 could not do. It also keeps on the plot the
+2-3 ×MAC range that overpressure induction works in. A ceiling at each agent's
+own dial maximum could never be exceeded. But it would draw the same MAC
+multiple at different heights for different agents, because the dial maxima
+run from 3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
+<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
+
+A gridline every half MAC (`CHART_GRID_INTERVAL_MAC`) falls on the values that
+the MAC axis labels, so the axis names every gridline on the plot.
+
+The chart compares a trace's excess over the ceiling with the displayed
+resolution rather than with zero, so it does not name a compartment whose trace
+sits exactly at the ceiling. This matters for isoflurane, whose ceiling,
+3 × 1.2, is 3.5999999999999996 in binary floating point.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 ### The chart's time base
 
-**What it is.** The time base is how much simulated time the chart shows at
-once. The reader either picks a width from a fixed ladder or leaves the
-default, which fits the whole run so far. In both cases the horizontal axis is
-simulated time. The time base decides only how much of that time is on the
-plot and how finely the span is ruled. The code for this section is
-`app/chart_time_base.py`. That module is arithmetic over simulated time. It
-reads no simulation state and imports no toolkit. So the widths and the rule
-this section reasons about can be read, cited and tested without loading the
-interface. The section above governs the vertical axis, and this one governs
-the horizontal axis.
+**The time base is how much simulated time a chart shows at once.** The reader
+either picks from a fixed ladder of widths, from fifteen minutes to twelve
+hours, or leaves the default, which fits the whole run so far. Either way, the
+horizontal axis is simulated time. A separate control, the playback rate, sets
+how fast the run advances, so that a long case can be watched in one sitting.
 
-**Why a case needs one.** The compartments this model exists to teach are
-slow, but the moment a learner is most likely to be watching is not. At the
-reference settings, muscle's time constant for sevoflurane is about 135 min
-and fat's is about 42 h, while induction lasts minutes. A five-minute window
-hides everything slower than the vessel-rich group. A twelve-hour window puts
-a five-minute induction in the leftmost 0.7% of the plot. The playback rate is
-what makes a long case watchable in one sitting, and the time base is what
-makes it readable. They are separate controls because they address separate
-questions: how fast the run advances, and how much of it is in view.
+**A time base changes the view and never the run.** No simulation step is
+resized or taken again. Nothing that defines the run is added, discarded or
+altered. A case watched at a width of fifteen minutes or of twelve hours is the
+same run, so § "The reproducibility guarantee" still applies. Every point drawn
+at any width is a state that the run reached at the simulated instant where the
+point sits. In a wider window, these states lie further apart in simulated time.
+No drawn value is estimated from its neighbours, and no stored image is
+enlarged.
 
-**A time base is a view control and reaches no model state.** Choosing a time
-base changes which part of the run is drawn, and at what column spacing, and
-nothing else. No step is resized. Nothing in the run definition is added,
-discarded or altered, and the run is not re-stepped. The time base therefore
-leaves "The reproducibility guarantee" untouched. The same case watched at
-fifteen minutes and at twelve hours is the same run, keyframe for keyframe.
-Every point drawn at any width is still a state that the run reached at the
-simulated instant where the point sits on the time axis. It is evaluated from the run definition
-under the constraint that "Interface boundary" places on a plotted trace. So a
-wider window is a coarser *grid* of exact states. It is never a resampling, an
-interpolation or a stored image zoomed into.
+**No one width suits a whole case.** The compartments this model exists to teach
+are slow, but the moment a learner is most likely to be watching is not. At the
+reference settings, muscle's time constant for sevoflurane is about 135 min and
+fat's is about 42 h, while induction lasts minutes. A five-minute window hides
+everything slower than the vessel-rich group. A twelve-hour window puts a
+five-minute induction in the leftmost 0.7% of the plot.
 
-**Why a fixed ladder rather than a free zoom.** The selected width is the
-width of the window at every point of every run. So seconds per pixel is a
-property of the reader's choice, not of how long the run has been going. A
-trace's slope on the plot is then a fixed multiple of its rate. The slope
-stays comparable between two moments of one run and between two runs. A
-window that grew continuously with the run would rescale every slope while the
-underlying rates stayed the same. That would be a misleading visual encoding
-of rate of rise, which is the one quantity that uptake and distribution are
-taught by. The fixed vertical range rests on the same argument. Discrete steps
-also make one step a meaningful change rather than a nudge, because each rung
-is at least half again as wide as the one below it.
+**A chosen width keeps slopes comparable within a run and between runs.** It
+stays the same at every moment of every run. Seconds per pixel then depend on
+the reader's choice alone, not on how long the run has gone on. A trace's slope
+on the plot is therefore a fixed multiple of its rate of change. A window that
+widened continuously with the run would rescale every slope while the rates
+stayed the same. That would misrepresent rate of rise, the one quantity by which
+uptake and distribution are taught. The vertical axis has a fixed range for the
+same reason (see the section above).
 
-**The ruling derives from the width.** Each rung carries the interval at
-which its gridlines and labels fall. Every rung is ruled into four to six
-intervals. That range looks like a grid, rather than like a bare axis or a
-hatch pattern. A single fixed interval cannot do that across the whole ladder.
-The 60 s interval that this replaced would rule a twelve-hour axis into 720
-lines, which would look like a solid block. Ticks stand at multiples of the
-interval measured from the case's zero, not from the window's left edge. So a
-gridline stays at the same simulated time as the window slides underneath it.
-That is true for every run on the axis, because a branch is on the same clock
-as the trunk it came from.
+**The gridlines follow from the width.** Each width on the ladder sets the
+interval at which gridlines and labels fall, so that the axis holds four to six
+intervals. Gridlines fall at multiples of that interval counted from the start
+of the case, not from the window's left edge, so a gridline stays at the same
+simulated time as the window slides under it. The gridlines are the same for
+every run drawn on the axis, because a run branched from another keeps the clock
+of the run it came from.
 
-**Fitting always fits.** Fitting is the default mode. Past the widest declared
-rung, the ladder continues by doubling, rather than stopping at the widest
-rung and showing only part of the case. Suppose a mode named for showing the
-whole run silently showed the most recent twelve hours of a fourteen-hour run.
-It would then claim something false about what the reader is looking at. That
-is why the honesty of the name is a requirement on the mode, not a property of
-how far the ladder reaches. The ladder also carries rungs below the narrowest
-width that the selector offers. Fitting can reach those rungs, but the reader
-cannot choose them. Fitting has to work at ten seconds as well as at ten
-hours, and choosing a span with nothing in it gives a view nobody wants.
+**The default always shows the whole run.** It uses the narrowest width that
+holds the run, so the width steps up as the run grows, and slopes on the plot
+change scale at each step. Past the widest width on the ladder, it keeps
+doubling the width. Early in a run, it can also use widths narrower than any the
+reader can choose.
 
-**Every axis label carries its own unit, and the width in force is stated.** A
-tick reads `0`, `45s`, `3m`, `1m30s` or `1h30m`, rather than a bare number
-under a unit given in a caption. The axis spans anything from a minute to half
-a day. So a bare `12` would mean twelve minutes on one time base and twelve
-hours on another, while looking identical on both. A reader who missed the
-caption would have nothing in the label to correct them. Beside the plot, the
-chart names the width in words. It also says whether the reader chose that
-width or it is the whole run so far, because those are different claims about
-what is on screen. The time base is a mode in exactly the sense that the
-playback rate is one, and it is displayed for the same reason. When a reader
-cannot see the span, they supply their own assumption for it.
+**Every axis label carries its own unit, and each chart states its width.** A
+label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. Beside the plot, the chart
+names the width in words and says whether the reader chose it or it is the whole
+run so far.
 
-**Each chart holds its own time base** (project owner, 2026-10-19,
-ratified, over one shared window saved per Workspace; `PL-L59K`). The
-concentration chart and the F_A/F_I plot each carry a time-base control. A
-choice made in one control sets that chart alone. So one chart can show the
-first fifteen minutes of a case while another fits the whole run. `ROADMAP.md`
-§ "v0.6.0 - the layout is the reader's", Required scope entry 11, asks for
-this. Two charts at different widths no longer share a time axis, so each
-chart states its own width beside its plot. Every advisory that depends on the
-window is based on that chart's own window and shown on that chart. These
-advisories are the notice naming traces above the axis, the count of control
-changes the chart could not mark, and the count of F_A/F_I stretches it could
-not draw. A notice naming a clipped trace that the chart in front of the
-reader does not draw would be false for that chart. Charts at the same width
-are drawn from one frame, so they show the same instants. A chart saves its
-width with its other settings. The shipped Induction Workspace saves its
-concentration chart on the 15-minute width, which follows the run. So the
-current values stay on the plot after the first fifteen minutes. Switching to
-the Induction tab loads that state, so its chart opens on that width
-(`PL-2KXB`).
+**Each chart has its own time base** (project owner, 2026-10-19, ratified, over
+one shared window saved per Workspace; `PL-L59K`). The concentration chart and
+the F_A/F_I plot each have a time-base control, and a choice in one sets that
+chart alone. One chart can show the first fifteen minutes of a case while
+another fits the whole run. Each notice that depends on a chart's window
+describes that window and appears on that chart. These are the notice naming
+traces above the top of the axis, the count of control changes the chart could
+not mark, and the count of F_A/F_I stretches it could not draw. Two charts at
+the same width show the same instants.
+
+**A chart saves its width with its other settings.** The Induction Workspace
+that comes with the simulator saves its concentration chart at the 15-minute
+width. That width follows the run, so the current values stay on the plot after
+the first fifteen minutes. Switching to the Induction tab opens the chart at that
+width (`PL-2KXB`).
+
+**For developers.** The time base's code is in `app/chart_time_base.py`. The
+module does arithmetic on simulated time. It reads no simulation state and
+imports no interface toolkit, so the widths and gridline intervals can be read,
+cited and tested without loading the interface.
+
+Each drawn point is evaluated from the run's definition, under the constraint
+that § "Interface boundary" places on a plotted trace.
+
+Each width on the ladder is at least half again as wide as the one below it, so
+one step up or down visibly changes the view.
+
+Four to six intervals look like a grid rather than a bare axis or a hatch
+pattern. No single fixed interval does that across the whole ladder. The 60 s
+interval used before would draw 720 gridlines across a twelve-hour axis, enough
+to look like a solid block.
+
+The doubling is there because a mode named for showing the whole run would
+misstate what is on screen if it showed only the last twelve hours of a
+fourteen-hour run. The narrower widths let the default work ten seconds into a
+run as well as at ten hours. The reader cannot pick them, because a span with
+nothing in it gives a view nobody wants.
+
+Each label carries its unit because the axis spans anything from a minute to
+half a day. A bare `12` would mean twelve minutes at one width and twelve hours
+at another. Like the playback rate, the width is displayed because a reader who
+cannot see the span supplies their own assumption for it. The chart also says
+how the width was set, because a chosen width and the whole run so far mean
+different things about what is on screen.
+
+The roadmap for v0.6.0 asks for a time base per chart (`ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's", Required scope entry 11). Each chart's
+notices describe its own window, because a notice naming a clipped trace that
+the chart does not draw would be false for that chart. Charts at the same width
+are drawn from one frame.
 
 ### MAC-awake as a chart reference
 
-The compartment chart carries two horizontal clinical references. A **band**
-marks the running agent's population MAC-awake, and a **line** marks its
-nominal 1 MAC. Neither is a modeled quantity. Both are published constants,
-drawn at a height that the chart's own percent axis gives meaning to. `core/`
-computes neither of them. No governing equation reads MAC-awake, just as none
-reads `mac_percent`.
+The compartment chart carries two horizontal clinical references for the agent
+in use. A **band** marks its population MAC-awake, and a **line** marks its
+nominal 1 MAC. Neither is modelled. Both are published constants, drawn at
+their values on the chart's percent axis.
 
-**Why two rather than one.** Chortkoff et al. state that "along with
+**With both references drawn, the chart shows the *decrement required for
+arousal*, not only the endpoint.** Chortkoff et al. state that "along with
 pharmacokinetics, the ratio of the awakening concentration to the
 anesthetizing concentration (MAC-awake/MAC) determines time to awakening".
-When both references are drawn, that ratio becomes the visible gap between
-them. The chart then shows the *decrement required for arousal*, not only the
-endpoint. That is what lets a reader compare a twenty-minute case and a
-three-hour case side by side. It is the lesson of context-sensitive emergence,
-stated as geometry.
+That ratio becomes the visible gap between the two references. So a reader can
+compare a twenty-minute case with a three-hour case side by side, and see the
+lesson of context-sensitive emergence.
 
-**The mark type carries the distinction, not the colour.** The two references
-differ in epistemic status, and their marks say so. MAC-awake is a measured
+**Shape, not colour, tells the two references apart.** MAC-awake is a measured
 population value with real spread, so it is drawn as a band. 1 MAC is a
 definitional anchor, not a distribution of the same kind, so it is drawn as a
 line. The difference between a band and a line survives greyscale and every
-colour-vision deficiency. § "Color contrast" below requires that of any
-encoding that carries meaning. It is also a stronger separation than any pair
-of colours. Both references are drawn in the interface's own ink and label
-colours rather than in a seventh and eighth hue. That way, neither is mistaken
-for another compartment.
+colour-vision deficiency. Both references are drawn in the interface's own ink
+and label colours, so neither is mistaken for a compartment.
 
-**The band's geometry, and why it is two strokes rather than a thicker mark.**
-The band is drawn as a stroke on each of its two boundaries, with a light fill
-between them. Both strokes sit on the published values, so the drawn extent
-equals the data extent exactly. Nothing pads the band outward. A band drawn
-thicker than one standard deviation would assert a wider population spread
-than the sources support. That would be a claim about the evidence, not a
-styling choice. So a minimum drawn height is specifically excluded, whatever
-it would do for legibility.
+**The band spans one standard deviation either side of the published mean
+MAC-awake.** It covers roughly the middle two thirds of a population, not its
+full range. A rule marks each edge, on its published value, with a light fill
+between the two. Nothing pads the band outward, even where it is thin, so the
+space between the rules is exactly the published spread.
 
-The second stroke is necessary because no axis range can provide the
-separation. On the fixed `CHART_AXIS_TOP_MAC` range, the band spans 3.33% of
-the plot height for sevoflurane and 4.20% for desflurane. No ceiling that this
-chart can take changes that. At 2 MAC the band is unambiguous, but the 1 MAC
-anchor sits at mid-plot. That leaves no room above it for the overpressure
-induction that the chart has to be able to show. At 4 MAC the band is back to
-the 2.50% it had on the dial-maximum axis that this one replaced. Suppose a
-mark is stroked on its upper edge only, over an unstroked fill. It then has the
-geometry of a line with a shadow beneath it, however wide the fill is. That
-geometry is what made this band look like a line. It would have collapsed the
-band-versus-line distinction above into no distinction at all. Two strokes
-with a gap between them have the geometry of an interval. They remain an
-interval at any thickness the axis leaves. So what a reader sees between the
-two rules is the population spread, not a decoration around a threshold.
+MAC-awake is the concentration at which half of a population responds to verbal
+command. The band's label names that endpoint. MAC's endpoint is different:
+immobility in response to a standardized surgical incision.
 
-<!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
-<!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
+**The band is not a prediction for the patient on the screen.** It is the
+strongest claim that the evidence supports. The interface shows no
+time-to-wake-up figure of any kind, because this model does not support a
+per-patient prediction.
 
-**What the band asserts.** MAC-awake is the concentration at which half of a
-population responds to verbal command. That is a *different endpoint* from
-MAC, which is immobility in response to a standardized surgical incision. The
-label says which endpoint the band shows. The band extends one standard
-deviation either side of the published mean. It therefore spans roughly the
-middle two thirds of a population, not its full range.
-
-**What the band does not assert, and what the interface therefore never
-shows.** The band is not a prediction for the patient on the screen. The
-interface displays no time-to-wake-up figure of any kind. A readout of the
-form "time to wake-up: 14 min" would be taken as a per-patient prediction,
-which this model does not support. No surrounding disclaimer undoes that,
-because the number would be acted on and the disclaimer would not. A band is
-the strongest claim that the evidence supports, which is why the reference
-takes that form.
-
-**Which trace the band is read against, and why that is the load-bearing
-part.** The band must be read against the **vessel-rich** trace. This model
-has no effect-site compartment and defines $`F_a \equiv F_A`$ (see § "Model
-boundary"). So the alveolar trace is the fastest curve on the chart, and the
-furthest from where responsiveness actually returns. One measurement shows
-the size of the gap. It ran sevoflurane for 3 hours at the opening dial of
-2.0%, which is the stored 1 MAC, and the default fresh gas flow of 4 L/min.
-That brought the alveolar fraction only to 1.69%, or 0.84 MAC. The vaporizer
-was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
-trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
-it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
-with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
-They were measured again on 2026-10-31, with each crossing time interpolated
-between the two steps on either side of it (`PL-PTDZ`). That second run
-corrected one figure below, from 7.31 to 7.30 min.
-`tests/reference/test_mac_awake_washout_figures.py` reads this protocol and
-its figures from this section, runs the protocol, and holds each figure to the
-places printed. So a parameter change that moves a figure fails the test, and
-so does an edit here that changes the protocol or a figure on its own.
+**Read the band against the vessel-rich trace.** This model has no effect-site
+compartment and defines $`F_a \equiv F_A`$ (see § "Model boundary"). So the
+alveolar trace is the fastest curve on the chart, and the furthest from where
+responsiveness returns. One simulation shows the size of the gap. It ran
+sevoflurane for 3 hours at the opening dial of 2.0%, which is the stored 1 MAC,
+and the default fresh gas flow of 4 L/min. That brought the alveolar fraction
+only to 1.69%, or 0.84 MAC. The vaporizer was then turned off and the fresh gas
+flow raised to 10 L/min. The alveolar trace crosses the band's centre at
+2.86 min, and the vessel-rich trace crosses it at 6.55 min, 2.29 times later.
+These figures are from a run on 2026-10-26, repeated on 2026-10-31 (`PL-39KH`,
+`PL-PTDZ`). An automated test reruns this protocol and checks each figure to
+the decimal places printed here.
 <!-- not-restated: 10 L/min -->
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
 <!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
-The primary literature makes this a question of *which number is correct*,
-not only of how a number is read. Katoh et al. determined sevoflurane and
-isoflurane MAC-awake by two methods, a slow, equilibrated washout and a fast
-one. The two methods disagree. Slow washout gave 0.34 and 0.31 of MAC for
-sevoflurane and isoflurane respectively, against 0.22 for both by fast
-washout. The paper attributes the difference to end-tidal-to-arterial and
-arterial-to-cerebral anesthetic differences. That is precisely what this model
-represents as the alveolar-to-vessel-rich difference. The paper also
-estimates the brain concentration at awakening. That estimate is not a
-measurement, because cerebral concentration cannot be sampled in these
+**The choice of trace also decides which published value is correct.** Katoh
+et al. determined sevoflurane and isoflurane MAC-awake by a slow, equilibrated
+washout and by a fast one, and the two methods disagree. Slow washout gave
+0.34 of MAC for sevoflurane and 0.31 for isoflurane, against 0.22 for both by
+fast washout. Katoh attributes the disagreement to end-tidal-to-arterial and
+arterial-to-cerebral anesthetic differences. This model represents those
+differences as the gap between the alveolar and vessel-rich traces. The stored
+values are the slow-washout ones, and they belong against the vessel-rich
+trace.
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+
+Katoh also estimated the brain concentration at awakening. That estimate is
+not a measurement, because cerebral concentration cannot be sampled in these
 patients. The abstract says the brain concentrations were "calculated with
 end-tidal anesthetic concentrations", and the title calls them "predicted".
 So they come from Katoh's own model of brain uptake (`PL-YDRT`). That model
 treats the brain as one well-mixed compartment perfused by arterial blood. Its
 equation 1 (p. 1013) is:
-<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
-<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 
 $$
 \frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
@@ -9349,82 +9264,96 @@ $$
 This is the perfusion-limited form that § "Tissue uptake and return" uses for
 each tissue group. Katoh's compartment is the brain alone, though, while this
 model's vessel-rich group pools the brain with the heart, liver, kidney and
-viscera. Every patient was given the same rules for the flow and the volume.
-Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac
-index of 3.5 L/min/m², so it scales with body surface area. Brain volume
-$`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's time
-constant therefore varied a little from patient to patient. The coefficients
-were the same for everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is
-0.63 for sevoflurane and 1.36 for isoflurane, and the brain:gas coefficient
-$`\lambda_{T/G}`$ is 1.15 and 2.09.
-The arterial partial pressure was not measured. Katoh's equation 2 sets it
-equal to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal
-value for 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The
-two give different answers. During fast washout, the calculated cerebral
-concentration at first eye opening was 0.30 of MAC for sevoflurane and 0.26
-for isoflurane under equation 2 (Table 1, p. 1014). Under equation 3 it was
-0.34 and 0.30 (Table 3, p. 1016). The abstract quotes the equation 3 figures,
+viscera. Katoh computed every patient's flow and volume from the same
+formulas. Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a
+cardiac index of 3.5 L/min/m², so it scales with body surface area. Brain
+volume $`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's
+time constant therefore varied a little from patient to patient. The
+coefficients were the same for everyone. The blood:gas coefficient
+$`\lambda_{B/G}`$ is 0.63 for sevoflurane and 1.36 for isoflurane, and the
+brain:gas coefficient $`\lambda_{T/G}`$ is 1.15 and 2.09.
+
+Katoh did not measure the arterial partial pressure. Equation 2 sets it equal
+to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal value for
+20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The two give
+different results. During fast washout, the calculated cerebral concentration
+at first eye opening was 0.30 of MAC for sevoflurane and 0.26 for isoflurane
+under equation 2 (Table 1, p. 1014). Under equation 3 it was 0.34 and 0.30
+(Table 3, p. 1016). The abstract quotes the equation 3 figures and calls them
 "nearly equal to MAC-Awake obtained by slow alveolar washout". Neither set
-differs significantly from the slow-washout values. The stored values are
-therefore the slow-washout ones, and the trace they belong against is the
-vessel-rich one. That rests on a modelled estimate agreeing with an
-equilibrated measurement, which is weaker evidence than a direct measurement
-of the brain would be.
+differs significantly from the slow-washout values. So the stored values and
+the choice of the vessel-rich trace rest on a modelled estimate that agrees
+with an equilibrated measurement. That is weaker evidence than a direct
+measurement of the brain would be.
 
 <!-- not-restated: 0.34 -->
 
-**Three ways of misreading the band run in the same direction, and it is the
-consequential one.** Concentration falls during emergence. So a trace crosses
-a higher reference sooner, and a faster-falling trace crosses any reference
-sooner. Three distinct reading errors therefore all shorten the apparent time
-to awakening. The first is reading the band against the alveolar trace instead
-of the vessel-rich one. The second is drawing the slow-washout value against a
-fast-washout alveolar trace, where 0.22 would be the matching figure. The
-third is the denominator mistake described below. A learner who takes away
-any of these errors concludes that emergence is faster than this model says.
-That learner carries into practice the belief that a patient is more awake
-than they are. That is why this document specifies the reference, rather than
-leaving it to the chart.
+**The band is drawn at a fraction of the stored MAC.** MAC-awake is stored as
+that fraction, never as a percent of one atmosphere. Each source expresses
+MAC-awake as a ratio to MAC, and Katoh does so explicitly, "as a ratio to
+age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
+its own population was measured against. Desflurane shows the risk. Chortkoff's
+MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
+18-30. The stored MAC is Rampil's figure for ages 31-65, 6.0%. Dividing 2.60% by
+6.0% would give 0.433 instead of the published 0.36, so the band would be drawn
+20% too high and crossed too soon. Storing the fraction avoids that error. The
+chart's MAC axis is also scaled by the stored MAC, so the band sits at its
+published fraction on that axis. For desflurane, storing the fraction also
+allows an independent check. The band's centre is 0.36 of the stored 6.0%, or
+2.16%, and Song et al. measured 2.17% in the non-jaundiced control arm of a
+population that Rampil's 31-65 year MAC describes.
 
-**The band's height has a fourth source of error, and its direction differs
-by agent** (`PL-GCGX`). The band is the stored fraction times the stored
-`mac_percent`, which is the Gas Man flat adult MAC. The traces are absolute
-partial pressures and do not depend on that divisor. So wherever the divisor
-departs from the literature, the band moves against the traces by the same
-proportion. § "Delivery-limit and MAC parameters" compares the stored MAC with
-Mapleson's age-40 values. Against them, the stored MAC is 11.1% high for
-sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Mapleson's 95%
-confidence limits are about ±7%, and ±10% for desflurane. Only sevoflurane's
-gap is larger than its limits. So the sevoflurane band probably sits too high,
-by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
-wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
-drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
-Mapleson's 1.80%, at 7.30 min. The isoflurane and desflurane gaps are inside
-the limits, so Mapleson does not show either band to be off. For desflurane a
-direct measurement points the same way. The drawn centre of 2.16% agrees with
-Song et al.'s measured 2.17%, as the paragraph below says. All three figures
-are gaps from Mapleson's MAC, not from the MAC each source used.
-<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
 <!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
 
-Katoh's own denominator is each patient's age-adjusted MAC, from two linear
-equations on p. 1013. For isoflurane it is 1.43 − 0.0061 × age (yr) percent,
-and for sevoflurane 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC
-studies for them and does not say how the equations were derived from those
-studies. At age 40 the equations give 1.94% for sevoflurane and 1.19% for
-isoflurane. At that age the stored MAC is 3.3% above Katoh's for sevoflurane
-and 1.2% above it for isoflurane. The band is the stored fraction times the
-stored MAC, so it sits above Katoh's own age-40 awakening concentration by
-the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
-isoflurane, where Katoh's fractions times Katoh's age-40 MAC give 0.658% and
-0.368%. Both differences are much less than the 0.05 of MAC standard
-deviation of Katoh's fractions. Katoh's slow-washout patients themselves woke
-at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
-(Table 1, p. 1014). Those figures are lower than the band mostly because the
-patients were older, with mean ages of 45.9 and 45.1 years. So they are not a
-like-for-like check of a band drawn for age 40. The age-40 comparison points
-the same way as the Mapleson one: the band sits slightly high, so it teaches a
-slightly early wake-up (`PL-P319`).
+**Three misreadings of the band all make emergence look faster than this model
+says.** Concentration falls during emergence. So a trace crosses a higher
+reference sooner, and a faster-falling trace crosses any reference sooner. The
+first error is reading the band against the alveolar trace instead of the
+vessel-rich one. The second is drawing the slow-washout value against a
+fast-washout alveolar trace, where 0.22 would be the matching figure. The
+third is dividing a published MAC-awake percent by a MAC other than the one
+its population was measured against, as in the desflurane example above. A
+learner who takes away any of these errors carries into practice the belief
+that a patient is more awake than they are.
+
+**The band's height has a fourth source of error, and its direction differs by
+agent** (`PL-GCGX`). The stored MAC is Gas Man's flat adult value. The traces
+are absolute partial pressures and do not depend on MAC. So wherever the
+stored MAC departs from the literature, the band moves against the traces by
+the same proportion. § "Delivery-limit and MAC parameters" compares the stored
+MAC with Mapleson's age-40 values. Against them, the stored MAC is 11.1% high
+for sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. All
+three are gaps from Mapleson's MAC, not from the MAC that each source used.
+Mapleson's 95% confidence limits are about ±7%, and ±10% for desflurane. Only
+sevoflurane's gap is larger than its limits. So the sevoflurane band probably
+sits too high, by about 11% if Mapleson is right, and a band drawn too high
+teaches an earlier wake-up. In the run above, the vessel-rich trace crosses
+sevoflurane's drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the
+same fraction of Mapleson's 1.80%, at 7.30 min.
+The isoflurane and desflurane gaps are inside the limits, so Mapleson does not
+show either band to be off. Song et al.'s measurement agrees with the drawn
+desflurane band as well.
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+
+The comparison with Katoh's own MAC at age 40 points the same way as the
+Mapleson one. The band sits slightly high, so it teaches a slightly early
+wake-up (`PL-P319`). Katoh's denominator is each patient's age-adjusted MAC,
+from two linear equations on p. 1013. For isoflurane it is
+1.43 − 0.0061 × age (yr) percent, and for sevoflurane
+2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for them
+and does not say how the equations were derived from those studies. At age 40
+the equations give 1.94% for sevoflurane and 1.19% for isoflurane. The stored
+MAC is 3.3% above Katoh's for sevoflurane and 1.2% above it for isoflurane, so
+the band sits above Katoh's own age-40 awakening concentration by the same
+proportions. The drawn centres are 0.68% sevoflurane and 0.372% isoflurane,
+where Katoh's fractions times Katoh's age-40 MAC give 0.658% and 0.368%. Both
+differences are much less than the standard deviation of Katoh's fractions,
+0.05 of MAC. Katoh's slow-washout patients themselves woke at a mean end-tidal
+0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane (Table 1, p. 1014).
+Those figures are lower than the band mostly because the patients were older,
+with mean ages of 45.9 and 45.1 years. So they are not a like-for-like check
+of a band drawn for age 40.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
@@ -9433,68 +9362,85 @@ slightly early wake-up (`PL-P319`).
 <!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 <!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
 
-**The value is stored as a fraction of MAC, never as a percent of one
-atmosphere, and that is a safety decision rather than a schema preference.**
-Each source expresses MAC-awake as a ratio to MAC. Katoh does so explicitly,
-"as a ratio to age-adjusted MAC". A published *percent*, by contrast, is
-anchored to whichever MAC its own population was measured against. Desflurane
-is the worked example. Chortkoff's MAC-awake of 2.60% is 36% of a MAC of about
-7.25%, which is Rampil's 18-30 year figure. This project stores Rampil's 31-65
-year figure of 6.0% instead. Dividing the absolute percent by the stored MAC
-would give 0.433 rather than the published 0.36. That is 20% high, so the band
-would be drawn 20% too high and crossed too soon. Storing the fraction removes
-the trap outright. It also stays correct if `mac_percent` is ever changed or
-made age-aware.
+**The 1 MAC line marks the nominal value, not the dialled one.** A fixed line
+sits at the same height in every run, so runs stay comparable. A line that
+tracked the dialled concentration would only restate where the trace already
+starts. The line sits at the stored MAC. It is labelled as a reference adult
+value, not as this patient's MAC, because this model has no age parameter.
 
-<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
+At a 1 MAC dial, no patient trace reaches the 1 MAC line, however long the case
+runs. This is expected and is not a display fault. Muscle and fat keep taking
+up agent for many hours, so the blood returning to the lungs stays below the
+alveolar gas. That keeps the alveolar fraction below the inspired fraction, and
+rebreathing keeps the inspired fraction below the dial (`PL-39KH`). In the
+3-hour run above, the alveolar and vessel-rich traces both reached only
+0.84 MAC. This shortfall happens in real patients too, and it is worth teaching.
 
-A fraction with no stated denominator is the correct number in the wrong
-context. So each agent's `mac_awake.mac_reference_basis` records the MAC that
-its fraction was derived against. The interface states the divisor that the
-fraction is multiplied by. Applying the fraction to this project's own
-`mac_percent` keeps the band and the axis consistent by construction. For
-desflurane, it also gives an independent cross-check. 0.36 of the stored 6.0%
-is 2.16%. Song et al. measured 2.17% in the non-jaundiced control arm of a
-population that the 31-65 year divisor describes.
+**The *absolute height* of both references inherits every limitation of the
+stored MAC.** The fractions come from primary measurements in humans (tier 1).
+The stored MAC is tier 3: it is Gas Man's parameter, not a measurement
+(§ "Source hierarchy: what may be cited as the authority for a value").
+§ "Delivery-limit and MAC parameters" records its limitations. The interface
+shows that MAC, so a reader can compare it with the value they would use.
 
-<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
-
-**The 1 MAC line is the nominal value, not the dialled one.** A fixed
-reference stays comparable across runs. That is what lets a reader compare two
-cases of different length side by side. A line that tracked the concentration
-the learner happened to dial would only restate where the trace already
-starts. The line is the flat adult `mac_percent`. It is labelled as a
-reference adult value, not as a patient-specific one. The reason is that this
-model has no age parameter, while Katoh expressed MAC-awake as a ratio to
-age-adjusted MAC.
-
-One consequence is expected and is not a rendering fault. At a 1 MAC dial, no
-patient trace reaches the 1 MAC line, however long the case runs. Muscle and
-fat keep taking up agent for many hours, so the blood returning to the lungs
-stays below the alveolar gas. That keeps the alveolar fraction below the
-inspired fraction, and rebreathing keeps the inspired fraction below the dial
-(`PL-39KH`). The measurement above shows the size: after 3 hours at 1 MAC the
-alveolar and vessel-rich traces stood at 0.84 MAC. That is true of the
-patient, and it is worth teaching.
-
-**What the references inherit, and one methodological limitation.** The
-fractions are tier 1, from primary measurements in humans. `mac_percent` is
-tier 3. So the *absolute height* of both references inherits every limitation
-that "Delivery-limit and MAC parameters" records for the divisor. The
-interface displays that divisor, so a reader who disagrees with it can see
-that they do. Separately, the three fractions were not determined by one
-method. Katoh's slow-washout arm is *descending*. Chortkoff and Song both
-determined desflurane MAC-awake by *ascending* stepwise equilibration. All
-three are equilibrated determinations rather than fast-washout ones, which is
-why all three belong against the vessel-rich trace. But ascending and
-descending determinations are not interchangeable, and no descending-washout
-desflurane MAC-awake was found. The three fractions (0.31 isoflurane, 0.34
+**The three fractions were not determined by one method.** Katoh's
+slow-washout arm is *descending*. Chortkoff and Song both determined
+desflurane MAC-awake by *ascending* stepwise equilibration. All of these are
+equilibrated determinations, not fast-washout ones, so all three fractions
+belong against the vessel-rich trace. But ascending and descending
+determinations are not interchangeable, and no descending-washout MAC-awake
+for desflurane was found. The three fractions (0.31 isoflurane, 0.34
 sevoflurane, 0.36 desflurane) sit in a narrow range, so each agent carries its
 own value rather than one fraction covering all three.
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
+
+**For developers.** The model's code (`core/`) computes neither reference, and
+no governing equation uses MAC-awake or the stored MAC (`mac_percent`). Each
+agent's data file records the MAC that its MAC-awake fraction was derived
+against (`mac_awake.mac_reference_basis`). Storing the fraction is a safety
+decision. It also keeps the band correct if `mac_percent` is ever changed or
+made age-aware.
+
+Telling the references apart by shape meets the requirement in
+§ "Color contrast" below for any encoding that carries meaning. Shape also
+separates them more strongly than any pair of colours would. Using the ink and
+label colours avoids a seventh and eighth hue on the chart.
+
+The band has no minimum drawn height, even though one would help legibility.
+A padded band would claim a wider population spread than the sources support.
+
+The band is ruled on both edges because no axis range that the chart can use
+gives it enough height to look like a band on its own. On the fixed axis range
+(`CHART_AXIS_TOP_MAC`, 3 ×MAC), it spans 3.33% of the plot height for
+sevoflurane and 4.20% for desflurane. A 2 MAC ceiling would make the band
+unambiguous, but would put the 1 MAC line at mid-plot and leave no room above it
+for the overpressure induction that the chart must be able to show. A 4 MAC
+ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
+the vaporizer dial's maximum. A band ruled on its upper edge only, over an
+unruled fill, looks like a line with a shadow beneath it, whatever the fill's
+height. The two references would then no longer differ in shape. Two rules with
+a gap between them look like an interval at any height the axis leaves.
+
+<!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+There is no time-to-wake-up readout because a figure such as "time to
+wake-up: 14 min" would be taken as a per-patient prediction. No disclaimer
+beside it would undo that, because readers act on the number and not on the
+disclaimer.
+
+The washout figures come from simulating sevoflurane uptake
+(`AgentUptakeSystem.for_agent("sevoflurane")`) at 0.1 s steps. Since the
+2026-10-31 run, each crossing time is interpolated between the two steps on
+either side of it. The automated test reads the protocol and its figures from
+this section (`tests/reference/test_mac_awake_washout_figures.py`). So a
+parameter change that moves a figure fails it, and so does an edit to the
+protocol or to a figure on its own.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 ### The control-input timeline
 
@@ -10575,7 +10521,7 @@ readout that § "The chart's hover readout: what the tooltip may show" derives
 below, is shown at the resolutions above. The MAC axis is labelled on round MAC
 values, in half-MAC steps, which the fixed 3 ×MAC range gives for every agent,
 so a gridline that a reader learns under one agent means the same thing under
-the next. § "The chart's vertical range is denominated in MAC, and fixed" above
+the next. § "The chart's vertical range is set in MAC, and fixed" above
 explains the range. The chart's horizontal extent is the selected time base, so
 the reader chooses the seconds per pixel, as "The chart's time base" explains.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
