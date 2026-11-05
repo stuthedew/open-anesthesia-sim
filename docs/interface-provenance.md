@@ -86,9 +86,11 @@ published source and design documentation. The roadmap records this
 (`PL-RTG9`). In this layout, panes are tiled without overlapping, each shows a
 view whose kind can be swapped, and a set of panes is saved as a named workspace.
 
-This project uses Blender's names for these parts, so that its code and roadmap
-do not drift into a private vocabulary. A pane is called an *Area*, its view an
-*Editor* and a named set of panes a *Workspace*.
+This project uses Blender's names for two of these parts, so that its code and
+roadmap do not drift into a private vocabulary. A pane is called an *Area* and a
+named set of panes a *Workspace*. What a pane shows is called a *View*, where
+Blender says *Editor*, for the reason given in § "Diverged, and each divergence
+has a specific cause".
 
 This project's own provenance standard asks for the attribution to Blender. The
 law does not require anyone to attribute an idea, because copyright does not
