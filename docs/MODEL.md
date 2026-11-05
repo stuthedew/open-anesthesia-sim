@@ -10849,11 +10849,9 @@ lead because of the general rule in `.claude/rules/expert-review.md`: prefer an
 interface that prevents an error to one that warns after it.
 
 The printed instant is exact because the chart's columns are laid on hundredths
-of a second (`PL-T5NJ`). The box prints each instant to the resolution of the step
-by which the run advances (`HOVER_INSTANT_RESOLUTION_S`). A drawn column sits
-wherever the anchored grid puts it, and the state reported is the state at
-exactly that instant. But printing the instant to four decimals would claim a
-resolution that no other display on the screen has.
+of a second (`PL-T5NJ`), and every other drawn instant falls on a simulation
+step. The box rounds each instant to a hundredth of a second
+(`HOVER_INSTANT_RESOLUTION_S`), which removes only floating-point noise.
 
 #### The hover and the run it belongs to
 
@@ -10981,8 +10979,9 @@ while the text reported several.
 When only one run is in reach, which is the usual case once the reader has
 aimed, the box uses the three-line form, naming the run if two are drawn. The
 box gains a line when a run comes into reach and loses it when the reader moves
-away, so the reader sees each run arrive and leave. It never holds more than four
-value lines on a two-run chart, or three on a single-run chart.
+away, so the reader sees each run arrive and leave. In the cases measured below,
+it held at most four value lines on a two-run chart, and at most three on a
+single-run chart.
 
 **The pointer's place along the time axis names the instant, and the radius
 decides only what is in reach** (`PL-1K9G`, 2026-09-22). The chart draws each
@@ -11008,8 +11007,8 @@ its true partial pressure, and partial pressure is what drives effect. So one
 linear axis serves all six compartments, and reporting every trace in reach
 copes with the crowding without a change of scale. The fat trace cannot show how
 much agent fat holds: a fifth of the stored agent at one hour, and a third at
-three hours. A planned schematic view will show that amount (planned-milestone
-item 27).
+three hours. The compartment schematic shows that amount (§ "The compartment
+schematic: what its heights, amounts and share bar assert").
 
 **For developers.** Five targeting rules were scored on the branched case, with
 alveolar and fat displayed, a pair that the limit on a two-run chart's
@@ -11551,10 +11550,12 @@ decimals, because how many decimals a cost can justify depends on the price
 
 The two rows in the hazard table (§ "Reasonably foreseeable misuse, and the
 hazards the presentation carries") name the tests for this section. A test in
-`tests/reference/test_published_vapour_to_liquid.py` runs both of Gas Man's
-isoflurane exercises from the patient inputs to the drawn cost, at US$20.47 per
-100 mL bottle, and checks the four printed costs
-(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`).
+`tests/integration/test_agent_cost_view.py` runs both of Gas Man's isoflurane
+exercises from the patient inputs to the drawn cost, at US$20.47 per 100 mL
+bottle, and checks the four printed costs
+(`test_the_displayed_cost_reproduces_gas_man_s_printed_costs`). The conversion
+to liquid alone is checked against the same exercises in
+`tests/reference/test_published_vapour_to_liquid.py`.
 
 ### The compartment schematic: what its heights, amounts and share bar assert
 
@@ -11585,12 +11586,12 @@ a sevoflurane dial is at its 8% maximum.
 
 **A container's amount is the agent that the model holds in that compartment,
 counted as vapour.** It is the equivalent volume of pure agent vapour at a
-reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$
-in § "Agent amount"). The agent in blood and fat is dissolved, so the volume
-expresses an amount of agent, not gas present in the body. An agent amount has
-this meaning in every View that shows one, including the share bar
-(`PL-S79P`) and the agent cost View (`PL-B396`). § "Displayed precision"
-derives the precision at which amounts are shown.
+reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$ in
+§ "Agent amount"). The agent in blood and fat is dissolved, so the volume
+expresses an amount of agent, not gas present in the body. This subsection's
+rules for an agent amount also apply to every other View that shows one,
+including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`). §
+"Displayed precision" derives the precision at which amounts are shown.
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
 "mL".** Millilitres of vapour and millilitres of liquid differ by a factor of
