@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.16
 touches: docs/MODEL.md, src/anesthesia_sim/app/unconditional_set.py, tests/unit/test_unconditional_set.py, ROADMAP.md, tools/doc_check.py
 blocked-by: PL-HGZS
 added: 2026-11-02

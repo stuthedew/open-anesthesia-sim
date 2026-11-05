@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.16
 touches: docs/MODEL.md, tools/model_rewrite.py, tests/unit/test_model_rewrite.py, src/anesthesia_sim/app/chart_frame.py
 blocked-by: PL-HGZS
 added: 2026-11-02
