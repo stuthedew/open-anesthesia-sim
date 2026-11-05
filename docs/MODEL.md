@@ -9742,246 +9742,239 @@ anesthesia, a time to any endpoint, or a prediction for an individual patient.
 
 ### Color contrast, and the standard this interface is held to
 
-**The target is WCAG 2.2 Level AA.** In two places this project deliberately
-holds itself to a higher bar, and it explicitly defers a set of criteria. WCAG
-2.2 is the current W3C Recommendation (published 2023-10-05). WCAG 3.0 is a
-Working Draft whose scoring model replaces pass/fail entirely, and this
-interface is not designed against it. Conforming to 2.2 AA also satisfies the
-2.1 AA that EN 301 549 and the 2024 ADA Title II rule reference, and the 2.0
-AA that Section 508 references. None of those instruments applies to this
-project, though. AA is chosen because it is the right engineering bar for a
-teaching tool, not because the project is obliged to comply.
+**The target is WCAG 2.2 Level AA.** WCAG 2.2 is the current W3C
+Recommendation (published 2023-10-05). Meeting its Level AA also satisfies the
+2.1 AA that EN 301 549 and the 2024 ADA Title II rule reference, and the 2.0 AA
+that Section 508 references. None of those applies to this project. AA was
+chosen as the right engineering bar for a teaching tool. The interface does not
+target WCAG 3.0, a Working Draft whose scoring model replaces pass and fail.
 <!-- not-restated: 2.1 -->
+
+The project defers four criteria until the interface is settled enough to
+assess them: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10
+(Reflow) and 1.4.12 (Text Spacing). Keyboard and screen-reader support is an
+open question, not a commitment, because it depends on what the software that
+draws the window can deliver.
 
 Two criteria carry most of the weight:
 
 - **SC 1.4.3, Contrast (Minimum)**, requires 4.5:1 for text. Every readout,
   every label naming a readout, and every agent name over its identification
-  color is held to this minimum. The project claims the large-text exception
-  (18pt, or 14pt bold) nowhere. The interface's default text size is 14px, so
-  bold status text is judged at 4.5:1 like everything else. The larger readout
-  values are held to the same 4.5:1.
+  color must meet it. The project never uses the large-text exception (18pt, or
+  14pt bold), so the larger readout values must meet 4.5:1 too, and so must the
+  bold status text, set at the default size of 14px.
 
-  **Text is measured against the surface it is actually drawn on, and there are
-  two such surfaces.** The run-status word, the halted-run notice and the
-  educational-use disclaimer sit in the top-level column, so the page
-  background shows through behind them. The readouts, their labels, the axis
-  description and the accounting lines sit inside panels. The page background
-  is the darker of the two. So wherever a color appears on both, the page
-  background is the stricter test and the one that counts. Assuming that the
-  panel was the surface is what hid the shortfall that `PL-X0RG` fixed. The
-  label color measured 4.28:1 on the panel and 3.98:1 on the page, and only the
-  second is what a reader of the run-status word actually sees.
+  **Text is measured against the surface it is drawn on, and there are two
+  such surfaces.** The run-status word, the halted-run notice and the
+  educational-use disclaimer sit directly on the page background. The
+  readouts, their labels, the axis description and the accounting lines sit
+  inside panels, which are lighter than the page. Where a color appears on
+  both, the page background is the stricter test, and it is the one that
+  counts.
 - **SC 1.4.11, Non-text Contrast**, requires 3:1 for graphical objects. Here
-  that means each chart trace against the panel it is drawn on, and each agent
-  swatch treated as a shape. It also means the active track of each parameter
-  slider, which is how a control shows where its value sits in its range.
+  that means each chart trace against the panel it is drawn on, each agent
+  swatch treated as a shape, and the active track of each parameter slider,
+  which shows where the slider's value sits in its range.
 
 <!-- not-restated: 4.5 -->
 
-**A color that carries meaning both as text and as a graphic needs two values,
-not one.** The two minima differ by half again, so a single constant that
-serves both roles fails one of them. This interface has one such case. It is
-recorded here because the constant's name does not make the roles obvious.
-`ACCENT` is the graphical one, used for the sliders' active track.
-`ACCENT_TEXT` is the same hue darkened until it is legible as text. It carries
-the affirmative status words "Running" and "Valid", whose counterpart is the
-warning color. Telling a running run from a halted run is safety-critical for
-the reason given above. So the word that announces the state is held to the
-text minimum on the surface it is actually drawn on. The color is also never
-the only cue. The words themselves differ, so a reader who cannot tell the
-colors apart still reads the state.
+**Color is never the only cue.** SC 1.4.1 (Level A) requires this, and ISO
+5360 Table 2 footnote b gives a stronger reason: it makes displaying a color an
+obligation to display the *correct* one. A second cue keeps a mis-seen color
+from becoming a mis-identified agent, so the agent name always accompanies the
+color. Telling a running simulation from a halted one is safety-critical. The
+status words "Running" and "Valid" differ from the words for the opposite
+states, which appear in the warning color. A reader who cannot tell the colors
+apart therefore still reads the state.
 
-Held **above** AA in two places:
+The interface goes beyond AA in two places:
 
-- **Color is never the sole channel.** SC 1.4.1 (Level A) requires this, but
-  the reason here is stronger than the criterion. ISO 5360 Table 2 footnote b
-  makes displaying a color an obligation to display the *correct* one. So a
-  second cue is what keeps a mis-seen color from becoming a mis-identified
-  agent. The agent name always accompanies the color. The chart's traces
-  require a non-color channel for the reason given in the next bullet.
-- **Chart traces are held to pairwise separation, which WCAG does not cover.**
-  SC 1.4.11 asks only for 3:1 against the *background*. It says nothing about
-  how far apart two adjacent series must be, yet reading one compartment
-  against another is the whole lesson of this chart. **Confirmed against the
-  source on 2026-09-07** (`PL-JX0Z`). The project owner supplied the
-  Understanding document after the egress proxy refused five routes to it.
-  Its line-graph example (Figure 38) is explicit: *"The lines should have 3:1
-  contrast against their background, but as there is little overlap with other
-  lines they do not need to contrast with each other or the graduated lines."*
-  Its "Graphical Objects" section makes each line in a graph a graphical object
-  in its own right. It also allows the Gestalt "law of continuity" to ignore
-  **minor** overlaps between them. Note the condition that both carve-outs
-  depend on: an absence of overlap. This chart does not meet it. Six traces
-  start together, converge toward equilibrium and cross through wash-in and
-  washout. So this chart does not qualify for the exemption that would excuse
-  pairwise separation. That makes the bar below a supported exceedance rather
-  than an arbitrary strictness. It is also why `tools/contrast_check.py`
-  reports the pairwise matrix without failing on it, while it enforces the
-  3:1 minimum against the panel that the criterion does require.
-
-  This bar cannot be met by luminance differences. Contrast ratios compose
-  along a bounded axis, since black to white is 21:1. Sort $`n`$ traces by
-  luminance, and the smallest adjacent gap is largest when the gaps are equal.
-  So no arrangement of six traces gives every pair more than
-  $`21^{1/5}\approx1.84`$. The requirement in the next bullet tightens this
-  further, to 1.48. Both values are less than SC 1.4.11's 3:1. So a redundant
-  non-color channel (line style or marker) is a **requirement** for this chart
-  rather than an embellishment, and no palette choice can remove it. The next
-  section describes how that requirement is met.
+- **Chart traces can be told apart from each other, which WCAG does not
+  cover.** SC 1.4.11 asks only for 3:1 against the *background*, yet reading
+  one compartment against another is the whole lesson of this chart. W3C's
+  Understanding document for that criterion excuses lines from contrasting
+  with each other only where they overlap little. This chart's six traces
+  start together, converge toward equilibrium and cross during wash-in and
+  washout. No choice of colors can give every pair of six traces 3:1 against
+  each other, so each trace also has a line style or marker, which the next
+  section describes.
 - **Each chart trace clears 3:1 against the panel, both as displayed and under
   simulated dichromacy.** SC 1.4.11 is defined on the color the display emits,
-  so this is the project's bar rather than the criterion's. The reason for it
-  is the criterion's *purpose*: that a graphical object be findable against its
-  background. Measuring one observer does not serve that purpose. This is not a
-  hypothetical strictness. The muscle trace passed at 3.19:1 as displayed and
-  failed at 2.98:1 when simulated for deuteranopia. No normal-vision check
-  could have seen that shortfall.
+  so this bar is the project's own. Its reason is the criterion's purpose: a
+  graphical object must be findable against its background, and a check that
+  models only normal color vision cannot show that for a reader with
+  dichromacy.
 
-**Deferred, and named so that the deferral is visible** rather than silently
-unlisted: SC 2.4.11 (Focus Not Obscured), 2.5.8 (Target Size), 1.4.10 (Reflow)
-and 1.4.12 (Text Spacing). Each needs a settled interface before it can be
-assessed. What the rendering backend can deliver for keyboard and
-screen-reader support is an open question rather than a commitment.
+**The gridline grey is exempt from SC 1.4.11** (project owner, 2026-09-27,
+ratified, over darkening the grey to 3:1; `PL-HKTB`). It colors the plot's
+gridlines, the axis lines, the line between sections of the chart column and
+the sliders' unfilled groove, at 1.31:1 against the panel. The criterion
+applies only to a graphical object *required to understand the content*. The
+values that the gridlines mark are shown in three other ways: each gridline
+stands at an axis tick labeled in text at 5.00:1, the readouts state every
+compartment's current value, and hovering over any drawn point shows its exact
+value. The section line sits over a bold heading or a titled panel that
+already marks the boundary. The groove is the edge of a slider whose handle
+and filled track identify it.
 
-**Exempt from SC 1.4.11, and recorded as such rather than left unasked**: the
-gridline grey, `GRIDLINE`, in all four things it draws. These are the plot's
-ruling, the axis lines, the rule between sections of the chart column and the
-sliders' unfilled groove (project owner, 2026-09-27, ratified, over darkening
-the grey to 3:1; `PL-HKTB`). The grey measures 1.31:1 on the panel. The
-criterion applies only to a graphical object *required to understand the
-content*. The Understanding document's line-graph example does count a chart's
-"background lines for the values" as graphical objects, and it asks 3:1 of
-them. But in that example the rulings are how a value is perceived at all.
-The document states what lifts the requirement under its
-"Required for understanding" heading. There, the requirement does not apply
-when "a graphic with text embedded or overlaid conveys the same information,
-such as labels and values on a chart". This chart has three such carriers of the same
-information. Every ruling stands at a tick that the axis labels as text at
-5.00:1. The readouts state every compartment's current value. The hover states
-the exact value at any drawn point. So the chart passes the criterion's own
-test: assume the area is invisible, and ask whether the graphic is still
-understood. The section rule sits over a bold heading or a titled panel that
-already marks the boundary. The groove is the edge of a control whose handle
-and filled track already identify it. The criterion's own paragraph on
-boundaries excuses these cases in terms. Darkening was refused because of the
-chart's hierarchy, not because of the criterion. A ruling at 3:1 would be 87%
-as dark as the lightest trace (3.43:1). It would collapse the visual ordering
-in which a ruling sits below a reference line, which sits below a trace. The
-line widths of 1 / 1.5 / 2-3 px also carry that ordering. The record is the
-`EXEMPT` table in `tools/contrast_check.py`. It has one entry per use, which
-gives the criterion's grounds and cites the drawing code by symbol.
-`make check` counts the uses into the contrast report line. It refuses an
-exempt name that the palette does not hold. It also refuses a colour that is
-both required and exempt on one surface, so nothing is held to the criterion
-and excused from it at the same time. An exemption is not a shortfall. A
-shortfall is a pair that should meet a minimum and does not. The bar for
-entering the exemption table is the criterion's own carve-out, never a failing
-ratio.
+**The ratios are computed from the interface's own colors**, with WCAG 2.2's
+definitions of relative luminance and contrast ratio, each time the project's
+checks run. Each requirement is a minimum ratio that named colors must reach,
+such as 4.5:1 for a readout's text on its panel. A requirement whose colors
+miss its minimum today is a shortfall. Each shortfall is recorded with the work
+item that will fix it.
+<!-- not-restated: 4.5 -->
 
-**The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
-`make check`. It reads the color constants out of `app/theme.py`, which has
-contained every one of them since `PL-2CS8`.
-`check_colors_live_in_the_theme` requires them to stay there. The tool holds
-each declared requirement to its declared minimum. It uses WCAG 2.2's own
-definitions of relative luminance and contrast ratio. Its requirement table
-names the colors, the criterion, and the reason they are held to that number.
-The judgment of *which* colors matter stays in that table, and the tool only
-evaluates it. Most entries are one foreground against one background. Some
-elements have an edge that either of two channels can carry. Such an element
-declares both channels and is held to the better of them. Each agent
-identification badge is that case: a fill outlined in the agent's own text
-color. The badge is perceivable by whichever of the two clears the minimum, so
-measuring one channel at a time misreports it. Requirements that do not meet
-their minimum today are listed in the table, each against the item that closes
-it. A listed shortfall that starts passing is reported as an error, so a fix
-cannot leave its excuse behind. A colour that the criterion does not apply to
-is recorded in the same file's exemption table, not as a requirement or a
-shortfall. The paragraph above records the gridline grey that way.
+**The window is always light, even on a computer set to dark appearance**
+(project owner, 2026-09-20, ratified - chosen over leaving the host appearance
+alone, and over growing a second palette for dark appearance). All 24
+requirements are measured on the light theme's panel and page background. The
+six compartment trace colors were chosen to meet their minimums under simulated
+dichromacy on those same surfaces. A window drawn on other surfaces would show
+color pairs that nothing has measured. A disabled control still takes its
+colors from the computer's setting, apart from one disabled color that the
+interface declares. That color's contrast is checked too.
 
-**A declared colour reaches the screen by one of three mechanisms.** Most of
-this interface is drawn by a stylesheet composed from `app/theme.py`'s
-constants. Those constants are what `tools/contrast_check.py` reads. Every one
-of those stylesheets is composed in `app/stylesheets.py` (`PL-Y4YX`). Some
-widgets cannot be drawn that way. An entry's fill, a spin box's stepper, a
-list's rows and its scroll bar, a check box's indicator and a dialog's own
-surface are painted from Qt palette roles. Styling them with a stylesheet
-instead costs the native stepper and the check box's tick. For those widgets,
-`qt_widgets.declare_interface_colours` declares the same theme colours as
-palette roles. PANEL and INK become `Base` and `Text`, MUTED becomes
-`PlaceholderText`, and PRIMARY and PANEL become `Highlight` and
-`HighlightedText`. So the pairs on screen are pairs that the requirement table
-already measures. The function writes only the `Active` and `Inactive` colour
-groups. A disabled colour stays the platform's, with the single declared
-exception recorded above.
+**For developers.** The contrast check (`tools/contrast_check.py`) runs in
+`make check`. It reads the color constants from `app/theme.py`, which contains
+every one of them. A second check (`check_colors_live_in_the_theme`) keeps them
+there. Each entry in the contrast check's requirement table names the colors,
+the criterion and the reason for the minimum. The table records which colors
+matter, and the check only evaluates it. Most entries are one foreground
+against one background. Some elements show their edge in either of two colors,
+such as an agent badge, which is a fill outlined in the agent's own text color.
+The entry for such an element declares both colors. The element passes when
+the better of the two meets the minimum, because a reader finds the edge by
+whichever color contrasts more. Shortfalls are listed in the same table. The
+check reports an error when a listed shortfall starts passing, so a fix cannot
+leave its listing behind.
 
-The third mechanism writes the same role set on the `QApplication` itself,
-through `qt_widgets.declare_application_colours`. It is the fallback that the
-other two cannot provide. Qt's application palette follows the **host
-appearance**. So on a machine set to Dark, everything that this interface did
-not name arrived with a dark theme's surfaces, around a light window. That
-included what no per-widget declaration can reach, because a stylesheet makes
-every widget beneath it resolve its colours from the application palette, not
-from the styled ancestor. **This interface declares its light theme there rather
-than following the host** (project owner, 2026-09-20, ratified - chosen over
-leaving the host appearance alone, and over growing a second palette for dark
-appearance). The reason is the requirement table. All 24 requirements are
-measured on PANEL and BACKGROUND. So are the dichromacy minimums that the six
-compartment traces were re-picked against. An interface that rendered any
-other surface would be measuring surfaces that are not on screen. The cost is
-recorded rather than hidden. A reader whose machine is set to Dark gets a
-light-appearing window. Supporting dark appearance properly means re-measuring
-every requirement here against a second pair of surfaces. It also means
-re-picking all six traces under four vision models. That is interface work,
-not a setting.
+A color that a criterion does not apply to goes in the contrast check's
+exemption table (`EXEMPT`), with one entry per use. Each entry gives the
+criterion's grounds and cites the drawing code by symbol. An entry must rest on
+an exemption that the criterion itself grants, never on a failing ratio. A
+color that fails its minimum is listed as a shortfall. The checks that
+`make check` runs count the exempt uses into the contrast report line. They
+refuse an exempt name that `app/theme.py` does not define, and a color that is
+both required and exempt on one surface.
 
-**It is a palette and not a colour-scheme hint.** Qt 6.8's
-`styleHints().setColorScheme` documents itself as a hint. Its documentation
-says that "overriding the color scheme is not supported on all platforms". It
-was observed being ignored outright on 2026-09-20, when it still reported
-`Unknown` after being set. So nothing here rests on it. A palette is
-authoritative at any depth. The test `tests/integration/test_dark_appearance.py`
-supplies a dark host palette. Measured against that palette, the page's scroll
-bar goes from 94.3% of its pixels darker than mid-grey to none.
+Measuring text on the panel alone once hid a shortfall, fixed in `PL-X0RG`.
+The label color gave 4.28:1 on the panel and 3.98:1 on the page, where the
+run-status word is drawn.
 
-Two things still follow the host. Both do so by the rule, not by omission. A
-**disabled** widget draws from the `Disabled` colour group, which all three
-mechanisms leave to the platform. Declaring a disabled colour is a decision
-under `.claude/rules/ui-color.md`, and this interface has exactly one, measured
-above. The splitter handles used to be disabled, so they kept the host's dark
-surface. Since `PL-W9P6` (2026-10-18) they are enabled. The border between two
-Areas now shows the page's `BACKGROUND` under a dark host too.
-`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` checks
-this (`PL-05M4`).
-A **tooltip** draws from `ToolTipBase` and `ToolTipText`, which are outside the
-declared role set. This interface uses no tooltip today.
+A color that carries meaning both as text and as a graphic needs two
+constants, because text needs 4.5:1 and a graphic 3:1, and one constant serving
+both roles fails one of them. The accent color is the only such case. The
+sliders' active track uses `ACCENT`, and "Running" and "Valid" use
+`ACCENT_TEXT`, the same hue darkened until it is legible as text.
+<!-- not-restated: 4.5 -->
 
-All of this is visible rather than asserted.
-`tests/integration/test_dark_appearance.py` renders the dashboard and both
-dialogs under the palette that a dark host supplies. It fails on any content
-widget that resolves to that palette. That is what caught six controls that
-had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). It also checks the
-chrome and the untouched `Disabled` group against the same host. Which
-controls this test covers is not left to a remembered list of widget kinds.
-`tests/integration/test_simulation_view.py` builds the whole dashboard under a
-foreground colour that this interface never uses. It fails on any control that
-paints its own content and resolves to that colour. So a control added later
-must declare a colour, rather than depend on somebody noticing it. The test
-names what it exempts, each against the reason it draws no text.
-`tools/contrast_check.py` counts those kinds into its report line. A
-requirement exists only where somebody wrote a colour down. So a control that
-writes none would otherwise be absent from both sides of that line's count,
-and the line would treat it as covered (`PL-4L49`).
+The excuse for lines that overlap little comes from the Understanding document
+for SC 1.4.11, read on 2026-09-07 in a copy the project owner supplied
+(`PL-JX0Z`). Its line-graph example (Figure 38) says: *"The lines should have
+3:1 contrast against their background, but as there is little overlap with
+other lines they do not need to contrast with each other or the graduated
+lines."* Its "Graphical Objects" section makes each line in a graph a graphical
+object in its own right. Citing the Gestalt "law of continuity", it lets
+**minor** overlaps between lines be ignored.
+
+The traces cannot all reach 3:1 against each other because contrast ratios
+multiply along a bounded scale: black to white is 21:1. With $`n`$ traces
+sorted by luminance, the smallest gap between adjacent traces is largest when
+the gaps are equal. So no arrangement of six traces gives every pair more than
+$`21^{1/5}\approx1.84`$. The bound tightens to 1.48 once every trace must also
+clear 3:1 against the panel, as displayed and under simulated dichromacy. Both
+values are less than 3:1, so the line style or marker cannot be dropped.
+
+Because the criterion does not require pairwise separation, the contrast check
+reports the contrast between every pair of traces without failing on it. It
+enforces the 3:1 minimum against the panel, which the criterion does require.
+
+Checking under simulated dichromacy has caught a shortfall: the muscle trace
+passed at 3.19:1 as displayed and failed at 2.98:1 for deuteranopia.
+
+The gridline grey's exemption (`GRIDLINE`) rests on the Understanding document
+for SC 1.4.11. The document's line-graph example does ask 3:1 of a chart's
+"background lines for the values", but there the gridlines are how a value is
+perceived at all. Under the heading "Required for understanding", the document
+says the criterion does not apply when "a graphic with text embedded or
+overlaid conveys the same information, such as labels and values on a chart".
+This chart passes the criterion's own test: imagine the gridlines invisible,
+and ask whether the chart is still understood. The criterion's paragraph on
+boundaries expressly excuses cases such as the section line and the groove.
+
+Darkening the grey was refused because of the chart's visual order, in which a
+gridline sits below a reference line and a reference line below a trace. A
+gridline at 3:1 would be 87% as dark as the lightest trace (3.43:1), and that
+order would collapse. Line widths of 1 / 1.5 / 2-3 px also carry that order.
+
+Supporting dark appearance would mean measuring every requirement again on a
+second pair of surfaces, and choosing all six trace colors again under four
+vision models.
+
+A declared color reaches the screen by one of three mechanisms. Most of the
+interface is drawn by stylesheets, all composed in one module
+(`app/stylesheets.py`) from the theme's color constants (`PL-Y4YX`). Some
+widgets are painted from Qt palette roles instead: an entry's fill, a spin
+box's stepper, a list's rows and its scroll bar, a check box's indicator and a
+dialog's own surface. A stylesheet would cost them the native stepper and the
+check box's tick. For those widgets, a function
+(`qt_widgets.declare_interface_colours`) declares the same theme colors as
+palette roles. It maps PANEL and INK to `Base` and `Text`, MUTED to
+`PlaceholderText`, and PRIMARY and PANEL to `Highlight` and `HighlightedText`,
+so the pairs on screen are pairs that the requirement table already measures.
+It writes only the `Active` and `Inactive` color groups.
+
+The third mechanism is the fallback that keeps the window light under a dark
+host: a function (`qt_widgets.declare_application_colours`) writes the same
+roles on the `QApplication` itself. Without the fallback, Qt's application
+palette follows the host appearance. On a machine set to Dark, everything this
+interface did not name would then take a dark theme's surfaces, around a light
+window. No per-widget declaration can cover all of that, because every widget
+beneath a styled widget resolves its colors from the application palette
+rather than from the styled ancestor.
+
+The interface sets a palette, which is authoritative at any depth, and does not
+rely on a color-scheme hint. Qt 6.8 documents its color-scheme setting
+(`styleHints().setColorScheme`) as a hint: "overriding the color scheme is not
+supported on all platforms". On 2026-09-20 the setting was seen to be ignored
+outright: it still reported `Unknown` after being set.
+
+Disabled controls follow the host because all three mechanisms leave the
+`Disabled` color group to the platform. Declaring a disabled color is a
+decision that the project's rule for interface colors governs
+(`.claude/rules/ui-color.md`). The splitter handles are enabled (`PL-W9P6`), so
+the border between two areas shows the page's `BACKGROUND` under a dark host
+too, rather than the host's dark surface. A test
+(`test_the_border_between_two_areas_shows_the_page_rather_than_the_host`)
+checks this (`PL-05M4`).
+
+Tooltips also follow the host, because they draw from `ToolTipBase` and
+`ToolTipText`, which are outside the declared roles. This interface uses no
+tooltip today.
+
+The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
+the dashboard and both dialogs under the palette a dark host supplies. It
+fails on any content widget that resolves to that palette, and it checks the
+chrome and the untouched `Disabled` group against the same host. Under that
+host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
+without the interface's own palette, and none are with it.
+
+A second test (`tests/integration/test_simulation_view.py`) catches any control
+that declares no color, including one added later. It builds the whole
+dashboard under a foreground color that this interface never uses, and fails
+on any control that paints its own content and resolves to that color. It
+exempts only kinds of control that draw no text, and names each kind with its
+reason. A requirement exists only where somebody wrote a color down, so the
+contrast check counts those kinds into its report line. Without that count, a
+control that declares no color would appear on neither side of the report
+line, and the line would show it as covered (`PL-4L49`).
 
 ### The six compartment traces: what separates them
 
-Six curves share one plot. Taking a value off the wrong curve is a misreading
-of a clinical quantity, not an aesthetic complaint. The curves are separated by
-**line style**, with color as a second cue and never the first. This section
-records why that order is forced, and which standard the colors must meet
-instead.
-
-**Line style is the separating channel.**
+Each compartment's trace has its own line style, and color is only a second
+cue. Six traces share one plot, and a trace mistaken for another gives a wrong
+clinical value.
 
 | Compartment | Line style | Dash pattern (px) | Width (px) |
 | --- | --- | --- | --- |
@@ -9992,26 +9985,50 @@ instead.
 | Muscle | dotted | 2 on, 3 off | 2 |
 | Fat | dash-dot | 12 on, 4 off, 2 on, 4 off | 2 |
 
-All six styles differ. The legend entry beside each checkbox names its style in
-words, so a reader can learn each trace's style without consulting the plot.
-Circuit and vessel-rich were both solid until `PL-GVXP`. For that one pair, the
-redundant channel was redundant in name only.
+The legend entry beside each checkbox names its trace's style in words, so a
+reader can learn every style from the legend alone.
 
-**Which style goes on which compartment is decided by the colors.** The two
-traces that are hardest to separate by color get the two marks that are easiest
-to separate by shape. The next pair gets the next easiest marks, and so on
-outward. The closest pairs in the matrix below are vessel-rich against fat, and
-mixed venous against fat. In the first pair, an even dash is set against an
-alternating dash-dot. In the second, a short uniform dash is set against that
-same dash-dot. In each pair, the two marks differ in mark length, gap length
-and rhythm at once. The one pair of marks in the set that a reader could
-genuinely confuse is the 2 px dots against the 4 px short dash. That pair is
-spent on mixed venous against muscle, which has the widest separation of any
-pair among these six.
+**Color cannot be the first cue, because some pairs of trace colors are almost
+equally bright.** The closest pairs are vessel-rich and fat, and mixed venous and
+fat. No other choice of colors fixes this. Each color has at least the 3:1
+contrast against the panel that WCAG success criterion 1.4.11 requires, both as
+displayed and as simulated for protanopia, deuteranopia and tritanopia. The
+colors are chosen to label their compartment and to clear that minimum.
 
-**Color is a second cue, and the arithmetic says it cannot be the first.**
-Every trace clears the 3:1 contrast that SC 1.4.11 requires against the panel.
-It does so as displayed and as simulated for each dichromacy:
+**The colors decide which line style goes on which compartment.** The two traces
+whose colors are hardest to separate get the two styles that are easiest to
+separate by shape. The next pair gets the next easiest, and so on. Fat's
+dash-dot therefore differs in dash length, gap length and rhythm from both the
+vessel-rich even dash and the mixed venous short dash. The one pair of styles
+that a reader could confuse is dotted, with 2 px dots, and short dash, with 4 px
+dashes. That pair goes to muscle and mixed venous, whose colors are the most
+widely separated of any pair among these six.
+
+**With two runs on the plot, at most two compartments are drawn** (`PL-HLD5`,
+`PL-8PSW`). The cap applies to the plot only. All six readouts stay on screen for
+both runs (§ "Minimum displayed outputs").
+
+**Line width shows the run.** Each compartment keeps its line style and color.
+The first run's traces are wider, and the second run's keep the width in the
+table above. A reader compares the two widths only between the two traces of one
+compartment, which are always adjacent. A branched run repeats its parent exactly
+up to the branch point, where the two runs diverge (planned-milestone item 12).
+Before that point the two traces of a compartment coincide, so the narrower one
+is drawn on top, where the wider one cannot hide it.
+
+**A solid vertical line marks a branch point, and a finely dashed one marks a
+control change.** Both lines are the same color, so only their dash pattern and
+the legend's words tell them apart. A reader must not confuse the two, because
+reading a branch point as a control change would attribute the runs' divergence
+to the wrong cause.
+
+**For developers.** A script computes every figure in this section
+(`tools/contrast_check.py`), and a unit test checks the script's results against
+these figures (`tests/unit/test_contrast_check.py`). The script runs as part of
+`make check`, and its `--matrix` option prints the pairwise table below.
+
+Each trace has this contrast against the panel, as displayed (Normal) and as
+simulated for each dichromacy:
 
 | Trace | sRGB | Normal | Protanopia | Deuteranopia | Tritanopia |
 | --- | --- | --- | --- | --- | --- |
@@ -10022,8 +10039,8 @@ It does so as displayed and as simulated for each dichromacy:
 | Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
 | Fat | `#64748B` | 4.76 | 4.74 | 4.76 | 4.77 |
 
-Compared trace against trace, the contrast is a different picture. The design
-rests on this table:
+The contrast between each pair of traces is far lower, and the design in this
+section rests on it:
 
 | Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
 | --- | --- | --- | --- | --- | --- |
@@ -10043,94 +10060,62 @@ rests on this table:
 | Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
 
-**Re-picking the palette does not fix this, and the search was run rather than
-assumed.** The ceiling above is $`21^{1/5}\approx1.84`$. Requiring 3:1 against
-a white panel caps every trace's luminance at 0.30. That shortens the axis and
-brings the ceiling down to **1.48**. A search over lightness, with each hue and
-saturation held fixed, reaches **1.28** as the best worst-pair contrast across
-the four vision models. It gets there only by driving four of the six traces to
-near-black. That loses the hue identity that makes a trace nameable, and it
-buys a number still less than half of 3:1. So the colors here are chosen to
-name their compartment and to clear the 3:1 minimum against the panel. The
-line style does the separating. `.claude/rules/ui-color.md` records this as a
-standing judgment, so that the search is not re-run every time a color is
-touched.
+Other colors would not help, because the closest pair among any six colors has a
+contrast ceiling of $`21^{1/5}\approx1.84`$. Requiring 3:1 against the white panel
+caps each trace's luminance at 0.30, which lowers that ceiling to **1.48**. A
+search over lightness, with each hue and saturation held fixed, reaches **1.28**
+at best for the worst pair across the four vision models. It gets there only by
+making four of the six traces nearly black, which loses the hue that lets a
+reader name a trace. Even then, 1.28 is less than half of 3:1. A project rule
+(`.claude/rules/ui-color.md`) records this result, so that the search is not
+re-run each time a color changes.
 
-**Two colors were re-picked to meet the 3:1 minimum, not to improve
-separation.** The alveolar trace was `#18A999`, at 2.93:1 as displayed and
-2.61:1 simulated for protanopia. The muscle trace was `#D97706`, at 3.19:1 as
-displayed and 2.98:1 simulated for deuteranopia. Each new color keeps the old
-hue and saturation exactly. It is darkened to the lightest shade that clears
-3.2:1 in all four models. That target is 3:1 plus two tenths, so the shipped
-value is not itself a boundary case. The alveolar trace also draws the
-$`F_A/F_I`$ wash-in plot. That plot carries a single line and never had a
-separation problem. It inherited the shortfall from the shared constant, and
-the same change fixes it.
+Two colors were darkened to meet the 3:1 minimum against the panel, not to
+improve separation. The alveolar trace was `#18A999`, at 2.93:1 as displayed
+and 2.61:1 simulated for protanopia. The muscle trace was `#D97706`, at 3.19:1
+as displayed and 2.98:1 simulated for deuteranopia. Each new color keeps the
+old hue and saturation exactly, and is darkened to the lightest shade that
+clears 3.2:1 in all four vision models. The extra 0.2 keeps the shipped color
+off the 3:1 boundary. The $`F_A/F_I`$ wash-in plot takes its single line's
+color from the alveolar trace's constant, so it had the same shortfall, and
+darkening the alveolar color fixed it.
 
-**What changes when two runs share the axis, and what does not.** Nothing about
-a compartment's appearance changes. Each compartment keeps the line style and
-the colour that the table above gives it. The reason is that colour already
-means "compartment" here. A channel that means something else on either side
-of a mode change is a misread of a clinical value waiting to happen. What is added is the **run, on
-line width, at two levels**. The arithmetic above allows this only under a cap.
-With six compartments, the width column above is already spent across 2 px and
-3 px. So **at most two compartments are drawn while two runs are shown**
-(`PL-HLD5`, `PL-8PSW`). Two compartments times two runs is four curves. The cap
-limits how much the chart's colours can carry. It never reduces what the
-display must show. § "Minimum displayed outputs" keeps all six readouts on
-screen for both runs, and it names this cap when it says so.
+The dichromacy figures use Brettel, Viénot and Mollon's projection onto the
+reduced stimulus surface that each dichromacy leaves. That surface is defined by
+the neutral axis and by the monochromatic stimuli that a dichromat and a normal
+trichromat see as the same hue.[^brettel1997] The simulation uses the
+two-half-plane form, because the single-matrix simplification of Viénot,
+Brettel and Mollon (1999) is not accurate for tritanopia.[^vienot1999] The
+coefficients are the precomputed sRGB-space forms published by libDaltonLens,
+which derives them from Brettel's construction over the Smith and Pokorny (1975)
+cone fundamentals.[^daltonlens]
 
-**The first run is the wider, and the second keeps the single-run width.** This
-is forced rather than chosen. A branch reproduces its parent element-wise up to
-the fork (planned-milestone item 12). So before the branch point, the two
-curves do not merely run close together. They coincide exactly, and whichever
-curve is drawn thicker hides the other completely over that stretch. The
-narrower curve therefore has to be the one drawn last, on top. Widening one
-curve, rather than narrowing the other, also keeps every trace at or above the
-2 px width that the table above gives it. A 1 px antialiased line renders
-lighter than its declared colour. That would push it back below the 3:1
-minimum against the panel, which this section treats as an error rather than a
-tracked shortfall. A reader compares the two width levels *locally*, between
-the two curves of one compartment, which are adjacent by construction. The
-reader does not have to decode them across the plot.
+The figures support one comparative claim: no arrangement of these six colors
+separates the traces, whichever observer is assumed. The figures have three
+limits:
 
-**Two marks that are not traces, and how they are separated.** A control change
-and a branch point are both vertical lines. Both annotate an instant rather
-than showing any part of the run. Both are drawn in the control mark's colour.
-They are separated by the dash pattern: the control mark is finely dashed and
-the branch point is solid. The legend also names both in words. Neither mark
-depends on a hue. That is deliberate, because a reader must not confuse this
-pair. A fork is where two runs stop being the same run. Reading a fork as a
-setting change would attribute a divergence to the wrong cause.
+1. The simulation renders, for a normal observer, an approximation of a
+   dichromat's *appearance*. It does not measure dichromatic perception. It
+   models the three dichromacies, not the far commoner anomalous trichromacies,
+   so it does not represent their milder losses.
+2. The script applies WCAG's relative-luminance formula to the simulated output.
+   The formula was not defined for that use, because success criterion 1.4.11 is
+   written for the color the display emits.
+3. The calculation concerns luminance only, so it says nothing about the
+   difference in hue that a reader with normal color vision uses.
 
-**The dichromacy simulation.** The simulation uses Brettel, Viénot and Mollon's
-projection onto the reduced stimulus surface that each dichromacy leaves. That
-surface is defined by the neutral axis and by the monochromatic stimuli that a
-dichromat and a normal trichromat see as the same hue.[^brettel1997] The
-simulation uses the two-half-plane form rather than the single-matrix
-simplification of Viénot, Brettel and Mollon (1999). That simplification is
-not accurate for tritanopia, and all three dichromacies are reported
-here.[^vienot1999] The coefficients are the precomputed sRGB-space forms
-published by libDaltonLens. libDaltonLens derives them from Brettel's
-construction over the Smith and Pokorny (1975) cone fundamentals.[^daltonlens]
+Color stays with the compartment when a second run is added, because a cue
+whose meaning changed between one run and two would invite misreading a clinical
+value.
 
-There are three limits on how far these numbers may be read. First, the
-simulation renders, for a normal observer, an approximation of a dichromat's
-*appearance*. It is not a measurement of dichromatic perception. It also
-models the three dichromacies rather than the far commoner anomalous
-trichromacies, so it does not represent the milder losses of anomalous
-trichromacy. Second, WCAG's
-relative-luminance formula is then applied to that simulated output. The
-formula was not defined for that use, because SC 1.4.11 is defined on the
-color the display emits. Third, the whole calculation is about luminance. So
-it says nothing about the hue difference that a reader with normal color
-vision actually uses. The numbers are good for the comparative claim that this
-section uses them for: that no arrangement of these six colors separates them,
-whichever observer is assumed.
+Because the colors cannot separate the traces, width can show the run only under
+a cap on the compartments drawn. The six compartments already use two widths,
+2 px and 3 px, which sets the cap at two.
 
-`tools/contrast_check.py` computes every figure in this section. `make check`
-runs it, and `tests/unit/test_contrast_check.py` pins the figures. Run it with
-`--matrix` to print the pairwise table above.
+The first run is widened, rather than the second narrowed, so that no trace is
+drawn narrower than 2 px. A 1 px antialiased line renders lighter than its color
+and would fall below the 3:1 minimum against the panel that every trace must
+meet.
 
 [^brettel1997]: Brettel H, Viénot F, Mollon JD. Computerized simulation of
     color appearance for dichromats. J Opt Soc Am A. 1997;14(10):2647-2655.
