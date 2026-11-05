@@ -9446,120 +9446,111 @@ protocol or to a figure on its own.
 
 ### The control-input timeline
 
-**What it is.** The timeline is a record of the settings that a run was
-given. It is kept with the run and cleared with it. Each entry is one change
-that the model actually ran under. The entry gives the simulated time at which
-the change took effect, the user adjustment it belongs to, and the control. It
-also gives the values before and after, and the unit that both values are in.
+**The timeline records the settings that a run was given.** Each entry is one
+change that the model ran under. It gives the simulated time at which the
+change took effect, the control, the values before and after, the unit of both
+values, and the user adjustment that the change belongs to, such as one drag of
+a slider. The timeline is kept with the run and cleared with it. It is shown as
+marks on the charts and as a list beside them. Settings of the delivered
+concentration appear in the same format as every other concentration on the
+page.
 
-**Why the model needs one at all.** A curve without its inputs is not a
-result that anybody can check. The exercises that this simulator exists to
-support all take the form "change one thing and look at what happened".
-Examples are overpressuring and then dialling back, dropping the flow, and
-halving the cardiac output. A learner who cannot see where they dialled back cannot read
-their own experiment. The stronger requirement is reconstruction. The recorded
-timeline, re-applied to a fresh run at the recorded times, must reproduce the
-run that it describes. Reconstruction is what makes a recorded run a result
-rather than a picture of one, and the design decisions below exist to provide
-it.
+**A curve can be checked only against the settings that produced it.** The
+exercises that this simulator exists to support all take the form "change one
+thing and look at what happened". Examples are overpressuring and then dialling
+back, dropping the flow, and halving the cardiac output. A learner who cannot
+see where they dialled back cannot read their own experiment. Given the
+recorded settings at the recorded times, a fresh run must reproduce the run
+that the timeline describes.
 
-**Recorded values are the model's, not the interface's.** Each value is read
-back from the compartment that holds it, after the core has accepted it. It is
-stored in the unit that the core uses. So the delivered dial is stored as the
-percent of one atmosphere it was set to, which is the percent the core is set
-with (`PL-NJPB`). It is displayed through `format_percent`, the formatter
-that every other concentration on the page goes through. That formatter takes
-the model's fraction, so the recorded percent is converted to a fraction on its
-way in and back to a percent for display. A record
-of what was *asked for*, rather than of what took effect, would diverge from
-the run the first time the two differed. The core rejects an out-of-range
-setting rather than clamping it precisely so that the two cannot differ
-silently.
+**Each recorded value is the one that took effect.** The model refuses a
+setting outside its allowed range rather than replacing it with the nearest
+allowed value, so the value that took effect never differs silently from the
+value asked for. A refused setting is not recorded.
 
-**A refused setting is not recorded**, because it never took effect. The
-recording happens after the core's setter returns. So this rule follows from
-the structure of the code, rather than from a check that someone could forget.
+**Only what the model saw is recorded.** A setting equal to the one already in
+place is not a change. Nor is a setting that is replaced before the next
+simulation step, because the model uses only the value in place when a step
+runs. A control moved twice between two steps is therefore one change, from the
+first value to the last. A control moved and moved back within one step is no
+change at all. Recording the values in between would describe a run that did
+not happen.
 
-**Only what the model saw is recorded.** A setting equal to the one already
-in place is not a change. Nor is a setting that is replaced before the next
-simulation step. Only the value in place when a step runs is integrated. So a
-control moved twice between two steps is one change, from the first value to
-the last. A control moved and moved back within one step is no change at all.
-Recording the intermediate values would describe a run that did not happen.
-Without this collapse, the timeline would record the input device rather than
-the simulation.
+**One drag of a control is shown as one adjustment.** A slider reports its
+value continuously while it is dragged, so one drag arrives at the model as a
+series of settings. The model ran under each of them, and the timeline keeps
+them all, because reproducing the run needs every one. A change made without a
+drag, such as a key press on a slider, is an adjustment of its own.
 
-**What a displayed adjustment is, and why it is not the same object.** A
-slider reports its value continuously while it is dragged. So one turn of one
-control arrives at the model as a series of settings. The run really was
-computed under each of them, and all of them are one act by the person. The
-record keeps every setting, because reconstruction needs them. The display
-groups them into adjustments, because a reader needs to see the act. The
-grouping is exact rather than inferred. The interface declares where an
-adjustment begins, at the moment a drag starts, and every change carries the
-number it was assigned. Nothing infers a gesture from the spacing of the
-entries, and nothing may. A playback multiplier changes how much simulated
-time one drag spans, so any threshold would group correctly at one rate and
-wrongly at another. A change that arrives with no adjustment declared becomes
-an adjustment of its own. Examples are a keyboard press on a slider and a
-programmatic call. Treating such a change as its own adjustment is the honest
-reading of a discrete input.
+A displayed adjustment states the interval it spans and how many settings the
+model ran under during it. The count is shown because an adjustment made over
+eight settings is a different run from one made in a single step, even when
+the two start and end at the same values.
 
-A displayed adjustment states the interval it spans. It also states how many
-settings the model was stepped under during that interval. The count is
-displayed rather than hidden because an adjustment made over eight settings is
-not the same run as one made in a single step, even where the endpoints match.
+**A timeline entry records an input, and says nothing about the patient.** The
+marks on the charts are labelled as inputs, and the list says so, because a
+vertical line on a chart of patient concentrations would otherwise invite the
+reader to see an event in the curves.
 
-**What it asserts, and what it does not.** A timeline entry asserts that the
-named control moved between the stated values over the stated simulated
-interval. It says nothing about the patient. It is a record of an *input*,
-never of a measurement or of a modelled quantity. That is why the chart's
-marks are labelled as inputs, and why the list beside them says so
-explicitly. Otherwise a vertical rule on a chart of patient concentrations invites
-the reader to see an event in the curves.
+**Bounds are displayed, not silent.** A chart shows at most a fixed number of
+marks, and the list at most a fixed number of lines, so a run may record more
+adjustments than either can show. A chart or a list that ended without a count
+would tell the reader that nothing else happened. Each chart shows the count of
+adjustments it leaves unmarked, because each chart has a window of its own (§
+"The chart's time base").
 
-**Stability of the recorded identifiers.** Each control is recorded under a
-fixed string chosen from the domain: `fresh_gas_flow`, `delivered`,
-`alveolar_ventilation` and `cardiac_output`. The string is not taken from the
-name of the accessor that applies the setting. An identifier taken from the
-code would make the vocabulary of every already-recorded run obsolete the next
-time the code was renamed. A fifth string, `circuit_volume`, was recorded here
-until the circuit volume was established as a fixed model parameter rather
-than a control (§ "What is not bounded this way"). Retiring it cost no
-already-recorded timeline, because a timeline is held in memory and cleared
-with its run rather than persisted.
+**The timeline itself has no limit.** The limits above apply only to what is
+shown. Dropping the oldest entries would remove the start of the case, which is
+the part a learner returns to.
 
-**Bounds are displayed, not silent.** The chart carries a fixed number of
-marks, and the list carries a fixed number of lines. So a run may record more
-adjustments than either can show. The display counts what it does not show. A
-chart that quietly stops annotating, or a list that quietly ends, states that
-nothing else happened. Each chart counts its own unmarked changes and says so
-on itself, because each chart has a window of its own
-(§ "The chart's time base").
+**For developers.** The two display limits are `MAX_CHART_CONTROL_MARKS` in
+`app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS` in `app/dashboard_frame.py`.
+No record gives the reason for either value (`PL-N8G4`).
 
-**The record itself carries no ceiling, and that is a decision rather than
-an omission.** The two bounds above limit only what is *shown*. Dropping the
-oldest entries would remove the beginning of a case. That is the part a
-learner returns to, since "where did I dial back?" is the question this record
-exists to answer. Dropping them would also bound nothing, because the run
-definition of § "The run is that record, and every state is derived from it"
-above holds one stretch and one keyframe per accepted change, and that
-definition is not bounded either. Capping only the display record would give up the reconstruction claim
-above, while the larger structure kept growing.
+The timeline reads each value from the compartment that
+holds it, after the model's setter for that control returns. A setter returns
+only when the model accepts the value, so no separate check is needed to keep a
+refused setting out.
 
-What makes that affordable is that the record grows with the time spent
-*changing settings*, not with the length of the run. Only the value in place
-when a step runs is recorded. So a drag adds at most one entry per simulation
-step, however fast the slider reports. That rate is a property of the tick
-rather than of simulated time, so it is the same at every playback multiplier.
-Measured on 2026-09-14 under `PL-1PSX`, continuous dragging gave ten entries
-per real second at 1×, 5×, 20×, 60× and 300× alike. A drag made while the run
-is paused gave one entry. The grouping behind the display costs 0.9 ms per
-frame at a thousand entries and 8.8 ms at ten thousand, against a 200 ms
-frame. It is recomputed only when the record changes. It would cost half a
-frame at a hundred thousand entries. Reaching that many takes about three
-hours of unbroken dragging, and at that point the record is smaller than
-9 MB.
+Every value is stored in the unit the model is set with, which for the
+delivered concentration is the percent of one atmosphere (`PL-NJPB`). The
+formatter for concentrations (`format_percent`) takes a fraction, so the stored
+percent is converted to a fraction on its way in and back to a percent for
+display.
+
+The interface declares an adjustment when a drag starts, and each change
+carries the number of its adjustment. A change that arrives with no declared
+adjustment, such as a call from code, gets a number of its own. Code must never
+group changes by the time between them. A playback multiplier changes how much
+simulated time one drag spans, so any time threshold would group correctly at
+one multiplier and wrongly at another.
+
+Each control is recorded under a fixed name from the clinical vocabulary:
+`fresh_gas_flow`, `delivered`, `alveolar_ventilation` and `cardiac_output`. A
+name taken from the accessor that applies the setting would change whenever the
+code was renamed, and those accessors have been renamed three times (`PL-3TLK`,
+`PL-9SH6`, `PL-NJPB`). The circuit volume was recorded as a fifth control,
+`circuit_volume`, until it became a fixed model parameter rather than a control
+(§ "What is not bounded this way"). Removing that name broke no recorded
+timeline, because a timeline is held in memory and is never saved.
+
+Capping the timeline would lose the settings needed to reproduce the run. It
+would also leave memory use unbounded, because the run itself holds one stretch
+and one keyframe for each accepted change and has no limit either
+(§ "The run is that record, and every state is derived from it").
+
+An unlimited timeline is affordable because it grows with the time spent
+changing settings, not with the length of the run. A drag adds at most one
+entry per simulation step, however fast the slider reports. The number of
+entries per real second depends on the tick rather than on simulated time, so
+it is the same at every playback multiplier. A measurement on 2026-09-14 under
+`PL-1PSX` found that continuous dragging gave ten entries per real second at
+1×, 5×, 20×, 60× and 300× alike. A drag made while the run was paused gave one
+entry. Grouping the entries for display costs 0.9 ms per frame at a thousand
+entries and 8.8 ms at ten thousand, against a 200 ms frame. The grouping is
+recomputed only when the timeline changes. At a hundred thousand entries it
+would cost half a frame. Reaching that many takes about three hours of unbroken
+dragging, and the timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 ### F_A/F_I as a displayed ratio
