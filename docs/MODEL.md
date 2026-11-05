@@ -304,110 +304,120 @@ the dials are written, because writing a dial can raise an exception.
 
 ## How this document is held to the tree
 
-The hazard table applies one rule to each of its rows: *every row names the test
-that enforces it, or says plainly that it has none*. This section applies the
-same rule to the whole document, in four clauses.
+When a statement in this document or in `README.md` is about the simulator's
+code, data or output, it names the thing it describes. Where no test covers the
+statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
+parenthesis names the open work item for adding the test. The hazard table works
+the same way: each row names the test that enforces it, or says plainly that it
+has none.
 
-Without these clauses, a sentence reads exactly as it did when it was true, even
-after the test it names is renamed, the field it describes removed, or the number
-it states changed. Requirements traceability, linking each requirement to the
-tests and risk controls that cover it, is the established practice for software
-of this class. IEC 62304 § 5.1.1 requires the software development plan to carry
-traceability between system requirements, software requirements, software system
-tests and risk control measures. The FDA's *General Principles of Software
-Validation* (2002) § 5.2.2 names traceability analysis among the validation
-tasks. Gotel and Finkelstein set out the problem in *An analysis of the
-requirements traceability problem*, ICRE 1994, pp. 94–101.
+Each name is set in fixed-width type and points to a test, a file, or a part of
+the code or its data. A number repeated from the simulator's data is linked to
+the stored value. An automatic documentation check looks up each name and link.
+Without that check, a sentence would still read as true after the test it names
+was renamed, the data it describes was removed or the value it repeats was
+changed.
 
-**The four clauses bind this document and `README.md`**, the two documents that
-a reader of a displayed value trusts. How they apply to the project's other
-documents is in this section's note for developers.
+For a figure that the model computes or the simulator displays, such as the time
+at which a compartment first shows a nonzero reading, the sentence that gives
+the figure names the test that computes it, or uses the fixed form. Where that
+test also reads the figure from this document and compares it with the model's
+output, the document cannot drift from the model without the test failing.
 
-1. **A live assertion names what it asserts.** A sentence that states a fact
-   about the code or its data, such as that a test enforces a rule, that a field
-   exists, that a value is *N*, or that a job runs something, names that thing in
-   a form that can be looked up. The forms are a test, path, symbol or field in
-   code format, or a `<!-- provenance: -->` marker over a restated number. The
-   author owes this, whether or not the checker reads the sentence.
-   `tools/doc_check.py` resolves every one of those forms.
-2. **An enumerated family is kept complete.** Some headings promise one
-   assertion per member: the invariants list, the required-tests subsections,
-   the displayed-outputs list, the hazard table, a frozen gate list and a
-   marked enumeration. Every member of such a family names its entity or
-   carries the declared-none form of clause 3. `check_bound_families` fails a
-   member that does neither.
-3. **The declared-none form names the item that owes the link.** An absence is
-   written ``no test yet (`PL-XXXX`)``, and the parenthesis names an item still
-   open in the queue. The words before it belong to the sentence, and the form
-   itself is fixed. With a fixed form, a script can tell a forgotten link from a
-   declared absence. Each exemption also points forward to the work that owes
-   the link. And closing the named item without adding the link fails the
-   check.
-4. **A dated statement is a record of what was true on its date, and is never
-   checked against the code.** A sentence that carries a date, sits under a
-   dated heading, or sits inside a released version's section asserts what was
-   true at that date. It is not linked, not checked, and **not edited to carry a
-   later fact**. A later fact is added with its own date.
+The documentation check looks for a missing name only in some parts of this
+document and `README.md`. It checks every entry of the hazard table and of the
+other lists whose headings promise an entry for each member of a set, such as
+each output in the displayed-outputs list. In the sections that it reads
+paragraph by paragraph, every paragraph that states a number with a unit gives a
+test, the fixed form, a date or a published source, or links each number to the
+simulator's data behind it. Elsewhere, only the documentation review before a
+work item closes catches a number with no link or a claim with no name in
+fixed-width type. The check cannot read a qualitative claim, such as which value
+a readout shows beside a halt, so the review makes sure that such a claim names
+what it describes.
 
-**A computed claim names the test that computes it.** This is clause 1 applied
-to what the model computes and what the interface displays. For example, a
-sentence that says when a compartment first shows a nonzero reading is a claim
-about the model's output. It names the test that computes the figure, in code
-format, or it carries ``no test yet (`PL-XXXX`)``. The strongest form is a test
-that reads the figure from this document and compares it with the model's
-output, as `tests/reference/test_mac_awake_washout_figures.py` does. Then the
-page cannot drift from the model without a test failing. Naming a test is the
-minimum.
+When a statement carries a date, sits under a dated heading or sits in a
+released version's section, it records what was true on that date. It need not
+name a test, and nothing checks it against the code. A later fact gets its own
+date, and the dated statement is never changed to carry it.
 
-`check_bound_families` enforces this rule one section at a time, in each section
-listed in its table. Each paragraph there that states a number with a unit must
-carry one of these: a test in code format, the declared-none form, a date, or a
-published source cited by a DOI, a PubMed id, an ISBN or a journal locator such
-as "Anesth Analg 1991;72:316-324". An author and a year alone, such as "Mapleson
-1963", does not count, because no pattern can tell it from a phrase such as
-"Until 2026". The test or the declared-none form may instead be in the note for
-developers below the paragraph. That note covers the paragraphs directly above
-it, back to the previous heading or note, and stops at the first paragraph that
-passes on its own. A date or a source in the note covers only the note. A
-paragraph with none of these passes only if a marker covers each of its numbers
-with a unit. A `provenance:` marker covers a value the paragraph
-asserts, in that value's unit. A `derived:` marker covers a figure the paragraph
-computed, in the unit it writes, and each input it asserts. A `not-restated:`
-marker covers nothing, because it says its numbers are not stored values. So a
-computed figure cannot pass on a marker written for a figure beside it. A
-section joins the table when the change that makes it conform is merged, as
-clause 2's families do. The check cannot read a qualitative claim, such as which
-value a readout shows beside a halt. Such a claim still falls under clause 1,
-and review enforces it.
+A count in the text is either dated or tied by a check to what it counts, such
+as a heading's count of the entries under it.
 
-**Counts.** A count is stated in prose only where a check links it to what it
-counts, such as a group heading over its entries or a marker over a data value.
-Otherwise the count is dated, the rule is stated without the number, or the
-number is read from the tool that prints it. So this document never states the
-size of its own families.
+**For developers.** These rules apply in part to the project's other documents.
+The documentation check already looks for a missing name in every entry of the
+frozen lists in `ROADMAP.md` and of the package map in `docs/ARCHITECTURE.md`.
+The prose of `ROADMAP.md` is treated as dated. Every thread in
+`docs/WORKING_NOTES.md` is dated, so only the rule for dated statements applies
+to it. The rules do not apply to prose about the project's workflow tooling, in
+`.claude/`, `CONTRIBUTING.md` and `docs/resident-instructions.md`, where the rule
+on counts is only advice.
 
-**What an assertion that names nothing looks like.** Inside a bound family, it
-must use the declared-none form, or the check fails. The same is true of a
-paragraph that states a number with a unit, in a section that the check covers
-paragraph by paragraph. Elsewhere in a bound document, such an assertion is a
-number without a marker or a claim without a code span. There, the
-documentation review before a work item closes catches it:
-`tools/doc_check.py candidates` prints it when its subject changes. Computed
-claims are the exception, and their sections join the check one at a time. A
-dated assertion is a record anywhere.
+A statement is about the code or its data when it says, for example, that a test
+enforces a rule, that a field exists, that a value is *N*, or that a job runs
+something. It names that thing as a test, path, symbol or field in fixed-width
+type, or with a `<!-- provenance: -->` marker over a restated number. In the
+documentation check (`tools/doc_check.py`), the functions that look up these
+forms are `check_named_tests`, `check_citations`, `check_prose_provenance` and
+`check_make_targets`. The strongest link for a figure from the model is a test
+that reads it from this document, as
+`tests/reference/test_mac_awake_washout_figures.py` does.
 
-**For developers.** `ROADMAP.md`'s frozen lists are already families under
-clause 2, and its prose falls under clause 4. `docs/ARCHITECTURE.md`'s package
-map is already a family. Every thread in `docs/WORKING_NOTES.md` is dated, so
-only clause 4 governs it. Prose about the project's workflow tooling, called
-the apparatus, is not bound. That covers `.claude/`, `CONTRIBUTING.md` and
-`docs/resident-instructions.md`, where the counts rule is only advice. In
-`tools/doc_check.py`, `check_named_tests`, `check_citations`,
-`check_prose_provenance` and `check_make_targets` resolve the forms clause 1
-names. A family joins `check_bound_families`'s table only when the change that
-annotates its members is merged, so the check never keeps `make check` failing
-for work not yet done. `check_gate_counts` applies clause 3 in code: it calls a
-frozen count "a dated fact that must never change".
+A writer may phrase the words before ``no test yet (`PL-XXXX`)`` freely, but the
+form itself is fixed, so that the documentation check can tell a forgotten link
+from a declared absence. Closing the named item without adding the link makes
+the check fail.
+
+The lists whose headings promise an entry for each member of a set are the
+invariants list, the required-tests subsections, the displayed-outputs list, the
+hazard table, a frozen gate list and a marked enumeration. The function that
+checks them (`check_bound_families`) reads only the lists and sections named in
+its table, each section paragraph by paragraph. A list or a section joins that
+table only when the change that makes it conform is merged, so that work not
+yet done never makes `make check` fail.
+
+In those sections, a published source counts only when it is cited by a DOI, a
+PubMed id, an ISBN or a journal locator such as "Anesth Analg 1991;72:316-324".
+An author and a year alone, such as "Mapleson 1963", do not count, because no
+pattern can tell them from a phrase such as "Until 2026".
+
+A paragraph's test or fixed form may sit in the note for developers below it.
+That note covers the paragraphs directly above it, back to the previous heading
+or note, and stops at the first paragraph that passes on its own. A date or a
+source in the note covers only the note.
+
+A paragraph with no test, fixed form, date or source passes only if a marker
+covers each number that it states with a unit. A `provenance:` marker covers a
+value the paragraph states, in that value's unit. A `derived:` marker covers a
+figure that the paragraph works out, in the unit it writes, and each input the
+paragraph states. A `not-restated:` marker covers nothing, because it says that
+the paragraph's numbers are not stored values. So a computed figure cannot pass
+on a marker written for a figure beside it.
+
+Outside the lists and sections where the check looks for a missing name, a
+command for the documentation review (`tools/doc_check.py candidates`) prints a
+number without a marker, or a claim without a name in fixed-width type, when
+the thing that the number or claim describes changes.
+
+Besides a heading's count of the entries under it, a marker over a data value
+can tie a count to what it counts. Any other count is dated, left out, or read
+from the tool that prints it. Under the rule on counts, this document never
+states the number of entries in the hazard table or in another list named above.
+The function that checks gate counts (`check_gate_counts`) applies the rule on
+counts in code. It checks each count that a frozen list states about itself, in a
+group heading or in a release table, against the list. It leaves a count in prose
+alone, because a sentence such as "frozen at seventeen entries" records a dated
+fact that must never change.
+
+These rules follow requirements traceability, which links each requirement to
+the tests and risk controls that cover it. It is the established practice for
+software of this class (§ "Software safety classification: Class C, for the whole
+application"). IEC 62304 § 5.1.1 requires the software development plan
+to carry traceability between system requirements, software requirements,
+software system tests and risk control measures. The FDA's *General Principles
+of Software Validation* (2002) § 5.2.2 names traceability analysis among the
+validation tasks. Gotel and Finkelstein set out the problem in *An analysis of
+the requirements traceability problem*, ICRE 1994, pp. 94–101.
 
 ## Purpose
 
@@ -8360,7 +8370,7 @@ recorded run, rather than mutable compartment objects.
 
 The interface must show the following outputs. Each entry names the test that
 enforces it, which makes the entries a bound family under
-§ "How this document is held to the tree", clause 2. The test names say that
+§ "How this document is held to the tree". The test names say that
 the value reaches the *display*, and that is the link that matters here. A
 required output can go on travelling in `SimulationSnapshot` long after the
 widget that draws it has gone. Three of these entries have no snapshot field at

@@ -3933,7 +3933,8 @@ class EntityKind:
     #: `check_named_tests` for a test name - so this never becomes a second
     #: resolver that could disagree with the first.
     names: Callable[[str], bool]
-    #: `docs/MODEL.md` clause 3's fixed form. The words in front of it are the
+    #: The fixed form that `docs/MODEL.md` § "How this document is held to the
+    #: tree" sets for a missing test. The words in front of it are the
     #: sentence's own; this parenthesis is what makes a declared absence
     #: distinguishable from a forgotten link by a script rather than by a
     #: reader.
@@ -3955,7 +3956,7 @@ TEST_ENTITY = _entity_kind("test", _names_a_test)
 class BoundFamily:
     """A heading that promises one assertion per member, and what each owes.
 
-    `docs/MODEL.md` § "How this document is held to the tree" clause 2: where a
+    `docs/MODEL.md` § "How this document is held to the tree": where a
     heading promises one assertion per member, every member names its entity or
     carries the declared-none form. The table is what turns that sentence into
     a decidable question, one family at a time.
@@ -4122,7 +4123,7 @@ def _holds_its_figures(member: str) -> bool:
     a test named in a code span, read by `_names_a_test` exactly as the other
     families read it. The second is a published source in a form
     `PUBLISHED_SOURCE_RE` reads. The third is an ISO date, which makes the
-    paragraph a record under clause 4. The fourth, the declared-none form, is
+    paragraph a dated record, which nothing checks against the code. The fourth, the declared-none form, is
     `check_bound_families`' own. A date or a source inside a code span does
     not count, because a code span quotes text rather than citing it. A note
     holds the paragraph only by the first form or the fourth, because
@@ -4289,7 +4290,7 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
     return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
-# Every family bound by clause 2 today. **An entry arrives with the annotation
+# Every family bound today by the rule that each listed entry names what backs it. **An entry arrives with the annotation
 # pass that makes its family conform, never in anticipation of one**, so the
 # check never holds `make check` red for work nobody has done yet. The check was
 # introduced over the hazard table, which conformed already, so it landed green;
@@ -4307,7 +4308,7 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
 # Three of that list's entries have no snapshot field to name - the playback
 # rate and the chart's time base are view settings, and F_A/F_I is derived at
 # the point of drawing - so a field-kinded family could only have declared an
-# absence that nothing owed, which is the permanent hole clause 3's form exists
+# absence that nothing owed, which is the permanent hole the fixed form exists
 # to make impossible. A field would also have checked the wrong half of the
 # chain: it proves the value still travels, never that a widget still draws it,
 # and a value travelling to a display that no longer shows it is the failure
