@@ -152,7 +152,7 @@ def test_main_runs_the_judge_alone_and_writes_the_key_and_result(
     seen = json.loads(fake.read_text(encoding="utf-8"))
     assert seen["files"] == [copy_edit.REQUEST_NAME]
     assert seen["argv"][seen["argv"].index("--tools") + 1] == "Read"
-    body = prose_judge.PROMPT.read_text(encoding="utf-8").split("\n---\n", 1)[1].lstrip("\n")
+    body = prose_judge.JUDGE_PROMPT.read_text(encoding="utf-8").split("\n---\n", 1)[1].lstrip("\n")
     assert seen["prompt"] == body
     (entry,) = json.loads((out / "key.json").read_text(encoding="utf-8"))
     (result,) = json.loads((out / "result.json").read_text(encoding="utf-8"))

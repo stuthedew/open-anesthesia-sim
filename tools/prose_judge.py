@@ -43,18 +43,18 @@ from new_prose import passage_number, passage_place, read_readers_heading  # noq
 from rejected_prose import rewrites  # noqa: E402
 
 #: The role `docket.toml`'s `[models]` table is asked about.
-ROLE = "prose-judge"
+JUDGE_ROLE = "prose-judge"
 #: The judge's agent definition, whose body is its prompt.
-PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
+JUDGE_PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
 #: What the judge is asked to do with the request.
-TASK = f"Judge the pairs in {copy_edit.REQUEST_NAME}."
+JUDGE_TASK = f"Judge the pairs in {copy_edit.REQUEST_NAME}."
 #: The seed for the order of A and B, so that a run can be repeated exactly.
 SEED = 20261104
 #: Deletes the emphasis and code marks a verdict line may carry.
 EMPHASIS = str.maketrans("", "", "*_`")
 # regex: a verdict line in the judge's free prose, which its instructions ask
 # for as "[N] verdict: A", B or same, found anywhere in a line.
-VERDICT_RE = re.compile(r"\[(\d+)\]\s*verdict:\s*(A|B|same)\b", re.IGNORECASE)
+JUDGE_VERDICT_RE = re.compile(r"\[(\d+)\]\s*verdict:\s*(A|B|same)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -156,7 +156,7 @@ def verdicts(reply: str) -> dict[int, str]:
     """The first verdict the judge's `reply` gives each pair, "A", "B" or "same", by number."""
     found: dict[int, str] = {}
     for line in reply.split("\n"):
-        for match in VERDICT_RE.finditer(line.translate(EMPHASIS)):
+        for match in JUDGE_VERDICT_RE.finditer(line.translate(EMPHASIS)):
             verdict = match.group(2)
             found.setdefault(int(match.group(1)), "same" if verdict.lower() == "same" else verdict)
     return found
@@ -198,10 +198,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         table = load_config(ROOT).models
         if table is None:
             raise copy_edit.Refused(f"{ROOT / 'docket.toml'} has no [models] table")
-        choice = table.choose({"role": ROLE})
-        prompt = copy_edit.instructions(PROMPT.read_text(encoding="utf-8"))
+        choice = table.choose({"role": JUDGE_ROLE})
+        prompt = copy_edit.instructions(JUDGE_PROMPT.read_text(encoding="utf-8"))
         reply, counts = copy_edit.read_once(
-            text, claude, prompt, choice.model, choice.effort, os.environ, TASK
+            text, claude, prompt, choice.model, choice.effort, os.environ, JUDGE_TASK
         )
     except (copy_edit.Refused, OSError) as error:
         print(f"prose_judge: no verdict: {error}", file=sys.stderr)
