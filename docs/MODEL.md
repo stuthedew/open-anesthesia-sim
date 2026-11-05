@@ -8386,26 +8386,19 @@ is reopened (`PL-SQJ1`).
 
 ## Minimum displayed outputs
 
-The interface must show the following outputs. Each entry names the test that
-enforces it, which makes the entries a bound family under
-§ "How this document is held to the tree". The test names say that
-the value reaches the *display*, and that is the link that matters here. A
-required output can go on travelling in `SimulationSnapshot` long after the
-widget that draws it has gone. Three of these entries have no snapshot field at
-all. The playback rate and the chart's time base are view settings, and
-$`F_A/F_I`$ is derived at the point of drawing.
+The interface must show the following outputs. The tests in brackets after each
+entry check that the output is drawn on the display.
 
 - simulated time (`test_refresh_view_formats_every_concentration_metric`,
   `test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour`);
 - the playback rate that is set, as a multiple of real time. It is drawn
   wherever simulated time is drawn, and at every rate, including real time
-  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). It is the
-  setting, not a reading of whether the clock is moving: a paused, reset or
-  halted run still shows the rate it plays at, and the status word in the
-  transport row says whether the run is running. See § "Interface boundary"
-  for what the rate is a statement about, and what it is not;
-- how much simulated time the chart is showing, and whether that width was
-  chosen or fits the whole run so far
+  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). A paused,
+  reset or halted run still shows the rate it would play at. The status word in
+  the row of playback controls says whether the clock is moving. See
+  § "Interface boundary" for what the rate does and does not assert;
+- how much simulated time the chart is showing, and whether that span was the
+  reader's choice or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
   `test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_reader`).
   See § "The chart's time base";
@@ -8441,50 +8434,59 @@ $`F_A/F_I`$ is derived at the point of drawing.
   (`test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre`);
 - mass-balance residual or status
   (`test_refresh_view_reports_valid_agent_accounting`,
-  `test_refresh_view_reports_failed_agent_accounting`); and
-- every concentration above, and the delivered concentration, also shown as a
-  multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
+  `test_refresh_view_reports_failed_agent_accounting`);
+- every concentration above, including the delivered concentration, also shown
+  as a multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
   stated on the display (`test_every_compartment_is_readable_in_mac_multiples`,
   `test_the_dial_is_readable_in_the_unit_its_compartments_are`,
   `test_the_display_names_the_mac_the_readouts_were_divided_by`). See
   § "MAC multiples as a display unit" for what the multiple asserts, and for
-  why both units are shown rather than one being selected; and
+  why both units are shown rather than one being selected;
 - the running agent's population MAC-awake on the chart, drawn as a band. The
-  band is labelled with the fraction and the divisor it was drawn from, and
-  with the trace it is to be read against. The agent's nominal 1 MAC is drawn
+  band is labelled with the fraction it was derived from, MAC-awake as a
+  fraction of the agent's 1 MAC, and with the divisor, that 1 MAC in percent. It
+  is also labelled with the trace it is to be read against. The agent's nominal 1 MAC is drawn
   alongside it as a visually distinct line
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
   `test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line`). See
   § "MAC-awake as a chart reference" for what the band asserts and what it does
   not. That section also explains why no time-to-wake-up figure is displayed
-  anywhere in the interface; and
-- every setting changed during the current run. Each is listed with the
-  simulated time it took effect, the control it changed and the values it moved
-  between, and each is marked on the chart at that time
+  anywhere in the interface;
+- every setting changed during the current run. Each change is listed with the
+  simulated time at which it took effect, the control and its old and new
+  values. The chart marks each change at that time
   (`test_the_list_states_what_was_changed_and_to_what`,
   `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
   § "The control-input timeline"; and
 - $`F_A/F_I`$ over the run, on a dimensionless axis of its own. The plot is
   labelled as a ratio against the modelled inspired concentration, not against
-  the vaporizer dial. The plot carries the control marks above, is ruled at the
-  equilibrium that the curve approaches, and states where the ratio is not
+  the vaporizer dial. It carries the marks for setting changes, has a line at
+  the equilibrium that the curve approaches, and states where the ratio is not
   defined
   (`test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s`,
   `test_the_wash_in_plot_says_what_its_denominator_is`,
   `test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit`). See
-  § "F_A/F_I as a displayed ratio" for the domain it is drawn over, and for
-  what the curve does and does not assert.
+  § "F_A/F_I as a displayed ratio" for the part of the run over which the curve
+  is drawn, and for what it does and does not assert.
 
 The six compartment concentrations above are requirements on the **numeric
 readouts**, not on the chart. The reader may show and hide the chart's
-compartment traces (see § "Interface boundary"). A required value must not
-leave the display when the curve that draws it does. Four of the chart entries
-in this list are the MAC-awake band, the 1 MAC line, the control marks, and
-$`F_A/F_I`$. They are requirements on the chart itself, and the reader cannot
-hide them. The time base is the one chart entry above that the reader does
-choose. For the time base, this list requires that the width in force is
-stated. It never requires that any particular width is in force.
+compartment traces (see § "Interface boundary"), but a required value must stay
+on the display when its trace is hidden. The MAC-awake band, the 1 MAC line, the
+marks for setting changes and the $`F_A/F_I`$ plot are requirements on the chart
+itself, and the reader cannot hide them. Of the chart entries, only the span of
+simulated time is the reader's choice, and no particular span is required.
+
+**For developers.** Testing the display matters because a required output can
+stay in the simulation snapshot (`SimulationSnapshot`) long after the widget
+that draws it has gone. Three entries have no field in the snapshot at all. The
+playback rate and the chart's span are view settings, and $`F_A/F_I`$ is
+computed when the plot is drawn.
+
+ThThe test names in each entry make this list a bound family under
+§ "How this document is held to the tree". The documentation check fails when
+an entry names nothing that backs it, or names a test that does not exist.
 
 ### What this list requires once the layout is the reader's
 
