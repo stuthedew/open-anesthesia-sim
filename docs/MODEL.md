@@ -158,11 +158,11 @@ reviewer still has to judge whether each test is any good.
 | comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run is reported at the run's drawn instant nearest the pointer in time. So the instant that labels a value depends only on the pointer's position along the time axis, and the pointer's height decides only which traces are in reach (§ "Where more than one trace answers") | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
 | reading the hover's value as a live readout after the pointer has left the plot | the hover box shows only while the pointer is over the plot (§ "When it answers"). When the pointer leaves the plot, the box closes at once, and no later screen update brings it back. A box left open would change with every screen update. While a run plays, its values would climb with the run, at an instant the reader is not looking at | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | while more than one run is drawn, every place that shows a value, or the record of what was changed, names its run in text. § "Naming the run in a comparison" lists the seven places | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison`, `test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison` |
-| reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the slider handle is held. It is drawn inside a tinted region that starts at the point the run reached. A label in the plot names the control and the value tried, and says the value is not applied. Each of its curves is one pixel thinner than the run's, and never thinner than 2 px, and the hover never reports from them. The run keeps its setting until the handle is released (§ "A preview of an unapplied setting") | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
-| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project supplies no price. A cost is shown only beside the two numbers it multiplied, the liquid volume and the price per millilitre. Beside them are the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
+| reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the slider handle is held. It is drawn inside a tinted region that starts at the point the run reached. A label in the plot names the control and the value tried, and says the value is not applied. Each of its curves is one pixel thinner than the run's curve, and never thinner than 2 pixels. The box of values that follows the pointer never reports from them. The run keeps its setting until the handle is released (§ "A preview of an unapplied setting") | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
+| reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project supplies no price. A cost is shown only beside the two numbers it multiplied, the liquid volume and the price per millilitre. The volume is shown in whole millilitres and the cost is computed before rounding, so the product of the two numbers shown can differ from the cost by up to about half a millilitre's price. The readout says that they are rounded. Beside them are the bottle price, currency and date that the price came from, and words saying that the price is the reader's (§ "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
 | reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is entered as a bottle price and a bottle volume, and the volume field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that the two give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where price and volume differ widely. At Gas Man's default sevoflurane price, a swap changes the cost by only 8 %. The currency is stored and shown as its three-letter ISO 4217 code, never as a bare "$" (§ "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
-| reading a container's fill height, or its filled area, as the amount of agent it holds | a container's height shows the compartment's tension on the concentration chart's own scale. Every container is drawn at the same width. So no length or area on a container stands for an amount. Each container prints its amount beside its tension. The share bar shows the amounts on one scale and names each share in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
-| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, depending on the agent | no panel prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid". `DisplayUnit` defines each spelling once, so no panel writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost panel writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_to_a_tenth_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
+| reading a container's fill height, or its filled area, as the amount of agent it holds | a container's height shows the compartment's tension on the concentration chart's own scale. Every container is drawn at the same width. So no length or area on a container stands for an amount. Each container prints its amount beside its tension. A bar of the compartments' shares shows the amounts on one scale and names each share in text (§ "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
+| reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, depending on the agent | no panel prints a bare "mL" beside an agent amount. A vapour amount is written "mL vapour" and a liquid amount "mL of liquid". One definition in the code, `DisplayUnit`, spells each unit, so no panel writes its own (§ "The compartment schematic: what its heights, amounts and share bar assert"). The agent cost panel writes its delivered amount as "mL of liquid" or "L vapour", whichever unit the reader chose, and its caption says what that unit measures | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_at_its_derived_precision_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
 
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 8 % -->
@@ -10562,10 +10562,12 @@ exhausted total by 0.016 to 0.042 L at 3600 s, and by 0.18 to 0.23 L at the 24 h
 supported limit. By agent, the shifts are sevoflurane 0.024 and 0.19 L,
 isoflurane 0.016 and 0.18 L, and desflurane 0.042 and 0.23 L, and the blood:gas
 coefficient dominates throughout. These shifts were measured at 1 MAC with the
-reference adult's flows, and have no test yet (`PL-19W8`). One count of 0.1 L
-therefore lies between a quarter of an SD and six SDs across the whole supported
-span, which is inside the band the readouts' derivation admits. A count of
-0.01 L would fall to a fiftieth of an SD by 24 h. Delivered agent carries no
+reference adult's flows, and have no test yet (`PL-19W8`). At those settings,
+one step of 0.1 L therefore lies between about two-fifths of an SD and six SDs,
+from 1 h to the 24 h limit, which is inside the band the readouts' derivation
+admits. A step of 0.01 L would fall to about a twentieth of an SD by 24 h. At a
+higher dial setting the shifts are larger, and no test yet derives the step
+there (`PL-0P3F`). Delivered agent carries no
 parameter uncertainty, because it is the dial times the flow times the time, and
 it takes the same resolution so that the three amounts read at one scale.
 <!-- not-restated: 0.18 -->
@@ -10626,7 +10628,7 @@ at a default.
 | Amount | Unit | Decimals | Resolution | Derived from |
 | --- | --- | --- | --- | --- |
 | A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above |
-| The delivered total | Millilitres of liquid | 1 | 0.1 mL | One SD of the measured liquid density |
+| The delivered total | Millilitres of liquid | 0 | 1 mL | One SD of the measured liquid density |
 | The exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
 | The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
 | One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | One SD of a partition coefficient, as a share of the amount, below |
@@ -10640,42 +10642,31 @@ difference in one unit that it does not resolve in the other. One step of the
 litre display, 0.1 L of vapour, is 0.55 mL of sevoflurane liquid, 0.51 mL of
 isoflurane and 0.48 mL of desflurane at the 20 °C reference of § "Agent amount",
 and the smallest power of ten at or above all three is 1 mL. The partition
-coefficients give the same answer. At 24 h, the one-SD shifts derived above for
-the litre display, 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L
-of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So one step of 1 mL is
-about one SD, and a step of 0.1 mL would be a tenth of one.
+coefficients give the same answer. At 24 h, the one-SD shifts measured above at
+1 MAC with the reference adult's flows, 0.19 L of sevoflurane vapour, 0.18 L of
+isoflurane and 0.23 L of desflurane, are 1.04, 0.92 and 1.10 mL of liquid. So
+at those settings one step of 1 mL is about one SD, and a step of 0.1 mL would
+be a tenth of one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**The delivered total in millilitres of liquid is shown to a tenth.** The
-delivered agent is the dial times the flow times the time, so no partition
-coefficient makes it uncertain. The delivered and exhausted totals are both gas
-at room temperature, so their conversion to liquid at the 20 °C reference is
-exact. That leaves one uncertainty in the delivered figure in liquid. It comes
-from the measured liquid density, whose SD is 0.0008, 0.0006 and 0.0004 g/mL
-for sevoflurane, isoflurane and desflurane. One SD moves the figure by 0.1 mL
-only once it holds about 190 mL of sevoflurane, 250 mL of isoflurane or 366 mL
-of desflurane. Above those volumes the last digit is finer than one SD of the
-density. At 2% sevoflurane and 2 L/min, 190 mL takes about 14.5 h, and at the
-dial's maximum of 8% and 10 L/min it takes 43 min. At Gas Man's Exercise 14-1,
-39.4 mL of isoflurane, one SD is 0.016 mL. So 0.1 mL lies inside the band that
-the density spans across the supported settings, as 0.1 L does for the
-partition coefficients. The tenth also lets a reader multiply the delivered
-figure by the price per millilitre beside it and get the cost, as § "A cost at
-the reader's price" asks. The delivered total in litres stays at 0.1 L, coarser
-than the delivered amount supports, which the one-sided bound allows.
-<!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
-<!-- provenance: data/agents/isoflurane.json liquid_density.standard_deviation_g_ml = 0.0006 -->
-<!-- provenance: data/agents/desflurane.json liquid_density.standard_deviation_g_ml = 0.0004 -->
+**The delivered total in millilitres of liquid is shown in whole millilitres.**
+The delivered agent is the dial times the flow times the time, and its
+conversion to liquid at the 20 °C reference is exact. Its only uncertainty in
+liquid is the measured density's, which grows in proportion to the total. At
+sevoflurane's largest supported total, 8% at 10 L/min for 24 h, one SD is about
+3.3 mL. So a step of 1 mL is about 0.3 SD, and no supported setting makes it
+finer than the readouts' seventh of an SD. A step of 0.1 mL would be about a
+thirtieth.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
-<!-- not-restated: 2 % -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **A cost is shown to three significant figures, and a price per millilitre to
 four.** A cost is the delivered agent in liquid times the reader's price per
 millilitre (§ "A cost at the reader's price"). The price is the reader's own
-figure, so it carries no modelled uncertainty, and the cost's only modelled
-uncertainty is the liquid figure's, which comes from the measured density alone.
-The largest relative SD of a stored density is sevoflurane's, 0.0008 / 1.5203,
+figure, so it carries no modelled uncertainty. The cost's only modelled
+uncertainty is therefore the liquid figure's. The largest relative SD of a
+stored density is sevoflurane's, 0.0008 g/mL against 1.5203 g/mL,
 or 0.053 %. That SD is relative, so the cost's precision is a count of
 significant figures, not of decimals. A count of n figures has a smallest
 relative step of 1 in (10^n - 1), at a value such as 999. At three figures that
@@ -10684,33 +10675,37 @@ At four it would be 0.010 %, finer than one SD. A cost is never shown finer than
 **a hundredth** of its currency, which is the smallest unit of most currencies.
 For example, 0.68 reads `USD 0.68`, not `USD 0.680`. A positive cost below a
 hundredth reads `USD <0.01`, and a run that has delivered nothing reads `USD 0`.
-Four figures is the fewest at which the price's rounding moves the product of
-the figures shown by at most half of the cost's smallest step. Half a step at
-four figures is at most 0.5 in 1000, against 0.5 in 999 for the cost. The liquid
-volume's 0.1 mL is then the only rounded figure in the reader's multiplication
-that is coarse enough to matter, and the readout says so (§ "A cost at the
-reader's price").
+The price per millilitre takes four figures, the fewest at which its rounding
+moves the product of the figures shown by at most half of the cost's smallest
+step. At four figures that rounding is at most 0.5 in 1000 of the price, and
+half of the cost's smallest step is 0.5 in 999 of the cost. The liquid volume's
+whole millilitre is then the only rounded figure in the reader's multiplication
+that is coarse enough to matter. It can make the product miss the cost by up to
+about half a millilitre's price, and the readout says that the figures are
+rounded (§ "A cost at the reader's price").
 <!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
 <!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
 
 **The stored total has no liquid precision, and is refused in liquid.** A store
 converted to liquid reads 5.8% high (§ "Known limitations"). That error grows
-with the amount. At 17 mL of liquid it is already a whole count of 1 mL, and in
-a long run it is several. No count of decimals can make a figure with a known
-bias of several counts read correctly, so the stored total keeps litres of
+with the amount. At 17 mL of liquid it is already a whole step of 1 mL, and in
+a long run it is several steps. No number of decimals can make a figure with a
+known bias of several steps read correctly, so the stored total keeps litres of
 vapour, as the accounting panel shows it.
 
 **For developers.** `app/formatting.py` keys each precision by the amount and
 the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
 `AgentAmountPrecision`, which holds the amount, the unit and the count shown. It
 reads the finest count from the derivation for that amount and unit, so no
-caller can pass a looser bound, and it refuses a finer count when it is built. A
+caller can pass a looser bound. It refuses a finer count when it is built. A
 precision that a reader could set would be built the same way.
 `test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`
 repeats the litre-to-millilitre conversion for every shipped agent from the
 stored molar mass and density.
-`test_the_delivered_total_in_millilitres_of_liquid_is_shown_to_a_tenth` computes
-the three volumes from the stored densities.
+`test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres`
+computes each agent's largest supported total and its SD from the stored
+densities. Whole millilitres replaced a tenth on 2026-11-04 (project owner,
+ratified, over keeping the tenth and over four significant figures, `PL-SP6H`).
 `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`
 computes both counts from the stored densities.
 `test_a_unit_with_no_derived_precision_is_refused` enforces the refusal of the
@@ -10731,19 +10726,20 @@ test yet (`PL-19W8`).
 **A compartment's amount is shown to two significant figures, because its
 uncertainty is a share of the amount rather than a fixed volume** (measured
 2026-11-01). The totals' derivation was repeated on each compartment's amount in
-millilitres of vapour. Each of the four stored coefficients was perturbed by one
-published SD, one at a time, at 1 MAC with the reference adult's flows, and the
-amounts were read every second for the first 20 minutes, and at 60 min, 180 min
-and 24 h. The shift runs from almost nothing, in the circuit in the first
-seconds, to 216 mL, in desflurane's fat at 24 h, because the amounts themselves
-span as many orders of magnitude. So no single count of decimals lies inside the
-band that the readouts' derivation admits. One count of 1 mL is a two-hundredth
-of one SD in desflurane's fat at 24 h, the kind of false precision that stopped
-the run totals at 0.1 L. One count of 10 mL is still a twenty-second of an SD
-there. It would also print sevoflurane's and isoflurane's venous blood as
-"<10 mL" for almost the whole first hour, which is the flat reading that the
-readouts' lower limit refuses. That blood holds about 0.18 mL at 1 min, 6.6 mL
-of sevoflurane at 10 min, and 9.7 to 10.0 mL at 60 min.
+millilitres of vapour. Each of the four stored partition coefficients was
+perturbed by one published SD, one at a time, at 1 MAC with the reference
+adult's flows. The amounts were read every second for the first 20 minutes, and
+at 60 min, 180 min and 24 h. The shift runs from almost nothing, in the circuit
+in the first seconds, to 216 mL, in desflurane's fat at 24 h, because the
+amounts themselves span that many orders of magnitude. So no single number of
+decimals keeps every amount's step inside the band that the readouts'
+derivation admits. A step of 1 mL is a two-hundredth of one SD in desflurane's
+fat at 24 h, the kind of false precision that stopped the run totals at 0.1 L.
+A step of 10 mL is still a twenty-second of an SD there. It would also print
+sevoflurane's and isoflurane's venous blood as "<10 mL" for almost the whole
+first hour, which is the flat reading that the readouts' lower limit refuses.
+That blood holds about 0.18 mL at 1 min, 6.6 mL of sevoflurane at 10 min, and
+9.7 to 10.0 mL at 60 min.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL, 10.0 mL -->
 
@@ -10751,16 +10747,16 @@ Relative to the amount, the shift is narrow. In venous blood and the three
 tissue groups it is 1.4% to 12% of the amount. In the circuit and the alveoli it
 is below 3%, because the dial sets them and a coefficient barely moves them. Two
 significant figures put the last digit at 1% to 10% of the amount. As measured,
-one count lies between a tenth of one SD, in desflurane's venous blood at 79 s
-when it holds 0.99 mL, and many SDs in the circuit. These figures have no test
-yet (`PL-19W8`). The one-sided bound allows the coarse end. The fine end is
-finer than the readouts' seventh of an SD, but only in the first two minutes,
-while venous blood fills. Three significant figures would put one count at a
-hundredth of an SD. That is the same order as the readouts' third decimal, which
-was refused at a seventieth of an SD, and as the totals' second decimal, which
-was refused at a fiftieth. One significant figure would print fat's amount in
-steps of 1000 mL by 24 h. So two is the finest count the parameters support, and
-it is the count chosen.
+one step of that digit lies between a tenth of one SD, in desflurane's venous
+blood at 79 s when it holds 0.99 mL, and many SDs in the circuit. These figures
+have no test yet (`PL-19W8`). The one-sided bound allows the coarse end. The
+fine end is finer than the readouts' seventh of an SD, but only in the first two
+minutes, while venous blood fills. Three significant figures would put one step
+at a hundredth of an SD. That is finer than the readouts' third decimal, which
+was refused at a seventieth of an SD, and the totals' second decimal, which was
+refused at about a twentieth. One significant figure would print fat's amount in
+steps of 1000 mL by 24 h. So two is the finest number of figures the parameters
+support, and it is the number chosen.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The readouts' uniform resolution does not carry over to the schematic's amounts,
@@ -11418,22 +11414,34 @@ readout shows these six things:
 6. words saying that the cost is at the reader's price, not only a colour or a
    style, so that no reader misses the statement.
 
-**A bare "mL" does not say enough.** The schematic labels its amounts in
-millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1). Gas Man quotes its price
-as "Cost/mL vapor" (printed p. 174). One millilitre of liquid isoflurane gives
-about 196 mL of vapour, so a volume or a price read as vapour is wrong by that
-factor.
+**A bare "mL" does not say whether it means liquid or vapour.** The schematic
+labels its amounts in millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1).
+Gas Man quotes its price as "Cost/mL vapor" (printed p. 174). One millilitre
+of liquid isoflurane gives about 196 mL of vapour, so a volume or a price read
+as vapour is wrong by that factor.
 
 **The simulator reproduces the costs of both of Gas Man's isoflurane
 exercises.** It does so at the price that the book prints beside the costs of
-Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). Without
-that price, a reader could not tell which of the book's two prices produced
-those costs. For Exercise 14-1 at 60 min, the readout could read "39.4 mL of
-liquid x USD 0.2047 per mL of liquid = USD 8.07, at your price of USD 20.47
-per 100 mL bottle, as of 2008-03-05". The wording and the layout are
-placeholders, and the six facts are the requirement. The book prints $8.06,
-because Gas Man rounds isoflurane's vapour-to-liquid ratio to 196
-(§ "Agent amount").
+Exercise 14-1, "a bottle cost of US$20.47 per 100 ml" (printed p. 134). For
+Exercise 14-1 at 60 min, the readout could show "39 mL of liquid x USD 0.2047
+per mL of liquid = USD 8.07, at your price of USD 20.47 per 100 mL bottle, as
+of 2008-03-05". The wording and the layout are placeholders. The book
+prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to
+196 (§ "Agent amount").
+
+**The figures beside a cost are rounded, and the readout says so.** It also
+says that the cost is computed from the unrounded liquid volume and price per
+millilitre (`PL-1P15`). The readout shows the cost to three significant figures
+and never finer than a hundredth, and the price per millilitre to four
+significant figures (§ "Displayed precision"). The liquid volume is shown in
+whole millilitres, so the product of the figures shown can differ from the cost
+by more than one unit of the cost's last digit. In the example above, 39 mL
+times USD 0.2047 is USD 7.98. The cost is USD 8.07 because it uses the
+unrounded 39.42 mL. At USD 115.13 per 240 mL bottle, 60 min of desflurane at
+6 % and 1 L/min costs USD 8.23. Shown as 17 mL and USD 0.4797 per mL, the two
+figures multiply to USD 8.15.
+
+<!-- not-restated: 6 % -->
 
 **How the cost is computed.** The cost is the delivered agent's liquid
 equivalent times the price per millilitre. It uses the delivered agent because
@@ -11446,18 +11454,6 @@ beside the cost. The date is never used to compute the cost, and neither is
 today's date. When two runs are compared, each run's cost uses the price of its
 own agent. A cost is never added to, or subtracted from, a cost in another
 currency.
-
-**The figures beside a cost are rounded, and the readout says so.** The cost is
-computed from the unrounded liquid volume and price per millilitre, and the
-readout says that too (`PL-1P15`). It shows the cost to three significant
-figures and never finer than a hundredth, and the price per millilitre to four
-significant figures (§ "Displayed precision"). The liquid volume is shown to
-0.1 mL, so the product of the figures shown can differ from the cost by more
-than one unit of the cost's last digit. At USD 115.13 per 240 mL bottle, 60 min
-of desflurane at 6 % and 1 L/min costs USD 8.23. Shown as 17.2 mL and USD 0.4797
-per mL, the two figures multiply to USD 8.25.
-
-<!-- not-restated: 6 % -->
 
 **What a stored price carries.** The simulator keeps at most one price for
 each agent. Each price records five things:

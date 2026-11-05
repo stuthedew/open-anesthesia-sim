@@ -240,21 +240,17 @@ class AgentAmountUnit(Enum):
 
 # Each entry below is the finest number of decimals that `docs/MODEL.md`
 # § "Displayed precision" derives for one agent amount in one unit. That section
-# holds the figures behind each count, and this comment does not restate them.
+# holds the figures behind each count.
 #
 # - A run total in litres of vapour has one decimal, the finest that the
-#   parameters support (`PL-TG60`). All three totals use it, so the accounting
+#   parameters support at 1 MAC with the reference flows (`PL-TG60`; higher
+#   dial settings are `PL-0P3F`). All three totals use it, so the accounting
 #   panel shows them on one scale.
-# - The delivered total in millilitres of liquid has one decimal (project owner,
-#   2026-10-27, ratified, over whole millilitres). The delivered agent is the
-#   vaporizer dial setting times the fresh gas flow times the time, so no
-#   partition coefficient makes it uncertain. Once it is converted to liquid,
-#   its only uncertainty comes from the measured density. An error of one SD
-#   in the density moves the liquid figure by 0.1 mL only when the total is
-#   above about 190 mL of liquid. The litre display of this total is coarser
-#   than 0.1 mL of liquid. That is allowed, because the derived precision is a
-#   limit in one direction only. It limits how fine a display may be, not how
-#   coarse.
+# - The delivered total in millilitres of liquid has no decimals (project
+#   owner, 2026-11-04, ratified, over keeping a tenth of a millilitre and over
+#   four significant figures, `PL-SP6H`). Its only uncertainty is the measured
+#   density's, which grows with the total. At the largest supported total, a
+#   step of 1 mL is about 0.3 SD, and 0.1 mL would be about a thirtieth.
 # - The exhausted total in millilitres of liquid has no decimals. One step of
 #   the litre display, 0.1 L of vapour, is about half a millilitre of liquid
 #   for every shipped agent. 1 mL is the finest power of ten that is no finer
@@ -278,7 +274,7 @@ _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int
                 (total, AgentAmountUnit.LITRES_OF_VAPOUR): _RUN_TOTAL_LITRE_DECIMALS
                 for total in (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
             },
-            (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID): 1,
+            (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID): 0,
             (AgentAmount.EXHAUSTED, AgentAmountUnit.MILLILITRES_OF_LIQUID): 0,
         }
     )
@@ -1443,18 +1439,17 @@ AGENT_AMOUNT_UNIT_DISPLAY: Final[Mapping[AgentAmountUnit, DisplayUnit]] = Mappin
 def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     """Render the amount of agent that a run has delivered, in `unit`, followed by the unit.
 
-    The agent cost View shows this text (`PL-B396`). `amount` must already be
-    in `unit`. The precision is the one that `docs/MODEL.md` § "Displayed
-    precision" derives for the delivered agent in that unit. It is a tenth of a
-    millilitre of liquid, or a tenth of a litre of vapour. The accounting panel
-    uses the same precision. The text follows `format_agent_volume`'s rounding
-    rules. A positive amount that rounds to zero is shown as less than the
-    resolution, such as `<0.1 mL of liquid`. An amount of exactly zero is shown
-    as zero. The unit always says whether it is vapour or liquid, spelled as
-    `DisplayUnit` spells it.
+    The agent cost View shows this text (`PL-B396`). The precision is the one
+    that `docs/MODEL.md` § "Displayed precision" derives for the delivered agent
+    in that unit. It is a whole millilitre of liquid, or a tenth of a litre of
+    vapour as on the accounting panel. The text follows `format_agent_volume`'s
+    rounding rules. A positive amount that rounds to zero is shown as less than
+    the resolution, such as `<1 mL of liquid`. An amount of exactly zero is
+    shown as zero. The unit always says whether it is vapour or liquid, spelled
+    as `DisplayUnit` spells it.
 
     Args:
-        amount: The delivered agent, in `unit`.
+        amount: The delivered agent, already in `unit`.
         unit: The unit to show the amount in.
 
     Returns:
