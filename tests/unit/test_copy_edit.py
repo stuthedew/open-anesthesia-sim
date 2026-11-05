@@ -426,6 +426,22 @@ def test_a_markdown_rewrite_that_changes_a_block_comment_or_heading_is_refused(
     assert any(reason in refused for refused in found.refused)
 
 
+def test_a_comment_cut_whole_is_listed_and_not_refused() -> None:
+    before = ["Two percent.", "<!-- provenance: a.json x = 2 -->", "Three.", "<!-- marker = 3 -->"]
+    after = ["Three.", "<!-- marker = 3 -->"]
+
+    found = copy_edit.check_code("docs/MODEL.md", before, before, after)
+
+    assert found.refused == ()
+    assert found.cut_comments == ("<!-- provenance: a.json x = 2 -->",)
+    altered = ["Three.", "<!-- marker = 4 -->"]
+    assert copy_edit.check_code("docs/MODEL.md", before, before, altered).refused == (
+        "it changed an HTML comment or wrote a new one",
+    )
+    copied = [*before, "Three again.", "<!-- marker = 3 -->"]
+    assert copy_edit.check_code("docs/MODEL.md", before, before, copied).refused == ()
+
+
 def test_a_new_code_name_is_refused_and_a_dropped_one_is_listed() -> None:
     before = ["The check (`check_a`) reads `docs/x.md`."]
     seen = [*before, "The list `check_b` reads."]

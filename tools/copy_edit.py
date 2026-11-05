@@ -27,10 +27,12 @@ each passage once, in the text of the last read that rewrote it, else
 there is no audit.
 
 Before the reply is printed, `check_code` compares each rewrite with the rows
-it replaces. A rewrite that changes code, a fenced block, an HTML comment or a
-heading, or writes a code name the passage does not hold, is refused and
-printed as `[N] keep`, with the reason under "Code check:". A code name that a
-rewrite dropped is listed there too (project owner, 2026-11-04, `PL-HGZS`).
+it replaces. A rewrite that changes code, a fenced block or a heading, alters an HTML
+comment or writes one the passage does not hold, or writes a code name the
+passage does not hold, is refused
+and printed as `[N] keep`, with the reason under "Code check:". A code name
+that a rewrite dropped, and a comment that it cut whole, are listed there too
+(project owner, 2026-11-04, `PL-HGZS`).
 
 **A whole document is reviewed in two parts** (project owner, 2026-11-04,
 `PL-HGZS`). `--structure FILE` runs the structure read, which rewrites
@@ -338,7 +340,7 @@ def fenced(rows: Sequence[str]) -> list[str]:
 
 @dataclass(frozen=True)
 class CodeCheck:
-    """What a rewrite did to code: each change that refuses it, and each code name it dropped.
+    """What a rewrite did to code: each change that refuses it, and each name or comment it cut.
 
     The copy editor may change prose and nothing else. Its instructions say so,
     and this check enforces it on what it returns, so that no session applies a
@@ -347,6 +349,7 @@ class CodeCheck:
 
     refused: tuple[str, ...] = ()
     dropped: tuple[str, ...] = ()
+    cut_comments: tuple[str, ...] = ()
 
 
 #: Python tokens that are prose or layout, which a copy edit may change. Every
@@ -404,8 +407,13 @@ def check_code(
 
     `seen` is every row of the passage, the read-only rows included, so a code
     name the copy editor took from any of them is not a new name. A rewrite is
-    refused where it changes Python code, a fenced block, an HTML comment or a
-    heading, or writes a code name that the passage does not hold.
+    refused where it changes Python code, a fenced block or a heading, alters an
+    HTML comment or writes one the passage does not hold, or writes a code name
+    that the passage does not hold. A comment it cut whole is listed and not
+    refused, because the copy editor's instructions say to cut a source comment
+    with the number it backs. The documentation check still refuses a stored
+    value that a paragraph states with no source comment, though not a figure
+    derived from one, so the session judging the edit checks those.
     """
     refused: list[str] = []
     if path.endswith(".py") and python_code(before) != python_code(after):
@@ -415,8 +423,9 @@ def check_code(
     if not path.endswith(".py"):
         if old_fences != new_fences:
             refused.append("it changed, added or removed a fenced block")
-        if old_comments != new_comments:
-            refused.append("it changed, added or removed an HTML comment")
+        # A copy of a comment the passage holds goes with a number stated twice.
+        if set(new_comments) - set(old_comments):
+            refused.append("it changed an HTML comment or wrote a new one")
         if old_titles != new_titles:
             refused.append("it changed, added or removed a heading")
     # A code name the passage already holds anywhere, inside a longer code
@@ -430,7 +439,8 @@ def check_code(
             + ", ".join(f"`{span}`" for span in added)
         )
     dropped = tuple(sorted({span for span in old_spans if span not in new_spans}))
-    return CodeCheck(tuple(refused), dropped)
+    cut = tuple(sorted((old_comments - new_comments).elements()))
+    return CodeCheck(tuple(refused), dropped, cut)
 
 
 def passage_texts(request: str) -> dict[int, tuple[str, list[str], list[str]]]:
@@ -498,6 +508,11 @@ def merge(
             checked.append(
                 f"- Passage {number}: the rewrite no longer names `{span}`. "
                 "Check that its reader does not need it."
+            )
+        for comment in result.cut_comments:
+            checked.append(
+                f"- Passage {number}: the rewrite cut the comment {comment}. "
+                "Check that it also cut the number the comment backs."
             )
         if rows is None or result.refused:
             out += [f"[{number}] keep", ""]
