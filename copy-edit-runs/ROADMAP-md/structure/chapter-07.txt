@@ -1,0 +1,63 @@
+[1] keep
+
+I've rewritten nothing, because this is a structure read. The findings and the chapter outline follow.
+
+Structure:
+- **Said twice: governing equations.** "No governing equation changes in this milestone" (599-600) also appears as the out-of-scope entry "Any change to the v0.1.0 governing equations themselves. This milestone proves that the equations are agent-generic. It does not change them from one agent to another." (664-666), and again as "even though they do not change the governing equations" (622-623). The fact belongs in the out-of-scope list, which is where this reader looks for what the release left out. That entry keeps only its first sentence, because "proves that the equations are agent-generic" repeats the Goal (595-597). The Goal keeps "It adds only new per-agent data and the loading capability to select among agents" (600-601). The clause in 622-623 goes.
+- **Said twice: the Goal's aim.** "This milestone only needs the model to be able to run as isoflurane or desflurane. It does not need to offer that choice in the interface yet." (646-648) repeats the Goal (597-601). The entry keeps the exclusion and its pointer to item 1. The repeated aim goes.
+- **Said twice: Required scope and Definition of done.** The two lists give four facts twice:
+  - schema validation: "schema-validated like `data/agents/sevoflurane.json`" (605-607) and "pass the same schema and range validation as `sevoflurane.json`" (631-632);
+  - independent reference tests: 616-619 and 633-635, with the Goal's "each with independent reference cases" (599) as a third copy;
+  - keeping the old reference tests unchanged: "Preserve the v0.0.2 circuit and v0.1.0 sevoflurane reference tests unchanged" (624-625) and 636-637;
+  - parameter sources in `docs/MODEL.md`: 620 and 638.
+
+  Each criterion belongs once, in Definition of done. Each Required scope entry keeps only what it adds:
+  - the two new files with cited blood:gas and tissue:gas partition coefficients (605-607);
+  - choosing an agent by id (608-609);
+  - wash-in, uptake, washout and equilibrium (616-618);
+  - the agent-specific numerical points (621-623).
+
+  The entry at 624-625 goes, and so does the first sentence at 620.
+- **Wrong place and wrong heading: the outcome paragraph.** The paragraph saying what was done (668-676) sits under "### Explicitly out of scope for v0.2.0", a heading that does not say what the paragraph holds. The reader of a completed milestone looks first for whether it was delivered and what it delivered. The paragraph belongs under its own subheading, such as "### Outcome", directly after § "Goal". Its first sentence, "All the criteria above were met when the milestone was tagged", can stand as the lead of Definition of done in place of "v0.2.0 is complete only when all of the following are true:" (629). That lead is written as a plan, for a milestone that is now complete.
+- **Another reader's: code detail.** These rows are written for a developer or a later session, not for a reader deciding what a release holds:
+  - 609-615: `core/parameters.py`, `load_sevoflurane_parameters()`, `RespiratorySystem.default()`, the `_require_*` helpers, and the Pydantic suggestion with its reasons;
+  - 619: `tests/reference/test_sevo_patient.py`;
+  - 669-673: `load_agent_parameters(agent_id)`, "thin wrapper", and `tests/reference/test_multi_agent.py`.
+
+  This reader doesn't know these internal names. The detail belongs in the item for this milestone, or in its commit messages. This section keeps three points: an agent can be chosen by id (608-609), existing sevoflurane runs behave as before (671-672), and reference tests check directional solubility and mass-balance closure for both new agents (672-673).
+- **Wrong place: work done after the milestone.** "A basic picker was in fact added afterwards, in commit `00791b1`. The picker restarts the run rather than switching agents mid-run. So the interlock and residual-washout work that this milestone excluded is still outstanding." (649-652) is the current state of planned work. The reader deciding what to build next looks for it in § "Planned milestones" item 1, the anesthesia-machine milestone. It belongs there. The outline read should check whether item 1 already says it. This entry keeps the exclusion and its pointer (644-646). The commit hash goes to the item. "(This was recorded as the milestone's scope when it was tagged." (648-649) describes the text itself and goes.
+- **Wrong place: advice on sourcing other agents.** "Halothane is clinically obsolete, but it has reasonable modern published data. Enflurane, ether, and xenon are harder to source ... None of the three should be assumed available just because the Gas Man reference simulator shows it." (657-661) is advice for whoever plans to add those agents. It belongs with that stretch goal. This entry keeps the exclusion (656-657).
+- **Order.** Goal, Required scope, Definition of done, Out of scope, then the outcome means the reader reads the whole plan before learning what was delivered. Use: Goal, Outcome, Required scope, Definition of done, Explicitly out of scope. That is the move in the outcome-paragraph finding above.
+- **Length.** The section has subheadings for each part and needs no more beyond "### Outcome".
+- Query: the Required scope entry suggests moving the loading code's JSON validation to Pydantic (611-615). No place says whether this was done, dropped or is still open. If it is still open, it belongs in an item or a planned milestone.
+- Query: Required scope asks for equilibrium tests (617-618) and a note on agent-specific numerical points such as desflurane's low blood:gas solubility (621-623). Neither Definition of done nor the outcome paragraph says whether these were delivered.
+- Query: the entry excluding vaporizer physics (653-655) does not say where, if anywhere, that work is planned. The agent-switching entry (645-646) and the nitrous oxide entry (663) both say where theirs is.
+- Query: the entry for halothane, enflurane, ether and xenon calls them "a stretch goal further in the future" (656-657) but names no milestone or item that records that goal.
+- Query: "`load_sevoflurane_parameters()` is currently the only path that `RespiratorySystem.default()` uses, and it is hardcoded" (610-611) describes the code before the milestone. The outcome paragraph (669-672) says agents now load through a new path. The reader cannot tell whether the default still loads only sevoflurane.
+- Query: the section names no item for this milestone. Its decision history and code detail need one to move to.
+- Query: "within the documented tolerance" (634-635) does not say where that tolerance is documented.
+
+Outline:
+- 591: heading. Milestone v0.2.0, completed, adds isoflurane and desflurane.
+- 593: subheading "Goal".
+- 595-601: aim. Prove that the v0.1.0 patient model (circuit, alveolar, tissue and venous compartments, with governing equations in `docs/MODEL.md`) is generic across agents and not specific to sevoflurane. Do it by adding isoflurane and desflurane as validated, data-driven volatile agents, each with independent reference cases. No governing equation changes in the milestone. It adds only per-agent data and the loading capability to select among agents.
+- 603: subheading "Required scope".
+- 605-607: add `data/agents/isoflurane.json` and `data/agents/desflurane.json`, schema-validated like `data/agents/sevoflurane.json`, with cited blood:gas and tissue:gas partition coefficients and source provenance.
+- 608-615: extend agent loading in `core/parameters.py` so that an agent is selected by id instead of always loading sevoflurane. `load_sevoflurane_parameters()` is "currently" the only path `RespiratorySystem.default()` uses, and it is hardcoded. Consider migrating the module's JSON validation to Pydantic, because the boilerplate in its `_require_*` helpers grows with each agent schema. The module is isolated behind plain dataclass returns, so the switch is low-risk.
+- 616-619: add independent reference tests for isoflurane and desflurane wash-in, uptake and washout. Follow the sevoflurane pattern of directional solubility, equilibrium and mass balance in `tests/reference/test_sevo_patient.py`.
+- 620-623: document parameter provenance of both new agents in `docs/MODEL.md`. Note agent-specific numerical points, such as desflurane's low blood:gas solubility, though they do not change the governing equations.
+- 624-625: keep the v0.0.2 circuit and v0.1.0 sevoflurane reference tests unchanged.
+- 627: subheading "Definition of done".
+- 629: lead. v0.2.0 is complete only when all of the following are true.
+- 631-632: `isoflurane.json` and `desflurane.json` pass the same schema and range validation as `sevoflurane.json`.
+- 633-635: each new agent has independent reference tests showing correct directional solubility behaviour and mass balance closing within the documented tolerance.
+- 636-637: the v0.0.2 circuit and v0.1.0 sevoflurane reference tests are unchanged and still pass.
+- 638: `docs/MODEL.md` documents parameter provenance of both new agents.
+- 639-640: Ruff formatting and linting, strict mypy, pytest and GitHub Actions all pass.
+- 642: subheading "Explicitly out of scope for v0.2.0".
+- 644-652: out of scope: a UI control for selecting the agent. Agent switching and interlock behaviour belong to the anesthesia-machine milestone (item 1, § "Planned milestones"). The milestone needs only the model able to run as isoflurane or desflurane, not a choice in the interface. This was the scope recorded at tagging. A basic picker was added afterwards in commit `00791b1`. It restarts the run rather than switching agents mid-run. Interlock and residual-washout work is still outstanding.
+- 653-655: out of scope: physics of the vaporizer as a delivery device, such as desflurane's heated, pressurized vaporizer. The milestone models uptake and distribution only.
+- 656-661: out of scope: halothane, enflurane, ether and xenon, a stretch goal beyond this milestone. Halothane is clinically obsolete but has reasonable modern published data. Enflurane, ether and xenon have sparser data and are harder to source. Each of those three needs its own provenance check before it is added. None should be assumed available because the Gas Man reference simulator shows it.
+- 662-663: out of scope: nitrous oxide, because it is not a halogenated volatile. Items 6-7 in § "Planned milestones" cover it.
+- 664-666: out of scope: any change to the v0.1.0 governing equations. The milestone proves them agent-generic and does not change them per agent.
+- 668-676: outcome. All criteria were met when the milestone was tagged. Isoflurane and desflurane load through `load_agent_parameters(agent_id)`, added for this milestone. `load_sevoflurane_parameters()` is now a thin wrapper over it, so no existing call site changed behaviour. `tests/reference/test_multi_agent.py` covers directional solubility and mass-balance closure for both new agents. The parameter provenance table in `docs/MODEL.md` and its new "v0.2.0: isoflurane and desflurane" subsection record where both agents' parameters came from.

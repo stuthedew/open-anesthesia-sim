@@ -1,0 +1,465 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Sequenced past v0.5.0, so not clearable before it begins", rows 3282-3546. Whole section: 2880 words. For: The project owner, or a contributor deciding what to build next
+ 3282 | ### Sequenced past v0.5.0, so not clearable before it begins
+ 3283 | 
+ 3284 | **`PL-Z34C` makes a thirteenth, on a different ground, 2026-09-20** (project
+ 3285 | owner, ratified, over keeping it on the frozen list). It is not sequenced behind
+ 3286 | the port. Its completion is a *standing condition*, not a piece of work.
+ 3287 | `verify_required_from` is retired when the grandfathered set reaches zero. That
+ 3288 | set shrinks as each of twelve unrelated open items is started. It never
+ 3289 | shrinks because someone works on this entry. The entry also no longer counts as debt. It
+ 3290 | arrived at this gate at `status: needs-decision` and has since moved to
+ 3291 | `blocked`. Its classes (`infra`, `session-cost`) were never debt classes, so
+ 3292 | `bin/docket gate` does not count it today. The entry stays written as the
+ 3293 | freeze put it, as
+ 3294 | § "The gate is a snapshot, not a moving target" requires. This paragraph
+ 3295 | records its disposition. It does not delete the entry. Of the 13 prerequisites
+ 3296 | outside the gate that `PL-FCM3` measured, this entry accounted for 12. With it moved
+ 3297 | here, the gate waits on `PL-FG9D` alone.
+ 3298 | 
+ 3299 | - PL-Z34C (S) Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero
+ 3300 | 
+ 3301 | **Nine of these eleven became clearable on 2026-09-14, when the Qt port moved
+ 3302 | ahead of v0.5.0** (project owner, 2026-09-14, on `PL-RKWB`).
+ 3303 | § "Completed: v0.4.26 - the interface moves to Qt" carries the decision and the
+ 3304 | count behind it. The heading and every entry below stay as the freeze wrote
+ 3305 | them, per § "The gate is a snapshot, not a moving target". This section
+ 3306 | records their disposition and does not delete them. `PL-NGF7` already had the
+ 3307 | same treatment.
+ 3308 | 
+ 3309 | **What changed is the port's position, not any entry's judgment.** Each of the
+ 3310 | nine was sequenced behind a port that shipped *after* the milestone this list
+ 3311 | gates. That is what made each one unclearable before v0.5.0 began. The port now
+ 3312 | lands before v0.5.0, so each entry clears in the ordinary way:
+ 3313 | 
+ 3314 | | Entry | Relation to the port | Now clears |
+ 3315 | | --- | --- | --- |
+ 3316 | | `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`, `PL-W8DQ` | carried by it | before v0.5.0 |
+ 3317 | | `PL-GS3R`, `PL-YVHK` | sequenced behind it, both `P1` `safety` | before v0.5.0 |
+ 3318 | | `PL-NGF7` | dissolved by it | before v0.5.0, as `dropped` |
+ 3319 | | `PL-16ZC` | deferred past it | before v0.5.0, behind `PL-G59B` |
+ 3320 | | `PL-8PS6`, `PL-WZVZ` | behind a design round the roadmap places nowhere | unchanged |
+ 3321 | | `PL-2K1R` | rides it, added after the freeze | before v0.5.0 |
+ 3322 | 
+ 3323 | **`PL-2K1R` is the twelfth, added after the freeze** (project owner, 2026-09-14).
+ 3324 | It is a `P1` `safety` entry. It adds an interpretation disclaimer beside the use
+ 3325 | disclaimer, stating that the readouts and traces are modelled rather than
+ 3326 | measured. It is sequenced behind `PL-25KS` on the rule that the five carried
+ 3327 | entries already follow. Text on a dashboard that is rewritten from scratch is
+ 3328 | written once, in the port. Like those five, it clears before v0.5.0. It is
+ 3329 | named under the port's "Decisions the port has to make anyway". That keeps the
+ 3330 | port's parity claim checkable with this entry on the list. A `safety` entry
+ 3331 | re-enters the current gate whenever it is found, per § "The cadence". That is
+ 3332 | why it is recorded here rather than left to Gate 2.
+ 3333 | 
+ 3334 | **`bin/docket wave` still prints all thirteen as "waiting on work outside it".
+ 3335 | That is correct, not stale.** The command asks whether an entry's `blocked-by`
+ 3336 | chain leads outside the frozen list. These chains still do. They name
+ 3337 | `PL-G59B`, `PL-25KS` and `PL-L9RD`, which are port items, not gate entries.
+ 3338 | What changed is *when* that outside work happens. That is a fact about the
+ 3339 | timeline above, and no field records it. The two readings answer different
+ 3340 | questions, and both are true. The count says that the gate cannot clear these
+ 3341 | entries by itself. This section says that the work they wait on now comes
+ 3342 | before the milestone they gate. Do not "fix" the count to agree with the prose.
+ 3343 | 
+ 3344 | **This is what `PL-D143` asked for and could not get.** That item recorded the
+ 3345 | contradiction plainly. Recorded debt is cleared *before* the milestone it
+ 3346 | gates. These entries could not be, because the decision was to fix them during
+ 3347 | a release that comes *after* the release being gated. So the gate could not
+ 3348 | reach zero until after the thing it was gating. The beat that `bin/docket wave`
+ 3349 | printed, "clear the gate", asked for something the plan forbade. Moving the
+ 3350 | port makes that beat possible to satisfy. That was not the reason the port
+ 3351 | moved. It is structural debt that the move happens to pay off.
+ 3352 | 
+ 3353 | **The two that do not move are the two that never depended on the toolkit.**
+ 3354 | `PL-8PS6` and `PL-WZVZ` waited on `PL-FG9D`, the base anesthesia-machine
+ 3355 | abstraction, which no milestone section names. **`PL-FG9D` closed on 2026-09-20
+ 3356 | (`#748`), and the two have since diverged.** `PL-8PS6` can be started and
+ 3357 | `PL-WZVZ` cannot. § "Behind a design round no milestone section places" below
+ 3358 | says what each one now waits on. They are no longer one case.
+ 3359 | 
+ 3360 | **The items carry the re-pointing, not this section.** All nine named a version
+ 3361 | in `blocked-by` or in prose. Each now names the port item that does the work, so
+ 3362 | none of them depends on the version number the port ships under. `PL-005` and
+ 3363 | `PL-LPLD` carried the deferral in prose alone and were `status: ready`. That is
+ 3364 | the exact defect `PL-D143` described, and `PL-D143` fixed it for only five of
+ 3365 | the six. Both are now `blocked`, with the field to match.
+ 3366 | 
+ 3367 | **This is recorded because the rule requires it. Until 2026-09-13 it was not
+ 3368 | recorded.** § "The gate is a snapshot, not a moving target" allows a deferral
+ 3369 | only where this section "says so and says why". Nine open entries are sequenced
+ 3370 | past the milestone this list gates, and only the `PL-NGF7` block above was
+ 3371 | written down. The other eight said so in a `blocked-by:` field and nowhere
+ 3372 | else. That is renegotiation by frontmatter (`PL-9S30`).
+ 3373 | 
+ 3374 | **Nothing moves, and no decision is taken here.** Every entry below stays where
+ 3375 | the freeze wrote it, exactly as `PL-NGF7` does. This section records their
+ 3376 | disposition and does not delete them. Five still sit under headings reading
+ 3377 | "Cleared before v0.5.0 begins". Those headings record what the list said on
+ 3378 | 2026-09-06, not a claim about today. Each sequencing decision was the project
+ 3379 | owner's, taken on 2026-09-10 when the port was scoped. Each is argued where it
+ 3380 | was taken. This section is the index, not the argument.
+ 3381 | 
+ 3382 | **Carried by the Qt port — 5.** `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`
+ 3383 | and `PL-W8DQ` follow the rule in
+ 3384 | § "Completed: v0.4.26 — the interface moves to Qt" → "Fixes this port carries,
+ 3385 | and why that is not scope creep". Each defect lives in code that milestone
+ 3386 | rewrites from scratch. Fixing it on Flet would mean writing the same lines
+ 3387 | twice. Each entry now carries a `blocked-by:` field naming the port item that
+ 3388 | does the work. That is what `PL-D143` intended and what its own `verify:`
+ 3389 | command tested for. The field shipped naming the port item alone.
+ 3390 | 
+ 3391 | **Sequenced behind the port — 2.** `PL-GS3R` is `P1` and `safety`-classed. It
+ 3392 | is already designed. What it waits for is the port *landing*, because the
+ 3393 | chord-width column rule costs frame time that the port makes free.
+ 3394 | § "Completed: v0.4.26" → "Required scope" item 1 is where that was decided.
+ 3395 | 
+ 3396 | `PL-YVHK` is the second. It is `P1` and `safety`-classed for the same reason.
+ 3397 | It arrived after the freeze rather than at it (project owner, 2026-09-14,
+ 3398 | splitting `PL-YLKR`). The presence rule assigns a `safety`-classed finding to
+ 3399 | the *current* gate, whenever it was found. That is why its disposition is
+ 3400 | recorded here rather than left to its `blocked-by` field. It is the build half
+ 3401 | of the hover readout that `docs/MODEL.md`
+ 3402 | § "The chart's hover readout: what the tooltip may show" now specifies. It is
+ 3403 | already designed in the same sense as `PL-GS3R`. Nothing about it is an open
+ 3404 | question, and § "Completed: v0.4.26" → "Required scope" item 1 names it. What
+ 3405 | it waits for is the toolkit. Writing it on Flet would mean adding roughly 1 870
+ 3406 | per-point strings to a pause-transition frame. `PL-KP7H` measured that frame
+ 3407 | at 71.9 ms and 90 KiB. The strings would be deleted again at the port, where
+ 3408 | the same content is one format callable. **It is parity rather than new
+ 3409 | capability.** That is what separates it from `PL-16ZC` below. The Flet build
+ 3410 | has a hover and the Qt build would not, because `ScatterPlotItem` ships with
+ 3411 | `hoverable` set to `False`.
+ 3412 | 
+ 3413 | **Dissolved by the port — 1.** `PL-NGF7`. Its own block above gives the
+ 3414 | reasoning, and its expected disposition of `dropped` rather than `done`.
+ 3415 | 
+ 3416 | **Deferred past the port, because building it first is the work thrown away —
+ 3417 | 1.** `PL-16ZC` is a show/hide control for the two clinical references and the
+ 3418 | control marks (project owner, 2026-09-14, on `PL-NR2K`). It is the mirror image
+ 3419 | of the five entries carried by the port. It arrives at the same place by the
+ 3420 | opposite route. Those five are defects the port must not reproduce. This entry
+ 3421 | is new capability, which § "Completed: v0.4.26" → "Fixes this port carries"
+ 3422 | excludes "whatever its size". The owner ruled it out on 2026-09-10 for exactly
+ 3423 | that reason. But the control extends the legend table that `PL-CG7J` built
+ 3424 | inside `app/simulation_view.py`. Required scope item 2 rewrites all 4 321 lines
+ 3425 | of that file. So the same rule that keeps the control out of the port also
+ 3426 | makes it the one piece of open Gate 1 work that would be purely written twice
+ 3427 | if it were built on Flet first. Its `blocked-by` names `PL-G59B`, the chart
+ 3428 | port that builds the legend and both references this control would toggle. It
+ 3429 | does not name the port's version. Naming the version would assert, through
+ 3430 | `MilestoneStates.ships_with`, that the entry ships with that milestone when it
+ 3431 | deliberately does not.
+ 3432 | 
+ 3433 | **What is not deferred is the decision.** Saying so is what separates this
+ 3434 | entry from a parked item. `PL-16ZC` asks whether the references and the control
+ 3435 | marks should be hideable *at all*. That is a question about what the chart is
+ 3436 | for. No toolkit answers it, and the item's own Done-when allows it to close
+ 3437 | without any code being written. That half can be answered any day. Only the
+ 3438 | build waits. It is the same split taken over `PL-YLKR` on 2026-09-14. That
+ 3439 | item's design was toolkit-independent and landed on v0.4.x, while its build
+ 3440 | moved to `PL-YVHK` above.
+ 3441 | 
+ 3442 | **How this was found is worth one line**, because the general version of the
+ 3443 | proposal is wrong. The project owner asked on 2026-09-14 whether all
+ 3444 | Flet-related gate entries should be dropped or postponed, now that the
+ 3445 | interface moves to Qt. The entries were counted, rather than the question being
+ 3446 | answered from its shape. Of the 23 entries this gate can clear, 13 never touch
+ 3447 | the interface. 9 of the remaining 10 survive the port or are inputs to it.
+ 3448 | `PL-JRS3` is item 4 of the port's own Required scope. `PL-LL9Y` is named under
+ 3449 | § "Decisions the port has to make anyway". `PL-YLKR`'s design is
+ 3450 | toolkit-independent. `PL-B9PY` ships on Flet in v0.5.0 by the decision recorded
+ 3451 | in § "Items this port moots or transforms". One entry was left, and it is this
+ 3452 | one. The general proposal would have suppressed nine real entries to catch it.
+ 3453 | 
+ 3454 | **Behind a design round no milestone section places — 2.** `PL-8PS6` and
+ 3455 | `PL-WZVZ` both wait on `PL-FG9D`, the base anesthesia-machine abstraction. No
+ 3456 | milestone *section* names it. However, § "Planned milestones" item 1 is its
+ 3457 | line of intent, and item 1 now names `PL-FG9D` and its prerequisite survey
+ 3458 | `PL-4DCG` outright. This paragraph used to say that item 1 did not exist ("has
+ 3459 | no planned-milestone line of its own"), until `PL-Z4WL` corrected it.
+ 3460 | `PL-FG9D`'s own brief opens by quoting item 1, so the two documents had
+ 3461 | disagreed about whether the intent was recorded at all. The narrower claim is
+ 3462 | the true one. Intent is not scope, no section places the work, and so nothing
+ 3463 | schedules it. These two entries were unlike the seven above. Nothing forbade
+ 3464 | clearing them before v0.5.0. But doing so meant scoping that design round
+ 3465 | first, which is a milestone decision rather than gate work.
+ 3466 | 
+ 3467 | **That design round has happened, and the two entries have separated**
+ 3468 | (`PL-8G48`, 2026-09-20). `PL-FG9D` closed as `#748` and `PL-4DCG` as `#742`, so
+ 3469 | neither entry waits on a design any more. Checked against the tree, one is now
+ 3470 | ordinary gate work. The other is a deferral that this section has to record:
+ 3471 | 
+ 3472 | - **`PL-8PS6` clears inside this gate.** The carrier exists. It is
+ 3473 |   `src/anesthesia_sim/data/machines/reference_circle_system.json`.
+ 3474 |   `docs/machine-abstraction.md` assigns `deliverable_flow_range_l_min` to
+ 3475 |   survey section (b8). It keeps the bounds in `core/supported_ranges.py` as the
+ 3476 |   model's own envelope. Keeping those two claims separate can be built over the
+ 3477 |   single profile that exists, so the entry is `ready`. It is at `P1` because
+ 3478 |   leaving `blocked` ends the `anticipated` exemption. Nothing about it is
+ 3479 |   deferred.
+ 3480 | - **`PL-WZVZ` is deferred, on a ground that is not the machine milestone.** Its
+ 3481 |   static half is a comparison table, with machines as columns. § "Planned
+ 3482 |   milestones" item 34 carries the standing rule that **no new display surface is
+ 3483 |   built before that item** (project owner, 2026-09-17, ratified). The rule names
+ 3484 |   its own condition rather than a version, so the entry now names that
+ 3485 |   condition: `blocked-by: PL-TH35, PL-R1WQ`, the View contract and the view
+ 3486 |   registry. Both are placed by v0.6.0. **Two more were added on 2026-09-21**
+ 3487 |   (`PL-0H5D`): `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface
+ 3488 |   that selects between profiles. Those two items are the condition that the
+ 3489 |   paragraph below states in prose: one profile exists, and there is nothing to
+ 3490 |   compare. Until then that condition was in no field. So closing the View
+ 3491 |   contract and the view registry would have reported this entry as promotable
+ 3492 |   while it stayed unbuildable. No milestone section schedules either new item,
+ 3493 |   and that is now visible in the queue rather than only here. The entry's
+ 3494 |   second half is a machine appearing as a labelled input, expanded into the
+ 3495 |   parameters that differ. That half is a requirement on planned-milestone items
+ 3496 |   11 and 12, not a surface, so the display rule does not apply to it. What
+ 3497 |   blocks that half is simply that one machine profile exists and there is
+ 3498 |   nothing to compare.
+ 3499 | 
+ 3500 |   **This is recorded here because the deferral is real, and the frontmatter
+ 3501 |   alone may not carry it.** § "The gate is a snapshot, not a moving target"
+ 3502 |   permits a deferral only where this section says so and says why. `PL-9S30`
+ 3503 |   shows what it already cost when an entry was sequenced past its milestone in
+ 3504 |   a `blocked-by:` field and nowhere else. This paragraph is that sentence for
+ 3505 |   `PL-WZVZ`.
+ 3506 | 
+ 3507 |   **It clears in Gate 2, and v0.5.0 ships without it** (project owner,
+ 3508 |   2026-09-20, on `PL-S5Q9`). The paragraphs above establish that the entry is
+ 3509 |   deferred. They do not say where it lands, and an entry deferred to nowhere
+ 3510 |   holds a release open. Gate 2 freezes when v0.5.0 ships, and Gate 2 itself
+ 3511 |   ships inside v0.6.0. That is the same release that carries `PL-TH35` and `PL-R1WQ`, the
+ 3512 |   two items this entry waits on. So Gate 2 is the first gate at which the entry
+ 3513 |   can be worked at all. Naming Gate 2 is therefore a statement about when the
+ 3514 |   work becomes possible, not a preference about when it is done.
+ 3515 | 
+ 3516 |   **The entry stays on Gate 1's frozen list above, and that is deliberate.**
+ 3517 |   Removing it would make the list a moving target. That is the renegotiation
+ 3518 |   the snapshot rule exists to prevent. The list is what was found on
+ 3519 |   2026-09-06. It does not change because one of its entries turned out to need
+ 3520 |   a later release. What moves is the disposition, recorded here. The two
+ 3521 |   readings agree. `bin/docket wave` reports the gate as `0 this gate can
+ 3522 |   clear, 1 waiting on 3 open items outside it`. It computes that from the
+ 3523 |   items, not from this prose. So a future disagreement between the two is
+ 3524 |   visible on the next run. § "What reads this, and what reads past it" below
+ 3525 |   asks that of every entry.
+ 3526 | 
+ 3527 |   **Why a `safety`-classed entry may be deferred at all**, stated because the
+ 3528 |   unconditional safety exception would otherwise forbid the deferral. The
+ 3529 |   hazard is a learner attributing a curve difference to a brand rather than to
+ 3530 |   the named parameter that produced it. That hazard is not live.
+ 3531 |   `src/anesthesia_sim/data/machines/` holds one profile, there is no selection
+ 3532 |   surface, and no trade name is displayed anywhere. So nothing is being
+ 3533 |   misattributed today. `PL-8G48`'s pass checked that against the tree. It was
+ 3534 |   checked again on 2026-09-20, when planned-milestone item 1 was split. Item 40
+ 3535 |   deliberately keeps one profile and adds no chooser. That deliberate choice,
+ 3536 |   not an accident of what has been built so far, keeps the hazard inactive. The entry is
+ 3537 |   owed its band the moment either condition lifts: a second profile, or a
+ 3538 |   surface that names a machine.
+ 3539 | 
+ 3540 | **What reads this, and what reads past it.** `bin/docket wave` arrives at the
+ 3541 | same eleven from the items, not from this prose. It counts an open entry whose
+ 3542 | `blocked-by` chain leads outside the frozen list separately from the entries
+ 3543 | this gate can clear. So the beat asks for a number that can be reached
+ 3544 | (`PL-SL70`). Two independent readings of one fact are the point, not
+ 3545 | duplication. If the prose and the count disagree, one of them is wrong, and the
+ 3546 | disagreement is visible on the next run.

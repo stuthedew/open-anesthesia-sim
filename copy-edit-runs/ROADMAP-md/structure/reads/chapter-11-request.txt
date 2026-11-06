@@ -1,0 +1,699 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt", rows 1622-2120. Whole section: 5065 words. For: The project owner, or a contributor deciding what to build next
+ 1622 | ## Completed: v0.4.26 - the interface moves to Qt
+ 1623 | 
+ 1624 | **Scoped 2026-09-10**, following `PL-QXSB`'s decision on the same day.
+ 1625 | `PL-55DH` built the spike, and `PL-X9T3` measured it on the project owner's own
+ 1626 | machine. The owner then chose to move.
+ 1627 | 
+ 1628 | **Moved ahead of v0.5.0 on 2026-09-14** (project owner, 2026-09-14, on `PL-RKWB`). Before
+ 1629 | that, it sat after MVP, which is where it was placed when it was scoped. The
+ 1630 | question put was whether v0.5.0's work would have to be redone after the port.
+ 1631 | 
+ 1632 | **Counted rather than answered from the shape of the question.** This is the
+ 1633 | same method that § "Sequenced past v0.5.0" used on 2026-09-14, when the general
+ 1634 | form of this question was asked about the gate entries. v0.5.0 has eight open
+ 1635 | Required-scope ids. **One** is wholly inside the surface this port rewrites:
+ 1636 | `PL-8PSW`, the two-branch overlay. Two have a slice there: `PL-RD3B` and
+ 1637 | `PL-LPLD`, and the durable halves of both are in `app/controller.py`. Five
+ 1638 | never touch it at all: `PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9` and
+ 1639 | `PL-49R8`.
+ 1640 | Exactly three modules imported Flet: `app/main.py`, `app/simulation_view.py`
+ 1641 | and the chart-series module. From `PL-9KDK` until `PL-25KS`,
+ 1642 | `tools/import_boundary_check.py` limited `flet` and `flet_charts` to those three
+ 1643 | modules between them. `PL-25KS` freed all three and confined both packages to
+ 1644 | no module at all. The check's unused-allowance error then asks each port commit
+ 1645 | that frees a module to drop that module's entry. The milestone's landed work
+ 1646 | all sits on the surviving side: `PL-T691`'s score, `PL-J2TD`'s keyframe
+ 1647 | opening, `PL-TFX5`'s fork and `PL-B9PY`'s decomposition.
+ 1648 | **So the premise of the question did not hold, and the move was taken on three
+ 1649 | other grounds:**
+ 1650 | 
+ 1651 | 1. **`PL-8PSW` would otherwise be built blind.** `PL-2QMK` records that no
+ 1652 |    session in the web container can visually confirm a chart change. The
+ 1653 |    reason is that Flet's renderer fetches Flutter assets, and the egress proxy
+ 1654 |    denies them. The Qt spike rendered offscreen in that same container once
+ 1655 |    `libegl1` was installed (`PL-VHLZ`). Required scope item 6 has since landed
+ 1656 |    headless rendering tests over the real interface, in
+ 1657 |    `tests/integration/test_qt_rendering.py`. `PL-7J96`, the Flet equivalent,
+ 1658 |    is `dropped` as superseded, so the Flet build gets no automated rendering
+ 1659 |    check at all. `PL-8PSW` carries more presentation-safety risk than any
+ 1660 |    other item in v0.5.0. Six channels are already spent, the design rests on a
+ 1661 |    two-compartment cap, and every curve owes an attribution to its run.
+ 1662 | 2. **Two `P1` `safety`-classed items sat blocked behind this port.** They are
+ 1663 |    `PL-GS3R` (0.26 MAC of drawn departure at the 12 h base, worst in the steep
+ 1664 |    early wash-in) and `PL-YVHK` (the hover readout). Both are designed, and
+ 1665 |    both waited only on the toolkit. Ordering v0.5.0 first kept them blocked
+ 1666 |    for the whole of a milestone.
+ 1667 | 3. **The parity target is smaller now than it will ever be again.** This
+ 1668 |    milestone's definition of done is parity against a **closed** enumeration.
+ 1669 |    Landing v0.5.0 first would add compare mode, the largest new visual surface
+ 1670 |    in the project, to the list that has to be checked.
+ 1671 | 
+ 1672 | **What was decided is narrower than "move the milestone", and that is the form
+ 1673 | to apply.** Nothing new is built in `app/simulation_view.py` or the Flet
+ 1674 | chart-series module before this port. v0.5.0's port-neutral spine is untouched
+ 1675 | and still ships on its own schedule. Only its display half waits. `PL-8PSW` and
+ 1676 | `PL-LPLD`'s bookmark list are the two open items that moved.
+ 1677 | 
+ 1678 | **Why this number, which is a patch number for a rewrite of the whole
+ 1679 | dashboard.** § "Versioning decision" chooses a release's number by the
+ 1680 | capability boundary that the release crosses. After this port, a learner can do
+ 1681 | nothing that they could not do before. The interface-pass row made the same
+ 1682 | argument for the restyle it replaces. (That row was written `v0.5.x` until
+ 1683 | 2026-09-16, and has followed item 34 since.) v0.2.8 is the precedent for
+ 1684 | machinery at this scale taking a patch number. It had thirty-eight frozen
+ 1685 | entries and no simulator change.
+ 1686 | 
+ 1687 | **Why it takes a section, which no patch in this project ever has, and how the
+ 1688 | reason has changed.** The first reason was mechanical. `blocked-by: vX.Y.Z`
+ 1689 | resolves only against a version that the roadmap *places*, and a patch-track
+ 1690 | row is not a version. Without a section, `PL-GS3R`, a `P1` `safety`-classed
+ 1691 | item, would have sat at the top of `bin/docket next` as startable work. Only a
+ 1692 | paragraph in its brief would have guarded it (`PL-L09X`). **That reason is
+ 1693 | spent as of 2026-09-14.** Every item that waited on this port now names the
+ 1694 | port *item* that does the work: `PL-G59B` for the chart, `PL-25KS` for the
+ 1695 | dashboard and `PL-L9RD` for the theme. `PL-3355`'s brief had already argued for
+ 1696 | that shape, and `PL-16ZC` already used it. Nothing resolves against this
+ 1697 | heading any more. So the number below is free to move without dragging a
+ 1698 | `blocked-by` field with it.
+ 1699 | 
+ 1700 | The section stays for an ordinary reason instead. A rewrite of 5 133 lines
+ 1701 | with its own goal, required scope, definition of done and out-of-scope list is
+ 1702 | a milestone by this file's own test, whatever number it ships under.
+ 1703 | 
+ 1704 | **The one risk, recorded rather than engineered around, has happened once.**
+ 1705 | `bin/docket release` offers the next free number to whatever is finished. So a
+ 1706 | patch cut before this port lands *would have taken* this section's number. That
+ 1707 | is the hazard the `v0.4.x` row names. It is no longer the default that row
+ 1708 | describes, because the decision two paragraphs below is that the guard
+ 1709 | withholds the number. `v0.4.25` was cut on 2026-09-14 (`PL-G7RD`) from ten
+ 1710 | finished items. This heading then moved to `v0.4.26`, and nothing else moved
+ 1711 | with it. No item's `blocked-by` named a version, and `PL-YVM1` had swept
+ 1712 | the last prose that did.
+ 1713 | 
+ 1714 | **That rename was cheap once and is not cheap now.** This is the part that "a
+ 1715 | rename each time, not a re-scope" got wrong. The port's own work has written
+ 1716 | the number into other files again. A count on 2026-09-16 found eight sites in
+ 1717 | five files outside this one that name `v0.4.26`. Three are in
+ 1718 | `tools/import_boundary_check.py`, and two of those are inside error messages a
+ 1719 | developer reads. Two are in `docs/ARCHITECTURE.md`. There is one each in
+ 1720 | `subprojects/docket/src/docket/roadmap.py`,
+ 1721 | `.claude/skills/docket/modes/release.md` and `subprojects/docket/README.md`.
+ 1722 | Four carry the section-citation form that `tools/doc_check.py` validates, so a
+ 1723 | rename that missed them fails `make check`. The other four name the number
+ 1724 | bare, where no check reads it. **Re-counted after `PL-7SVX` closed in
+ 1725 | `#638`.** That item was the last of this section's Required scope, and the one
+ 1726 | item whose `touches` covered the two largest of those files. The eight sites
+ 1727 | are unchanged. So the count above is this section's settled total, not a
+ 1728 | reading taken mid-flight. That is what makes it usable for deciding the
+ 1729 | question below.
+ 1730 | 
+ 1731 | **A patch cut no longer takes this number** (project owner, 2026-09-16,
+ 1732 | ratified, on `PL-KQHN`). `PL-VFD8` and `PL-188T` taught the reserved-version
+ 1733 | guard to check against every version the roadmap names ahead of the current
+ 1734 | one. So a bump that arrives at this section's number is withheld and named,
+ 1735 | rather than offered as free. The decision is that this withholding **still
+ 1736 | applies**. A cut at this number is a deliberate act, not the release path's
+ 1737 | default, and its named price is the rename cost counted above. The decision was
+ 1738 | chosen over keeping the mechanic and narrowing `PL-VFD8`'s reservation to
+ 1739 | match. Two measurements that the mechanic predates decided it. The first is
+ 1740 | that rename cost. The second is `PL-Y1L0`'s finding that a cut at `0.4.26` *or*
+ 1741 | `0.4.27` drops this section out of `wave`'s unreleased set and moves the beat
+ 1742 | to v0.5.0, reversing `PL-RKWB`, with nothing reporting it. `PL-G7RD`'s
+ 1743 | renumber on 2026-09-14 remains the record of what happened, but it is
+ 1744 | superseded as practice.
+ 1745 | 
+ 1746 | **Ordinary patch numbering is untouched by that.** This track still promises no
+ 1747 | particular number, and a cut still takes the next number that is genuinely
+ 1748 | *free*. What changed is the meaning of free. A number that this file has given
+ 1749 | to a milestone section ahead of the current one is not free. `#606` taught the
+ 1750 | guard to see exactly that.
+ 1751 | 
+ 1752 | **The one question the reorder leaves open is this number, and it is recorded
+ 1753 | rather than settled.** § "The cadence" says that a gate does not get a version,
+ 1754 | and that no interim release is cut partway through clearing one. Five of the
+ 1755 | fixes this port carries are Gate 1 entries. [2026-09-27, `PL-LPH9`: § "The
+ 1756 | cadence" no longer says the second half. Gate work ships in patch releases as
+ 1757 | it clears, and what a gate lacks is a version *of its own*. So the question
+ 1758 | would not arise today, but the reading below still applies.] The reading taken
+ 1759 | here is that this port is a milestone that *carries* gate fixes, rather than
+ 1760 | a piece of gate work. § "Debt inside the milestone's own scope" makes the test whether
+ 1761 | the item appears in the milestone's `Required scope`, and all five appear at
+ 1762 | item 8. The alternative is that the port ships inside v0.5.0 with no version of
+ 1763 | its own. `PL-RKWB` records that alternative, and it would change this heading
+ 1764 | and nothing else.
+ 1765 | 
+ 1766 | **It absorbed planned-milestone item 33, and no longer does** (project owner,
+ 1767 | 2026-09-16, on `PL-L9RD`). The argument was that restyling a dashboard that is
+ 1768 | about to be rewritten is the same work done twice. Porting rewrites
+ 1769 | `theme.py`, every layout and every density decision regardless. So palette,
+ 1770 | type scale, spacing rhythm and layout would be decided once, during the port,
+ 1771 | rather than applied to Flet and then again to Qt.
+ 1772 | 
+ 1773 | **The premise was measured against the port that actually landed, and it did not
+ 1774 | hold.** `ae8fc7bc` (`#588`, `PL-25KS` and eleven others) changed `app/theme.py`
+ 1775 | by 10 insertions and 29 deletions. The only constant whose value it touched is
+ 1776 | one it removed: `ELAPSED_VALUE_WIDTH`, a Flet layout width with no Qt
+ 1777 | equivalent. Not one palette entry, type size, padding or radius changed.
+ 1778 | Nothing in `BACKGROUND`, `PANEL`, `PRIMARY`, `ACCENT`, `INK`, `MUTED`,
+ 1779 | `WARNING`, `APP_TITLE_SIZE`, `METRIC_VALUE_SIZE`, `PAGE_PADDING`,
+ 1780 | `PANEL_PADDING` or `PANEL_RADIUS` has moved since 2026-09-10. The port
+ 1781 | re-expressed the **widgets** and carried the **visual language** across intact.
+ 1782 | 
+ 1783 | So item 33 returns to the interface-pass row of "The timeline", where it was
+ 1784 | placed on 2026-09-08. (That row was written `v0.5.x` then, and has followed
+ 1785 | item 34 since 2026-09-16.) This milestone keeps two things that are not the
+ 1786 | pass itself. The first is `app/theme.py` expressed for Qt, which is
+ 1787 | `Required scope` item 3. The second is the **reservation** described at item 2.
+ 1788 | The layout containers are built once here with their splitter handles inert,
+ 1789 | and **item 34** is what turns them live. Item 34 is the area system, not the
+ 1790 | visual pass. A reservation is cheap and a design round is not, and the
+ 1791 | absorption blurred that distinction.
+ 1792 | 
+ 1793 | **Item 34 rather than item 33, corrected 2026-09-16 (`PL-BNYF`).** The
+ 1794 | un-absorption note above was written to pull the visual pass back out of this
+ 1795 | port. In passing, it attached the reservation's next step to item 33. But
+ 1796 | `Required scope` item 2 below and item 34's own entry both give that step to
+ 1797 | item 34. Item 33 decides how the interface *looks*. Item 34's whole content is
+ 1798 | what a reader may do to its *arrangement*: split, join, swap, break out, and
+ 1799 | save as a workspace. A session scoping the interface pass from the uncorrected
+ 1800 | sentence would have believed it owned building split and join.
+ 1801 | 
+ 1802 | **One question is left open on purpose, and it is not in this scope.** That
+ 1803 | question is where the Qt styling layer *lives*, and it is `PL-Y4YX`. Today 27
+ 1804 | `setStyleSheet` sites compose CSS strings from `app/theme.py`'s constants, with
+ 1805 | partial helpers in the view modules. Yet `theme.py`'s own comment forbids it to
+ 1806 | import a toolkit. The question is named here rather than under
+ 1807 | `Required scope` deliberately. Naming an id in that list *places* it in this
+ 1808 | milestone, and the owner approved un-absorbing the interface pass, not a
+ 1809 | refactor of where styling lives. The port ships with the styling composed where
+ 1810 | it is today.
+ 1811 | 
+ 1812 | **Gate 2's freeze is deferred, deliberately, and moving this port did not
+ 1813 | disturb it.** Under the cadence in "The debt gate", Gate 2 would freeze as this
+ 1814 | milestone is scoped. Gate 2 is meant to collect *v0.5.0's* findings, and v0.5.0
+ 1815 | has not been implemented. So a gate frozen today would be empty by
+ 1816 | construction, and it would then refuse the findings it exists for. Gate 2
+ 1817 | freezes when v0.5.0 ships. This port takes no gate of its own, as was already
+ 1818 | true when it sat after MVP, so its own findings go to Gate 2 alongside
+ 1819 | v0.5.0's. **This is now the first of two instances rather than a one-off.**
+ 1820 | v0.6.0 was scoped on 2026-09-16 under the same reasoning. § "The debt gate" ->
+ 1821 | "The cadence" records both instances and writes down the exception's
+ 1822 | condition, so that the argument is not re-derived for each milestone.
+ 1823 | 
+ 1824 | **What the move does change is Gate 1, and in the direction `PL-D143`
+ 1825 | asked for.** Nine of the twelve entries that gate could not clear were waiting
+ 1826 | on this port. With the port ahead of v0.5.0, they clear before the milestone
+ 1827 | they gate begins, instead of after the release that follows it. Gate 1's own
+ 1828 | § "Sequenced past v0.5.0" records the revised disposition.
+ 1829 | 
+ 1830 | ### Goal
+ 1831 | 
+ 1832 | **Run the same simulator on PySide6 + pyqtgraph, lose nothing a learner can do
+ 1833 | today, and do the interface pass once on the way.**
+ 1834 | 
+ 1835 | The measured case is in `docs/WORKING_NOTES.md` under "Measured on real
+ 1836 | hardware", and none of it is about speed. The lag that this question was opened
+ 1837 | on is gone. The owner reports that the Flet build is no longer noticeably slow
+ 1838 | after `PL-2FM6`. Four grounds remain:
+ 1839 | 
+ 1840 | - **Input latency** is 0.85-2.46 ms p90, against Flet's 20-30 ms, and latency
+ 1841 |   is the axis that "laggy" named. The gap comes from the mechanism, not the
+ 1842 |   hardware. Flet's event loop is blocked by a control-tree diff every frame,
+ 1843 |   and Qt has no diff.
+ 1844 | - **`PL-GS3R` is a safety decision, and this choice decides it.** Its cheapest
+ 1845 |   route out of 0.26 MAC of chord error is more columns. More columns cost
+ 1846 |   49.4 ms of a 200 ms budget on Qt. On Flet, the diff alone costs about 78 ms for
+ 1847 |   the same columns, before its client renders anything.
+ 1848 | - **`PL-2QMK`** is exercised here rather than argued. The spike writes a PNG of
+ 1849 |   the running interface in the very container where Flet's renderer cannot
+ 1850 |   load. Most of `presentation-safety` waits on that ability.
+ 1851 | - **Headroom** is needed for the schematic (planned-milestone item 27). The
+ 1852 |   schematic is a second large visual surface, on a toolkit that charges for
+ 1853 |   each control present in each frame. (This was written "v0.6.0's schematic"
+ 1854 |   until 2026-09-16, when item 34 took that number and the schematic moved to
+ 1855 |   v0.8.0. It is named by item number here, per the `PL-YVM1` rule this port
+ 1856 |   already adopted, so it cannot go stale again.)
+ 1857 | 
+ 1858 | ### Required scope
+ 1859 | 
+ 1860 | 1. **The chart** (queue item `PL-G59B`). This covers the six compartment
+ 1861 |    traces, the two clinical references, both axes, the control marks and the
+ 1862 |    wash-in plot, all on pyqtgraph. `PL-GS3R`'s chord-width column rule lands
+ 1863 |    here rather than separately. The port is what makes that rule affordable,
+ 1864 |    and that is why `PL-GS3R` is sequenced behind this item.
+ 1865 | 
+ 1866 |    *`PL-YVHK`, the chart's hover readout, lands here too* (project owner,
+ 1867 |    2026-09-14, splitting `PL-YLKR`). What the readout shows is already
+ 1868 |    decided. `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
+ 1869 |    derives it, in v0.4.x. So this is a build against a written specification,
+ 1870 |    not a design round inside a port. **It is parity rather than new
+ 1871 |    capability**, and the distinction matters here. `ScatterPlotItem` ships
+ 1872 |    with `hoverable` set to `False`, and a plotted line has no hover at all. A
+ 1873 |    port that said nothing about hover would therefore *lose* the Flet build's
+ 1874 |    hover instead of reproducing it. Building the readout on Flet first was
+ 1875 |    refused, because on Flet the same content takes roughly 1 870 per-point
+ 1876 |    strings, and here it takes one format callable. That item has the
+ 1877 |    measurement.
+ 1878 | 2. **The dashboard** (queue item `PL-25KS`). This covers the readout row, the
+ 1879 |    parameter controls, the agent selector, the transport, the new-case dialog
+ 1880 |    and the notice banner. They live in `app/simulation_view.py`, which was
+ 1881 |    4 321 lines when measured on 2026-09-14.
+ 1882 | 
+ 1883 |    *The dashboard reserves space for planned-milestone item 34 and builds none
+ 1884 |    of it (project owner, 2026-09-12).* Each of those surfaces becomes an
+ 1885 |    independent widget inside nested `QSplitter`s rather than a fixed layout.
+ 1886 |    **The splitter handles stay inert.** Item 34 is what makes them live, and
+ 1887 |    it adds the split/join affordance, the workspace tabs and the savable
+ 1888 |    presets.
+ 1889 | 
+ 1890 |    The reservation costs almost nothing, because the components it needs are
+ 1891 |    already owed. `PL-B9PY` decomposes `SimulationView` in v0.5.0 and records
+ 1892 |    that "the Qt view is built decomposed from the start". So the only thing
+ 1893 |    this decides is the container those components go into: nested splitters
+ 1894 |    rather than fixed layouts. The alternative is to lay out every panel twice.
+ 1895 |    That is the argument this milestone makes for *reserving* for **item 34**
+ 1896 |    here rather than building it. The reservation survived the un-absorption
+ 1897 |    described above, because this port really does build a layout container
+ 1898 |    once. (This said "item 33" until 2026-09-16, `PL-BNYF`. It was the fourth
+ 1899 |    and last place where the un-absorption note's wording had attached the
+ 1900 |    layout reservation to the visual pass. The error sat two lines after the
+ 1901 |    sentence in which this same scope item gives the reservation to item 34.)
+ 1902 | 
+ 1903 |    *The inert handles are the deliberate half, not an oversight.* A draggable
+ 1904 |    splitter would let a learner do something they cannot do today, so live
+ 1905 |    handles would be new capability. § "Fixes this port carries" excludes new
+ 1906 |    capability "whatever its size". Live handles would also put a fourth entry
+ 1907 |    beside `PL-16ZC` on the wrong side of that line. Parity below means
+ 1908 |    "identical except for this list", and it can be checked only while the
+ 1909 |    enumeration stays closed. Making the handles live is item 34's first step
+ 1910 |    and costs one line.
+ 1911 | 3. **The theme** (queue item `PL-L9RD`). `app/theme.py` is re-expressed for
+ 1912 |    Qt. The six compartment colours and their dash patterns stay intact, and
+ 1913 |    both tools that read the file still describe it. **The visual pass is not
+ 1914 |    here.** Item 33 was un-absorbed on 2026-09-16 and is the interface-pass row
+ 1915 |    again. Later the same day it moved after item 34 (`PL-PHKP`). The note
+ 1916 |    above gives the measurement that reversed it. That note also covers the
+ 1917 |    styling-layer question that this port deliberately leaves open.
+ 1918 | 4. **The two checks that read the theme** (queue items `PL-BXB2`, `PL-V53R`
+ 1919 |    and `PL-0PJG`). These items moved into the slot on 2026-09-19, when
+ 1920 |    `PL-HWW1` made a declaration the record of membership. The three items are
+ 1921 |    the re-pointings this entry describes, and they are the three that the
+ 1922 |    release stamped `v0.4.26`. Until 2026-09-14, `tools/contrast_check.py` and
+ 1923 |    `tools/agent_identity_check.py` both read `theme.py` and
+ 1924 |    `simulation_view.py` by path. `PL-JRS3` measured what a port does to them
+ 1925 |    (2026-09-14) instead of reasoning about it. `contrast_check` read values,
+ 1926 |    and it failed loudly when a module it named moved or a colour it knew
+ 1927 |    disappeared. But nothing measured a colour declared in any *other* module
+ 1928 |    (`PL-BXB2`). `agent_identity_check` keyed on one method name in one file,
+ 1929 |    so a class that moved out of that file was outside both rules. It
+ 1930 |    also printed "none of them rendered disabled" from an empty set of
+ 1931 |    measurements (`PL-V53R`, `PL-0PJG`). The Qt view is built decomposed from
+ 1932 |    the start. So both re-pointings landed before the first port commit rather
+ 1933 |    than with it, and they were done on 2026-09-14. Each check now reads every
+ 1934 |    module under `app/` and names none by path, and an empty measurement set is
+ 1935 |    an error. `PL-NGF7` is the other item about these checks. The port
+ 1936 |    *dissolves* it rather than fixing it. See § "Items this port moots or transforms" below,
+ 1937 |    and Gate 1's own disposition of it.
+ 1938 | 5. **Packaging and dependencies** (queue item `PL-3SQT`). PySide6-Essentials,
+ 1939 |    pyqtgraph and numpy are added, and `flet` and `flet-charts` are removed.
+ 1940 |    numpy arrives as a dependency of a plotting library. That reopens the scope
+ 1941 |    of `docs/WORKING_NOTES.md` § "Decided: no numpy" but does not contradict
+ 1942 |    its conclusion. That note is argued again rather than cited either way.
+ 1943 | 6. **Headless rendering tests** (queue item `PL-YCWZ`). `PL-2QMK` has been
+ 1944 |    waiting for these tests, and they make the rest of `presentation-safety`
+ 1945 |    workable. With this port ahead of v0.5.0, they also mean that `PL-8PSW` is
+ 1946 |    the first large display this project builds with a rendering check already
+ 1947 |    in place, rather than one added afterwards.
+ 1948 | 7. **Deletion** (queue item `PL-7SVX`). The Qt spike tree is deleted, and so
+ 1949 |    is every Flet import. `PL-C92D` retires the Flet frame-cost table that
+ 1950 |    predates the port.
+ 1951 | 8. **The queued fixes named below** (queue items `PL-3355`, `PL-Q4VH`,
+ 1952 |    `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), under the rule stated there.
+ 1953 |    On 2026-09-19 the six moved from this sentence into the declaration slot,
+ 1954 |    which is where `PL-HWW1` put membership. They are still named here, and
+ 1955 |    not only under that heading, because `MilestoneStates.ships_with` reads
+ 1956 |    `Required scope` and nothing else. That read is what separates two
+ 1957 |    meanings of the same field, `blocked-by:
+ 1958 |    <this milestone's version>`. One meaning is *ships with this milestone*,
+ 1959 |    and the other is *waits for it to be scoped*. Telling them apart this way
+ 1960 |    is the relation that `PL-L09X` costed. The roadmap already carries that
+ 1961 |    relation, so it is not a field anyone writes twice.
+ 1962 | 
+ 1963 | ### Fixes this port carries, and why that is not scope creep
+ 1964 | 
+ 1965 | **Asked by the project owner, 2026-09-10**: "if we already had things we needed
+ 1966 | to fix, wouldn't it make sense to fix those as part of the port, and not just
+ 1967 | reintroduce old bugs still needing fixed?" Yes. The rule is narrow enough to
+ 1968 | keep this release a patch.
+ 1969 | 
+ 1970 | **The rule: a queued fix rides the port when the port rewrites the code the
+ 1971 | defect lives in, and it changes nothing a learner can do.** Everything else
+ 1972 | waits. This is not a matter of taste. It follows from what a port is. Porting a
+ 1973 | known defect means deliberately reproducing it in code that is being written
+ 1974 | from scratch, and then rewriting the same lines again to fix it. The fix is
+ 1975 | cheaper inside the port than before it or after it.
+ 1976 | 
+ 1977 | **What it does not license.** New capability stays out, whatever its size.
+ 1978 | That is what keeps the patch argument in § "Versioning decision" true. A
+ 1979 | defect in `core/` or in the Flet-free modules also stays out. The port does not
+ 1980 | touch those modules, so fixing a defect there is unrelated work carrying this
+ 1981 | milestone's name.
+ 1982 | 
+ 1983 | **The enumeration is the point.** "Parity with the Flet build" is this
+ 1984 | milestone's checkable definition of done. A port that also changes behaviour
+ 1985 | cannot be compared with the old build to prove that nothing was lost. So every
+ 1986 | carried fix is named here in advance, and parity means *identical except for
+ 1987 | this list*. That is stricter than parity without a list, not looser.
+ 1988 | 
+ 1989 | **Defects in the rewritten surface.** Reproduce none of these:
+ 1990 | 
+ 1991 | - `PL-3355` - the readouts wrap their value onto a second line at some widths.
+ 1992 | - `PL-Q4VH` - the percent axis is labelled at a different interval from the
+ 1993 |   gridlines it rules.
+ 1994 | - `PL-THXF` - the legend swatch is a solid bar for a trace that is dashed, so
+ 1995 |   the legend misdescribes the chart it explains.
+ 1996 | - `PL-W8DQ` - the four slider active tracks miss the WCAG non-text minimum.
+ 1997 | - `PL-TG60` - six decimals printed on an exhaust integral good to three.
+ 1998 | - `PL-005` - the startup window is full-screen rather than sized and centred.
+ 1999 | 
+ 2000 | **Decisions the port has to make anyway**, so they are made deliberately rather
+ 2001 | than by default. `PL-YTX9` decides whether a hidden trace keeps its legend
+ 2002 | entry. `PL-CZFY` and `PL-Q4M4` concern the elapsed-time readout, which shows
+ 2003 | seconds while the axis shows hours. `PL-LL9Y` concerns how the warning and
+ 2004 | alert colours compare with the medical alarm-colour convention. `PL-2K1R`
+ 2005 | concerns an interpretation disclaimer beside the use disclaimer. That disclaimer
+ 2006 | states that the readouts and traces are modelled rather than measured. It is
+ 2007 | text the dashboard states, not a control a learner operates, so it is a
+ 2008 | decision rather than capability. The project owner added `PL-2K1R` to this
+ 2009 | list on 2026-09-14.
+ 2010 | 
+ 2011 | **`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
+ 2012 | where the line is. It is a show/hide control for the clinical references and
+ 2013 | the control marks. It is small, and it sits squarely in the rewritten surface.
+ 2014 | But the control does not exist today, so it is new capability, and the rule
+ 2015 | admits fixes, not features. It stays a queue item on its own merits.
+ 2016 | 
+ 2017 | **It is nonetheless sequenced behind this port** (project owner, 2026-09-14, on
+ 2018 | `PL-NR2K`). That does not reverse the line above. It follows from it. A fix in
+ 2019 | the rewritten surface rides the port, and a *feature* in the rewritten surface
+ 2020 | waits for it, because either one written on Flet first would be written twice.
+ 2021 | Gate 1 § "Sequenced past v0.5.0, so not clearable before it begins" carries the
+ 2022 | disposition and the reasoning. `PL-16ZC` is not in this milestone's Required
+ 2023 | scope and does not ship with it. It waits for `PL-G59B` to land. After that it
+ 2024 | is an ordinary queue item against the Qt chart.
+ 2025 | 
+ 2026 | ### Items this port moots or transforms
+ 2027 | 
+ 2028 | These are recorded because the cost of missing them is not a defect. It is work
+ 2029 | done and then thrown away.
+ 2030 | 
+ 2031 | - **`PL-B9PY`** was listed here on 2026-09-10 as work the port would throw
+ 2032 |   away, and **that was wrong**. Gate 1 places it under § "Cleared by v0.5.0
+ 2033 |   itself", not ahead of v0.5.0. Decomposing `SimulationView` so that two runs
+ 2034 |   render is what the branched-run milestone *is*. So it could not wait for the
+ 2035 |   port, which was then due to ship after it, without deferring the MVP. **It
+ 2036 |   landed on Flet on 2026-09-14, before this port moved ahead of v0.5.0.** So
+ 2037 |   the ordering question it raised is closed rather than reopened: the
+ 2038 |   decomposition exists, and this port inherits it. The duplication is real,
+ 2039 |   and it was the accepted price of shipping the MVP first. **What this port
+ 2040 |   owes it is the shape, not the code.** The Qt view is built decomposed from
+ 2041 |   the start, so `PL-B9PY`'s design is a required input to `PL-25KS` rather
+ 2042 |   than a pass to redo. That design is also why the move costs less than it
+ 2043 |   would have a week ago. The shape the Qt view needs is already designed and
+ 2044 |   already reviewed.
+ 2045 | - **`PL-NGF7`** is a defect *of Flet*. When Material disables a control, every
+ 2046 |   colour the control takes comes from the Material theme rather than from
+ 2047 |   `theme.py`, so `tools/contrast_check.py` cannot measure those colours. Qt
+ 2048 |   supplies no such theme, so the port dissolves the defect rather than fixing
+ 2049 |   it. It is also placed ahead of v0.5.0 today.
+ 2050 | - **`PL-F0L8`** asks what accessibility Flet's rendering backend can deliver.
+ 2051 |   After the port, the question becomes one about `QAccessible`. That is a
+ 2052 |   different investigation against a different backend.
+ 2053 | - **`PL-7J96`** ("nothing in this repository draws the interface") asks for
+ 2054 |   what `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner,
+ 2055 |   2026-09-13), and `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s
+ 2056 |   capability was demonstrated rather than assumed. The Qt spike rendered the
+ 2057 |   interface offscreen inside the web container before the decision was taken.
+ 2058 |   `PL-7J96`, by contrast, would have built a Playwright renderer for the
+ 2059 |   interface that this milestone replaces. The decision accepts that the
+ 2060 |   shipped Flet build gets no automated wrapping check before the port. The two
+ 2061 |   defects `PL-7J96` records are filed and dispositioned separately, so what is
+ 2062 |   given up is the gate, not the fixes. `PL-7J96`'s Gate 1 line stays written
+ 2063 |   where the freeze put it, per § "The gate is a snapshot, not a moving target".
+ 2064 |   `PL-MBP6` was blocked on `PL-7J96` and is re-pointed at `PL-YCWZ`.
+ 2065 | - **`PL-NC2P`** and **`PL-YMY7`** are coverage items over the
+ 2066 |   Flet-construction paths in `app/main.py` and `app/simulation_view.py`. This
+ 2067 |   milestone replaces those files.
+ 2068 | - **`PL-027`** confirms the per-frame slider write-back on a live Flet client.
+ 2069 | 
+ 2070 | **`PL-NGF7` is deferred to this milestone (project owner, 2026-09-10).** The
+ 2071 | deferral is recorded in Gate 1's own section, not only here. That gate is
+ 2072 | frozen, and "The gate is a snapshot" requires a deferral to say so and to say
+ 2073 | why. `PL-B9PY` is not moved, for the reason given in its entry above.
+ 2074 | 
+ 2075 | ### Definition of done
+ 2076 | 
+ 2077 | - Every capability the Flet build has, the Qt build has. There is no
+ 2078 |   regression a learner can see. This is checked against the readout labels,
+ 2079 |   the hedges that `PL-NV9W` requires, the MAC axis, both clinical references
+ 2080 |   and the control timeline.
+ 2081 | - `make check` is green, including the two theme-reading checks, which are
+ 2082 |   re-pointed rather than passing vacuously.
+ 2083 | - A headless rendering test asserts on the real interface, and `PL-2QMK` closes
+ 2084 |   on it.
+ 2085 | - `PL-GS3R`'s worst drawn departure is re-measured at every rung of
+ 2086 |   `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`.
+ 2087 | - `docs/ARCHITECTURE.md` describes the interface that exists.
+ 2088 | - The Qt spike tree is deleted and no module imports Flet.
+ 2089 | 
+ 2090 | ### Explicitly out of scope for v0.4.26
+ 2091 | 
+ 2092 | - **Any new learner-facing capability.** This release adds none, which is what
+ 2093 |   makes it a patch. This is the line that the carried-fix rule below is drawn
+ 2094 |   against, not an exception to it. **One item landed against this line and did
+ 2095 |   not cross it**, at the project owner's direction. The two-run overlay is
+ 2096 |   built. But `fork_at`, `fork_points_s` and `branches` have no caller outside
+ 2097 |   `app/controller.py`, so nothing in the interface creates the second run that
+ 2098 |   the overlay draws. The display shipped ahead of the capability it displays.
+ 2099 |   The id and the reasoning are in the v0.4.26 row of § "Versioning decision",
+ 2100 |   and deliberately not here. `docket next` reads this heading, so an id named
+ 2101 |   under it is treated as out of scope.
+ 2102 | - **The branched run.** v0.5.0's bookmarks and forking belong to that
+ 2103 |   milestone, and this one does not touch them. **Its comparison *display* is
+ 2104 |   the exception above.** The exception is drawn here rather than in v0.5.0, so
+ 2105 |   that the largest new visual surface in the project was built once, on Qt, in
+ 2106 |   a container a session can look at. That is one of the three grounds this
+ 2107 |   file already gave for moving the port ahead of v0.5.0.
+ 2108 | - **Anything under `core/`.** The port is tractable only because `core/`,
+ 2109 |   `app/controller.py`, `app/formatting.py`, `app/chart_time_base.py`,
+ 2110 |   `app/playback.py`, `app/wash_in.py` and `app/control_timeline.py` survive
+ 2111 |   untouched. `tools/import_boundary_check.py` enforces that boundary. The
+ 2112 |   spike proved it by driving the real `SimulationController` with no
+ 2113 |   adaptation at all.
+ 2114 | - **The schematic** (planned-milestone item 27). This port makes it affordable
+ 2115 |   and does not begin it.
+ 2116 | - **The area system** (planned-milestone item 34, v0.6.0). Required scope item
+ 2117 |   2 reserves space for it, as nested splitters with inert handles, and does
+ 2118 |   not build it. Making those handles live is that milestone's first step.
+ 2119 | - **Flet's web target**, which is given up rather than reimplemented. Nothing
+ 2120 |   ships it today.

@@ -1,0 +1,269 @@
+[1] keep
+
+Structure:
+
+**Facts given in more than one place**
+
+- **Release numbers.** Rows 9292-9294 say "the schematic (item 27) moves to v0.8.0, and multi-substance (items 6 and 7) moves to v0.9.0". Rows 9300-9302 say "the schematic (item 27) moved back to v0.7.0, and multi-substance (items 6 and 7) moved to v0.8.0 (`PL-V1Y7`)". Only the second is current. It belongs with the paragraph that unschedules break-out (9296-9304). Rows 9292-9294 keep nothing. The move and the move back go to `PL-NMTF` and `PL-V1Y7`.
+- **The split across two releases.** Rows 9288-9292 say "Item 34 then splits across two releases … The cut is taken at break-out". Rows 9298-9300 say "Break-out remains this item's second half … but it has no row on § "The timeline"". The second is what holds now. Rows 9288-9292 keep nothing, and the size history goes to `PL-NMTF`.
+- **Item 34 after v0.5.0.** This placement is argued twice: in 9279-9288 (three grounds) and in 9321-9345 (reopened and re-affirmed).
+  - Merge them into one paragraph with the reasons the owner can weigh now. A workspace pins a run, and v0.5.0 brings the second run (9280-9282). What is left of v0.5.0 is small, with a date for that count (9334-9341). No known failure is live yet (9285-9288).
+  - Keep both decision tags whole beside it.
+  - The argument and its rebuttal (9323-9333 and 9341-9345) go to the item that records the 2026-09-17 decision.
+- **Why a surface built early is built twice.** This reason appears three times:
+  - 9324-9328: "the build order decides whether a new display is a widget registered against a contract, or an edit to whatever layout exists at the time"
+  - 9352-9354: "built against whatever layout exists at the time, and against no view contract. So it is built twice"
+  - 9392-9394: "views built first are built against today's fixed layout and then rewritten"
+
+  It belongs in the rule paragraph (9350-9368). The other two places keep nothing.
+- **The rule written out.** Rows 9345-9348 say "Until now, that paragraph's rule was only implied by the row order … It is now written as a rule". The tag at 9351-9352 says "chosen over leaving the ordering implied by row position". The tag stays. Rows 9345-9348 go, because they describe the text rather than the subject.
+- **The Qt port's handles that do nothing yet.** This appears three times: 9288 "the port's handles are inert"; 9381-9383 "Each dashboard surface becomes an independent widget inside nested `QSplitter`s with the handles inert"; 9398-9400 "supplies those two views for free, because it makes each dashboard surface an independent widget". It belongs in 9370-9385. Rows 9398-9400 keep a pointer that the two existing views come from the Qt port. Row 9288 keeps the fact only if its "no live failure" reason stays.
+- **The view catalogue is separate work and comes after the layout.** This is in 9387-9391 (the owner's 2026-09-15 quote, "Item 36 is that catalogue"), in 9462-9466 "This is work separate from the layout mechanism, and it comes after that mechanism", and in 9477-9478 "requested this on 2026-09-15 as its own track (`PL-4D1M`)". The owner's decision belongs once, in item 36. Item 34 keeps a pointer to item 36 and its own scope point, which is testing against two existing views (9394-9397).
+- **Calling the occupant of an area a View.** Rows 9466-9473 give the decision, the 2026-09-16 decision it reversed and two reasons. They also say that § "v0.6.0 - the layout is the reader's" has the full reasoning. Item 36 keeps the decision with its whole tag. The reversal history goes to `PL-GPYV`. The reasons stay only in § "v0.6.0 - the layout is the reader's", if that section gives them; the outline read can check.
+- **Perfusion is fixed today.** Row 9410 says "The model keeps both fixed today", and 9417-9418 say "which is that the model keeps perfusion fixed". Keep 9410. The framing paragraph keeps only the owner's direction that the option stays on the list (2026-09-13). "`PL-8GV5` proposed closing the question outright" goes to `PL-8GV5`.
+- **Item 35's studies.** Rows 9422-9433 and 9445-9455 give the volunteer and fat-flow studies with their citations. Rows 9436-9438 and 9443-9445 say that `docs/MODEL.md` § "Known limitations" already records and weighs them.
+  - The citations belong in `docs/MODEL.md`, where a clinician checks a value.
+  - `ROADMAP.md` keeps the conclusions and the pointer. The sign of the effect depends on the carrier gas. The dose-response is not monotonic. The effect changes with time at a fixed dose. So the option must decide what it asserts and how it shows its uncertainty. Resting fat flow is uncertain by up to about a factor of two, and the direction of the error is unsettled.
+  - Cut a citation only once that section is confirmed to hold it.
+- **Provenance rows for a machine profile.** Rows 9593-9594 say "fails `make check` on the provenance rows it owes", and 9623-9625 say "requires a provenance row in `docs/MODEL.md` for every leaf number in every data file". This belongs in 9621-9626. Rows 9593-9594 keep nothing.
+- **The rule that an unscheduled entry is recorded as intent, not as a queue item.** It appears at 9309-9311, 9505-9506, 9538-9539 and 9543-9545. It belongs once, in the list's introduction, which is outside this chapter. Each entry keeps the word "intent", and item 39 keeps its tag whole. Rows 9538-9539 keep nothing.
+
+**Paragraphs written for another reader**
+
+- **Layout model design (9266-9273).** The `LayoutModel` tree, its method names, the one adapter module that imports `QSplitter`, `saveState()` and `PL-LH18` are a contributor's design. They belong in `docs/ARCHITECTURE.md` or in the item that builds the layout model. `ROADMAP.md` keeps the three guarantees (9261-9266) and the fact that a layout is saved as versioned data. Split rows 9259-9273, which make two points.
+- **Qt window behaviour (9311-9319).** The transient-parent behaviour, read on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16, is already in the item brief, as the text says. Keep only the pointer to the `docs/MODEL.md` rule. The date moves with the behaviour it dates.
+- **Evidence for the reopening (9328-9333).** `PL-J4NW`, the routing in `docs/ARCHITECTURE.md` and `.claude/rules/ui-areas.md` are evidence for an argument. They are history and go to the 2026-09-17 item.
+- **Item 33 history (9371-9377).** Absorbing item 33 into the Qt port, and reversing that, is history of the port and of item 33. It goes to § "Completed: v0.4.26 - the interface moves to Qt" or `PL-8VL1`. Item 34 keeps the reservation and its tag.
+- **Who checked the studies (9415-9417, 9422).** The account of the session that checked the literature is history and goes to `PL-8GV5`.
+- **Branding placeholder (9535-9539).** The removal by `PL-J7MM` is history and goes to that item. Keep one sentence: there is no placeholder asset to build on.
+- **Why item 39 was added (9554-9557).** "Neither note had anywhere to point … worked out the same conclusion again" is history. Cut it, because 9548-9549 already say both notes stop at this change.
+- **Code detail in item 40 (9586-9595).** The function name, `make check` and the unit suite are code detail. They belong in the item brief or `docs/machine-abstraction.md`. Keep this: circuit volume and fresh gas flow already sit in one cited data file with a first per-machine field, but nothing selects a profile yet, so a second profile is ignored.
+- **A fix to another document (9621-9626).** "The target should say so" asks for a change to `docs/machine-abstraction.md`. It belongs in that document or in a queue item. Keep the cost: one data file plus one provenance row per number.
+- **Item 43's inventory (9660-9669).** The breakdown is given in the names of internal checks: "literal and fact baselines", "the guard", pylint, "hand re-checks" and "four check items". It goes to `PL-K88Z`. Keep the date, the 13 items filed, and the fact that numbers restated in `docs/MODEL.md` and `README.md` are not yet counted.
+
+**Order**
+
+- **Item 34's paragraphs.** In this chapter they run 2026-09-16, 09-26, 09-17, 09-17, 09-12, 09-15, 09-15. That is neither the order of the dates nor the order the reader needs, and "settled above" (9309) and "the paragraph below" (9345) make the reader search. Use this order:
+  1. What the item builds: the three guarantees (9259-9266), the views are item 36 and the build is tested on two existing views (9387-9397), example workspaces (9402-9407).
+  2. Where it sits: the Qt port reserves the layout (9370-9385), then the merged v0.5.0 placement.
+  3. The rule that no new display surface comes before this item (9350-9368).
+  4. Break-out: unscheduled, and what keeps it possible (9296-9319).
+
+  Row 9304 puts this work in v0.6.0. If § "v0.6.0 - the layout is the reader's" is the milestone that builds item 34, the decisions belong there, and entry 34 becomes a short entry with a pointer. The outline read should decide.
+- **Item 39.** Rows 9568-9574 ("Nothing displayed today depends on it") answer the owner's first question, whether a release needs this. Move them to just after the item's opening paragraph (9541-9545).
+- **The closing paragraph (9671-9674).** It covers the whole list, but the reader meets it only after 43 entries. It belongs in the list's introduction, in another chapter.
+
+**Too long**
+
+- **Item 34.** In this chapter alone it runs 149 rows in seven paragraphs, each opening with an italic label. After the cuts above, give each group of the order above one italic label: what it builds, where it sits, the rule, break-out.
+- **Item 43 (9647-9669).** It is one 23-row paragraph. Split it into three: what the item does, with the owner's words; the four kinds of second copy, with their items; the inventory, dated 2026-10-19.
+
+**Labels that do not say what their paragraph holds**
+
+- 9275, "*Given a version, and split, on 2026-09-16*", and 9321, "*Reopened and re-affirmed, 2026-09-17*": merge the two paragraphs under "*Item 34 follows v0.5.0*".
+- 9370, "*Placed, and the timing question is decided*": use "*The Qt port reserves the layout and builds none of it*". The chapter never says what "the timing question" is.
+- 9387, "*The widget catalogue is separate work, and the layout comes first*": use "*The views are item 36, and this item is tested on two existing views*". "Widget" is the name that item 36 retires (9467-9469).
+- 9402, "*What a preset differs in, by example*": use "*Example workspaces and the default layout*". The word "preset" appears nowhere else here.
+- 9421, "*The evidence constraint, which is why "optional" is the right shape rather than a hedge.*": use "*The volunteer studies support no single dose-response.*" The original rejects a "hedge" that nobody proposed.
+- 9440, "*Also unsupported at rest, one layer down.*": use "*Resting tissue blood flow is itself uncertain.*"
+- 9597, "*Why it is separable from item 1, stated as the test that would falsify it.*": use "*It stays separate from item 1 while it changes no rate.*"
+- 9606, "*Scope constraints, both of which are what keeps it cheap.*": use "*One profile and no machine chooser.*"
+- 9621, "*A stated cost that the design document's own target omits.*": use "*Each machine also needs a provenance row for each number.*"
+
+**Queries**
+
+- 9266: the reader needs the date or Blender version behind "ten of twenty-one", and the text does not give it.
+- 9286-9288: `PL-NWTM` and `PL-9LNF` are named only by id, and "pre-loaded" is not explained. The reader needs to know what the two failures are.
+- 9303, "as any catalogue entry is": does "catalogue" mean this list of entries, or item 36's view catalogue (9367, 9391)? The text uses the word for both.
+- 9308-9309, "the per-window shape settled above (entry 7, `PL-W54S`)": nothing in this chapter settles it. The reader needs the shape, or the section that settles it.
+- 9334-9341: "13 of 20 `done`", "4 M and 3 S" and "4 L / 16 M / 3 S" carry no date, so they read as true today. The chapter also does not explain the L/M/S sizes.
+- 9321-9348: the 2026-09-17 decision names no item, so its history has nowhere to move.
+- 9541-9542 against 9561-9562: the opening paragraph says "temperature and water content", but the fix covers "temperature, pressure and water content together". Which is the scope?
+- 9617-9619, "Internal circuit topology was declined, and item 39 reverses that": item 39 (9541-9574) is about gas-phase conditions in each compartment and never mentions circuit topology. Either the text contradicts itself or the item number is wrong.
+- 9616: "strategy slot" is not explained.
+- 9484, 9640, 9673: items 12, 13 and 15 are named only by number. The reader of items 37 and 42 needs to know what they are. They may be named in an earlier chapter; the outline read can check.
+- 9671-9672, "None of items 1-43 mix scientific-core and UI/tooling concerns": item 37 has its own parameter file (9490-9491) as well as a display, and item 43 covers the simulator, its documents and the apparatus (9650-9651). The text appears to contradict itself.
+- 9659-9661: "`PL-K88Z`'s inventory sizes the work before the row is scoped", yet the inventory was taken on 2026-10-19. Is the row scoped now?
+- 9651 and 9662-9666: "apparatus", "the guard", "literal and fact baselines" and "four check items" are not explained for this reader, wherever they stay.
+- "Item" names both a numbered entry here ("item 34") and a queue item ("build item `PL-Y04W`", "Six queue items"). The section edits should keep the two apart. The spelling also varies: "anaesthesia" (9409, 9441) against "anesthesia" (9576).
+
+Outline:
+
+- **9259-9273 (item 34, continued):** the Blender review found three properties Blender lacks, which this project must build itself, and the paragraph sets out the layout model's design.
+  - Loud failure when a saved layout names a view this build lacks; Blender silently substitutes a 3D viewport.
+  - A required value is never hidden to make room; Blender collapses a region that will not fit.
+  - "Isolation with teeth"; Blender's views can access the screen, and ten of twenty-one do.
+  - The pure-Python `LayoutModel` is the source of truth: a tree of splits and panes with `split`, `join`, `resize`, `swap` and `set_view`, serialized to versioned JSON.
+  - One adapter module is the only place that imports `QSplitter`.
+  - A view is registered by kind, never sees a splitter, never calls `saveState()` and never stores its own geometry.
+  - `PL-LH18`'s path-scoped rule already requires views to be interchangeable rather than merely movable; this decision extends that reasoning to the container.
+- **9275-9294:** decision of 2026-09-16 that item 34 goes after v0.5.0 and splits.
+  - Tag: project owner, ratified on `PL-NMTF`. The alternatives were inserting item 34 ahead of v0.5.0, which renumbers a scoped milestone, and shipping it undivided with break-out inside.
+  - Ground 1: a workspace that pins a run has no content until more than one run exists. v0.5.0 introduces the second run. Today `run_label` names a run `None` when it is shown alone.
+  - Ground 2: inserting earlier renumbers a milestone already scoped with a frozen gate. Placing it after renumbers only rows that § "Planned milestones" calls provisional.
+  - Ground 3: no known failure is live. `PL-NWTM` and `PL-9LNF` are `safety`-classed and pre-loaded. Their failures need a working handle, and the port's handles are inert.
+  - Item 34 splits across two releases under the "keep each milestone narrow" rule. Undivided, it was roughly twice the largest milestone run so far. The cut is at break-out, the one place where splitting costs nothing structural.
+  - Consequence: schematic (item 27) to v0.8.0, multi-substance (items 6 and 7) to v0.9.0. Rows 9300-9302 supersede this.
+- **9296-9319:** break-out unscheduled on 2026-09-26, and what keeps it possible.
+  - Owner's words: "This is something I don't want to rule out doing eventually. Not something that needs done soon."
+  - Break-out is still item 34's second half and still wanted, but has no row on § "The timeline". Its row, "the second screen", came off the timeline.
+  - The schematic (item 27) moved back to v0.7.0, and multi-substance (items 6 and 7) moved to v0.8.0 (`PL-V1Y7`).
+  - Break-out is placed when the owner asks for it, as any catalogue entry is. What keeps it possible stays in v0.6.0, unchanged.
+  - First, the saved layout root carries a set of windows from version 1 (Required scope entry 1, `PL-HJPY`). Adding them later would need a schema migration against every Workspace a learner has saved.
+  - Second, the unconditional region is built in the per-window shape (entry 7, `PL-W54S`).
+  - The build item `PL-Y04W` was dropped the same day, because an eventual feature is recorded here as intent, not as a queue item.
+  - The item brief keeps a measurement taken on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16. A window built as `QWidget(main, Qt.Window)` has `main` as its transient parent. Qt counts only primary windows when it decides the last window has closed. So closing the main window quits the application while the broken-out window is still visible.
+  - The build must satisfy `docs/MODEL.md` § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's".
+- **9321-9348:** the 2026-09-17 reopening; the order is kept.
+  - Tag: project owner, ratified, over moving item 34 ahead of v0.5.0.
+  - The argument, which the `PL-NMTF` round had not weighed: build order decides whether a new display is a widget registered against a contract or an edit to the current layout. So interface questions settled before the area model are settled against a layout that is going away. The argument is sound.
+  - Instance: `PL-J4NW` found `docs/ARCHITECTURE.md` routing every new display panel to `run_view.py` or `simulation_view.py` "by asking whose it is", which is the fixed two-level layout this item refuses. `.claude/rules/ui-areas.md` stands in for the area system until it exists.
+  - The argument does not apply to the work left. v0.5.0's Required scope is 13 of 20 `done`, and its monolithic half has landed.
+  - Closed: `PL-8PSW` (the two-branch overlay, the project's largest new visual surface), `PL-1XPX` (what the readouts show while two branches are displayed), the fork `PL-TFX5` and the resumption `PL-J2TD`.
+  - Remaining: the bookmarks chain and three small items, 4 M and 3 S, against item 34's 4 L / 16 M / 3 S.
+  - Re-ordering would park an MVP a seventh the size behind this milestone, to protect a surface that has already shipped. It would also strand `PL-7Z84`, because the bookmarks and fork work gives a workspace a run identity to pin to.
+  - The order is kept. The rule below, once only implied by the row order of § "The timeline", is now written out, because a session does not treat row order as a rule.
+- **9350-9368:** rule: no new display surface is built before item 34.
+  - Tag: project owner, 2026-09-17, ratified, over leaving the order implied by row position.
+  - A surface built earlier is built against the current layout and no view contract, so it is built twice: into a fixed parent, then as a View.
+  - Every remaining surface is already behind this item: the schematic (item 27), multi-substance and its readouts (items 6 and 7), and the interface pass (item 33). So the rule costs nothing today. It exists so that the next row move cannot reopen the question by accident.
+  - It binds a new surface, not a new value. It never defers a reading that `docs/MODEL.md` -> "Minimum displayed outputs" requires, or a correction to a reading on screen. The safety-critical standard is a minimum that no ordering rule lowers, and a misleading displayed value is never held back for a layout.
+  - The rule ends when the View contract (`PL-TH35`) and the view registry (`PL-R1WQ`) ship. After that, a new surface is one registry entry.
+  - A surface wanted before then is filed against item 36's catalogue, not built.
+- **9370-9385:** the Qt port reserves the layout for item 34 (project owner, 2026-09-12, `PL-8VL1`).
+  - The Qt port rewrites every dashboard layout onto Qt.
+  - That release argued for absorbing item 33, because applying a decision to Flet and then to Qt is the same work twice. The argument applies to layout architecture at least as strongly as to palette and spacing.
+  - The absorption was reversed for palette and spacing on 2026-09-16, because the port did not in fact decide them again.
+  - The reservation is unaffected. The port really does build a layout container once, so reserving it costs nothing and rebuilding it would cost the work twice; this is the test the palette half failed.
+  - The port builds none of the layout. Each dashboard surface is an independent widget inside nested `QSplitter`s with the handles inert, and item 34 makes the handles live.
+  - § "Completed: v0.4.26 - the interface moves to Qt" → "Required scope" item 2 carries this.
+- **9387-9400:** views are separate work, and the layout comes first (project owner, 2026-09-15).
+  - Owner's words: "the layout part with the adding, resizing, removing windows etc. and then telling the program what should be in that window ... is the functionality I want to end up with. Then separately want to work on widgets."
+  - Item 36 is that catalogue.
+  - The order is also sound: a view's contract is whatever the area system requires of its contents, so views built first would be rewritten.
+  - A container abstraction that only one view uses has not really been tested, so item 34 validates against two existing views, not a new one.
+  - § "Completed: v0.4.26" supplies those two views, because it makes each dashboard surface an independent widget.
+- **9402-9407:** example workspaces (project owner, 2026-09-15).
+  - An induction workspace with the concentration graph zoomed in.
+  - A big-picture workspace to switch to during maintenance.
+  - The learner can create workspaces.
+  - Default shape: a central graph of the compartments with the other views around it. The learner can rearrange the default.
+- **9409-9413 (item 35):** an optional model of anaesthesia's own effect on cardiac output and regional perfusion.
+  - The model keeps both fixed today.
+  - It would be an option the user turns on, labelled as an illustrative overlay, not as the model's own prediction.
+  - A default run would not change.
+- **9415-9419:** framing (project owner, 2026-09-13).
+  - A possible future feature, not a settled exclusion.
+  - `PL-8GV5` proposed closing the question outright.
+  - The owner agreed for now that the model keeps perfusion fixed, and directed that the feature stay on the list as an option.
+- **9421-9438:** the volunteer studies support no single relation.
+  - The literature was checked while working `PL-8GV5`.
+  - Desflurane alone did not change cardiac index at 0.83-1.66 MAC (Weiskopf et al., Anesth Analg 1991;73:143-56, PMID 1854029).
+  - The same volunteers given 60% nitrous oxide showed a dose-dependent fall (Cahalan et al., Anesth Analg 1991;73:157-64, PMID 1854030).
+  - With sevoflurane, cardiac index fell at 1.0 and 1.5 MAC and returned to baseline at 2.0 MAC as systemic vascular resistance fell. The depression diminished over hours and under spontaneous ventilation (Malan et al., Anesthesiology 1995;83:918-28, PMID 7486177).
+  - So the sign depends on the carrier gas, the dose-response is not monotonic, and the effect changes with time at a fixed dose. No monotonic, time-invariant relation can be supported.
+  - The hard part of scoping is what the option asserts and how its uncertainty is shown.
+  - `docs/MODEL.md` § "Known limitations" records the measurements, the citations and the consequence for the tissue time constants.
+- **9440-9459:** resting fat flow is uncertain too.
+  - The regional half needs the blood flow to each tissue under anaesthesia. Most measurements the project can reach are from animals.
+  - Two human comparisons for the stored resting fat flow point different ways. `docs/MODEL.md` § "Known limitations" weighs them (`PL-HBH2`).
+  - Heinonen et al. measured resting subcutaneous adipose perfusion by PET, in one depot of six healthy young women (J Appl Physiol 2012;112:1059-63, PMID 22223450). Their value is close to half of what the stored fraction implies.
+  - Both Yasuda 1991 washout studies (Anesth Analg 1991;72:316-24, PMID 1994760; Anesthesiology 1991;74:489-98, PMID 2001028) fit a slowest compartment, taken to be fat. Its flow per 100 mL of tissue is at or a little above the stored figure.
+  - Neither source settles the question. One compares a single depot at rest with a whole-body lumped compartment. In the other, the fat compartment is a fitted assignment, not an anatomy.
+  - So the resting flow is uncertain by up to about a factor of two, and the direction of its error is unsettled. A varying fraction would sit on top of it.
+- **9462-9482 (item 36):** the catalogue of views an area can hold.
+  - Separate from the layout mechanism, and after it. Item 34 decides what an area is, how it is docked, split, joined, swapped and broken out, and how a workspace is saved. Item 36 decides what a learner can put in an area.
+  - The occupant of an area is a View (project owner, 2026-09-17, ratified - chosen over `Editor`, and over `Component` and `Widget`). This reverses the 2026-09-16 decision that adopted Blender's "Editor" and retired views and widgets.
+  - Blender's editors mostly edit, but these mostly display modelled values. `QWidget` is the base class of every one.
+  - § "v0.6.0 - the layout is the reader's" has the full reasoning, and `PL-GPYV` has the comparison.
+  - Candidates: the compartment schematic (item 27), the control-input timeline, the numeric readouts, item 37's interaction display, and the concentration chart and F_A/F_I plot as views a workspace places.
+  - The owner requested this on 2026-09-15 as its own track (`PL-4D1M`).
+  - Each view owes what any displayed clinical value owes under `CLAUDE.md`'s clinical-output standard, settled once for each view.
+- **9484-9499 (item 37):** an opioid/hypnotic interaction display, after items 13 and 15.
+  - Iso-effect contours over a pair of effect-site concentrations, for a named endpoint such as tolerance of laryngoscopy.
+  - A response-surface interaction model is a model class of its own and measures the synergy itself, so it cannot be derived from two single-drug models.
+  - It needs its own versioned parameter file, provenance record and source-hierarchy decision, as each agent file has.
+  - `CLAUDE.md`'s safety-critical standard names interaction surfaces among its examples.
+  - The display names the endpoint on screen, because laryngoscopy, intubation and skin incision are different surfaces. It marks the plotted point as a predicted pair, not a measurement, and shows the contours' population uncertainty.
+  - The owner requested this on 2026-09-15 (`PL-JFXG`).
+- **9501-9506 (item 38):** decide the project's name and look.
+  - The name it ships under, an application icon, a splash screen if it has one, and the wordmark the README and the interface carry.
+  - The owner raised this on 2026-09-16 as something to think about down the road.
+  - It is intent, and scoping it is a later decision (`PL-KFJQ`).
+- **9508-9515:** its own entry because three others use it.
+  - Item 23 (packaging, signing and distribution) needs platform bundle icons.
+  - Item 32 (presentable to a first-time visitor) needs whatever sits at the top of the README.
+  - Item 33 (the interface pass) sets the palette and type, which is adjacent to an identity but is not one.
+  - Left undecided, each invents its own answer.
+- **9517-9521:** the name comes first, and it is the owner's alone.
+  - `open-anesthesia-sim` is the repository name. Whether it is also the product name is open.
+  - The icon, wordmark, window title and bundle identifier derive from it.
+- **9523-9533:** a splash screen is a safety surface.
+  - It is the one screen shown before any modelled number, so it is the least skippable place for the statement that this is an educational simulation and not for clinical use.
+  - Polish there does most to make the simulator look like a shipped clinical product, which `CLAUDE.md`'s clinical-output standard governs.
+  - Scoping decides what the splash screen says.
+  - No splash screen is a legitimate outcome. The statement then moves to the first real screen.
+- **9535-9539:** there is no placeholder.
+  - `PL-J7MM` removed the empty branding asset directory on 2026-09-15. It had held one placeholder file, referenced by nothing, since the bootstrap commit.
+  - This entry holds the intent until someone scopes it.
+- **9541-9545 (item 39):** explicit gas-phase conditions for each compartment, covering temperature and water content.
+  - Raised on 2026-09-19 from `PL-MPWP` (project owner, 2026-09-19, ratified, over filing it as a queue item to be worked).
+  - It is intent, and scoping it is a later decision.
+- **9547-9557:** two limitations in `docs/MODEL.md` end at this change.
+  - The note "One reference condition, where the model physically has two": the alveolar, venous and tissue stores hold 5.5 % fewer moles than their 20 °C label implies.
+  - The note "The modeled alveoli are dry, and real ones are saturated at 47 mmHg": the water half is 47/760.
+  - Each note says removing its limitation is outside the current milestone.
+  - Neither had anywhere to point, so readers got no answer and sessions worked out the same conclusion again.
+- **9559-9566:** it is one change.
+  - The gas is carried at one declared condition where it physically has several.
+  - The fix is a condition for each compartment, covering temperature, pressure and water content together.
+  - Correcting the water half alone moves all four validated wash-in ratios outside their published spread: applying 713/760 to the inspired term while the partition coefficients keep an unrecorded gas-phase basis.
+- **9568-9574:** nothing displayed depends on it.
+  - Displayed concentrations are dimensionless fractions, and partition coefficients are ratios.
+  - So the trajectories, the mass-balance identity and the MAC multiples do not change.
+  - The condition matters only where an amount leaves the unit: item 28's planned liquid-equivalent consumption figure.
+- **9576-9583 (item 40):** an anesthesia machine as a config file.
+  - The framework half of item 1, split out on 2026-09-20 (project owner).
+  - The deliverable is the extension point. A second profile in `src/anesthesia_sim/data/machines/` can be loaded and selected in code, and is refused where it is not admissible.
+  - Which machines exist, and how faithfully each is modelled, belongs to item 1, which has no timeframe.
+- **9585-9595:** the data half has shipped; the selection half does not exist.
+  - `PL-4YY1` moved the circuit volume and the fresh gas flow from field defaults in `core/circuit.py` into a cited, strictly validated `reference_circle_system.json`.
+  - `PL-8PS6` added the first per-machine capability field.
+  - `load_reference_circle_system_parameters()` names one filename, and nothing looks a profile up by id. Nothing in `src/` reads `id` or `display_name`.
+  - A second profile is ignored at run time and passes the unit suite, then fails `make check` on its provenance rows.
+- **9597-9604:** separable from item 1 while it changes no rate.
+  - Per `docs/machine-abstraction.md`, a machine affects the model only through two rates and one volume. All three are in the breathing circuit's row of the system matrix, and none touches a patient row.
+  - The item declares where a rate would come from and leaves the rates where they are.
+  - Computing a rate differently belongs to item 1.
+- **9606-9610:** one profile and no machine chooser.
+  - A comparison surface belongs to `PL-WZVZ` and waits behind item 34's View contract.
+  - A second profile plus a selection surface would make `PL-WZVZ`'s misattribution hazard live.
+  - Nothing displayed changes.
+- **9612-9619:** deferred work.
+  - Extracting the delivery and removal rates from `core/governing_equations.py` and `core/circuit.py` costs the same for one profile or ten, so it waits for a machine that needs it.
+  - Also waiting: the second member of each strategy slot, automated end-tidal control (item 5), fresh gas decoupling and ventilator drive, and internal circuit topology.
+  - Internal circuit topology was declined, and item 39 reverses that.
+- **9621-9626:** the cost of a machine.
+  - The target "One data file and nothing else" cannot be reached. `tools/doc_check.py` requires a provenance row in `docs/MODEL.md` for every leaf number in every data file.
+  - So a machine is one data file plus one provenance row per number. The target should say so.
+- **9628-9631:** six queue items carry the work, under the feature `machine-profile-framework`.
+  - Two matter for the first real profile: what `circuit_volume_l` means, and a required startup-flow field that no manufacturer publishes.
+- **9633-9638 (item 41):** a chart View can opt in to keeping its time window in step with the other opted-in charts in its Workspace.
+  - Blender's "Sync Visible Range" does this.
+  - It comes after item 34's per-chart windows (`PL-L59K`).
+  - Wanted "later" (project owner, 2026-10-19). `PL-1RFZ` has notes from the Blender source and a Done-when.
+- **9640-9645 (item 42):** a learner can rename a run, after item 12.
+  - The name shows wherever `dashboard_frame.run_label` names the run. A Workspace's pin stays on the run's `RunId`.
+  - Two open runs never show the same name, so that a legend entry still tells which run's settings drew a curve.
+  - Wanted "eventually" (project owner, 2026-10-19). `PL-YBZJ` has the design note.
+- **9647-9669 (item 43):** one source of truth everywhere, enforced structurally.
+  - A value, grammar, predicate, state or reading is read from the one module, data file or writer that owns it, in the simulator, its documents and the apparatus (project owner, 2026-10-19: "one source of truth everywhere", "a core design principle", "fix this structurally everywhere").
+  - `CLAUDE.md` § "Architecture and development discipline" states the principle.
+  - A second copy takes one of four shapes: a value copied (`PL-JS6P`), state with two writers (`PL-WM5P`), a rule made in several places (`PL-VWXL`), and configuration restated (`PL-SH0W`).
+  - `PL-K88Z`'s inventory sizes the work, `PL-2LB5` has the design, and the items carry the feature `one-source-of-truth`.
+  - Inventory of 2026-10-19: 93 second copies in the literal and fact baselines; run state outside the run view in 2 surfaces with two writers and 5 surfaces outside the guard; 14 duplicate blocks found by pylint; 34 high-confidence hand re-checks in 18 mechanisms; 30 configuration facts restated, 3 of which disagree.
+  - Result: 13 items filed, plus the baselines of four check items.
+  - Numbers restated in `docs/MODEL.md` and `README.md` were not counted; `PL-JS6P` sizes them.
+- **9671-9674:** for the whole list.
+  - No item 1-43 mixes scientific-core and UI/tooling concerns in one milestone.
+  - Dependencies are noted inline, not bundled (e.g. 2-5 on 1, 7 on 6, 10 on 9, 13 on 12).

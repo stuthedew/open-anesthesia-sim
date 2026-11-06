@@ -1,0 +1,349 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of docs/maintainer.md:
+  - A later session, or the owner reading the history.
+    Knows: Python, anesthesia, and this repository's rules.
+    Does not know: What the writing session knew and did not write down.
+    Will: Pick up the work, or find out why a change was made.
+
+[1] docs/maintainer.md § "What comes to you before it merges", rows 464-612. Whole section: 1632 words. For: A later session, or the owner reading the history
+  464 | ## What comes to you before it merges
+  465 | 
+  466 | **A pull request comes to you only for a real decision or a high-risk change,
+  467 | and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
+  468 | real decision is one that `.claude/skills/docket/modes/design.md` step 4
+  469 | already makes yours. A high-risk change is any of three kinds. It changes a
+  470 | clinical value that the simulator computes or displays, or what
+  471 | `docs/MODEL.md` says such a value means. It is a rule that sessions run under
+  472 | and that you did not ask for in your own words. Or CI would not show its
+  473 | breakage, or a revert would not undo it. For a high-risk change, the ask gives
+  474 | the case for the change, its risks, and what was checked. `#1516` set this
+  475 | rule. The path list held that pull request for you, although nothing in it
+  476 | needed a decision.
+  477 | 
+  478 | **A rewrite of `docs/MODEL.md` that changes no value, equation, code span or
+  479 | citation merges on green** (project owner, 2026-11-02, ratified, over holding
+  480 | each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
+  481 | `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
+  482 | citation, number and "no test yet" declaration that the rewrite dropped or
+  483 | added. The rewrite is
+  484 | housekeeping when it added none, and when each one it dropped is history moved
+  485 | to an item or a duplicate that the document still holds. A number rewritten in
+  486 | the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.
+  487 | The tool checks that the two values are equal and stand in the same section
+  488 | (`PL-TZ7R`). The blind review
+  489 | passes and the prose review still run. A sentence whose meaning needs a
+  490 | clinician's judgment, such as what a hazard row or a limitation promises,
+  491 | still comes to you, and the ask quotes it before and after.
+  492 | 
+  493 | The session decides which kind a change is. It records that decision on a
+  494 | commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`.
+  495 | `bin/docket arm` reads that record. Some changes wait until a record made
+  496 | after their newest change covers them. These are changes to `src/`, to a test
+  497 | under `tests/` that imports the simulator, to `docs/MODEL.md`, to
+  498 | `src/anesthesia_sim/data/` or to `README.md`. So if a session never makes the
+  499 | decision, the pull request waits, rather than merging a clinical change that
+  500 | nobody reviewed. `not needed` arms the pull request to merge on green, with
+  501 | the reason in the pull request body. `needed` holds it for you, whatever paths
+  502 | it changes. `subprojects/docket/src/docket/arming.py` decides what merges
+  503 | without you. A change to that file waits on you in only three cases. It
+  504 | changes or deletes an existing test that pins `arm`'s results, it moves the
+  505 | file, or it carries a `needed` record. Otherwise it merges on green (project
+  506 | owner, 2026-10-19, ratified, over holding every change to it, `PL-9JHM`).
+  507 | Before that decision, every change to it waited on you (`PL-VKHD`). A pinned
+  508 | test is one of these, in `subprojects/docket/tests/test_cli.py`: a `test_arm_`
+  509 | test, a test that runs `arm` or reads `arming`, or one of those tests' `_arm`
+  510 | helpers and `ARM_` constants. The modules that `arm` reads through, such as
+  511 | `vcs.py`, `claims.py` and `cli.py`, arm on green. So a change there that
+  512 | loosens one of `arm`'s results has to edit a pinned test, and that edit waits
+  513 | on you (project owner, 2026-10-12, ratified, `PL-WW0Q`). The hold applies to
+  514 | the tests that pin `arm`'s results, not to the code they test. So a new test
+  515 | arms on green. So does a loosening that no test pins, even in `arming.py`
+  516 | itself.
+  517 | 
+  518 | **A hold comes to you with its question or its risk, never a bare "read #N"**
+  519 | (project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
+  520 | as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the first
+  521 | line of the ask. The ask is either a decision or a review. A decision has
+  522 | at least two options and a recommendation. Each option says what it changes
+  523 | for you or for a learner. The decision is worded in clinical or learner terms.
+  524 | A choice between approaches to the interface comes with one annotated
+  525 | screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A review says
+  526 | what changed in one plain sentence, asks you one yes-or-no question, says what
+  527 | was already checked, and says what to reply. The question is one you can
+  528 | decide as the owner or as a clinician. It never asks you to re-check what the
+  529 | tests or reviews already covered, such as whether a rewording kept its
+  530 | meaning. Where there is no such question, it says so and recommends merging.
+  531 | No part of the ask names a tool, file, command or item id, and `arm` refuses a
+  532 | record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
+  533 | quotes the text you are to judge, before and after, with enough of the
+  534 | surrounding paragraph for the change to make sense, so that you never have to
+  535 | open a file to find it (project owner, 2026-11-02, `PL-77QB`).
+  536 | 
+  537 | Until the session has recorded its question for you, `arm` tells it to send you
+  538 | nothing about the pull request. A hook, `.claude/hooks/owner_ask_guard.py`,
+  539 | puts the record into the thread's message itself (`PL-X4MD`). When a thread's
+  540 | message to you in Projects names a pull request, and that thread's own pull
+  541 | request waits for your read, the hook adds a line at the end of the message:
+  542 | 
+  543 | - **A question for you is recorded.** The line is that question, unless the
+  544 |   message already quotes it word for word.
+  545 | - **No question is recorded yet.** The line is "No question is recorded on
+  546 |   this pull request yet, so there is nothing to decide."
+  547 | 
+  548 | Every other message reaches you as written, and the hook refuses none of them.
+  549 | A progress note that names a held pull request also gets the line, so you may
+  550 | see the question more than once. The coordinator's messages are not changed,
+  551 | because its checkout is on no pull request's branch, so it quotes the
+  552 | thread's recorded question itself. A decision card has no free-text field to
+  553 | add to, so a card about a held pull request reaches you without the line, and
+  554 | the thread is told so.
+  555 | 
+  556 | A question whose answer is obvious is a wrong question, as on `#1516`. When there is nothing to decide
+  557 | or review, the session records `Owner-read: not needed`, and the change merges
+  558 | on green without asking you. A change to a test that pins `arm`'s results
+  559 | still waits for you whatever that record says, so its ask is a review.
+  560 | 
+  561 | A held pull request merges when you say so, and nothing more is needed:
+  562 | "Merge it" is enough. It merges by the route that § "Bring a stale base in
+  563 | when you merge, with Update branch" describes.
+  564 | 
+  565 | Before 2026-10-17, those simulator paths waited for your review on their own,
+  566 | whatever the change was (the Projects trial's instructions, 2026-10-03, kind
+  567 | unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/`
+  568 | and `subprojects/docket/`). `PL-KKHD` built that hold. A workflow item needs
+  569 | no merge confirmation from you (project owner, 2026-10-12, `PL-KPM2`). So a
+  570 | change to `.github/workflows/`, `.claude/hooks/` or docket's lexer arms on
+  571 | green, like the rest of the workflow lane. Until then those paths had waited
+  572 | on your review, the first two since 2026-10-03 and the lexer since 2026-10-10.
+  573 | Every other change arms on green. The store, the body records (`PL-979D`) and
+  574 | the queue's tooling arm on green as before (project owner, 2026-09-25,
+  575 | ratified, over holding every path outside `docs/items/`, `PL-SQTR`).
+  576 | `PL-K6B2` built that rule. Since 2026-10-03, so do `CLAUDE.md`, `ROADMAP.md`,
+  577 | `tools/`, the rest of `.claude/` and `.github/`, and everything else. `arm`
+  578 | names each path outside the store that it armed, so the session's report
+  579 | carries the reason. Before that, the hold fired on every change outside the
+  580 | store. You confirmed on 2026-09-25 that those holds were being clicked
+  581 | through, so the hold was guarding nothing. `PL-CBDX` reviews the diffs that
+  582 | merged unread since 2026-09-23.
+  583 | 
+  584 | Two decisions of 2026-10-03 are recorded here, so that the list is seen as
+  585 | decided rather than left at a default. First, `ROADMAP.md` and
+  586 | `docs/WORKING_NOTES.md` arm on green. `PL-0JGZ` (project owner, 2026-09-26,
+  587 | ratified) had held them, because the roadmap is where you set direction. Your
+  588 | list reopened that question, and you settled it this way (project owner,
+  589 | 2026-10-03, ratified, over holding them as before, `PL-KKHD`). Second,
+  590 | `.github/workflows/` and `.claude/hooks/` joined the list. The reason is that
+  591 | `update-armed.yml`, `tag-release.yml` and the merge guard decide
+  592 | merges and tags, as `arming.py` does. Holding them cost about one review a
+  593 | day, at recent rates (project owner, 2026-10-03, ratified, over leaving them
+  594 | armed on green, `PL-KKHD`). They left the list again under your rule of
+  595 | 2026-10-12 above.
+  596 | 
+  597 | One decision of 2026-10-05 is recorded here too. A test of the tooling under
+  598 | `tests/` arms on green, as `subprojects/docket/tests/` does. A test of the
+  599 | tooling is a file that pytest collects and that imports no `anesthesia_sim`.
+  600 | Of the 51 merges held for a review since 2026-10-03, 16 had been held by such
+  601 | tests alone, with nothing in them for you to judge (project owner, 2026-10-05,
+  602 | ratified, over keeping every change under `tests/` on the read list,
+  603 | `PL-552M`). A test of the simulator still waits for the session's
+  604 | `Owner-read` record. So does a branch that drops a test's simulator import or
+  605 | deletes a simulator test, because `arm` reads the file both before and after
+  606 | the change. `tests/conftest.py` and every other file that pytest does not
+  607 | collect also wait, because they serve the simulator's tests whatever they
+  608 | import. So does any test that `arm` could not read, and `arm` gives the reason
+  609 | beside the hold. This rule is the same one that
+  610 | `tools/workflow_paths_check.py` uses to sort the lanes, and it is written
+  611 | once, in `arming.py`. Since 2026-10-19, a change to the rule waits on your
+  612 | review only where it edits a test that pins `arm`'s results (`PL-9JHM`).

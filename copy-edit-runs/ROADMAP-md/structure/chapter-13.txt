@@ -1,0 +1,62 @@
+[1] keep
+
+Structure:
+- **Same point in two places.** Rows 2177-2179 say "The history before the branch point is identical in the two branches, because it is the same history and not a reproduction of it." Rows 2194-2196 say "This is what makes a branch's history before the branch point *the same object* as its parent's history, rather than a reproduction." The reason belongs in 2188-2198, which explains how that is achieved. The end-state paragraph should keep only "The history before the branch point is identical in the two branches."
+- **Same point in two places.** Rows 2181-2183 say "run a case, branch it at a decision point, and compare the two managements side by side". The end state just above, in 2174-2176, already lists those steps: "A learner runs a case, marks the decision point, forks the case there, manages the two branches differently, and reads both on one time axis". Those rows also repeat the definition in § "What MVP means here". The steps belong in the end-state paragraph. Rows 2181-2183 should keep only the pointer: "This milestone completes the MVP as § "What MVP means here" defines it."
+- **The reader has to read ahead.** Row 2170 uses "the score architecture" before 2190-2193 says what it is ("turns a run from a sequence of applied steps into a closed-form function of its control-input timeline"). Row 2196 says "Item 12 requires that property" before 2201 says that item 12 is forking.
+- **The list of what the release holds comes last.** Rows 2200-2204 list the items the release holds and leave out item 9. That is this reader's main job, but the paragraph is last in the section.
+- **Order to use:**
+  1. the opening paragraph (2147-2151)
+  2. the three gaps (2153-2166)
+  3. the end state (2174-2179)
+  4. MVP and minor release (2181-2186)
+  5. the items promoted and left out (2200-2204)
+  6. the change to `core/` (2188-2198)
+  7. the sample-store debt (2168-2172)
+
+  With this order, item 12 is named as forking before 2196 refers to it. The debt also comes after the paragraph that explains the score architecture. Its opener, "Beneath those three gaps sits a fourth problem", will need new wording in the sentence edit.
+- **A sentence for another reader.** Rows 2197-2198 say "It is also the property where it is easiest to write a test that passes for the wrong reason." This warning is for whoever writes forking's tests, so it belongs in planned-milestone item 12's entry or brief. Move it there rather than cut it, because it is a warning. The Goal section then keeps nothing of it.
+- **Query:** Rows 2168-2172 say this milestone keeps the promise to remove the sample store, and 2190 says the score architecture does this. But rows 2200-2204 promote no item that builds the score architecture or removes the store, unless that work is the replay half of item 8 (the resimulation driver). To decide what the release holds, the reader needs to know which item delivers that work, and the text does not say.
+- **Query:** The reader needs to know which promoted item closes which of the three gaps (2153-2166), so they can see which gap stays open if they drop an item. The text does not say.
+- **Query:** Rows 2202-2204 say item 10 "stays behind item 9's save/load, which is out of scope here". That implies item 10 is out of scope too, but does not say so. Since the reader is deciding what the release leaves out, the text should say whether item 10 is out of scope.
+
+Outline:
+- 2145: heading "Goal".
+- 2147-2151: the goal is to make a comparison possible.
+  - v0.4.0 made one case observable, with compressed time, clinical units and an axis as long as the case.
+  - A single curve cannot teach why it moved, because that needs a second curve that differs in exactly one thing.
+  - On 2026-09-06, the day this milestone was scoped, three gaps stood in the way.
+- 2153-2158: gap 1 is that a run cannot be stopped at a target.
+  - The playback multiplier made a twelve-hour case reachable, but it cannot be used for anything precise.
+  - A learner comparing gas-management strategies has to watch the clock and pause by hand.
+  - At 300x, a hand pause overshoots by minutes of simulated time. It lands somewhere different on every attempt, and the learner cannot return to it.
+- 2159-2163: gap 2 is that two managements cannot be taken from one point.
+  - The only route is to build the case twice.
+  - The two runs then differ in everything that was not reproduced identically.
+  - A comparison must not do that, because the learner cannot see which differences they caused.
+- 2164-2166: gap 3 is that two runs cannot be displayed at once.
+  - `SimulationView` binds one controller.
+  - The readouts, chart traces, clinical references and control marks each assume a single run.
+- 2168-2172: a fourth problem, a debt: the run's sample store has no size limit.
+  - `PL-011` was dropped on 2026-09-05 on the promise that the score architecture would remove the store rather than limit it.
+  - A comparison holds two runs, so this milestone either keeps the promise or the debt doubles.
+- 2174-2179: the end state.
+  - A learner runs a case, marks the decision point, forks the case there, manages the two branches differently, and reads both on one time axis.
+  - The branch point is marked.
+  - Every curve can be traced to the run and settings that produced it.
+  - The history before the branch point is identical in both branches, because it is the same history, not a reproduction.
+- 2181-2186: this milestone completes the MVP, as "What MVP means here" defines it (run a case, branch it at a decision point, compare the two managements side by side).
+  - It is a minor release, not a patch, because it crosses a capability boundary that the four releases before it did not.
+  - The application comes to hold more than one run, and it asserts a relationship between them.
+- 2188-2198: the milestone changes `core/` and what the numerical method can be asked, not what it computes.
+  - The exact matrix exponential landed before this milestone (`PL-GS5X`, pull request 376).
+  - The score architecture, described "below", turns a run from a sequence of applied steps into a closed-form function of its control-input timeline.
+  - The governing equations, the parameters and their exact solution are unchanged.
+  - The state at a given time can be computed without stepping the run to that time.
+  - That makes a branch's history before the branch point the same object as its parent's history.
+  - Item 12 requires that property.
+  - It is the property where a test most easily passes for the wrong reason.
+- 2200-2204: what the release holds and leaves out.
+  - It promotes planned-milestone item 26 (bookmarks), item 12 (forking), item 11 (side-by-side comparison), and the replay half of item 8 (the resimulation driver only).
+  - The replay control that the user sees is item 10, which stays behind item 9's save/load.
+  - Item 9 is out of scope (project owner, 2026-09-06).

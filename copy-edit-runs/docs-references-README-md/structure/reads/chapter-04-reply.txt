@@ -1,0 +1,297 @@
+[1] keep
+
+Structure:
+- 138, opening missing: The section goes straight into its first entry. It needs an opening paragraph that tells the reader what each entry gives: the citation, where the full text is held, what was taken from it and where that is recorded, and which pages were read and when. The shared facts in the next two findings should be stated once in that paragraph.
+- Holding status is repeated in nine entries. One wording is "Held in the private corpus, like every other owner-supplied full text; the corpus's own index carries the file name and checksum" (142-143, and again at 171-173, 212-213, 293-294, 598-599 and 615-616). The other is "Held in the private corpus, `stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full texts live now" above says how to attach" (241-243, 380-382 and 520-522). Say it once, in the section's opening or in § "Where owner-supplied full texts live now". Each entry keeps "Not held here", its supply date and its item.
+- Redistribution is repeated four times: "publisher-copyright material that this public repository may not redistribute; see "Redistribution" above" (173-175), "A publisher-copyright monograph this public repository may not redistribute" (317-318), "Removed from this public repository 2026-09-06 as publisher-copyright material it may not redistribute" (522-524), and "carries no licence permitting redistribution, so it may not sit in this directory" (383-385). The rule belongs in § "Redistribution". Each entry keeps its removal date, if it has one, and the pointer.
+- The entries put their parts in different orders. Allott and Eger go: holding, citation, what the source is, what was taken, route. Other entries depart from this:
+  - Lowe gives the route (330-338) before what was taken (340-375).
+  - Schüttler merges the route and what was taken into one paragraph (577-594).
+  - Yasuda puts its route paragraph (657-663) between what-was-taken paragraphs (630-655 and 665-677).
+  - Baker gives the tier at the end of its Table 2 paragraph (203-204) instead of with what the paper is (188-195).
+
+  Use one order in every entry: holding, citation, what the source is and its tier, what was taken and where it is recorded, route and depth.
+- Use one bold label for what was taken. "What has been taken from it, and where it is recorded" (157, 228, 630) also appears as "What the chart takes from it" (266), "Why it is here" (340) and "Why this one is load-bearing" (406), and is missing in the other entries.
+- Yasuda ratios are given twice: "Their 30-minute wash-in and five-minute elimination ratios are the reference values in `tests/reference/test_published_wash_in_and_elimination.py`" (631-633), and "The *Anesth Analg* paper's 30-minute wash-in and five-minute elimination ratios … are in `docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`" (673-677). Give the ratios once, at 631-633, with the extraction note, its pages and its date. Of 673-677, keep only the new facts (the study, and the methods fact behind the tissue coefficients) and merge them into 631-633.
+- Yasuda hybrid coefficients are given twice: "the hybrid coefficients and time constants (Tables 1 and 2)" (635-636) and "the hybrid coefficients and their SDs (Tables 1 and 2) were read again at the source the same day and match" (652-654). The re-reading belongs in the route paragraph. 652-654 keeps nothing.
+- The Yasuda route is given twice. "*Anesthesiology* p. 490 as a page image", read 2026-10-18 (665-668), repeats "p. 490 on 2026-10-18 for `PL-R0NL`" (661-662). The route belongs only in the route paragraph, which moves to the end of the entry. 665-671 keeps what was read and where it is recorded.
+- Lowe says "not adopted" three times: "It is **tier 2, cited but not adopted**" (342-343), "So the tier is 2 and cannot become 1" (356-357) and "Nothing in it is adopted, and the reason is in the data file's own note" (372-375). Give the tier and the reason for not adopting it once, in 340-345. Bullet 352-357 keeps its evidence. 371-375 keeps only "Read it when the provenance of a tissue volume or a perfusion fraction is in question", which joins 340-345.
+- Lowe 344-345, "this entry is the pointer, not the record": the four findings follow in full here (347-369) and also stand in full in `reference_adult.json`. A clinician will not open a data file, so the findings stay here and the data file keeps its record for developers. Cut the claim.
+- Lowe 320-323 ("the route `.claude/rules/citing-sources.md` now records … arrived inside a day because the request named the pages") is guidance for writers, and belongs in `.claude/rules/citing-sources.md`. Lowe 333-334 ("narrowed to pages 57 and 83 in advance by two second-hand readings") is history, and belongs in `PL-7HDS`. The entry keeps "read by interlibrary loan" and the full record of the reading: pages, dates, lenders, borrower and items.
+- Philip states the tier four times: "the same program's defaults, tier 3" (431), "Like the rest of the book it is tier 3" (444-446), "Tier 3 either way" (459) and "Tier 3: a program's arithmetic" (474). Say once at the entry's head that every value in the workbook is tier 3: the program's own parameters, not measurements. The cost bullet keeps only that the worked costs are an independent check of the conversion.
+- Philip gives the isoflurane bottle price twice: "based on a bottle cost of US$20.47 per 100 ml", which is isoflurane's `BottleCost` and `BottleSize` in Appendix C (469-470), and "Appendix C prices those bottles at 20.47 and 115.13. The isoflurane costs that the chapter prints are reproduced at 20.47" (482-483). "whose reference test reproduces the four costs" (472-473) says the same thing again. Merge the two cost bullets (460-486) into one, and give 20.47 and the reproduction once.
+- Philip spreads Appendix C over four bullets: 420-434 (parameter set, VEN, VA, CO), 447-459 (Volatility), 470 and 482 (bottle prices). Group them under the subheadings below.
+- Philip history for other readers:
+  - The title history (396-404) belongs in `PL-XTMB` and `PL-9GP1`.
+  - The reading-gap history, "Until now … closes that gap" (408-413), belongs in `PL-XJ5P`.
+  - The account of two provenance notes "written without this page" (425-434) belongs in `PL-9GP1`.
+
+  The entry keeps three facts. The cover and older citations read "Gas Man(R) Workbook and Laboratory Manual", and the title page's title is the one to cite. Appendix C gives VEN=1.0, VA=4 and CO=5. No stored value changed. Also cut the narration "which is all this entry asserts" (394).
+- Philip (378-516) is too long to find one's way in. Add subheadings:
+  - "Citation and title" (380-404)
+  - "The model's parameters" (Appendix B table p. 168, Appendix C defaults, Chapter 13's 70 kg patient, Volatility at 20 °C)
+  - "Cost" (the Chapter 14 bullet and the price bullet, merged)
+  - "Errors and omissions in the workbook" (the mis-captioned table, intertissue diffusion omitted, bibliography references 23 and 45)
+  - "Route and depth" (512-516)
+- The heading at 378, "Philip — *Workbook for Gas Man*", is the only one of ten without a year. Use a year, such as "Philip 2012", from the title-page date (388), or one the author chooses. Other files that cite this heading must change with it.
+- Jugel 266-286 is written for a developer (pixel columns, tuples, `vis_wh`, Theorem 1, viewport). It also repeats the chart's two limits, which it says are "both stated in `docs/MODEL.md`" (279). Move it to the note for developers in `docs/MODEL.md` § "What the chart draws". The entry keeps one sentence: the paper proves the result behind that section's claim that the chart is accurate to within one pixel of time.
+- The rest of the Jugel entry is history for the items:
+  - 243-248: the copy carried here, removed by `PL-8LXM`, "a paper nothing then founded", "the same bytes, by checksum".
+  - 255-264: how the DOI was confirmed, including `pdftotext`, "the CONNECT" and `www.vldb.org` being refused.
+
+  The entry keeps three facts: the fields come from the title page and running footer, the DOI was confirmed against Crossref on 2026-10-06, and the licence is CC BY-NC-ND 3.0.
+- Baker 182-186 uses software terms ("PubMed MCP server", "XMP packet"). The entry keeps three facts: the citation was confirmed against PubMed on 2026-10-06, Wiley's legacy identifier also resolves, and the DOI above is the one to cite.
+- Eger 214-215, "after `PL-WMCJ` had recorded it as abstract-only", is history and belongs in `PL-WMCJ`.
+- Schüttler 533-543:
+  - The owner's note on branch `556d454` is decision history and belongs in the item.
+  - The roadmap paragraph serves the `ROADMAP.md` reader. The entry keeps one sentence: the volume is kept for the planned IV pharmacokinetics and depth-of-anesthesia work (`ROADMAP.md` planned milestones 13 and 14).
+- Schüttler 545-546, "A chapter in an edited volume is cited as that chapter with its own authors, never as the volume", is a rule for writers. It belongs in `.claude/rules/citing-sources.md`. The entry keeps the per-chapter fields and the tip about the volume number in PubMed's issue field. Also cut the narration "as `.claude/rules/citing-sources.md` requires" (577).
+- Schüttler 577-594 mixes two points. Split it into "Route and depth" (577-581) and "What has been taken from it, and where it is recorded" (581-594).
+- The section heading at 138, "The documents", does not say that the section has one entry per outside source, none held here. A heading that does: "Sources not held here, and what was taken from each". Other files that cite § "The documents" must change with it.
+- Query, tiers: The reader needs to know what tier 1, 2 and 3 mean. This chapter uses them at 203, 222, 342, 356, 431, 445, 459, 474 and 564, and does not define them. Only Baker and Eger point to `docs/MODEL.md` § "Source hierarchy".
+- Query, Philip page count: "199 pages" (389) and "the document's 209 pages of text" (400) disagree, and the text does not say which count is which.
+- Query, Philip Volatility: "`Volatility=200` in a second listing, printed pp. 171 and 174" (449-450) contradicts "`Volatility=200` is not on p. 174 … printed p. 177" (456-458). The bullet's opening needs the settled pages.
+- Query, Philip route: 515-516 lists "the pages named above: Chapter 10's liquid-injection section", but no row above names that section. Printed p. 15 (478) is cited but missing from the route's list.
+- Query, Philip mis-captioned table: the reader needs the page of Appendix B's second table (487-495), and the text does not give it.
+- Query, Philip lead-in: "Three things found on reading it (`PL-9GP1`)" (414-415) introduces eight bullets. Five of them come from other items (`PL-9LXK`, `PL-S6WW`, `PL-KZ99`, `PL-VJZK`, `PL-WMCJ`).
+- Query, Lowe's fourth reference: "four references … Three are uptake-and-distribution models" (353-355) leaves the fourth undescribed. The reader needs to know whether it measured anything, because the tier argument depends on it. "a compilation whose own four sources the book never measured" (374-375): I cannot tell what this means.
+- Query, Schüttler reading status: "not a source that has been read and checked yet" (542-543) and "No chapter has been read at full text" (580-581) conflict with three pages read since and cited in § "Known limitations" (581-594).
+- Query, Yasuda route (657-663):
+  - The route gives no date for the first readings of *Anesth Analg* pp. 317-23 and *Anesthesiology* pp. 493-96.
+  - It gives no item for "pp. 489-91 again on 2026-10-26".
+  - "for the readings this paragraph lists" points at the paragraph itself, which lists none of the readings in the paragraphs above.
+- Query, Yasuda Figures 3 and 4 (654-655): the text gives no pages and no reading date.
+- Query, Jugel 286: "the one measured residual, 0.0028 pp at worst over the supported envelope" calls a simulated value "measured", and does not explain "pp" or "supported envelope". This is for `docs/MODEL.md` once the paragraph moves.
+
+Outline:
+- 138: heading "The documents"; the section has no opening paragraph.
+- 140: heading "Allott, Steward & Mapleson 1976 — halothane in individual dogs".
+- 142-144: holding. Not held here; in the private corpus like every other owner-supplied full text; the corpus's index carries the file name and checksum; supplied by the project owner 2026-09-27.
+- 146-149: citation. Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the dog: comparison of theory and measurement in individuals.* Br J Anaesth 1976;48(4):279-95. PMID 1275995. DOI 10.1093/bja/48.4.279.
+- 151-155: what it is.
+  - A measurement in one species with one agent: seven dogs, 1% halothane for 80 minutes.
+  - Tensions measured at five blood sites and in a psoas biopsy, compared with a multi-compartment model quantified in each dog (p. 279).
+  - Eger and Saidman 2005's ref 8, and their one source outside Eger's group for intertissue diffusion.
+- 157-163: what was taken. For `PL-FBY3`, `docs/MODEL.md` § "Known limitations" takes:
+  - the perirenal-fat measurement in two further dogs (p. 289);
+  - the authors' statement that their case for lean tissue losing agent to fat rests on an improved fit (p. 290);
+  - their mimicry of that route, by redistributing cardiac output and raising the lean compartment's solubility (Table I, p. 281);
+  - their warning that the mimicry fails outside the conditions it was fitted to (p. 290).
+
+  Cited for no stored value.
+- 165-167: route. Full text through the corpus's text layer, 2026-09-27. Read: pp. 279, 281, 289-91 and the reference list. Not read: the methods and results between them, beyond Table I.
+- 169: heading "Baker & Farmery 2011 — inert gas transport in blood and tissues".
+- 171-175: holding. Not held here; in the private corpus since 2026-10-25; the corpus's index carries the file name and checksum. The repository held a copy until 2026-09-06, removed as publisher-copyright material it may not redistribute (see "Redistribution").
+- 177-180: citation. Baker AB, Farmery AD. Inert gas transport in blood and tissues. *Comprehensive Physiology* 2011 Apr;1(2):569–92. DOI 10.1002/cphy.c100011. PMID 23737195.
+- 182-186: metadata check. Confirmed against PubMed through the PubMed MCP server, 2026-10-06; authors, title, journal, issue, pages, DOI and PMID all match. The file's XMP packet carries Wiley's legacy identifier 10.1002/j.2040-4603.2011.tb00337.x. Both identifiers resolve; cite the DOI above.
+- 188-195: what it is.
+  - The closest published statement of what `docs/MODEL.md` specifies.
+  - Derives single- and multicompartment models of inert gas transfer, and develops lung, blood and tissue transport from them.
+  - Compares the result with experimental studies in animals and humans.
+  - Then treats the anesthetic gases, deriving how transfer depends on solubility in blood and in each tissue.
+  - Read it when a compartment structure, a governing equation or a solubility-driven assumption in `docs/MODEL.md` is questioned or extended.
+- 197-204: Table 2.
+  - Table 2 (p. 572) is the published check that `docs/MODEL.md` § "Parameter provenance" cites for the tissue:blood division (`PL-H536`, `PL-VPF8`).
+  - It prints two coefficient sets, neither of them Baker's own.
+  - The bracketed set, which matches the derived rows, is Eger and Shafer's: ref 21, *Anesth Analg* 2005;101:688–96, PMID 16115976.
+  - The plain set is Fiserova-Bergerova and Diaz's: ref 26, *Int Arch Occup Environ Health* 1986;58:75–87, PMID 3721592.
+  - Neither paper is held. The review is tier 2 under `docs/MODEL.md` § "Source hierarchy".
+- 206-208: route. Full text from the corpus copy, 2026-10-25. Table 2 and pp. 569–70 read from page images. Pp. 571, 573–74 and the reference list read through the text layer. The rest not read.
+- 210: heading "Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion".
+- 212-215: holding. Not held here; in the private corpus; the index carries the file name and checksum. Supplied by the project owner 2026-09-27, after `PL-WMCJ` had recorded it as abstract-only.
+- 217-220: citation. Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake, including intertissue diffusion to and from fat.* Anesth Analg 2005;100(4):1020-33. PMID 15781517. DOI 10.1213/01.ANE.0000146961.70058.A1.
+- 222-226: what it is.
+  - A review, so tier 2 under § "Source hierarchy", which counts a review as a secondary synthesis; PubMed types it as a review.
+  - It says its figures "illustrate concepts but are not necessarily precise (quantitative) reflections of the kinetics" (p. 1020).
+  - Its numbers come from elsewhere: Table 3's time constants come from the two Yasuda et al. 1991 papers.
+- 228-234: what was taken. For `PL-FBY3`, § "Known limitations" takes:
+  - Table 3's intertissue-diffusion group (p. 1024);
+  - the lean-tissue losses to adjacent fat, and the 74% muscle figure at 50 minutes of desflurane (p. 1025);
+  - the brain drawn apart from the rest of the vessel-rich group (p. 1022);
+  - the paper's ranking of its evidence, and its 30% share of uptake (p. 1025);
+  - the recovery passage (p. 1032).
+
+  Cited for no stored value.
+- 236-237: route. The corpus's text layer, read in full 2026-09-27. Every printed page, pp. 1020-33, is recovered in the corpus's text dump.
+- 239: heading "Jugel et al. 2014 — M4 time series aggregation".
+- 241-248: holding and history.
+  - Not held here; in the private corpus `stuthedew/open-anesthesia-sim-references`, attached as § "Where owner-supplied full texts live now" says.
+  - Its licence, CC BY-NC-ND 3.0 (first-page statement), would let the public repository carry it.
+  - The repository carried it from 2026-09-04 until `PL-8LXM` removed it, with the M4 decimation module, on 2026-09-08.
+  - Supplied again by the owner 2026-09-14 (the same bytes, by checksum), and placed in the private corpus by the owner's decision.
+- 250-253: citation. Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented Time Series Data Aggregation. *Proceedings of the VLDB Endowment* 2014;7(10):797–808. ISSN 2150-8097. DOI 10.14778/2732951.2732953.
+- 255-264: metadata.
+  - Every field except the DOI comes from the title page and running footer, read with `pdftotext` on 2026-09-14.
+  - The PDF prints no DOI, only the ISSN and the copyright line. PubMed does not index the venue, so the DOI waited for a registry.
+  - Confirmed against Crossref's `api.crossref.org` record on 2026-10-06: the four authors, title and subtitle, *Proc. VLDB Endow.* 7(10):797–808, June 2014, and ISSN 2150-8097 match.
+  - `doi.org` resolves the DOI to the ACM Digital Library.
+  - `www.vldb.org` was still refused at the CONNECT on 2026-10-06.
+- 266-286: what the chart takes.
+  - `docs/MODEL.md` § "What the chart draws" keeps the chord between two drawn instants within one pixel of time; this paper is the published argument, seen from the other side.
+  - Theorem 1 proves `vis_wh(G_M4(T)) = vis_wh(T)` for data grouped into pixel columns. The line visualization of four tuples per column (Definition 2: `min(v)`, `max(v)`, first and last) equals that of the whole series.
+  - Lemmas 1 and 2 prove it: inner-column pixels follow from the column's top and bottom; inter-column lines follow from one column's last tuple and the next column's first.
+  - The chart selects nothing. It evaluates the run at one instant per pixel boundary, so on a stretch that is monotone within the pixel, the boundary values are the column's top and bottom.
+  - Limit 1: the guarantee needs groups aligned to pixel columns (§6: "the engineers have to make sure that nh = w", or any integer factor of w). The chart's grid is anchored to the case's zero, so it claims "within one pixel of time", not pixel identity.
+  - Limit 2: the guarantee needs the min and max tuples of a stretch that turns inside a column, which the chart does not evaluate. An extremum between two dial changes is the one "measured residual", 0.0028 pp at worst over the supported envelope.
+  - Both limits are stated in `docs/MODEL.md`.
+- 288-289: route. Full text read 2026-09-14 for the sections named. §4.3's error taxonomy and §5's query rewriting not read.
+- 291: heading "Katoh et al. 1993 — MAC-awake of sevoflurane and isoflurane".
+- 293-295: holding. Not held here; in the private corpus since 2026-10-26; the owner supplied both papers for `PL-P319`.
+- 297-301: citation 1. Katoh T, Suguro Y, Kimura T, Ikeda K. *Cerebral awakening concentration of sevoflurane and isoflurane predicted during slow and fast alveolar washout.* Anesth Analg 1993;77(5):1012-7. PMID 8214700. DOI 10.1213/00000539-199311000-00024.
+- 303-305: citation 2. Katoh T, Suguro Y, Ikeda T, Kazama T, Ikeda K. *Influence of age on awakening concentrations of sevoflurane and isoflurane.* Anesth Analg 1993;76(2):348-52. PMID 8424514; no DOI given.
+- 307-313: what was taken.
+  - The first paper is the adopted source of the sevoflurane and isoflurane MAC-awake fractions.
+  - Recorded with pages in `docs/references/katoh-1993-anesth-analg-mac-awake-washout.md`: the age-adjusted MAC equations behind the fractions, the slow-washout values, and the form of the brain-uptake calculation.
+  - Both papers read 2026-10-26.
+  - The second paper is a scan and nothing is taken from it; the note says why.
+- 315: heading "Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*".
+- 317-323: holding and access.
+  - Not held here: a publisher-copyright monograph (see "Redistribution").
+  - It has no DOI, and PubMed does not index monographs, so neither usual route reaches it.
+  - Reached by interlibrary loan, the route `.claude/rules/citing-sources.md` now records. The owner placed the request, and the pages arrived inside a day because the request named them.
+- 325-328: citation. Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed Circuit*. Baltimore: Williams & Wilkins; 1981. ISBN 0683052004 (9780683052008). OCLC 6665746.
+- 330-338: route and depth. Read in two instalments, both RapidILL scans supplied by the owner, neither held here.
+  - Instalment 1: pp. 55–60 and 82–84 on 2026-09-08 (`PL-7HDS`). Lender University of Sydney Main Library; borrower University of Wisconsin–Madison Memorial Library. The request was narrowed to pp. 57 and 83 by two second-hand readings.
+  - Instalment 2: pp. 17–21 and 60–66 on 2026-09-10 (`PL-8SDL`). Lender Michigan State University Main Library; same borrower. These hold chapter 4's reference list and chapter 2's derivation of the cardiac-output relation.
+  - Pages outside these ranges were not supplied or read, chapter 2's reference list among them.
+- 340-345: why it is here.
+  - The upstream source that the Gas Man Workbook names for the reference patient's organ volumes and blood flows: the second link in the project's longest provenance chain.
+  - Tier 2, cited but not adopted.
+  - Four findings, held in full in `src/anesthesia_sim/data/patients/reference_adult.json`; "this entry is the pointer, not the record".
+- 347-351: bullet, the model patient is 100 kg, not 70.
+  - Figure 4.1b and every chapter-5 table are tabulated for a 100-kg patient; p. 56 says this is so organ weights read as per cent of body weight.
+  - So the material reaches the project as fractions, and every 70-kg figure is the project's arithmetic.
+- 352-357: bullet, the book cites onward and measures nothing.
+  - P. 56 attributes figure 4.1b to four references, all identified and read (`PL-8SDL`, `PL-LT51`).
+  - Three are uptake-and-distribution models, which consume organ volumes and flows; two of these are the same document one link apart.
+  - So the tier is 2 and cannot become 1.
+- 358-363: bullet, the vessel-rich pair reproduces exactly and uniquely; muscle and fat reproduce under no grouping.
+  - Kidney + heart + brain + liver gives 6.02 L and 76 per cent of cardiac output at 70 kg, against the stored 6.0 and 0.76.
+  - A search of all 1,023 groupings of the book's ten compartments finds no other match, and zero groupings match both stored figures for muscle or for fat.
+- 364-369: bullet, the cardiac-output relation is derived, not measured.
+  - P. 59's 0.2 × M^(3/4) gives 4.84 L/min at 70 kg.
+  - It is built in chapter 2 from Brody's interspecies metabolic allometry, divided by an arteriovenous O2 difference assumed constant across mammals.
+  - It must not be read as a measured human cardiac output; `docs/MODEL.md` § "Known limitations" says so wherever it stands beside a measured value.
+- 371-375: read-it-when and not adopted.
+  - Read it when the provenance of a tissue volume or a perfusion fraction is in question.
+  - Nothing in it is adopted, for the reason in the data file's note: the values that do not reproduce give nothing to adopt, and adopting the two that do would name as authority a compilation "whose own four sources the book never measured".
+- 378: heading "Philip — *Workbook for Gas Man*" (no year).
+- 380-385: holding.
+  - Not held here; in the private corpus `stuthedew/open-anesthesia-sim-references`, attached as § "Where owner-supplied full texts live now" says.
+  - Supplied by the owner 2026-09-15 as five section PDFs.
+  - The manual distributed with the Gas Man program; it has no licence permitting redistribution.
+- 387-389: citation. Philip JH. *Workbook for Gas Man®: a simulation and teaching tool*. Chestnut Hill, MA: Med Man Simulations, Inc. Title page dated 2012-05-16, preface dated October 2010. 199 pages.
+- 391-394: identifiers.
+  - No DOI, ISBN or PubMed record, by design: the document prints none, and PubMed does not index software manuals.
+  - Every field is read off the title page and the preface's sign-off, 2026-09-15.
+- 396-404: title history.
+  - Until 2026-09-15, every `sources` entry under `src/anesthesia_sim/data/` cited "Gas Man(R) Workbook and Laboratory Manual". `PL-XTMB` took that title from the cover and the PDF's `/Title` and `/Author` fields.
+  - The string occurs zero times in the document's 209 pages of text.
+  - The corpus PDFs, rewritten by `pypdf`, carry no `/Title`.
+  - A citation follows the title page; `PL-9GP1` changed the data files to match.
+- 406-415: why it is load-bearing.
+  - Gas Man is the project's reference implementation. The `sources` notes trace the reference patient's eleven parameters and all twelve stored partition coefficients to it.
+  - Before, only "a copy of the front matter and appendices" had been read (`reference_adult.json`, 2026-09-06). That route is neither of the two in `citing-sources.md`, and `PL-XJ5P` recorded it as a gap; the gap is now closed.
+  - "Three things" were found (`PL-9GP1`); none changes a stored value.
+- 417-419: bullet, Appendix B. "The Gas Man Approach", Model Parameters table, p. 168, reads exactly as `reference_adult.json` records it.
+- 420-434: bullet, Appendix C. "Gas Man System Defaults", pp. 171–72.
+  - A verbatim listing of `GASMAN.INI`, and a second statement of the parameter set: `Lambda` (blood/gas) and `VRG`, `MUS`, `FAT` (tissue/gas) per agent, for nine agents, matching all twelve stored coefficients.
+  - It carries three values that Appendix B lacks: `VEN=1.0`, `VA=4`, `CO=5`.
+  - Two notes in `reference_adult.json` were written without this page: one says the venous pool value, carried until 2026-09-07, appears nowhere; the other says the workbook gives no default for alveolar ventilation. Both are true of Appendix B.
+  - The values are program defaults, tier 3.
+  - `PL-9GP1` added Appendix C to those notes and to `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as unsourced. No stored value changed.
+- 435-446: bullet, Chapter 13 "Patient Size", printed p. 127, states the 70 kg reference weight.
+  - Quote: "Values for volumes and flows for a 70 kg patient are those found often in the literature: VA = 4 L/min, CO = 5 L/min, and oxygen consumption = 250 mL/min."
+  - Gas Man scales alveolar ventilation and cardiac output with weight^(3/4), and compartment volumes linearly.
+  - Read 2026-09-30 for `PL-9LXK`, checked 2026-10-26 for `PL-KN5Y`.
+  - It is the page that `reference_adult.json`'s Workbook entry names; tier 3.
+- 447-459: bullet, Appendix C's Volatility line states a temperature.
+  - Read 2026-09-16 for `PL-S6WW`: `Volatility=209 … Vapor/Liquid volume ratio (20'C)`, with "`Volatility=200` in a second listing, printed pp. 171 and 174".
+  - The only place read where the reference implementation states the condition its gas volumes refer to. It is ground 3 of the 20 °C reference condition in `docs/MODEL.md` § "Agent amount".
+  - Settled 2026-10-26 for `PL-KZ99`: 209 is desflurane's line in Appendix C, printed p. 171 (the listing ends p. 172). 200 is not on p. 174 and belongs to no shipped agent; it is in Appendix E's hypothetical agent "Unithane", printed p. 177.
+  - Tier 3.
+- 460-475: bullet, Chapter 14 "Analyzing Cost".
+  - Cost = "the product of delivered volume and unit cost", and delivered volume = "the product of fresh gas flow (FGF) and the vaporizer setting (DEL)" (printed p. 132). Appendix D: `Cost = DELIVERED Flow x Cost/mL vapor` (printed p. 174).
+  - Exercise 14-1: 2% at 8 L/min for 13 min, then 1.5% to 60 min; $2.17 at 13 min, $8.06 at 60 min (pp. 133-134).
+  - Exercise 14-2: 5% at 1 L/min for 13 min, then 2.7% to 60 min; $0.68 and $2.00 (pp. 135-136).
+  - Both use "a bottle cost of US$20.47 per 100 ml", isoflurane's `BottleCost` and `BottleSize` in Appendix C.
+  - The desflurane and sevoflurane exercises print only plots.
+  - Read 2026-10-26 for `PL-KZ99`, whose test reproduces the four costs; `PL-1P15` carries them for the cost readout.
+  - Tier 3: an independent check of the conversion, not its source.
+- 476-486: bullet, how Gas Man takes a price.
+  - Set Cost "Allows you to type in the bottle volume and bottle cost … in the local currency" (printed p. 15). Appendix C labels the value "Bottle cost in $US" (p. 171).
+  - Chapter 14 gives "$78.00 per 100 mL bottle of isoflurane and $70.00 per 240 mL bottle of desflurane on March 5, 2008" (p. 141). Appendix C prices the same bottles at 20.47 and 115.13, and the isoflurane costs reproduce at 20.47.
+  - Read 2026-10-26 for `PL-VJZK`.
+  - `docs/MODEL.md` § "A cost at the reader's price" cites it for a price per bottle, the currency stored as a code, and the price's date.
+- 487-495: bullet, Appendix B's second table is mis-captioned.
+  - Captioned "Tissue/Gas partition coefficients (calculated)", it lists Blood/Gas, Brain/Blood, Muscle/Blood and Fat/Blood rows, which are tissue/blood ratios.
+  - Every column equals the first table's tissue/gas divided by the agent's blood/gas, except isoflurane's, which is divided by 1.90 (enflurane's blood/gas) instead of 1.30.
+  - Appendix C and this repository agree with the first table. Take tissue/gas from the first table or Appendix C, and no isoflurane tissue/blood ratio from the second.
+  - No page given.
+- 496-503: bullet, Appendix B names intertissue diffusion as omitted (pp. 169-70).
+  - Gas Man "does not include the effects of shunts and dead space, intertissue diffusion, incomplete tissue mixing, drug metabolism, or nonpulmonary drug excretion".
+  - Under "Inter-tissue Diffusion": the effect "may occur between fat and muscle" and "has been ignored"; complete mixing is assumed instead, as "a close approximation".
+  - Read 2026-09-26 for `PL-WMCJ`. § "Known limitations" carries what the omission costs the fat compartment.
+- 505-510: bibliography errors.
+  - Ref 45 (Yasuda, Targ, Eger, "Solubility of I-653, Sevoflurane, Isoflurane and Halothane in human tissues", Anesthesiology Vol. A615 (Abstract), 69) is the 1988 abstract, not the 1989 *Anesth Analg* paper of the same title.
+  - Ref 23 gives Lowe's initials as "HF"; refs 22 and 24 give "HJ". The bibliography is inconsistent.
+- 512-516: route.
+  - Section PDFs read with `pdftotext -layout` on 2026-09-15: front matter, table of contents, Appendices A–E and bibliography in full, and every section's boundary pages.
+  - Chapters 1–19 not read beyond those, except Chapter 10's liquid-injection section, p. 127 and pp. 132-141.
+- 518: heading "Schüttler & Schwilden 2008 — *Modern Anesthetics*".
+- 520-527: holding.
+  - Not held here; in the private corpus `stuthedew/open-anesthesia-sim-references`.
+  - Removed from the public repository 2026-09-06 as publisher-copyright material.
+  - Supplied again by the owner 2026-09-15 as eight section PDFs, and placed in the corpus by the owner's decision.
+  - Reachable from outside through the DOI.
+- 529-531: citation. Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008. DOI 10.1007/978-3-540-74806-9.
+- 533-537: why kept. The whole volume, 497 pages, mostly beyond today's model. Kept because of the owner's note on branch `556d454` (2026-08-25): "lots of relevant stuff … for down the road plans like implementing IV and anesthetic depth".
+- 539-543: roadmap. The plans are `ROADMAP.md` planned milestones 13 (IV pharmacokinetic and effect-site models) and 14 (a modular hypnosis/eBIS effect model). The volume is a starting point for sourcing when either is scoped, and "not a source that has been read and checked yet".
+- 545-555: citing a chapter.
+  - Cite a chapter with its own authors, never the volume; every field needed is recorded.
+  - PubMed indexes all 22 chapters as *Handb Exp Pharmacol.* 2008;(182):pages. The volume sits in the issue field, so a search restricted to volume 182 returns nothing.
+  - Each chapter's DOI is `10.1007/978-3-540-74806-9_N`. PMIDs run 18175084 (chapter 1) to 18175105 (chapter 22).
+  - Verified against PubMed 2026-09-15, and again 2026-10-06 through the PubMed MCP server for chapters 1 and 22 and the four below.
+  - The corpus holds the full table; four chapters come first.
+- 557-565: bullet, Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation anesthesia. pp. 159–86. PMID 18175091.
+  - Covers the circle system, why inhaled and IV kinetics are modelled differently, the F_A/F_I curve, the general anesthetic equation, and the delivered-to-inspired discrepancy at low fresh gas flow.
+  - Same two authors as the De Wolf et al. 2012 *BMC Anesthesiology* Gas Man simulation, which every agent file cites at tier 3. That is a different work, four years later, and easy to conflate.
+- 566-567: bullet, Bischoff P, Schneider G, Kochs E. Anesthetics drug pharmacodynamics. pp. 379–408. PMID 18175101.
+- 568-570: bullet, Shafer SL, Stanski DR. Defining depth of anesthesia. pp. 409–23. PMID 18175102. Depth as the probability of non-response, calibrated against stimulus strength.
+- 571-575: bullet, Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and devices for inhalational anesthetic drug dosing. pp. 451–70. PMID 18175104. Covers vaporizers, desflurane's differential-pressure delivery, gas sensing, and closed-circuit feedback.
+- 577-594: route, and what was taken.
+  - Section PDFs read with `pdftotext -layout` on 2026-09-15: front matter, table of contents and boundary pages, plus PubMed metadata and abstracts for all 22 chapters. No chapter read at full text, so nothing may be cited for a value.
+  - For `PL-WMCJ`, 2026-09-26: p. 163, where Eger's five-compartment model adds a lung and an intertissue-diffusion compartment, "hypothesized to be fat adjacent to well-perfused tissues" (citing Carpenter et al. 1986). P. 166, which reads Yasuda's fourth compartment as intertissue diffusion and quotes Hull against assigning tissues to fitted compartments.
+  - For `PL-FBY3`, 2026-09-27: p. 165, on Ishibashi et al. 2006 and Wissing's parameters (Rietbrock et al. 2000). P. 166 again: Ishibashi's parameters relate to cardiac output and demographics in no straightforward way; Wissing calls allocating fitted compartments to tissues "hardly feasible"; compartmental and physiologic models fit equally well (Hendrickx et al. 2006a).
+  - § "Known limitations" cites these pages for description and cautions, for no value.
+- 596: heading "Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber".
+- 598-599: holding. Not held here; in the private corpus.
+- 601-604: citation. Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane, isoflurane, and halothane in plastics and rubber composing a conventional anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID 2764290; no DOI given.
+- 606-611: what was taken. Recorded with pages in `docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md`: the measured system volume, the order of the circuit components' partition coefficients, the ideal wash-in line, and the authors' reading for desflurane. Read in full 2026-09-13; checked 2026-10-26 for `PL-N701`.
+- 613: heading "Yasuda et al. 1991 — the two human kinetics papers".
+- 615-616: holding. Not held here; in the private corpus; the index carries the file names and checksums.
+- 618-622: citation 1. Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S, Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760. DOI 10.1213/00000539-199103000-00007.
+- 624-628: citation 2. Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA, Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.* Anesthesiology 1991;74(3):489-98. PMID 2001028. DOI 10.1097/00000542-199103000-00017.
+- 630-638: what was taken (1).
+  - The 30-minute wash-in and five-minute elimination ratios are the reference values in `tests/reference/test_published_wash_in_and_elimination.py`.
+  - The five-compartment fits are in § "Known limitations" with pages, taken 2026-09-26 for `PL-WMCJ`: the fourth compartment's and fat group's time constant and volume (Tables 4 and 5); the hybrid coefficients and time constants (Tables 1 and 2); each paper's reading of the fourth compartment as fat reached by intertissue diffusion.
+- 640-645: what was taken (2). Taken 2026-09-27 for `PL-HBH2`, and recorded in the fat-perfusion paragraph of the same section and in the Heinonen source entry:
+  - the fat-group blood-flow estimates (Table 5, pp. 322 and 496);
+  - their method, tissue/blood partition coefficient times fitted rate constant (p. 319);
+  - the fitted volumes' shortfall against known values (p. 323);
+  - the post-release activity caveat on the terminal fits (p. 319).
+- 647-655: what was taken (3).
+  - The elimination sampling schedule (p. 317), the hepatic site (elimination from the vessel-rich group, k20, p. 318), and the fitted k20 per agent (Table 3, pp. 321 and 495).
+  - Recorded in `tests/reference/test_late_washout_against_published_fits.py` and § "The first 24 hours of elimination against the published mean curves", 2026-09-27, for `PL-KK1Q`.
+  - The hybrid coefficients and SDs were re-read the same day and match the 2026-09-26 record.
+  - Figures 3 and 4 (multi-day washout, log axes) were read qualitatively; no number taken.
+- 657-663: route.
+  - *Anesth Analg* paper through the text layer, pp. 317-23.
+  - *Anesthesiology* paper, a scan, as page images of pp. 493-96. P. 496 re-read 2026-09-27, and pp. 493-95 re-read the same day for `PL-KK1Q`.
+  - Methods and abstract pages also read: pp. 490, 491, 492, 494 and 497 on 2026-09-13 for `PL-4QCJ`; p. 490 on 2026-10-18 for `PL-R0NL`; pp. 489-91 on 2026-10-26.
+  - Each extraction note below gives its pages.
+- 665-671: what was taken (4).
+  - The F_A/F_I curves during administration (Figure 2, pp. 320 and 493), read from page images 2026-10-18 for `PL-R0NL`, with the wash-in protocol from p. 317 (text layer) and p. 490 (image).
+  - The values, method and reading error are in `docs/references/yasuda-1991-figure-2-wash-in.md`.
+  - The values are `PUBLISHED_WASH_IN_TIME_COURSE` in `tests/reference/test_published_wash_in_and_elimination.py`.
+- 673-677: what was taken (5). The *Anesth Analg* paper's 30-minute wash-in and five-minute elimination ratios, their study, and the methods fact behind its tissue coefficients. Recorded with pages in `docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`, read 2026-10-26 for `PL-Z3V5`.

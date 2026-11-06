@@ -1,0 +1,784 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Planned milestones (run 2 of 3)", rows 8674-9257. Whole section: 5908 words. For: The project owner, or a contributor deciding what to build next
+ 8674 |     **What "reads like the domain" means concretely.** It is not a mapping
+ 8675 |     from symbol to identifier, which was the shape guessed at here before the
+ 8676 |     pass was measured. Identifiers in this project carry their unit or kind
+ 8677 |     (`alveolar_ventilation_l_min`), which a bare symbol cannot do. The
+ 8678 |     compartment object already supplies the subscript, so $`F_A`$ in code is
+ 8679 |     `alveoli.<accessor>` rather than any single identifier. The mapping is
+ 8680 |     therefore from a symbol to an **expression**. It is kept as a fourth
+ 8681 |     column of `docs/MODEL.md` § "Symbols" (`PL-H46J`), which makes the pass
+ 8682 |     both finite and checkable. Beside it sits one name per modelled quantity.
+ 8683 |     `core/` currently gives the partial-pressure-equivalent fraction eight
+ 8684 |     names across four compartments, and `PL-9SH6` collapses them to one.
+ 8685 | 
+ 8686 |     **Whether equations belong in the code or are cited from it.** The answer
+ 8687 |     is both, and the line between them is sharper than "per-case".
+ 8688 |     `docs/MODEL.md` writes the differential equations, while `core/`
+ 8689 |     implements their analytic solutions. The spec carries a solved form in
+ 8690 |     exactly one place. So a docstring that restates the solved form supplies
+ 8691 |     the missing half rather than a second source of truth. The rule is
+ 8692 |     therefore: always cite, restate only the solved form that the spec lacks,
+ 8693 |     and never restate what the spec states (`PL-VZL0`).
+ 8694 | 
+ 8695 |     **How much of the bar is decidable.** There are three rules, and all of
+ 8696 |     them are mechanical. Every Code cell resolves to a real attribute. The
+ 8697 |     retired accessor names never reappear. A partition-coefficient identifier
+ 8698 |     names both phases in order (`PL-FZ6T`). A unit-suffix check was considered
+ 8699 |     and rejected. The suffixes are already near-universal, so the check would
+ 8700 |     be a pure ratchet whose vocabulary needs maintaining. What remains a
+ 8701 |     matter of judgment is the question that the bar is written as: would a
+ 8702 |     reader who knows the domain guess this?
+ 8703 | 
+ 8704 |     **What the sources changed.** The project owner supplied two references
+ 8705 |     during scoping. They settled questions that the pass could not settle from
+ 8706 |     inside the tree. Hendrickx and De Wolf establish that the domain's
+ 8707 |     gas-phase cascade is $`F_D \rightarrow F_I \rightarrow F_A`$ and has no
+ 8708 |     $`F_C`$. So the middle state is named after its container rather than
+ 8709 |     after the clinical quantity. And the $`F_A/F_I`$ curve that this simulator
+ 8710 |     exists to draw has a denominator that cannot be found by name in the code
+ 8711 |     (`PL-3TLK`). Hendrickx and De Wolf also record that in the gas phase
+ 8712 |     "fraction", "concentration" and "partial pressure" are interchangeable.
+ 8713 |     That settles the accessor name, against a convention that distinguishes
+ 8714 |     the three terms. Baker and Farmery name one partition coefficient three
+ 8715 |     different ways within a single chapter. That is why the naming rule for
+ 8716 |     ratios is worth enforcing mechanically rather than leaving to a reader's
+ 8717 |     recall (`PL-212V`).
+ 8718 | 
+ 8719 |     The numerical method changes and the displayed value moves in its last
+ 8720 |     digit, but no capability boundary is crossed. The model, the parameters,
+ 8721 |     the controls and the agents stay the same, and a learner can do nothing
+ 8722 |     that they could not do before. So the step takes a patch version rather
+ 8723 |     than a minor, per "Versioning decision". The paragraph above this one said
+ 8724 |     "no behavior, equation, parameter, or numerical method changes". That was
+ 8725 |     written when item 29 was a naming pass, and the 2026-09-03 re-scope
+ 8726 |     superseded it.
+ 8727 | 
+ 8728 | 30. Add patient factors (age, sex and weight as inputs) so that a learner
+ 8729 |     can see how patient characteristics change the anesthetic. This is a
+ 8730 |     core teaching component, not a later extension. The reference adult in
+ 8731 |     `data/patients/reference_adult.json` is a placeholder for it. The
+ 8732 |     question "how would this differ in this patient" is the one a
+ 8733 |     compartment model exists to answer. Today the application's only
+ 8734 |     statement about patient variability is that there is none.
+ 8735 | 
+ 8736 |     Built-in patient profiles stay read-only. They support a "duplicate and
+ 8737 |     customize" workflow that carries lineage and schema metadata, so that a
+ 8738 |     modified profile can always be traced to the cited profile it was
+ 8739 |     derived from. That requirement predates this item. It used to sit as an
+ 8740 |     unattached sentence at the end of this section, with nothing to own it.
+ 8741 | 
+ 8742 |     *It removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).* The fixed
+ 8743 |     reference adult is one of the two safeguards in `docs/MODEL.md` § "What
+ 8744 |     keeps a real patient's data out of a run". Once age, sex and weight are
+ 8745 |     inputs, a run can be built from a real patient's data. So this item
+ 8746 |     rewrites that section and its hazard row.
+ 8747 |     `test_every_run_simulates_the_shipped_reference_adult` pins the one
+ 8748 |     shipped patient file and the absence of any patient argument or control,
+ 8749 |     so it fails when the inputs land, which makes the rewrite hard to miss.
+ 8750 | 
+ 8751 |     *Body composition defaults, and is editable per case (project owner,
+ 8752 |     2026-09-02).* A case opens with a body composition already set, rather
+ 8753 |     than asking the learner to supply one. The case settings let the learner
+ 8754 |     edit it when changing it is the point of the run. This settles the
+ 8755 |     derivation question below in one direction. The default is *derived*
+ 8756 |     from the case's other patient inputs, so an edit overrides a value that
+ 8757 |     was already there rather than filling a blank. Two consequences follow,
+ 8758 |     and neither is in this item's scope as it currently stands. First, the
+ 8759 |     derived value has to be visible and attributed wherever it acts. The
+ 8760 |     attribution names the rule that produced it, and says whether it is still
+ 8761 |     the default or has been overridden. A silently substituted body composition
+ 8762 |     that moves fat uptake is exactly the plausible-but-unexplained clinical
+ 8763 |     value that the safety standard refuses. Second, an edited composition is
+ 8764 |     a covariate set that nobody sourced. So the supported-range refusal
+ 8765 |     below applies to the edit control exactly as it applies to the input.
+ 8766 |     Accepting a hand-entered composition outside the parameter set's domain
+ 8767 |     is the same failure as extrapolating to it. There is no case-settings
+ 8768 |     surface today. The interface's only patient is the single hard-coded
+ 8769 |     `data/patients/reference_adult.json`. So this paragraph names an
+ 8770 |     intended surface, not an existing one.
+ 8771 | 
+ 8772 |     *MAC basis (project owner, 2026-09-02).* In the release that adds age,
+ 8773 |     `mac_percent` moves to the Mapleson MAC40 basis. Today it uses the flat
+ 8774 |     Gas Man values that the agent files carry: sevoflurane 2.0, isoflurane
+ 8775 |     1.2 and desflurane 6.0. Nickalls and Mapleson (Br J Anaesth
+ 8776 |     2003;91(2):170-4) is already cited in all three of `data/agents/*.json`.
+ 8777 |     Each file has a note recording that the paper is *not* used, because
+ 8778 |     this model has no age parameter. This change makes that note live. Their
+ 8779 |     meta-analysis has log10 MAC falling linearly, and in parallel for every
+ 8780 |     inhaled agent, at about 6% per decade for age >= 1 year. MAC is
+ 8781 |     expressed relative to its value at 40 years. MAC40 is reported as 1.17%
+ 8782 |     isoflurane, 1.80% sevoflurane and 6.60% desflurane. Confirm these
+ 8783 |     figures against the primary paper when this is scoped, rather than
+ 8784 |     copying them from here. That is the provenance standard that every other
+ 8785 |     parameter in `data/` must meet. These are not the values the files
+ 8786 |     carry, so the displayed MAC changes at every age, *including* 40. This
+ 8787 |     is therefore a parameter-set change that needs a provenance row and a
+ 8788 |     release note, not a new input field. It lands after `PL-DHV7` (MAC
+ 8789 |     multiples as a display unit). An age-adjusted MAC with no MAC unit to
+ 8790 |     show it in changes nothing a learner sees.
+ 8791 | 
+ 8792 |     *Placement (project owner, 2026-09-02).* Phase 1, ahead of the substance
+ 8793 |     generalization. That generalization is this plan's stated known risk,
+ 8794 |     and the most likely place for the work to stall. A core teaching
+ 8795 |     component does not belong behind it. Also, once compartments hold N
+ 8796 |     substances, changing how compartment volumes and flows are *derived*
+ 8797 |     touches N times as much surface. The same argument already places item
+ 8798 |     29 ahead of that work.
+ 8799 | 
+ 8800 |     *Scaling: not through body composition (project owner, 2026-09-02).*
+ 8801 |     Weight scales the compartments directly. Another route was proposed and
+ 8802 |     declined. In that route, weight, height and sex would first produce a
+ 8803 |     body-composition estimate, and that estimate would scale the
+ 8804 |     compartments. Sex is therefore a covariate in its own right, not
+ 8805 |     something that acts through fat mass.
+ 8806 | 
+ 8807 |     The trade is worth recording rather than arguing, because scoping will
+ 8808 |     meet it. Fat is the pivotal compartment for volatile agents. Its
+ 8809 |     tissue:gas coefficients are 34 for sevoflurane, 70 for isoflurane and 13
+ 8810 |     for desflurane. So between two patients of the same mass and different
+ 8811 |     composition, the fat compartment is what separates them. A rule keyed on
+ 8812 |     total mass cannot express that difference. What the direct route buys is
+ 8813 |     one fewer layer of unsourced derivation. A body-composition estimate
+ 8814 |     needs its own formula, with its own provenance. An unsourced scalar in
+ 8815 |     front of the dominant compartment is the
+ 8816 |     "plausible but incorrect clinical value" that `CLAUDE.md` forbids. It is
+ 8817 |     that just as surely as having no scalar at all. Whichever rule is
+ 8818 |     chosen, it is sourced before it ships. `Weber et al. 2021` is already
+ 8819 |     cited in `data/patients/reference_adult.json`. It explores the obese case with
+ 8820 |     the same reference simulator that this project draws its parameters
+ 8821 |     from, and scoping should start reading there.
+ 8822 | 
+ 8823 |     *Cardiac output is one of the quantities that scales, and the scaling is a
+ 8824 |     coupled package (`PL-YKSM`, 2026-09-08).* The decision above settles what
+ 8825 |     weight acts *through*. This one settles which quantities "weight scales
+ 8826 |     the compartments directly" has to include. A time constant here is
+ 8827 |     $`V_i \lambda_{i:b} / Q_i`$. Suppose a rule scales the flows but leaves
+ 8828 |     the compartment volumes at the fixed litres this project stores. Then
+ 8829 |     $`\tau \propto M^{-3/4}`$, so a heavier patient equilibrates faster and
+ 8830 |     a lighter one more slowly. Worked at 20 kg against the shipped
+ 8831 |     sevoflurane coefficients, that rule gives a child **2.64 times** the
+ 8832 |     adult's time constants. Every textbook has the effect running the other
+ 8833 |     way. When volumes scale with the flows, the figure is **0.76
+ 8834 |     times**, and when nothing scales at all it is **1.00**. The half-measure
+ 8835 |     is further from the truth than the status quo. So compartment volumes,
+ 8836 |     alveolar gas volume, alveolar ventilation and the perfusion fractions
+ 8837 |     move together with cardiac output and the tissue flows, or none of them
+ 8838 |     moves. `PL-YKSM` carries the arithmetic and the alternative it refused.
+ 8839 | 
+ 8840 |     This is recorded here, and not only in `docs/MODEL.md`
+ 8841 |     "Known limitations" and in `reference_adult.json`'s Cattermole note. Those two
+ 8842 |     places are where a reader of the stored *value* meets it. It is recorded
+ 8843 |     here because the session that scopes this milestone reads this item. The
+ 8844 |     failure it guards against has two parts. That session might scope
+ 8845 |     weight as "cardiac output becomes a function of weight", which is
+ 8846 |     exactly the change `PL-YKSM` examined and refused. It might then ship a
+ 8847 |     paediatric patient whose kinetics are wrong in the most-taught
+ 8848 |     direction. The trade is one paragraph now against a rebuild later.
+ 8849 | 
+ 8850 |     *A suggestion for scoping rather than a decision: prefer measured
+ 8851 |     weight-banded normal ranges to an allometric formula for the default.* The
+ 8852 |     learner sees the default, not the law that generated it. Cattermole et
+ 8853 |     al. 2017 is already cited in `data/patients/reference_adult.json`. It
+ 8854 |     reports 2218 healthy subjects aged 0.5 to 89, by weight band. It is a
+ 8855 |     measurement of the quantity, not a scaling exponent applied to one. It
+ 8856 |     is not free of the provenance problem it would solve, and scoping has to
+ 8857 |     weigh that. Its subjects are awake, supine and at rest. They were
+ 8858 |     measured by transcutaneous Doppler rather than thermodilution, and the
+ 8859 |     authors state that normal ranges are method-specific. That is why the
+ 8860 |     file cites the paper and does not adopt it. Adopting it as a default
+ 8861 |     would be its own recorded decision under § "Source hierarchy", on the
+ 8862 |     same terms as every other value in `data/`.
+ 8863 | 
+ 8864 |     *An out-of-range covariate: agreed in principle, cutoffs unresearched
+ 8865 |     (project owner, 2026-09-02).* The right shape is accepted: bound each
+ 8866 |     covariate, and report when one is outside its bound by blocking, logging
+ 8867 |     or both. What is **not** settled is where any cutoff sits. No number is
+ 8868 |     written into `core/` until it is researched and sourced on the same
+ 8869 |     terms as every other value in `data/`. A bound invented just to have a
+ 8870 |     bound would refuse the paediatric or obese case that a learner most
+ 8871 |     wants, on a number nobody can cite. That is worse than no bound at all.
+ 8872 | 
+ 8873 |     So this is a research question before it is an implementation question.
+ 8874 |     It is part of scoping this milestone, not a queue item that could be
+ 8875 |     picked up ahead of it. Two things frame it. First, `core/supported_ranges.py`
+ 8876 |     is the nearest pattern, and its argument still applies. A silently
+ 8877 |     extrapolated patient would simulate, display and chart a value that the
+ 8878 |     parameter set cannot support. Second, it is not the same case. The four
+ 8879 |     quantities that module covers are operating settings inside a run, where
+ 8880 |     refusing a value costs nothing. A covariate defines the case itself.
+ 8881 |     Refusing to construct a 3 kg or a 200 kg patient refuses the question
+ 8882 |     that a learner came with. That asymmetry is why the mechanism is open
+ 8883 |     rather than inherited.
+ 8884 | 
+ 8885 |     *The teaching payoff needs item 11.* A single trace cannot show an
+ 8886 |     effect, because the contrast is the lesson. So what this milestone is
+ 8887 |     *for* arrives in full only with side-by-side comparison (item 11) and
+ 8888 |     the two-run rendering that `PL-B9PY` covers. That is a reason to scope
+ 8889 |     item 11 knowing that this is one of its uses. It is not a reason to keep
+ 8890 |     this item waiting behind item 11.
+ 8891 | 
+ 8892 | 31. Ship a primary-literature partition-coefficient set alongside the Gas Man
+ 8893 |     set, and make the two selectable. Then one case can be run under both,
+ 8894 |     and the difference read off the same axes. Building the primary set is
+ 8895 |     the prerequisite and the larger half of the work. `vessel_rich` is a
+ 8896 |     lumped compartment, while Yasuda 1989 reports coefficients per organ. So
+ 8897 |     a scheme for weighting the organs in the group has to be constructed and
+ 8898 |     justified before any tissue value may be called primary. Shipping both
+ 8899 |     sets, rather than replacing one with the other, is the point. The
+ 8900 |     question "how much does the parameter set matter?" is one that no
+ 8901 |     commercial simulator lets a resident ask. Comparing the two sets teaches
+ 8902 |     the provenance lesson better than any note in a data file can.
+ 8903 |     `PL-D6LX` carries the analysis and the verified primary values. The
+ 8904 |     project owner chose this route on 2026-09-03.
+ 8905 | 
+ 8906 | Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
+ 8907 | milestone and delivered as v0.2.0, so it no longer appears here. See
+ 8908 | § "Completed: v0.2.0" above. Further volatile agents beyond isoflurane and
+ 8909 | desflurane remain an unscoped later idea: halothane, enflurane, ether and
+ 8910 | xenon. Nitrous oxide is not among them, because items 6-7 above cover it.
+ 8911 | The idea will be added back here as its own item once someone is ready to
+ 8912 | scope it.
+ 8913 | 
+ 8914 | 32. Make the repository presentable to a first-time visitor, in one pass. On
+ 8915 |     2026-09-05 the project owner deferred the README rewrite to this pass,
+ 8916 |     rather than running it as soon as its scope was settled. The owner
+ 8917 |     expects a number of similar human-facing pieces to collect at the same
+ 8918 |     point. Written for one reader over one week, they cohere in a way that
+ 8919 |     the same documents written one at a time over months do not.
+ 8920 | 
+ 8921 |     **The repository went public before this pass, not after** (project owner,
+ 8922 |     2026-09-05: "public today. Will do human facing pass in the nearish
+ 8923 |     future."). So this is no longer a gate, and it blocks nothing. `PL-XYRN`
+ 8924 |     is closed against that decision. `PL-N092` (rewrite README as a
+ 8925 |     human-readable introduction) then ran on its own on 2026-09-06, rather
+ 8926 |     than waiting for the pass. The reason for deferring it was that these
+ 8927 |     documents cohere when written together. The reason not to wait was that
+ 8928 |     a stranger could already arrive at a repository with no `README.md` at
+ 8929 |     all. So the root `README.md` exists again, written for the two audiences
+ 8930 |     that `PL-RM83` settled. The check that enforced its absence retired
+ 8931 |     itself in the same commit.
+ 8932 | 
+ 8933 |     **What is left here is the rest of what a first-time visitor meets**: this
+ 8934 |     item's original scope, minus the README. Nothing brings it to anyone's
+ 8935 |     attention. Nothing is blocked on it, and no check reports it. So it waits
+ 8936 |     for a session that offers to scope this milestone, or for the owner to
+ 8937 |     ask.
+ 8938 | 
+ 8939 | 33. Run the interface pass. This is one deliberate visual design pass over
+ 8940 |     the whole interface: palette, type scale, spacing rhythm, density and the
+ 8941 |     visual composition of each surface. It is one pass, instead of the
+ 8942 |     per-defect corrections that the queue has been making one at a time.
+ 8943 | 
+ 8944 |     The project owner requested it on 2026-09-08. The owner framed it as "a
+ 8945 |     decent size overhaul (theme, style, overall polish)" and as not urgent,
+ 8946 |     wanted after the simulator works rather than before.
+ 8947 | 
+ 8948 |     *Arrangement is not on that list, and the word that used to be was
+ 8949 |     "layout"* (corrected 2026-09-16, `PL-BNYF`). Item 34's entire content is
+ 8950 |     which areas exist, where they sit, and what a reader may do to them.
+ 8951 |     This item decides how the contents of those areas look. The two were
+ 8952 |     separable on 2026-09-08, when this item was written against one fixed
+ 8953 |     screen. They are not separable any more. Under item 34 the arrangement
+ 8954 |     belongs to the *reader*, so it is not something a design pass can decide
+ 8955 |     once.
+ 8956 | 
+ 8957 |     *This resumes a shelved thread rather than opening a new one.*
+ 8958 |     `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form mockups" records a
+ 8959 |     mockup round. The round was explored and then shelved on the owner's
+ 8960 |     call, and the note closes with "Do not resume this without the project
+ 8961 |     owner asking again". That condition is now met. The note reasons that a
+ 8962 |     mature UI could not be designed on the functionality then available.
+ 8963 |     That reasoning was written against v0.1.0, so it is a statement about
+ 8964 |     that baseline and not about today. The principle beside it is that UI/UX
+ 8965 |     ambition follows the maturity of the scientific core. That principle is
+ 8966 |     what places this item after MVP. Per the note, the three artefacts from
+ 8967 |     that round are explicitly not a starting point.
+ 8968 | 
+ 8969 |     *Placement (project owner, 2026-09-08; moved 2026-09-16; renumbered
+ 8970 |     2026-09-26).* After v0.6.0, as the `v0.6.x — the interface pass` row of
+ 8971 |     "The timeline". It is a patch track rather than a numbered milestone, for
+ 8972 |     the reason that row gives.
+ 8973 | 
+ 8974 |     *It runs after item 34 rather than before it* (project owner, 2026-09-16,
+ 8975 |     ratified on `PL-PHKP` - chosen over leaving it between MVP and Gate 2,
+ 8976 |     where 2026-09-08 had placed it). **The reason is that the pass has more to
+ 8977 |     style after item 34 than before it, and would otherwise be partly redone.**
+ 8978 |     Item 34 and break-out introduce an area header, a workspace tab strip, a
+ 8979 |     live splitter handle and a drag affordance. None of these exists today.
+ 8980 |     The header belongs to the *View*, not to the container.
+ 8981 |     `docs/interface-provenance.md` § "What an editor must implement"
+ 8982 |     establishes that from the source. A pass run first would decide palette,
+ 8983 |     type scale and spacing for one set of surfaces, and then meet four more.
+ 8984 | 
+ 8985 |     *Renumbered `v0.6.x`, 2026-09-26* (`PL-V1Y7`). That happened when
+ 8986 |     break-out came off the timeline (project owner, 2026-09-26) and this row
+ 8987 |     came to follow v0.6.0 directly, as `v0.7.x` had followed break-out's
+ 8988 |     release. The reason above survives the change, because all four surfaces
+ 8989 |     it names arrive in item 34's tiled half. The live splitter handle, the
+ 8990 |     drag affordance and the Workspace tab strip are v0.6.0's Required scope
+ 8991 |     entry 14. The area header comes with the View contract and with each
+ 8992 |     Area's own chooser, entries 5 and 16. Whenever break-out is built, it
+ 8993 |     adds windows that carry that same chrome. Styling anything else it adds
+ 8994 |     is that build's own work. What moved is the cost recorded below, which
+ 8995 |     is now one release rather than two.
+ 8996 | 
+ 8997 |     **What the other side bought, recorded because it was real.** Running the
+ 8998 |     pass first would have given a styled interface two releases sooner.
+ 8999 |     `PL-BNYF` had already separated the two questions: arrangement is item
+ 9000 |     34's, and appearance is this row's. So the visual composition of each
+ 9001 |     *existing* surface would mostly have survived being rearranged. The cost
+ 9002 |     accepted is that the interface keeps its current visual language until
+ 9003 |     after item 34. Nothing in either release was blocked on the answer
+ 9004 |     either way. That is why the row was left in place while the question was
+ 9005 |     open, rather than moved on a guess.
+ 9006 | 
+ 9007 |     *Absorbed into the Qt port on 2026-09-10 and returned here on 2026-09-16*
+ 9008 |     (project owner, 2026-09-16, ratified, on `PL-L9RD`). The port took this item on the argument
+ 9009 |     that it would redecide palette, type scale, spacing and layout anyway.
+ 9010 |     Measured after it landed, it changed no palette entry, type size,
+ 9011 |     padding or radius at all. The reversal deliberately leaves one piece
+ 9012 |     behind. The port reserves the layout containers with their splitter
+ 9013 |     handles inert
+ 9014 |     (§ "Completed: v0.4.26 - the interface moves to Qt" → "Required scope"
+ 9015 |     item 2), and **item 34** is what turns them live. This was corrected on
+ 9016 |     2026-09-16 (`PL-BNYF`). This entry had said "this item", where item 34's
+ 9017 |     own entry and the port's `Required scope` item 2 both name item 34. What
+ 9018 |     this item inherits from the reservation is its *other* half. Every
+ 9019 |     dashboard surface is now an independent widget with its own spacing and
+ 9020 |     density, and that is what makes one pass over them possible at all.
+ 9021 |     This item inherits none of the splitting, joining or workspace
+ 9022 |     behaviour. So the placement above still applies, unchanged. The point to
+ 9023 |     read before scoping this is that a port is not a design round.
+ 9024 |     Re-expressing widgets in a new toolkit does not decide anything about
+ 9025 |     how they should look.
+ 9026 | 
+ 9027 |     *The structural half is not part of this item, and it has landed.* Most of
+ 9028 |     what an overhaul looks like from outside is not polish, and all three
+ 9029 |     pieces of that structural work are now closed. `PL-2CS8` consolidated the
+ 9030 |     display constants in `v0.4.11`. Item 24 had named that work as its own
+ 9031 |     prerequisite, and "Development pathway" Phase 2 orders it first.
+ 9032 |     `PL-B9PY` is the decomposition, in `v0.4.25`. It is also the component
+ 9033 |     seam that makes the six repeated panel recipes into one. `PL-NGF7`
+ 9034 |     settled the theme-object question in `v0.4.26`. The Qt port did not
+ 9035 |     dissolve that question. The deferral had predicted that it would, and
+ 9036 |     the item measured that prediction and found it false. Instead, the item
+ 9037 |     scoped what the stylesheet owns. It also added the check that fails the
+ 9038 |     build the moment a module under `app/` writes a colour outside that
+ 9039 |     scope. None of the three is debt that any gate still has to clear. What
+ 9040 |     is left for this item is the part that is genuinely taste.
+ 9041 | 
+ 9042 |     *Two hard prerequisites, and they are the reason this cannot simply be
+ 9043 |     started.* Nothing in this repository draws the interface. `PL-7J96`
+ 9044 |     records two defects that shipped while every tree-level test passed. A
+ 9045 |     required label wrapped mid-phrase, and four of seven readouts dropped to
+ 9046 |     a second baseline at some widths. Both were found only by
+ 9047 |     screenshotting, and neither could be detected from the control tree that
+ 9048 |     the suite reads. `PL-2QMK` records that no session in the web container
+ 9049 |     can render Flet at all, because the egress proxy refuses the CanvasKit
+ 9050 |     fetch. A visual pass is the one class of change that the suite
+ 9051 |     structurally cannot see, so both prerequisites land first.
+ 9052 | 
+ 9053 |     *Three constraints on any palette, recorded here so scoping does not
+ 9054 |     rediscover them.* `tools/contrast_check.py` parses every module under
+ 9055 |     `app/` with `ast` (`PL-BXB2`). It requires every declared pair to meet
+ 9056 |     WCAG 2.2 AA under four vision models. It fails the build on a renamed or
+ 9057 |     undeclared colour constant. So a restyle is also a `REQUIREMENTS`
+ 9058 |     rewrite, in the same change, per `.claude/rules/ui-color.md` judgment 1.
+ 9059 |     The three ISO 5360:2016 Table 2 agent colours are fixed and not
+ 9060 |     available to move (judgment 4). A palette has to live with them, and
+ 9061 |     keep them legible on whatever surface it puts behind them. Trace
+ 9062 |     separation is carried by dash pattern, not by colour. `PL-GVXP` measured
+ 9063 |     the pairwise ceiling at about 1.48, once each of six traces must also
+ 9064 |     clear 3:1 against the panel. So re-picking the chart palette cannot buy
+ 9065 |     what it appears to. A session that attempts it is solving a problem that
+ 9066 |     has no solution in that channel.
+ 9067 | 
+ 9068 |     *Out of scope, and deliberately.* Dark mode is a separate decision. It
+ 9069 |     doubles the declared contrast matrix, and the ISO colours were chosen for
+ 9070 |     a light context. It belongs to scoping this milestone rather than to this
+ 9071 |     line. So does the publication-quality figure export that
+ 9072 |     `docs/WORKING_NOTES.md` § "Long-term vision" describes. That export
+ 9073 |     implies its own rendering path, separate from the Flet live chart, and it
+ 9074 |     is a capability rather than a restyle.
+ 9075 | 
+ 9076 | 34. Take Blender's window management as the model for the interface. The
+ 9077 |     application window is divided into resizable, modular areas, and each area
+ 9078 |     holds one view. Task-oriented layout presets let the learner switch between
+ 9079 |     layouts, customize them and save them.
+ 9080 | 
+ 9081 |     *Requested by the project owner, 2026-09-12*. The request named four
+ 9082 |     properties: resizable windows, modular views, presets for tasks, and
+ 9083 |     presets that the user can customize and save, rather than a fixed set
+ 9084 |     shipped with the application.
+ 9085 | 
+ 9086 |     *Why Blender specifically, and what is worth copying.* Blender's window
+ 9087 |     system is **tiling**, not floating. The window is subdivided into resizable
+ 9088 |     areas that do not overlap, and each area hosts one view. The user splits
+ 9089 |     and joins areas from their corners and borders. Areas are grouped into
+ 9090 |     **Workspaces**. Workspaces are presented as tabs, and each one is geared to
+ 9091 |     a task. The user can reorder, duplicate and delete them. A layout persists
+ 9092 |     when it is saved into the startup file. The tiling half earns its place
+ 9093 |     here on merit, not on taste. A tiled layout has no overlapping or hidden
+ 9094 |     panels. On this application's dashboard, a covered value is a misread
+ 9095 |     value, and `CLAUDE.md`'s standard treats a misread value as a safety
+ 9096 |     failure rather than an inconvenience. See the Blender Manual, "Interface →
+ 9097 |     Window System → Areas" and "→ Workspaces".
+ 9098 | 
+ 9099 |     *The vocabulary is Blender's, and it is the concept rather than a
+ 9100 |     resemblance* (project owner, 2026-09-16: "the workspace/area concept ...
+ 9101 |     is what I want to implement"). The terms were read at the source. The
+ 9102 |     manual's "Areas" and "Workspaces" pages were supplied directly, because the
+ 9103 |     session egress proxy refused `docs.blender.org` when this was written,
+ 9104 |     though the host answered a probe on 2026-09-26 (`PL-M701`). This project uses
+ 9105 |     three terms, and two of them are adopted from Blender rather than invented:
+ 9106 | 
+ 9107 |     - An **Area** is a rectangle that reserves screen space. It holds one
+ 9108 |       thing and nothing else, and areas never overlap.
+ 9109 |     - A **View** is what occupies an area. The view is the part that has the
+ 9110 |       functionality. Item 36 is the catalogue of views.
+ 9111 |     - A **Workspace** is a set of areas that contain views. Each workspace is
+ 9112 |       geared to a task, and the user switches between workspaces as tabs.
+ 9113 |       Blender puts the tabs in the Topbar and saves workspaces in the file. It
+ 9114 |       also lets a custom set of workspaces become the defaults.
+ 9115 | 
+ 9116 |     **Docking** is the manual's word for the corner-drag operations. The set of
+ 9117 |     operations is larger than "split and join". Dragging from an area corner
+ 9118 |     can join two areas, split one, or do both at once. Dragged into the middle
+ 9119 |     of a second area, it *replaces* that area. Areas can also swap. Adjacent
+ 9120 |     areas swap through the border's Area Options, and any two areas in a window
+ 9121 |     swap through Ctrl-LMB from a corner. Resizing is a border drag. Modifier
+ 9122 |     keys snap the border, or move aligned borders together with it.
+ 9123 | 
+ 9124 |     **Two precedents worth copying, both from the source.** Blender refuses to
+ 9125 |     delete the last workspace. It enforces this minimum structurally rather
+ 9126 |     than by a warning, which is the same shape `PL-WLWY` settled for the
+ 9127 |     minimum display. A workspace also carries *settings*, not only a layout.
+ 9128 |     Pin Scene makes activating a workspace switch back to the scene that the
+ 9129 |     workspace remembers. The equivalent here is a workspace that pins which
+ 9130 |     **run** it shows. That is exactly what a broken-out window needs in order
+ 9131 |     to name its run.
+ 9132 | 
+ 9133 |     *Tiled first, with break-out into a separate window* (project owner,
+ 9134 |     2026-09-15). **Scoped across two releases on 2026-09-16**. § "v0.6.0 - the
+ 9135 |     layout is the reader's" (ratified 2026-09-16) builds the tiled no-overlap
+ 9136 |     invariant, the View contract, the registry, workspaces, persistence and the
+ 9137 |     unconditional region. Break-out occupied the release after it,
+ 9138 |     "the second screen", until it came off the timeline on 2026-09-26 (see
+ 9139 |     below). The split costs nothing structural. Break-out would otherwise force
+ 9140 |     a rewrite of two things, and v0.6.0 builds both of them. First, the
+ 9141 |     serialized layout root carries a set of windows from version 1. Second, the
+ 9142 |     unconditional region is built in the per-window shape that the next
+ 9143 |     paragraph settles. Together, the two halves build the no-overlap invariant
+ 9144 |     above plus break-out. Break-out lets an area be taken into **its own
+ 9145 |     top-level window**, which is itself a full window with its own areas. The
+ 9146 |     Blender Manual's "Areas" page documents this as *View > Duplicate Area into
+ 9147 |     New Window*, or Shift-LMB on an area's splitter widget. The manual
+ 9148 |     describes the result as a fully functional window that belongs to the same
+ 9149 |     running instance and is useful across multiple monitors. Every window is
+ 9150 |     then tiled, so nothing inside a window covers anything else in it.
+ 9151 | 
+ 9152 |     *What is refused is silent occlusion, not floating* (project owner,
+ 9153 |     2026-09-15, correcting this paragraph's first form). **Floating is
+ 9154 |     deliberately not foreclosed.** The option to take a tiled area out into a
+ 9155 |     floating one is wanted later. This milestone simply does not build it yet.
+ 9156 |     The first version of this paragraph recorded floating panels as
+ 9157 |     "not admitted". That was a permanent refusal, and it was the writing session's
+ 9158 |     overreach rather than a decision anybody took. Tiled first is only the
+ 9159 |     order of work. It is not a rule that floating is never allowed.
+ 9160 | 
+ 9161 |     The safety argument actually supports a narrower rule, and that rule
+ 9162 |     outlives whichever mechanism arrives: **nothing may cover a value the
+ 9163 |     display is required to show while the application still believes it is
+ 9164 |     showing it.** A floating panel over the dashboard is one way to cover such
+ 9165 |     a value. A broken-out window dragged back over the main window is another.
+ 9166 |     That is why the constraint belongs to the display rather than to a window
+ 9167 |     type. It is stated once, instead of being argued again for each mechanism.
+ 9168 |     **It is settled** (`PL-WLWY`, project owner, 2026-09-15), in
+ 9169 |     `docs/MODEL.md` § "Minimum displayed outputs" ->
+ 9170 |     "What this list requires once the layout is the reader's". That list now
+ 9171 |     divides into three parts.
+ 9172 |     The first is an **unconditional** set that no workspace may remove and
+ 9173 |     nothing may cover. This set is stated as a test rather than a list. It has
+ 9174 |     an invariant tier and a tier instantiated for each modelled substance. So
+ 9175 |     the inhaled agent's concentrations and MAC are today's instance and not a
+ 9176 |     permanent requirement (project owner, 2026-09-16). The second part is an
+ 9177 |     **accounting** set that must stay reachable rather than simultaneously
+ 9178 |     visible. The third part is **conditional** obligations, which apply to a
+ 9179 |     surface only when that surface is shown. So removing a chart removes no
+ 9180 |     required value, because the numbers never left. The unconditional set sits
+ 9181 |     outside the area system, and keeping it there is the guarantee that v0.6.0
+ 9182 |     has to build. **What a second top-level window owes that set is settled
+ 9183 |     too** (project owner, 2026-09-16, ratified, answering `PL-W54S`, chosen
+ 9184 |     over that item's own two live readings). Every top-level window carries
+ 9185 |     the *invariant* tier and the name of the run it shows. The *per-substance*
+ 9186 |     tier appears once, in a main window that cannot be closed while any other
+ 9187 |     window is open. The two tiers are unconditional for different reasons, and
+ 9188 |     those reasons carry over to a second window differently. That is why the
+ 9189 |     tiers are allocated to windows differently. `docs/MODEL.md` carries the
+ 9190 |     argument, the two readings it refused, and the limit on which occlusion
+ 9191 |     any application can observe. This decision is recorded before break-out
+ 9192 |     is built, because it decides the shape in which v0.6.0 builds the region.
+ 9193 |     Any later floating mechanism must comply with the occlusion rule, rather
+ 9194 |     than being ruled out ahead of time. The division of the list is recorded
+ 9195 |     as **a stepping stone**. It is deliberately the rigid version while the
+ 9196 |     layout apparatus is built, and it is expected to be revisited as the
+ 9197 |     apparatus matures. The occlusion rule is the part that must survive a
+ 9198 |     revision.
+ 9199 | 
+ 9200 |     *The licence constraint, and it runs the opposite way for the two kinds of
+ 9201 |     source.* `docs/interface-provenance.md` is the record. It holds the study
+ 9202 |     protocol, what was read, what this project adopts and what it deliberately
+ 9203 |     does differently. A session building the layout should start there. In
+ 9204 |     short, Blender's source files are GPL-2.0-or-later (the work as a whole is
+ 9205 |     GPL-3.0-or-later), and this project is Apache-2.0. So **reading the source
+ 9206 |     is unrestricted**, because GPLv2 s.0 puts activities other than copying,
+ 9207 |     distribution and modification outside the licence's scope. Copying,
+ 9208 |     translating or porting the source into this tree is restricted, and doing
+ 9209 |     so would make the stated licence wrong. But the constraint that matters in
+ 9210 |     practice is the other one. The **Blender Manual and Developer
+ 9211 |     Documentation, including the Human Interface Guidelines, are CC-BY-SA
+ 9212 |     4.0**. Pasting their prose *is* copying, whereas reading source is not.
+ 9213 |     **Paraphrase and cite, and never paste** (`PL-P5QX`). The design rationale
+ 9214 |     that this project wants is in the Developer Docs and the HIG, not in the
+ 9215 |     Manual, which documents behaviour for users. Qt supplies the primitives
+ 9216 |     directly in any case: nested `QSplitter` for the tiling, and a project file
+ 9217 |     for a named preset.
+ 9218 | 
+ 9219 |     *The layout is a nested-splitter tree, and Blender's own shipped layouts are
+ 9220 |     what settled it* (`PL-3J2P`, decided 2026-09-16 on the research that the
+ 9221 |     project owner asked for before the decision was fixed). The question was
+ 9222 |     how to store the layout. One option was Blender's shared-vertex graph, in
+ 9223 |     which each area names four corner points and neighbouring areas share
+ 9224 |     them. The other option was nested splitters. The question was settled by
+ 9225 |     measurement rather than argument, against a threshold written down first.
+ 9226 |     **Across all 32 workspaces Blender ships** (11 defaults and 21 in its five
+ 9227 |     application templates), **none uses an arrangement a splitter tree cannot
+ 9228 |     express**. Exactly one contains a four-way junction. At that junction the
+ 9229 |     tree must split one of the two crossing borders into two handles. The two
+ 9230 |     behaviours that a tree cannot express are both opt-in. Extend-drag is the
+ 9231 |     Shift key on the border drag, and snap-merge is a separate operator on the
+ 9232 |     border's right-click menu.
+ 9233 | 
+ 9234 |     One supporting argument did **not** survive the research, and the decision
+ 9235 |     is recorded without it. A splitter tree is **strictly less expressive**
+ 9236 |     than Blender's representation. Five full-span splits and one ordinary join
+ 9237 |     reach a five-area pinwheel, and no sequence of full-span cuts can produce
+ 9238 |     that pinwheel. So the tree is chosen in the knowledge that it gives
+ 9239 |     something up. There are four grounds for the choice. Blender's own
+ 9240 |     designers never used the extra expressiveness in 32 shipped layouts. This
+ 9241 |     audience picks a workspace rather than authoring one. The tree's limit
+ 9242 |     shows up as a **join being unavailable** rather than as a wrong value. And
+ 9243 |     a planar subdivision is owned by one person forever.
+ 9244 |     `docs/interface-provenance.md` carries the count, the method, the
+ 9245 |     construction and the condition under which this decision reverses.
+ 9246 | 
+ 9247 |     *The container sits behind a layout model of this project's own*
+ 9248 |     (`PL-C842`, recommended 2026-09-16 with the review of Blender behind it,
+ 9249 |     and the owner delegated the architecture call). The negative half was
+ 9250 |     settled by measurement, and the research did not overturn it.
+ 9251 |     `QSplitter.saveState()` returns 35 opaque bytes that carry sizes and a
+ 9252 |     child count. It **cannot record which view occupies which pane**, and that
+ 9253 |     mapping is the whole of what a named workspace is. Restoring a three-child
+ 9254 |     state into a two-child splitter **returns `True`** with sizes `[318, 318]`
+ 9255 |     rather than failing. That last behaviour is disqualifying on this file's
+ 9256 |     own standard, which prefers an obvious failure to a plausible-looking wrong
+ 9257 |     result.

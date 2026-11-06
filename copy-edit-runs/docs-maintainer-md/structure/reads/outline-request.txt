@@ -1,0 +1,655 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of an outline. The reverse outlines of every chapter of one document follow, in order, as passage 1. Report only what crosses chapters.
+
+Readers of docs/maintainer.md:
+  - A later session, or the owner reading the history.
+    Knows: Python, anesthesia, and this repository's rules.
+    Does not know: What the writing session knew and did not write down.
+    Will: Pick up the work, or find out why a change was made.
+
+[1] docs/maintainer.md, the outlines of its 16 chapters. For: A later session, or the owner reading the history
+Chapter: docs/maintainer.md § "Notes for the project owner", rows 1-7
+  - Row 1: the heading and document title, "Notes for the project owner".
+  - Rows 3-7: who the document is for, and why it is a separate file.
+    - Everything in the document is addressed to the person running the sessions, not to the sessions themselves.
+    - For that reason, the document is kept outside `CLAUDE.md`.
+    - The reason: every session pays the context cost of reading a rule, even a rule it cannot act on.
+    - `docs/worker.md` is the opposite kind of document. It holds instructions to a worker agent.
+Chapter: docs/maintainer.md § "Rules for sessions live in the repository", rows 9-46
+  - Row 9: heading "Rules for sessions live in the repository".
+  - Rows 11-26: **every rule about how a session works is recorded in the repository, and the Projects trial's instructions carry no rules of their own.**
+    - Decision tag: (project owner, 2026-10-03, ratified, over a dated copy of the instructions kept in the repository for sessions outside the Project, `PL-PDVF`).
+    - Every session sees `CLAUDE.md`, the `docket` skill, the rules under `.claude/rules/` and what `bin/docket` prints, whether or not it runs in a Project.
+    - Only a Project's coordinator and its threads see that Project's instructions.
+    - When a rule was given only in the instructions, the repository's copy was missing or older. A session outside the Project then followed the old rule, and a Project thread read two rules that disagreed, each carrying the owner's authority.
+    - The cases:
+      - the review ask's summary (`PL-8XQS`);
+      - re-running `tag-release.yml` (`PL-F23S`);
+      - the arm rule for read holds (`PL-KKHD`);
+      - the direct squash merge (`PL-NXRJ`). The instructions asked for that merge from 2026-09-27, while the hook refused it from 2026-09-30.
+    - Nothing in the repository can read the instructions, so no check can catch the split. Sending every rule to the repository prevents it.
+  - Rows 28-35: **the instructions keep only the project's own state.**
+    - They hold the Goal, the Order and its pause, the compaction rule, and a pointer to `.claude/skills/docket/modes/coordinator.md`.
+    - That mode file holds the coordination rules: the thread caps, which model each thread runs, what every brief says, where threads post and record, merging, and releases.
+    - Decision tag: (project owner, 2026-10-25, ratified, over keeping them in Project settings, `PL-NZC0`).
+    - `PL-PDVF` holds the cut-down text as written on 2026-10-03, and the table of where each rule went.
+  - Rows 37-46: **a rule the owner gives for sessions in the Project goes to the repository in the same sitting.**
+    - The owner says it to the coordinator.
+    - The coordinator starts a thread that writes the rule into the repository by `CLAUDE.md`'s routing order: a check, the `docket` skill, a path-scoped rule, then resident.
+    - The thread works under `CLAUDE.md`'s rule that a behavior change takes effect in the session that asks for it.
+    - The thread records the owner's words and the date beside the rule.
+    - The instructions then say nothing about the rule.
+    - A thread that finds a rule in the instructions and one in the repository that disagree reports both to the owner rather than choosing, and the fix lands in the repository.
+    - A rule the owner gives in one of their own sessions already takes this route.
+Chapter: docs/maintainer.md § "Match model capability to the work", rows 48-197
+  - 48: heading "Match model capability to the work".
+  - 50: A session cannot switch its own model, so the model is the owner's lever.
+  - 52-53: Reasoning-heavy work warrants the strongest available model at a high effort setting, for both the change and the review of the final diff. The list follows.
+  - 55: architecture and design decisions.
+  - 56: new scientific-model design.
+  - 57: ambiguous problems and genuine trade-offs.
+  - 58: non-obvious debugging and root-cause analysis.
+  - 59-62: anything within the scope of `CLAUDE.md` § "Safety-critical clinical-output standard". That scope includes the presentation of clinical values and the scientific content of `docs/MODEL.md`. Neither is routine execution, however mechanical the edit looks.
+  - 64-67: Executing an already-agreed plan does not warrant the strongest model. `bin/docket next` states which model an item warrants, so the queue settles this per item, not per session. It prints one of two flags, not named here. Pointer to § "Which model each flag means".
+  - 69-72: Whether a cheaper setting holds up is measured, not assumed. The model review (`.claude/skills/model-review/SKILL.md`) scores closed items by how their work held up and brings its recommendations to the owner with their evidence. `docs/model-review.md` holds its trials and dated findings (`PL-63CB`).
+  - 74: heading "Which model each flag means".
+  - 76-86: The answer is the `[models]` table in `docket.toml` (`PL-0XDM`). It holds a default model and effort, plus rules that override them for a kind of work, matched on an item's class, lane, feature, status, size, area or role. An area is a set of paths, such as the simulator's core or the interface. `bin/docket next` and `bin/docket show` print the chosen model and effort beside each flag. The headless worker and the model review tool also read the table. To change a choice, edit the table; the format is in `subprojects/docket/README.md` § "The model table". `tools/model_home_check.py` refuses a model id written anywhere else. `tools/config_home_check.py` holds the two copies that Claude Code reads to the table. The section records why the table says what it does.
+  - 88-90: A dated instance, not a rule (`.claude/rules/expert-review.md`). The two names below are made false by a new model release or a new word from the owner, never by how the project works.
+  - 92-105: `use your strongest model` means Claude Opus 5.5, the table's default. The table decides which model each kind of work uses. Nothing uses Claude Fable 5.1, because the table names it for nothing. This replaces the section's 2026-10-18 reading, which named Fable 5.1 as the strongest model and so as what the flag asked for. An open item kept recommending Fable after nothing else used it, which is why the answer now has one home. `tools/model_home_check.py` refuses a model id outside the table, the records and the tests. The owner's point was the one home, not Fable: "It was more about having a single source of truth (fable just being an example of a stale model)" (project owner, 2026-10-25). Anthropic's models overview recommends Opus 5.5 for most work (https://platform.claude.com/docs/en/about-claude/models/overview, read 2026-10-18). The owner moved the project's Projects threads from Fable 5.1 to Opus 5.5 on 2026-10-14 (`PL-XJV3`).
+  - 106-116: As of 2026-10-18, `delegable` still means Claude Sonnet 5.5 (the table's `delegable` rule), not Claude Haiku 5.5. It names one tier, not a choice between two. The owner asked for a cheap-model offer on clear-cut items and specified its asymmetry (2026-09-19): "I'd rather err on the side of default opus if any question and miss items that could have been safe with a lower model than try to catch every lower model opportunity and find out later I should have actually used opus." Naming one tier follows from that asymmetry; this is the writing session's reading, not the owner's words. A second tier would bring back the per-item judgment the asymmetry exists to remove, at the moment the flag is read.
+  - 118-119: Three facts decided Sonnet 5 over Haiku 4.5 on 2026-09-19. According to the models overview read on 2026-10-18, none of them is true for Haiku 5.5.
+  - 121-122: Haiku 4.5 was a generation behind. Haiku 5.5 is the same generation as Opus 5.5 and Sonnet 5.5.
+  - 123-126: Haiku 4.5's context window was 200K, against 1M for the others. A session that spent its whole 150,000-token budget ended with about 231K–265K of context, past Haiku 4.5's window (`PL-W80S`). Haiku 5.5's window is 1M, the same as the other three models.
+  - 127-129: Haiku 4.5 did not take the effort parameter, so § "Match effort to the standard the work is held to" could not be followed on it. Haiku 5.5 takes it, and Claude Code starts it at `medium`.
+  - 131-137: The choice of Sonnet still rests on the owner's asymmetry, not on a measurement. Anthropic describes Haiku 5.5 as "for high-volume, latency-sensitive tasks such as classification, extraction, and routing" (no source given). In this project a delegated item is a real defect with a real fix, and no trial here has measured Haiku 5.5 on one. Such a trial would be recorded under the `model-evidence` feature. Moving `delegable` to Haiku waits on that evidence, not on a reading of the lineup.
+  - 139-147: The savings between models now differ more than they did. First-party API prices per 1M tokens (*Pricing*, https://platform.claude.com/docs/en/about-claude/pricing, read 2026-10-18): Fable 5.1 $10 input and $50 output; Opus 5.5 $4 and $20; Sonnet 5.5 $2 and $10; Haiku 5.5 $0.10 and $0.50 for prompts up to 100,000 tokens, $0.50 and $2.50 for longer ones. Compared with Opus 5.5, moving to Sonnet 5.5 captures 51% to 57% of the largest saving, depending on prompt length. On the 2026-09-19 lineup it captured 75%.
+  - 149-159: `delegable` is an offer, never an instruction. It is derived from `Item.delegability`. An item qualifies when it is `ready`, has no `safety` or `science` class, has no open decision, and has a `verify:` command that proves it done. Its `touches` must be declared and lie wholly outside `protected_paths` and `gate_paths`, where a directory holding one of those paths counts as inside. Each `touches` path outside `tests/` must be placed by `workflow_paths` or `product_paths`. The item's effort must be `S` or `M`. By design no field grants delegability; only `not-delegable:` withholds it. Declining the offer and running the strongest model is always available and never wrong. The flag makes the cheap case visible; it does not ask for it to be taken.
+  - 161: heading "Why `opusplan` is not the default for the split here".
+  - 163-169: Claude Code's `opusplan` mode "uses `opus` for complex reasoning and architecture decisions" in plan mode and "automatically switches to `sonnet` for code generation and implementation" in execution mode (both read at https://code.claude.com/docs/en/model-config on 2026-09-19). The split is fixed to those two families. The page offers no equivalent that pairs a strong non-Opus model with a cheap one, and for a mid-task consultation it points at the advisor tool.
+  - 171-177: On the 2026-09-19 lineup, `opusplan` plans one tier below the strongest model, while the section's top rule asks for the strongest. That is the whole objection; the mode is not broken. Its strong half is named by family, not rank, and that family stopped being the top one on 2026-09-19. Use `opusplan` when Opus-level planning is enough for the item; do not make it the default for reasoning-heavy work.
+  - 179-183: Since 2026-10-25 the objection no longer applies as written. The `[models]` table names Opus 5.5 as the strongest model in use, so the planning half is no longer a tier below. Where a table rule names a stronger model for a piece of work, set it deliberately with `/model` and switch back for execution. Two caveats apply to any split.
+  - 185-186: Execution returns to the cheaper model, so the strong-model review of a safety-critical diff is a deliberate step, not an automatic one.
+  - 187-188: Switching models mid-session starts a cold cache, so group design and execution into runs rather than alternating between them.
+  - 190-193: `opusplan`'s execution half is `sonnet`, the same tier that § "Which model each flag means" names for `delegable`. The cheap end of both splits is the same model, so there is only one answer to keep in mind.
+  - 195-197: Model choice never changes what a change must satisfy before it lands. The maintainer still reviews every safety-critical diff, whichever model drafted it.
+Chapter: docs/maintainer.md § "Match effort to the standard the work is held to", rows 199-317
+  - row 199: heading "Match effort to the standard the work is held to".
+  - rows 201-202: effort is the owner's lever for the same reason model choice is (reason not given in this chapter); a session cannot change its own effort level.
+  - rows 204-210: model defaults: a session that sets no level runs at its model's default; Opus 5.5, Sonnet 5.5 and Haiku 5.5 default to `medium`; most older models default to `high`; each model calibrates the scale separately, so one level name does not mean the same reasoning on two models; Anthropic: "Opus 5.5 at `medium` matches or exceeds Opus 5 at `high` on coding and knowledge-work evaluations" (Claude Code docs, *Model configuration*, "Adjust effort level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
+  - rows 212-222: current default and where it is set: on Opus 5.5 every session opens at `high` for now, simulator and apparatus alike (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`); its home is the default effort in `docket.toml`'s `[models]` table (`PL-0XDM`); the `effortLevel` key in `.claude/settings.json` is the copy Claude Code reads; `tools/config_home_check.py` fails when the two differ; so a session opened without a chosen level runs at the table's default; a level the owner picks when opening a session wins over the file, because Claude Code ranks an explicit choice above settings (Claude Code docs, *Model configuration*, "Adjust effort level", same URL, read 2026-10-19); opening at `high` is the owner's own judgement; the published gain from `xhigh` over `high` is small.
+  - rows 224-235: replaced records, the cost rule and the published figures: the decision replaces two ratified records whose stated reason was cost, `high` for apparatus sessions (2026-10-17, `PL-SW0B`) and `max` for simulator sessions (2026-09-19, rows 298-304); cost alone never justifies a lower setting (project owner, 2026-10-19), so a session does not argue for `high` on cost; on Anthropic's SWE-bench Pro subset Opus 5.5 solved 95.3% of tasks at `high` for $0.29 each and 96.7% at `xhigh` for $0.74 each, 1.4 points for about 2.5 times the cost; the page calls its figures directional (*Optimizing for cost and intelligence*, https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence, read 2026-10-17); the same page gives 88.4% at `high` and 91.1% at `xhigh` on an internal agentic-coding set; no figure for `max` (read 2026-10-19).
+  - rows 237-245: evidence on `high`: the owner wants evidence on whether `high` causes real problems (project owner, 2026-10-19); the session ledger records each session's model and effort for this; once the data is adequate, the model review (`PL-63CB`) tests whether work at `high` shows more rework, reopened items, unintended behavior or other real-world issues than work at `xhigh` or `max`; on a statistically significant difference it tells the owner, with effect size and uncertainty; `PL-63CB` describes the method.
+  - rows 247-255: the trial decision: half of sessions run at `xhigh` as a randomized comparison group, assigned automatically (project owner, 2026-10-19, over `high` for every session and an observational comparison only); the owner asked not to set the level by hand; the split was 1 session in 4 until 2026-10-24; the owner then moved it to 50/50, because an equal split needs about a quarter fewer sessions for the same statistical power (project owner, 2026-10-24, ratified, over keeping 1 in 4 to spend less of the usage allowance on `xhigh`, `PL-TN18`); the trial starts Friday 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC); until then every session runs at `high`.
+  - rows 257-265: how the trial works (`PL-HYRM`, `PL-8MZ9`): the session-start hook runs `tools/effort_trial.py session-start` in every cloud session, resumed ones included; the script picks the arm from a hash of the session id, so a resumed session keeps its arm; it writes the arm as `effortLevel` and `maxEffortLevel` in `.claude/settings.local.json`; it prints a line naming the arm; the `maxEffortLevel` cap applies from the first request and outranks the app's effort picker; a cap only lowers a level; a session in the `xhigh` arm whose picker sent `high` runs at `high`; so keep the picker at `xhigh` for the length of the trial.
+  - rows 267-271: the record of the arm: the start-of-session digest names the arm; the session tells the owner its arm in its first reply; the digest line stays in the transcript and is the trial's record of the arm; the model review reads it from the transcript by session id; sessions on the owner's own computer are not in the trial, and the script writes nothing there.
+  - rows 273-276: Projects threads are not in the trial: a thread does not read `.claude/settings.local.json`, so a cap there would do nothing; the digest says the thread is in neither arm; a thread runs at the level the coordinator started it with (`PL-6LVZ`).
+  - rows 278-285: moving a session: ask the session to run `python3 tools/effort_trial.py move --to xhigh --reason "<why>"`; the picker cannot raise a session above its cap, so the picker alone does not move it; the command writes the new cap and records the move; the level then holds through a compaction; the model review leaves the session out of both arms; a session that starts work on a generator's cause runs the same command, under the owner's rule of 2026-11-02 that such work runs at `xhigh` (`PL-WBW3`).
+  - rows 287-291: setup-script history: until 2026-10-24 the cloud environment's setup script drew the arm; it runs only when the environment's snapshot is built, about once a week, so it put no session in either arm (`PL-8MZ9`); its `effort_trial.py` line now does nothing, and the owner can remove it from the environment's settings.
+  - rows 293-296: end of the trial: it runs until the owner ends it; the monthly model review asks the owner whether to end it once both arms have adequate data; the review asks in any case at its run on 2027-04-24, six months in (`PL-63CB` § "Effort monitoring").
+  - rows 298-304: superseded split: superseded on 2026-10-19, apparatus sessions at `high` and simulator sessions at `max` (project owner, 2026-09-19, ratified, over running every session at `max`); the split followed the two standards `CLAUDE.md` draws, not a new judgment; `.claude/rules/apparatus-standard.md` governs the apparatus paths `CLAUDE.md` lists and asks for working reliably, not specialist quality; the safety-critical standard applies to `src/`, `tests/`, `docs/MODEL.md` and `README.md`.
+  - rows 306-310: `ultracode`: use it deliberately, not by default; it is worth it for a design round, a safety-critical review or a genuinely multi-angle problem; not for mechanical work; on 2026-09-19 seven concurrent sessions all ran at `max`, one of them only renaming seven item files.
+  - rows 312-317: two mechanics: lower effort produces fewer, more consolidated tool calls, cutting both turn count and output tokens; every turn re-reads the whole conversation, so the two savings multiply; each effort level keeps its own cache, so changing effort mid-session starts with a cold cache; set the level when the session opens rather than toggling it.
+Chapter: docs/maintainer.md § "The session ledger records what model and effort worked each item", rows 319-345
+  - Row 319: heading, "The session ledger records what model and effort worked each item".
+  - Rows 321–327: what the ledger holds and how a closed item links to its sessions.
+    - The ledger is `docs/session-ledger.tsv`, with one row per session in this repository.
+    - Each row gives the configured model, the model the session context names, the model that served its last turn, any model the owner switched to, the effort level, tokens by kind, the cost in USD as the harness reports it, and the date the row was written.
+    - A closed item links to its sessions through its `pr:` field.
+    - The squash commit for that pull request carries the session's `Claude-Session:` trailer.
+    - `docs/pr-bodies/` is the fallback source.
+  - Rows 329–338: only the model review writes the ledger, and the ledger stores sessions rather than items.
+    - Only the model review writes the ledger, from the harness's own record (project owner, 2026-10-17, ratified, over a field or trailer that each working session writes about itself, `PL-92ZN`).
+    - A working session writes nothing about itself, so the ledger costs working sessions nothing.
+    - A self-report would name the configured model, but a fallback can serve a different model.
+    - The facts belong to a session rather than an item.
+    - About two closed items share each session, with no date or source given.
+    - A session keeps spending after it closes its item.
+    - The ledger stores each session once, and an item is joined to its sessions when the ledger is read (project owner, 2026-10-19, ratified, over model and effort fields on each closed item, `PL-70M6`).
+  - Rows 340–345: when the model review refreshes the ledger, and the CI run history.
+    - The model review refreshes the ledger monthly, and after any generator or cluster appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly cadence, `PL-63CB`).
+    - The steps are in `.claude/skills/model-review/SKILL.md` § "Refresh the records first".
+    - The review also refreshes `docs/ci-runs.tsv`, the CI run history, with `python3 tools/ci_runs.py refresh`, because GitHub deletes a workflow run 90 days after it ran (`PL-4SFQ`).
+Chapter: docs/maintainer.md § "Settings that make sessions cheaper", rows 348-462
+  - 348: heading "Settings that make sessions cheaper".
+  - 350-359: Subagents get a 1-hour prompt cache. Facts:
+    - `subagentPromptCacheTtl` is set to `1h` in `.claude/settings.json`.
+    - On a Max subscription, the main conversation's prompt cache defaults to 1 hour.
+    - Subagents, workflows and background tasks default to 5 minutes.
+    - `CLAUDE.md` tells every session to delegate broad search to subagents.
+    - A subagent whose turns are more than 5 minutes apart re-pays its prefix at full input price instead of the 0.1x cache-read rate.
+    - Such gaps are routine when several subagents queue behind the concurrency cap.
+    - A 1-hour cache write costs 2x, against 1.25x. It pays back after two cache reads, and any subagent doing real work clears that many times over.
+    - No source or read date is given.
+  - 360-383: Exploration subagents run on Opus, and correctness, not cost, decides the model. Facts:
+    - The owner decided this on 2026-10-17 (ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper model for quick lookups; `PL-2D28` carries the case).
+    - `.claude/agents/Explore.md` sets `model: opus`, has no `effort` line, sets `omitClaudeMd: true`, and allows only the read-only tools Read, Grep and Glob.
+    - Its `model:` copies the `exploration` rule in the `[models]` table of `docket.toml`. `tools/config_home_check.py` fails when the two differ (`PL-0XDM`).
+    - In an Opus session the `opus` alias resolves to the session's own model. In a Fable session on a Claude subscription it resolves to the Opus model the alias points to.
+    - The built-in Explore did the same in both kinds of session (subagents page, "Choose a model" and "Built-in subagents", read 2026-10-17), so the file changes no model.
+    - The file adds a report footer that names what was searched and what was not, and the narrow tool set.
+    - A search runs at the session's effort level.
+    - The owner would rather pay for Opus and get correct work than take incorrect work from a cheaper model for free. Price is never the reason to choose a weaker model (project owner, 2026-10-19).
+    - A session never argues for a cheaper model by trading correctness against cost.
+    - Opus stays unless a measurement shows that a cheaper model is no less correct at the task.
+    - A cloud session loads the definition. In an Opus 5.5 cloud session started after the definition merged, the Explore transcript recorded the definition's own system prompt, and every turn ran on `claude-opus-5-5` at the session's effort level (measured 2026-10-17, `PL-PTHZ`).
+  - 384-406: `CLAUDE_CODE_SUBAGENT_MODEL` is unset, and every subagent runs on the session's model and effort unless the owner approves otherwise. Facts:
+    - The variable is set nowhere in the repository. It left the `env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`).
+    - It never chose the model for the built-in Explore and Plan subagents, which run on the main conversation's model.
+    - It was a default for any subagent that gets no model from anywhere else, such as `general-purpose` (subagents page, "Choose a model", read 2026-10-17).
+    - In a cloud session it did not even do that. It was unset in the Bash shell of four cloud sessions on 2026-10-01 and 2026-10-17, and a `general-purpose` subagent started with no model ran on its parent's model (`PL-KLN5`, `PL-2D28`).
+    - In a local session whose folder is trusted, it would have put every `general-purpose` subagent on Haiku with no per-item judgment, which § "Which model each flag means" rules out.
+    - A subagent that names no model runs on the session's own model.
+    - A session asks for no cheaper model for any subagent unless the owner approves it for that task (project owner, 2026-10-19, ratified, over asking for a cheaper model per call).
+    - `PL-2D28` reached the same answer for searches on 2026-10-17.
+    - The owner's reason: price, even a price of zero, does not justify a model that may be less correct (project owner, 2026-10-19).
+    - The same rule applies to effort: a subagent runs at the session's effort level unless the owner approves a lower one for that task (project owner, 2026-10-19).
+    - The rule covers subagents that copy values as well as those that search.
+    - On 2026-10-19 a session set Sonnet runners to work on the session ledger's values because of the old wording here, and the owner asked why.
+  - 407-427: A session that asks the owner to type `/compact` is resetting at its budget. Facts:
+    - The owner decided this on 2026-09-25 (ratified, over pasting a handoff prompt into a new session, `PL-YJG1`).
+    - The session pushes everything first, so anything the summary drops is already on disk. It keeps its branch, its claim and its pull-request watch.
+    - `/compact` works in cloud sessions and takes optional focus text (`/compact keep the open question about X`). `/clear` does not work in cloud sessions.
+    - Type it within the hour. The session names the clock time.
+    - One more request, over the whole history, writes the summary. While the cache is warm, that request reads the history from the cache.
+    - On the API, a cache read bills at 0.05x the input price on Opus 5.5 and 0.1x on most models.
+    - After a break longer than the cache lasts, the request reprocesses the whole history as uncached input (prompt caching page, "Compacting the conversation"; pricing page).
+    - In the one measured reset, that came to 248,803 tokens (`PL-384P`).
+    - The cache lasts 1 hour on the plan's included usage and 5 minutes once usage credits are drawn.
+    - Once the cache has expired, a fresh session is cheaper by about that one read, as long as the work is pushed and nothing needs the pull-request watch.
+    - For an unrelated topic, start a fresh session, because a clean prompt beats a carried-over conversation.
+  - 428-443: Set a new Claude Code project's cloud environment to `Default` before sending it work. Facts:
+    - The **New project** dialog asks only for a name, a goal and context. Cloud threads use a default Anthropic-hosted environment until one is picked in **Project settings > Environment** (Projects page, "Choose an environment for threads", read 2026-10-01).
+    - That environment runs none of `Default`'s setup script. Each thread finds a `uv` older than `pyproject.toml` requires and no `libegl1`, and must repair both before `make check` will run (`PL-QKXZ`).
+    - Both projects so far started in that environment (undated).
+    - The fix: open the project, click the gear icon in its header to open **Project settings**, go to **Environment**, and set **Cloud environment** to **Default**.
+    - The setting saves as you change it. It applies to new threads only, so make the change before the first task.
+    - A thread can confirm the setting: `get_session` returns `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
+  - 444-462: Auto mode as the default applies only to sessions on the owner's Mac, and no repository file can set it (`PL-ZLS5`). Facts:
+    - The right place is `"permissions": {"defaultMode": "auto"}` in `~/.claude/settings.json`. A project file would be ignored without an error.
+    - Documentation quote: `auto` and `bypassPermissions` don't take effect from project or local settings; set them in user or managed settings, or pass `--permission-mode` for one session (Settings page, "A value you set is ignored", read 2026-10-18).
+    - A cloud session reads neither `~/.claude/settings.json` nor `.claude/settings.local.json` ("not read. Both stay on your machine", same page, "Settings in cloud sessions").
+    - A cloud session's permission mode is picked from the mode dropdown, both when the task is created and while the session runs ("Use Claude Code in the cloud", "Permission modes in cloud sessions", read 2026-10-18).
+    - A cloud session that asks for permissions you thought you had turned off is in the mode its dropdown names, so change the mode there.
+Chapter: docs/maintainer.md § "What comes to you before it merges", rows 464-612
+  - 464: Heading "What comes to you before it merges".
+  - 466-476: When a pull request comes to the owner.
+    - It comes only for a real decision or a high-risk change; housekeeping merges on green (project owner, 2026-10-17, `PL-DKBG`).
+    - A real decision is one that `.claude/skills/docket/modes/design.md` step 4 already makes the owner's.
+    - A high-risk change is any of three kinds: it changes a clinical value the simulator computes or displays, or what `docs/MODEL.md` says such a value means; it is a rule sessions run under that the owner did not ask for in their own words; or CI would not show its breakage, or a revert would not undo it.
+    - A high-risk ask gives the case for the change, its risks and what was checked.
+    - `#1516` set this rule; the path list had held `#1516` although nothing in it needed a decision.
+  - 478-491: When a `docs/MODEL.md` rewrite merges on green.
+    - A rewrite that changes no value, equation, code span or citation merges on green (project owner, 2026-11-02, ratified, over holding each section rewrite of `PL-ZT47` for the owner's read, `PL-ZTZF`).
+    - The session runs `python3 tools/model_rewrite.py lost`, which lists every equation, code span, citation, number and "no test yet" declaration the rewrite dropped or added.
+    - The rewrite is housekeeping when it added none and each one dropped is history moved to an item, or a duplicate the document still holds.
+    - A number restated in the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept; the tool checks that the values are equal and in the same section (`PL-TZ7R`).
+    - The blind review passes and the prose review still run.
+    - A sentence whose meaning needs a clinician's judgment, such as what a hazard row or a limitation promises, still comes to the owner, and the ask quotes it before and after.
+  - 493-516: The `Owner-read` record, the paths that wait for it, and the merge rule's own hold.
+    - The session decides which kind a change is and records it on a commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`; `bin/docket arm` reads the record.
+    - Changes to `src/`, to a test under `tests/` that imports the simulator, to `docs/MODEL.md`, to `src/anesthesia_sim/data/` or to `README.md` wait until a record made after their newest change covers them.
+    - With no record, the pull request waits rather than merging an unreviewed clinical change.
+    - `not needed` arms a merge on green, with the reason in the pull request body; `needed` holds the pull request for the owner whatever paths it changes.
+    - `subprojects/docket/src/docket/arming.py` decides what merges without the owner. A change to it waits only if it changes or deletes an existing test that pins `arm`'s results, moves the file, or carries a `needed` record; otherwise it merges on green (project owner, 2026-10-19, ratified, over holding every change to it, `PL-9JHM`). Before that decision, every change to it waited (`PL-VKHD`).
+    - A pinned test, in `subprojects/docket/tests/test_cli.py`, is a `test_arm_` test, a test that runs `arm` or reads `arming`, or one of those tests' `_arm` helpers and `ARM_` constants.
+    - The modules `arm` reads through, such as `vcs.py`, `claims.py` and `cli.py`, arm on green; a change there that loosens one of `arm`'s results must edit a pinned test, and that edit waits (project owner, 2026-10-12, ratified, `PL-WW0Q`).
+    - The hold covers the pinned tests, not the code they test: a new test arms on green, and so does a loosening that no test pins, even in `arming.py`.
+  - 518-535: What the ask contains.
+    - A hold comes with its question or its risk, never a bare "read #N" (project owner, 2026-10-18, `PL-9JHM`).
+    - The session records the ask as an `Owner-ask:` commit trailer, and `arm` prints it as the ask's first line.
+    - The ask is a decision or a review.
+    - A decision has at least two options and a recommendation; each option says what it changes for the owner or a learner, in clinical or learner terms; a choice between interface approaches has one annotated screenshot per option (project owner, 2026-10-19, `PL-KYTY`).
+    - A review gives what changed in one plain sentence, one yes-or-no question, what was already checked, and what to reply. The question is one the owner can decide as owner or clinician, and never asks for a re-check of what tests or reviews covered, such as whether a rewording kept its meaning. Where there is no such question, the review says so and recommends merging.
+    - No part of the ask names a tool, file, command or item id, and `arm` refuses a record that does (project owner, 2026-11-02, `PL-BGN1`).
+    - The reply quotes the text to judge, before and after, with enough of the surrounding paragraph that the owner never opens a file (project owner, 2026-11-02, `PL-77QB`).
+  - 537-541: Before a question is recorded.
+    - `arm` tells the session to send the owner nothing about the pull request.
+    - The hook `.claude/hooks/owner_ask_guard.py` puts the record into the thread's message (`PL-X4MD`): when a thread's message in Projects names a pull request, and that thread's own pull request waits for the owner's read, the hook adds a line at the end.
+  - 543-544: When a question is recorded, the line is that question, unless the message already quotes it word for word.
+  - 545-546: When no question is recorded, the line is "No question is recorded on this pull request yet, so there is nothing to decide."
+  - 548-554: Which messages get the line.
+    - Every other message arrives as written, and the hook refuses none.
+    - A progress note that names a held pull request also gets the line, so the owner may see the question more than once.
+    - The coordinator's messages are not changed, because its checkout is on no pull request's branch; it quotes the thread's recorded question itself.
+    - A decision card has no free-text field, so a card about a held pull request arrives without the line, and the thread is told so.
+  - 556-559: When there is nothing to ask.
+    - A question with an obvious answer is a wrong question, as on `#1516`.
+    - With nothing to decide or review, the session records `Owner-read: not needed`, and the change merges on green without asking.
+    - A change to a pinned test waits whatever the record says, so its ask is a review.
+  - 561-563: Merging a held pull request.
+    - A held pull request merges when the owner says so; "Merge it" is enough.
+    - It merges by the route in § "Bring a stale base in when you merge, with Update branch".
+  - 565-582: History of the hold, with current rules mixed in.
+    - Before 2026-10-17, the simulator paths waited on their own whatever the change (the Projects trial's instructions, 2026-10-03, kind unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/` and `subprojects/docket/`); `PL-KKHD` built that hold.
+    - A workflow item needs no merge confirmation (project owner, 2026-10-12, `PL-KPM2`), so a change to `.github/workflows/`, `.claude/hooks/` or docket's lexer arms on green like the rest of the workflow lane. Those paths had waited, the first two since 2026-10-03 and the lexer since 2026-10-10.
+    - Every other change arms on green.
+    - The store, the body records (`PL-979D`) and the queue's tooling arm on green as before (project owner, 2026-09-25, ratified, over holding every path outside `docs/items/`, `PL-SQTR`); `PL-K6B2` built that rule.
+    - Since 2026-10-03, `CLAUDE.md`, `ROADMAP.md`, `tools/`, the rest of `.claude/` and `.github/`, and everything else also arm on green.
+    - `arm` names each path outside the store that it armed, so the session's report carries the reason.
+    - Before that, the hold fired on every change outside the store; the owner confirmed on 2026-09-25 that those holds were being clicked through, so they guarded nothing.
+    - `PL-CBDX` reviews the diffs that merged unread since 2026-09-23.
+  - 584-595: Two decisions of 2026-10-03, recorded so that the list reads as decided.
+    - First: `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green. `PL-0JGZ` (project owner, 2026-09-26, ratified) had held them because the roadmap is where the owner sets direction. The owner settled it (project owner, 2026-10-03, ratified, over holding them as before, `PL-KKHD`).
+    - Second: `.github/workflows/` and `.claude/hooks/` joined the list, because `update-armed.yml`, `tag-release.yml` and the merge guard decide merges and tags as `arming.py` does. Holding them cost about one review a day at recent rates (project owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`). They left the list under the owner's rule of 2026-10-12.
+  - 597-612: The decision of 2026-10-05 on tests, and which tests still wait.
+    - A test of the tooling under `tests/` arms on green, as `subprojects/docket/tests/` does. A test of the tooling is a file that pytest collects and that imports no `anesthesia_sim`.
+    - Of the 51 merges held for review since 2026-10-03, 16 were held by such tests alone, with nothing for the owner to judge (project owner, 2026-10-05, ratified, over keeping every change under `tests/` on the read list, `PL-552M`).
+    - A simulator test still waits for the `Owner-read` record. So does a branch that drops a test's simulator import or deletes a simulator test, because `arm` reads the file before and after the change.
+    - `tests/conftest.py` and every file pytest does not collect wait, because they serve the simulator's tests whatever they import.
+    - Any test `arm` could not read waits, with the reason beside the hold.
+    - The rule is the one `tools/workflow_paths_check.py` uses to sort the lanes, and it is written once, in `arming.py`.
+    - Since 2026-10-19, a change to the rule waits only where it edits a test that pins `arm`'s results (`PL-9JHM`).
+Chapter: docs/maintainer.md § "Merge on the Mac or by auto-merge, never in the GitHub app", rows 614-656
+  - 614: heading. Merge on the Mac or by auto-merge, never in the GitHub app.
+  - 616-630: The routes, the rule, and why the app breaks the record.
+    - The owner merges by three routes: the Mac's browser, auto-merge armed through Claude, and the GitHub iPhone app (project owner, 2026-09-22).
+    - The rule: squash-merge and arm auto-merge by the first two routes, not in the app (project owner, 2026-09-22, ratified, over leaving after-the-fact detection as the whole remedy).
+    - In this repository, a pull request's description becomes the squash commit message.
+    - That body on `main` is the record of the reasoning behind the change (project owner, 2026-09-26, ratified, over keeping `PL-979D`'s copy of every body in the tree behind `pr-title`'s required check, `PL-3PH2`).
+    - The iPhone app submits the squash with an empty message, and GitHub uses that message instead of the repository's default. A merge in the app therefore empties the record, and nothing says that it did.
+    - `#918` was merged in the app and reached `main` with no body.
+    - GitHub has acknowledged the defect since 2023, in community discussion #51016 (https://github.com/orgs/community/discussions/51016).
+    - `PL-WFFX` has the measurements.
+  - 632-633: In the Mac's browser, check that the commit message box holds the pull request's description before you confirm.
+  - 634-641: Auto-merge is the safer route when nothing sets its message, but it is not a guarantee.
+    - All 49 auto-merges armed with no message set by 2026-09-22 kept their body.
+    - The nine that lost their body had carried an explicitly empty message.
+    - Six of those nine were armed in the hours away from the desk, when the app is in use.
+    - A session armed `#1044` with no message set, and it landed with an empty body on 2026-09-25.
+    - `#1015` landed with an empty body the same day, by a merge path nobody identified.
+    - Both bodies have been recovered under `docs/pr-bodies/` (`PL-HZ0M`).
+  - 642: If the app is the only option, check the message behind its cog icon first.
+  - 643-649: A body that a merge empties is recovered at the next release.
+    - The release step runs `python3 tools/pr_body_check.py`. It names every squash commit that reached `main` with no body and no file under `docs/pr-bodies/`.
+    - `--recover` fetches each missing body back from GitHub into that folder.
+    - `--compare` reports a squash body that says something other than its pull request.
+    - That difference is accepted rather than repaired, so `--compare` is a measurement run by hand.
+  - 651-656: A description edited on GitHub after auto-merge is armed does not land on `main`.
+    - Auto-merge takes its message when it is armed, so the squash lands the body as it stood then (`PL-M7W1`).
+    - That older body is accepted as part of the record (`PL-3PH2`).
+    - To land the edit, disarm auto-merge and arm it again, or merge in the Mac's browser, where the message box shows what will land.
+Chapter: docs/maintainer.md § "Bring a stale base in when you merge, with Update branch", rows 658-741
+  - Row 658: heading "Bring a stale base in when you merge, with Update branch".
+  - Rows 660-665: why the update is yours.
+    - Since 2026-09-23, `main` requires a pull request's branch to be up to date before it merges (`PL-6MW8`, after the third merge-skew instance).
+    - Sessions deliberately leave a pull request behind `main` while it waits on you.
+    - Each update re-runs CI in full, which takes two to five minutes.
+    - An update made before you merge goes stale as soon as another pull request lands.
+    - So you make the update once, when you come to merge.
+  - Rows 667-677, step 1: update the branch.
+    - Open the pull request in the Mac's browser and scroll to the merge box at the bottom of the Conversation tab.
+    - If it offers **Update branch**, click it. The button merges `main` into the branch.
+    - Do not use **Update with rebase** from the dropdown, because it rewrites the branch's history under any session still working on it.
+    - A "Merge branch 'main' into ..." commit appears and the checks restart.
+    - If the box offers **Squash and merge** and no Update branch, the branch is current: merge it as the section above says, and stop.
+    - If the pull request is a draft, leave it. The draft carries a session's claim and GitHub will not merge it. That session marks it ready when the claimed item closes or is blocked (`PL-H14W`).
+  - Rows 678-689, step 2: arm auto-merge.
+    - If the box already says auto-merge is enabled, skip this step, because the update leaves it armed. The box says this on a captures-only pull request that a session armed.
+    - Otherwise click **Enable auto-merge**, check that the message box holds the pull request's description, and click **Confirm auto-merge**.
+    - Since 2026-10-03, `main`'s rule has **Do not allow bypassing the above settings** turned on (`PL-NXRJ`), so the checks and the up-to-date rule apply to you as to everyone else.
+    - To merge past a broken CI, go to **Settings**, then **Branches**, then **Edit** beside the `main` rule. Untick the setting, click **Save changes**, merge, then tick it again the same way.
+    - While the setting is off, a session will not merge a pull request that is already green and current. It hands that pull request to you.
+  - Rows 690-695, step 3: wait and check.
+    - Come back in about five minutes. Success is the pull request marked **Merged**.
+    - If another pull request landed first, `update-armed.yml` has brought `main` in again and the checks are running. Come back in another five minutes.
+    - If the box still offers **Update branch**, the workflow could not update the branch, and its newest run under **Actions** says why. Click the button and come back in another five minutes.
+  - Rows 697-700: several pull requests ready at once.
+    - Arm auto-merge on each and update just one.
+    - When that one merges, `update-armed.yml` brings `main` into every other armed pull request that the merge left behind. That re-runs their checks, and the next to go green merges.
+  - Rows 702-708: switching auto-merge off holds a pull request back, and its session leaves it off.
+    - GitHub names your account for every switch, including switches a session makes through its tools.
+    - A session records each switch it makes as an `Auto-merge: off - <why>` trailer on its next commit.
+    - `bin/docket arm` asks GitHub for the latest switch. If auto-merge is off and no commit since that switch carries the record, it holds the pull request.
+    - The session then arms or merges the pull request only when you say so (`PL-8TPV`).
+  - Rows 710-716: a check fails after the update.
+    - A failing check means the branch and the new `main` do not work together. That is merge skew, which the up-to-date setting now stops at the pull request instead of on `main`.
+    - Leave auto-merge armed and ask a session to fix the branch. Auto-merge lands it once the fix is green.
+    - The session's `bin/docket arm` tells it the same, so the session leaves your auto-merge armed.
+    - If the box shows conflicts and no Update branch, do not use **Resolve conflicts**. Ask a session to merge `main` in and resolve them.
+  - Rows 718-741: letting a session merge.
+    - Instead of steps 1 to 3, you can ask the session that opened the pull request to merge it. It arms auto-merge and brings the base in with the same merge the button makes.
+    - GitHub never updates an armed pull request that falls behind, so `update-armed.yml` does it on each push to `main`. An armed pull request whose session has ended does not wait for you (`PL-S5MF`; its token is in the next section).
+    - The session itself squash-merges a pull request that is already green and current, because GitHub offers auto-merge "only on pull requests that cannot be merged immediately" (GitHub Docs, "automatically-merging-a-pull-request" page) (project owner, 2026-10-03, ratified, over keeping that merge yours, `PL-NXRJ`, which reopened `PL-V2X5`).
+    - That is safe only while `main`'s rule applies to admins, because a session's GitHub calls are made as you. If admins were exempt, a session's merge would pass the up-to-date check, and it would land a stale branch whenever another pull request merged between the session's check of the branch and its merge call.
+    - The merge guard, `.claude/hooks/direct_merge_guard.py`, asks GitHub at each merge call into this repository. It rejects the merge while **Do not allow bypassing the above settings** is off (`PL-S17R`, `PL-NXRJ`).
+    - A merge in another repository, such as the references corpus, cannot leave this repository's `main` stale, so the guard lets it through without asking (project owner, 2026-11-02, ratified, `PL-L08H`).
+    - The session then tells you that it cannot arm the pull request and that the Squash and merge is yours. You merge it on the Mac, as step 1 says for a branch that is already current.
+Chapter: docs/maintainer.md § "Give update-armed its token, and renew it", rows 743-800
+  - 743: Heading "Give update-armed its token, and renew it".
+  - 745–750: What the workflow does and why it needs a token. On every push to `main`, `.github/workflows/update-armed.yml` brings `main` into each armed pull request that `main` has moved past (`PL-S5MF`). The update needs a token that only the owner can make. An update made with the workflow's own token starts the pull request's checks in a state that requires approval, so the checks would wait for the owner. Until the secret exists, each run lists what it would have updated and changes nothing.
+  - 752: Lead "To make the token", done on the Mac.
+  - 754–757, step 1: Open the prefilled token form link. The link presets name=update-armed, a description, target_name=stuthedew, expires_in=366, contents=write, pull_requests=write and workflows=write. It opens Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token. The name, description, owner, 366-day expiry and permissions are already set.
+  - 758–759, step 2: Under Repository access, choose Only select repositories and pick `stuthedew/open-anesthesia-sim`. The link cannot set this.
+  - 760–762, step 3: Check that the repository permissions are exactly Contents, Pull requests and Workflows (each Read and write) and Metadata (Read-only). GitHub adds Metadata by itself.
+  - 763, step 4: Click Generate token and copy it. GitHub shows the token only once.
+  - 765: Lead "To store it".
+  - 767–768, step 5: On the repository's page, click Settings, then Secrets and variables > Actions under Security in the sidebar, then New repository secret.
+  - 769–774, step 6: Enter Name `UPDATE_BRANCH_TOKEN`, paste the token as the Secret and click Add secret. When this has worked, the secret is listed under Repository secrets. The command `gh secret set UPDATE_BRANCH_TOKEN --repo stuthedew/open-anesthesia-sim` does steps 5 and 6 and prompts for the value.
+  - 776–789: Why those permissions. GitHub's permission table lists only Pull requests for the update call (source: "Permissions required for fine-grained personal access tokens", docs.github.com). GitHub's reference page for the call ("Update a pull request branch") adds that a GitHub App must also be able to write the head repository's contents. That page does not say whether this applies to a token, so Contents is included now rather than found missing at the first update. Without Workflows, GitHub refuses an update that brings in a change to a workflow file. Mergify's app met that refusal when updating branches that were behind a workflow change (Mergifyio/mergify#5055). When GitHub refuses, the run turns red, and its summary names the permission that GitHub asked for.
+  - 791–793: To see it work, open Actions > update-armed after the next merge. The newest run's summary lists each armed pull request that the run read, and marks *updated* beside each one that it brought `main` into.
+  - 795–800: To renew it, make a new token the same way before its expiry date, or when runs turn red with HTTP 401. Paste it over the old value, either with the edit icon beside `UPDATE_BRANCH_TOKEN` on the same settings page or by running the `gh secret set` line again, which overwrites the old value. The 366 days is a choice, not a limit. A token that never expires saves the yearly renewal, but a leaked copy of it would then work for good.
+Chapter: docs/maintainer.md § "Sweep branches now, or restore one the sweep deleted", rows 802-826
+  - 802: heading "Sweep branches now, or restore one the sweep deleted".
+  - 804-808: what the daily sweep does and why the owner runs or undoes it. It runs every day at 06:17 UTC, from `.github/workflows/branch-sweep.yml`, and deletes each finished `claude/*` branch. Before deleting a branch, it copies the branch's tip to `refs/archive/<branch>/<tip>` (`PL-X8SV`). A session cannot run the sweep or undo it, because both push to branches other than the session's own, so the owner does both.
+  - 810-814: how to sweep now. On the repository's page, click **Actions**, then **branch-sweep** in the left sidebar, then **Run workflow** above the list of runs. Tick **dry_run** to list what would be deleted without pushing anything, then click **Run workflow**. The run's log, under its **sweep** job, lists each branch it swept and says why each other branch was kept.
+  - 816-817: how to restore a branch. The log prints the restore command beside each swept branch. Run it on the Mac from any clone of this repository.
+  - 819-821: the command's form: `git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs/heads/claude/NAME`.
+  - 823-826: how to confirm a restore, and how to find a tip without the log. The restore has worked when the last line shows `* [new branch]`. If the log has expired, `git ls-remote origin 'refs/archive/*'` lists every archived tip. GitHub's Branches page does not show an archive ref, and no clone fetches one unless asked to.
+Chapter: docs/maintainer.md § "Spend the monthly API credit on delegable items", rows 828-910
+  - 828: heading "Spend the monthly API credit on delegable items".
+  - 830–849 (one paragraph, three points):
+    - (830–834) What the credit pays for. Max 20x includes $200 a month of Claude Platform API credit. It pays for `claude -p` only with an API key from the Console organization linked to the credit, and never for a cloud session. Unused credit expires at the end of each billing cycle (https://support.claude.com/en/articles/17154008, read 2026-10-19).
+    - (835–845) What the runner does. `tools/headless_worker.py` spends the credit on the items that `bin/docket delegable` lists (`PL-80R5`). Each run clones the repository, works one item on Opus 5.5 following `docs/worker.md`, and pushes `claude/<id>-worker`. It subtracts the reported cost from the credit-left figure given at launch. The runner stops before a run the credit left cannot cover. It stops after any failed run, because an empty credit, a lost connection or a sleeping Mac makes every later run fail (`PL-44SP`). Every run uses the effort level in `.claude/settings.json`, `high`, the level that § "Match effort to the standard the work is held to" sets for sessions (`PL-4N0K`).
+    - (845–849) How to start it. Run it on your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it through `uv run python`, never a bare `python3`, because macOS's `python3` is Xcode's Python 3.9 and the tools need 3.11. `uv run` also puts the project's Python first on `PATH` for the workers (`PL-W38C`).
+  - 851–862: Mac tool versions.
+    - A worker runs `make check` before it commits, so the Mac needs bash 5.2 or newer and GNU Make 4 or newer.
+    - macOS ships bash 3.2 and GNU Make 3.81. With them, 89 tests fail whatever the change, so a worker cannot see its own failures (`PL-TSH9`).
+    - `brew install bash make` installs both. Homebrew installs make as `gmake`. Adding `export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"` to the end of `~/.zshrc` makes it `make` in a new Terminal window (the formula's caveat, `Formula/m/make.rb` in Homebrew/homebrew-core, read 2026-10-19).
+    - `bash --version` and `make --version` then print 5.3 and 4.4.1 or newer.
+    - The runner refuses to start, before it spends any credit, while bash or make on `PATH` is older than bash 5.2 or GNU Make 4 (`PL-44R1`).
+  - 864–866, step 1: claim the credit on claude.ai under Settings, Billing, API credits, Link organization. This links one Console organization, and changing it later needs a request to support.
+  - 867–868, step 2: create a key in that organization on platform.claude.com under API keys, Create key.
+  - 869, step 3: run `export ANTHROPIC_API_KEY=<the key>` in the shell you run from.
+  - 870–874, step 4: read the credit left at platform.claude.com/settings/billing, under **Promotional credits**. The runner takes it as `--credit-left` for two reasons: the account cannot read the Console's Cost API, and a figure kept on the Mac would miss spending made elsewhere (`PL-NQ0M`).
+  - 875–878, step 5: dry run with `uv run python tools/headless_worker.py --credit-left 197.72 --dry-run --runs 3`, using the figure from step 4. It prints the items it would run and the credit left, and starts nothing.
+  - 879–890, step 6: real run.
+    - `uv run python tools/headless_worker.py --credit-left 197.72 --runs 3` runs the items one after another.
+    - On macOS, the runner keeps the Mac awake with `caffeinate -i` until the batch ends, so you no longer need to start it under `caffeinate` yourself. Keep the lid open, because caffeinate's manual does not say it keeps the Mac awake with the lid closed (`PL-BT70`).
+    - Each run prints one line: the item, its effort, the cost and the branch it pushed. A run that pushed adds a second line that names its record.
+    - A run that pushed everything removes its clone and keeps its log in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a `--no-push` run, keeps both the clone and the log, and its line names the clone (`PL-TX7K`).
+  - 892–910 (one paragraph, four points):
+    - (892–902) Reviewing a worker's branch. Review each branch as delegated work: run `bin/docket verify <id>`, then open the pull request. A pushed run commits its record to the branch as `docs/worker-runs/<branch>-<started>.json`, and the run's line names that file. Before opening the pull request, the reviewing session runs `python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`, and `make check` fails until it does (`PL-87BR`). The records are how headless work is compared with chat-session work, so a sent-back branch's record still belongs on `main`. Carry its two record commits to a branch of their own. Once that lands, the daily branch sweep deletes the sent-back branch and its item returns to `bin/docket next` (`PL-W5JR`).
+    - (902–905) Options. `--item <id>` runs one named item. `--per-run-usd` caps the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is the form used for `PL-6FX6`'s trial; with it the clone cannot push and the work stays on your machine.
+    - (905–907) Reported cost. Each run's reported cost is Claude Code's own estimate and can differ from the bill, so read the Console's figure again at each launch rather than carrying forward the runner's last figure.
+    - (908–910) Old ledger. Runners before `PL-NQ0M` kept a ledger at `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads it now, so you can delete it.
+Chapter: docs/maintainer.md § "Have a strong model read the model document against the data, once", rows 912-943
+  - 912: Heading: "Have a strong model read the model document against the data, once".
+  - 914-925: What the review tool does, which model it uses, and where to run it.
+    - `tools/model_doc_review.py` sends `docs/MODEL.md` and every data file under `src/anesthesia_sim/data/` through the Message Batches API.
+    - It uses the same API credit as the headless workers (`PL-5S71`).
+    - Model, effort and price come from the `[models]` table in `docket.toml`, role `review`. On 2026-10-25 that was Opus 5.5 at `high`.
+    - The project owner chose on 2026-10-25 to run it once on the table's model, over dropping it.
+    - It sends one request per `##` section, 25 on 2026-10-25, and each request carries the whole document and the data.
+    - The model reports statements in its section that contradict a stored value, another statement or their own units.
+    - A session checks each finding and files the confirmed ones.
+    - Run it on your Mac from a checkout of `main`, with the key exported as in § "Spend the monthly API credit on delegable items", steps 1 to 3.
+  - 927-931: Step 1, estimate the cost.
+    - `uv run python tools/model_doc_review.py estimate` prints the number of requests, the model and effort, and the most the batch could cost (the bound). It sends nothing.
+    - On 2026-10-25 the bound was $27.05 on Opus 5.5.
+    - The bound assumes no prompt-cache hit and every request using its full output allowance, so the bill should be well below it.
+  - 932-936: Step 2, send the batch.
+    - `uv run python tools/model_doc_review.py submit --credit-left 197.72` sends the batch, with the figure taken from platform.claude.com/settings/billing.
+    - It refuses when the bound is more than the credit left.
+    - It prints a batch id that starts `msgbatch_` and saves a manifest in `~/.local/state/open-anesthesia-sim/model-doc-review/`.
+  - 937-940: Step 3, fetch the results.
+    - `uv run python tools/model_doc_review.py fetch <batch id>` reports progress until the batch ends.
+    - Most batches end within an hour, and all within 24 hours.
+    - Once the batch has ended, it prints one line per section and writes `<batch id>.findings.json` in the same folder as the manifest.
+  - 941-943: Step 4, hand over the findings.
+    - Attach the findings file to a project thread and ask for `PL-5S71`'s findings to be checked.
+    - A section marked `not reviewed` names its reason and can be sent again in a later batch.
+Chapter: docs/maintainer.md § "Run tag-release yourself where a session cannot", rows 945-981
+  - 945: heading "Run tag-release yourself where a session cannot".
+  - 947–951: what the tagging workflow does, and which cases fall to the owner. Facts: `.github/workflows/tag-release.yml` tags each release on the commit that cut it, once that commit reaches `main`. When a run fails, the session fixes the cause and starts a new run itself. Two cases are left to the owner (`PL-F23S`, `PL-S641`). While a release is untagged, `bin/docket release` refuses to cut the next one, and its refusal message names both cases.
+  - 953–954: case 1, GitHub refuses the session's run. The owner starts the run in either of two ways.
+  - 956–959: way 1, the GitHub web page. On the repository's page: **Actions**, then **tag-release** in the left sidebar, then **Run workflow** above the list of runs. Leave **Branch** on `main`, which the workflow requires, and click **Run workflow**. The log of the **tag** job ends with `Tagged VERSION and pushed it to origin.`
+  - 960–963: way 2, the script. Run `python3 tools/tag_release.py --apply` on the Mac, from a clone up to date with `main`. It tags with the owner's own credentials, because a tag that a session pushes is dropped without any error (`PL-N936`). It prints the same last line once `origin` holds the tag.
+  - 965–970: a third command, its source, and how to check the result. Facts: `gh workflow run tag-release.yml --ref main` starts the same run. GitHub's "Manually running a workflow" (https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow) gives both routes, read 2026-10-18. Check the result with `git ls-remote --tags origin refs/tags/VERSION`. It prints the tag when `origin` has it, and nothing when it does not.
+  - 972–981: case 2, `origin` already holds the tag on another commit. Facts: the run declines and tags nothing. Its log says `Declined: origin holds VERSION on COMMIT, not on its cut, CUT.` The owner decides which of the two commits is right. The cut is the commit that added the version's notes under `docs/releases/`. If the tag on `origin` is right, nothing needs to change. If it is wrong: first copy the line that `git ls-remote` prints, so the old commit is recorded. Then delete the tag with `git push origin --delete refs/tags/VERSION`, and start the run again by one of the ways above. To undo the deletion, run `git push origin COMMIT:refs/tags/VERSION`.
+Chapter: docs/maintainer.md § "Retire the stop hook patch once Anthropic fixes it", rows 983-1013
+  - Row 983: heading. The section tells the owner when and how to retire the stop hook patch.
+  - Rows 985-991: why the patch exists, and that the hook's faults are already reported upstream. Facts:
+    - The cloud container's `Stop` hook is `~/.claude/stop-hook-git-check.sh`.
+    - The hook belongs to Anthropic and is rewritten at every container start.
+    - `.claude/hooks/stop_hook_patch.py` corrects the hook at each session start, for this project only (`PL-WW08`, `PL-483K`).
+    - The hook makes two false demands to push, and the patch corrects both.
+    - Both are already reported on Anthropic's public issue tracker, so neither needs a new report (`PL-90CJ`).
+    - Both issues were open on 2026-10-03.
+  - Rows 993-1001: issue anthropics/claude-code#83490 (with link), about the outdated `origin/<branch>` that a merged pull request leaves behind. Facts:
+    - In Claude Code 2.1.288 the hook still counts commits as unpushed against that outdated branch.
+    - The owner commented on 2026-10-03 with the reproduction drafted in `PL-90CJ`.
+    - The comment gives a runnable script that tests the shipped hook, and a five-line fix. Do not post it again.
+    - Commenting subscribed the owner, so GitHub sends a notification when the issue closes. Source: GitHub Docs, "About notifications", section "Default subscriptions" (with URL).
+  - Rows 1002-1006: issue anthropics/claude-code#82624 (with link). Facts:
+    - The issue lists more than one false positive.
+    - The second is a `git clone --depth 1` that fetches only `main`, so a push records no `origin/<branch>`.
+    - The half of the patch that handles this case costs nothing to keep running.
+    - The owner does not need to watch this issue.
+  - Rows 1008-1013: what to do once an issue closes, and how the #83490 fix will show. Facts:
+    - Once either issue closes as fixed, ask a session to retire the half of `stop_hook_patch.py` that the fix covers.
+    - For #83490, if the fix is the one the comment proposes, nothing in the repository signals it. The patch finds its own line already in place and stays silent.
+    - If the fix takes any other form, the patch prints a message at every session start saying that the line it rewrites is not there.
+Chapter: docs/maintainer.md § "Give Projects threads the repository's hooks with one setup script", rows 1015-1075
+  - 1015, heading: "Give Projects threads the repository's hooks with one setup script".
+  - 1017-1023, Projects threads run none of the repository's hooks:
+    - A Claude Projects thread does not load `.claude/settings.json`.
+    - So none of the hooks run: not the guards, the session-start digest or the stop hook patch.
+    - Source: Claude Code documentation, "What threads pick up from your repositories" (https://code.claude.com/docs/en/claude-projects.md#what-threads-pick-up-from-your-repositories), read 2026-10-26.
+    - `PL-CR81` records the measurement.
+    - A thread does read the user settings file, `~/.claude/settings.json`.
+    - `.claude/hooks/thread_hooks.py` uses that file to give a thread the hooks (`PL-X6VN`).
+  - 1025-1033, how the setup script and the hook work:
+    - The script adds one `SessionStart` entry to the user settings.
+    - At each session start in a Projects thread, the entry runs `thread_hooks.py` from the checkout.
+    - The hook copies the repository's `hooks` block into the user settings.
+    - Claude Code applies the copy from its next tool call on.
+    - In any other session the hook does nothing, because those sessions load the repository's settings themselves.
+    - The script holds no copy of the hooks, so a change to `.claude/settings.json` reaches the next thread with no change here.
+    - `python3 .claude/hooks/thread_hooks.py --setup-script` prints the script.
+    - `tests/unit/test_thread_hooks.py` fails if the copy here differs from it.
+  - 1035, lead-in to the steps: "To add it:".
+  - 1037-1038, step 1: open **Project settings > Environment** and note which cloud environment new threads use.
+  - 1039-1041, step 2:
+    - At claude.ai/code, open the environment selector, the first control under the message box.
+    - Under **Cloud**, hover over that environment's row and select the settings icon on its right.
+  - 1042-1043, step 3: select the **Setup script** row, paste the script at the end of what the box already holds, and select **Save changes**.
+  - 1045-1060, the script (bash with a Python heredoc):
+    - Creates `~/.claude`.
+    - Reads `~/.claude/settings.json`, and uses an empty settings object on `OSError` or `ValueError`.
+    - Builds a `SessionStart` group whose command runs `python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py"` only if that file exists, followed by `|| true`.
+    - Appends the group only if it is not already there.
+    - Writes the JSON with indent 2 and a trailing newline.
+    - The whole Python step is followed by `|| true`.
+  - 1062-1068, when changes apply and how to check them:
+    - Environment changes reach new threads, not running ones.
+    - Saving the script rebuilds the environment's cache.
+    - To check, ask a new thread to run `uv run pytest -q tests/unit/test_line_splits.py | tail -1`.
+    - The gate-status guard refuses that command when the hooks are loaded.
+    - If the thread prints a test count instead, the hooks are still off, and the thread records that in `PL-CR81`.
+  - 1070-1075, the plugin alternative:
+    - A plugin may replace this setup script.
+    - Plugins added in **Project settings > Plugins** load into each new thread.
+    - A plugin can carry hooks and skills.
+    - The repository is a plugin marketplace with one test plugin, `thread-probe`, in `.claude/thread-probe-plugin/`.
+    - `PL-XFDQ` records whether its hook and skill reach a thread.
+    - Until then, do not add both the plugin and the script to one project, because a refusal in a thread could then come from either.

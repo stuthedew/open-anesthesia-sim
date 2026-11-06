@@ -1,0 +1,280 @@
+[1] keep
+
+Structure:
+- **Repeat: the handles go live.** 6443 says "before the adapter (`PL-W9P6`) makes the handles live", 6449 says "This is where v0.4.26's inert handles go live", and 6727-6728 says "v0.4.26 built the handle inert, and this milestone makes it live". The fact belongs in entry 2 (6449). Entry 1 keeps only the order, "before the adapter (`PL-W9P6`)". The handle paragraph in entry 20 keeps what it decides (width, look, cursor, drag feedback) and drops the history.
+- **Repeat: the border drag.** 6442 says "a drag moves only the borders on its line, as Blender's drag does" and 6641-6642 says "A border drag moves the collinear chain that the `borders()` query returns". The decision stays in entry 1 with its tag. Entry 14 keeps only a pointer, "(entry 1)".
+- **Repeat: Qt stays in the adapter.** 6447-6448 says "it is the only module that imports `QSplitter`" and 6491-6492 says "`QSplitter` is confined to the adapter". Entry 2 keeps the rule. Entry 6 says only what it adds: a check enforces entry 2's rule, and concrete View modules stay out of the layout tree.
+- **Repeat: the shipped Workspaces fit the pixel budget.** 6636-6637 says "The three are composed within the pixel budget that entry 20 sets (`PL-84QX`)" and 6777 says "Entry 13's shipped Workspaces are composed within the budget." Entry 13 keeps it and 6777 goes.
+- **Repeat: who places the unconditional region.** 6514-6515 says "Entry 20 (`PL-J8K2`) decides where the region sits and what it looks like", and 6748-6750 says the same thing and restates entry 7's guarantee from 6500, "Entry 7 guarantees that the region is outside the layout container". Entry 20 keeps what `PL-J8K2` decides. Entry 7 keeps its pointer. Entry 20 shortens its restatement to "(entry 7)".
+- **Repeat inside entry 20: the chooser.** 6706-6707 says "entry 16 says what the chooser *guarantees*" and 6738-6739 says "Entry 16 specifies only what the chooser guarantees". The opener keeps it, and the chooser paragraph says what this entry decides (see the query below).
+- **Repeat: the failure states differ from Blender.** Entry 4 (6472, 6476-6478) and entry 8 (6522-6525) say so, and 6744 repeats it: "Both depart from Blender on purpose". Entries 4 and 8 keep the fact. Entry 20 keeps the pointers "(entry 4)" and "(entry 8)" and its own reason, the hazard named in `CLAUDE.md` (6745-6746).
+- **Repeat: the 2026-10-11 decision date.** 6759-6761 gives "**The budget** (project owner, 2026-10-11, ratified, over lowering the chart's minimum and over keeping the in-page title row, `PL-84QX`)", and `PL-84QX` is one of the items that 6778-6779 covers again: "**All eight were decided on 2026-10-11** (project owner, ratified, over the alternatives each item names)". The budget tag stays whole where it is. The "All eight" tag moves whole to entry 20's opener (6699-6702), beside the list of items it covers.
+- **Overlap: an Area that cannot honour a size.** Entry 5's fourth clause (6486-6487) covers "what the container does when an Area cannot honour a size". Entry 8 (6525-6527) decides "what a split or a border drag does when the minimum cannot be met". Query: which entry decides this behaviour? The other should keep only a pointer.
+- **Out of order: "reset".** 6567 says "'reset' is defined", but the definition only comes at 6607-6608: "'reset this Workspace' restores the second tier from item 13's shipped JSON". Move the definition up to 6567. Blender's `use_data = false, use_userdef = true` (6605-6606) is a developer's detail and belongs in `docs/interface-provenance.md`.
+- **Another reader's: Qt's saved state, byte by byte (6453-6463).** This is a developer's evidence. It belongs in `PL-C842` or `docs/interface-provenance.md`, with its date ("re-measured on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16"). Entry 2 keeps one sentence: Qt's saved splitter state records no widget identity and restores into a different layout without reporting an error, which is why the Qt side holds no layout state.
+- **Another reader's: the import check's workings (6493-6497).** The tool's name (`tools/import_boundary_check.py`), dotted import targets, `PL-YXFF` and the `empty` error belong in item `PL-L8RN`. Entry 6 keeps one sentence: an automatic check enforces the boundary from the commit that creates the adapter.
+- **Another reader's: decision history in entry 9 (6540-6552).** This covers how the items are labelled (the `cleared-by:` field, `feature: chart-readout`), the `simulation_view.py` expression, `PL-YVP7`, `PL-C4W8` and "Here the entry states a consequence it already implied". It belongs in the items. Cut the decision tag whole, because `PL-YVP7` holds the decision. Entry 9 keeps one sentence: `PL-CNCF` and `PL-PGZF` are done by this milestone, because both measure a per-frame cost against the column budget that entry 9 moves, so measuring first would measure the wrong number.
+- **Another reader's: `PL-NNML`'s history (6515-6517).** "joined on 2026-10-20. That day the check of the Definition of done found..." belongs in item `PL-NNML`. Entry 7 keeps the requirement (6517-6519): the region sits above the part of the page that scrolls, and the use disclaimer sits below it.
+- **Another reader's: queue history (6701-6702).** "which joined on 2026-10-18. The entry itself was `PL-M3X6`." belongs in the items. The opener keeps all eleven queue ids.
+- **Another reader's: a superseded measurement (6767-6770).** "On 2026-10-18, `PL-F2YS` paired the two runs' readouts ... about 200 px, which is 159 px short" was replaced by the result after folding (6774-6777). It moves to `PL-F2YS` with its date. Entry 20 keeps the decision, the 2026-10-18 result (366 px to 303 px, chart about 264 px, 96 px short), and the date beside those figures.
+- **One paragraph, too many points (6753-6780).** The paragraph covers why a budget is needed, the three-part budget, the compare-mode exception and the folding, the entry 13 repeat, and the "All eight" decision, which applies to the whole entry. Split it into one paragraph for the budget and its reason and one for the compare-mode exception and its figures. Move "All eight" to the opener and cut 6777.
+- **One word for three things: "tier".** It means the region's invariant and per-substance halves (6504-6510), the three kinds of setting plus the scenario (6577-6613), and the accounting in `docs/MODEL.md` (6660, 6682). Give each its own word, or say which one is meant each time.
+- **"Item N" versus "entry N".** Bare "item 34" (6513), "item 13" (6607) and "Item 33" (6724) sit beside "planned-milestone item 20/33" (6653, 6709-6710) and "entry N". Write "planned-milestone item N" every time, so that "item 13" cannot be read as entry 13.
+- **Too long to find one's way in.** The section runs 3661 words over 20 entries with no subheadings. Add subheadings between runs of entries that sit next to each other, and keep each entry's own number, because the section cites entries by number:
+  - "The layout model and its Qt adapter" before entry 1 (entries 1-2);
+  - "Views" before entry 3 (3-6);
+  - "Required values stay on screen" before entry 7 (7-8);
+  - "Workspaces and what they save" before entry 9 (9-13);
+  - "What a reader can do" before entry 14 (14-16);
+  - "Tests" before entry 17 (17-18);
+  - "Documents to update" before entry 19;
+  - "Look and edge states" before entry 20, the longest entry at about 1000 words.
+- **Order: no change.** The forward pointers to entry 20 (6479, 6514, 6528, 6636, 6648, 6667) are one-line pointers, and renumbering would break the "entry N" references.
+- **Headings and bold lead-ins that miss their point.**
+  - 6491 "The import boundary with teeth" becomes "An enforced import boundary".
+  - 6687 "The documents this milestone falsifies" becomes "The documents this milestone makes out of date".
+  - 6540 "**`PL-CNCF` and `PL-PGZF` are named here rather than re-labelled**" describes the text itself. If anything is left after the move above, the lead becomes "`PL-CNCF` and `PL-PGZF` are done by this milestone".
+  - 6753 "**The pixel budget is this entry's too**" does not state the budget. It becomes "**The pixel budget**", followed by the budget.
+- **Query: wrong entry number (6473).** It says "the file-level version policy in entry 10", but entry 10 is Run identity (6554), and the version policy is in entry 12 (6619-6623). Which is meant?
+- **Query: the file contradicts itself on the region (6749-6750).** "Nothing decides where it goes or what it looks like" conflicts with 6514 ("Entry 20 (`PL-J8K2`) decides where the region sits") and with 6517-6519 ("The region now sits above the part of the page that scrolls"). Which is current?
+- **Query: the Area header (6724-6725).** "Item 33's own argument for the move names the header, but no entry specifies it" conflicts with this entry, which specifies the header. The reader also needs to know what "the move" is.
+- **Query: what the tree gives up.** Entry 1 (6429-6434) says the tree gives up some joins, which are refused. Entry 14 (6644-6645) says the chain query recovers "the one behaviour that the tree gives up compared with Blender's graph". Is that one behaviour or two?
+- **Query: "item 13's shipped JSON" (6607).** Is this entry 13 (the shipped default Workspaces) or planned-milestone item 13?
+- **Query: break-out (6512-6513).** Is "item 34" planned-milestone item 34? The reader also needs to know what "break-out" is, and the text does not say.
+- **Query: the audit (6483).** The reader needs to know which item records "the 2026-09-16 audit", and the text does not say.
+- **Query: the other two properties (6522-6523).** "three properties that Blender does not supply, and this is the second": the reader needs the other two, or whether this milestone covers them.
+- **Query: unclear sentence (6463).** I cannot tell what "it is stronger than the form that item recorded" means: stronger in what way?
+- **Query: what entry 20 decides about the chooser (6738-6739).** This is the one surface whose paragraph lists no decisions, while the others list theirs (for example, the handle's width, look at rest and on hover, cursor and drag feedback).
+- **Query: which eight (6778).** "All eight" presumably means the first eight queue ids in 6700-6701, but the entry lists eleven, so the text should name them.
+- **Query: "the visual pass" (6705).** The reader needs to know what it is, perhaps planned-milestone item 33, and the text does not say.
+- **Query: what "required" means and for which release.** The reader needs to know whether the release ships without any of these entries, and which release this is. The section gives the version only in passing ("v0.6.0 opens one window", 6511). If the heading above 6415 says both, drop this query.
+
+Outline:
+- **6415 heading:** "Required scope".
+- **6417-6427, entry 1, paragraph 1 (the layout model):**
+  - queue items `PL-1FT6`, `PL-HJPY`, `PL-G60V`, `PL-5HSG`;
+  - pure Python, imports no Qt;
+  - a tree of splits and Areas, with the operations `split`, `join`, `resize`, `swap` and `set_view`;
+  - a `borders()` query returns the handles collinear with and adjacent to a given handle;
+  - serializes to versioned JSON, and from version 1 the serialized root holds a set of windows;
+  - `PL-HJPY` settles what owns the set, how an Area is addressed across windows, and where the border-chain query stops;
+  - settled now because adding the window set later would be a schema migration, run against files in which learners have already saved their own Workspaces.
+- **6429-6434, entry 1, paragraph 2 (refuse a join the tree cannot express):**
+  - such a join is refused, never approximated;
+  - `PL-3J2P` chose the nested-splitter tree knowing that it is strictly less expressive than Blender's shared-vertex graph;
+  - it accepted the limit because the limit "shows up as a join being unavailable rather than as a wrong value";
+  - the model must be built to have this property; it does not come free.
+- **6436-6445, entry 1, paragraph 3 (offers depend on the visible rectangles, not on how the tree was built):**
+  - `PL-G60V` and `PL-5HSG` are corrections that the model's close-out review found (`#1448`);
+  - decided (project owner, 2026-10-12, ratified, over keeping the join and the proportional drag that `#1448` shipped);
+  - first, where four Areas meet, whether a join is available no longer depends on which split came first;
+  - second, a drag moves only the borders on its line, as in Blender;
+  - `PL-5HSG` lands before the adapter (`PL-W9P6`) makes the handles live;
+  - `PL-G60V` lands before the reader-facing join (`PL-2KXB`);
+  - so a reader never meets either behaviour in its old form (`PL-F6H6`).
+- **6447-6451, entry 2, paragraph 1 (the adapter):**
+  - queue item `PL-W9P6`;
+  - one module, the only one that imports `QSplitter`;
+  - builds and updates the widget tree from the model;
+  - v0.4.26's inert handles go live here;
+  - the Qt side holds no layout state: no view calls `saveState()`, reaches up to a parent splitter or stores its own geometry.
+- **6453-6463, entry 2, paragraph 2 (Qt's saved state, measured):**
+  - `QSplitter.saveState()` returns 35 bytes for a three-pane splitter;
+  - those bytes hold magic number `0xff`, format version 1, the sizes, `childrenCollapsible`, `handleWidth`, `opaqueResize` and orientation;
+  - no widget identity, so the same three children in reverse order save byte-identical state;
+  - `restoreState()` returns false only on a bad magic number or a newer format version;
+  - a three-pane state restores into a two-pane splitter and returns `True`;
+  - a two-pane state restores into a three-pane splitter, returns `True`, and leaves the third pane at zero;
+  - re-measured on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16;
+  - this is the evidence behind `PL-C842`, "stronger than the form that item recorded".
+- **6465-6469, entry 3 (the View registry and kind tag):**
+  - queue item `PL-R1WQ`;
+  - decides where the registry lives;
+  - decides how a tag is allocated, so that renaming a class does not trigger the loud failure meant for a missing View;
+  - decides how the pure-Python model validates a tag without importing a Qt view.
+- **6471-6479, entry 4 (loud failure per Area on an unknown View kind):**
+  - queue items `PL-R1WQ`, `PL-SSQW`;
+  - the flagship divergence from Blender;
+  - a rule per pane, which the file-level version policy "in entry 10" cannot cover;
+  - a saved Workspace that names a View this build lacks fails visibly in that Area, and substitutes or drops nothing;
+  - Blender silently installs a 3D viewport;
+  - `docs/interface-provenance.md` § "Diverged" refuses that behaviour, preferring an obvious failure to a plausible-looking wrong one;
+  - entry 20 (`PL-DB5G`) decides how the failure looks.
+- **6481-6489, entry 5 (the View contract):**
+  - queue item `PL-TH35`;
+  - written with the area system and validated against two existing Views;
+  - carries four clauses added by the 2026-09-16 audit:
+    - what a View's saved state is and who writes it;
+    - what a View owes when handed state it cannot read;
+    - what a split, a swap and a stack round trip each preserve;
+    - what the container does when an Area cannot honour a size;
+  - small by construction;
+  - re-checked against the Views that implement it, as the provenance record's § "Prune the contract" requires.
+- **6491-6497, entry 6 (the import boundary):**
+  - queue item `PL-L8RN`;
+  - `QSplitter` is confined to the adapter, and concrete View modules stay out of the layout tree;
+  - this needs `tools/import_boundary_check.py` to decide a dotted import target rather than a root package, which it has done since `PL-YXFF` declared the first such boundary;
+  - both entries land in the commit that creates the adapter, because a boundary over a tree that does not exist yet is an `empty` error.
+- **6499-6519, entry 7 (the unconditional region):**
+  - queue items `PL-NWTM`, `PL-W54S`, `PL-NNML`;
+  - a named region outside the layout container that holds every unconditional value;
+  - the model has no address for it, so the adapter cannot place an Area there and no saved Workspace can name it;
+  - `PL-NWTM` supplies a pure-Python declaration, with no UI code, of that set of values;
+  - the declaration is addressable by tier: one tier is invariant, and the other is made once per modelled substance, which keeps a later intravenous run from being asked for a vaporizer dial;
+  - `PL-W54S` is the per-window shape, settled 2026-09-16 and recorded in `docs/MODEL.md`;
+  - every top-level window carries the invariant tier and the name of its run;
+  - the per-substance tier lives once, in a main window that cannot be closed while any other window is open;
+  - v0.6.0 opens one window;
+  - with this shape, break-out ("the unscheduled second half of item 34") will not need to rebuild the region;
+  - entry 20 (`PL-J8K2`) decides where the region sits and how it looks, within `PL-84QX`'s budget;
+  - `PL-NNML` joined on 2026-10-20, when the check of the Definition of done found that the page still scrolled the region and the use disclaimer out of view;
+  - the region now sits above the part of the page that scrolls, and the disclaimer sits below it.
+- **6521-6528, entry 8 (an Area that cannot honour a size says so):**
+  - queue item `PL-K285`;
+  - the second of three properties that `docs/interface-provenance.md` records Blender as not supplying;
+  - Blender's behaviour is `RGN_FLAG_TOO_SMALL` and a collapse to zero extent;
+  - the divergence: "a required value is never hidden to make room";
+  - decides whether a declared minimum is a request or a constraint;
+  - decides what a split or a border drag does when the minimum cannot be met;
+  - entry 20 (`PL-DB5G`) decides how the refusal looks.
+- **6530-6538, entry 9, paragraph 1 (state that a layout could duplicate or move):**
+  - queue items `PL-VN6M`, `PL-9LNF`, `PL-CNCF`, `PL-PGZF`;
+  - four pieces of state:
+    - the compartment selection, owned outside `TraceLegend`;
+    - `RunView`'s nine `build_*` accessors, which hand out the instance's own widgets, so a second request silently reparents a widget;
+    - the chart time base, owned by a dropdown in one plot's panel yet governing both plots;
+    - the chart's column budget, read as a maximum over two named siblings that stop being siblings once each is a View in its own Area.
+- **6540-6552, entry 9, paragraph 2 (`PL-CNCF` and `PL-PGZF` are named here and not re-labelled):**
+  - decided (project owner, 2026-09-21, ratified, over a `cleared-by:` item field whose design was falsified before it was built, and over overwriting their `feature: chart-readout`);
+  - both items measure a per-frame cost against the column budget that this entry moves;
+  - `simulation_view.py` computes `plot_width_px=max(self._concentration_chart.plot_width_px(), self._wash_in_chart.plot_width_px())`;
+  - measuring first and moving the budget afterwards would measure the wrong number, so this milestone clears both items;
+  - no new scope;
+  - `PL-YVP7` records why the field route was refused, and `PL-C4W8`'s sweep reached the verdict.
+- **6554-6558, entry 10 (run identity):**
+  - queue item `PL-7Z84`;
+  - a run's identity is stable across serialization and independent of drawing order;
+  - `run_label(run_index)` becomes a rendering of that identity;
+  - `docs/MODEL.md`'s rule for when a view names its run is restated in terms of identity, not of how many runs are shown.
+- **6560-6567, entry 11, paragraph 1 (the Workspace object):**
+  - queue item `PL-WV9K`;
+  - decides what a Workspace carries beyond its layout: the pinned run (by run identity), each View's saved state, and what a Workspace switch does to a run in progress;
+  - decides how the set of Workspaces behaves: order, rename, duplicate, delete, save-as-mine;
+  - Blender refuses to delete the last Workspace; here the type enforces that, not a warning dialog;
+  - shipped defaults are told apart from the learner's own;
+  - "reset" is defined.
+- **6569-6575, entry 11, paragraph 2 (a View's state survives leaving its Area and coming back):**
+  - the provenance record adopts Blender's per-Area stack of previously open Editors, so the outgoing View's state is kept;
+  - this milestone ships `swap` and `set_view`, the operations that would destroy that state;
+  - the minimum form is in scope: one kept entry per View kind, which is how Blender bounds the stack without a cap.
+- **6577-6594, entry 11, paragraph 3 (a Workspace holds no preferences; a setting's tier follows how many instances can exist, not Workspace membership):**
+  - run state is the simulated values: one set that every View draws from, and that no reader setting changes;
+  - per-View-instance state is the compartments shown, axis denomination and range, and time window;
+  - a View saves that state into its Workspace through the delegation that `docs/interface-provenance.md` § "Persistence, and what happens when an editor is missing" adopts from Blender's `SpaceType`;
+  - two instances of one kind in one Workspace hold that state independently;
+  - the owner's case (2026-09-17): one graph shows the vessel-rich group against the MAC-awake band and the 1 MAC line, a smaller one shows every compartment, and a third, in a squarer Area, is zoomed to the first 15 minutes for the wash-in, all in one Workspace;
+  - reader preferences are settings for which a second simultaneous value is incoherent; the agent price and its currency is the only one today.
+- **6596-6608, entry 11, paragraph 4 (the test):**
+  - can a reader sensibly have two on screen at once? If yes, the setting goes to the View; if incoherent, to preferences;
+  - a setting that changes the numbers stays in the versioned data files;
+  - a Workspace holds no preferences because it contains View instances and a preference has one value, not because a unit or price "is not layout", the weaker argument that sends the axis range to the wrong tier;
+  - this lets Blender's four Save & Load entries be added later without a migration;
+  - Blender's preference reset reads `use_data = false, use_userdef = true` and resets the third tier alone;
+  - "reset this Workspace" restores the second tier from "item 13's" shipped JSON.
+- **6610-6613, entry 11, paragraph 5 (these tiers hold only while a run is not saved):**
+  - this is a condition, not a permanent property;
+  - planned-milestone items 9, 10, 12, 26 and 30 add a saved scenario, which is a fourth tier;
+  - where it sits is decided when the first of those items is scoped.
+- **6615-6626, entry 12 (persistence):**
+  - queue item `PL-SSQW`;
+  - decides the file location on each platform, and the override for a headless run or a test;
+  - an atomic write is required, so that an interrupted save leaves no truncated JSON;
+  - decides what a first run with no file does;
+  - sets the schema-version policy for older, newer and invalid-at-the-supported-version files, each named: migrated, refused, or set aside and replaced, and what the learner is told;
+  - `core/parameters.py`'s single-version rule is right for files shipped with the code and wrong for files the learner wrote, so the policy is decided here.
+- **6628-6639, entry 13 (the shipped default Workspaces):**
+  - queue items `PL-KXTL`, `PL-L59K`;
+  - three defaults: one with the graph in the centre and the other Views around it, an induction Workspace with the concentration graph zoomed in, and a big-picture maintenance Workspace;
+  - shipped as validated, versioned JSON beside the other shipped parameter files;
+  - they carry the provenance line that `docs/interface-provenance.md` asks of anything derived from Blender's named task Workspaces;
+  - composed within entry 20's pixel budget (`PL-84QX`);
+  - the induction zoom is the chart's own saved state, so `PL-L59K` adds it once the View contract (entry 5, `PL-TH35`) says what that state holds.
+- **6641-6650, entry 14 (what a reader can do):**
+  - queue item `PL-2KXB`;
+  - a border drag moves the collinear chain that `borders()` returns, and a corner drag splits and joins;
+  - a reader can swap two Areas;
+  - the Workspace tab strip carries entry 11's lifecycle;
+  - the chain query recovers "the one behaviour" the tree gives up compared with Blender's graph, which `PL-3J2P` found differing exactly once across 32 shipped Blender Workspaces;
+  - entry 20 decides how the strip, handle and corner affordance look (`PL-QW1Z`, `PL-RQT1`, `PL-30L5`), and `PL-MS34` decides how the Area header looks.
+- **6652-6657, entry 15 (every operation reachable without a drag):**
+  - queue item `PL-M352`, through a menu and the keyboard;
+  - not planned-milestone item 20's accessibility pass arriving early;
+  - the rule: this milestone adds no interaction that a keyboard-only reader cannot perform;
+  - cheap now, a retrofit later.
+- **6659-6667, entry 16 (the View chooser, and keeping the accounting reachable):**
+  - queue item `PL-50PZ`;
+  - `docs/MODEL.md` puts the agent accounting in a tier that a Workspace may omit but that "must stay reachable in every layout, and must not be removable from the application";
+  - the accounting is cumulative delivered, cumulative exhausted, total stored, and the mass-balance residual with its absolute error;
+  - it is the one required class whose guarantee cannot rest on being built into the layout, so the guarantee becomes an invariant of the registry and the chooser;
+  - entry 20 (`PL-RBXL`) decides how the chooser looks.
+- **6669-6677, entry 17 (the visibility predicate):**
+  - queue item `PL-904Y`;
+  - `SimulationView.interface_strings` is the project's single definition of what is on screen, and it tests whether a string is in a widget's subtree;
+  - that equals "can the reader see it" only while the dashboard is one tree with nothing closeable;
+  - this milestone breaks that once an Area can be closed or joined;
+  - one predicate covers every Area and top-level window the application owns, and tells present-in-the-tree from visible;
+  - entry 18 makes its assertions through it.
+- **6679-6685, entry 18 (tests over the real interface):**
+  - queue item `PL-G5SX`;
+  - headless;
+  - they drive split, join, swap, resize, Workspace switch, save and reload;
+  - after each step they assert that every unconditional value is on screen, that the accounting tier is reachable, and that no required value left with the surface that drew it;
+  - they also make the assertion that `PL-9LNF` says cannot be written today: resize one Area while paused, and the redrawn series is sampled for its new width.
+- **6687-6697, entry 19 (documents this milestone makes untrue):**
+  - queue items `PL-ZBBP`, `PL-JSY5`, `PL-RTG9`;
+  - `.claude/rules/ui-areas.md` prohibits what this milestone builds, and its `paths:` misses a layout package outside `app/`, so the rule is retired or re-scoped;
+  - `docs/ARCHITECTURE.md` describes the layout that exists;
+  - `docs/MODEL.md`'s readout-row rung and its always-on-screen disclaimer line assume one window width and one permanent surface;
+  - `README.md` gains the Blender attribution line, which `docs/interface-provenance.md` § "Attribution" held back until the shipped interface is the area/workspace model.
+- **6699-6714, entry 20 opener (the look and edge states of every new surface):**
+  - queue items `PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`, `PL-DB5G`, `PL-J8K2`, `PL-84QX`, plus `PL-F2YS`, `PL-JG82`, `PL-QLZ5`, which joined 2026-10-18; the entry was `PL-M3X6`;
+  - looks are decided here, not inherited from the toolkit and not deferred to the visual pass;
+  - entries 1-19 are mechanism: entry 14 says what a border drag does and entry 16 what the chooser guarantees, and none says how anything looks;
+  - without this entry the surfaces would look like toolkit defaults, and planned-milestone item 33 would redo them one release later;
+  - membership test: whether the surface exists in the application today, which separates new from inherited, not furniture from content, so the region and the two failure states qualify;
+  - seven surfaces, each with a queue item.
+- **6716-6719, tab strip (`PL-QW1Z`):** where it sits; how an active tab differs from an inactive one; how rename, duplicate and delete appear; how a shipped default is told apart from a learner's Workspace.
+- **6721-6725, Area header (`PL-MS34`):**
+  - whether there is a header;
+  - if there is: its height, its contents, and whether the View name and chooser sit in it;
+  - if not: where the chooser goes;
+  - item 33's argument "for the move" names the header, but "no entry specifies it".
+- **6727-6729, splitter handle (`PL-RQT1`):** v0.4.26 built it inert and this milestone makes it live; decides its width, look at rest and on hover, cursor and drag feedback.
+- **6731-6736, corner split/join affordance (`PL-30L5`):**
+  - a visible widget as in Blender, or a hot zone;
+  - whether a drag previews the split before it commits;
+  - of all this milestone's interactions, its look most decides whether learners find it;
+  - if it is invisible, most learners never discover that the layout is theirs.
+- **6738-6739, View chooser (`PL-RBXL`):** as a learner sees it; entry 16 gives only its guarantees.
+- **6741-6746, two failure states (`PL-DB5G`):**
+  - a matter of presentation safety, not taste;
+  - an Area naming a missing View (entry 4), and an Area refused a size (entry 8);
+  - both depart from Blender on purpose, and a learner sees both;
+  - a failure state that looks plausible is the hazard that `CLAUDE.md`'s clinical-output standard names.
+- **6748-6751, where the region sits (`PL-J8K2`):** entry 7 guarantees it is outside the layout container; "nothing decides" where it goes or how it looks; it is on screen in every Workspace.
+- **6753-6780, pixel budget (`PL-84QX`):**
+  - the one question that none of the seven surfaces covers alone;
+  - the strip, headers and live handles take space from the chart, which is the teaching payload;
+  - `PL-Z4K6` asked whether seven readout columns are wanted on a 1366 px laptop with none of this furniture yet, and that number is needed before adding three new consumers of space;
+  - the budget (project owner, 2026-10-11, ratified, over lowering the chart's minimum and over keeping the in-page title row, `PL-84QX`) has three parts:
+    - on 1366 × 768, about 700 px of client area, the shipped default Workspace with one run shows the concentration chart at no less than its current 360 px minimum, with the parameter View visible;
+    - furniture above the first Area is capped at two text rows (tab strip and one Area header) plus 8 px per handle;
+    - the region gives back the in-page title row (`PL-J8K2`);
+  - compare mode falls below the minimum on that screen;
+  - on 2026-10-18 `PL-F2YS` paired the runs' readouts and measured the chart at about 200 px, 159 px short;
+  - compare mode accepts a shorter chart on this screen;
+  - each run's transport row and heading are folded into one line (project owner, 2026-10-18, ratified, over scrolling the page and over refusing the chart's Area, `PL-JG82`);
+  - `PL-QLZ5` did the folding on 2026-10-18 and measured it with the offscreen font: with two runs the region drops from 366 px to 303 px, leaving the chart about 264 px, 96 px short;
+  - entry 13's Workspaces are composed within the budget;
+  - all eight decided 2026-10-11 (project owner, ratified, over the alternatives each item names);
+  - the items record the decisions, and the build items they name build the look.

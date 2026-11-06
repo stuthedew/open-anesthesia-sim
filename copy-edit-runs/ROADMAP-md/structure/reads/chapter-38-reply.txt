@@ -1,0 +1,39 @@
+[1] keep
+
+Structure:
+- One fact is given twice. Lines 7175-7176 say a capture is not deferred when "it is classed `safety` or `science`", and lines 7195-7196 say "It was first given `deferred-from:`, which a `safety` item cannot take". The rule belongs in the first paragraph. Lines 7195-7196 should keep nothing, because the wrong tag and its correction are history for item `PL-J5GC`.
+- The first paragraph (7175-7182) serves two readers. Lines 7175-7178 give the owner the rule for what gets deferred. Lines 7178-7182 are for the people and sessions who keep the list: the field format `deferred-from: v0.7.0 - <why>`, "The triage pass that classes the item writes that field", "`bin/docket check` fails on any open debt item that this section neither places nor defers" and the `bin/docket wave` listing. Move those to items `PL-D388` and `PL-WD5Z`, or to the workflow file that describes the triage pass. Leave the owner two facts: every open debt item is either on this gate's list or deferred, and one command shows the deferrals with the state of each (`bin/docket wave`).
+- Lines 7185-7186 are decision history: "Both were split from the generator head `PL-58D7` when its design round chose to give each core input a declared numerical envelope". This belongs in item `PL-58D7`. The paragraph keeps what each item bounds.
+- Lines 7191-7193 are decision history: "It is the generator head that `PL-R4Y2`'s defect review recorded on 2026-10-25". This belongs in items `PL-J5GC` and `PL-R4Y2`. The paragraph keeps the guard and the three entries it covers (`PL-6RJ0`, `PL-3B34`, `PL-HF4B`).
+- Lines 7184-7196 make one point in two paragraphs: an item captured after the cut joined the list because it is classed `safety`. These paragraphs record items that are on the gate's list, and the owner looks for those in the list itself. Move them to that list as one entry per item, saying what it adds to the release:
+  - `PL-QX2G`: bounds on volumes and partition coefficients.
+  - `PL-YT3T`: a bound on a compartment's own step.
+  - `PL-J5GC`: values shown together on the run screen come from one state.
+
+  Only the deferred items, `PL-58D7`, `PL-06LS` and `PL-XST1`, with the reason ("not `safety`"), stay in this section.
+- The heading "Deferred from this gate" (7173) does not cover lines 7184-7196, which record items that came onto the list. Once those rows move, the heading fits. If they stay, the heading needs to name both outcomes, and every file that cites § "Deferred from this gate" must change with it.
+- Query: lines 7177-7178 allow "the entry is deferred with it" with no exception for a `safety` entry. Lines 7195-7196 say a `safety` item "cannot take" `deferred-from:`. Can a `safety` entry be deferred along with a capture it depends on? Only the author knows which statement is right.
+- Query: the reader needs to know which gate this is and which gate is next. The chapter gives "v0.7.0" only inside the field format (7179), and never names the next gate.
+- Query: the reader needs to know when "the cut" (7175, 7184, 7191) took place, and this chapter does not say.
+- Query: the reader needs to know what the dates in "(`safety`, 2026-10-25)" (7184) and "(`safety`, 2026-10-26)" (7191) record. They could mean classed, captured or let onto the list. The text does not say.
+- Query: the chapter does not explain several of the repository's own terms that stay in the owner's text: "debt item", "capture" used as a noun, "classed", "generator head" and its "members", "guard", and "one state". It also does not say what "re-entered" means for an item that was captured after the cut and was never on the list.
+
+Outline:
+- 7173: Heading "Deferred from this gate".
+- 7175-7182: The rule for open debt items captured after the cut, and how deferrals are recorded and checked.
+  - Such an item is deferred to the next gate unless it is classed `safety` or `science`, or an entry on this list depends on it.
+  - A capture that an entry depends on is either let onto the list beside that entry, or the entry is deferred with it (`PL-D388`).
+  - Each deferred item records `deferred-from: v0.7.0 - <why>`, which this gives as v0.7.0. The triage pass that classes the item writes that field.
+  - `bin/docket check` fails on any open debt item that this section neither places nor defers.
+  - `bin/docket wave` lists the deferrals with the state of each (`PL-WD5Z`).
+- 7184-7189: `PL-QX2G` and `PL-YT3T` came onto the list after the cut. The head they came from and its other members are deferred.
+  - Both are classed `safety` and dated 2026-10-25.
+  - Both were split from the generator head `PL-58D7` when its design round chose to give each core input a declared numerical envelope.
+  - `PL-QX2G` bounds the volumes and partition coefficients. `PL-YT3T` bounds a compartment's own step.
+  - `PL-58D7` and its other two members, `PL-06LS` and `PL-XST1`, are not `safety` and are deferred.
+- 7191-7196: `PL-J5GC` came onto the list after the cut.
+  - It is classed `safety` and dated 2026-10-26.
+  - It is the generator head that `PL-R4Y2`'s defect review recorded on 2026-10-25, over `PL-6RJ0`, `PL-3B34` and `PL-HF4B`.
+  - Its guard requires values shown together on the run screen to come from one state.
+  - Each of its members is a `safety` entry already on this list.
+  - It was first given `deferred-from:`, which a `safety` item cannot take.

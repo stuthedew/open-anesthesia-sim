@@ -1,0 +1,429 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Debt gate: the frozen list (run 2 of 2)", rows 6069-6297. Whole section: 8618 words. For: The project owner, or a contributor deciding what to build next
+ 6069 | - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
+ 6070 | - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
+ 6071 | - PL-0SG0 (S) Meybohm et al. 2021 Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane where the three agent files store De Wolf et al. 2012's 2.0% and 1.2% as the same program's set, and no agent note records that the two tier-3 descriptions of Gas Man disagree on the MAC while agreeing on every partition coefficient
+ 6072 | - PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
+ 6073 | - PL-19Y0 (M) A direct write to a checked field of BreathingCircuit, VenousBloodCompartment, TissueGroup, AlveolarCompartment or AgentSimulationValidator skips every check its constructor and setters make: a sevoflurane dial of Percent(50.0) past its 8% vaporizer maximum, a bare-float dial, a zero circuit volume, an inspired fraction of 1.5 and a venous agent amount past capacity are each accepted; only the three flows are guarded (PL-LBQY), and PL-544D covers the alveolar and tissue agent amount alone (found sweeping PL-ZGYX)
+ 6074 | - PL-0YYV (L) The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
+ 6075 | - PL-1DP1 (S) fraction_from_percent and percent_from_fraction take a bare float as given, so percent_from_fraction(0.5) from a caller mypy does not read is a Percent of 50.0 and format_percent(0.5) prints 50.00% whether the 0.5 was a fraction or a 0.5% dial, where every place a concentration is held refuses a bare float since PL-4R3W; whether the two crossings require the checked form too, or keep taking a number nobody built because it carries no form to refuse it by, is undecided (found building PL-SWD1, which refuses the other form and every other checked quantity there)
+ 6076 | - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
+ 6077 | - PL-1ZQ4 (M) A mark added after the step that crossed it is answered three ways: the trunk reads a late MAC target as not reached where a branch opened on that step reads it reached, a mark added to a branch after it opened is never asked of its opening step, and fork_at at a keyframe the trunk halted on opens on no crossing where fork_here opens on the halt's
+ 6078 | - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
+ 6079 | - PL-3800 (S) require_positive_finite and require_nonnegative_finite admit True (BreathingCircuit(circuit_volume_l=True) holds True, a 1 L circuit) and a Decimal (AlveolarCompartment(gas_volume_l=Decimal('2.5')) holds the Decimal), and refuse a str with math.isfinite's own TypeError, so every field they guard and SimulationStep, whose guard is built on the first, have the holes PL-LLMN closes for the flows and the concentrations; none is reachable from the interface; bring both guards to require_a_number in core/checked_number.py (found working PL-LLMN)
+ 6080 | - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
+ 6081 | - PL-4R3W (M) Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
+ 6082 | - PL-51B7 (M) The supported-range edge test finds the functions behind the six guards other than the step's by parameter name on five classes kept by hand, so a function taking a guarded quantity under another name, RunDefinition's opened_at_s, is never drawn; a checked type per quantity, as SimulationStep is for the step, would let it find every one by type
+ 6083 | - PL-5291 (S) A branch built standing on the 24 h supported run length still offers Start, because SimulationController._open_at never sets _supported_limit_reason, the only limit signal the transport's stopped state reads, against Transport's own docstring
+ 6084 | - PL-544D (M) AlveolarCompartment and TissueGroup admit a direct write of agent_amount_l past the compartment's capacity, so the quotient the display reads can leave 0 to 1 while every setter refuses it: PL-7DJK's case 1 is reproduced by that write, and test_a_halt_is_shown_when_the_snapshot_itself_is_refused depends on it staying open
+ 6085 | - PL-59WB (S) chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
+ 6086 | - PL-624C (S) test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
+ 6087 | - PL-73ZN (S) RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
+ 6088 | - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
+ 6089 | - PL-7DJK (M) A Fraction the display builds can now refuse, and the halt that follows is shown as a failed step, half-drawn, unnamed, or not at all, though no supported setting reaches it
+ 6090 | - PL-7N8P (S) require_supported_case_instant admits True (as 1.0 s) and Decimal, and lets OverflowError escape for an int past the float range (CaseInstant(10**400)) rather than refusing in the simulator's words - the shape PL-LLMN records for the flows' _require_supported, so decide the two together; none is reachable from the interface (found reviewing #1354)
+ 6091 | - PL-7TBQ (S) SimulationController.has_recorded_run reads elapsed_s > 0.0, so it is True the instant a branch is made and before the learner has touched it
+ 6092 | - PL-85LJ (S) A slider dragged on a run whose snapshot refuses leaves its value label on the previous value while the dial and the circuit hold the new one, because only refresh rewrites it and no frame draws after the halt (found at PL-V2HC's review)
+ 6093 | - PL-7TXJ (M) RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
+ 6094 | - PL-8W1W (S) SimulationState.step_count and simulation_step_s can be assigned after construction without any check - state.step_count = 5 stores a bare int, and = -3 after a step makes elapsed_s raise - the shape PL-LBQY records for the compartments' flows, on the run's own state; nothing in src writes either outside advance and reset; decide it with PL-LBQY: a __setattr__ guard, read-only fields, or the window recorded as accepted (found reviewing #1354)
+ 6095 | - PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
+ 6096 | - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
+ 6097 | - PL-979Z (M) CaseInstant and the three flow types are built from another checked quantity silently - CaseInstant(StepCount(600)) is an instant of 600 s, CaseInstant(FreshGasFlow(5.0)) one of 5 s and FreshGasFlow(CaseInstant(5.0)) a flow of 5 L/min - because require_a_number admits every int and float subclass and only the stored-value checks (require_case_instant, _require_built) name a swapped quantity; refuse another checked quantity at the constructor, as Fraction refuses a Percent (found reviewing PL-7N8P)
+ 6098 | - PL-9YHR (L) The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output
+ 6099 | - PL-B26Y (S) BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
+ 6100 | - PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
+ 6101 | - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
+ 6102 | - PL-CBDX (M) Read every simulator diff merged unread since 2026-09-23 against the safety-critical standard, since the review hold was clicked through rather than read
+ 6103 | - PL-CM1B (M) Desflurane's F_A/F_I rises 1.7 to 2.1 published SD faster than its Anesthesiology 1991 cohort from 1 to 10 minutes with F_I held at the airway, while the same volunteers' isoflurane and the sevoflurane cohort follow their curves, so something only desflurane has is too low
+ 6104 | - PL-CN5S (M) A case instant and a run's step count are a bare float and a bare int checked by hand where each enters - require_supported_case_instant at RunDefinition's two ways in, _require_step_count in SimulationState - so a new way in for either repeats the check or skips it; slice 2 of PL-51B7 gives each a checked type, CaseInstant in s and StepCount, an int subclass checking what a count can be checked for alone
+ 6105 | - PL-CZTR (S) ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
+ 6106 | - PL-DBGT (S) desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
+ 6107 | - PL-FPY2 (M) A wrapped mark row's continuation can be a whole clause naming a run, so it reads as a row of its own and binds to the wrong mark
+ 6108 | - PL-H1JH (M) Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding
+ 6109 | - PL-H8QP (S) The two for_agent reads-the-file tests cannot fail when for_agent() stops reading a data file, because the core defaults equal the files' values, so docs/MODEL.md's claim that they catch it holds only for the fresh gas flow
+ 6110 | - PL-HBH2 (S) docs/MODEL.md's fat-perfusion note weighs the stored fat flow against Heinonen's PET adipose perfusion alone, though Yasuda 1991's two human washout fits put the fat group's time constant (1,340-2,130 min) and flow (2.1-2.4 mL/100 mL/min) where the stored parameters already sit (1,496-2,603 min, 2.07), so its 'would over-estimate fat loading' reading may be one-sided
+ 6111 | - PL-HGB6 (S) docs/machine-abstraction.md says circuit_volume_l is apparatus-plus-circuit where the shipped profile says apparatus alone, so a profile author following the design document would store an assembled total the code does not expect
+ 6112 | - PL-HNWX (M) SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
+ 6113 | - PL-HQF5 (M) After PL-KFNP a tissue group's or the venous pool's blood flow is still settable past its patient's cardiac output through TissueGroup.set_blood_flow and VenousBloodCompartment.set_blood_flow, which nothing in src/ but PatientCompartments._update_blood_flows calls, so the record PatientCompartments.__post_init__ refuses stays reachable by a caller mypy does not read and halts only at the next step or at Reset (PL-M4M0); decide whether a compartment's blood flow stays a field of its own that a caller can set (found in PL-KFNP's design round)
+ 6114 | - PL-JPS2 (S) Both MAC-awake band tests take their expected band from the snapshot under test, so a band left at the previous agent's values after an agent switch passes the whole suite and the chart would draw sevoflurane's 0.34 x MAC band under desflurane's name
+ 6115 | - PL-KFNP (M) PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
+ 6116 | - PL-HSFV (S) RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
+ 6117 | - PL-J0F7 (S) The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
+ 6118 | - PL-J39J (S) After a cardiac output written past set_cardiac_output halts the run, at the next step or at the Reset PL-M4M0 refuses, the cardiac output readout and dial show the written output beside compartment values and a chart computed at the old flows, under a banner saying the values shown are the last completed step; only the banner's own sentence names both figures (found reviewing PL-M4M0)
+ 6119 | - PL-JQY1 (S) max_delivered_concentration_percent is a vaporizer device maximum stored as an agent property, so 18% reads as a fact about desflurane
+ 6120 | - PL-JS0X (S) test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
+ 6121 | - PL-KK1Q (M) Compare this model's washout over the first 24 h against Yasuda 1991's published five-compartment mean fits, to measure whether the modelled tail runs fast or slow where only the five-minute point is validated today
+ 6122 | - PL-KRZW (M) Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
+ 6123 | - PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
+ 6124 | - PL-KZR1 (S) RunView's build_* methods are split between returning a stored widget (build_notice, build_off_scale_notice) and constructing a new one on each call (build_sidebar_panels, build_readout_section), with nothing in the names saying which
+ 6125 | - PL-LBQY (M) A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
+ 6126 | - PL-LLBV (S) The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
+ 6127 | - PL-LLMN (S) _require_supported admits -0.0 (shown as -0.0 L/min), True (as 1.0 L/min) and Decimal, and refuses a str with math.isfinite's own TypeError rather than the simulator's wording; none is reachable from the sliders (found reviewing #1350)
+ 6128 | - PL-LPH9 (S) ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
+ 6129 | - PL-LTKL (S) The chart hover keeps answering after the pointer leaves the plot: nothing clears the stored pointer position on a Leave event, so the box stays up and every later frame re-answers for a pointer that has gone
+ 6130 | - PL-M4M0 (M) RunView._handle_reset wraps SimulationController.reset() in nothing, so the SimulationConfigurationError that equation_settings() raises at Reset when the tissue flows are stale (a CardiacOutput written onto patient.cardiac_output_l_min past set_cardiac_output, the type-only write guard PL-LBQY chose) escapes the slot after pause() and _state.reset(), leaving a half-reset run paused with no failure recorded, the readout showing a cardiac output the model never ran at and case_restarted never emitted; at step time the same stale record is presented as a SimulationNumericalError in L/s where every readout shows L/min (found reviewing PL-LBQY)
+ 6131 | - PL-N67T (S) RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
+ 6132 | - PL-NC62 (S) resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
+ 6133 | - PL-Q7V1 (S) ROADMAP.md's varying-perfusion note ('Also unsupported at rest, one layer down', under planned milestone item 35) reads the stored fat flow as 'that far out' against Heinonen alone, where PL-HBH2 records that Yasuda 1991's washout fits put it at or a little above the stored figure
+ 6134 | - PL-QJXS (S) No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)
+ 6135 | - PL-QPN8 (S) src/anesthesia_sim/data/patients/reference_adult.json's Meybohm et al. 2021 note says its Tables 1-3 could not be read, but pmc.ncbi.nlm.nih.gov answered through the egress proxy on 2026-10-06, so read PMC7943506's tables and settle whether they list a blood or venous volume
+ 6136 | - PL-QW19 (S) default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
+ 6137 | - PL-QYBW (M) The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
+ 6138 | - PL-R0NL (L) Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate
+ 6139 | - PL-RBMK (S) _apply_to_every_run documents a two-phase write it does not implement: it applies in a loop and catches, so the docstring promises atomicity the code cannot give
+ 6140 | - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
+ 6141 | - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
+ 6142 | - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
+ 6143 | - PL-SWD1 (S) fraction_from_percent and percent_from_fraction take the other type silently - percent_from_fraction(Percent(0.5)) is a Percent of 50.0 and fraction_from_percent(Fraction(0.5)) a Fraction of 0.005 - because the arithmetic runs first and the constructor's swapped-type check sees a plain float; refuse a Percent where a Fraction is handed in and the reverse, as the constructors do, before converting (found reviewing PL-LLMN)
+ 6144 | - PL-SWY5 (S) Esper et al. 2015 (Anesth Analg 120:45-50), the primary blood:gas measurement Meybohm et al. 2021's Table 1 footnote says Gas Man's coefficients differ from, is cited in none of the three agent files beside the adopted De Wolf blood:gas values (found closing PL-0SG0; read 2026-10-12 from PMC7943506's XML record, footnote and reference 54)
+ 6145 | - PL-T4FK (S) docs/MODEL.md line 2350 wraps '+ brain + liver' to the margin, so CommonMark renders it as a bullet reading 'brain + liver is 3,820 of 6,480 ml/min - 59.0%', which gives the kidney + heart + brain + liver sum to two organs (the wrapped-marker shape PL-DSMK fixed in ROADMAP.md)
+ 6146 | - PL-T995 (S) A run that stops itself inside RunView.step_tick - a bookmark halt, or arrival at the supported run length - is never redrawn: step_tick requests no frame and render_tick draws only while a run runs or a frame is owed, so the screen keeps saying Running with a live Pause, a clock one step behind, and no Branch here button, until the learner presses something
+ 6147 | - PL-TBMX (S) circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
+ 6148 | - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
+ 6149 | - PL-VCP4 (S) SimulationController._record_control_change builds the settings record after the setter has written, so on a run whose tissue flows no longer sum to the cardiac output every setting but the cardiac output is half applied: the compartment holds the new value and the dial reads it, the definition's open segment and the timeline keep the old one, and the banner says the simulation is unchanged and still running its previous setting (found reviewing PL-M4M0)
+ 6150 | - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
+ 6151 | - PL-V2HC (M) A halted run whose snapshot refuses cannot change agent: RunView._handle_agent_change and SimulationController.set_agent both read snapshot() while the selector is unlocked on a halted run, so the slot's raise is printed by Qt and the new-case dialog never opens; Reset is the one exit and the halt banner names it (found at PL-7DJK)
+ 6152 | - PL-V67Q (M) Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
+ 6153 | - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
+ 6154 | - PL-W3Q5 (S) app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
+ 6155 | - PL-WG73 (S) COMPARING_FORK_LOCK_TEXT tells a learner to Reset the case, which labels no control - and the Reset they are likeliest to press discards the branch and leaves the lock standing
+ 6156 | - PL-WMCJ (S) docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
+ 6157 | - PL-WPDB (S) The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
+ 6158 | - PL-XWFP (S) TissueGroup.advance and VenousBloodCompartment.advance report uptake as a return - a negative change, as low as -3.2e-18 L, while the driving fraction is above the compartment's - at admitted flows from 1e-30 to 3e-13 L/min, because d + (i - d) * exp(-dt/tau) rounds at the scale of the driving fraction; the circuit's closed form was rewritten for the same reason (found fixing PL-YT8N)
+ 6159 | - PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
+ 6160 | - PL-X7D5 (L) A run's screen has two writers - RunView.refresh from a drawn frame and RunView.present_halt from a hand-picked subset of controller state - and nothing owes a frame when the run changes outside present, so each widget missing from the subset, and each path that stops or changes a run without a frame, leaves the screen stating an old run: the cause of PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7 and PL-0LG6 (found at the 2026-10-17 triage pass)
+ 6161 | - PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
+ 6162 | - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
+ 6163 | - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
+ 6164 | - PL-YT8N (S) BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
+ 6165 | - PL-Z0HN (M) A tissue group's perfusion fraction can be changed on a built patient, and nothing checks that the fractions still sum to 1, so every later cardiac output change is refused, and its restore moves the tissue flows under a banner that says nothing changed (found reviewing PL-VCP4)
+ 6166 | - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
+ 6167 | - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
+ 6168 | - PL-ZH1F (S) RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
+ 6169 | - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
+ 6170 | - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
+ 6171 | - PL-2DTK (M) docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
+ 6172 | - PL-3LLZ (M) Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them
+ 6173 | - PL-4V6B (M) Decide whether the decision archive should be separated from the work queue
+ 6174 | - PL-4W2L (M) design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it
+ 6175 | - PL-6YYR (M) A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
+ 6176 | - PL-73P0 (M) default_base falls back to the literal string main when no candidate ref resolves, so every comparison in vcs.py can be taken against a guessed base with nothing in the answer saying so
+ 6177 | - PL-7RTN (M) An open pull request can carry no check runs at all, so a branch merges with nothing having gated it
+ 6178 | - PL-7TVT (M) bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
+ 6179 | - PL-99YZ (M) Three sessions opened three pull requests for the same red-main fix within four minutes, each having correctly filed its own item first, because every in-flight guard matches an existing PL- id and none of them can see an item that did not exist when the other sessions looked
+ 6180 | - PL-9LXK (M) Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
+ 6181 | - PL-B78T (M) bin/docket stranded reads only docs/items, so unmerged work anywhere else is invisible to it: four recovered PR bodies on claude/festive-allen-nj1x98 and 206 lines of docket source on claude/recurrence-signal-feature-3hnynt sit on branches with no open pull request and nothing reports either
+ 6182 | - PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
+ 6183 | - PL-BYMX (M) bin/docket stranded compares branches by item id, so a branch carrying a non-item file the default branch lacks is reported by nothing
+ 6184 | - PL-CNJH (M) verify's replacement pairing folds an assertion whose inserted argument loosens it - approx(2.05) to approx(2.05, rel=0.5) - reporting the pair without refusing it; 4 of the 56 it folds across 905 commits change what the line asserts
+ 6185 | - PL-CWD4 (M) A verify: command that can never pass on any tree is indistinguishable from one whose work is simply not done, so PL-4PC5 carried a dead command for five days after wave stopped printing the line it grepped
+ 6186 | - PL-CZR6 (M) bin/docket stranded reported no branch carrying work its own pull request left behind while claude/sharp-lamport-t545rs carried two PL-X5PK commits pushed an hour after #823 squash-merged from it
+ 6187 | - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
+ 6188 | - PL-GJPD (M) _carried_work reads a combined commit as having carried the work, so the triage pass that closed PL-3CBS is recorded as its pull request because it also edited ROADMAP.md - three of main's 698 answerable closures disagree with their stored pr
+ 6189 | - PL-MFM4 (M) bin/docket release's collision guard reads unmerged refs for a cut in progress, so it cannot see a second session that has filed a release item and asked the owner for the version without cutting anything: PL-Z0C7 and PL-R5VS were two ids for one release and every guard matched both cleanly
+ 6190 | - PL-N2PP (M) A rider item worked inside another item's session is invisible to every in-flight guard the project has
+ 6191 | - PL-NJ9M (M) bin/docket delegable cannot tell a brief that determines the fix from one that leaves the choice open, so a hand-off meant to need no reading still does
+ 6192 | - PL-NPWP (M) bin/docket stranded's ahead list keys on textual difference between the base's copy and a branch's, so a branch holding a stale copy is reported forever and no amount of recovery can empty the list - which is the completion test PL-DZM1 was written against
+ 6193 | - PL-Q8RQ (M) Four open items' verify commands rest on a bare 'pytest -k SUBSTRING', which any unrelated test name can satisfy: PL-S5YM turned main red exactly this way, and whether a command can discriminate at all is decidable enough for docket check to refuse it
+ 6194 | - PL-RR1N (M) A verify: grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done
+ 6195 | - PL-S0MB (M) Catch-all feature names can never report completion: dev-tooling carries 174 items and queue-hygiene 29, so bin/docket feature <name> cannot answer 'yes, that is dealt with' for either, and 32 of 33 workflow features read as live
+ 6196 | - PL-SY1J (M) bin/docket show named only one of two branches carrying PL-D1RT, and it was the later one, so the session holding the item read a verdict telling it to stand down
+ 6197 | - PL-SYG4 (M) The digest's RESERVED verdict suppresses the release offer entirely rather than naming the next free patch number, so on the v0.4.x track with v0.5.0 reserved a session never offers a cut the plan actually wants
+ 6198 | - PL-SZJ2 (M) wave reports nothing for a released milestone row whose own frozen list still has open entries, which is PL-LN3T's case in the other subsection: a gate-only milestone released with its list open drops out of the report entirely
+ 6199 | - PL-TKFD (M) A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
+ 6200 | - PL-WNQT (M) bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
+ 6201 | - PL-X3NY (M) bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
+ 6202 | - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
+ 6203 | - PL-Y5ZB (M) agent_identity_check's rule 2 reads only construction (self.X = <agent colour>), so a method other than _apply_agent_color_scheme writing self.X.color = AGENT_COLOR_SCHEMES[...] is a second writer of agent colour that neither rule sees
+ 6204 | - PL-YVV4 (M) Run the suppression count expert-review.md requires before any triage-bar change
+ 6205 | - PL-ZPDM (M) vcs.tags and vcs.changed_items answer with a bare frozenset, so a git that does not answer is indistinguishable from a repository with no tags and a branch that changed nothing
+ 6206 | - PL-0HPV (S) make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
+ 6207 | - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
+ 6208 | - PL-162Y (S) docket next names a blocked item whose item blockers have all closed, but not one whose blocked-by milestone is now scoped, which docket check reports as equally promotable
+ 6209 | - PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
+ 6210 | - PL-1T6T (S) Re-test the refusal of compaction now that root CLAUDE.md is known to reload after a compact
+ 6211 | - PL-1X2C (S) bin/docket show names the reader's own branch as a carrier and stays silent about the other branch editing the same item
+ 6212 | - PL-245B (S) docs/WORKING_NOTES.md cites test_vcs.py:467 as the test asserting _superseded's inverted direction, but that line has never held such a test - PL-Q9Z1's live thread rests on it
+ 6213 | - PL-28HG (S) GitRunner._drop marks a root permanently unbatchable, so one transient cat-file fault costs every later blob in the command a separate git show process
+ 6214 | - PL-3BYK (S) docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
+ 6215 | - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
+ 6216 | - PL-3QM9 (S) bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
+ 6217 | - PL-44DG (S) measure_resident undercounts the true per-session resident payload by 4,794 characters: the SessionStart digest and the docket skill description are resent every turn and counted by nothing
+ 6218 | - PL-4HKS (S) docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms
+ 6219 | - PL-4ZK8 (S) bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
+ 6220 | - PL-5B88 (S) verify's suppression check misses @pytest.mark.skip and @pytest.mark.skipif, the two commonest ways a pytest test is disabled: @skip needs its @ against the name and pytest.skip needs its halves adjacent, so the check reports none while a disabled test sits in the diff
+ 6221 | - PL-5DPF (S) A generator marked spent that accrues a new recurrence has had its verdict falsified, and nothing says so
+ 6222 | - PL-6G8T (S) _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
+ 6223 | - PL-6QZP (S) CLAUDE.md's fix-now test 2 says a wider fix fails the touches audit, but under verify --self that check reports and the branch still ACCEPTs, so the deterrent the rule describes does not fire on a session's own branch
+ 6224 | - PL-7NKD (S) bin/docket verify caps the removed-assertion evidence at five lines with nothing saying so, so a count of six prints five and the reader cannot tell which line is missing
+ 6225 | - PL-9KSY (S) store.write_item's replace= parameter has no caller left now that every field write uses rewrite_item, and PL-YTDN's rename pass is specified as git mv, so the rename branch is dead code that the next field writer could still reach for
+ 6226 | - PL-B11M (S) Detect a silent model fallback: last_served_model can differ from the configured model with nothing recording it
+ 6227 | - PL-BX1C (S) bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
+ 6228 | - PL-CR36 (S) tools/ignore_check.py type-checks tests and subprojects/docket/tests in one mypy invocation, so a second file named conftest in those trees is a duplicate-module error that stops mypy before it evaluates anything and turns make check red
+ 6229 | - PL-CY8B (S) test_flight_does_not_answer_from_a_walk_the_clone_truncated asserts PL-M01 is absent, but PL-M01 is not an id ID_PATTERN matches, so that assertion cannot fail
+ 6230 | - PL-D1NT (S) doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not
+ 6231 | - PL-DK8Y (S) The session-start digest prints 'The plan's numbering is behind the project' for every Wave.stale statement, which is false for the section-that-no-timeline-row-bears one
+ 6232 | - PL-DMNX (S) PL-1DN9's premise that nothing repository-side runs when a pull request is created is now false, so the published-body read-back it bought 337 resident characters for may be scriptable
+ 6233 | - PL-FT3M (S) cli._cuts's docstring says the unlanded-ref walk is gated on the release offer, where it is gated on Readiness.is_worth_cutting - and the two now diverge routinely
+ 6234 | - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
+ 6235 | - PL-H6VQ (S) doc_check's _declined_ids counts every PL- id in a Declined-to-Gate subsection, including ids the deferral's prose only cites, so an item mentioned in another item's reasoning reads as disposed and check_gate_dispositions goes silent on it
+ 6236 | - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
+ 6237 | - PL-HVLJ (S) doc_check reads local tags, so a checkout whose tags were fetched ahead of its working tree errors on a clean main - observed 2026-09-21 as 'git holds v0.4.35, but no row of the version table marks v0.4.35 completed' when the row and the tag are the same commit
+ 6238 | - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
+ 6239 | - PL-J3TV (S) .claude/hooks/no-prune-guard.sh still prints the pre-PL-K2C8 three-command restart recipe, so the incomplete version survives in the louder of the two places - the message a session reads at the moment it is refused a prune
+ 6240 | - PL-J3WK (S) make check runs bin/docket check without --verify while CI runs it with, so a verify: command that proves nothing - a literal true, or one shared by three items - passes every local gate and fails CI; both halves of that are decidable statically, without running the 17 commands the flag runs
+ 6241 | - PL-JTHW (S) tools/main_ci_status.py passes over a cancelled main run in silence, so after PL-SMN4 a commit with no whole-store verdict is indistinguishable from one nobody asked about
+ 6242 | - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
+ 6243 | - PL-JW9J (S) core_vocabulary_check matches whole identifiers because two live names would have failed a substring rule, and since PL-6KNM neither exists: decide whether to tighten
+ 6244 | - PL-KFWL (S) The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
+ 6245 | - PL-KNHX (S) contrast_check's KNOWN_SHORTFALLS entries are never checked against the requirements they excuse, so a stale one lingers and inflates the reported shortfall count
+ 6246 | - PL-KRS6 (S) bin/docket release counts the previous release's own cut item as releasable work, so every session after a release is offered an empty one
+ 6247 | - PL-LBW5 (S) Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it
+ 6248 | - PL-LF2C (S) PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
+ 6249 | - PL-LKGW (S) bin/docket meets a python3 below docket's 3.11 floor with render.py's ImportError traceback rather than naming the floor and the interpreter it found, so a Mac whose python3 is Apple's 3.9 gets a cryptic failure by hand and silent hooks with nothing saying why
+ 6250 | - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
+ 6251 | - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
+ 6252 | - PL-M6FY (S) cli.cmd_flight builds its own GitRunner instead of the invocation's, so flight loses the cat-file memo every other command shares
+ 6253 | - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
+ 6254 | - PL-N0MH (S) Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence
+ 6255 | - PL-NDKC (S) PySide6 6.11.2 segfaults on QDataStream over a temporary QByteArray, which the layout persistence work will meet the first time it decodes a saved blob
+ 6256 | - PL-NGBM (S) --no-git does not stop the git reads behind a printed count, so docket digest --no-git shells out to git despite the flag saying branch detection is off
+ 6257 | - PL-NWSK (S) required_checks_check.py treats a paths-filtered pull_request job as reporting, but GitHub leaves such a check pending forever on a pull request the filter excludes, so the reconciliation would read agreement while merges hang
+ 6258 | - PL-P4XB (S) test_verify.py's _commission helper commits unconditionally, so calling it with fields identical to the base store's copy dies inside subprocess with CalledProcessError rather than saying nothing changed
+ 6259 | - PL-PFK1 (S) bin/docket verify REJECTs a self-audited branch on commission checks alone without ever naming --self, so a session reaching the command from CLAUDE.md or --help still hits the wall PL-7XTS closed for the skill
+ 6260 | - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
+ 6261 | - PL-QNYF (S) docket check errors on an item whose closure landed in a queue-only commit, and the error names no remedy the session can reach
+ 6262 | - PL-QSGX (S) bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches
+ 6263 | - PL-QV5Y (S) Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
+ 6264 | - PL-RWBV (S) Seven open items declare touches paths that do not exist, three of them naming core/run_score.py which PL-ZX12 renamed to run_definition.py
+ 6265 | - PL-T441 (S) The git reads behind a printed count resolve the store from config.items_dir rather than the tracked directory, so docket check --items pointed at a store elsewhere silently finds no closures
+ 6266 | - PL-T8PT (S) make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
+ 6267 | - PL-TP5M (S) PL-ZBRB's advisory names blocked-by to work around a checker that did not read it, and PL-KBD0's check now does
+ 6268 | - PL-VJFQ (S) Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
+ 6269 | - PL-VJPJ (S) bin/docket next raises BrokenPipeError and prints a traceback when its output is piped into a command that closes early, so next | head looks like a crash to every session that pipes it
+ 6270 | - PL-VV6N (S) Decide a retention rule for items captured but never worked
+ 6271 | - PL-VYK1 (S) The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next
+ 6272 | - PL-WFFX (S) Name the merge client that sends an empty commit_message, which only the project owner can do: affected merges cluster by sitting at 98.3% and by owner-local hour at p=5e-5, but GitHub records no client identity
+ 6273 | - PL-WG7Q (S) _merges_naming's subject scan applies only the closed-here test and never the carried-work one, so a closure split from its work is recorded whenever its own subject leads with the id
+ 6274 | - PL-WHQS (S) Centralize the closed-item filter now duplicated across twelve call sites
+ 6275 | - PL-WTXB (S) Remove the unreferenced docket milestone command
+ 6276 | - PL-WVJ0 (S) The docket skill says bin/docket show prints no placement at all, but PL-J790 added the plan: line to show in v0.4.18, so a session is sent to look up what the command already prints
+ 6277 | - PL-XQGH (S) verify's assertion check anchors on with, so the parenthesized multi-manager form leaves pytest.raises on a line of its own that matches nothing
+ 6278 | - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
+ 6279 | - PL-YS9F (S) outstanding_roadmap_edits states both edits for a milestone number a cut has exactly reached because it cannot read the beat that decides which; the plan computed before the bump knows
+ 6280 | - PL-YSMV (S) doc_check reads any quoted string near the word section as a section citation, so prose quoting a command's own output fails make check
+ 6281 | - PL-Z6M3 (S) bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
+ 6282 | - PL-Z85N (S) bin/docket release cuts whatever version it is handed, so the reserved-version answer exists only in the advisory digest and nothing objects on the cut path
+ 6283 | - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
+ 6284 | - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
+ 6285 | - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
+ 6286 | - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
+ 6287 | - PL-4L49 (M) tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
+ 6288 | - PL-4RL2 (S) The Gas Man simulation study at PMC7943506 is cited as Meybohm P, et al., J Clin Monit Comput 2021;35:897-908 in the reference adult, the three agent files, the circuit file, docs/MODEL.md and tests/unit/test_parameters.py, but PubMed gives it as Weber J, Schmidt J, Wirth S, Schumann S, Philip JH, Eberhart LHJ, J Clin Monit Comput 2021;35(2):343-354 (PMID 32067148), so a reader following the citation cannot find the paper by its authors or pages (found working PL-SWY5)
+ 6289 | - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
+ 6290 | - PL-65HT (M) A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
+ 6291 | - PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
+ 6292 | - PL-KKRP (M) Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
+ 6293 | - PL-0MLZ (S) uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
+ 6294 | - PL-73G8 (S) The recovery file header claims the body verbatim, but it is the body as GitHub serves it today rather than at merge time, and its commit: sha silently dangles after a history rewrite with nothing checking it
+ 6295 | - PL-7K2C (S) quality.yml runs six to eleven tool checks after the whole-store verify replay, so a replay failure skips contrast, import-boundary, core-vocabulary and glyph checks on that main commit entirely - moving the replay to the end of the job would cost nothing and close the gap
+ 6296 | - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
+ 6297 | - PL-VZYS (S) A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE

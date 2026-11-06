@@ -1,0 +1,35 @@
+[1] keep
+
+Structure:
+- **Paragraph 1 (rows 11-26) makes three points.** It gives the decision (rows 11-14), who sees which text (rows 14-17), and what went wrong before and why no check can catch it (rows 17-26). Split it after row 17 ("...see that Project's instructions."). The new paragraph then opens with "When a rule was given only in the instructions" and ends with "Sending every rule to the repository is what prevents it."
+- **The four cases and their dates are decision history.** These are rows 21-24, from "The cases were the review ask's summary (`PL-8XQS`)" to "while the hook refused it from 2026-09-30". They show how the decision was reached, so they belong in `PL-PDVF`. The section keeps the reason in words (rows 17-20 and 25-26) and the pointer to `PL-PDVF` that the decision tag already gives.
+- **Rows 11-12 and rows 42-43 say the same thing.** Rows 11-12: "The Projects trial's instructions carry no rules of their own". Rows 42-43: "The instructions then say nothing about the rule." The fact belongs in rows 11-12, and rows 42-43 keep nothing. Rows 28-29 ("the project's own state and nothing else") list what the instructions do hold, so they stay.
+- **Rows 37-38 and rows 40-42 both give the timing.** Rows 37-38: "it goes to the repository in the same sitting". Rows 40-42: "a behavior change takes effect in the session that asks for it". The bold phrase keeps the timing. Rows 40-42 keep only a pointer to the rule in `CLAUDE.md` that the timing comes from.
+- **The order and the heading need no change.** The section goes from the decision, to what the instructions keep, to what to do when you give a rule. A reader can follow that order without reading ahead, and the heading says what the section holds. At 413 words in three paragraphs, it needs no subheadings.
+
+Outline:
+- Row 9: heading "Rules for sessions live in the repository".
+- Rows 11-26: **every rule about how a session works is recorded in the repository, and the Projects trial's instructions carry no rules of their own.**
+  - Decision tag: (project owner, 2026-10-03, ratified, over a dated copy of the instructions kept in the repository for sessions outside the Project, `PL-PDVF`).
+  - Every session sees `CLAUDE.md`, the `docket` skill, the rules under `.claude/rules/` and what `bin/docket` prints, whether or not it runs in a Project.
+  - Only a Project's coordinator and its threads see that Project's instructions.
+  - When a rule was given only in the instructions, the repository's copy was missing or older. A session outside the Project then followed the old rule, and a Project thread read two rules that disagreed, each carrying the owner's authority.
+  - The cases:
+    - the review ask's summary (`PL-8XQS`);
+    - re-running `tag-release.yml` (`PL-F23S`);
+    - the arm rule for read holds (`PL-KKHD`);
+    - the direct squash merge (`PL-NXRJ`). The instructions asked for that merge from 2026-09-27, while the hook refused it from 2026-09-30.
+  - Nothing in the repository can read the instructions, so no check can catch the split. Sending every rule to the repository prevents it.
+- Rows 28-35: **the instructions keep only the project's own state.**
+  - They hold the Goal, the Order and its pause, the compaction rule, and a pointer to `.claude/skills/docket/modes/coordinator.md`.
+  - That mode file holds the coordination rules: the thread caps, which model each thread runs, what every brief says, where threads post and record, merging, and releases.
+  - Decision tag: (project owner, 2026-10-25, ratified, over keeping them in Project settings, `PL-NZC0`).
+  - `PL-PDVF` holds the cut-down text as written on 2026-10-03, and the table of where each rule went.
+- Rows 37-46: **a rule the owner gives for sessions in the Project goes to the repository in the same sitting.**
+  - The owner says it to the coordinator.
+  - The coordinator starts a thread that writes the rule into the repository by `CLAUDE.md`'s routing order: a check, the `docket` skill, a path-scoped rule, then resident.
+  - The thread works under `CLAUDE.md`'s rule that a behavior change takes effect in the session that asks for it.
+  - The thread records the owner's words and the date beside the rule.
+  - The instructions then say nothing about the rule.
+  - A thread that finds a rule in the instructions and one in the repository that disagree reports both to the owner rather than choosing, and the fix lands in the repository.
+  - A rule the owner gives in one of their own sessions already takes this route.

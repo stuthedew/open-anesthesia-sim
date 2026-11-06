@@ -1,0 +1,100 @@
+[1] keep
+
+Structure:
+- **The share bar is described twice.** Rows 7211-7213 say "each compartment's amount as a share of all the agent the run holds, circuit included". Rows 7256-7257 say "Each segment is as long as that compartment's share of all the agent the run holds". The description belongs in item 4, and "circuit included" should go there with it. Item 1 keeps only that the subsection says what the share bar shows (item 4). This also stops item 1 naming the share bar before item 4 introduces it.
+- **The meaning of a fill height is given twice.** Rows 7203-7204 say "A fill height is the compartment's modelled tension, on the same scale for every container of one run". Row 7247 says "Each container fills to its tension". It belongs in item 3, which should also take "on the same scale for every container of one run". Item 1 keeps only that the subsection says what a fill height and an amount mean.
+- **The agent cost View's unit is given twice.** Rows 7208-7209 say "The agent cost View gives millilitres of liquid equivalent." Rows 7285-7287 say "By default it shows the delivered agent in millilitres of liquid equivalent … Either way, the unit is named on the value." It belongs in item 8. Item 1 keeps the rule for the whole interface, with its reason. The schematic labels amounts in millilitres of vapour, and no amount shows a bare "mL", because about 183 mL of sevoflurane vapour come from 1 mL of liquid. This also stops item 1 naming the agent cost View before item 8 introduces it.
+- **Two items add displayed precisions to the same section.** In rows 7213-7214, item 1 "derives the displayed precision of a per-compartment amount in § "Displayed precision"". In rows 7279-7281, item 7 says "§ "Displayed precision" derives a precision for each quantity and each unit". Query: the reader needs to know whether item 7 (`PL-0S0V`) covers the per-compartment amount that item 1 (`PL-2881`) derives, and the text does not say. If it does, give the derivation to one item and point to it from the other. If it does not, item 7 should say that the per-compartment amount is item 1's work.
+- **The arterial blood reason is in the wrong item.** The reason no container is drawn for arterial blood (rows 7221-7224) belongs in item 3, beside the list of containers (rows 7243-7246). That is where a reader asks why arterial blood is missing. Item 1 keeps only that the subsection records the reason.
+- **Item 2 is written for a developer.** Item 2 (rows 7227-7238) is full of code names: `SimulationSnapshot`, `agent_amount_l`, `core/`, `stored_agent_l`, `app/`, "an oracle" and `.claude/rules/test-oracles.md`. "Summing the record again in `app/` … so the build kept the one sum (`PL-KFTM`, 2026-11-01)" is decision history. Both belong in `PL-KFTM`. The item should keep what the release gains:
+  - the model passes each of the six compartments' amounts to the display, beside its tension;
+  - the amounts travel as one record per compartment, so that v0.8.0 can add substances without adding fields;
+  - no equation changes;
+  - a test checks each amount, at stated instants, against a calculation independent of the model.
+- **Code names and decision history in other items belong in their queue items.**
+  - Item 1's `AGENT_AMOUNT_DISPLAY_PRECISION` and "the three totals" (rows 7214-7216) go to `PL-2881`. Item 1 keeps that at the run totals' 0.1 L resolution, venous blood and the alveoli would read 0.0 L for a whole hour at 1 MAC. Query: the reader needs to know which three totals these are, and this chapter does not name them. If the code name moves, this question goes with it.
+  - Item 3's `src/anesthesia_sim/app/view_contract.py` (row 7242) and `app/theme.py` (row 7252) go to `PL-RNYV`. Item 3 keeps that any Area can hold the schematic and that it uses the chart's compartment colours.
+  - Item 10's "as `PL-MQHN` decided" and "`app/preferences.py` is that store (`PL-93B3`, 2026-11-01)" (rows 7301-7302) go to `PL-93B3`. Item 10 keeps the decision itself: a versioned preferences file, separate from the Workspaces.
+- **Item 12 buries its point and uses an undefined term.** The point of item 12 (rows 7310-7319) comes only in its last sentence (rows 7316-7319): the copy editor is fixed so that the `docs/MODEL.md` sections a learner reads beside the schematic and the agent cost View are written for a clinician. Put it first.
+  - The owner's verbatim message and its timestamp (rows 7312-7313) are decision history for `PL-HGZS`. The item keeps that the project owner added this work to v0.7.0 on 2026-11-04.
+  - "so `PL-HGZS` records it as a live generator" (rows 7315-7316) uses a term this chapter does not explain. It belongs in `PL-HGZS`. The item keeps the fault in plain words: the copy editor keeps text the reader does not need, and lengthens some of it.
+- **Items 9 and 10 depend on a fact only item 11 gives.** Items 9 and 10 (rows 7292-7302) rely on rows 7304-7307: the reader sets a price per agent, and the project ships none. Item 9 also speaks of "a stored price" (row 7293) before item 10 says where the price is stored. Use the order 8, 11, 10, 9. Query: the reader needs to know whether the item numbers give the build order, and the section does not say. If they do, keep the order and open item 9 with the reader-set price instead.
+- **The section needs subheadings, and item 1 needs a sub-list.** The section holds three pieces of work in 1221 words. A reader deciding the release's scope has to find where each one starts.
+  - Put a subheading before item 1 for the compartment schematic (items 1-5), one before item 6 for the agent cost in liquid and in money (items 6-11), and one before item 12 for the copy editor.
+  - Keep the item numbers, because other text may cite them.
+  - Item 1 makes six points in one list item (rows 7200-7224). Once the findings above are applied, give its remaining points as a sub-list: unit naming, the per-compartment precision, and the two hazard rows.
+- **Some item headings do not say what the item holds.**
+  - Row 7226, "Each compartment's amount on the snapshot": "snapshot" is a code name. Use "Each compartment's amount passed to the display".
+  - Row 7265, "A shipped Workspace that places it": "it" points at nothing in the heading. Use "A shipped Workspace that places the schematic".
+  - Row 7279, "The precision of each unit": the item derives a precision for each quantity and each unit. Use "A displayed precision for each quantity and unit".
+  - Row 7292, "What a reader's price carries": the item also sets what a cost readout shows beside the cost. Use "What a stored price records, and what a cost readout shows beside it".
+  - Rows 7310-7311, "The copy editor, fixed, and the rewrites it holds": "holds" is used in a private sense, and the body says "blocks". Use "Fix the copy editor, then make the five `docs/MODEL.md` rewrites that wait on it".
+- Query, row 7288: "as item 28 records". This section has only twelve items. The reader needs to know which list item 28 belongs to, and the text does not say.
+- Query, rows 7269-7270: "Which Workspace places it is a placeholder decision." The reader needs to know whether the choice of Workspace is still open, and who makes it before the release. The text does not say.
+- Query, rows 7258-7259: "at one hour fat holds a fifth of the stored agent". The reader needs the setting (agent and MAC) at which this holds. Item 1 gives "at 1 MAC" for its own figure, and this sentence gives none.
+- Query: this chapter never explains View, Area, Workspace, View chooser, compare mode or readouts. If no earlier chapter explains them, a contributor needs each one explained where it first appears.
+
+Outline:
+- Row 7198: heading "Required scope".
+- Rows 7200-7224, item 1, "The specification, before anything is drawn" (`PL-2881`). Point: before anything is drawn, `docs/MODEL.md` gains a subsection under § "Minimum displayed outputs" saying what the schematic asserts and what it does not. Facts:
+  - a fill height is the compartment's modelled tension, on the same scale for every container of one run;
+  - an amount is the compartment's modelled agent, in the unit § "Agent amount" defines, named as vapour so nobody reads it as liquid;
+  - the subsection sets, once for the whole interface, how vapour and liquid-equivalent amounts name their units;
+  - the schematic labels amounts in millilitres of vapour, and the agent cost View gives millilitres of liquid equivalent;
+  - about 183 mL of sevoflurane vapour come from 1 mL of liquid (§ "Agent amount"), so neither may show a bare "mL";
+  - the share bar shows each compartment's amount as a share of all the agent the run holds, circuit included;
+  - the subsection derives the displayed precision of a per-compartment amount in § "Displayed precision", not from the run totals' entry in `AGENT_AMOUNT_DISPLAY_PRECISION`, which was derived for the three totals;
+  - at that entry's 0.1 L resolution, venous blood and the alveoli read 0.0 L for a whole hour at 1 MAC;
+  - it adds two rows to the hazard table in § "Reasonably foreseeable misuse, and the hazards the presentation carries": a height read as an amount, and a vapour amount read as liquid;
+  - it records why no container is drawn for arterial blood: the model gives arterial blood no amount of its own, because F_a ≡ F_A (§ "Blood compartments"), so such a container would show agent the model does not hold.
+- Rows 7226-7238, item 2 (`PL-KFTM`). Point: `SimulationSnapshot` carries the six compartments' amounts beside their tensions. Facts:
+  - each amount is read from that compartment's `agent_amount_l` in `core/`;
+  - the amounts travel as one record per compartment, not six more flat floats, so v0.8.0 can key the same record by substance instead of adding fields;
+  - `stored_agent_l` stays `core/`'s one sum of the amounts, and a test keeps the record's amounts equal to it to the last bit;
+  - summing again in `app/` would be a second sum of the same fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01);
+  - no equation changes, because `core/` already computes every amount and the item only passes them on;
+  - a test compares each amount at stated instants with an oracle independent of `core/`, as `.claude/rules/test-oracles.md` requires.
+- Rows 7240-7253, item 3 (`PL-RNYV`). Point: the schematic View draws the compartments as containers. Facts:
+  - it is one registered View kind, built against the View contract (`src/anesthesia_sim/app/view_contract.py`) like every View;
+  - any Area can hold it, and compare mode draws one schematic per displayed run;
+  - the containers are the circuit, the alveoli, venous blood, the vessel-rich group, muscle and fat, in the order agent reaches them, joined as the circulation joins them;
+  - each container fills to its tension and is labelled with its name, tension and amount;
+  - it shows the run's current instant, as the readouts do, and redraws on every frame the readouts redraw, so it never shows a state the run has left;
+  - it declares its smallest readable size;
+  - its colours are the compartment trace colours in `app/theme.py`, so each compartment means the same on the chart and the schematic.
+- Rows 7255-7263, item 4 (`PL-S79P`). Point: one share bar carries the amount, because containers drawn to scale cannot in this model. Facts:
+  - one bar, divided by compartment, with each segment's length equal to that compartment's share of all the agent the run holds;
+  - each segment is named in text;
+  - containers filled to tension show fat nearly empty, although at one hour fat holds a fifth of the stored agent;
+  - position on a common scale is read more accurately than area (Cleveland WS, McGill R, *J Am Stat Assoc* 1984;79(387):531-554, https://doi.org/10.1080/01621459.1984.10478080).
+- Rows 7265-7270, item 5 (`PL-PR1W`). Point: one shipped Workspace places the schematic beside the concentration chart. Facts:
+  - the schematic is already reachable from every Workspace through the View chooser;
+  - a learner meets tension over time and where the agent is now side by side, without building the layout;
+  - which Workspace places it is a placeholder decision.
+- Rows 7272-7277, item 6 (`PL-KZ99`). Point: the agent's parameter file stores the constants a liquid figure comes from. Facts:
+  - each agent's molar mass;
+  - each agent's liquid density, with the temperature at which it was measured and its source;
+  - the vapour-to-liquid factor is derived from these values in one place;
+  - the factor is checked against Biro's and Gas Man's published constants.
+- Rows 7279-7282, item 7 (`PL-0S0V`). Point: `docs/MODEL.md` § "Displayed precision" derives a precision for each quantity and each unit. Fact: because the reader chooses the unit, precision depends on both quantity and unit.
+- Rows 7284-7290, item 8 (`PL-B396`). Point: the agent cost View is a View of its own that any Area can hold. Facts:
+  - by default it shows the delivered agent in millilitres of liquid equivalent, or litres of vapour if the reader chooses;
+  - either way, the unit is named on the value;
+  - the basis is the delivered agent, not the exhausted agent, as item 28 records (`PL-H4N8`);
+  - the agent accounting View keeps litres of vapour, because it is a check that the model conserves mass.
+- Rows 7292-7297, item 9 (`PL-VJZK`). Point: `docs/MODEL.md` § "A cost at the reader's price" states what a stored price carries and what a cost readout shows. Facts:
+  - a stored price carries, among other things, its currency and the date on which it applied;
+  - beside the cost, a readout shows the modelled liquid volume the cost multiplies, the price used, and words saying the price is the reader's rather than an authoritative figure.
+- Rows 7299-7302, item 10 (`PL-93B3`). Point: the price and the cost View's unit are kept in a preferences file. Facts:
+  - both belong to the reader, not to a layout;
+  - they are kept in a versioned preferences file separate from the Workspaces, as `PL-MQHN` decided;
+  - `app/preferences.py` is that store (`PL-93B3`, 2026-11-01).
+- Rows 7304-7308, item 11 (`PL-1P15`). Point: the agent cost View shows the delivered agent's cost at a price per agent that the reader sets. Facts:
+  - the project ships no price, because a shipped price goes stale and differs by institution;
+  - with no price set, the View says so instead of showing a cost.
+- Rows 7310-7319, item 12 (`PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`, `PL-XT53`, `PL-YVL0`). Point: the copy editor is fixed, then five `docs/MODEL.md` rewrites are made. Facts:
+  - the project owner added this to v0.7.0 (project owner, 2026-11-04 20:12Z: "At the copy editor stuff to .7");
+  - the copy editor is the review that every rewrite of `docs/MODEL.md` passes through;
+  - it keeps text its reader does not need and lengthens some of it, so `PL-HGZS` records it as a live generator;
+  - it is fixed and stress-tested first;
+  - then the five rewrites it blocks are made, so that the sections a learner reads beside the schematic, the agent cost View and the other displays are written for a clinician.

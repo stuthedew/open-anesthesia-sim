@@ -1,0 +1,39 @@
+[1] keep
+
+Structure:
+- Order: one bullet applies to the whole release, not to one feature: "Nothing a learner could do on v0.6.0 is lost, checked against v0.6.0's own definition of done" (rows 7348-7349). It sits between the schematic's bullets and the cost View's. Move it to the end, beside "`make check` is green, and `docs/MODEL.md`, `docs/ARCHITECTURE.md` and `README.md` describe the interface that exists" (rows 7361-7362). Each feature's bullets then stay together, and the release-wide conditions close the list.
+- Order within the schematic's bullets: two bullets on what the learner sees come after three bullets on checks (rows 7333-7342). They are "The schematic says on its face that its values are modelled" with its precision (rows 7343-7345), and "Each container is named in text, so no compartment is told apart by colour alone" (rows 7346-7347). Move rows 7343-7347 to follow rows 7328-7332. The reader then gets what the schematic shows first, followed by the checks that its numbers are right.
+- Subheadings: the list has 13 bullets on four subjects. Put a subheading, or a bold lead-in, before each group:
+  - "Compartment schematic" before row 7323.
+  - "Agent cost View" before row 7350.
+  - "Copy editor" before row 7358.
+  - "Whole release" over rows 7348-7349 and 7361-7362, once they are moved together.
+- Split: the bullet at rows 7328-7332 makes two points. One is the containers' fill and labels (rows 7328-7330). The other is the bar of each compartment's share (rows 7331-7332). Give the bar its own bullet.
+- Split: the bullet at rows 7350-7355 makes three points: placing the View and choosing a unit, the cost display, and the end-to-end test. Give the test (from "An end-to-end test checks the liquid figure", row 7353, to row 7355) its own bullet, as the schematic's test has at rows 7337-7339.
+- Written for another reader: four bullets name tests, tools or folders by names this reader does not know:
+  - "an oracle independent of `core/`" (rows 7338-7339)
+  - "`tools/contrast_check.py` covers every colour" (row 7346)
+  - "as `PL-HGZS`'s stress test judges" (row 7359)
+  - "`make check` is green" (row 7361)
+
+  The writing rule's owner decision (`PL-BGN1`) asks for what changes, not internal names. Keep here what each check guarantees, in words, and move the names to the milestone's items.
+- Query: row 7342 says "every label matches the snapshot", and the chapter does not say what the snapshot is. The reader needs that to judge the condition.
+- Query: the copy-editor bullet (rows 7358-7360) leaves three things open. The chapter does not say what `PL-HGZS`'s stress test measures or what result counts as passing. It does not say which five `docs/MODEL.md` rewrites "waited on it". Its "it" could mean the copy editor or the stress test. The reader needs all three to decide whether the release is done.
+- Query: the schematic must say on its face that its values are modelled, and must give its amounts at a stated precision (rows 7343-7345). The cost View's figures are also modelled values from a run, but its bullets (rows 7350-7357) say neither. Should the cost View meet the same two conditions?
+- Query: row 7326 names "the three tissue groups" without naming them. The reader deciding what the schematic shows needs the three names, and the chapter does not give them.
+
+Outline:
+- 7321: heading "Definition of done".
+- 7323-7324: where the schematic goes. A learner can put the compartment schematic in any Area from its View chooser, in every Workspace. One shipped Workspace places it.
+- 7325-7327: what the schematic shows. For each displayed run, it shows the circuit, the alveoli, venous blood and the three tissue groups, in the order agent reaches them. It has no container for arterial blood.
+- 7328-7332: fill, labels and the share bar. Each container fills to that compartment's modelled tension, on one scale for every container of the run. Each is labelled with its tension and its amount, and the amount is named as vapour. A bar shows each compartment's share of the agent the run holds. Each segment is named in text, and the shares add up to the whole.
+- 7333-7336: the numbers agree with the rest of the interface. Every number equals what the rest of the interface gives for the same run at the same instant. A test asserts that each tension equals the readout's, and that the amounts add up to the agent accounting View's stored total.
+- 7337-7339: the schematic's end-to-end test. It runs patient inputs through the model to the drawn labels. It compares each amount at stated instants with an oracle independent of `core/`.
+- 7340-7342: no out-of-date state. The schematic never shows a state the run has left. A test drives a reset, an agent change, a branch, a return to a mark, and compare mode on and off. After each one, it checks that every label matches the snapshot.
+- 7343-7345: modelled notice and precision. The schematic says on its face that its values are modelled. Its amounts are given at the precision that `docs/MODEL.md` § "Displayed precision" derives.
+- 7346-7347: colour. `tools/contrast_check.py` covers every colour the schematic draws. Each container is named in text, so no compartment is told apart by colour alone.
+- 7348-7349: nothing is lost from v0.6.0. Nothing a learner could do on v0.6.0 is lost, checked against v0.6.0's own definition of done.
+- 7350-7355: the agent cost View. A learner can place it in any Area. They can read the delivered agent in millilitres of liquid equivalent or in litres of vapour, with the unit named on the value. Once they set a price, the View shows the cost with the price's currency and date. An end-to-end test checks the liquid figure against an independently computed conversion, and the cost against that figure times the price.
+- 7356-7357: settings kept across a restart. The price and the unit survive a restart, in a preferences file separate from every Workspace.
+- 7358-7360: the copy editor. It cuts text its reader does not need and keeps good text as it is, as `PL-HGZS`'s stress test judges. The five `docs/MODEL.md` rewrites that waited on it have merged.
+- 7361-7362: release-wide checks. `make check` is green. `docs/MODEL.md`, `docs/ARCHITECTURE.md` and `README.md` describe the interface that exists.

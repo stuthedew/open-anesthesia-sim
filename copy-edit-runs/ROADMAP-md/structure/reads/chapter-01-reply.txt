@@ -1,0 +1,11 @@
+[1] keep
+
+Structure:
+- The file's scope is given twice. Row 3 says "This file is the authoritative version and milestone map for the project", and row 7 says "This file covers releases only." Keep the scope once, in row 3's opening sentence. Row 7's sentence can then be cut, because rows 7-8 already say what the file leaves out: "Discrete tasks are tracked and prioritized in `docs/items/`, not here." Settle the naming query below first, so that the one sentence that keeps the scope uses the right term.
+- Query: the reader needs to know how a version, a release and a milestone relate, and the chapter does not say. It calls the file a "version and milestone map" in row 3, says it covers "releases" in row 7, and says when work is "a milestone" in rows 9-11. For example, it does not say whether each milestone is one release. A reader deciding what a release holds needs this.
+- No other change is needed. Each of the two paragraphs is where this reader looks for it: what the file is and which text wins a conflict come first, then what the file leaves to `docs/items/`. The chapter is short enough to need no subheadings, and its heading is the document's title.
+
+Outline:
+- Row 1: the document title, "Project roadmap".
+- Rows 3-5: the file is the authoritative version and milestone map for the project. It takes precedence over a build guide, an issue or a conversation that conflicts with it. When one does, update the conflicting artifact or deliberately amend this file, in the same change.
+- Rows 7-11: the file covers releases only. Discrete tasks are tracked and prioritized in `docs/items/`, not here. These tasks are defects, fixes, cleanups, optimizations and small features. A piece of work is a milestone rather than a "queue item" when it needs four things of its own: a goal, a required scope, a definition of done and an explicit out-of-scope list. The term "queue item" is not explained, and it appears to mean one of the tasks in `docs/items/`.

@@ -1,0 +1,163 @@
+[1] keep
+
+Structure:
+- Repeats, the entries staying as frozen. Four places say it: "The entry stays written as the freeze put it ... It does not delete the entry" (3292-3295), "The heading and every entry below stay as the freeze wrote them ... does not delete them. `PL-NGF7` already had the same treatment" (3304-3307), "Every entry below stays where the freeze wrote it, exactly as `PL-NGF7` does ... does not delete them" (3374-3376), and "The entry stays on Gate 1's frozen list above ... What moves is the disposition, recorded here" (3516-3520). Say it once, in a new first paragraph under the heading, together with "Those headings record what the list said on 2026-09-06, not a claim about today" (3377-3378). The other three places keep nothing.
+- Repeats, the rule for deferring an entry. Two places give it: "allows a deferral only where this section 'says so and says why' ... renegotiation by frontmatter (`PL-9S30`)" (3367-3372) and "permits a deferral only where this section says so and says why. `PL-9S30` shows what it already cost" (3500-3505). Give the rule once, in the same opening paragraph. 3500-3505 keeps nothing, because the `PL-WZVZ` entry is the record itself.
+- Repeats, the safety rule, under three names. "A `safety` entry re-enters the current gate whenever it is found, per § "The cadence"" (3330-3332), "The presence rule assigns a `safety`-classed finding to the *current* gate" (3397-3400) and "the unconditional safety exception" (3527-3528) are one rule. State it once, at the first entry added after the freeze, with the § "The cadence" pointer and one name. The other two places keep only that name.
+- Repeats, the planning tool's count. Three places explain it: "`bin/docket wave` still prints all thirteen ... Do not "fix" the count" (3334-3342), "The two readings agree. `bin/docket wave` reports ..." (3520-3524) and "`bin/docket wave` arrives at the same eleven ... visible on the next run" (3540-3546). Merge them into one paragraph at the end of the section. The other two places keep nothing. The counts and the claims disagree; see the queries.
+- Repeats, the split of `PL-8PS6` and `PL-WZVZ`. "The two that do not move ... `PL-8PS6` can be started and `PL-WZVZ` cannot" (3353-3358) repeats 3454-3470. It belongs in the design-round group. 3353-3358 goes, along with its § pointer to a bold opening phrase.
+- Repeats, the "written once, in the port" rule. "Text on a dashboard that is rewritten from scratch is written once, in the port" (3327-3328) repeats "Each defect lives in code that milestone rewrites from scratch. Fixing it on Flet would mean writing the same lines twice" (3385-3387). Keep the rule under "Carried by the Qt port — 5", and move the `PL-2K1R` paragraph (3323-3332) after that group, keeping "follows the same rule". As placed now, 3326-3327 makes the reader read ahead to a rule that is explained only at 3382.
+- Repeats, the move from version numbers to port items. "Each now names the port item that does the work" (3360-3362) and "Each entry now carries a `blocked-by:` field naming the port item that does the work" (3387-3388) say the same thing. Keep one sentence, in the opening paragraph after the table.
+- Repeats, the `PL-YLKR` split. "(project owner, 2026-09-14, splitting `PL-YLKR`)" (3397-3398), "It is the same split taken over `PL-YLKR` on 2026-09-14 ..." (3438-3440) and "`PL-YLKR`'s design is toolkit-independent" (3449-3450) all give it. Keep the dated split at `PL-YVHK`. 3438-3440 keeps "the same split as `PL-YLKR`'s". 3449-3450 moves out with the account of how this was found.
+- Repeats, what blocks `PL-WZVZ`. "one profile exists, and there is nothing to compare" (3489-3490), "one machine profile exists and there is nothing to compare" (3497-3498) and "a second profile, or a surface that names a machine" (3537-3538) state one condition three times. "the paragraph below" (3489) points into the same list item. State the condition once, where `PL-TBMK` and `PL-4TWW` are named.
+- Repeats, `PL-TH35` and `PL-R1WQ` arriving by v0.6.0. "Both are placed by v0.6.0" (3486) and "v0.6.0. That is the same release that carries `PL-TH35` and `PL-R1WQ`" (3511-3512) give it. Keep it in the Gate 2 paragraph.
+- Repeats, `PL-NGF7`. "`PL-NGF7` already had the same treatment" (3306-3307) and "exactly as `PL-NGF7` does" (3375) repeat the group paragraph (3413-3414), which keeps it.
+- Another reader's: decision and editing history belongs in the items it names. 3344-3351 goes to `PL-D143`; the reader keeps one sentence, that the gate can now reach zero before v0.5.0. "Until 2026-09-13 it was not recorded ... The other eight said so in a `blocked-by:` field and nowhere else" (3367-3372) goes to `PL-9S30`. "This paragraph used to say that item 1 did not exist ... disagreed about whether the intent was recorded at all" (3458-3461) goes to `PL-Z4WL`. The statuses of `PL-005` and `PL-LPLD` (3362-3365) and "what its own `verify:` command tested for" (3388-3389) go to `PL-D143`. "Each is argued where it was taken. This section is the index, not the argument" (3379-3380) is narration about the text and goes.
+- Another reader's: "How this was found is worth one line" (3442-3451) is decision history. The owner needs one sentence of it in the `PL-16ZC` group: of the Flet-related entries, only `PL-16ZC` waits for the port, and the rest survive it or feed it. The count and the examples go to the item that records the 2026-09-14 question (see the queries).
+- Another reader's: code and tool names this reader does not know belong in the items. "`ScatterPlotItem` ships with `hoverable` set to `False`" (3410-3411) and the 1 870 strings, 71.9 ms and 90 KiB (3405-3407) go to `PL-YVHK`. The `MilestoneStates.ships_with` reasoning (3428-3431) and `app/simulation_view.py` with its line count (3424-3425) go to `PL-16ZC`. The file paths, `deliverable_flow_range_l_min` and `core/supported_ranges.py` (3472-3477) go to `PL-8PS6`. "`verify_required_from`", "grandfathered set" and "`bin/docket gate`" (3287-3292) go to `PL-Z34C`. Each place keeps the sentence the owner needs, in words.
+- Placement: `PL-WZVZ`'s `safety` class first appears at 3527, 47 rows after the entry is introduced at 3480. State the class in the entry's first sentence.
+- Order: the section opens with the thirteenth entry (3284-3299) before the reader has met "these eleven" (3301) or "the twelfth" (3323). Use this order:
+  1. The frozen heading.
+  2. An opening paragraph: the heading and entries record the 2026-09-06 list; the rule for deferring an entry.
+  3. What changed, with the table (3301-3302, 3309-3321).
+  4. The groups in table order: carried (3382-3389), then `PL-2K1R` (3323-3332); sequenced behind (3391-3411); dissolved (3413-3414); deferred past (3416-3440); the design round (3454-3538).
+  5. `PL-Z34C` and its entry (3284-3299), because it waits on something other than the port.
+  6. One paragraph on the planning tool's count.
+- Too long: at 2880 words the reader cannot find a given entry. Turn the bold opening phrases at 3382, 3391, 3413, 3416 and 3454 into `####` subheadings. Give `PL-WZVZ` (3480-3538) a subheading of its own, because its five paragraphs make one list item into an essay. Add subheadings for `PL-Z34C` and for the count paragraph.
+- Pointers: § "Behind a design round no milestone section places" (3357) and § "What reads this, and what reads past it" (3524) point at bold opening phrases, not headings, so the documentation check cannot find them. Make them headings, or write "below".
+- Pointers: § "Completed: v0.4.26 - the interface moves to Qt" (3303) uses a hyphen and 3384 uses an em dash. 3394, 3404 and 3421 shorten it to § "Completed: v0.4.26". Use the heading's exact text in every place.
+- Heading: "Sequenced past v0.5.0, so not clearable before it begins" no longer describes the section. Nine of the eleven now clear before v0.5.0, and `PL-Z34C` is not sequenced behind anything. The snapshot rule keeps the heading's text, so the new opening paragraph must say that the heading records the 2026-09-06 list. Optionally, add a subheading such as "Where these entries stand since the port moved" above 3301.
+- Heading: the bold phrase "What reads this, and what reads past it" (3540) does not say what its paragraph holds. Use, for example, "Why the planning tool's count can differ from this section", and update the pointer at 3524.
+- Heading: the bold phrase "Behind a design round no milestone section places" (3454) is out of date, because that design round has happened (3467). Use, for example, "Waiting on the machine abstraction, now closed".
+- Query: the planning tool's output is given three ways: "all thirteen" as waiting (3334), "the same eleven" (3540-3541) and "`0 this gate can clear, 1 waiting on 3 open items outside it`" (3521-3522). None is dated. "3 open items" does not match the four blockers of `PL-WZVZ`: `PL-TH35`, `PL-R1WQ`, `PL-TBMK` and `PL-4TWW`.
+- Query: "The two readings answer different questions, and both are true ... Do not "fix" the count" (3339-3342) contradicts "If the prose and the count disagree, one of them is wrong" (3544-3546).
+- Query: "the gate waits on `PL-FG9D` alone" (3297) contradicts "`PL-FG9D` closed on 2026-09-20 (`#748`)" (3355). The reader needs to know what the gate waits on now.
+- Query: `PL-YVHK` "arrived after the freeze rather than at it" (3397), yet it is counted among "these eleven" (3301), while `PL-2K1R` is "the twelfth, added after the freeze" (3323). The reader needs to know which entries the freeze held. Also, "unlike the seven above" (3463) does not match the nine.
+- Query: "Each sequencing decision was the project owner's, taken on 2026-09-10" (3378-3379) contradicts the 2026-09-14 decisions on `PL-YVHK` (3397), `PL-16ZC` (3418) and `PL-2K1R` (3323).
+- Query: `PL-005` and `PL-LPLD` (3362-3363) are counted among "All nine" but are missing from the table, and "five of the six" (3364-3365) does not say six of what.
+- Query: "Every entry below" (3304, 3374) finds only the `PL-Z34C` entry below it. The text does not say where the eleven entries stand, or which five sit under "Cleared before v0.5.0 begins" (3376-3377).
+- Query: the table row "behind a design round the roadmap places nowhere | unchanged" (3320) contradicts 3472, where `PL-8PS6` clears inside this gate, and 3507, where `PL-WZVZ` clears in Gate 2. 3454-3465 likewise says in the present tense that both wait on `PL-FG9D`.
+- Query: the port's section is titled "Completed: v0.4.26 — the interface moves to Qt", but this chapter treats the port as still to come ("now lands before v0.5.0", "waits for the port *landing*"). The reader needs to know whether the port has shipped and whether the five carried entries are done.
+- Query: the decision to clear `PL-WZVZ` in Gate 2 (2026-09-20) rests on v0.6.0 carrying `PL-TH35` and `PL-R1WQ`. On 2026-09-21 two more blockers were added, and "No milestone section schedules either new item" (3492). The owner must decide whether Gate 2 still holds.
+- Query: three figures carry no date. "`PL-KP7H` measured that frame at 71.9 ms and 90 KiB" (3406-3407), "all 4 321 lines" (3424) and "the 13 prerequisites ... that `PL-FCM3` measured" (3295-3296) each need the date they were measured.
+- Query: "no longer counts as debt" (3289) contradicts "were never debt classes" (3291). Separately, "over keeping it on the frozen list" (3285) contradicts "The entry stays written as the freeze put it" (3292-3293).
+- Query: `PL-YVHK` is "`safety`-classed for the same reason" (3396), but `PL-GS3R`'s paragraph gives no reason for its class.
+- Query: the text calls the safety exception "unconditional" (3528) and then defers a `safety` entry. The reader needs to know which decision allows that.
+- Query: the chapter uses terms that this reader does not know and it does not explain: "grandfathered set" and what `verify_required_from` does (3287-3288, 3299), "debt" and "debt classes" (3289-3291), "the beat" (3348, 3543), "the `anticipated` exemption" (3478), "its band" (3537), "parity claim" (3330), "carrier" (3472), "renegotiation by frontmatter" (3372), "promotable" (3491) and "Done-when" (3436).
+- Query: the text names no item for the history at 3442-3451, the owner's 2026-09-14 question. `PL-NR2K` may be it.
+- I cannot tell what this sentence means: "The field shipped naming the port item alone" (3389), when the sentence before it says that the field names the port item.
+
+Outline:
+- 3282: heading "Sequenced past v0.5.0, so not clearable before it begins".
+- 3284-3297: `PL-Z34C` joins as a thirteenth entry, on a different ground.
+  - Decision: project owner, 2026-09-20, ratified, over keeping it on the frozen list.
+  - It is not sequenced behind the port, and its completion is a standing condition, not work.
+  - `verify_required_from` is retired when the grandfathered set reaches zero. That set shrinks as each of twelve unrelated open items is started, never through work on this entry.
+  - It no longer counts as debt. It arrived at status `needs-decision` and is now `blocked`. Its classes `infra` and `session-cost` were never debt classes, so `bin/docket gate` does not count it today.
+  - It stays as the freeze wrote it, per § "The gate is a snapshot, not a moving target". This paragraph records its disposition and deletes nothing.
+  - Of 13 prerequisites outside the gate that `PL-FCM3` measured, this entry accounted for 12 (undated). With it moved here, the gate waits on `PL-FG9D` alone.
+- 3299: list entry "PL-Z34C (S) Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero".
+- 3301-3307: nine of the eleven became clearable when the Qt port moved ahead of v0.5.0.
+  - Decision: project owner, 2026-09-14, on `PL-RKWB`. § "Completed: v0.4.26 - the interface moves to Qt" holds the decision and the count.
+  - The heading and entries stay as the freeze wrote them, per the snapshot section. This section records dispositions and deletes nothing. `PL-NGF7` had the same treatment.
+- 3309-3312: the port's position changed, not any entry's judgment.
+  - Each of the nine was sequenced behind a port that shipped after the gated milestone, which made it unclearable before v0.5.0.
+  - The port now lands before v0.5.0, so each clears in the ordinary way.
+- 3314-3315: table header: Entry, Relation to the port, Now clears.
+- 3316: `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`, `PL-W8DQ`: carried by the port; clear before v0.5.0.
+- 3317: `PL-GS3R`, `PL-YVHK`: sequenced behind the port, both `P1` `safety`; clear before v0.5.0.
+- 3318: `PL-NGF7`: dissolved by the port; clears before v0.5.0 as `dropped`.
+- 3319: `PL-16ZC`: deferred past the port; clears before v0.5.0, behind `PL-G59B`.
+- 3320: `PL-8PS6`, `PL-WZVZ`: behind a design round that the roadmap places nowhere; unchanged.
+- 3321: `PL-2K1R`: rides the port, added after the freeze; clears before v0.5.0.
+- 3323-3332: `PL-2K1R` is the twelfth entry, added after the freeze.
+  - Decision: project owner, 2026-09-14. It is `P1` `safety`.
+  - It adds an interpretation disclaimer beside the use disclaimer: the readouts and traces are modelled, not measured.
+  - It is sequenced behind `PL-25KS` on the five carried entries' rule: dashboard text that is rewritten from scratch is written once, in the port. It clears before v0.5.0.
+  - It is named under the port's "Decisions the port has to make anyway", which keeps the port's parity claim checkable.
+  - A `safety` entry re-enters the current gate whenever it is found, per § "The cadence". That is why it is recorded here, not left to Gate 2.
+- 3334-3342: `bin/docket wave` still prints all thirteen as "waiting on work outside it", which is correct.
+  - The tool asks whether an entry's `blocked-by` chain leads outside the frozen list. The chains do: they name the port items `PL-G59B`, `PL-25KS` and `PL-L9RD`.
+  - What changed is when that work happens, and no field records it.
+  - The two readings answer different questions and both are true: the count says the gate cannot clear these by itself; the section says their work now comes before the milestone.
+  - Do not "fix" the count.
+- 3344-3351: moving the port resolves the contradiction that `PL-D143` recorded.
+  - Debt is cleared before the milestone it gates. These entries were to be fixed in a later release, so the gate could not reach zero until after the thing it gated.
+  - The tool's beat "clear the gate" asked for something the plan forbade. The move makes it possible to satisfy.
+  - That was not the reason for the move.
+- 3353-3358: the two entries that do not move never depended on the toolkit.
+  - `PL-8PS6` and `PL-WZVZ` waited on `PL-FG9D`, the base anesthesia-machine abstraction, which no milestone section names.
+  - `PL-FG9D` closed 2026-09-20 (`#748`). Since then `PL-8PS6` can be started and `PL-WZVZ` cannot.
+  - Pointer to § "Behind a design round no milestone section places".
+- 3360-3365: the items carry the re-pointing.
+  - All nine named a version in `blocked-by` or in prose. Each now names the port item that does the work, so none depends on the port's version number.
+  - `PL-005` and `PL-LPLD` carried the deferral in prose alone at status `ready`, the defect `PL-D143` described. `PL-D143` fixed it for only five of the six. Both are now `blocked`, with the field to match.
+- 3367-3372: this is recorded because the rule requires it, and it was not recorded until 2026-09-13.
+  - The snapshot section allows a deferral only where this section "says so and says why".
+  - Nine open entries are sequenced past the milestone. Only `PL-NGF7`'s block was written down; the other eight said so only in a `blocked-by:` field. That is renegotiation by frontmatter (`PL-9S30`).
+- 3374-3380: nothing moves and no decision is taken here.
+  - Every entry stays where the freeze wrote it, as `PL-NGF7` does. The section records dispositions and deletes nothing.
+  - Five entries sit under headings reading "Cleared before v0.5.0 begins". Those headings record the list on 2026-09-06, not today.
+  - Each sequencing decision was the project owner's, on 2026-09-10 when the port was scoped. Each is argued where it was taken, and this section is the index.
+- 3382-3389: carried by the Qt port, 5 entries.
+  - `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60` and `PL-W8DQ` follow the rule in § "Completed: v0.4.26 — the interface moves to Qt" → "Fixes this port carries, and why that is not scope creep".
+  - Each defect lives in code the port rewrites from scratch, so fixing it on Flet means writing the same lines twice.
+  - Each now has a `blocked-by:` field naming the port item. That is what `PL-D143` intended and what its `verify:` command tested for. "The field shipped naming the port item alone".
+- 3391-3394: sequenced behind the port, 2 entries; first, `PL-GS3R`.
+  - It is `P1` and `safety`, and already designed.
+  - It waits for the port to land, because the chord-width column rule costs frame time that the port makes free. Decided in § "Completed: v0.4.26" → "Required scope" item 1.
+- 3396-3411: second, `PL-YVHK`.
+  - `P1` and `safety` "for the same reason". It arrived after the freeze (project owner, 2026-09-14, splitting `PL-YLKR`).
+  - The presence rule assigns a `safety` finding to the current gate whenever it is found, so its disposition is recorded here.
+  - It is the build half of the hover readout that `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" specifies. It is already designed, with no open question, and named in Required scope item 1.
+  - It waits for the toolkit. On Flet it would add roughly 1 870 per-point strings to a pause-transition frame, which `PL-KP7H` measured at 71.9 ms and 90 KiB (undated). The port deletes those strings again; there the same content is one format callable.
+  - It is parity, not new capability, unlike `PL-16ZC`: the Flet build has a hover, and the Qt build would not, because `ScatterPlotItem` ships with `hoverable` set to `False`.
+- 3413-3414: dissolved by the port, 1 entry: `PL-NGF7`. Its block above gives the reasoning and its expected disposition, `dropped` rather than `done`.
+- 3416-3431: deferred past the port, 1 entry: `PL-16ZC`.
+  - It is a show/hide control for the two clinical references and the control marks (project owner, 2026-09-14, on `PL-NR2K`).
+  - It is the mirror of the five carried entries: those are defects the port must not reproduce, and this is new capability. § "Completed: v0.4.26" → "Fixes this port carries" excludes new capability "whatever its size", and the owner ruled it out on 2026-09-10 for that reason.
+  - The control extends the legend table that `PL-CG7J` built in `app/simulation_view.py`, and Required scope item 2 rewrites all 4 321 lines of that file (undated). So it is the one piece of open Gate 1 work that building on Flet first would write twice.
+  - `blocked-by` names `PL-G59B`, the chart port that builds the legend and both references. It names no version, because through `MilestoneStates.ships_with` a version would assert that the entry ships with that milestone.
+- 3433-3440: the decision is not deferred, only the build.
+  - `PL-16ZC` asks whether the references and control marks should be hideable at all, a question about what the chart is for that no toolkit answers.
+  - Its Done-when allows closing without code, and that half can be answered any day.
+  - This is the same split as `PL-YLKR` on 2026-09-14: the design was toolkit-independent and landed on v0.4.x, and the build moved to `PL-YVHK`.
+- 3442-3451: how this was found; the general proposal is wrong.
+  - On 2026-09-14 the owner asked whether to drop or postpone all Flet-related gate entries. The entries were counted.
+  - Of 23 that this gate can clear, 13 never touch the interface, and 9 of the other 10 survive the port or feed it. Examples: `PL-JRS3` is the port's Required scope item 4; `PL-LL9Y` is under § "Decisions the port has to make anyway"; `PL-YLKR`'s design is toolkit-independent; `PL-B9PY` ships on Flet in v0.5.0 per § "Items this port moots or transforms".
+  - One entry was left, `PL-16ZC`. The general proposal would have suppressed nine real entries.
+- 3454-3465: behind a design round that no milestone section places, 2 entries.
+  - `PL-8PS6` and `PL-WZVZ` wait on `PL-FG9D`, which no milestone section names. § "Planned milestones" item 1 is its line of intent and names `PL-FG9D` and its prerequisite survey `PL-4DCG`.
+  - The paragraph once said item 1 did not exist, until `PL-Z4WL` corrected it. `PL-FG9D`'s brief quotes item 1, so the two documents had disagreed.
+  - Intent is not scope, and nothing schedules the work.
+  - Unlike "the seven above", nothing forbade clearing these before v0.5.0, but that needed the design round scoped first, a milestone decision.
+- 3467-3470: the design round has happened and the two entries separated (`PL-8G48`, 2026-09-20).
+  - `PL-FG9D` closed as `#748` and `PL-4DCG` as `#742`.
+  - Checked against the tree: one is ordinary gate work, and the other is a deferral to record.
+- 3472-3479: `PL-8PS6` clears inside this gate.
+  - The carrier is `src/anesthesia_sim/data/machines/reference_circle_system.json`.
+  - `docs/machine-abstraction.md` assigns `deliverable_flow_range_l_min` to survey section (b8) and keeps the bounds in `core/supported_ranges.py` as the model's envelope. Keeping the two separate can be built over the single profile, so the entry is `ready`.
+  - It is `P1` because leaving `blocked` ends the `anticipated` exemption. Nothing is deferred.
+- 3480-3498: `PL-WZVZ` is deferred, on a ground other than the machine milestone.
+  - Its static half is a comparison table with machines as columns. § "Planned milestones" item 34 sets the standing rule that no new display surface is built before that item (project owner, 2026-09-17, ratified).
+  - So `blocked-by: PL-TH35, PL-R1WQ`, the View contract and view registry, both placed by v0.6.0.
+  - On 2026-09-21 (`PL-0H5D`), `PL-TBMK` (a second machine profile) and `PL-4TWW` (the surface selecting profiles) were added. They are the condition "one profile, nothing to compare". Before that, no field held it, so closing `PL-TH35` and `PL-R1WQ` would have reported the entry promotable while it stayed unbuildable. No milestone section schedules either new item, which is now visible in the queue.
+  - Its second half, a machine as a labelled input expanded into the parameters that differ, is a requirement on planned-milestone items 11 and 12, not a surface, so the display rule does not apply. That half is blocked by one profile existing.
+- 3500-3505: this is recorded because the deferral is real.
+  - The snapshot section permits a deferral only where this section says so and why. `PL-9S30` shows the cost of a deferral held only in `blocked-by:`.
+  - This paragraph is that statement for `PL-WZVZ`.
+- 3507-3514: it clears in Gate 2, and v0.5.0 ships without it (project owner, 2026-09-20, on `PL-S5Q9`).
+  - An entry deferred to nowhere holds a release open.
+  - Gate 2 freezes when v0.5.0 ships and ships inside v0.6.0, the release that carries `PL-TH35` and `PL-R1WQ`. So Gate 2 is the first gate where the entry can be worked, a statement of possibility, not preference.
+- 3516-3525: it stays on Gate 1's frozen list, deliberately.
+  - Removing it would make the list a moving target. The list is what was found on 2026-09-06, and only the disposition moves.
+  - The two readings agree: `bin/docket wave` reports `0 this gate can clear, 1 waiting on 3 open items outside it` (undated), computed from the items, so a future disagreement shows on the next run.
+  - Pointer to § "What reads this, and what reads past it".
+- 3527-3538: why a `safety` entry may be deferred, against the unconditional safety exception.
+  - The hazard is a learner attributing a curve difference to a brand rather than to the named parameter. It is not live: `src/anesthesia_sim/data/machines/` holds one profile, there is no selection surface, and no trade name is shown.
+  - `PL-8G48` checked this against the tree, and it was checked again on 2026-09-20 when planned-milestone item 1 was split.
+  - Item 40 deliberately keeps one profile and adds no chooser, which keeps the hazard inactive.
+  - The entry is owed its band the moment either condition lifts: a second profile, or a surface that names a machine.
+- 3540-3546: what reads this, and what reads past it.
+  - `bin/docket wave` reaches "the same eleven" from the items. It counts entries whose `blocked-by` chain leads outside the list separately from those the gate can clear, so the beat asks for a reachable number (`PL-SL70`).
+  - The two independent readings are the point. If they disagree, one is wrong, and the next run shows it.

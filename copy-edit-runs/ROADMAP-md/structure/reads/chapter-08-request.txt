@@ -1,0 +1,597 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Completed: v0.2.8 - the workflow works", rows 678-1074. Whole section: 4306 words. For: The project owner, or a contributor deciding what to build next
+  678 | ## Completed: v0.2.8 - the workflow works
+  679 | 
+  680 | ### Goal
+  681 | 
+  682 | Make the development loop reliable before two long milestones are run through
+  683 | it. Everything in this release is machinery that the project already depends
+  684 | on. That machinery is the merge path, the release script, the queue's ranking,
+  685 | the session-start digest, the type-check and lint gates, and the instructions
+  686 | that a session reads before it does anything else. None of this work touches
+  687 | the simulator.
+  688 | 
+  689 | This release comes first because of a standing decision in `CLAUDE.md`, dated
+  690 | 2026-08-30. The decision is that workflow work outranks product work until the
+  691 | workflow is settled. It exists because friction in the loop is paid again in
+  692 | every future session, while a deferred feature is paid for once. v0.3.0 clears
+  693 | twenty entries of inherited product debt. v0.4.0 then builds the first
+  694 | teachable case on top of that work. Both are long runs through the same loop.
+  695 | Three faults in the loop would make those runs cost more than fixing the
+  696 | faults does. The merge path does not wait for CI. The release script stops
+  697 | halfway. And `docket next` ranks work that the current milestone excludes.
+  698 | 
+  699 | This release is a patch by the ordinary rule under § "Versioning decision"
+  700 | above. It crosses no capability boundary and adds nothing to the simulator. It
+  701 | changes no equation, parameter, numerical method, unit or displayed value.
+  702 | Gate 0's minor-version exception is not extended to this release, and the
+  703 | release does not need it.
+  704 | 
+  705 | ### Debt gate: the frozen list
+  706 | 
+  707 | **Frozen 2026-08-30, the day this release was scoped, at seventeen entries.**
+  708 | More entries have been admitted since then. Some came in under the completion
+  709 | rule and the scope test described after this list, and one came in at the
+  710 | project owner's direction. So the list's whole content is the entries below,
+  711 | not the original seventeen. The text after the list sets out what the freeze
+  712 | closes and what it does not. Each entry records its own outcome when it
+  713 | closes, as § "The cadence" below describes.
+  714 | 
+  715 | **It is a frozen scope, not a fourth gate in the cadence.** The first group
+  716 | below is debt as the section "What counts" defines it, and every entry in it
+  717 | is classed `defect`. The second group is new workflow capability. That section
+  718 | says explicitly that new workflow capability is *not* debt and does not hold
+  719 | a gate closed. The list is recorded under a heading named "Debt gate" because
+  720 | `bin/docket wave` reads that subsection. A release records a gate to say that
+  721 | it comes ahead of a gate that is already open. The beat then follows the
+  722 | release rather than contradicting it (queue item `PL-NSN9`, a self-gating
+  723 | milestone reporting the wrong beat). The numbered gates are unaffected. Gate 0
+  724 | is still recorded under v0.4.0 below, and it still binds v0.4.0. It becomes the
+  725 | nearest gate again as soon as this release ships.
+  726 | 
+  727 | The number of closed entries is **not recorded here**, for the reason given in
+  728 | the v0.4.0 section. A count written into a document goes stale the next time
+  729 | an item closes. `bin/docket wave` checks these entries against `docs/items/`
+  730 | and reports how many are closed and how many are open.
+  731 | 
+  732 | Nor is the list's *size* restated in prose here, for the same reason. The size
+  733 | is stated in the group headings below and in the two table rows that name this
+  734 | release. `tools/doc_check.py` enforces that those three statements match the
+  735 | entries.
+  736 | 
+  737 | *The loop is visibly broken without these — twenty-two entries:*
+  738 | 
+  739 | - PL-J786 (S) Require a green `checks` run before any merge into main
+  740 | - PL-64LS (S) Detect items stranded on an unmerged branch
+  741 | - PL-8HJ2 (S) `make release` stops mid-way on the ROADMAP table it does not
+  742 |   write, so every release ends in a red test
+  743 | - PL-M5FK (S) This file's tag statements go stale on every release, and no
+  744 |   check reads them
+  745 | - PL-1TPM (S) `docket next` ranks work the current milestone excludes, with no
+  746 |   sign that it does
+  747 | - PL-019F (S) The "what should we work on next" rule answers one level below
+  748 |   the roadmap step that should decide it
+  749 | - PL-5YK8 (S) The `verify:` advisory nags about grandfathered items, so it can
+  750 |   never reach zero
+  751 | - PL-H7XN (M) `CLAUDE.md` keeps every rule resident whether or not a session
+  752 |   needs it, which reduces adherence to the ones it does
+  753 | - PL-NSN9 (S) A milestone that gates itself reports `implement` when its gate
+  754 |   clears, where `release` is due
+  755 | - PL-J295 (S) The release-train check reads a tag missing from a shallow clone
+  756 |   as a release that was never tagged, so `make check` fails on unmodified
+  757 |   `main` in every web-session container. Added after the freeze because it
+  758 |   completes `PL-XCYB`, further down this list: that entry established that a
+  759 |   check must refuse to answer in a shallow checkout rather than answer
+  760 |   wrongly, and fixed the pull-request reader; the tag reader has the identical
+  761 |   exposure and was missed. See the rule beneath this list.
+  762 | - PL-KWC1 (S) `docket flight` reads item ids from branch names only, so a
+  763 |   branch the web harness named carries none and is invisible — and `docket
+  764 |   next` therefore hands out items another session is already implementing.
+  765 |   Added after the freeze because it completes PL-64LS above: that entry made a
+  766 |   branch's stranded items visible to a session, reading the same refs through
+  767 |   the same module, and left the in-flight signal blind on every branch this
+  768 |   project actually produces.
+  769 | - PL-1CYR (S) Nothing re-checks the branch against `main` once a session is
+  770 |   underway, so a discussion that becomes implementation builds on a base that
+  771 |   moved while it was talking. Added 2026-08-31 at the project owner's
+  772 |   direction rather than under the completion rule: it is new scope, admitted
+  773 |   because the staleness is paid by every session that opens as a discussion,
+  774 |   which is how this project is normally worked. Closed 2026-08-31 (pull request
+  775 |   125): the check is `bin/docket branch`, so the question can be asked again at
+  776 |   any moment rather than only at session start, and the hook keeps only the
+  777 |   fetch.
+  778 | - PL-D2GW (S) The session digest offers a release whose version names a
+  779 |   milestone whose gate is still open, so the line every session reads first
+  780 |   tells it to cut v0.2.8 while entries of v0.2.8 are unfinished. Admitted
+  781 |   2026-08-31 under the scope test: the digest and the release script are both
+  782 |   machinery this release's goal names. It reopens on every later release that
+  783 |   records a gate — v0.3.0 shipping Gate 0 is the next — which is exactly the
+  784 |   run this release exists to protect.
+  785 | - PL-Q2BJ (S) The digest's `Top:` line still leads with work the current step
+  786 |   excludes, contradicting the beat printed two lines below it. Admitted
+  787 |   2026-08-31 under the scope test: it is `PL-1TPM`'s defect on the surface
+  788 |   every session reads whether it asked or not.
+  789 | - PL-CPSY (S) A squash-merged branch whose ref survives reports its items in
+  790 |   flight forever, so `docket next` withholds work that is finished and
+  791 |   startable. Admitted 2026-08-31 under the scope test: squash-merge is the
+  792 |   merge path `PL-S4M2` installed for this release, and the queue's ranking is
+  793 |   what reads it. Closed 2026-08-31 (pull request 121): a branch is finished
+  794 |   when its content has landed, which is asked before the commit walk rather
+  795 |   than inside it.
+  796 | - PL-S1P1 (S) The refs whose history could not be read are dropped before the
+  797 |   in-flight ids reach `docket next`, so a partial answer is presented as a
+  798 |   complete one everywhere except `docket flight`. Admitted 2026-08-31 under
+  799 |   the scope test. `PL-CPSY` and `PL-MGNC`, the other two holes in that
+  800 |   function, both closed on 2026-08-31 ahead of it - one answered before the
+  801 |   commit walk and one inside it, neither needing this one's lines. What they
+  802 |   left is a larger `unreadable` half for this item to carry to the callers,
+  803 |   and `PL-YSXF` (an unread ref loses the id its own branch name carries) is
+  804 |   the same hole from inside the function: one pass. Closed 2026-08-31 (pull
+  805 |   request 123): `in_flight_ids` is gone and every caller takes the
+  806 |   `FlightReport` itself, so the gap travels with the answer rather than being
+  807 |   dropped at the boundary, and one sentence appears under all six.
+  808 | - PL-YSXF (S) A ref named as unread loses the item id its own branch name
+  809 |   carries, which needs no history to read, so `docket next` offers an item a
+  810 |   live session is holding. Admitted 2026-08-31 under the scope test, at the
+  811 |   project owner's direction once `PL-S1P1` had closed: it is the fourth and
+  812 |   last hole in the function the three entries above are about, and the only
+  813 |   one where the checkout knew the answer for certain and threw it away. The
+  814 |   guards `PL-MGNC` added are what widened it, so it grew rather than staying
+  815 |   where `PL-KWC1` left it.
+  816 | - PL-MGNC (S) A readable merge-base does not make the in-flight commit walk
+  817 |   complete, so a shallow clone — the normal state of a session container —
+  818 |   reports merged items as in flight. Admitted 2026-08-31 under the scope test,
+  819 |   and the only member of this family observed firing: the digest that opened
+  820 |   the session reassessing this gate named twenty-seven ids, eighteen of them
+  821 |   closed and one of them `PL-NSN9`, an open entry of this list. Closed
+  822 |   2026-08-31 (pull request 122): the walk now has to stop against a commit the
+  823 |   default branch accounted for rather than because the checkout ran out of
+  824 |   history, and the reproduction the brief asked for builds the intermediate
+  825 |   depth with real git.
+  826 | - PL-3CBS (S) Nothing notices that an open item's work already landed on
+  827 |   `main`, so `docket next` offers work that is finished and the gate's own open
+  828 |   count overstates what is left. Admitted 2026-08-31 under the scope test: it
+  829 |   corrupts the two numbers this release is steered by, in the direction nobody
+  830 |   double-checks. It was not among the nine captures reassessed that day and was
+  831 |   admitted on the same reading immediately afterwards.
+  832 | - PL-3576 (S) `docket check`'s offered-item advisory is computed from an
+  833 |   in-flight answer that may be partial and says nothing about it, so a shallow
+  834 |   checkout is told to groom an item that is not the one about to be offered.
+  835 |   Admitted 2026-09-01 under the scope test: `PL-S1P1` above carried the unread
+  836 |   refs to six readers of that answer and left `check` out as a placement
+  837 |   question rather than as out of scope, so this is the seventh and last of them.
+  838 | - PL-1Q3S (S) A merged pull request leaves a stale remote-tracking ref, so the
+  839 |   stop hook counts every commit landed since as unpushed and tells the session
+  840 |   to push a branch identical to `main`. Admitted 2026-09-01 under the scope
+  841 |   test: the hook is outside the repository, but the deliverable is a line in the
+  842 |   instructions a session reads — one of the six pieces of machinery the goal
+  843 |   names — and it fires after every merged pull request, several times a session.
+  844 |   The "workable here" limit below excludes a finding *nothing in the tree can
+  845 |   close*; this one closes with a repository edit and is marked `not-delegable`
+  846 |   only because confirming it means ending a session.
+  847 | - PL-HDY6 (S) The scope reader counts any id a milestone's section names, so
+  848 |   `docket next` reports an id the section names *to exclude* as in scope for
+  849 |   the current step. Admitted 2026-09-01 under the scope test, after the four
+  850 |   above and on the same reading: it is the queue's ranking misdirecting a
+  851 |   session on `main` today, telling it that `PL-68XK` clears this gate on the
+  852 |   strength of the paragraph below that says `PL-68XK` does not. The fix is not
+  853 |   simply to prefer this subsection - v0.4.0 names nine open ids as its own
+  854 |   Required scope rather than as gate entries, and those are in scope - so the
+  855 |   item carries both candidate rules and what each costs.
+  856 | 
+  857 | *Stops new debt being introduced — sixteen entries:*
+  858 | 
+  859 | - PL-ZQ9C (M) Record an item's pull request, so provenance survives
+  860 |   squash-merge
+  861 | - PL-S4M2 (S) Switch main to squash-merge, so each item lands as one commit.
+  862 |   Blocked by PL-ZQ9C above and ordered after it deliberately: squash-merge
+  863 |   discards the branch history that today is the only record of which pull
+  864 |   request closed an item, so the provenance has to be recorded before it is
+  865 |   discarded, not after.
+  866 | - PL-F5HB (S) The project runs a Python 3.14 release candidate, not 3.14 final
+  867 | - PL-020 (S) Widen the type-check gate past `src`, and ship a `py.typed`
+  868 |   marker
+  869 | - PL-W5LG (S) Hold CI config to the same path checks as the documentation
+  870 | - PL-ZN0N (S) Enable ruff RUF100 so inert `noqa` directives fail the build
+  871 | - PL-69J3 (S) Clear the inert `noqa` directives RUF100 will catch, and record
+  872 |   why the deliberate suppressions exist
+  873 | - PL-STNV (S) Retire the review-verification harness and capture its last live
+  874 |   finding
+  875 | - PL-XCYB (S) A provenance check must refuse to answer in a shallow checkout,
+  876 |   not answer wrongly. Added after the freeze because it completes PL-ZQ9C
+  877 |   above: that item's check asserts a `(#N)` subject on a commit reachable from
+  878 |   main, and a web session's checkout is shallow, so the check as specified
+  879 |   reports sound provenance as broken. See the rule beneath this list.
+  880 | - PL-WFJ9 (S) `render.py` reads `Readiness` and `Feature` through `object`
+  881 |   annotations and twelve `type: ignore[attr-defined]`, so the widened gate
+  882 |   passes over the digest and `status` outputs without checking them. Added
+  883 |   after the freeze because it completes PL-020 above: that entry's whole claim
+  884 |   is that `subprojects/docket/src` is type-checked, and it was not, in the two
+  885 |   outputs every session reads first. See the rule beneath this list.
+  886 | - PL-DL1X (S) `docket release` stamps every item file before it bumps the
+  887 |   version, so a failed bump leaves the store recording a release that did not
+  888 |   happen. Admitted 2026-08-31 under the scope test: the release script is
+  889 |   machinery this release's goal names, and the residue is a provenance error
+  890 |   of the kind the release path exists to prevent.
+  891 | - PL-921W (S) The formatter target applies to `tools/`, which must run under
+  892 |   bare `python3`, and nothing guards it the way `subprojects/docket/` is
+  893 |   guarded. Admitted 2026-08-31 under the scope test: the lint gate is named in
+  894 |   the goal, and this is the same second-site miss as `PL-J295`, one tool over.
+  895 | - PL-QDH7 (S) `tools/` promises standard-library-only imports and nothing
+  896 |   guards it, the way the parse floor now is. Admitted 2026-09-01 under the
+  897 |   scope test: the lint gate is named in the goal, and this is the other half
+  898 |   of `PL-921W`'s promise, left unguarded where that item guarded the first.
+  899 | - PL-CMCB (S) All ten `type: ignore` directives sit under `tests/`, outside
+  900 |   `[tool.mypy] files`, so `warn_unused_ignores` has never evaluated one.
+  901 |   Admitted 2026-08-31 under the scope test: it is the mypy half of what
+  902 |   `PL-ZN0N` and `PL-69J3` did for `noqa`. The weakest of the seven — inert
+  903 |   reporting rather than a loop that misfires — and the first to drop if this
+  904 |   list needs shortening.
+  905 | - PL-RWZV (S) The brief check tests for a literal marker, so an elaborated
+  906 |   heading fails and an empty section passes. Admitted 2026-09-01 under the
+  907 |   scope test: it is a `docket check` misfire, the same machinery as `PL-5YK8`
+  908 |   above, and it is the gate deciding whether an item may reach `ready` at all.
+  909 |   Two of the captures triaged on 2026-09-01 carried exactly the empty-section
+  910 |   stub it accepts.
+  911 | - PL-H8MQ (S) `ROADMAP.md` states this release's entry count in six places, and
+  912 |   its group and debt splits in three more, with nothing holding any of them to
+  913 |   the list. Admitted 2026-09-01 under the scope test: measured that day, three
+  914 |   different totals — eighteen, thirty-one and thirty-two — were live in this
+  915 |   file at once, so a session reading it to learn how much of the release is left
+  916 |   read a number that was wrong. Every admission pays the correction by hand,
+  917 |   the four of 2026-09-01 included.
+  918 | 
+  919 | **Two items on the approved list are not entries.** `PL-J3ZK` (restore the tag
+  920 | provenance) and `PL-20ZR` (the workflow-before-features ordering is
+  921 | re-explained every session) were on the list the project owner approved. Both
+  922 | closed before the list was written here. Recording a closed item as a frozen
+  923 | entry would make this release report a size that includes work it never had
+  924 | to clear.
+  925 | 
+  926 | **Seven entries are marked `not-delegable`,** which is high for a release this
+  927 | size and worth knowing before the work is planned. PL-J786 and PL-S4M2 change
+  928 | GitHub repository configuration, which no session in this project can access.
+  929 | PL-8HJ2 can only be proved by cutting a release. PL-ZQ9C leaves open a
+  930 | migration choice that rewrites the provenance of every closed item. PL-1Q3S
+  931 | fixes a repository-side habit whose effect shows only when a session ends, in
+  932 | a hook that no session can read. PL-H7XN's test is that no rule was lost,
+  933 | which needs a review of the file rather than a command. PL-CMCB's deliverable
+  934 | is a verdict on ten suppressions rather than an exit code.
+  935 | 
+  936 | **What the freeze closes, and what it does not** (project owner, 2026-08-30).
+  937 | The list is closed to new *scope*: new behavior, new capability, or another
+  938 | workflow idea raised while this release runs. It is not closed to the work
+  939 | that an entry already on the list needs before it is actually done. A finding
+  940 | made after the freeze belongs here if it addresses something that a frozen
+  941 | entry is fixing. It is recorded together with what it completes. The freeze
+  942 | exists to fix a specific set of problems. Shipping an entry known to be
+  943 | half-fixed would preserve the list's length but defeat its purpose.
+  944 | 
+  945 | This is not a new rule. It is the correct reading of
+  946 | "The gate is a snapshot, not a moving target". That section already says that
+  947 | a finding which continues or completes an item inside the frozen list belongs
+  948 | to the same list. When the section was first written, this paragraph said the
+  949 | opposite, and it was wrong.
+  950 | 
+  951 | **The list is a scope, not a set of items** (project owner, 2026-08-31). The
+  952 | scope decides membership. The completion rule above is one case of the scope,
+  953 | not the test itself. This release's scope is the goal stated at the top of
+  954 | this section. That goal is a development loop reliable enough to run two long
+  955 | milestones through. The loop has to be reliable across the machinery the goal
+  956 | names: the merge path, the release script, the queue's ranking, the
+  957 | session-start digest, the type-check and lint gates, and the instructions a
+  958 | session reads before it does anything. A finding that a *named* piece of that machinery misfires is inside
+  959 | this scope, however late it is found. That is true whether or not it completes
+  960 | an entry. It belongs in the scope because leaving it out would ship a release
+  961 | titled "the workflow works" while the workflow it names does not work.
+  962 | 
+  963 | So "new scope" means a different goal. Examples are a new workflow capability,
+  964 | a better tool that nobody is blocked by, or an idea someone had because this
+  965 | release made them think of it. It does not mean a newly discovered instance of
+  966 | the goal that is already frozen. A defect in machinery that is already named
+  967 | is a third case, and the list admits it. This paragraph used to offer only two
+  968 | cases, "new scope" and "completes an entry". On 2026-08-31, nine findings were
+  969 | triaged and sent to the queue because they were neither. Yet seven of them
+  970 | were defects in the digest, the release script, the merge path and the lint
+  971 | gate, which this release exists to make reliable.
+  972 | 
+  973 | Two limits stop that rule from reopening the list for everything. First, the
+  974 | finding must be a **defect** in machinery that this section's goal names. An
+  975 | improvement to that machinery does not count, and neither does machinery the
+  976 | goal does not mention. Second, the finding must be **workable here**. A
+  977 | finding whose cause is outside this repository is captured and left off the
+  978 | list, however well it fits. The reason is that nothing in the tree could close
+  979 | such an entry, so the entry would keep the gate open forever.
+  980 | 
+  981 | A finding classed `safety` or `science` goes to Gate 0 rather than here. It
+  982 | concerns the simulator, which this release does not touch. A `P0` finding is a
+  983 | hotfix on its own branch under the `docket` skill, and it joins no list.
+  984 | 
+  985 | **Four entries were added under the completion rule: PL-J295, PL-KWC1,
+  986 | PL-XCYB and PL-WFJ9, all listed above.** The rest were added under the scope
+  987 | test rather than this rule. Each of them is marked as such in the list, with
+  988 | the date and the reasoning. The scope test is described below this rule.
+  989 | 
+  990 | PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found
+  991 | while PL-ZQ9C was being handed to a session, during a check of whether that
+  992 | item's proposed migration was feasible. PL-XCYB makes the difference between a
+  993 | provenance check that is right and one that fails loudly against correct data.
+  994 | The failure would happen in the environment where most sessions run. Shipping
+  995 | PL-ZQ9C without PL-XCYB would close an entry that was known to be half-fixed.
+  996 | The rule above exists to prevent that outcome. So the two are worked together
+  997 | and closed together.
+  998 | 
+  999 | PL-WFJ9 is the same case one step later. It was found by the entry it
+ 1000 | completes, rather than before that entry. Widening the type-check gate to
+ 1001 | `subprojects/docket/src` made the suppressions in `render.py` visible for the
+ 1002 | first time. Those suppressions are why the widened gate passes over that file.
+ 1003 | PL-020 could be reported closed without PL-WFJ9. That is exactly the
+ 1004 | half-fixed close the rule prevents. The gate would assert that docket's source
+ 1005 | is checked, while the digest and `status` renderers were not checked. Those
+ 1006 | renderers are the first thing a session reads, and they give the answer to
+ 1007 | "what next". So PL-WFJ9 is worked with PL-020 rather than behind it.
+ 1008 | 
+ 1009 | PL-68XK (check that a recorded commit hash resolves) is a different case, and
+ 1010 | this rule does *not* admit it. It predates the freeze, and it was left out of
+ 1011 | the approved list deliberately. It was still entangled with PL-ZQ9C, so its
+ 1012 | brief was refreshed rather than worked. What the refresh had to say changed
+ 1013 | once PL-ZQ9C landed, and later the question closed entirely. When PL-ZQ9C
+ 1014 | landed, `pr:` sat beside `commit:` and made `commit:` optional. That narrowed PL-68XK
+ 1015 | from "validate the field that makes a closure traceable" to a smaller job. The
+ 1016 | smaller job was to require that a `commit` value, when present, resolves.
+ 1017 | PL-T63T then settled a question one step upstream, which was what the field
+ 1018 | should record at all. The project owner chose to retire the field, because 21
+ 1019 | of the 42 hashes that could be checked resolved nowhere. PL-68XK was dropped
+ 1020 | with the field, because there is no longer a field for it to validate. The
+ 1021 | shallow-checkout discipline that PL-XCYB built is unaffected, and it still
+ 1022 | serves the `pr:` check.
+ 1023 | 
+ 1024 | ### Definition of done
+ 1025 | 
+ 1026 | - Every entry on the frozen list above is `done`, or `dropped` with its reason
+ 1027 |   recorded. `bin/docket wave` reports the split against `docs/items/`.
+ 1028 | - `make check` passes: `ruff format`, `ruff check`, `mypy`, `pytest`,
+ 1029 |   `docket check`, and `tools/doc_check.py`.
+ 1030 | - The two entries that change repository configuration rather than the tree
+ 1031 |   are PL-J786 (a green `checks` run required before merge) and PL-S4M2
+ 1032 |   (squash-merge). Both are confirmed in effect on a real pull request, not
+ 1033 |   merely described as done. No command in this repository can verify either
+ 1034 |   of them, which is why both are marked `not-delegable`.
+ 1035 | - No equation, parameter, numerical method, unit or displayed value has
+ 1036 |   changed, and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass
+ 1037 |   unaltered. Three entries are permitted to reach into `src/` and `tests/`, and each
+ 1038 |   is limited to what its brief describes. PL-020 may add type annotations.
+ 1039 |   PL-ZN0N and PL-69J3 may add, remove or annotate `noqa` directives. If any of
+ 1040 |   them turns out to require a change to a modelled value, that change is a
+ 1041 |   finding for Gate 0 and a scoped item of its own. It is not this release's
+ 1042 |   work.
+ 1043 | 
+ 1044 | **Two of the three counts above are deliberately left to the reader**
+ 1045 | (`PL-GLBF`, 2026-09-13). The count "Seven entries are marked `not-delegable`"
+ 1046 | is checked by `tools/doc_check.py`. It can be checked because `not-delegable:`
+ 1047 | is a field on each item, and the number is a query over that field. The two
+ 1048 | counts in the bullets above are not checked. The nearest field is a near miss
+ 1049 | rather than a gap. `touches:` records the files an item is *expected to
+ 1050 | change*. These sentences record the scope an item is *permitted to reach*.
+ 1051 | Take the second count's own three ids. A checker over `touches:` computes two,
+ 1052 | where the correct answer is three. `PL-ZN0N` declares `pyproject.toml` and
+ 1053 | nothing else, yet it may still annotate `noqa` directives in `src/`. A check
+ 1054 | built on `touches:` would fail a correct sentence, which is worse than no
+ 1055 | check. Both counts are safe to leave unchecked for a second reason, which
+ 1056 | applies only here. This list is frozen and every id on it is closed, so
+ 1057 | neither number can drift again. The same shape in a *live* section could
+ 1058 | drift. That is a separate question, and this note does not settle it.
+ 1059 | 
+ 1060 | ### Explicitly out of scope for v0.2.8
+ 1061 | 
+ 1062 | - Anything on Gate 0's frozen list, which is recorded under v0.4.0 below. This
+ 1063 |   release does not touch that gate, and clearing it is still what v0.3.0
+ 1064 |   ships.
+ 1065 | - Any simulator change at all: `src/anesthesia_sim/core/`,
+ 1066 |   `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
+ 1067 |   release whose whole claim is that the loop is now reliable cannot also be
+ 1068 |   the one that moves the model.
+ 1069 | - Workflow capability beyond the entries on that list. That means new tools,
+ 1070 |   better tools, or an idea this release made someone think of. The queue holds
+ 1071 |   more process items than this release ships, and they wait for the next
+ 1072 |   release. The scope test admits a defect in machinery that the goal already
+ 1073 |   names, and none of these is such a defect. A release that absorbs
+ 1074 |   every workflow idea raised while it runs never ships.

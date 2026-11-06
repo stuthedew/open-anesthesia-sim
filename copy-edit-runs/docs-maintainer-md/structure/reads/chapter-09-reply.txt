@@ -1,0 +1,73 @@
+[1] keep
+
+Structure:
+- **The same fact in two places (rows 687-689 and 739-741).** Rows 687-689 say "While the setting is off, a session will not merge a pull request that is already green and current. It hands that pull request to you instead." Rows 739-741 say "The session then tells you that it cannot arm the pull request and that the Squash and merge is yours. Merge it on the Mac, as step 1 says for a branch that is already current." The fact belongs once, beside the instruction to switch the setting off, because that is where you decide whether to switch it off. Add there "merge it as step 1 says for a branch that is already current". The paragraph about the merge guard keeps the guard and its reason, and none of this handover. At row 739, "then" comes straight after the sentence about other repositories (rows 736-739). It reads as though a merge in another repository is the one handed to you, and the move fixes that.
+- **What `update-armed.yml` does is explained last (rows 691-692, 698-700 and 720-723).** Step 3 uses it at rows 691-692 ("`update-armed.yml` has brought `main` in again"), and so does rows 698-700 ("`update-armed.yml` brings `main` into every other armed pull request that the merge left behind"). The explanation comes only at rows 720-723: "GitHub never updates an armed pull request that falls behind, so `update-armed.yml` does that on each push to `main`. So an armed pull request whose session has ended does not wait for you (`PL-S5MF`, and its token in the next section)." It also sits in the paragraph about letting a session merge, though it applies to every armed pull request. It belongs where the workflow first comes up, at the end of step 2 or the start of step 3, with `PL-S5MF` and the pointer to the token. Step 3 and rows 697-700 then keep only what you see on the page.
+- **Rows 682-689 sit in the wrong place.** They run from "Since 2026-10-03, `main`'s rule has **Do not allow bypassing the above settings** turned on" to "It hands that pull request to you instead." This is about merging past a broken CI, not about arming auto-merge, and it turns step 2 into an essay. Move it out of the list, next to rows 710-716 (what to do when a check fails). The two then sit together as the two answers to a failing check: a branch that fails against the new `main`, and a CI that is itself broken.
+- **The same fact in two places (rows 683-684 and 729-733).** Rows 683-684 say "its checks and the up-to-date rule apply to you as they apply to everyone else". Rows 729-733 say it again: "That is safe only while `main`'s rule applies to admins. … the up-to-date check that `main` applies to everyone else". Keep it in the moved paragraph about the bypass setting. Rows 729-733 then say only "safe only while that setting stays on", with a pointer.
+- **"Merge skew" is used before it is defined (rows 661 and 710-712).** Row 661 has "after the third merge-skew instance". The definition comes at rows 710-712: "the branch and the new `main` do not work together. That is merge skew, which the up-to-date setting now stops at the pull request instead of on `main`." Put the definition, and the rule's purpose, in the opening paragraph (rows 660-661), where the up-to-date rule first appears. Rows 710-712 then keep only the instruction. "After the third merge-skew instance" records how the decision was reached, and belongs in `PL-6MW8`.
+- **The alternative comes after the procedure (rows 718-723).** "Instead of steps 1 to 3, you can ask the session that opened the pull request to merge it" follows the steps and three more paragraphs, so if you would rather hand the merge to a session, you read the whole procedure first. Put this choice at the end of the opening paragraph (row 665), before step 1.
+- **Rows 702-708 mix your part with the session's part, and interrupt the merge follow-ups.** You need the bold opening sentence and row 708: switching auto-merge off holds a pull request back, and the session arms or merges it only when you say so. The `Auto-merge: off - <why>` trailer and how `bin/docket arm` reads it (rows 704-707) are steps a session follows. They belong wherever a session looks for its merge steps, and this chapter does not show that place. The same goes for rows 713-715 ("The session's `bin/docket arm` tells it the same thing"): you need only "the session leaves your auto-merge armed". The paragraph also sits between the several-pull-requests paragraph and the failing-check paragraph. Move it after the failing-check material, under its own subheading.
+- **Rows 718-741 are one paragraph that has grown into an essay.** It makes six points:
+  1. you can ask a session to merge (rows 718-720);
+  2. the workflow keeps armed pull requests up to date (rows 720-723);
+  3. a session squash-merges a pull request that is already green and current, with the GitHub source and the decision tag (rows 723-729);
+  4. why that is safe only while the setting is on, and the merge guard (rows 729-736);
+  5. merges in other repositories are let through (rows 736-739);
+  6. the session hands the merge to you (rows 739-741).
+
+  Points 1, 2 and 6 move as the findings above say. Points 3 to 5 become a short subsection of their own, for a later session that needs to know why the guard exists. Keep each decision tag whole.
+- **The section needs subheadings.** At 945 words it covers at least six separate tasks. After the reordering, keep the opening, the steps and the several-pull-requests paragraph under the main heading. Then add three subheadings:
+  - "### If a check fails": rows 710-716, plus the moved rows 682-689.
+  - "### Hold a pull request back": rows 702-708.
+  - "### When a session merges for you": what remains of rows 723-741.
+- **The heading covers only step 1.** "Bring a stale base in when you merge, with Update branch" names only the update. The section also covers arming auto-merge, merging several pull requests, failing checks, holding a pull request back, and a session merging for you. Use "Merge a pull request with Update branch and auto-merge", and change every file that cites the old heading at the same time.
+- **Query:** row 679 uses "a captures-only pull request" without saying what it is or why a session arms one, and this chapter does not explain it. Check whether an earlier chapter defines it.
+- **Query:** "the section above" (row 674) and "the next section" (row 723) do not name their headings, so you cannot tell from this chapter which sections are meant. Rows 740-741 point to step 1, which in turn points to "the section above", so the reader follows two pointers to reach the merge steps. Give the headings in the § "Heading" form, and point straight at the section.
+
+Outline:
+- Row 658: heading "Bring a stale base in when you merge, with Update branch".
+- Rows 660-665: why the update is yours.
+  - Since 2026-09-23, `main` requires a pull request's branch to be up to date before it merges (`PL-6MW8`, after the third merge-skew instance).
+  - Sessions deliberately leave a pull request behind `main` while it waits on you.
+  - Each update re-runs CI in full, which takes two to five minutes.
+  - An update made before you merge goes stale as soon as another pull request lands.
+  - So you make the update once, when you come to merge.
+- Rows 667-677, step 1: update the branch.
+  - Open the pull request in the Mac's browser and scroll to the merge box at the bottom of the Conversation tab.
+  - If it offers **Update branch**, click it. The button merges `main` into the branch.
+  - Do not use **Update with rebase** from the dropdown, because it rewrites the branch's history under any session still working on it.
+  - A "Merge branch 'main' into ..." commit appears and the checks restart.
+  - If the box offers **Squash and merge** and no Update branch, the branch is current: merge it as the section above says, and stop.
+  - If the pull request is a draft, leave it. The draft carries a session's claim and GitHub will not merge it. That session marks it ready when the claimed item closes or is blocked (`PL-H14W`).
+- Rows 678-689, step 2: arm auto-merge.
+  - If the box already says auto-merge is enabled, skip this step, because the update leaves it armed. The box says this on a captures-only pull request that a session armed.
+  - Otherwise click **Enable auto-merge**, check that the message box holds the pull request's description, and click **Confirm auto-merge**.
+  - Since 2026-10-03, `main`'s rule has **Do not allow bypassing the above settings** turned on (`PL-NXRJ`), so the checks and the up-to-date rule apply to you as to everyone else.
+  - To merge past a broken CI, go to **Settings**, then **Branches**, then **Edit** beside the `main` rule. Untick the setting, click **Save changes**, merge, then tick it again the same way.
+  - While the setting is off, a session will not merge a pull request that is already green and current. It hands that pull request to you.
+- Rows 690-695, step 3: wait and check.
+  - Come back in about five minutes. Success is the pull request marked **Merged**.
+  - If another pull request landed first, `update-armed.yml` has brought `main` in again and the checks are running. Come back in another five minutes.
+  - If the box still offers **Update branch**, the workflow could not update the branch, and its newest run under **Actions** says why. Click the button and come back in another five minutes.
+- Rows 697-700: several pull requests ready at once.
+  - Arm auto-merge on each and update just one.
+  - When that one merges, `update-armed.yml` brings `main` into every other armed pull request that the merge left behind. That re-runs their checks, and the next to go green merges.
+- Rows 702-708: switching auto-merge off holds a pull request back, and its session leaves it off.
+  - GitHub names your account for every switch, including switches a session makes through its tools.
+  - A session records each switch it makes as an `Auto-merge: off - <why>` trailer on its next commit.
+  - `bin/docket arm` asks GitHub for the latest switch. If auto-merge is off and no commit since that switch carries the record, it holds the pull request.
+  - The session then arms or merges the pull request only when you say so (`PL-8TPV`).
+- Rows 710-716: a check fails after the update.
+  - A failing check means the branch and the new `main` do not work together. That is merge skew, which the up-to-date setting now stops at the pull request instead of on `main`.
+  - Leave auto-merge armed and ask a session to fix the branch. Auto-merge lands it once the fix is green.
+  - The session's `bin/docket arm` tells it the same, so the session leaves your auto-merge armed.
+  - If the box shows conflicts and no Update branch, do not use **Resolve conflicts**. Ask a session to merge `main` in and resolve them.
+- Rows 718-741: letting a session merge.
+  - Instead of steps 1 to 3, you can ask the session that opened the pull request to merge it. It arms auto-merge and brings the base in with the same merge the button makes.
+  - GitHub never updates an armed pull request that falls behind, so `update-armed.yml` does it on each push to `main`. An armed pull request whose session has ended does not wait for you (`PL-S5MF`; its token is in the next section).
+  - The session itself squash-merges a pull request that is already green and current, because GitHub offers auto-merge "only on pull requests that cannot be merged immediately" (GitHub Docs, "automatically-merging-a-pull-request" page) (project owner, 2026-10-03, ratified, over keeping that merge yours, `PL-NXRJ`, which reopened `PL-V2X5`).
+  - That is safe only while `main`'s rule applies to admins, because a session's GitHub calls are made as you. If admins were exempt, a session's merge would pass the up-to-date check, and it would land a stale branch whenever another pull request merged between the session's check of the branch and its merge call.
+  - The merge guard, `.claude/hooks/direct_merge_guard.py`, asks GitHub at each merge call into this repository. It rejects the merge while **Do not allow bypassing the above settings** is off (`PL-S17R`, `PL-NXRJ`).
+  - A merge in another repository, such as the references corpus, cannot leave this repository's `main` stale, so the guard lets it through without asking (project owner, 2026-11-02, ratified, `PL-L08H`).
+  - The session then tells you that it cannot arm the pull request and that the Squash and merge is yours. You merge it on the Mac, as step 1 says for a branch that is already current.

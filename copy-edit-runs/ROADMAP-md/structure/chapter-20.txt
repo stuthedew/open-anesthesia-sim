@@ -1,0 +1,153 @@
+[1] keep
+
+Structure:
+- **Heading (3548).** "Declined to Gate 2 on the refilling-queue ground" names only one of the grounds this section uses. Entries are also declined because:
+  - they wait on the Qt port (3620-3653, 3797-3808);
+  - a decision belongs to `PL-L9RD` (3641-3646, 3702-3710);
+  - they change only how a fact is recorded (3672-3683, 3810-3820, 3841-3853);
+  - § "The gate is a snapshot, not a moving target" defers them (3712-3717);
+  - their problem did not exist at the freeze (3890-3912).
+
+  Use "Declined to Gate 2, and the ground for each entry". Any file that cites the old heading must change with it.
+- **Length and order (3548-3912).** The section runs 3925 words under one heading, in the order the batches arrived. A reader looking for one entry, or for every entry on one ground, has to read all of it. Pointers send them back up the page: "the four paragraphs above" (3606, 3668), "the first thirty" and "the first twenty-nine" (both used for the same group), "the paragraph above" (3873). Replace the batch paragraphs with one table of declined entries. Columns: item, date captured, priority, class, lane, ground, and one line on what it does. Then add subheadings by ground:
+  - opening: 3550-3558, plus 3609-3610 and 3774-3776
+  - "The refilling-queue ground": 3560-3581
+  - "Where an entry stands now": 3583-3599
+  - the table, which replaces 3601-3618, 3655-3670, 3685-3700, 3762-3795, 3822-3839 and 3877-3884
+  - "Waiting on the Qt port": 3620-3653, 3702-3710, 3755-3760, 3797-3808
+  - "Changes to how a fact is recorded": 3672-3683, 3810-3820, 3841-3853, 3885-3888
+  - "Ranked ahead of the gate anyway": 3855-3875
+  - "Filed after the freeze": 3712-3753, 3890-3912
+- **Repeat: the same four tests in nearly every batch.** "found after the 2026-09-06 freeze, it is `P2`, it is neither `safety` nor `science`, and it lies wholly in the workflow lane" (3606-3608) appears again, nearly word for word, at 3665-3668, 3714-3717, 3781-3783, 3790-3793, 3826-3827, 3846-3847, 3869-3871, 3883-3884, 3897-3898 and 3906-3907. State the tests once in the opening. Each entry keeps its own values in its table row.
+- **Repeat: the refilling-queue reason.** "The refilling-queue arithmetic above is unchanged and is still the reason" (3613-3614) appears again at 3668-3669 and 3793. "admitting them would grow a gate that is not draining" (3615-3616) appears again at 3669 and 3693. Both belong in 3560-3566. The other places keep nothing, because the table's ground column says it.
+- **Repeat: "rather than … being stretched to cover them".** It appears at 3617-3618, 3673-3674, 3797-3799, 3850, 3886 and 3893. Subheadings by ground do this work, so these keep nothing.
+- **Repeat: cannot affect a reader of the simulator.** "None of them can affect a reader of the simulator. So deferring them costs the gate nothing that it exists to protect" (3577-3578) appears again at 3679-3680, 3694-3695, 3785-3786, 3816 and 3852-3853. It belongs in 3574-3581, and the other places keep nothing.
+- **Repeat: the lower bar.** "held to `.claude/rules/apparatus-standard.md`'s deliberately lower bar" (3575-3576) appears again at 3667-3668 and 3792-3793. Keep it at 3575-3576.
+- **Repeat: the disposition rule.** "either way it must say so and say why" (3553-3554) is restated as "the disposition rule asks for a sentence either way" (3899-3901) and "what the disposition rule exists to force" (3910-3912). Keep it in the opening and cut the restatements.
+- **Repeat: where to see the current state.** "`bin/docket wave` reports where the gate stands now" (3572) and "`bin/docket wave` prints every deferral of the current gate with its state" (3592-3599). Keep the second; 3572 keeps nothing.
+- **Repeat: the ranking argument.** "all four are offered ahead of this gate's own entries … The gate decides whether v0.5.0 *waits* on them" (3857-3860) and "The ranking already offers it ahead of this gate's own entries. The only thing declined is whether v0.5.0 waits on it" (3873-3875). Keep 3855-3861; under one subheading, 3873-3875 keeps nothing.
+- **Repeat: decide once with `PL-L9RD`.** "Pulling them into Gate 1 would mean deciding them twice" (3645) and "answering it against the Flet chart would mean answering it twice. That is the same reason `PL-3JP0` and `PL-HKTB` wait for `PL-L9RD`" (3709-3710). Merge `PL-5B1N` into 3641-3646 as a third decision the port makes once.
+- **Admitted entries counted here.** `PL-DZFJ` (3681-3683) and `PL-V6M0` (3794-3795) are admitted entries. They belong in the admitted list, and this section keeps nothing about them.
+- **Misplaced: 3755-3760** ("No preview is drawn today … this item would be admitted above"). It is about `PL-5B1N`, the committed run against the uncommitted preview (3702-3710). Where it stands, after `PL-TBMX`, "this item" reads as `PL-TBMX`. Move it to follow 3710.
+- **Misplaced: 3774-3777** ("They enter Gate 2 when it freezes at v0.5.0's ship"). It applies to every entry, but it stands after `PL-CY8B`, where "They" reads as that group. Move it to the opening, with the release each gate holds: Gate 1 holds v0.5.0's debt (the chapter says this only in passing, at 3820, 3860 and 3875). The parenthetical history ("written 'when v0.6.0 is scoped' until 2026-09-16") belongs in the item that changed the trigger, which the chapter does not name.
+- **Misplaced: 3609-3610** ("Later additions belong in this list … Whether the audit found an entry is a note of provenance, not the test"). This rule covers the whole list, so it belongs in the opening.
+- **Misplaced and mixed: 3583-3599.** It covers the whole list but sits between the twenty-nine and the thirtieth. Move it to follow the opening. The reader keeps four facts: the state is not written here; `bin/docket wave` gives it for the current gate; `bin/docket show` gives it for an earlier gate; and a release name already written is still correct. The history goes to `PL-0VFF`, `PL-B60Q` and `PL-J6HP`: the marks once written, 48 that matched, and 36 of 84 closed entries unmarked (counted 2026-09-23).
+- **Writers' rule: 3568-3572.** "never recomputed … must not be treated as one" is a rule for writers, and it belongs in the item that keeps the gate's rules. The reader keeps only that the four figures date from 2026-09-08.
+- **Written for a later session, not the owner.** Each piece goes to the item it names, leaving one line on what the entry does:
+  - 3601-3605: how `PL-HX5C` turned `main` red, to `PL-33WM`
+  - 3636-3639: the Flet and Qt harness measurement, to `PL-ZG5J`
+  - 3676-3678: `_landing_split`, to `PL-880Z`
+  - 3689-3693: the same-commit rule, the test fake and the git subprocesses, to `PL-QNYF`, `PL-3LLZ` and `PL-7XNX`
+  - 3697-3700: the spawn count and the capture rule, to `PL-CSHL`
+  - 3763-3772: `_shallow_pair`, `ID_PATTERN` and the assertion, to `PL-CY8B`; keep "the guard it tests is covered by other assertions"
+  - 3864-3868: how `PL-2T03` was split, to `PL-2T03`
+  - 3878-3882 and 3887-3888: rule 14's history and the rule's length, to `PL-QSGX` and `PL-CM40`
+  - 3894-3895: `verify:` and the discriminator, to `PL-09G9`
+  - 3904-3910: `_carried_work`, `pr` and `make check`, to `PL-YFXG`
+- **Decision history: 3733-3753.** The `PL-TBMX` story (filed, refuted, reopened) belongs in `PL-TBMX` and `PL-HGB6`. The section keeps the current state: `PL-HGB6` keeps the assembled-total meaning in `docs/machine-abstraction.md`, and `PL-TBMX` is on v0.6.0's frozen list as a `safety` entry (project owner, 2026-09-27, ratified, over building `PL-HGB6` as written).
+- **Narration about the text: cut.** "This paragraph applies that rule to the gate's own membership" (3580-3581). "This is worth stating because the batch was measured" (3697). "A later reader who meets the dropped item is owed the reason" (3741-3742). "This asymmetry is named here so that it does not look like an omission" (3836-3837). "It is stated rather than left out because …" (3898-3901).
+- **A decision for the owner, buried.** `PL-N32Y` waits on a question only the project owner can answer: is a frozen Required scope line corrected or annotated when it turns out to be wrong (3817-3820)? It sits mid-section. Put waiting decisions where the owner looks, as a table column or a line in the opening.
+- **Query:** Do 132 + 42 make 173? 3560-3563 gives 132 entries and forty-two admitted, which is 174. The 31% matches 173.
+- **Query:** Eleven, or twelve? 3612-3616 says eleven, with "six of them are not in the workflow lane" and "the six that are apparatus", which makes twelve. 3620-3653 then names seven non-workflow entries: four port, two decisions and `PL-CNCF`.
+- **Query:** Where is the eighth member? 3864-3868 says `PL-HWW1` had eight members: four moved and three were kept.
+- **Query:** Where is the fourteenth capture? 3788-3795 says the pass covered fourteen captures: twelve declined, one admitted (`PL-V6M0`).
+- **Query:** When was Gate 1 at 52 open entries? "Gate 1 remains at 52 open entries that it can clear" (3830-3831) has no date. 3598-3599 says the number still open is not written down, and 3562 gives 89 open on 2026-09-08.
+- **Query:** Is v0.6.0's list frozen, and which gate holds which release? 3591 ("v0.6.0's deferrals") and 3753 ("v0.6.0's frozen list as a post-freeze `safety` entry") disagree with 3776-3777 ("v0.6.0 was scoped without freezing it") and with Gate 2 freezing at v0.5.0's ship.
+- **Query:** Does 3674-3675 still hold? It says "nothing marks a closed entry apart from an open one", but 3592-3596 says `bin/docket wave` prints each deferral's state. Is 3674-3675 a statement as of 2026-09-12?
+- **Query:** Does "none of the three can affect a reader of the simulator today" (3719-3720) still hold for `PL-HGB6`? 3725-3729 calls the stored value correct, but 3744-3753 says that reading was the misreading. `PL-TBMX`, which says a real profile would understate the circuit time constant by about 40%, is now a `safety` entry.
+- **Query:** What is the "presence test"? 3552, 3555, 3828 and 3892 use it without explaining it. 3828-3830 says `PL-DG84` passes it "squarely" yet "fails the arithmetic that the presence rule asks for".
+- **Query:** What sets 3714-3716 apart? It defers three post-freeze entries under the snapshot rule "on its own terms, not on the refilling-queue ground". Every other entry captured after the freeze (3606-3608, 3781-3782, 3790-3791) is declined on the refilling-queue ground.
+- **Query:** Where are the first twenty-nine, and where is the admitted list? "these twenty-nine" (3555) and "the workflow-lane list above" (3676) name no entries in these rows, and "admitted above" (3554, 3578, 3682, 3759, 3794) names no section. The reader needs the list, or § pointers to it.
+
+Outline:
+- **3550-3558:** These twenty-nine are recorded and deferred, as the snapshot rule requires.
+  - Facts: project owner, 2026-09-08. The rule "The gate is a snapshot" lets a session defer or decline a finding that passes the presence test, but "either way it must say so and say why". The `PL-36R4` audit found the thirteen admitted above and these twenty-nine. The twenty-nine pass the presence test as clearly as the thirteen. They are deferred on the rule's second ground: pulling them in "would recreate the refilling-queue problem the debt gate replaced Phase 0 to solve".
+- **3560-3566:** The arithmetic is the argument.
+  - Facts, all on 2026-09-08: Gate 1 had 132 entries against Gate 0's 21, by far the largest gate the project had held. 89 of its entries were still open. Admitting all forty-two would have made 173 entries, growth of 31% while the gate was not draining. Phase 0 was retired for that shape. A gate that refills faster than it drains is abandoned, which is worse than no gate.
+- **3568-3572:** The four numbers are fixed to 2026-09-08.
+  - Facts: they are never recomputed; recomputing them would restate the reasoning in numbers the decision was not taken on. They are not a current gate count. `bin/docket wave` reports where the gate stands now.
+- **3574-3581:** All twenty-nine lie wholly in the workflow lane, which is why this group was chosen.
+  - Facts: they are apparatus, held to `.claude/rules/apparatus-standard.md`'s deliberately lower bar. None can affect a reader of the simulator, so deferring them costs the gate nothing it protects. The thirteen with a product-lane half are admitted because they can. Where the two standards compete, the simulator wins. The paragraph applies that rule to the gate's membership.
+- **3583-3599:** An entry's state is read from the store, not written here (`PL-0VFF`, then `PL-B60Q`).
+  - Facts: no entry is removed from the list. That permanence is what "the gate is a snapshot" means, and deleting an entry would destroy the record of what was declined and why.
+  - History: closed entries once carried a release name, and dropped entries a date. Those marks copied the store. All 48 marks written matched `milestone:` or `closed:`. 36 of 84 closed entries across this list and v0.6.0's deferrals had no mark (counted 2026-09-23, `PL-J6HP`).
+  - Now: `bin/docket wave` prints each current-gate deferral with its state: an open entry's status, a shipped entry's release, a dropped entry's date. For an earlier gate's entry, `bin/docket show` prints its status, and its `milestone:` once shipped. Existing marks are kept, because a release name cannot go stale. No new mark is added. The number still open is not written; `bin/docket wave` returns it.
+- **3601-3610:** The thirtieth, `PL-HX5C`, arrived after the audit on the same ground (`PL-33WM`, 2026-09-08).
+  - Facts: it was captured hours after the subsection was written. It merged in `#477` against a base whose CI predated `PL-36R4`'s check, so `main` went red on silence, the disposition the rule forbids. It is recorded, not admitted, because the four paragraphs' arguments apply: found after the 2026-09-06 freeze, `P2`, neither `safety` nor `science`, wholly in the workflow lane. Later additions belong here for the same reason. Whether the audit found an entry is provenance, not the test.
+- **3612-3618:** Eleven more came from the 2026-09-12 triage pass (`PL-3B47`, which closed with that pass), and six are not in the workflow lane.
+  - Facts: the refilling-queue arithmetic is unchanged and still the reason. The six apparatus entries sit where the first thirty do; admitting them grows a gate that is not draining. The other six need their own ground, stated below.
+- **3620-3629:** Four wait on the port.
+  - `PL-7SVX` is item 7 of the port's Required scope. Deleting the Qt spike tree before the port landed would have removed the reference every other item in that milestone read from.
+  - `PL-C92D` asks for a caveat on a Flet measurement whose toolkit is being removed. The same pass re-scoped it so it no longer asks for a re-measurement.
+  - `PL-SQJ1` measures a playback shortfall caused by frame cost the port removes, so measuring now measures a tree about to change.
+  - `PL-ZG5J` would land a harness on `flet.messaging.session.Session` for one milestone.
+  - Each is real, and each gets a worse answer if hurried ahead of the port.
+- **3631-3639:** The port has landed (`PL-25KS`, § "Completed: v0.4.26 — the interface moves to Qt"), so the ground is spent, not wrong.
+  - Facts: it records why the four were deferred on 2026-09-12. Whether each can start now is for the queue to say. `PL-ZG5J` closed 2026-09-19 with a Qt harness under `tests/benchmarks/`, not the Flet harness. In Flet, a serializing connection made the measurement method subtle; in Qt, the paint plays that part. The harness is written down so the next session re-measures instead of re-deriving it.
+- **3641-3646:** Two are decisions this gate should not force.
+  - Facts: `PL-3JP0` and `PL-HKTB` ask whether a piece of the interface should change or be recorded as deliberate. `PL-L9RD` is the port's pass that makes the visual decisions once, and the cheapest place to answer. Pulling them into Gate 1 would decide them twice, the duplication `PL-L9RD` prevents.
+- **3648-3653:** `PL-CNCF` is the one to watch.
+  - Facts: its 6.2 ms is the frame cost that survives the port. That cost is score evaluation, with no toolkit in it, so it does not dissolve, and it sizes `PL-GS3R`'s chord-width rule. It is deferred because nothing is blocked on it today and the number needs re-taking on the ported tree, not because it is small.
+- **3655-3661:** One more, `PL-NF6N`, from the session that answered `PL-69JZ` and `PL-L09X` (2026-09-12).
+  - Facts: it asks whether triage should have a write command instead of hand-editing item front matter. It is wholly workflow lane, on the refilling-queue ground. It asks whether a mechanism is worth building at all, the kind of question most likely answered "no" and least worth holding a gate open for.
+- **3663-3670:** Fourteen more came from the 2026-09-12 triage pass over what the v0.4.14 range left untriaged (`PL-0QQP`).
+  - Facts: twelve are wholly in the workflow lane: captured after the 2026-09-06 freeze, `P2` or `P3`, neither `safety` nor `science`, apparatus at the lower bar. The arithmetic "in the four paragraphs above" is unchanged and still the reason. The gate is not draining, and fourteen would add another tenth.
+- **3672-3683:** Two reach `ROADMAP.md` and are not wholly apparatus.
+  - `PL-0VFF` is this subsection's bookkeeping. Three of its entries closed in v0.4.14, and nothing marks a closed entry apart from an open one.
+  - `PL-880Z` concerns the wording of a frozen entry in the workflow-lane list above. That entry repeats `PL-XLQ5`'s title and a mechanism `_landing_split` lacks.
+  - Both correct the document's account of its own queue, so neither can affect a reader of the simulator, the test on which the first twenty-nine were declined.
+  - Only `PL-DZFJ` (what a drawn chart point represents) could. It is admitted above under the unconditional safety exception.
+- **3685-3695:** Three more from the `vcs.py` batch closure (`PL-CSHL`, 2026-09-13).
+  - Facts: `PL-QNYF`, `PL-3LLZ` and `PL-7XNX` were filed by the session that closed nine of that cluster's items, each produced by a closure, not an audit. All are wholly workflow lane, on the refilling-queue ground.
+  - `PL-QNYF` is a `docket check` error only one closure shape can trigger. The same-commit rule makes that shape uncommon, and no item has it today.
+  - `PL-3LLZ` is upkeep of a test fake.
+  - `PL-7XNX` is git subprocesses on a path `PL-PMT7` cleared.
+  - Admitting them grows a gate that is not draining and holds the release open for apparatus.
+- **3697-3700:** Why these three are stated.
+  - Facts: they are the spawn count `PL-CSHL` recorded, the visible cost of that pass, deferred, not hidden. Filing them followed the capture rule; deferring follows this rule.
+- **3702-3710:** `PL-5B1N` (triaged 2026-09-13) is declined on `PL-3JP0`'s and `PL-HKTB`'s ground.
+  - Facts: it is not apparatus. It asks which visual channel separates a committed run from an uncommitted preview, which concerns a displayed clinical value and affects a reader directly. The port rewrites the chart on pyqtgraph and decides dash pattern, alpha and stroke width again, so answering against the Flet chart would answer twice.
+- **3712-3717:** Three from the 2026-09-20 machine-profile re-scope (`PL-77G2`).
+  - Facts: `PL-HGB6`, `PL-QW19` and `PL-HNWX` were filed the day planned-milestone item 1 was split (project owner, 2026-09-20). They postdate the 2026-09-06 freeze by two weeks, so § "The gate is a snapshot, not a moving target" defers them on its own terms. None is `safety` or `science`, so the unconditional exception does not apply.
+- **3719-3731:** None of the three can affect a reader today, as each brief says.
+  - `PL-HNWX` is a `refactor` wholly inside `core/parameters.py`'s schema-version constant, and changes no value.
+  - `PL-QW19` makes a required field optional, so a profile not yet written needs no invented startup flow. Only one profile has shipped, and it declares the field.
+  - `PL-HGB6` is a contradiction about what `circuit_volume_l` means, between `docs/machine-abstraction.md` (which governs an unstarted milestone) and the shipped profile's provenance note (whose stored value is correct under the data file's meaning).
+  - All three are `anticipated` in substance and matter when a second profile is written, which item 40 enables but does not schedule.
+- **3733-3742:** `PL-HGB6` replaces `PL-TBMX`, filed the same day.
+  - Facts: `PL-TBMX` asserted that `circuit_volume_l` meant apparatus-plus-circuit, so a real profile would understate the circuit time constant by about 40%. The re-scoping audit's adversarial verifier refuted it against the source; the profile then said "This file's `circuit_volume_l` is the apparatus alone". `PL-TBMX` was dropped with that refutation. It is recorded because a `safety`-classed `P1` briefly existed.
+- **3744-3753:** The refutation was the misreading; `PL-TBMX` is open again (project owner, 2026-09-27, ratified, over building `PL-HGB6` as written).
+  - Facts: "the apparatus alone" contrasted the stored volume with Targ et al.'s system plus the bag standing in for the lung, whose measurement included the corrugated limbs and Y-piece. So the phrase meant without the lung, not without the circuit, as `PL-TBMX`'s rewording now says. The model has one gas compartment in front of the patient. `PL-HGB6` was re-scoped to keep the assembled-total meaning in `docs/machine-abstraction.md`. `PL-TBMX` joined v0.6.0's frozen list as a post-freeze `safety` entry.
+- **3755-3760:** The deferral is safe because nothing misleads anyone meanwhile.
+  - Facts: no preview is drawn today. The item's safety obligation binds whoever builds the preview. Had a preview shipped in a compartment's style, the item would be admitted under the unconditional safety exception.
+- **3762-3772:** `PL-CY8B` came from closing `PL-W1LN` (2026-09-13).
+  - Facts: `_shallow_pair`'s commits carry `PL-M01`-style subjects that `ID_PATTERN` does not match, so the sibling guard test's `assert "PL-M01" not in out` cannot fail. It is wholly workflow lane, on the refilling-queue ground. The test's other assertions fail if the guard breaks, so the guard is covered. The narrower claim about the default branch's ids is now made by `PL-W1LN`'s new test with valid ids. Only the old assertion is decorative.
+- **3774-3777:** Declined entries enter Gate 2 when it freezes at v0.5.0's ship, unless closed before then.
+  - Facts: this is the trigger § "The cadence" records, not the scoping of Gate 2's milestone. It read "when v0.6.0 is scoped" until 2026-09-16, when v0.6.0 was scoped without freezing it.
+- **3779-3786:** Five more from the 2026-09-13 triage pass, on the same ground as the thirty.
+  - Facts: the pass folded in captures from Gate 1's stale-name batch and the v0.4.15 cut. Each was found after the 2026-09-06 freeze, is `P2` or `P3`, and is not `safety` or `science`. All are apparatus: two `docket` command defects, a filename-drift sweep, two stale workarounds in checks, and the citation-form conversion `PL-V13T` left open. None can affect a reader.
+- **3788-3795:** Twelve more from the 2026-09-13 triage pass over the fourteen captures open that day (`PL-TQJ4`).
+  - Facts: nine are wholly workflow lane: found after the freeze, `P2` or `P3`, neither `safety` nor `science`, apparatus at the lower bar. The arithmetic is unchanged and still the reason. The thirteenth, `PL-V6M0`, is admitted under the unconditional safety exception.
+- **3797-3808:** Three are not wholly apparatus. `PL-BQ46` and `PL-KL2Q` are two halves of one question about `core/`'s dimensionless vocabulary.
+  - Facts: one asks whether a MAC-relative ratio earns its own type; the other asks whether a new parameter field takes percent or fraction. Both are `refactor` hardening of a boundary that produces no wrong value today, a guard `mypy` could give. Neither falls within this milestone, which adds no field to `core/parameters.py` and no fourth convention. Answering them separately decides one question twice; take them together after the port settles `formatting`.
+- **3810-3820:** `PL-N32Y` corrects the account of a past release.
+  - Facts: v0.1.0's Required scope says that release added tissue:blood partition data, but the agent files store tissue:gas. The scientific half is fixed: `PL-212V` corrected `docs/MODEL.md`'s specification, and `PL-H46J` gave the Symbols table a Code column mapping symbols onto `core/`, both in v0.4.17. What is left is history and cannot affect a reader. `PL-N32Y` is `needs-decision`, and only the project owner can answer: is a frozen Required scope line corrected or annotated when wrong? Holding v0.5.0 open would not answer it.
+- **3822-3831:** `PL-DG84` came from the 2026-09-13 article-review triage pass, on the same ground.
+  - Facts: `docs/WORKING_NOTES.md` asks for resolved threads to be deleted, and nothing reads that policy. It was captured that day; triage moved it to `needs-decision`, which makes it debt. It is `P2`, neither `safety` nor `science`, wholly apparatus. The accumulation predates the 2026-09-06 freeze, so it passes the presence test as squarely as the first twenty-nine. It makes no remaining entry cheaper, so it fails the presence rule's arithmetic. Gate 1 remains at 52 open entries it can clear.
+- **3833-3839:** `PL-DG84`'s five filed instances need no disposition.
+  - Facts: `PL-5748`, `PL-60CQ`, `PL-BHJW` and `PL-75R0` are `docs` at `ready`, and `docs` is not a debt class. `PL-C92D` is listed above under `perf`. The asymmetry is named so it does not look like an omission. The systemic item falls under the gate only because its next step is a decision; the concrete defects do not.
+- **3841-3853:** Four more, the heads of `PL-6ZQY`'s remaining clusters (`PL-VX5H`, 2026-09-18).
+  - Facts: `PL-6TP8`, `PL-HWW1`, `PL-4FBP` and `PL-4Q9B` were captured 2026-09-17, recording that four of six clusters had no item to carry `root-cause-of:`. On 2026-09-18 each became that item, which triaged them to `needs-decision` and made them debt. Each is `P2`, neither `safety` nor `science`, and captured after the freeze.
+  - `PL-6TP8` and `PL-4Q9B` are wholly apparatus. `PL-HWW1` changes `ROADMAP.md` and `PL-4FBP` changes `docs/MODEL.md`, so neither is wholly workflow lane.
+  - Either would change how a fact is recorded, not what the simulator computes or tells. Deferring costs nothing.
+- **3855-3861:** The ranking has already settled when these four are taken up.
+  - Facts: a sound `root-cause-of:` lifts an item above every band except `P0` in `bin/docket next`, so all four are offered ahead of the gate's entries. `PL-BHVM` is the precedent: declined here, ranked first. The gate decides whether v0.5.0 waits; the ranking puts them "before nearly everything else".
+- **3863-3875:** `PL-2T03` was split out of `PL-HWW1` on 2026-09-19.
+  - Facts: measured against the code, four of `PL-HWW1`'s eight members came from a different mechanism, which re-derives the release train's arrangement by comparing version numbers, although § "The timeline" records it as a grammar-checked table. Those four moved to their own head; `PL-HWW1` kept the three about membership.
+  - Declined: captured after the freeze, `P2`, `defect`, wholly workflow lane, completes no frozen entry. It carries `root-cause-of:` over `PL-Y1L0`, `PL-J45M`, `PL-7CSP` and `PL-B5DW`, so the ranking offers it ahead. Only whether v0.5.0 waits is declined.
+- **3877-3888:** Two more from the same session (`PL-QSGX`, `PL-CM40`), on the owner's 2026-09-19 request that a reply refresh before reporting.
+  - Facts: the resident half took effect in `.claude/rules/instruction-writing.md` rule 14. These are the deterministic half, and the resident rule should later shrink into them. One makes `bin/docket flight` fetch like its sibling commands; the other adds one command printing the refreshed picture. Both were captured after the freeze, are workflow-lane apparatus, and are neither `safety` nor `science`. `PL-CM40` also changes `.claude/rules/instruction-writing.md`, but only a rule's length: three command names become one.
+- **3890-3901:** `PL-09G9` (2026-09-19): its problem did not exist at the freeze.
+  - Facts: the other entries pass the presence test; this one fails it. It makes one contract mechanical: a `verify:` records the discriminator, not a second proof of the tree. That contract was decided 2026-09-19 under `PL-6TP8`, thirteen days after the freeze, so on 2026-09-06 there was nothing to list. It is `P2`, `defect`, workflow-lane apparatus, neither `safety` nor `science`. It is stated because the disposition rule asks for a sentence either way; an open debt item that is neither placed nor deferred is reported as undisposed.
+- **3903-3912:** `PL-YFXG` (2026-09-19), on the same ground.
+  - Facts: `_carried_work` was written 2026-09-12 under `PL-YDL6`, six days after the freeze, so the mechanism did not exist at 2026-09-06. It is `P2`, `defect`, workflow-lane apparatus, neither `safety` nor `science`. It was found while closing `PL-Y5JX`, as the reason `main` was red: when a closure's work is queue files, its `pr` cannot be recovered, and the resulting `docket check` error fails `make check` on every branch. Recording it the same day is what the disposition rule forces.

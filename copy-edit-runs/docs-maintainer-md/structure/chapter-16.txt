@@ -1,0 +1,53 @@
+[1] keep
+
+Structure:
+- Rows 1022-1023 and 1027-1028 both describe how the hook works. Row 1022-1023 says "`.claude/hooks/thread_hooks.py` uses that file to give a thread the hooks (`PL-X6VN`)". Row 1027-1028 says "The hook copies the repository's `hooks` block into the user settings". The second paragraph is the one that explains how the hook works, so the fact belongs there. That paragraph should name the hook with its full path and take the `PL-X6VN` pointer. The first paragraph keeps nothing of it and ends at "A thread does read the user settings file, `~/.claude/settings.json`."
+- Rows 1025-1033 make two points. Rows 1025-1030 explain how the setup script and the hook work, for a reader adding the script. Rows 1030-1033 explain how this copy of the script stays in step with the hook, for a reader changing the hooks or the script: the script holds no copy of the hooks, `--setup-script` prints the script, and `tests/unit/test_thread_hooks.py` fails if the copy here differs. Move rows 1030-1033 to a short paragraph right after the code block (after row 1060), where a reader who edits the script will look.
+- Query (rows 1062-1063): the reader needs to know what "saving the script rebuilds the environment's cache" means for them, for example whether the next new thread waits for the rebuild. The text does not say.
+- Row 1074: I cannot tell whether "Until it does" means until `PL-XFDQ` records a result or until the plugin's hook and skill reach a thread. The sentence edit should settle this with the author.
+- The rest of the structure needs no change. The heading says what the section holds, and the order (why threads lack hooks, how the fix works, steps, script, check, the plugin alternative) is the order the reader needs. At 464 words with a numbered list, the section needs no subheadings.
+
+Outline:
+- 1015, heading: "Give Projects threads the repository's hooks with one setup script".
+- 1017-1023, Projects threads run none of the repository's hooks:
+  - A Claude Projects thread does not load `.claude/settings.json`.
+  - So none of the hooks run: not the guards, the session-start digest or the stop hook patch.
+  - Source: Claude Code documentation, "What threads pick up from your repositories" (https://code.claude.com/docs/en/claude-projects.md#what-threads-pick-up-from-your-repositories), read 2026-10-26.
+  - `PL-CR81` records the measurement.
+  - A thread does read the user settings file, `~/.claude/settings.json`.
+  - `.claude/hooks/thread_hooks.py` uses that file to give a thread the hooks (`PL-X6VN`).
+- 1025-1033, how the setup script and the hook work:
+  - The script adds one `SessionStart` entry to the user settings.
+  - At each session start in a Projects thread, the entry runs `thread_hooks.py` from the checkout.
+  - The hook copies the repository's `hooks` block into the user settings.
+  - Claude Code applies the copy from its next tool call on.
+  - In any other session the hook does nothing, because those sessions load the repository's settings themselves.
+  - The script holds no copy of the hooks, so a change to `.claude/settings.json` reaches the next thread with no change here.
+  - `python3 .claude/hooks/thread_hooks.py --setup-script` prints the script.
+  - `tests/unit/test_thread_hooks.py` fails if the copy here differs from it.
+- 1035, lead-in to the steps: "To add it:".
+- 1037-1038, step 1: open **Project settings > Environment** and note which cloud environment new threads use.
+- 1039-1041, step 2:
+  - At claude.ai/code, open the environment selector, the first control under the message box.
+  - Under **Cloud**, hover over that environment's row and select the settings icon on its right.
+- 1042-1043, step 3: select the **Setup script** row, paste the script at the end of what the box already holds, and select **Save changes**.
+- 1045-1060, the script (bash with a Python heredoc):
+  - Creates `~/.claude`.
+  - Reads `~/.claude/settings.json`, and uses an empty settings object on `OSError` or `ValueError`.
+  - Builds a `SessionStart` group whose command runs `python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py"` only if that file exists, followed by `|| true`.
+  - Appends the group only if it is not already there.
+  - Writes the JSON with indent 2 and a trailing newline.
+  - The whole Python step is followed by `|| true`.
+- 1062-1068, when changes apply and how to check them:
+  - Environment changes reach new threads, not running ones.
+  - Saving the script rebuilds the environment's cache.
+  - To check, ask a new thread to run `uv run pytest -q tests/unit/test_line_splits.py | tail -1`.
+  - The gate-status guard refuses that command when the hooks are loaded.
+  - If the thread prints a test count instead, the hooks are still off, and the thread records that in `PL-CR81`.
+- 1070-1075, the plugin alternative:
+  - A plugin may replace this setup script.
+  - Plugins added in **Project settings > Plugins** load into each new thread.
+  - A plugin can carry hooks and skills.
+  - The repository is a plugin marketplace with one test plugin, `thread-probe`, in `.claude/thread-probe-plugin/`.
+  - `PL-XFDQ` records whether its hook and skill reach a thread.
+  - Until then, do not add both the plugin and the script to one project, because a refusal in a thread could then come from either.

@@ -1,0 +1,67 @@
+[1] keep
+
+Structure:
+- **Rows 830–849 make three points in one paragraph.** They cover what the credit pays for (830–834), what the runner does (835–845, up to "(`PL-4N0K`)"), and how to start it on the Mac (845–849, from "Run `tools/headless_worker.py` on your Mac"). Split the paragraph at those points. Move rows 845–849 to join rows 851–862, so that everything about setting up the Mac is in one place.
+- **Rows 892–910 make four points in one paragraph.**
+  - Rows 892–902, up to "(`PL-W5JR`)", cover reviewing a worker's branch. They stay as their own paragraph.
+  - Rows 902–905 list the runner's options (`--item`, `--per-run-usd`, `--no-push --model`). They belong next to the run commands in steps 5 and 6. Where they go, say that Opus 5.5 (row 837) is the default that `--model` replaces.
+  - Rows 905–907 say that each run's reported cost is only an estimate. This belongs in step 4.
+  - Rows 908–910 cover the old ledger. This also belongs in step 4, because step 4 cites `PL-NQ0M`, the change that replaced the ledger.
+- **Step 6 uses an option before the section explains it.** Row 889 says "or a `--no-push` one", but the explanation comes at rows 903–905: "In that form the clone cannot push, so the work stays on your machine." Put the options before step 6's description of output.
+- **Step 6 (rows 879–890) holds four things.** These are the run command, `caffeinate`, what each run prints, and what each run leaves behind. Move rows 884–890 out of the list into a paragraph after it.
+- **Three places say you give the runner the credit left at launch.**
+  - Row 839–840: "the figure for the credit left, which you give the runner at launch".
+  - Row 871–872: "The runner takes this figure from you as `--credit-left`".
+  - Row 906–907: "So read the Console's figure again at each launch, rather than carrying forward the runner's last figure."
+
+  This belongs in step 4, with all three reasons: the account cannot read the Cost API, spending made elsewhere would be missed, and the reported cost is an estimate. The opening paragraph keeps only "subtracts each run's reported cost from the credit left".
+- **Two places say the run's output names its record.**
+  - Row 885–886: "A run that pushed adds a second line that names its record."
+  - Row 895: "The run's line names that file."
+
+  This belongs in the review paragraph, next to the path `docs/worker-runs/<branch>-<started>.json`, because that is where the reader uses the file. Step 6 keeps nothing about it.
+- **The bash and make version limits appear twice.**
+  - Row 852: "bash 5.2 or newer, and GNU Make 4 or newer".
+  - Rows 860–861: "while the bash or make on its `PATH` is older than bash 5.2 or GNU Make 4".
+
+  The numbers belong at row 852. The sentence at rows 860–862 about the runner refusing to start keeps "older than these".
+- **The section is 855 words and hard to find your way in.** It opens with a 20-row paragraph and ends with a paragraph of mixed points. The heading still fits once subheadings are added under it:
+  - Keep the opening paragraphs (credit and runner) under the main heading.
+  - Then "### Set up the Mac and the key once": rows 845–849, rows 851–862, and steps 1–2.
+  - Then "### Launch a batch": steps 3–6 (step 3's `export` applies to one shell, so it is needed at each launch), the options, the reported-cost estimate, the ledger note, and the paragraph on what each run prints and leaves behind.
+  - Then "### Review a worker's branch": rows 892–902.
+- **Query:** row 840 says the runner "stops before a run that the credit left cannot cover", but the text does not say how it judges a run's cost before the run. It may compare against `--per-run-usd` (default $15, rows 902–903). The reader needs to know which.
+- **Query:** rows 902–903 give `--per-run-usd` a default of $15. The reader needs to know why the default is $15, and what happens to a run that reaches the cap. For example, does that count as a failure that stops the batch (rows 840–842)? The text does not say.
+- **Query:** row 897 uses a bare `python3` (`python3 tools/worker_runs.py review ...`). Rows 846–848 say never to use a bare `python3`, because macOS's own is 3.9 and the tools need 3.11. Only the author can say whether the review step runs on another machine or the command is wrong. Left as it stands.
+- **Query:** row 900 says to carry "its two record commits" to another branch. The text names only one commit (row 894, the run's record) and does not say whether the review command also commits.
+- **Query:** row 853, "89 tests fail", gives no date for when the failures were counted, so the number reads as current.
+- **Query:** `--runs` sets how many runs to do, but the text does not give its default when you leave it out.
+- I cannot tell what rows 851–852 mean by "the tools the suite compares its readers against".
+
+Outline:
+- 828: heading "Spend the monthly API credit on delegable items".
+- 830–849 (one paragraph, three points):
+  - (830–834) What the credit pays for. Max 20x includes $200 a month of Claude Platform API credit. It pays for `claude -p` only with an API key from the Console organization linked to the credit, and never for a cloud session. Unused credit expires at the end of each billing cycle (https://support.claude.com/en/articles/17154008, read 2026-10-19).
+  - (835–845) What the runner does. `tools/headless_worker.py` spends the credit on the items that `bin/docket delegable` lists (`PL-80R5`). Each run clones the repository, works one item on Opus 5.5 following `docs/worker.md`, and pushes `claude/<id>-worker`. It subtracts the reported cost from the credit-left figure given at launch. The runner stops before a run the credit left cannot cover. It stops after any failed run, because an empty credit, a lost connection or a sleeping Mac makes every later run fail (`PL-44SP`). Every run uses the effort level in `.claude/settings.json`, `high`, the level that § "Match effort to the standard the work is held to" sets for sessions (`PL-4N0K`).
+  - (845–849) How to start it. Run it on your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it through `uv run python`, never a bare `python3`, because macOS's `python3` is Xcode's Python 3.9 and the tools need 3.11. `uv run` also puts the project's Python first on `PATH` for the workers (`PL-W38C`).
+- 851–862: Mac tool versions.
+  - A worker runs `make check` before it commits, so the Mac needs bash 5.2 or newer and GNU Make 4 or newer.
+  - macOS ships bash 3.2 and GNU Make 3.81. With them, 89 tests fail whatever the change, so a worker cannot see its own failures (`PL-TSH9`).
+  - `brew install bash make` installs both. Homebrew installs make as `gmake`. Adding `export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"` to the end of `~/.zshrc` makes it `make` in a new Terminal window (the formula's caveat, `Formula/m/make.rb` in Homebrew/homebrew-core, read 2026-10-19).
+  - `bash --version` and `make --version` then print 5.3 and 4.4.1 or newer.
+  - The runner refuses to start, before it spends any credit, while bash or make on `PATH` is older than bash 5.2 or GNU Make 4 (`PL-44R1`).
+- 864–866, step 1: claim the credit on claude.ai under Settings, Billing, API credits, Link organization. This links one Console organization, and changing it later needs a request to support.
+- 867–868, step 2: create a key in that organization on platform.claude.com under API keys, Create key.
+- 869, step 3: run `export ANTHROPIC_API_KEY=<the key>` in the shell you run from.
+- 870–874, step 4: read the credit left at platform.claude.com/settings/billing, under **Promotional credits**. The runner takes it as `--credit-left` for two reasons: the account cannot read the Console's Cost API, and a figure kept on the Mac would miss spending made elsewhere (`PL-NQ0M`).
+- 875–878, step 5: dry run with `uv run python tools/headless_worker.py --credit-left 197.72 --dry-run --runs 3`, using the figure from step 4. It prints the items it would run and the credit left, and starts nothing.
+- 879–890, step 6: real run.
+  - `uv run python tools/headless_worker.py --credit-left 197.72 --runs 3` runs the items one after another.
+  - On macOS, the runner keeps the Mac awake with `caffeinate -i` until the batch ends, so you no longer need to start it under `caffeinate` yourself. Keep the lid open, because caffeinate's manual does not say it keeps the Mac awake with the lid closed (`PL-BT70`).
+  - Each run prints one line: the item, its effort, the cost and the branch it pushed. A run that pushed adds a second line that names its record.
+  - A run that pushed everything removes its clone and keeps its log in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a `--no-push` run, keeps both the clone and the log, and its line names the clone (`PL-TX7K`).
+- 892–910 (one paragraph, four points):
+  - (892–902) Reviewing a worker's branch. Review each branch as delegated work: run `bin/docket verify <id>`, then open the pull request. A pushed run commits its record to the branch as `docs/worker-runs/<branch>-<started>.json`, and the run's line names that file. Before opening the pull request, the reviewing session runs `python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`, and `make check` fails until it does (`PL-87BR`). The records are how headless work is compared with chat-session work, so a sent-back branch's record still belongs on `main`. Carry its two record commits to a branch of their own. Once that lands, the daily branch sweep deletes the sent-back branch and its item returns to `bin/docket next` (`PL-W5JR`).
+  - (902–905) Options. `--item <id>` runs one named item. `--per-run-usd` caps the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is the form used for `PL-6FX6`'s trial; with it the clone cannot push and the work stays on your machine.
+  - (905–907) Reported cost. Each run's reported cost is Claude Code's own estimate and can differ from the bill, so read the Console's figure again at each launch rather than carrying forward the runner's last figure.
+  - (908–910) Old ledger. Runners before `PL-NQ0M` kept a ledger at `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads it now, so you can delete it.

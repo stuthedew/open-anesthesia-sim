@@ -1,0 +1,13 @@
+[1] keep
+
+Structure:
+- Query, rows 804-805: the section never says what makes a `claude/*` branch "finished", so a reader can't predict which branches the 06:17 UTC run will delete before deciding to sweep now. A dry run or the log answers this only after the fact. The reader needs the condition, and the text does not give it.
+- Otherwise the structure needs no change. The heading names both tasks, and the opening paragraph explains why the owner, not a session, does them. The two tasks then follow in the order a reader meets them, each starting with a bold label. No fact appears twice, and the section is short enough to need no subheadings.
+
+Outline:
+- 802: heading "Sweep branches now, or restore one the sweep deleted".
+- 804-808: what the daily sweep does and why the owner runs or undoes it. It runs every day at 06:17 UTC, from `.github/workflows/branch-sweep.yml`, and deletes each finished `claude/*` branch. Before deleting a branch, it copies the branch's tip to `refs/archive/<branch>/<tip>` (`PL-X8SV`). A session cannot run the sweep or undo it, because both push to branches other than the session's own, so the owner does both.
+- 810-814: how to sweep now. On the repository's page, click **Actions**, then **branch-sweep** in the left sidebar, then **Run workflow** above the list of runs. Tick **dry_run** to list what would be deleted without pushing anything, then click **Run workflow**. The run's log, under its **sweep** job, lists each branch it swept and says why each other branch was kept.
+- 816-817: how to restore a branch. The log prints the restore command beside each swept branch. Run it on the Mac from any clone of this repository.
+- 819-821: the command's form: `git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs/heads/claude/NAME`.
+- 823-826: how to confirm a restore, and how to find a tip without the log. The restore has worked when the last line shows `* [new branch]`. If the log has expired, `git ls-remote origin 'refs/archive/*'` lists every archived tip. GitHub's Branches page does not show an archive ref, and no clone fetches one unless asked to.

@@ -1,0 +1,36 @@
+[1] keep
+
+Structure:
+- Rows 6789-6794 and 6811 are written for a developer rather than for this reader. "with no `QApplication` at all", "`tools/import_boundary_check.py` fails the build if any module other than the adapter imports `QSplitter`" and "`make check` is green" name a toolkit class, an internal tool and an internal check, and the owner knows none of them. The section should keep, in words, what each one guarantees for the release. The class, tool and check names belong in the milestone's item. Query: this chapter does not name that item.
+- Rows 6789-6791 list "a fixture file one schema version ahead of the build and a file truncated mid-write". Both are cases of loading a Workspace file, but the behaviour expected when loading fails comes two bullets later, in rows 6795-6797 ("A Workspace file of an unsupported version is handled by the written policy"). Move both files into that bullet, so that each failure case (unknown View kind, unsupported version, newer version, half-written file) sits beside what should happen.
+- Order: the ten bullets switch back and forth between what a learner can do (6784-6788, 6795-6804, 6807-6810) and how the code is built and tested (6789-6794, 6805-6806). An owner deciding what the release holds has to read past engineering checks to find the learner criteria. Use this order:
+  - the learner criteria: operations (6784), keyboard (6787), load failures (6795), unconditional values (6798), accounting tier (6802), no regression (6807);
+  - the code criteria: layout tests (6789), import boundary (6792), View contract (6805);
+  - the passing checks and the documents (6811).
+  With ten bullets, the section needs no subheadings.
+- Rows 6798-6800 give one fact twice: "Every unconditional value is outside the layout container" and "a test asserts that no ancestor of its widget is that container". The second is in widget terms, for a developer. The bullet should keep the first sentence, plus the promise that the value stays on screen after a split, a join, a close, a Workspace switch and a reload. The ancestor test goes to the milestone's item.
+- Rows 6802-6804 make one point twice: "From every shipped Workspace, a learner can bring the accounting tier on screen through the interface alone" and "A Workspace that names none of those Views still leaves them reachable". If the second sentence also covers Workspaces the learner saved, keep only it and say that it covers both kinds. Query: does it cover a learner's saved Workspaces as well as the shipped ones?
+- Rows 6805-6806 call the same things by two names: "Two Views that already exist implement the View contract" and "A test builds two surfaces for one run". Query: are the "surfaces" the two Views? If so, call them Views in both sentences.
+- Rows 6807 and 6809 give the baseline for "no regression" in two forms: "against v0.5.0" and "on 2026-09-16". Query: is 2026-09-16 the date of v0.5.0? If it is, give one baseline. If it is not, say which one applies.
+- Row 6811, "the documents in Required scope entry 19", sends the reader to a numbered entry for a short list. Name the documents here instead. Query: this chapter does not say which documents entry 19 lists.
+- Query: the reader needs to know:
+  - which values are "unconditional" (6798);
+  - which Views make up "the accounting tier" (6802);
+  - which "two Views that already exist" are meant (6805);
+  - what "the View contract" requires (6805);
+  - where "the written policy" for unsupported Workspace file versions is written (6796).
+  This chapter gives none of them.
+- Query: "the layout model" (6789), "the layout tree" (6793), "the adapter" (6792), "View kind" (6795) and "the layout container" (6798) are not explained in this chapter. The cross-chapter read should check that an earlier part of the milestone, such as Required scope, explains each one.
+
+Outline:
+- 6782: heading "Definition of done".
+- 6784-6786: layout operations. A learner can split, join, resize, swap and close Areas. They can switch Workspaces by tab, and rearrange, duplicate, rename and delete them. They can save their own Workspaces and find them on the next launch.
+- 6787-6788: keyboard. Every one of those operations works from the keyboard as well as by drag.
+- 6789-6791: layout tests. Tests run the layout model with no `QApplication`. They include a fixture file one schema version ahead of the build and a file truncated mid-write.
+- 6792-6794: import boundary. `tools/import_boundary_check.py` fails the build if any module other than the adapter imports `QSplitter`, or if the layout tree imports a concrete View module.
+- 6795-6797: load failures. A Workspace that names an unknown View kind fails visibly in that Area, and nothing is substituted. A Workspace file of an unsupported version is handled by "the written policy", not by the load path's default.
+- 6798-6801: unconditional values. Every unconditional value is outside the layout container. For each value, a test asserts that no ancestor of its widget is that container, and that the value is still on screen after a split, a join, a close, a Workspace switch and a reload.
+- 6802-6804: accounting tier. From every shipped Workspace, a learner can bring the accounting tier on screen through the interface alone. A Workspace that names none of those Views still leaves them reachable.
+- 6805-6806: View contract. Two existing Views implement the View contract. A test builds two surfaces for one run and asserts that both draw.
+- 6807-6810: no regression a learner can see, against v0.5.0. Compare mode ships before this milestone, and this milestone then rearranges it. Everything a learner could do with two runs on 2026-09-16 still works. This is checked against v0.5.0's own definition of done.
+- 6811-6812: closing gate. `make check` is green, and the documents listed in Required scope entry 19 describe the interface as built.

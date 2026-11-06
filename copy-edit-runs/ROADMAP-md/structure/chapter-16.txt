@@ -1,0 +1,56 @@
+[1] keep
+
+Structure:
+- **Same reasons given twice.** Rows 3178-3182 say PL-25DD was admitted "for the two reasons `PL-LHBY` was: the rule below makes `safety` not deferrable whatever the presence answer, and this gate's own Required scope is what created the hazard — `PL-VKJW` made two runs reachable from a shipped entry point for the first time. The widgets are older than the freeze; their ambiguity is not." Rows 3189-3193 say the same again: "They are admitted for the same two reasons as `PL-25DD`. First, the rule below makes `safety` not deferrable whatever the result of the presence test. Second, … The widgets predate the freeze, but their ambiguity does not."
+  - Fix: give the reasons once, at PL-25DD (3178-3182), where the reader meets them first. In rows 3189-3193, keep only "They are admitted for the same two reasons as `PL-25DD`."
+  - The two places use two names for one thing: "presence answer" and "presence test". Whichever place keeps the reasons should use one name.
+  - Rows 3178-3179 say these are PL-LHBY's reasons. The outline read should check whether PL-LHBY's entry, outside this chapter, already gives them. If it does, that entry holds them. PL-25DD then keeps only a pointer to PL-LHBY and its own fact that the widgets predate the freeze but their ambiguity does not.
+- **PL-25DD may be under the wrong subheading** (3167-3182). It was added the same day (2026-09-21), as a `safety` item, under the same rule as the two entries below the subheading at 3184 ("the unconditional safety/science exception — 2 entries"). Its own subheading is above row 3167, outside this chapter. If that subheading is not for the same exception:
+  - move PL-25DD under 3184 and change the count to "3 entries";
+  - give the two reasons once, in the paragraph that opens that subheading (3186-3195), instead of at PL-25DD.
+- **The reader has to read ahead.** "The rule below" (3179, 3190) points past this chapter to the rule that both admissions depend on.
+  - Where the rule is cited, say it in words, using the name the subheading at 3184 gives it: the unconditional safety exception, under which a `safety` item is never deferred, whatever the presence test finds.
+  - If the outline read finds the rule after these lists, move it above them.
+- **Code names written for another reader.** Each entry locates its fault in the code. These names serve the developer who fixes the item and belong in that item's brief in `docs/items/`:
+  - PL-25DD (3169-3171): `_place_run`, `_off_scale_column`, `_wash_in_state_column`, `WASH_IN_STATE_TEMPLATE`, `off_scale_notice`; also "splitter" (3174);
+  - the paragraph under 3184 (3187, 3194-3195): `_place_run`, `build_transport_row`, `_run_name_text`;
+  - PL-TSZM (3197-3202): `_holder(self._notice_column, (run.build_notice(),))`, `NoticeLabel` and the three template names;
+  - PL-C3GS (3208-3212): `_holder(self._sidebar_column, run.build_sidebar_panels())`, `CONTROL_TIMELINE_CAPTION`.
+
+  `ROADMAP.md` should keep what the learner sees on screen and why it is unsafe. That includes the quoted screen text: "Now: F_A/F_I = {ratio}", "Simulation stopped", "this run reached the supported run length", "The simulation is unchanged and still running its previous setting", the sidebar headings, and "What was changed during this run, most recent first".
+- **How the two entries were found belongs in their items.** Rows 3186-3188 ("Both were found while implementing `PL-25DD` above, not by the `#784` review. … Fixing two of them prompted a reading of the other four") belong in the briefs of PL-TSZM and PL-C3GS. The paragraph keeps what the owner needs to judge whether the list is complete:
+  - each run's displays go into six places that the runs share;
+  - PL-25DD covers two of them, and these two entries cover two more;
+  - the other two already name the run or the agent (3193-3195, once the code names leave).
+- **The reason for PL-C3GS's size belongs in its item.** Rows 3216-3219 ("`M` rather than `S` because the headings are built inline in `build_sidebar_panels` … needs the plumbing `set_run_name` has") are about the code, and belong in PL-C3GS's brief. The entry line keeps "(M)".
+- **Query (undefined terms):** the reader needs to know what "the freeze" is and its date (3178, 3182, 3193), what the "presence answer" or "presence test" is (3179-3180, 3190-3191), and what "this gate's own Required scope" means (3180, 3191). This chapter explains none of them. The outline read should check that an earlier chapter does, and if none does, define each where it first appears.
+- **Query (hazard table):** "the hazard table's existing row for reading a failed halt as a pause" (3204-3206) names neither the file that holds the table nor the row, so the reader cannot find it.
+
+Outline:
+- 3167-3176, PL-25DD entry. The wash-in state line and the off-scale notice do not name their run.
+  - Size S; added 2026-09-21; tag `safety`.
+  - Both texts are placed one per run into two shared columns beside the chart (`_place_run`'s `_off_scale_column` and `_wash_in_state_column` holders), and neither text names a run.
+  - `WASH_IN_STATE_TEMPLATE` is `"Now: F_A/F_I = {ratio}"`. `off_scale_notice` names compartments and a ceiling.
+  - With a branch drawn, two unlabelled lines stack. Only their stacking order tells them apart, nothing on screen says which is which, and the run names sit in a different splitter.
+  - Safety reason: `CLAUDE.md` counts a correct value shown under the wrong patient context as a failure of the value. F_A/F_I read off the wrong run inverts the comparison a branch exists to teach.
+- 3178-3182, PL-25DD admission. Admitted although the problem postdates the freeze, for the same two reasons as `PL-LHBY`:
+  - reason 1: the rule below makes `safety` not deferrable whatever the presence answer;
+  - reason 2: this gate's own Required scope created the hazard, because `PL-VKJW` made two runs reachable from a shipped entry point for the first time;
+  - the widgets are older than the freeze, but their ambiguity is not.
+- 3184, subheading: "Added 2026-09-21 under the unconditional safety/science exception — 2 entries".
+- 3186-3195, paragraph. How the two entries were found and why they were admitted:
+  - both were found while implementing `PL-25DD`, not by the `#784` review;
+  - `_place_run` distributes a run's widgets across six shared layouts. Fixing two prompted a reading of the other four, and two of those four have the same gap;
+  - they are admitted for the same two reasons as PL-25DD, which the paragraph restates: `safety` is not deferrable whatever the result of the presence test; the Required scope created the hazard, because PL-VKJW made two runs reachable from a shipped entry point for the first time; the widgets predate the freeze, but their ambiguity does not;
+  - the other two layouts need nothing: `build_transport_row` already carries `_run_name_text`, and the header badge names the agent.
+- 3197-3206, PL-TSZM entry. The run notices do not name their run.
+  - Size S; added 2026-09-21; tag `safety`.
+  - `_holder(self._notice_column, (run.build_notice(),))` puts one bare `NoticeLabel` per run into a shared column.
+  - All three notices it carries say something about a run and name none: `FAILURE_NOTICE_TEMPLATE` "Simulation stopped"; `SUPPORTED_LIMIT_NOTICE_TEMPLATE` "this run reached the supported run length"; `REFUSED_SETTING_NOTICE_TEMPLATE` "The simulation is unchanged and still running its previous setting".
+  - Safety reason: the last notice is false of the run it is not about. The hazard table's existing row for reading a failed halt as a pause loses the distinction it makes as soon as two runs are drawn.
+- 3208-3219, PL-C3GS entry. The sidebar panels do not name their run.
+  - Size M; added 2026-09-21; tag `safety`.
+  - `_holder(self._sidebar_column, run.build_sidebar_panels())` puts two panels per run into a shared column. With a branch, the sidebar reads Agent accounting validation / Control changes / Agent accounting validation / Control changes, and no panel names its run.
+  - `CONTROL_TIMELINE_CAPTION` is "What was changed during this run, most recent first". "This run" says nothing about which run, and the panel lists settings and the simulated times they took effect.
+  - Safety reason: a branch exists to compare two ways of managing one patient, so a setting change read off the wrong panel says the trunk received an intervention it never got.
+  - It is M rather than S because the headings are built inline in `build_sidebar_panels` rather than held on the instance, so naming the run needs the plumbing that `set_run_name` has.

@@ -1,0 +1,372 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read. One whole document follows, as passage 1. Every row is marked |, so rewrite none of it.
+
+Readers of docs/references/yasuda-1991-figure-2-wash-in.md:
+  - A clinician or educator.
+    Knows: Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods.
+    Does not know: Software terms, and this repository's own names.
+    Will: Check a stored value, or a difference between machines, against its published source.
+
+[1] docs/references/yasuda-1991-figure-2-wash-in.md, rows 1-172. Whole document: 1506 words. For: A clinician or educator
+    1 | # Yasuda et al. 1991, Figure 2: the F_A/F_I curve during administration
+    2 | 
+    3 | This note records the early wash-in values read from Figure 2 of the two
+    4 | Yasuda et al. 1991 papers, so that no later session has to read the figures
+    5 | again. The papers are held in the private corpus, and their citations are in
+    6 | `docs/references/README.md` § "Yasuda et al. 1991 — the two human kinetics
+    7 | papers". Only facts cross into this repository: values, their units, and
+    8 | where they sit. Neither figure is reproduced.
+    9 | 
+   10 | The values are used as reference values in
+   11 | `tests/reference/test_published_wash_in_and_elimination.py`
+   12 | (`PUBLISHED_WASH_IN_TIME_COURSE`). They are not stored model parameters.
+   13 | 
+   14 | Route and depth: the private corpus, read on 2026-10-18 for `PL-R0NL`. The
+   15 | *Anesth Analg* paper's methods were read through its text layer, page 317, and
+   16 | its Figure 2 from the page image of page 320. The *Anesthesiology* paper has no
+   17 | text layer, so its methods were read from the page image of page 490 and its
+   18 | Figure 2 from the page image of page 493.
+   19 | 
+   20 | ## What the figures show
+   21 | 
+   22 | | Paper | Figure | Printed page | Cohort | Curves plotted |
+   23 | | --- | --- | --- | --- | --- |
+   24 | | *Anesth Analg* 1991;72:316-24 | 2 | 320 | 7 healthy men, 23 ± 3 yr, 72 ± 9 kg | N2O, sevoflurane, isoflurane, and desflurane and halothane from the other study |
+   25 | | *Anesthesiology* 1991;74:489-98 | 2 | 493 | 8 volunteers | N2O, desflurane, isoflurane, halothane |
+   26 | 
+   27 | Each figure plots F_A/F_I, the end-tidal over the inspired fraction, as mean ±
+   28 | SD against minutes of administration from 0 to 30. Each SD is drawn as a bar on
+   29 | one side of the marker only.
+   30 | 
+   31 | The *Anesth Analg* figure's desflurane and halothane curves are not that
+   32 | study's data. They come from the *Anesthesiology* study and were "normalized"
+   33 | to the *Anesth Analg* isoflurane cohort (*Anesth Analg* page 320). So
+   34 | desflurane is read from the *Anesthesiology* figure, which plots its own
+   35 | cohort's measurements.
+   36 | 
+   37 | ## The protocol behind the curves
+   38 | 
+   39 | These facts are stated in both papers' methods (*Anesth Analg* page 317,
+   40 | *Anesthesiology* page 490):
+   41 | 
+   42 | - The potent agents were given together from one cylinder, as a square wave,
+   43 |   through a non-rebreathing circuit, for 30 minutes. The cylinders held 1.0%
+   44 |   sevoflurane and 0.6% isoflurane, or 2.0% desflurane, 0.4% isoflurane and
+   45 |   0.2% halothane, each in 35% oxygen and 65% nitrous oxide.
+   46 | - The volunteers had breathed 70% nitrous oxide for the 30 minutes before, and
+   47 |   65% nitrous oxide carried on as basal anesthesia, with midazolam, fentanyl
+   48 |   and vecuronium. Ventilation was controlled to an end-tidal CO2 of 5.5% to
+   49 |   6.5%.
+   50 | - End-tidal gas was sampled at the tracheal tube from the first five breaths
+   51 |   and then at 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25 and 29 minutes.
+   52 |   The *Anesthesiology* paper puts about 50 ml of tubing between that port and
+   53 |   the non-rebreathing valve, and samples inspired gas at the valve.
+   54 | 
+   55 | So the inspired fraction was the cylinder's from the first breath. The
+   56 | shipped simulator's circuit fills at its own time constant instead, which is
+   57 | why the test drives the model with F_I held at the airway.
+   58 | 
+   59 | ## How the values were read
+   60 | 
+   61 | Both papers survive in the corpus as 300 dpi bilevel scans, and neither page
+   62 | has a text layer for the figure. The figure pages were extracted with
+   63 | `pdfimages` and read by a script, in four steps:
+   64 | 
+   65 | 1. **Axes.** A straight line was fitted to each axis. The scans are sheared:
+   66 |    on the *Anesthesiology* page the y-axis leans 0.82 degrees from vertical
+   67 |    and the x-axis 0.21 degrees from horizontal, and on the *Anesth Analg* page
+   68 |    0.36 and 0.06 degrees. So a point is read by projecting it to each axis
+   69 |    along the other axis's direction, not along the pixel grid.
+   70 | 2. **Ticks.** Each tick mark's centre was found on its axis. Values between
+   71 |    ticks are interpolated linearly between the two nearest ticks, which
+   72 |    absorbs the scans' uneven tick spacing of up to 3 pixels.
+   73 | 3. **Markers.** Each marker's centre was found by matching a template of its
+   74 |    shape: a filled disc for sevoflurane and desflurane, and a hollow square for
+   75 |    isoflurane.
+   76 | 4. **Error bars.** Each bar was followed outward from the marker to its first
+   77 |    cap, and the SD is the distance from the marker's centre to the cap's
+   78 |    centre.
+   79 | 
+   80 | Every marker then sits within 0.1 minute of a protocol sample time, except the
+   81 | 7.5-minute points, which sit at 7.40 to 7.48. The last point of every curve
+   82 | sits at 30.0 minutes, although the protocol's last sample was at 29.
+   83 | 
+   84 | **The reading error is about 0.006 in a mean.** The 30-minute points read this
+   85 | way can be compared with the values the papers' text states:
+   86 | 
+   87 | | Cohort | Read from Figure 2 | Stated in the text |
+   88 | | --- | --- | --- |
+   89 | | Sevoflurane, *Anesth Analg* | 0.846, SD 0.021 | 0.850 ± 0.018 |
+   90 | | Isoflurane, *Anesth Analg* | 0.727, SD 0.032 | 0.733 ± 0.027 |
+   91 | | Desflurane, *Anesthesiology* | 0.899, bar hidden | 0.90 ± 0.01 |
+   92 | | Isoflurane, *Anesthesiology* | 0.731, SD 0.028 | 0.73 ± 0.03 |
+   93 | 
+   94 | A bar is hidden when it is shorter than the marker's radius, which is about
+   95 | 0.011 in F_A/F_I on the *Anesthesiology* figure.
+   96 | 
+   97 | ## Values read
+   98 | 
+   99 | F_A/F_I, mean and SD. "SD read at" is the sample time whose bar gave the SD.
+  100 | At 1 minute, three cohorts' bars are lost among overlapping marks near the
+  101 | axis. There the SD is the cohort's next readable bar, a stand-in and not a
+  102 | reading.
+  103 | 
+  104 | **Sevoflurane, *Anesth Analg* Figure 2, page 320.**
+  105 | 
+  106 | | Minutes | Mean | SD | SD read at |
+  107 | | --- | --- | --- | --- |
+  108 | | 1 | 0.563 | 0.047 | 2 min |
+  109 | | 2 | 0.641 | 0.047 | 2 min |
+  110 | | 3 | 0.683 | 0.034 | 3 min |
+  111 | | 5 | 0.733 | 0.034 | 5 min |
+  112 | | 7.5 | 0.760 | 0.031 | 7.5 min |
+  113 | | 10 | 0.791 | 0.028 | 10 min |
+  114 | | 12.5 | 0.801 | 0.029 | 12.5 min |
+  115 | | 15 | 0.814 | 0.025 | 15 min |
+  116 | | 20 | 0.829 | 0.024 | 20 min |
+  117 | | 25 | 0.839 | 0.024 | 25 min |
+  118 | 
+  119 | **Isoflurane, *Anesth Analg* Figure 2, page 320.**
+  120 | 
+  121 | | Minutes | Mean | SD | SD read at |
+  122 | | --- | --- | --- | --- |
+  123 | | 1 | 0.436 | 0.048 | 2 min |
+  124 | | 2 | 0.495 | 0.048 | 2 min |
+  125 | | 3 | 0.529 | 0.040 | 3 min |
+  126 | | 5 | 0.579 | 0.040 | 5 min |
+  127 | | 7.5 | 0.616 | 0.041 | 7.5 min |
+  128 | | 10 | 0.651 | 0.038 | 10 min |
+  129 | | 12.5 | 0.664 | 0.037 | 12.5 min |
+  130 | | 15 | 0.682 | 0.034 | 15 min |
+  131 | | 20 | 0.701 | 0.035 | 20 min |
+  132 | | 25 | 0.718 | 0.034 | 25 min |
+  133 | 
+  134 | **Desflurane, *Anesthesiology* Figure 2, page 493.** This figure plots no point
+  135 | at 1.5 or 2 minutes. The 20-minute bar is hidden, so that point is not used.
+  136 | 
+  137 | | Minutes | Mean | SD | SD read at |
+  138 | | --- | --- | --- | --- |
+  139 | | 1 | 0.580 | 0.019 | 3 min |
+  140 | | 3 | 0.731 | 0.019 | 3 min |
+  141 | | 5 | 0.792 | 0.019 | 5 min |
+  142 | | 7.5 | 0.832 | 0.019 | 7.5 min |
+  143 | | 10 | 0.840 | 0.020 | 10 min |
+  144 | | 12.5 | 0.872 | 0.020 | 12.5 min |
+  145 | | 15 | 0.880 | 0.020 | 15 min |
+  146 | | 20 | 0.899 | hidden | not used |
+  147 | | 25 | 0.900 | 0.020 | 25 min |
+  148 | 
+  149 | **Isoflurane, *Anesthesiology* Figure 2, page 493.** This figure plots no point
+  150 | at 1.5 or 2 minutes.
+  151 | 
+  152 | | Minutes | Mean | SD | SD read at |
+  153 | | --- | --- | --- | --- |
+  154 | | 1 | 0.414 | 0.027 | 1 min |
+  155 | | 3 | 0.520 | 0.028 | 3 min |
+  156 | | 5 | 0.569 | 0.032 | 5 min |
+  157 | | 7.5 | 0.621 | 0.028 | 7.5 min |
+  158 | | 10 | 0.641 | 0.041 | 10 min |
+  159 | | 12.5 | 0.662 | 0.028 | 12.5 min |
+  160 | | 15 | 0.682 | 0.028 | 15 min |
+  161 | | 20 | 0.708 | 0.032 | 20 min |
+  162 | | 25 | 0.724 | 0.027 | 25 min |
+  163 | 
+  164 | ## What was not taken
+  165 | 
+  166 | - The points before 1 minute. Each figure crowds the first-breath and
+  167 |   0.75-minute markers against the y-axis, so which sample time a marker
+  168 |   belongs to cannot be read reliably.
+  169 | - The nitrous oxide and halothane curves, which the simulator does not model.
+  170 | - The *Anesth Analg* figure's normalized desflurane curve, for the reason
+  171 |   above.
+  172 | - The 30-minute points, because the text states those values.

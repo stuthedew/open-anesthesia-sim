@@ -1,0 +1,61 @@
+[1] keep
+
+Structure:
+- **Rows 1086-1087, 1099-1100 and 1112-1113 state what the release covers three times.**
+  - The three statements are "Its contents are exactly Gate 0's items that fall outside the teachable case's own scope", "Every item on Gate 0's frozen list that is outside the v0.4.0 milestone's Required scope is `done`, or `dropped` with its reason recorded" and "Anything in the v0.4.0 milestone's Required scope".
+  - This belongs in the Goal (1086-1088).
+  - The definition of done keeps only "every item in this release is `done`, or `dropped` with its reason recorded".
+  - The out-of-scope bullet keeps only the fact the other two lack: v0.4.0 clears six Gate 0 items itself.
+  - The three places use two names for one scope, "the teachable case's own scope" and "the v0.4.0 milestone's Required scope", and spell "Gate 0" as "gate-0" at 1112. The line edit should give each one name.
+- **Rows 1086 and 1089 say the same thing twice:** "Its contents are exactly Gate 0's items…" and "The frozen list *is* the specification". The first stays and the second goes. "The release has no scope of its own to specify, which is why this section is short" (1088-1089) talks about the text itself, and it goes too.
+- **Rows 1083-1084 and 1105-1106 describe the two safety items twice.**
+  - The two descriptions are "Its verification gate is widened to cover the inputs that the interface can actually reach. Its failure path can no longer leave partial state behind" and "The two safety items on the list tighten a verification bound and make the step transactional".
+  - The Goal keeps them, because its wording says what changes for the simulator.
+  - The definition of done keeps only that neither item may change a modelled value, and what happens if one would.
+  - One change is called "widened" in one place and "tighten" in the other. Row 1083 also uses "gate" for a test bound, while every other row uses it for Gate 0's list. The line edit should give each one name.
+- **Rows 1081 and 1122 both rule out new capability:** "This release adds no capability" and "New capability of any kind". This belongs in the out-of-scope list, with its reason (1122-1123), because a reader looks there for what the release leaves out. The Goal keeps nothing, because 1082, "the simulator does what it did before, but correctly", already says it.
+- **Rows 1114-1118 restate the rule for re-admitting items found after the freeze.** The bullet's own history (1119-1120) says that § "The gate is a snapshot, not a moving target" and step 4 of § "The cadence" already give this rule.
+  - The rule belongs in § "The gate is a snapshot, not a moving target".
+  - This bullet keeps the exclusion and a pointer to that section. The pointer should use the full heading in the § "Heading" form: 1116 leaves out the §, and 1119 shortens the heading to "The gate is a snapshot".
+- **Rows 1118-1121 are decision history:** "This bullet used to name only the `P0`/`safety`/`science` half … (queue item PL-9PMV)". They belong in item PL-9PMV, and nothing stays here.
+- **Rows 1101-1102 list the tools that `make check` runs, which is a developer's information:** `ruff format`, `ruff check`, `mypy`, `pytest`, `docket check` and `tools/doc_check.py`. This reader does not know `docket check` or `tools/doc_check.py`. Keep here that the full automated check passes, and leave the tool list where `make check` is defined.
+- **Rows 1086-1088 send the reader ahead to the v0.4.0 section to learn what this release contained.** The frozen list sits under § "Debt gate: the frozen list" there, and "Gate 0" is first used here but explained only there. Since the release is complete, either list here the items it closed (or their number), or move the frozen list to its own section above both release sections.
+- **Query (1090-1091 against 1115-1118):** rows 1090-1091 say nothing may be added to the frozen list. Rows 1115-1118 say that a finding present at the freeze re-enters, and so does anything at `P0` or classed `safety`/`science`. If "re-enters" means joining the list, the rows contradict each other, and only the author knows which is right.
+- **Query (1076 against 1080-1108):** the heading says the release is completed, but the rows read as a plan, for example "Clear the inherited backlog" and "If either turns out to require one". No row gives the facts this reader needs about a finished release:
+  - when v0.3.0 was released;
+  - whether each done criterion was met;
+  - which items were dropped, and why;
+  - whether either safety item needed a change to a modelled value.
+
+Outline:
+- 1076: Heading "Completed: v0.3.0 - the foundation".
+- 1078: Subheading "Goal".
+- 1080-1084: What the release is for.
+  - It clears the inherited backlog, so feature work starts with known defects closed rather than carried forward.
+  - It adds no capability. Afterwards the simulator does what it did before, but correctly.
+  - The verification gate is widened to cover the inputs the interface can actually reach.
+  - The failure path can no longer leave partial state behind.
+- 1086-1091: What the release contains.
+  - Its contents are exactly Gate 0's items that fall outside the teachable case's own scope.
+  - Those items are listed under § "Debt gate: the frozen list" in the v0.4.0 section below.
+  - The release has no scope of its own, so the section is short.
+  - The frozen list is the specification, and nothing may be added to it (pointer: § "The gate is a snapshot, not a moving target").
+- 1093-1095: Version number.
+  - v0.3.0 is a minor release rather than a patch, by a deliberate exception recorded under § "Versioning decision" above.
+  - The exception covers Gate 0 alone.
+- 1097: Subheading "Definition of done".
+- 1099-1100: Every item on Gate 0's frozen list that is outside the v0.4.0 milestone's Required scope is `done`, or `dropped` with its reason recorded.
+- 1101-1102: `make check` passes. It runs `ruff format`, `ruff check`, `mypy`, `pytest`, `docket check` and `tools/doc_check.py`.
+- 1103-1108: The model does not change.
+  - No equation, parameter or numerical method has changed.
+  - The v0.0.2 circuit and v0.1.0 sevoflurane reference tests still pass unaltered.
+  - The list has two safety items: one tightens a verification bound, and the other makes the step transactional.
+  - Neither may change a modelled value. If either turns out to need one, that is a finding for the next gate and an item of its own, not v0.3.0's work.
+- 1110: Subheading "Explicitly out of scope for v0.3.0".
+- 1112-1113: Out of scope: anything in the v0.4.0 milestone's Required scope, including six gate-0 items that the milestone clears itself.
+- 1114-1121: Items captured after the freeze.
+  - An item captured after Gate 0 was frozen is out of scope if its problem did not exist at the freeze.
+  - A finding that was present at the freeze re-enters by the presumption in "The gate is a snapshot, not a moving target".
+  - Anything at `P0` or classed `safety`/`science` re-enters, whether it was present or not.
+  - History: the bullet once named only the `P0`/`safety`/`science` half. That made it narrower than "The gate is a snapshot" and than step 4 of "The cadence", which agreed with each other (queue item PL-9PMV).
+- 1122-1123: Out of scope: new capability of any kind. The reason given is that a release whose claim is "the ground is now solid" cannot also move the ground.

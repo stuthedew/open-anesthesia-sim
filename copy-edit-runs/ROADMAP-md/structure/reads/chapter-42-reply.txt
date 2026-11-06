@@ -1,0 +1,36 @@
+[1] keep
+
+Structure:
+- Rows 7413 and 7425: the heading "Development rules for scientific milestones" covers the bullets at 7415–7424, which are rules for building the simulation's scientific core. It does not cover the bullets at 7425–7453, which are rules for writing any milestone's entry in this file, scientific or not. Keep the heading over the first five bullets, because other files cite it. Add a subheading before row 7425, such as "### Writing a milestone entry", over the bullets on narrow milestones, frozen Goals and exclusions.
+- Rows 7428–7439 and 7440–7453: each of these two bullets has grown into an essay, which is the writing rule's fifth pattern. Each mixes the rule, its reason and an incident, and the second also describes the tools that apply the rule. Cut each to the rule and the reason the reader acts on, and move the rest as the findings below say.
+- Rows 7435–7436, "`PL-DXQC` is why this rule is written down rather than left to imitation", and rows 7446–7447, "`PL-NBCS` is why this rule is written down rather than left to imitation", are the same sentence twice. Each is narration about the text. Cut both. Each item id can follow its rule's reason as a pointer.
+- Rows 7436–7439, "Two of v0.4.0's three Goal bullets were fixed … no convention to breach.", are decision history. They belong in `PL-DXQC`. The bullet keeps nothing beyond the id as a pointer.
+- Rows 7447–7450, "The stage-3 exclusion in v0.4.0 put `PL-B9PY` into v0.4.0's `scope_ids` … and it named the milestone.", are decision history. They use terms this reader does not know: "stage-3", `scope_ids`, "the anchor" and "Gate-1". "Gate-1" also clashes with "release gates" at row 7423, which uses "gate" in a different sense. The rows belong in `PL-NBCS`. The bullet keeps the id as a pointer.
+- Rows 7441–7446, on how `bin/docket next` reads `Required scope` and `Explicitly out of scope`, and rows 7451–7453, on what `tools/doc_check.py` fails or warns on, are written for whoever maintains those tools. They name tools this reader does not know. They belong in the workflow's files that the writing rule's last table row lists, or in a comment beside each tool. The bullet keeps what these rows guarantee the reader:
+  - Every item id named in a `Required scope` bullet counts as part of that release, wherever the sentence names it, even when the sentence names it in order to exclude it.
+  - An id named under both headings of one milestone is reported as an error.
+  - A scope bullet worded as an exclusion draws a warning.
+- Query: rows 7452–7453 say "exclusion language" but give no example of the wording that draws the warning. The reader needs one, and the text does not give it.
+- Query: row 7425 sends a new idea to "the sections below" without naming them. A reader with an idea that is not yet scoped needs to know which sections hold it, and this chapter does not say.
+- Query: this chapter names a milestone's subsections (Goal, Required scope, Definition of done, Explicitly out of scope) but does not say what each holds. A contributor writing a milestone needs that, unless another chapter gives it. The outline read can tell. If another chapter does describe a milestone entry's layout, the bullets at 7425–7453 belong there.
+
+Outline:
+- 7413: heading, "Development rules for scientific milestones".
+- 7415–7416: rule for the scientific core. Define the equations, units, assumptions and reference cases before changing the scientific core.
+- 7417–7418: rule. Simulation code stays independent of the UI toolkit, wall-clock time, filesystem state and display dimensions.
+- 7419–7420: rule. Model parameters are stored as validated data, with a schema version and provenance. Data files hold no executable equations.
+- 7421–7422: rule. Results are deterministic for an identical initial state, identical events and identical time steps.
+- 7423–7424: rule. Mass accounting and independent reference cases are release gates, not optional diagnostics.
+- 7425–7427: rule for scoping. Keep each milestone narrow. A new idea stays in "the sections below" until it is promoted into a scoped release. An idea that is a task rather than a release goes in `docs/items/`.
+- 7428–7439: rule. A milestone's Goal is frozen and dated at scoping.
+  - It records the problem the release was taken on to solve, in the tense and state of the day it was scoped.
+  - Closing items do not amend it.
+  - What the milestone achieved is recorded in its Required scope and Definition of done, which is where a reader looking for the current state is sent.
+  - Reason: rewriting a Goal into the past tense clause by clause leaves the section describing neither the problem nor the product. It also puts an edit to `ROADMAP.md` on the critical path of every closure.
+  - History: `PL-DXQC` is why the rule is written down. Two of v0.4.0's three Goal bullets were fixed while the section still asserted them in the present tense. One had been stale for two releases. No convention existed to breach.
+- 7440–7453: rule. An exclusion goes under `Explicitly out of scope`, never inside a `Required scope` bullet.
+  - Mechanism: these two subsections are the only structures `bin/docket next` reads to decide membership.
+  - It reads `Required scope` in full, because a milestone names what it covers in any grammar, so "(queue item PL-DHV7)" in the middle of a bullet counts.
+  - Cost: an id named inside a scope bullet in order to exclude it is treated as scope.
+  - History: `PL-NBCS` is why the rule is written down. A stage-3 exclusion in v0.4.0 put `PL-B9PY` into v0.4.0's `scope_ids`. While v0.4.0 was the anchor, `docket next` told every session, as a fact and naming the milestone, that Gate-1 work was what v0.4.0 was waiting on.
+  - Enforcement: `tools/doc_check.py` fails when an id is named under both headings of one milestone. It gives an advisory where a scope bullet contains exclusion language.

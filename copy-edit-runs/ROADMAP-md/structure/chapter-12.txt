@@ -1,0 +1,41 @@
+[1] keep
+
+Structure:
+- **The decision is given in two places.** Rows 2124-2126 give the decision itself: "**Its display half now builds on Qt (project owner, 2026-09-14, on `PL-RKWB`).** The Qt port moved ahead of this milestone." Rows 2125-2126 then say that § "Completed: v0.4.26 - the interface moves to Qt" "carries the decision, the count behind it and the three grounds." The decision belongs in that section and in `PL-RKWB`, and its tag moves with it whole. This section keeps only what the decision changed for v0.5.0: the two-branch overlay (`PL-8PSW`) and the bookmark list (`PL-LPLD`) were built once, on pyqtgraph. It also keeps the pointer to § "Completed: v0.4.26 - the interface moves to Qt".
+- **The cost-and-benefit paragraph belongs with the decision (rows 2137-2141).** It opens "**What this costs and what it buys, recorded so it is not re-litigated.**" It holds the history of the Qt port decision and the reasons for it, which another section carries. Move it beside "the three grounds" in § "Completed: v0.4.26 - the interface moves to Qt", or into `PL-RKWB`. This section keeps nothing of it. The outline read should check whether the three grounds already say "a toolkit that a session can actually look at (`PL-2QMK`)" and "unblocks two `P1` `safety`-classed items" (`PL-GS3R`, `PL-YVHK`). If they do, cut both here.
+- **The Gate 1 fact is given in two places (rows 2141-2143).** Row 2141 says the port "makes it possible for Gate 1 to reach zero before the milestone it gates begins." Rows 2142-2143 say that § "Sequenced past v0.5.0" "records that as the structural debt `PL-D143` named and could not pay." The fact belongs in § "Sequenced past v0.5.0", where the sequencing is. This section keeps nothing of it.
+- **The section opens with the wrong subject (rows 2124-2135).** It opens with the Qt port, which is another milestone's subject. It says what v0.5.0 is only in its last sentence: "It is the release that crosses the branching capability boundary, and the port crosses none" (rows 2133-2135). Use this order:
+  1. What the milestone is.
+  2. Its port-neutral spine items (rows 2130-2133).
+  3. What the port changed (rows 2126-2128), with the pointer to § "Completed: v0.4.26 - the interface moves to Qt".
+- **The first paragraph makes three points (rows 2124-2135).** They are the port's effect on two items (rows 2124-2128), that nothing else changed and which items form the spine (rows 2128-2133), and what the milestone means (rows 2133-2135). A second bold phrase, "**Nothing else about this milestone moves.**", starts partway through it at row 2128. Split the paragraph at row 2128. Give what the milestone means its own paragraph, first in the section.
+- **Query: the heading and the body disagree on whether the milestone has shipped.** The heading says "Completed", but the body reads as a plan. It says the spine "ships on the schedule it had" (row 2131). It says "It costs the MVP its place in the queue for the length of the port" (rows 2137-2138). It speaks of "before the milestone it gates begins" (row 2142). Has v0.5.0 shipped? If it has, the section needs what shipped. If it has not, the heading is wrong. I left both as they stand.
+- **Query: the milestone's own scope is missing.** Rows 2129-2130 say that "Its goal, required scope, definition of done and out-of-scope list are unchanged." The section gives none of them, says nothing of what the milestone delivered, and points to no place that does. A reader deciding what a release holds needs them. The spine (rows 2131-2133) is seven item ids with no words saying what each one delivers.
+- **Query: terms the chapter never explains.**
+  - "Gate 1", and what "reach zero" counts (row 2141)
+  - "port-neutral spine" (row 2130)
+  - "durable halves" (row 2132)
+  - "branching capability boundary" (row 2134)
+  - "display half" (row 2124)
+  - "the MVP" (row 2138): which milestone it names
+  - "`P1`" and "`safety`-classed" (row 2140)
+
+  The outline read should check whether another chapter defines them. If none does, this reader needs each one explained.
+
+Outline:
+- **Row 2122, heading:** "Completed: v0.5.0 - the case you can branch". It states that v0.5.0 is completed.
+- **Rows 2124-2135:** The Qt port moved ahead of v0.5.0 and changed only how its display parts are built.
+  - v0.5.0's display half now builds on Qt (project owner, 2026-09-14, on `PL-RKWB`).
+  - The Qt port moved ahead of this milestone.
+  - § "Completed: v0.4.26 - the interface moves to Qt" carries the decision, the count behind it and the three grounds.
+  - `PL-8PSW` (the two-branch overlay) and `PL-LPLD`'s bookmark list are built once, on pyqtgraph, not first on Flet and then again.
+  - Nothing else about the milestone moves. Its goal, required scope, definition of done and out-of-scope list are unchanged.
+  - The port does not touch the milestone's port-neutral spine, which ships on the schedule it had.
+  - The spine is `PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`, and the durable halves of `PL-RD3B` and `PL-LPLD`.
+  - The milestone keeps its number and its meaning: it is the release that crosses the branching capability boundary. The port crosses no capability boundary.
+- **Rows 2137-2143:** What moving the port ahead cost and bought, stated "so it is not re-litigated".
+  - It costs the MVP its place in the queue for the length of the port.
+  - It gives `PL-8PSW` a toolkit that a session can actually look at (`PL-2QMK`).
+  - It unblocks two `P1` `safety`-classed items that were waiting on the toolkit (`PL-GS3R`, `PL-YVHK`).
+  - It makes it possible for Gate 1 to reach zero before the milestone it gates begins.
+  - § "Sequenced past v0.5.0" records that as the structural debt that `PL-D143` named and could not pay.

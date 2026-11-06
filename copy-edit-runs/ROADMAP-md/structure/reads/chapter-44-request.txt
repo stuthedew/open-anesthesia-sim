@@ -1,0 +1,596 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "The debt gate", rows 7515-7910. Whole section: 4085 words. For: The project owner, or a contributor deciding what to build next
+ 7515 | ## The debt gate
+ 7516 | 
+ 7517 | **Recorded technical debt is cleared before a new milestone begins.** Phase 0
+ 7518 | applies this rule once, to get out of a queue that had stopped shrinking. This
+ 7519 | section makes the rule standing. It runs again before every milestone, not
+ 7520 | only before the first.
+ 7521 | 
+ 7522 | The reason is that debt is cheapest to clear while the code it describes is
+ 7523 | still code that someone remembers. A defect carried across a milestone
+ 7524 | boundary has to be diagnosed again, against a codebase that has moved since.
+ 7525 | A decision left unanswered stops being a decision that anyone can make.
+ 7526 | Deferred debt is not kept. It is either paid for twice or silently dropped.
+ 7527 | 
+ 7528 | ### What counts
+ 7529 | 
+ 7530 | Debt is what the queue already records, minus new work. An open item is debt
+ 7531 | when it is classed `defect`, `safety`, `science`, `refactor` or `perf`. It is
+ 7532 | also debt when its status is `needs-decision`, because an unanswered decision
+ 7533 | is debt whatever it is about.
+ 7534 | 
+ 7535 | An item classed `feature` or `planning` is **not** debt. It is the work that
+ 7536 | the gate exists to protect. Counting it would make the rule say "do everything
+ 7537 | before doing anything", and no gate could ever open under that rule.
+ 7538 | 
+ 7539 | **Process work is debt once the mechanism is live, not before.** Building a new
+ 7540 | capability into the tooling is new work, and it does not keep a gate shut. A
+ 7541 | mechanism that `main` already depends on, and that does not work reliably, is
+ 7542 | debt. It is classed `defect` like any other defect. The class carries the
+ 7543 | rule, so there is nothing extra to track. The distinction is about state, not
+ 7544 | layer. An unbuilt tooling idea costs nothing to carry. A half-working
+ 7545 | mechanism that the project already runs on charges interest every session,
+ 7546 | which is what debt means. Half-finished process machinery must not be in
+ 7547 | production use. Either it is made to work reliably, or it is abandoned and
+ 7548 | removed.
+ 7549 | 
+ 7550 | **The same test decides a hazard, and it is the one carve-out the `safety` and
+ 7551 | `science` exception takes.** A finding classed `anticipated` describes a
+ 7552 | hazard that a later milestone will create, rather than one the tree carries
+ 7553 | now. So it is not debt until that milestone builds it.
+ 7554 | § "The gate is a snapshot, not a moving
+ 7555 | target" below states the rule, what it was chosen over, and what it costs.
+ 7556 | 
+ 7557 | The first pass through this rule got one thing wrong, so here is a caution.
+ 7558 | Classing tooling breakage as `infra` rather than `defect` makes it impossible
+ 7559 | to tell apart from a capability that nobody has built yet. When
+ 7560 | `docket release` leaves `uv.lock` stale and breaks `make check` at every
+ 7561 | release, that is a defect. Adding release tagging is not a defect. If the
+ 7562 | class does not separate them, the gate cannot either.
+ 7563 | 
+ 7564 | Clearing means `done` **or** `dropped`, with the reason recorded. Deciding
+ 7565 | that something is not worth doing is a legitimate way to clear it, and often
+ 7566 | the right one. Leaving it open and starting anyway is not legitimate.
+ 7567 | 
+ 7568 | ### The gate is a snapshot, not a moving target
+ 7569 | 
+ 7570 | **What a freeze closes is new scope, not the completeness of a fix** (project
+ 7571 | owner, 2026-08-30). A frozen list exists to fix a specific set of problems.
+ 7572 | Sometimes one of its entries needs a further finding before it is actually
+ 7573 | fixed. Refusing that finding keeps the list at its length but defeats its
+ 7574 | purpose. The rule below applies this, and it is deliberately not symmetric. It
+ 7575 | keeps new work out, and it lets in what an entry needs.
+ 7576 | 
+ 7577 | **And it is worked with the entry it completes, not after it** (project owner,
+ 7578 | 2026-08-30). Suppose a finding is admitted to the list and then worked later as
+ 7579 | a separate piece of work. That brings back exactly the problem that admitting
+ 7580 | it prevented. The first entry ships half-fixed while the work that finishes it
+ 7581 | waits in the queue. So pair them: one branch, one review, and both closed
+ 7582 | together. The issue is then fully addressed before anything else starts.
+ 7583 | 
+ 7584 | **What a frozen entry waits on has three homes** (`PL-D388`, project owner,
+ 7585 | 2026-10-03, ratified, over admitting every open prerequisite of an entry
+ 7586 | automatically). First, work that the milestone's own `Required scope` names
+ 7587 | makes the entry the milestone's, per
+ 7588 | § "Debt inside the milestone's own scope". Second, work that no release
+ 7589 | schedules before the milestone begins defers the entry on the terms of
+ 7590 | § "The cadence" beat 3. The deferral is recorded as the entry's
+ 7591 | `deferred-from:`. Third, anything else is let in beside the entry, dated, and
+ 7592 | worked with it as described above.
+ 7593 | `bin/docket check` rejects an open frozen entry that waits on work none of the
+ 7594 | three homes covers, when the release train does not schedule that work first
+ 7595 | (`PL-8QMD`).
+ 7596 | 
+ 7597 | **When a milestone's gate freezes, the debt list is frozen at that moment**.
+ 7598 | Per § "The cadence", that moment is the later of two events: the milestone's
+ 7599 | scoping, and the ship of the milestone before it. A finding re-enters this
+ 7600 | gate, rather than waiting for the next one, when the problem it describes was
+ 7601 | already *present* at that moment. That is true whatever id the finding is
+ 7602 | filed under, and however long after the freeze someone happened to notice it.
+ 7603 | A finding defers to the next gate only when the problem itself is new. A new
+ 7604 | problem is one introduced by work done while clearing this gate, or while
+ 7605 | implementing the milestone that the gate protects.
+ 7606 | 
+ 7607 | This part is what makes the rule survivable rather than a deadlock. Work
+ 7608 | generates findings. Clearing thirteen items in one session generated fourteen
+ 7609 | new ones. That is normal, and it is the capture rule doing its job. Suppose a
+ 7610 | gate reopened for everything noticed after it froze. Its queue could then
+ 7611 | never empty, and its milestone could never start. The rule would then be
+ 7612 | abandoned rather than followed, which is worse than not having it. The gate
+ 7613 | tests when a problem was present, not when it was discovered. That keeps the
+ 7614 | gate from reopening for findings of *that* kind. It still closes one gap. A
+ 7615 | stranded branch or a slow session can mean that the same problem gets
+ 7616 | rediscovered under a new id, and that finding still re-enters this gate
+ 7617 | (queue item `PL-64LS`).
+ 7618 | 
+ 7619 | **Friction that compounds is the clearest presence case** (project owner,
+ 7620 | 2026-08-30). Some findings cost something again on every remaining entry.
+ 7621 | Examples are a tool that answers the wrong question, a check that cries wolf,
+ 7622 | and a command that ends red when it succeeds. Such a finding was almost always
+ 7623 | present at the freeze. It was merely invisible until the gate's own work
+ 7624 | started paying its cost. Deferring one is a decision to pay that cost once per
+ 7625 | remaining entry. So it re-enters, and it is worked early rather than merely
+ 7626 | admitted.
+ 7627 | 
+ 7628 | The test is arithmetic, not enthusiasm. Name what each remaining entry pays,
+ 7629 | and multiply it by the number of entries that remain. `PL-0RS6` qualified at
+ 7630 | eighteen entries, each paying a twelve-command detour. That total is a large
+ 7631 | fraction of the saving the release exists to deliver. Some work is merely
+ 7632 | valuable, cleaner or more interesting, such as rewriting a working tool in
+ 7633 | another language or adopting a nicer abstraction. That work makes no remaining
+ 7634 | entry cheaper. So it fails the test and waits for the roadmap, however
+ 7635 | appealing it is. If nobody can name the saving per entry, the finding does not
+ 7636 | qualify.
+ 7637 | 
+ 7638 | **Presence is a presumption, not an absolute rule.** Favor it. A finding that
+ 7639 | continues or completes an item already inside the frozen list belongs to this
+ 7640 | gate. Record it with the item it continues. `PL-SWFM`, which continues
+ 7641 | `PL-Z4GF`'s already-frozen scope, is the case that motivated writing this
+ 7642 | down. Sometimes a specific reason argues otherwise. The finding may have no
+ 7643 | real connection to anything frozen. Or pulling it in may recreate the
+ 7644 | refilling-queue problem that the debt gate replaced Phase 0 to solve. Then a
+ 7645 | session may defer a presence-qualifying finding to the next gate anyway. It
+ 7646 | may also decline to pull in a finding that only superficially resembles frozen
+ 7647 | scope. Either way, the session must say so and say why. Silently
+ 7648 | reinterpreting which gate a finding belongs to is the renegotiation that
+ 7649 | freezing the list exists to prevent.
+ 7650 | 
+ 7651 | Two further exceptions re-enter the current gate regardless of presence:
+ 7652 | anything at `P0`, and anything classed `safety` or `science`. This project's
+ 7653 | own standard does not allow those to be deferred. A gate that let them wait
+ 7654 | would invert the reason it exists.
+ 7655 | 
+ 7656 | **One exception to that exception: an `anticipated` `safety` or `science`
+ 7657 | finding is not debt until the hazard it describes exists** (project owner,
+ 7658 | 2026-09-16, ratified, chosen over placing each on the *next* milestone's
+ 7659 | frozen list behind a marker nothing enforces, and over leaving the rule as it
+ 7660 | stands and putting the 2026-09-16 area-model findings on v0.5.0's list). The
+ 7661 | paragraph above is unconditional about *when* a finding was made. This
+ 7662 | paragraph says what it takes for a finding to count against the current gate
+ 7663 | at all. An item classed `anticipated` describes a hazard that a later
+ 7664 | milestone will create. For example, today the only thing a splitter handle
+ 7665 | can do is resize an Area (`src/anesthesia_sim/app/area_layout.py`'s
+ 7666 | `AreaLayout`, live since `PL-W9P6` on 2026-10-18). So no reader can close,
+ 7667 | replace or cover a required value until planned-milestone item 34's docking
+ 7668 | operations are built. A gate exists to clear debt *before* a milestone
+ 7669 | begins, so it cannot clear a hazard that the milestone introduces. This is
+ 7670 | the live-mechanism test of § "What counts", applied to a hazard rather than to
+ 7671 | a mechanism. That test says: "Process work is debt once the mechanism is live,
+ 7672 | not before ... The distinction is state, not layer".
+ 7673 | 
+ 7674 | This was also the only one of the three options that ends in a state a session
+ 7675 | can actually reach. The other two options leave `tools/doc_check.py`'s
+ 7676 | corrected safety-class advisory lit against items that nobody can dispose of.
+ 7677 | That is the defect `CLAUDE.md` names: a check that
+ 7678 | "fires every run without changing a decision". Such a finding is then
+ 7679 | disposed of by a **placement in the milestone that creates the hazard**,
+ 7680 | never by a deferral. These two classes are still not offered a deferral.
+ 7681 | v0.6.0's `Required scope` lists the ten findings that this rule was written
+ 7682 | for.
+ 7683 | 
+ 7684 | **The carve-out expires with the wait it is granted for** (project owner,
+ 7685 | 2026-09-16, ratified, chosen over leaving it on the class alone, which never
+ 7686 | stopped). The class `anticipated` claims that the hazard is not live yet. An
+ 7687 | item stops saying `status: blocked` once the hazard is live. Its `blocked-by`
+ 7688 | field is where it names what has to happen first. So only an item that has
+ 7689 | written down what it is waiting for keeps the exemption, and the exemption
+ 7690 | lapses when that wait ends. By contrast, the class on its own kept the
+ 7691 | exemption running past the milestone that created the hazard. That milestone
+ 7692 | creating the hazard is the one event the rule exists to notice (`PL-ZF2G`).
+ 7693 | `subprojects/docket/src/docket/checks.py` already requires the same pair of
+ 7694 | fields for the safety-band exemption. This rule reads the pair from there
+ 7695 | rather than deciding it again, so that `anticipated` means one thing in both
+ 7696 | tools.
+ 7697 | 
+ 7698 | The exemption lapses when the item is promoted, not when its blocker closes.
+ 7699 | Nothing rewrites `status` by itself. Since `PL-2349` (2026-10-12),
+ 7700 | `bin/docket check` rejects a `blocked` item whose item blockers have all
+ 7701 | closed. So for an item blocker, the promotion lands in the pull request that
+ 7702 | closes the blocker, and no window is left. A milestone blocker still leaves
+ 7703 | one grooming pass, through its "is scoped and every other blocker has closed"
+ 7704 | advisory. That one pass replaces the indefinite window that came before it.
+ 7705 | 
+ 7706 | `check_gate_reentries` in `tools/doc_check.py` reads both fields for this
+ 7707 | reason. The rule therefore runs on every `make check`, rather than depending
+ 7708 | on whether a session remembered it.
+ 7709 | 
+ 7710 | **What it costs, recorded rather than waved past.** `anticipated` now carries
+ 7711 | weight it did not carry before. So a `safety` item that is wrongly classed
+ 7712 | becomes invisible to the gate, which is `PL-MVC2`'s shape. Two things narrow
+ 7713 | that risk, and neither removes it. First, the class is claimed rather than
+ 7714 | inferred. Second, `PL-MVC2` itself made a class outside the declared
+ 7715 | vocabulary a `bin/docket check` error. So a misspelling fails closed and
+ 7716 | leaves the item named. Nothing catches a class that is spelled correctly and
+ 7717 | applied wrongly. Catching that is a reviewer's judgment, and this decision is
+ 7718 | what makes that judgment worth making.
+ 7719 | 
+ 7720 | ### The cadence
+ 7721 | 
+ 7722 | The gate is a recurring step on the plan, not a precondition assumed in the
+ 7723 | background. Every milestone runs the same four beats. § "The plan" above shows
+ 7724 | them on one timeline with the milestones they gate:
+ 7725 | 
+ 7726 | 1. **Scope** the milestone here. Give its goal, required scope, definition of
+ 7727 |    done and explicit out-of-scope list. Add the heading that its frozen list
+ 7728 |    goes under, with no entries in it until the freeze.
+ 7729 | 2. **Freeze and record** the debt list in that milestone's own section, as
+ 7730 |    item ids, on the day it was frozen. The list freezes on the later of two days:
+ 7731 |    the day the milestone is scoped, and the day the milestone before it ships.
+ 7732 | 3. **Clear** it before implementation of the milestone begins. Each item ends
+ 7733 |    `done`, or `dropped` with its reason, or **deferred to a later gate** on
+ 7734 |    the terms below. **Sweep the frozen list for staleness first** (project
+ 7735 |    owner, 2026-09-17, ratified, chosen over a second `verify:`-style field
+ 7736 |    recording a fault test beside each fix test, and over leaving the sweep to
+ 7737 |    whoever next noticed). A `verify:` command is specified as one that fails
+ 7738 |    before the work and passes after it. So it tests for the presence of the
+ 7739 |    fix, and never for the presence of the fault. An entry whose defect no
+ 7740 |    longer reproduces therefore fails forever and looks like outstanding work.
+ 7741 |    One measured pass found 12 of 134 open items dead and 31 more overtaken,
+ 7742 |    32% in all. Nothing in the project noticed this, and nothing can. A churn
+ 7743 |    advisory was built and measured against that pass's verdicts. It was
+ 7744 |    rejected because `partly` churns *less* than `yes` (`PL-LKGL`). Staleness
+ 7745 |    is a judgment, which is why this is a beat and not a check. Read each
+ 7746 |    frozen entry against the tree. Drop what no longer reproduces, with its
+ 7747 |    reason. Correct the briefs that overstate what is left. Do all this before
+ 7748 |    spending a session on any of them.
+ 7749 |    **File the pass as its own item under `feature: gate-staleness-sweep`. Do
+ 7750 |    not name a standing one here.** Any item named here is an item that can
+ 7751 |    close. The next gate's session then looks that item up and finds it
+ 7752 |    `done`. That is what happened to `PL-6ZQY`. It closed on 2026-09-19, two
+ 7753 |    days before Gate 2 froze on a list it had never seen (`PL-D8KW`). An
+ 7754 |    instruction to file an item cannot go stale the way a pointer to one item
+ 7755 |    does.
+ 7756 | 
+ 7757 |    **The third disposition, and the terms that make it legitimate** (project
+ 7758 |    owner, 2026-09-21, ratified, over leaving each milestone's own bullet to be
+ 7759 |    read at its own cut). An entry may be *deferred to a later gate* instead of
+ 7760 |    cleared. The release then ships without it. That is allowed only when all
+ 7761 |    three of these conditions hold:
+ 7762 | 
+ 7763 |    - § "The gate is a snapshot, not a moving target" permits the deferral.
+ 7764 |      That means the deferral **says so and says why**. The entry's item
+ 7765 |      carries `deferred-from: vX.Y.Z - <why>`, naming this gate. That field is
+ 7766 |      the one record that every reader of the gate reads (`PL-8QMD`, project
+ 7767 |      owner, 2026-10-11, ratified, over the deferral group headings this
+ 7768 |      section used to carry). The gate section may also set out the decision
+ 7769 |      behind the deferral at any length.
+ 7770 |    - The deferral **lands in a named later gate**, which is the next one. The
+ 7771 |      next gate's freeze carries every open entry that this list deferred,
+ 7772 |      debt or not, taken from what `bin/docket gate` prints. This matters
+ 7773 |      because an entry deferred to nowhere is what holds a release open
+ 7774 |      (`PL-S5Q9`). The field names the gate the entry leaves, not the one it
+ 7775 |      reaches, as `PL-WD5Z` decided. That is enough, because the next freeze
+ 7776 |      is always the one that takes the entry.
+ 7777 |    - The entry **stays written on the frozen list**, because removing it is
+ 7778 |      the renegotiation the freeze exists to prevent.
+ 7779 | 
+ 7780 |    A `safety`- or `science`-classed entry may take this route only when its
+ 7781 |    deferral also records that its hazard is **not live**. That must be
+ 7782 |    checked against the tree rather than asserted. It is recorded in the
+ 7783 |    field's reason or in the gate section.
+ 7784 | 
+ 7785 |    **Stated here rather than in each definition of done**, because it
+ 7786 |    recurs. Gate 1's last entry, `PL-WZVZ`, is deferred to Gate 2 on exactly
+ 7787 |    these terms. Yet v0.5.0's bullet admits only `done` or `dropped`. So a
+ 7788 |    session running that cut would have had to choose between two things. It
+ 7789 |    could drop a `safety`-classed entry whose hazard is real but not yet live,
+ 7790 |    or it could hold the release. `PL-F0L8` records one occasion when the
+ 7791 |    bullet was already treated as exhaustive, and `dropped` was chosen to stay
+ 7792 |    inside it. Gate 2 freezes the day v0.5.0 ships and inherits that entry. So
+ 7793 |    a gate with a deferral in it is the normal case, not something special to
+ 7794 |    this gate. This would be an instance rather than a rule only if no later
+ 7795 |    gate ever deferred an entry, and Gate 2 already falsifies that. Completed
+ 7796 |    milestones' bullets are left as written. They record conditions those
+ 7797 |    releases met, and editing a satisfied condition is the wider change
+ 7798 |    (`PL-Y949`).
+ 7799 | 4. **Implement** the milestone. A finding made while clearing or implementing
+ 7800 |    goes to the next gate, with two exceptions. It re-enters this gate if the
+ 7801 |    problem it describes predates the freeze (per § "The gate is a snapshot"
+ 7802 |    above). It also re-enters this gate if it is `P0`/`safety`/`science`.
+ 7803 | 
+ 7804 | A scoped milestone carries its gate heading from the day it is scoped, empty
+ 7805 | until the freeze. A milestone without one has not been scoped, whatever else
+ 7806 | has been written about it.
+ 7807 | 
+ 7808 | **Why the later of the two days** (project owner, 2026-10-03, ratified, over
+ 7809 | keeping scoping as the trigger with exceptions recorded against it,
+ 7810 | `PL-KKRP`). A gate contains the findings of the milestone before it. So a list
+ 7811 | frozen before that milestone ships contains none of those findings, and sends
+ 7812 | them to the gate after. A list frozen before its own milestone is scoped has
+ 7813 | no section to be recorded in. Nothing in this rule is open to renegotiation.
+ 7814 | The timeline fixes the freeze date, not whoever next opens the section. Every
+ 7815 | gate frozen under this cadence froze on the later day. Gate 1 froze on
+ 7816 | 2026-09-06, the day v0.5.0 was scoped. v0.4.0 had shipped the day before.
+ 7817 | Gate 2 froze on 2026-09-21, the day v0.5.0 shipped. v0.6.0 had been scoped
+ 7818 | two releases early, on 2026-09-16. That freeze was recorded at the time as an
+ 7819 | exception to scoping as the trigger (project owner, 2026-09-16, ratified while
+ 7820 | scoping v0.6.0). It is the instance that showed the rule's shape. The
+ 7821 | timeline's rows for Gates 3 and 4 were already written on the ship day.
+ 7822 | v0.4.26 was counted as a second exception. But it was a patch on the `v0.4.x`
+ 7823 | track, and a patch freezes no gate, so it says nothing about the trigger.
+ 7824 | 
+ 7825 | Which beat is due is computed, not remembered. `bin/docket wave` reads the
+ 7826 | version, the timeline above, the milestone sections and the frozen list that
+ 7827 | each section records. It reports the current step and the beat that leaves
+ 7828 | that step. It reports only what those files decide. It does not report
+ 7829 | whether a gate should open early, or whether what is written beside a step is
+ 7830 | still true.
+ 7831 | 
+ 7832 | **A gate does not get a version of its own. Its work ships as it clears.**
+ 7833 | Cleared gate work ships in patch releases on the preceding milestone's track:
+ 7834 | `v0.4.x` while Gate 1 drained, and `v0.5.x` while Gate 2 does. A session cuts
+ 7835 | one whenever it judges the finished work worth releasing. The gated
+ 7836 | milestone's own number is reserved for the capability boundary that its scope
+ 7837 | crosses, per § "Versioning decision". That milestone's release notes then
+ 7838 | carry its own scope. That is what a milestone should carry when its debt was
+ 7839 | paid down as it went.
+ 7840 | 
+ 7841 | **This records the practice rather than changing it** (project owner,
+ 7842 | 2026-09-27, `PL-LPH9`). The sentence that used to be here said that no
+ 7843 | interim release is cut partway through clearing. It told sessions to decline
+ 7844 | `docket release`'s offer, or else see the gate work scatter across patch
+ 7845 | releases. Every gate has been worked the other way. Gate 0 closed across the
+ 7846 | v0.2.6 to v0.3.0 patch series. At v0.4.32 on 2026-09-20, `bin/docket wave`
+ 7847 | treated 172 of the 175 entries that Gate 1 then contained as clear. v0.5.1
+ 7848 | through v0.5.14 shipped 67 of Gate 2's 190. **Since 2026-09-27 the occasion
+ 7849 | for a cut is a feature finishing**. A session cuts a release with what is in
+ 7850 | it, and the project owner pushes the tag. That is the instance the judgment
+ 7851 | currently turns on. It is dated so that a later reader can tell it apart from
+ 7852 | the rule.
+ 7853 | 
+ 7854 | Gate 0 is the single exception. It was released as the *minor* v0.3.0, for
+ 7855 | the reason recorded under § "Versioning decision". It is exempt because it
+ 7856 | holds the backlog inherited from before this mechanism existed. Every later
+ 7857 | gate holds one milestone's findings and is ordinary maintenance. Ordinary
+ 7858 | maintenance ships in patches and takes no number of its own.
+ 7859 | 
+ 7860 | ### Debt inside the milestone's own scope
+ 7861 | 
+ 7862 | **Debt that the milestone itself exists to clear is cleared *by* it, not
+ 7863 | before it.** This carve-out is necessary rather than convenient. v0.4.0 was
+ 7864 | scoped in part *because* six safety, science, defect and perf items were all
+ 7865 | symptoms of the same thing. A rule that required them to be cleared before the
+ 7866 | milestone that clears them would have no order that satisfies it.
+ 7867 | 
+ 7868 | The test is whether the item appears in the milestone's "Required scope". If
+ 7869 | it does, it is milestone work. The frozen gate lists it under a heading that
+ 7870 | says so, and the gate is open when everything *outside* the milestone's scope
+ 7871 | is clear. If it does not appear there, it is cleared first, whatever it is
+ 7872 | about.
+ 7873 | 
+ 7874 | This does not weaken the `safety`/`science` re-entry rule above. Such an item
+ 7875 | inside the scope still cannot be deferred. It simply cannot be finished
+ 7876 | earlier than the work it is part of, and the milestone's definition of done is
+ 7877 | what enforces it.
+ 7878 | 
+ 7879 | ### Recording it
+ 7880 | 
+ 7881 | Record the frozen list in the milestone's own section here, as the ids of the
+ 7882 | items it had to clear. A gate that nobody wrote down gets renegotiated. The
+ 7883 | point of freezing the list is that it cannot be renegotiated.
+ 7884 | 
+ 7885 | **Record a deferral on the item, not here.** A debt item that the current gate
+ 7886 | neither places nor takes carries `deferred-from: vX.Y.Z - <why>`. The version
+ 7887 | is the milestone whose frozen list excuses the item. It is never the gate that
+ 7888 | the item goes to, because the next freeze takes every open debt item anyway.
+ 7889 | The reason states the grounds for the deferral, which is what a reader of the
+ 7890 | gate is owed. The command `bin/docket set <id>
+ 7891 | --deferred-from "..."` writes it. `bin/docket check` fails an open debt
+ 7892 | item that the current gate neither places nor defers, and its error message
+ 7893 | prints that command (`PL-WD5Z`). **A frozen entry deferred on § "The cadence"
+ 7894 | beat 3's terms carries the same field** (`PL-8QMD`). The entry stays on its
+ 7895 | list. The next freeze takes it whatever its classes, because `bin/docket gate`
+ 7896 | prints every open entry of the last frozen list beside the store's open debt.
+ 7897 | `bin/docket check` also fails an open frozen entry that is waiting on work
+ 7898 | outside the plan, unless the field defers it. Work is outside the plan when
+ 7899 | neither the entry's list nor the milestone's `Required scope` includes it, and
+ 7900 | the release train does not schedule it first. A section may state the grounds
+ 7901 | that its deferrals share, as v0.6.0's section does, but no tool reads that
+ 7902 | prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
+ 7903 | headed `Declined`, `Deferred` or `Sequenced`. Each way in which that second
+ 7904 | store disagreed with the items became an item of its own. Completed sections
+ 7905 | keep those subsections, because they are the record of that period.
+ 7906 | 
+ 7907 | **Do not write a deferred item's state or release beside it.** `bin/docket
+ 7908 | wave` prints each deferral of the current gate with its state and release,
+ 7909 | read from the store (`PL-B60Q`). A mark written by hand would only copy a
+ 7910 | field that the store already records.

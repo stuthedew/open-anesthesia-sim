@@ -1,0 +1,740 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of docs/references/README.md:
+  - A clinician or educator.
+    Knows: Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods.
+    Does not know: Software terms, and this repository's own names.
+    Will: Check a stored value, or a difference between machines, against its published source.
+
+[1] docs/references/README.md § "The documents", rows 138-677. Whole section: 4966 words. For: A clinician or educator
+  138 | ## The documents
+  139 | 
+  140 | ### Allott, Steward & Mapleson 1976 — halothane in individual dogs
+  141 | 
+  142 | **Not held here. Held in the private corpus**, like every other owner-supplied
+  143 | full text; the corpus's own index carries the file name and checksum. Supplied
+  144 | by the project owner 2026-09-27.
+  145 | 
+  146 | > Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the dog:
+  147 | > comparison of theory and measurement in individuals.* Br J Anaesth
+  148 | > 1976;48(4):279-95. PMID [1275995](https://pubmed.ncbi.nlm.nih.gov/1275995/),
+  149 | > DOI [10.1093/bja/48.4.279](https://doi.org/10.1093/bja/48.4.279).
+  150 | 
+  151 | A measurement, in one species with one agent: seven dogs given 1% halothane
+  152 | for 80 minutes, with tensions measured at five blood sites and in a psoas
+  153 | biopsy and compared with a multi-compartment model quantified in each dog
+  154 | (p. 279). Eger and Saidman 2005's ref 8, and their one source outside Eger's
+  155 | group for intertissue diffusion.
+  156 | 
+  157 | **What has been taken from it, and where it is recorded.** For `PL-FBY3`,
+  158 | `docs/MODEL.md` § "Known limitations" takes the perirenal-fat measurement in
+  159 | two further dogs (p. 289), the authors' statement that their case for lean
+  160 | tissue losing agent to fat rests on an improved fit (p. 290), how they mimicked
+  161 | the route by redistributing cardiac output and raising the lean compartment's
+  162 | solubility (Table I, p. 281), and their warning that the mimicry fails outside
+  163 | the conditions it was fitted to (p. 290). It is cited for no stored value.
+  164 | 
+  165 | Route and depth: full text, through the corpus's text layer on 2026-09-27.
+  166 | Pp. 279, 281 and 289-91 and the reference list were read; the methods and
+  167 | results between them were not, beyond Table I.
+  168 | 
+  169 | ### Baker & Farmery 2011 — inert gas transport in blood and tissues
+  170 | 
+  171 | **Not held here. Held in the private corpus since 2026-10-25**, like every
+  172 | other owner-supplied full text, and the corpus's own index carries the file
+  173 | name and checksum. This repository held a copy until 2026-09-06, when it was
+  174 | removed as publisher-copyright material that this public repository may not
+  175 | redistribute; see "Redistribution" above.
+  176 | 
+  177 | > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
+  178 | > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
+  179 | > DOI [10.1002/cphy.c100011](https://doi.org/10.1002/cphy.c100011).
+  180 | > PMID [23737195](https://pubmed.ncbi.nlm.nih.gov/23737195/).
+  181 | 
+  182 | Metadata confirmed against PubMed's record through the PubMed MCP server on
+  183 | 2026-10-06: the authors, title, journal, issue, pages, DOI and PMID above all
+  184 | match it. The file's own XMP packet carries Wiley's legacy identifier for the
+  185 | same article, `10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI
+  186 | above is the one to cite.
+  187 | 
+  188 | This is the closest published statement of what `docs/MODEL.md` specifies. It
+  189 | derives single-compartment and multicompartment models of inert gas transfer,
+  190 | develops transport between lungs, blood and other tissues from them, and
+  191 | compares the result against experimental studies in animals and humans — then
+  192 | treats the anesthetic gases specifically, deriving how transfer depends on
+  193 | solubility in blood and in each tissue. Read it when a compartment structure,
+  194 | a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
+  195 | being questioned or extended.
+  196 | 
+  197 | Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
+  198 | "Parameter provenance" cites for the tissue:blood division (`PL-H536`,
+  199 | `PL-VPF8`). The table prints two sets of coefficients, and neither is Baker's
+  200 | own. The bracketed set, which matches the derived rows, is Eger and Shafer's
+  201 | (its ref 21: *Anesth Analg* 2005;101:688–96, PMID 16115976). The plain set is
+  202 | Fiserova-Bergerova and Diaz's (its ref 26: *Int Arch Occup Environ Health*
+  203 | 1986;58:75–87, PMID 3721592). Neither paper is held. The review is tier 2 under
+  204 | `docs/MODEL.md` § "Source hierarchy".
+  205 | 
+  206 | Route and depth: full text, from the private corpus's copy on 2026-10-25.
+  207 | Table 2 and pp. 569–70 were read from the page images, and pp. 571 and 573–74
+  208 | and the reference list through the corpus's text layer. The rest was not read.
+  209 | 
+  210 | ### Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion
+  211 | 
+  212 | **Not held here. Held in the private corpus**, like every other owner-supplied
+  213 | full text; the corpus's own index carries the file name and checksum. Supplied
+  214 | by the project owner 2026-09-27, after `PL-WMCJ` had recorded it as
+  215 | abstract-only.
+  216 | 
+  217 | > Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
+  218 | > including intertissue diffusion to and from fat.* Anesth Analg
+  219 | > 2005;100(4):1020-33. PMID [15781517](https://pubmed.ncbi.nlm.nih.gov/15781517/),
+  220 | > DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
+  221 | 
+  222 | A review, so tier 2 under `docs/MODEL.md` § "Source hierarchy", which counts a
+  223 | review as a secondary synthesis. PubMed types it as a review. It says its
+  224 | figures "illustrate concepts but are not necessarily precise (quantitative)
+  225 | reflections of the kinetics" (p. 1020). Its numbers come from elsewhere, Table
+  226 | 3's time constants from the two Yasuda et al. 1991 papers below.
+  227 | 
+  228 | **What has been taken from it, and where it is recorded.** For `PL-FBY3`,
+  229 | `docs/MODEL.md` § "Known limitations" takes Table 3's intertissue-diffusion
+  230 | group (p. 1024), the lean-tissue losses to adjacent fat and the 74% muscle
+  231 | figure at 50 minutes of desflurane (p. 1025), the brain drawn apart from the
+  232 | rest of the vessel-rich group (p. 1022), the paper's ranking of its evidence
+  233 | and its 30% share of uptake (p. 1025), and the recovery passage (p. 1032). It
+  234 | is cited for no stored value.
+  235 | 
+  236 | Route and depth: the corpus's text layer, read in full on 2026-09-27; every
+  237 | printed page, pp. 1020-33, is recovered in the corpus's text dump.
+  238 | 
+  239 | ### Jugel et al. 2014 — M4 time series aggregation
+  240 | 
+  241 | **Not held here.** Held in the private corpus,
+  242 | `stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+  243 | texts live now" above says how to attach. Its licence, CC BY-NC-ND 3.0 per the
+  244 | statement on its first page, would let this public repository carry it, and it
+  245 | did from 2026-09-04 until `PL-8LXM` removed it with the M4 decimation module
+  246 | on 2026-09-08 as a paper nothing then founded. Supplied again by the project
+  247 | owner on 2026-09-14 - the same bytes, by checksum - and placed in the private
+  248 | corpus by their decision, with every other owner-supplied full text.
+  249 | 
+  250 | > Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
+  251 | > Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
+  252 | > 2014;7(10):797–808. ISSN 2150-8097.
+  253 | > DOI [10.14778/2732951.2732953](https://doi.org/10.14778/2732951.2732953).
+  254 | 
+  255 | Every field but the DOI is taken from the paper's own title page and running
+  256 | footer, read with `pdftotext` on 2026-09-14. The PDF prints no DOI — only the
+  257 | ISSN and the copyright line — and PubMed does not index the venue, so the DOI
+  258 | waited for a registry rather than being written from memory. **Confirmed
+  259 | against Crossref on 2026-10-06**, from its record for
+  260 | `10.14778/2732951.2732953` at `api.crossref.org`: the four authors, the title
+  261 | and subtitle, *Proc. VLDB Endow.* 7(10):797–808, June 2014, and ISSN 2150-8097
+  262 | all match, and `doi.org` resolves the DOI to the ACM Digital Library. The
+  263 | venue's own site, `www.vldb.org`, was still refused at the CONNECT on
+  264 | 2026-10-06, which leaves the registry route untouched.
+  265 | 
+  266 | **What the chart takes from it, and what it does not.** `docs/MODEL.md`
+  267 | § "What the chart draws" holds the chord between two drawn instants to one
+  268 | pixel of time. This paper is the published form of the argument behind that,
+  269 | seen from the other side. For recorded data grouped into pixel columns,
+  270 | Theorem 1 proves `vis_wh(G_M4(T)) = vis_wh(T)`: the two-colour line
+  271 | visualization of the four tuples Definition 2 selects per column — the
+  272 | `min(v)`, `max(v)`, first and last tuples — equals that of the whole series,
+  273 | and the proof (Lemmas 1 and 2) is that every inner-column pixel follows from
+  274 | the column's top and bottom, and every inter-column line from the last tuple
+  275 | of one column and the first of the next. The chart selects nothing: it
+  276 | evaluates the run at one instant per pixel boundary, so on a stretch monotone
+  277 | within the pixel the two boundary values are that column's top and bottom and
+  278 | the segment between them is its inter-column line. Two things the paper's
+  279 | guarantee has that the chart's does not, both stated in `docs/MODEL.md`. It
+  280 | holds only with groups aligned to pixel columns — §6: "the engineers have to
+  281 | make sure that nh = w", or any integer factor of w — and the chart's grid is
+  282 | anchored to the case's zero rather than to the viewport, so the chart's claim
+  283 | is "within one pixel of time", not pixel identity. And it needs the min and
+  284 | max tuples for a stretch that turns inside a column, which the chart does not
+  285 | evaluate, so an extremum between two dial changes is the one measured
+  286 | residual, 0.0028 pp at worst over the supported envelope.
+  287 | 
+  288 | Read in full text on 2026-09-14 for the sections named above. §4.3's error
+  289 | taxonomy and §5's query rewriting were not read for this entry.
+  290 | 
+  291 | ### Katoh et al. 1993 — MAC-awake of sevoflurane and isoflurane
+  292 | 
+  293 | **Not held here. Held in the private corpus since 2026-10-26**, like every
+  294 | other owner-supplied full text. The project owner supplied both papers for
+  295 | `PL-P319`.
+  296 | 
+  297 | > Katoh T, Suguro Y, Kimura T, Ikeda K. *Cerebral awakening concentration of
+  298 | > sevoflurane and isoflurane predicted during slow and fast alveolar washout.*
+  299 | > Anesth Analg 1993;77(5):1012-7. PMID
+  300 | > [8214700](https://pubmed.ncbi.nlm.nih.gov/8214700/), DOI
+  301 | > [10.1213/00000539-199311000-00024](https://doi.org/10.1213/00000539-199311000-00024).
+  302 | 
+  303 | > Katoh T, Suguro Y, Ikeda T, Kazama T, Ikeda K. *Influence of age on
+  304 | > awakening concentrations of sevoflurane and isoflurane.* Anesth Analg
+  305 | > 1993;76(2):348-52. PMID [8424514](https://pubmed.ncbi.nlm.nih.gov/8424514/).
+  306 | 
+  307 | The first paper is the adopted source of the sevoflurane and isoflurane
+  308 | MAC-awake fractions. What has been taken from it, with the pages, is in
+  309 | `docs/references/katoh-1993-anesth-analg-mac-awake-washout.md`: the
+  310 | age-adjusted MAC equations behind those fractions, the slow-washout values,
+  311 | and the form of the brain-uptake calculation. Both papers were read on
+  312 | 2026-10-26. The second is a scan, and nothing is taken from it; the note says
+  313 | why.
+  314 | 
+  315 | ### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*
+  316 | 
+  317 | **Not held here.** A publisher-copyright monograph this public repository may
+  318 | not redistribute; see "Redistribution" above. It has no DOI and PubMed does
+  319 | not index monographs, so neither route this repository usually names reaches
+  320 | it. **It was reached by interlibrary loan**, which is the route
+  321 | `.claude/rules/citing-sources.md` now records — the project owner placed the
+  322 | request and the pages arrived inside a day because the request named the pages
+  323 | it needed.
+  324 | 
+  325 | > Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed
+  326 | > Circuit*. Baltimore: Williams & Wilkins; 1981.
+  327 | > ISBN 0683052004 (9780683052008); OCLC
+  328 | > [6665746](https://search.worldcat.org/oclc/6665746).
+  329 | 
+  330 | **Read at the source in two instalments**, both supplied by the project owner
+  331 | as RapidILL scans and neither held here. Pages 55–60 and 82–84 on 2026-09-08
+  332 | (`PL-7HDS`; lender University of Sydney Main Library, borrower University of
+  333 | Wisconsin–Madison Memorial Library), the request narrowed to pages 57 and 83
+  334 | in advance by two second-hand readings. Then pages 17–21 and 60–66 on
+  335 | 2026-09-10 (`PL-8SDL`; lender Michigan State University Main Library, same
+  336 | borrower) — chapter 4's reference list and the chapter-2 derivation of the
+  337 | cardiac-output relation. **Pages outside those two ranges were not supplied
+  338 | and are not read**, among them chapter 2's own reference list.
+  339 | 
+  340 | **Why it is here.** It is the upstream the Gas Man Workbook names for the
+  341 | reference patient's organ volumes and blood flows, and therefore the second
+  342 | link in this project's longest provenance chain. It is **tier 2, cited but not
+  343 | adopted**. Four findings are what the reading bought, and
+  344 | `src/anesthesia_sim/data/patients/reference_adult.json` holds them in full —
+  345 | this entry is the pointer, not the record:
+  346 | 
+  347 | - **The model patient is 100 kg, not 70.** Figure 4.1b and every chapter-5
+  348 |   table are tabulated for a 100-kg patient, which page 56 says is so the organ
+  349 |   weights can be read as per cent of body weight. That is why the material
+  350 |   reaches this project as *fractions*, and why every 70-kg figure derived from
+  351 |   it is this project's arithmetic rather than the book's.
+  352 | - **The book cites these values onward; it measures nothing here.** Page 56
+  353 |   attributes figure 4.1b to four references, all four since identified and
+  354 |   read (`PL-8SDL`, `PL-LT51`). Three are uptake-and-distribution models, which
+  355 |   consume organ volumes and blood flows rather than measure them; two of those
+  356 |   turn out to be the same document one link apart. So the tier is 2 and cannot
+  357 |   become 1.
+  358 | - **The vessel-rich pair reproduces exactly and uniquely; muscle and fat
+  359 |   reproduce under no grouping at all.** Kidney + heart + brain + liver gives
+  360 |   6.02 L and 76 per cent of cardiac output at 70 kg, against the stored 6.0
+  361 |   and 0.76, and an exhaustive search of all 1,023 groupings of the book's ten
+  362 |   compartments finds no other match. The same search returns zero groupings
+  363 |   matching both stored figures for muscle, and zero for fat.
+  364 | - **The cardiac-output relation is derived, not measured.** Page 59's
+  365 |   0.2 × M^(3/4) — 4.84 L/min at 70 kg — is built in chapter 2 from Brody's
+  366 |   interspecies metabolic allometry divided by an arteriovenous oxygen
+  367 |   difference assumed constant across mammals. **It must not be read as a
+  368 |   measured human cardiac output**, which is why `docs/MODEL.md` § "Known
+  369 |   limitations" says so wherever it stands beside a measured value.
+  370 | 
+  371 | Read it when the provenance of a tissue volume or a perfusion fraction is in
+  372 | question. Nothing in it is adopted, and the reason is in the data file's own
+  373 | note: for the values that do not reproduce there is nothing here to adopt, and
+  374 | for the two that do, adopting would mean naming as authority a compilation
+  375 | whose own four sources the book never measured.
+  376 | 
+  377 | 
+  378 | ### Philip — *Workbook for Gas Man*
+  379 | 
+  380 | **Not held here. Held in the private corpus**,
+  381 | `stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+  382 | texts live now" above says how to attach. Supplied by the project owner
+  383 | 2026-09-15, split into five section PDFs. It is the manual distributed with the
+  384 | Gas Man program and carries no licence permitting redistribution, so it may not
+  385 | sit in this directory.
+  386 | 
+  387 | > Philip JH. *Workbook for Gas Man®: a simulation and teaching tool*.
+  388 | > Chestnut Hill, MA: Med Man Simulations, Inc.; title page dated 2012-05-16,
+  389 | > preface dated October 2010. 199 pages.
+  390 | 
+  391 | **No DOI, ISBN or PubMed record**, deliberately: the document prints none, and
+  392 | PubMed does not index software manuals, so there is nothing to check the
+  393 | citation against. Every field above is read off the title page and the
+  394 | preface's sign-off, 2026-09-15, which is all this entry asserts.
+  395 | 
+  396 | **The title this repository cited until 2026-09-15 is not the one on the title
+  397 | page.** Every `sources` entry under `src/anesthesia_sim/data/` naming this
+  398 | document called it "Gas Man(R) Workbook and Laboratory Manual", which `PL-XTMB`
+  399 | took from the cover and from the original PDF's `/Title` and `/Author` fields.
+  400 | That string occurs zero times in the document's 209 pages of text, and the
+  401 | title page reads as quoted above. The corpus's section PDFs were rewritten by
+  402 | `pypdf` and carry no `/Title`, so the two cannot be reconciled from anything
+  403 | this project holds; a citation follows the title page, and `PL-9GP1` changed
+  404 | the data files to match.
+  405 | 
+  406 | **Why this one is load-bearing.** Gas Man is this project's reference
+  407 | implementation, and the `sources` notes trace the reference patient's eleven
+  408 | parameters and all twelve stored partition coefficients to it. Until now the
+  409 | project had read only "a copy of the front matter and appendices supplied by
+  410 | the project owner"
+  411 | (`src/anesthesia_sim/data/patients/reference_adult.json`, 2026-09-06) — a
+  412 | route neither of the two in `.claude/rules/citing-sources.md`, recorded as a
+  413 | gap by `PL-XJ5P`. The whole document is now readable, which closes that gap.
+  414 | Three things found on reading it (`PL-9GP1`), none of which changes a stored
+  415 | value:
+  416 | 
+  417 | - **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168** — the
+  418 |   table `src/anesthesia_sim/data/patients/reference_adult.json` already
+  419 |   cites — reads exactly as that file records it.
+  420 | - **Appendix C, "Gas Man System Defaults", pp. 171–72** is a verbatim listing
+  421 |   of `GASMAN.INI`, and a second statement of the same parameter set: `Lambda`
+  422 |   (blood/gas) and `VRG`, `MUS`, `FAT` (tissue/gas) per agent, matching all
+  423 |   twelve stored coefficients, for nine agents. **It carries three values
+  424 |   Appendix B's table does not**: `[Volumes] VEN=1.0`, and `[Defaults] VA=4` and
+  425 |   `CO=5`. Two provenance notes in
+  426 |   `src/anesthesia_sim/data/patients/reference_adult.json` were written without
+  427 |   this page — one saying the venous pool value carried until 2026-09-07 appears
+  428 |   nowhere, the other that the workbook states no numeric default for alveolar
+  429 |   ventilation. Both are scoped to Appendix B's table and are true of it;
+  430 |   Appendix C is a different page and does carry the numbers. That makes neither
+  431 |   value a measurement — they are the same program's defaults, tier 3 — but it
+  432 |   is where they are written down. `PL-9GP1` brought it into those notes and
+  433 |   into `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as a value
+  434 |   no source contained; no stored value changed.
+  435 | - **Chapter 13, "Patient Size", printed p. 127, states the 70 kg reference
+  436 |   weight.** It says: "Values for volumes and flows for a 70 kg patient are
+  437 |   those found often in the literature: VA = 4 L/min, CO = 5 L/min, and oxygen
+  438 |   consumption = 250 mL/min." The same paragraph says Gas Man scales alveolar
+  439 |   ventilation and cardiac output with weight to the 3/4 power, and compartment
+  440 |   volumes linearly. Read through the corpus's text extraction on 2026-09-30
+  441 |   for `PL-9LXK`, and checked again on 2026-10-26 for `PL-KN5Y`. It is the
+  442 |   page that the Workbook entry of
+  443 |   `src/anesthesia_sim/data/patients/reference_adult.json` names for the 70 kg
+  444 |   reference weight. Like the rest
+  445 |   of the book it is tier 3: the program's own reference patient, not a
+  446 |   measurement.
+  447 | - **Appendix C also carries a `Volatility` line, and it states a
+  448 |   temperature.** Read on 2026-09-16 while working `PL-S6WW`: the per-agent
+  449 |   entry is written `Volatility=209           Vapor/Liquid volume ratio
+  450 |   (20'C)`, with `Volatility=200` in a second listing, printed pp. 171 and 174.
+  451 |   It is the only place in the material this project has read where the
+  452 |   reference implementation states the condition its gas volumes are referenced
+  453 |   to, and it is ground 3 of the reference condition `docs/MODEL.md` § "Agent
+  454 |   amount" now fixes at 20 °C. Two questions that entry left open were settled
+  455 |   on 2026-10-26 for `PL-KZ99`. `Volatility=209` is desflurane's line in the
+  456 |   Appendix C listing, printed p. 171, which ends on p. 172. `Volatility=200`
+  457 |   is not on p. 174 and belongs to no shipped agent. It is in Appendix E's
+  458 |   worked example of adding a hypothetical agent, "Unithane", printed p. 177.
+  459 |   Tier 3 either way — a program's parameter, not a measurement.
+  460 | - **Chapter 14, "Analyzing Cost", prints a worked cost for two isoflurane
+  461 |   anesthetics.** Gas Man computes cost as "the product of delivered volume and
+  462 |   unit cost of the agent selected", with the delivered volume "the product of
+  463 |   fresh gas flow (FGF) and the vaporizer setting (DEL)" (printed p. 132).
+  464 |   Appendix D states the same as `Cost = DELIVERED Flow x Cost/mL vapor`
+  465 |   (printed p. 174). Exercise 14-1 runs 2 % at 8 L/min for 13 min, then 1.5 %
+  466 |   to 60 min, and prints a delivered cost of $2.17 at 13 min and $8.06 at
+  467 |   60 min (printed pp. 133-134). Exercise 14-2 runs 5 % at 1 L/min for
+  468 |   13 min, then 2.7 % to 60 min, and prints $0.68 and $2.00 (printed
+  469 |   pp. 135-136). Both are "based on a bottle cost of US$20.47 per 100 ml",
+  470 |   which is isoflurane's `BottleCost` and `BottleSize` in Appendix C. The
+  471 |   desflurane and sevoflurane exercises that follow print no figures, only
+  472 |   overlay plots. Read on 2026-10-26 for `PL-KZ99`, whose reference test
+  473 |   reproduces the four costs, and `PL-1P15` carries them for the cost
+  474 |   readout. Tier 3: a program's arithmetic, which is what makes it an
+  475 |   independent check of the conversion rather than a source for it.
+  476 | - **How Gas Man takes a price, and the two prices it gives for one bottle.**
+  477 |   The Set Cost command "Allows you to type in the bottle volume and bottle
+  478 |   cost of the anesthetic agent you have selected, in the local currency"
+  479 |   (printed p. 15). Appendix C's listing labels the same value "Bottle cost in
+  480 |   $US" (printed p. 171). Chapter 14's closing text gives "$78.00 per 100 mL
+  481 |   bottle of isoflurane and $70.00 per 240 mL bottle of desflurane on March 5,
+  482 |   2008" (printed p. 141). Appendix C prices those bottles at 20.47 and 115.13.
+  483 |   The isoflurane costs that the chapter prints are reproduced at 20.47.
+  484 |   Read on 2026-10-26 for `PL-VJZK`. `docs/MODEL.md` § "A cost at the
+  485 |   reader's price" cites it for taking a price per bottle, for storing the
+  486 |   currency as a code and for showing the date of a price.
+  487 | - **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
+  488 |   coefficients (calculated)" it lists Blood/Gas, Brain/Blood, Muscle/Blood and
+  489 |   Fat/Blood rows, which are tissue/**blood** ratios. Every column reproduces as
+  490 |   the first table's tissue/gas divided by that agent's blood/gas **except
+  491 |   isoflurane's**, which is divided by 1.90 — enflurane's blood/gas, not
+  492 |   isoflurane's 1.30. Appendix C's listing agrees with the first table, and so
+  493 |   does this repository. Take a Gas Man tissue/gas coefficient from the first
+  494 |   table or from Appendix C, and no isoflurane tissue/blood ratio from the
+  495 |   second.
+  496 | - **Appendix B names intertissue diffusion as omitted**, pp. 169-70. Gas Man
+  497 |   "does not include the effects of shunts and dead space, intertissue
+  498 |   diffusion, incomplete tissue mixing, drug metabolism, or nonpulmonary drug
+  499 |   excretion"; under "Inter-tissue Diffusion", the effect "may occur between fat
+  500 |   and muscle" and "has been ignored in the Gas Man model", complete mixing in
+  501 |   each organ being assumed instead and called "a close approximation". Read
+  502 |   2026-09-26 for `PL-WMCJ`; `docs/MODEL.md` § "Known limitations" carries what
+  503 |   the omission costs the fat compartment.
+  504 | 
+  505 | Its bibliography's reference 45 is "Yasuda, N, Targ, AG and Eger, EI II.
+  506 | Solubility of I-653, Sevoflurane, Isoflurane and Halothane in human tissues.
+  507 | Anesthesiology. Vol. A615 (Abstract), 69" — the 1988 abstract, not the 1989
+  508 | *Anesth Analg* paper of the same title. Its reference 23 is Lowe and Ernst
+  509 | 1981, printed with the initial "HF" there and "HJ" at references 22 and 24, so
+  510 | that bibliography is internally inconsistent.
+  511 | 
+  512 | Route and depth: the corpus's section PDFs, read with `pdftotext -layout` on
+  513 | 2026-09-15 — the front matter, the table of contents, Appendices A–E and the
+  514 | bibliography in full, and every section's boundary pages. Chapters 1–19 were
+  515 | not read beyond those, except the pages named above: Chapter 10's
+  516 | liquid-injection section, Chapter 13's p. 127 and Chapter 14's pp. 132-141.
+  517 | 
+  518 | ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
+  519 | 
+  520 | **Not held here. Held in the private corpus**,
+  521 | `stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+  522 | texts live now" above says how to attach. Removed from this public repository
+  523 | 2026-09-06 as publisher-copyright material it may not redistribute; see
+  524 | "Redistribution" above. Supplied again by the project owner 2026-09-15, split
+  525 | into eight section PDFs, and placed in the corpus by their decision, with every
+  526 | other owner-supplied full text. Reachable from outside this project through the
+  527 | DOI.
+  528 | 
+  529 | > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
+  530 | > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
+  531 | > DOI [10.1007/978-3-540-74806-9](https://doi.org/10.1007/978-3-540-74806-9).
+  532 | 
+  533 | The whole volume, 497 pages. It reaches well beyond what the simulator models
+  534 | today, and the project owner's note on the branch this arrived from
+  535 | (`556d454`, 2026-08-25) is why it was kept: *"lots of relevant stuff in article
+  536 | on anesthesia considerations for down the road plans like implementing IV and
+  537 | anesthetic depth"*.
+  538 | 
+  539 | Those are already on the map rather than being new scope — `ROADMAP.md`'s
+  540 | "Planned milestones" items 13 (IV pharmacokinetic and effect-site models) and
+  541 | 14 (a modular hypnosis/eBIS effect model). This is a starting point for
+  542 | sourcing when either is promoted into a scoped milestone, and not a source that
+  543 | has been read and checked yet.
+  544 | 
+  545 | **A chapter in an edited volume is cited as that chapter with its own authors,
+  546 | never as the volume**, and every field needed to do so is now recorded.
+  547 | PubMed indexes all 22 chapters as *Handb Exp Pharmacol.* 2008;(182):pages —
+  548 | the volume number sits in the issue field, so a search restricted to volume 182
+  549 | returns nothing — each with its own DOI, `10.1007/978-3-540-74806-9_N` for
+  550 | chapter *N*, and a PMID; they run consecutively from 18175084 for chapter 1 to
+  551 | 18175105 for chapter 22. Verified against PubMed 2026-09-15, and again on
+  552 | 2026-10-06 through the PubMed MCP server for chapters 1 and 22 and the four
+  553 | below: each record carries the PMID and page range written here and the DOI
+  554 | the pattern above gives its chapter. The corpus folder holds the whole table;
+  555 | four chapters are the ones this project would reach for first:
+  556 | 
+  557 | - **Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
+  558 |   anesthesia.** pp. 159–86. PMID
+  559 |   [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/). The circle system, why
+  560 |   inhaled and intravenous kinetics are modelled differently, the F_A/F_I curve,
+  561 |   the general anesthetic equation, and the delivered-to-inspired discrepancy
+  562 |   under low fresh gas flow. **Same two authors as the De Wolf et al. 2012 *BMC
+  563 |   Anesthesiology* Gas Man simulation** that every file under
+  564 |   `src/anesthesia_sim/data/agents/` cites at tier 3 for its coefficients — a
+  565 |   different work, four years earlier, and easy to conflate with it.
+  566 | - **Bischoff P, Schneider G, Kochs E. Anesthetics drug pharmacodynamics.**
+  567 |   pp. 379–408. PMID [18175101](https://pubmed.ncbi.nlm.nih.gov/18175101/).
+  568 | - **Shafer SL, Stanski DR. Defining depth of anesthesia.** pp. 409–23. PMID
+  569 |   [18175102](https://pubmed.ncbi.nlm.nih.gov/18175102/). Depth as the
+  570 |   probability of non-response calibrated against stimulus strength.
+  571 | - **Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and
+  572 |   devices for inhalational anesthetic drug dosing.** pp. 451–70. PMID
+  573 |   [18175104](https://pubmed.ncbi.nlm.nih.gov/18175104/). Vaporizers,
+  574 |   desflurane's differential-pressure delivery, gas sensing, and closed-circuit
+  575 |   feedback control.
+  576 | 
+  577 | Route and depth, as `.claude/rules/citing-sources.md` requires: the corpus's
+  578 | section PDFs, read with `pdftotext -layout` on 2026-09-15 for the front matter,
+  579 | the full table of contents and every section's boundary pages, plus PubMed
+  580 | metadata and abstracts for all 22 chapters. **No chapter has been read at full
+  581 | text**, so nothing here may yet be cited for a value. Three pages have been
+  582 | read since. For `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
+  583 | Eger's five-compartment model adds a lung and an "intertissue diffusion"
+  584 | compartment, "hypothesized to be fat adjacent to well-perfused tissues", citing
+  585 | Carpenter et al. 1986; and p. 166, which reads Yasuda et al.'s fourth
+  586 | compartment as intertissue diffusion and quotes Hull against assigning any
+  587 | tissue to a fitted compartment. For `PL-FBY3` on 2026-09-27: p. 165, which
+  588 | introduces Ishibashi et al. 2006 and Wissing's compartmental parameters
+  589 | (Rietbrock et al. 2000), and p. 166 again, where Ishibashi et al.'s parameters
+  590 | relate to cardiac output and demographics in no straightforward way, Wissing
+  591 | calls allocating fitted compartments to tissues "hardly feasible", and the
+  592 | chapter's authors find compartmental and physiologic models fit equally well
+  593 | (Hendrickx et al. 2006a). `docs/MODEL.md` § "Known limitations" cites them for
+  594 | that description and those cautions, and for no value.
+  595 | 
+  596 | ### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
+  597 | 
+  598 | **Not held here. Held in the private corpus**, like every other owner-supplied
+  599 | full text.
+  600 | 
+  601 | > Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+  602 | > isoflurane, and halothane in plastics and rubber composing a conventional
+  603 | > anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID
+  604 | > [2764290](https://pubmed.ncbi.nlm.nih.gov/2764290/).
+  605 | 
+  606 | What has been taken from it, with the pages, is in
+  607 | `docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md`: the
+  608 | measured system volume, the order of the circuit components' partition
+  609 | coefficients, the ideal wash-in line, and the authors' reading for desflurane.
+  610 | It was read in full on 2026-09-13 and checked again on 2026-10-26 for
+  611 | `PL-N701`.
+  612 | 
+  613 | ### Yasuda et al. 1991 — the two human kinetics papers
+  614 | 
+  615 | **Not held here. Held in the private corpus**, like every other owner-supplied
+  616 | full text; the corpus's own index carries the file names and checksums.
+  617 | 
+  618 | > Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+  619 | > Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
+  620 | > humans.* Anesth Analg 1991;72(3):316-24. PMID
+  621 | > [1994760](https://pubmed.ncbi.nlm.nih.gov/1994760/), DOI
+  622 | > [10.1213/00000539-199103000-00007](https://doi.org/10.1213/00000539-199103000-00007).
+  623 | >
+  624 | > Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+  625 | > Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
+  626 | > Anesthesiology 1991;74(3):489-98. PMID
+  627 | > [2001028](https://pubmed.ncbi.nlm.nih.gov/2001028/), DOI
+  628 | > [10.1097/00000542-199103000-00017](https://doi.org/10.1097/00000542-199103000-00017).
+  629 | 
+  630 | **What has been taken from them, and where it is recorded**, so neither needs
+  631 | reopening for these values. Their 30-minute wash-in and five-minute elimination
+  632 | ratios are the reference values in
+  633 | `tests/reference/test_published_wash_in_and_elimination.py`. Their
+  634 | five-compartment fits - each fourth compartment's and fat group's mammillary
+  635 | time constant and volume (Tables 4 and 5), the hybrid coefficients and time
+  636 | constants (Tables 1 and 2), and each paper's reading of the fourth compartment
+  637 | as fat reached by intertissue diffusion - are in `docs/MODEL.md` § "Known
+  638 | limitations" with their pages, taken 2026-09-26 for `PL-WMCJ`.
+  639 | 
+  640 | Their fat-group blood-flow estimates (Table 5 of each, pp. 322 and 496), the
+  641 | method behind them (*Anesth Analg* p. 319: tissue/blood partition coefficient
+  642 | times fitted rate constant), the fitted volumes' shortfall against known
+  643 | values (p. 323) and the post-release activity caveat on the terminal fits
+  644 | (p. 319) are in the same section's fat-perfusion paragraph and in the
+  645 | reference patient's Heinonen source entry, taken 2026-09-27 for `PL-HBH2`.
+  646 | 
+  647 | Their elimination sampling schedule (*Anesth Analg* p. 317), the mammillary
+  648 | model's hepatic site - elimination from the vessel-rich group, k20 (p. 318) -
+  649 | and the fitted k20 for each agent (Table 3 of each, pp. 321 and 495) are in
+  650 | `tests/reference/test_late_washout_against_published_fits.py` and
+  651 | `docs/MODEL.md` § "The first 24 hours of elimination against the published mean
+  652 | curves", taken 2026-09-27 for `PL-KK1Q`; the hybrid coefficients and their SDs
+  653 | (Tables 1 and 2) were read again at the source the same day and match the
+  654 | 2026-09-26 record. Figures 3 and 4 of each, the multi-day washout curves on
+  655 | logarithmic axes, were read qualitatively and no number was taken from them.
+  656 | 
+  657 | Route and depth, for the readings this paragraph lists: the *Anesth Analg*
+  658 | paper through the corpus's text layer, pp. 317-23; the *Anesthesiology* paper
+  659 | is a scan with no text layer, read as page images of pp. 493-96, p. 496 again
+  660 | on 2026-09-27, and pp. 493-95 again the same day for `PL-KK1Q`. Its methods and
+  661 | abstract pages were read too: pp. 490, 491, 492, 494 and 497 on 2026-09-13 for `PL-4QCJ`, p. 490 on
+  662 | 2026-10-18 for `PL-R0NL`, and pp. 489-91 again on 2026-10-26. Each extraction
+  663 | note named below gives the pages it rests on.
+  664 | 
+  665 | Their F_A/F_I curves during administration (Figure 2 of each, pp. 320 and 493)
+  666 | were read from the page images on 2026-10-18 for `PL-R0NL`, with the wash-in
+  667 | protocol from each paper's methods (*Anesth Analg* p. 317 through the text
+  668 | layer, *Anesthesiology* p. 490 as a page image). Every value read, the method
+  669 | and its reading error are in `docs/references/yasuda-1991-figure-2-wash-in.md`,
+  670 | and the values are `PUBLISHED_WASH_IN_TIME_COURSE` in
+  671 | `tests/reference/test_published_wash_in_and_elimination.py`.
+  672 | 
+  673 | The *Anesth Analg* paper's 30-minute wash-in and five-minute elimination
+  674 | ratios, the study they come from and the methods fact behind its tissue
+  675 | coefficients are in
+  676 | `docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`,
+  677 | with their pages, read 2026-10-26 for `PL-Z3V5`.

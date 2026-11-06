@@ -1,0 +1,26 @@
+[1] keep
+
+Structure:
+- Rows 5520–5521, "`PL-WZVZ`, which `PL-S5Q9` deferred to Gate 2, is the one entry that takes the last of these routes": this is a scope fact inside a completion rule. It goes out of date as soon as a second entry is deferred. Move it to `PL-WZVZ`'s entry in "the frozen list above", where the reader checks what v0.5.0 holds, and describe the item in words there. The record that `PL-S5Q9` made the decision belongs in `PL-S5Q9`. This rule keeps only the three routes: done, dropped with its reason, or deferred.
+- Row 5519, "on the terms of beat 3 of § "The cadence"": the reader has to go back to another section to learn when a deferral is allowed. State those terms here, and keep the § "The cadence" pointer after them.
+- Rows 5507–5508, "A threshold that is never reached ends in a distinct, visible outcome rather than in silence": this is a separate rule, which can be met or missed on its own. "And a test asserts this" comes before it, so it does not cover it. Give it its own list item.
+- Rows 5525–5526, "`docket check`, `tools/doc_check.py`": this item is written for the session doing the work, and this reader does not know the project's internal tool names. Say in words what these two checks cover. The exact commands belong where the workflow documents its checks.
+- No change to the order: the list goes from behaviour, to documentation, to scope, to regression tests, to automated checks, which suits a reader deciding what the release holds. The section is short enough to need no subheadings, and its heading says what it holds.
+- Query: the reader needs to know what `PL-WZVZ` is, in words, to see what v0.5.0 leaves out. The chapter gives only its id.
+- Query: the reader needs the terms for deferring an item, from beat 3 of § "The cadence". This chapter does not give them.
+- Query: this chapter does not explain "the frozen list", "Required scope", "a later gate" / "Gate 2", "the canonical evaluation rule" or "sample store", and this reader may not know them.
+- Query: in rows 5507–5508, is "a threshold" a kind of bookmark? If it is, use one name. If it is not, the reader needs to know what it is.
+- Query: rows 5505 and 5507 require a test for branch reproduction and for bookmark halting. Rows 5509–5513 (comparing runs on one time axis, and the memory limit) do not say how they are checked. The reader needs to know whether a test is part of "done" for those too.
+- Query: what do `docket check` and `tools/doc_check.py` check, in words?
+
+Outline:
+- 5499: heading "Definition of done".
+- 5501: lead-in. v0.5.0 is complete only when every item below holds.
+- 5503–5505: branch reproduction. A branch taken at any recorded control event or bookmark matches its parent element-wise at every sampled point up to the branch point. A test asserts this.
+- 5506–5508: bookmark halting. A bookmark stops the run on the step that crosses it, at every playback multiplier. A test asserts this. A threshold that is never reached ends in a distinct, visible outcome, not in silence.
+- 5509–5511: comparing runs. Two branches can be read on one time axis. Every curve can be traced to its run and to the settings that produced it. No readout, label, legend entry or reference band is ambiguous about which run it describes.
+- 5512–5513: memory. The memory a run holds grows with its number of control events, not with its length. No sample store remains in `src/`.
+- 5514–5516: documentation. `docs/MODEL.md` states the canonical evaluation rule, what a comparison asserts and what it does not, and the bound on any divergence that could not be eliminated.
+- 5517–5521: backlog. Every item of the frozen list above that is outside v0.5.0's Required scope is `done`, or `dropped` with its reason recorded, or deferred to a later gate on the terms of beat 3 of § "The cadence". `PL-WZVZ` is the only entry deferred: `PL-S5Q9` deferred it to Gate 2.
+- 5522–5524: regression. The v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests stay unchanged and pass. No equation, parameter or governing constant has changed.
+- 5525–5526: automated checks. Ruff formatting and linting, strict mypy, pytest, `docket check`, `tools/doc_check.py` and GitHub Actions all pass.

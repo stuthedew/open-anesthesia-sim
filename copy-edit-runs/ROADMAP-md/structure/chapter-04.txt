@@ -1,0 +1,71 @@
+[1] keep
+
+Structure:
+- **Same fact twice, rows 279-280 and 282-283.** "where the `docs/MODEL.md` rewrites it held are finished" and "Entry 12's six items, the copy editor's fix and the five `docs/MODEL.md` rewrites it blocked, close here" say the same thing. Keep the fact in the first sentence and give the count of five rewrites there. Rows 282-283 keep only that these six items make up entry 12 of v0.7.0's Required scope.
+- **Same fact twice, and two points in one paragraph, rows 283-286 and 288-291.** "Gate 3 has `PL-SP6H` open" (row 284) repeats "The three entries still open are `PL-SP6H`, which this gate can clear" (rows 289-290). The opening paragraph also makes two points: what v0.6.16 holds, and why v0.7.0 is not cut. Move "v0.7.0 is still not cut … test-driven `main`" (rows 283-285) into the Gate 3 paragraph. That paragraph then gives both reasons, with `PL-SP6H` named only in its list of open entries. The opening keeps nothing about v0.7.0 except that every id in its Required scope is now closed.
+- **Same fact twice, and a tool name, rows 298 and 306-308.** The table cell "comments and docstrings in two `app/` files" and "finds no code moved in `app/chart_frame.py` or `app/unconditional_set.py`" say the same thing. Put the two file names in the table cell. The reader does not know the tool's internal name (`tools/ast_identity.py`), and how the check was made belongs in the release item `PL-80PZ`. Rows 307-308 keep one sentence: the trajectories were not re-run because `core/` and `data/` did not change. "Re-run" is the right word because the trajectories are simulated, not measured.
+- **Same fact twice, rows 315 and 334-335.** "`PL-HGZS` was a live generator and is now spent" repeats "closes one generator head, `PL-HGZS`, spent". The fact belongs in `PL-HGZS`'s own record. If the owner needs it here, keep it once, in rows 334-335, and row 315 keeps nothing.
+- **Leftover points in one paragraph, rows 334-339.** This paragraph collects four unrelated points:
+  - Move "finishes two features, `reader-first-prose` and `repo-copy-edit`" into the opening paragraph, beside what the release finishes. Move "The release item is `PL-80PZ`" there too.
+  - "whose `resource: release-train` keeps it out of every later release" is for a later session, so it belongs in `PL-80PZ`.
+  - The missed apparatus-inflow prediction (rows 337-339) does not change what the release holds, and the text says `PL-7LMM` already records it. Cut it here; `PL-7LMM` keeps it. It also names a tool (`bin/docket release`) and uses terms the reader does not know: "apparatus-inflow prediction", "P1 apparatus filing" and "generator tier".
+- **Reader must read ahead, rows 331-332 and 341-343.** "`#2031` merged inside the v0.6.15 tag's span" depends on the rule for merges after a release's cut, which rows 341-343 explain ten lines later. Once rows 334-339 are broken up, rows 341-343 sit directly after rows 329-332. Rows 331-332 should also say in words what "inside the tag's span" means: the change merged after v0.6.15's notes were written and before its tag.
+- **Lead-in that does not say what changed, row 329.** "**When a limitation earns a sentence**" does not say what the paragraph covers. Use "**The writing rule on model limitations**".
+- **Internal check name, rows 321-323.** "the clause a gate-count check applies (`PL-6VBY`)" names a check the reader does not know. I cannot tell what "the agreement between a branch and its trunk (`PL-4VJG`)" refers to. Either say in words what each stale statement got wrong, or keep only "two stale statements were corrected" with the two item ids.
+- **Query:** the reader needs the 11 items the release holds, and the chapter does not list them. It names `PL-HGZS`, `PL-4VJG`, `PL-6VBY`, `PL-4LWM`, `PL-8BLJ`, `PL-BS6N` and `PL-80PZ`, and gives the five `docs/MODEL.md` rewrites only by pull request. Three things are unclear:
+  - whether `PL-BS6N` counts, since it merged inside v0.6.15's tag;
+  - whether `PL-4VJG` and `PL-6VBY` are among the five rewrites;
+  - how the counts add up to 11.
+- **Query:** the reader needs to know what Gate 3 and its "frozen list" are (row 288), and this chapter does not explain either.
+- **Query:** rows 289-291 count `PL-B4P7` and `PL-WZVZ` as entries "still open" in Gate 3 but also "deferred from it". The reader needs to know whether they still count in the 90, and whether they block v0.7.0. Row 284 names only `PL-SP6H` as a reason.
+- **Query:** I cannot tell what "v0.7.0 and v0.8.0 are given to milestone sections" (rows 285-286) means. If each has its own section, name those sections by heading.
+- **Query:** the reader needs to know who or what the "blind judge" was (row 313) to weigh the six-of-seven result, and the text does not say.
+
+Outline:
+- 277: Heading "Current baseline: v0.6.16".
+- 279-286: What v0.6.16 is, and the status of v0.7.0.
+  - The copy editor is fixed and back in use, and the `docs/MODEL.md` rewrites it held back are finished.
+  - The release has 11 items. It is a patch on both halves of § "Versioning decision"'s test.
+  - Every id in v0.7.0's Required scope is now closed. Entry 12's six items close here: the copy editor's fix and the five `docs/MODEL.md` rewrites it blocked.
+  - v0.7.0 is not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0 is cut only after the project owner has test-driven `main`.
+  - v0.7.0 and v0.8.0 are "given to milestone sections".
+- 288-291: Gate 3 status.
+  - None of the 11 items is on Gate 3's frozen list.
+  - The gate stands at 87 of 90 cleared, the same as at the v0.6.15 tag.
+  - Three entries are open: `PL-SP6H`, which this gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
+- 293-294: Claim: no code, equation, model parameter or stored value changed, and no run can differ.
+- 296-297: Table header: Tree | v0.6.15 tag | This cut | What moved.
+- 298: `src/`, `fc47153` → `a66313e`: comments and docstrings in two `app/` files.
+- 299: `src/anesthesia_sim/core/`, `8186a8c` → `8186a8c`: nothing.
+- 300: `src/anesthesia_sim/data/`, `c3fbdbc` → `c3fbdbc`: nothing.
+- 301: `tests/reference/`, `545a009` → `545a009`: nothing.
+- 302: `docs/MODEL.md`, `e3f95ff` → `6bb0708`: the plain-English rewrite.
+- 303: `README.md`, `c5e9784` → `6644ce2`: the copy edit.
+- 304: `.github/`, `fefd203` → `fefd203`: nothing.
+- 306-308: How the no-change claim was checked.
+  - `tools/ast_identity.py` finds no code moved in `app/chart_frame.py` or `app/unconditional_set.py`.
+  - `core/` and `data/` are the same trees, so the trajectories were not re-measured.
+- 310-315: The copy editor fix (`PL-HGZS`, `#2038`).
+  - It used to ask whether each sentence was clear and each fact present, so it kept text the reader did not need and sometimes lengthened it.
+  - Its instructions now cut a repeated fact, words a fact does not need, and a fact meant for another reader.
+  - A blind judge preferred the edited text for 6 of 7 sections the instructions were not tuned on.
+  - `PL-HGZS` was a live generator and is now spent.
+- 317-323: `docs/MODEL.md` in plain English (`#2040`, `#2042`).
+  - These pull requests rewrote, for a clinician reader, the rest of the interface sections (§ "Minimum displayed outputs" to § "Interface boundary") and § "How this document is held to the tree".
+  - The history behind each value moved to the items.
+  - Two stale statements were corrected: the agreement between a branch and its trunk (`PL-4VJG`), and the clause a gate-count check applies (`PL-6VBY`).
+- 325-327: The README (`PL-4LWM`, `PL-8BLJ`, `#2041`).
+  - It was copy edited with the fixed copy editor.
+  - Its pre-release warning no longer uses headings that GitHub's outline put ahead of the project name.
+- 329-332: The rule on model limitations (`PL-BS6N`, `#2031`).
+  - The writing rule now says to state a model limitation only where it could change what a clinician concludes from a displayed value.
+  - `#2031` merged inside the v0.6.15 tag's span, and v0.6.15's notes point to it here.
+- 334-339: What the release closes, and release mechanics.
+  - It finishes two features, `reader-first-prose` and `repo-copy-edit`.
+  - It closes one generator head, `PL-HGZS`, now spent.
+  - The release item is `PL-80PZ`, whose `resource: release-train` keeps it out of every later release.
+  - `bin/docket release` again reported the missed apparatus-inflow prediction for 2026-10-26 to 2026-11-01: one P1 apparatus filing outside the generator tier.
+  - `PL-7LMM` already records that week's miss.
+- 341-343: Merges after the cut.
+  - As before, anything that merges on `main` after this cut is written, and before its pull request lands, ships inside the v0.6.16 tag.
+  - It is described in the next release, and v0.6.16's notes get a pointer to it at that release's cut.

@@ -1,0 +1,336 @@
+[1] keep
+
+Structure:
+- **The freeze-day triage is told twice.** 2242-2244 says "The 2026-09-06 triage pass classed the eleven captures that were not this session's own, and eight of them are debt. Those eight are the sixth group below." 2472-2473 says "The 2026-09-06 triage pass classified the eleven captures that were still untriaged when this list was frozen earlier that day. Eight of them are debt." The reason they rejoin is also told twice: 2235-2238 ("Each of these items was captured *before* this freeze … re-enters this gate rather than waiting for Gate 2") and 2474-2476 ("Each of the eight describes a problem that already existed at the freeze … rather than waiting for Gate 2").
+  - Where it belongs: the group introduction at 2472-2479, next to the eight entries. Move the sentence on the three P1 findings (2244-2248) there too.
+  - What 2231-2252 keeps: one sentence saying that an item still untriaged at the freeze joins the list, with its date and reason, if triage classes it as debt.
+  - The reader can do without the four captures that are not debt (2248-2252). They belong in the record of the 2026-09-06 triage, and the text names no such record.
+- **"Clears before implementation begins" is said five times.** "None of them is inside this milestone's Required scope, so all eight clear before implementation begins" (2476-2477) appears again at 2500-2502, 2512-2514, 2565-2566 and 2620-2621. Say it once in 2220-2229: every entry added after the freeze clears before implementation begins, unless Required scope names it, as it names the four at 2520-2524. The five group introductions then keep nothing.
+- **The move of `PL-2FM6` and `PL-8LXM` is told twice.** 2272-2279 says they "are under § … They have also left `Required scope` … 'Required scope below drops to sixteen items'". 2301-2304 says "Required scope below drops to sixteen items … `PL-2FM6` and `PL-8LXM` moved between groups rather than joining the gate." The fact belongs in the note under the first group (2289-2304). 2272-2279 keeps nothing, and its history goes to `PL-C4RS`.
+- **"0.32 MAC" appears twice:** at 2294 ("0.65 pp, **0.32 MAC**") and at 2312-2313 ("`PL-4RBD`'s 0.32 MAC only fell to 0.26 MAC").
+  - The measurements belong in the items `PL-4RBD` and `PL-GS3R`.
+  - The note at 2289 keeps one sentence: `PL-2FM6` came forward because `PL-4RBD`, now P1 `safety`, cannot close until the chart is drawn from the closed-form sampler.
+  - The `PL-GS3R` entry keeps its one-line title.
+- **The gate total appears twice:** "the gate total stays at 132" (2351-2352) and "the gate stands at 132 entries, 44 cleared" (2377-2378). The headings and the timeline row already give the size (2213-2214), and 2215-2217 says this section records no closed count. Cut both. A query below covers the contradiction.
+- **One rule has five names.** Safety and science items rejoin under a rule called:
+  - "the rule that admits a `safety` finding regardless of presence" (2315-2316);
+  - "the second of the two unconditional exceptions in 'The gate is a snapshot'" (2494-2495, 2511-2512, 2619-2620);
+  - "the unconditional safety/science exception" (headings at 2507 and 2614);
+  - "the `safety` test" (2496).
+  
+  State the rule once, where the reader first meets it, and use one name after that. Cut 2511-2512, "Two passages state this same rule: … step 4 of 'The cadence'", because it describes the document rather than the gate.
+- **Decision history is written for the history reader.** Each paragraph names the item that should hold its history:
+  - 2265-2285 goes to `PL-C4RS`. Keep nothing here, because the three entries already sit under the right headings.
+  - 2289-2304: the `PL-4RBD` measurement and the earlier cases of `PL-T691` and `PL-P1Z3` go to `PL-4RBD`. Keep the move and its one-line reason.
+  - 2339-2352 goes to `PL-YXXG`. Keep that `PL-YDKJ` waits for `PL-2FM6`, because `PL-2FM6` changes the inputs `PL-YDKJ` depends on.
+  - 2526-2536 goes to `PL-KTKP`. Keep that a check now flags any open safety or science item this list does not place.
+  - 2552-2594 goes to `PL-36R4` and `PL-QXSB`. Keep:
+    - the thirteen items admitted, split by lane;
+    - the twenty-nine workflow-only items that were declined;
+    - why `PL-QXSB` was admitted: v0.5.0's second chart doubles the interface cost it names;
+    - its three follow-up items.
+  - The tag at 2263, "(project owner, 2026-09-06)", stays whole beside "frozen whole rather than narrowed".
+- **Three list entries have grown into essays:** `PL-GS3R` (2311-2319), `PL-ZX12` (2320-2326) and `PL-C4PH` (2371-2378). Cut each to one line: title, the date it was added or dropped, its class, `needs-decision` where it applies, and for `PL-ZX12` its place in the order (after `PL-8LXM`, before `PL-49R8`). The reasons go to each item.
+- **Tool and file workings the reader cannot use.** These rows belong in `docs/maintainer.md` or the items:
+  - 2214-2218: `tools/doc_check.py` and `bin/docket wave`;
+  - 2255 and 2563-2565: `docket.toml` and `workflow_paths`;
+  - 2283-2285: `PL-HWW1`'s change to parsing;
+  - 2350-2351: "so no check has to work out that dependency";
+  - 2517-2518: `PL-VRMK`'s tiering in `bin/docket concurrent`;
+  - 2529-2535: `bin/docket wave`, `docket check` and `tools/doc_check.py`.
+  
+  The reader keeps what each one guarantees, such as "a check confirms that each heading's count matches its list". The comparison with Gate 0 (21 items) and v0.2.8 (38 items) at 2211-2213 is history the reader can do without.
+- **Entries name internal tools.** The workflow-lane entries (2405-2453) and several others name internal tools and functions (`docket next`, `doc_check`, `_number_closing`, `cmd_next`), so the reader cannot judge them from here. These entries copy the item titles, so the fix belongs in those titles.
+- **The list comes before its rules.** The list applies rules from § "The debt gate", which comes "below" (2209). The chapter uses "presence rule", "presence test", "the two unconditional exceptions", "What counts" and "The cadence" before stating any of them. Either place this section after § "The debt gate", or give each rule in one sentence where the reader first meets it (2231-2240).
+- **Two paragraphs separate a group from its list.** 2520-2536 stands between the 2026-09-07 group's introduction (2509-2518) and its list (2538-2548). Move 2520-2524 after the list, or to the Required scope section as a pointer. Move 2526-2536 to `PL-KTKP`.
+- **Late additions are filed two ways.** `PL-GS3R` and `PL-ZX12`, both added 2026-09-08, sit in the `v0.4.x` group, while every other late addition has a dated heading. Pick one scheme: either group entries by when they clear and tag each late entry with its date, or put every late entry under a dated heading.
+- **Seven paragraphs come before the first entry.** Four of them (2231-2285) are history. After the moves above, open with what the list holds, its three groups, and when each group clears.
+- **The section needs real subheadings.** It runs to 5931 words. Its groups are bold lines, not headings, yet 2273 and 2281 cite them with § as though they were sections. Make each a #### heading and keep its text:
+  - "Cleared by the `v0.4.x` track, ahead of this gate";
+  - "Cleared by v0.5.0 itself";
+  - the three "Cleared before v0.5.0 begins" lane groups.
+  
+  Put the five dated additions (2470-2621) under one heading, such as "Added after the freeze".
+- **"Group" means two things.** 2220 ("Three groups") counts by when items clear. 2244 ("the sixth group below") and 2528 ("the two groups above") count bold lines. Refer to each group by its heading.
+- **Headings that do not say what they hold:**
+  - "Debt gate: the frozen list" (2206) names neither the gate nor the milestone. It also calls the list frozen, though entries were added on 2026-09-06, -07, -08 and -10. The chapter implies this is Gate 1 (2237 "waiting for Gate 2", 2407, 2604) for v0.5.0 (2578, and the headings from 2328 on). Suggest "Gate 1: the v0.5.0 debt list, frozen 2026-09-06", and update the files that cite the old heading.
+  - "Cleared before v0.5.0 begins, reaching both halves" (2455) uses "reaching" in a private sense. Suggest "Cleared before v0.5.0 begins, both lanes".
+  - "Added … under the presence rule" (2470, 2550) names a rule the reader has not been given. It can stay once the rule is stated earlier.
+- **Query:** the chapter uses the presence rule, the two unconditional exceptions and the exception for a late finding (2570-2571) throughout, but never says what they are. The reader needs them.
+- **Query:** the chapter never says what the product lane and the workflow lane cover. It says only "the two lanes that `docket.toml` declares" (2255).
+- **Query:** Required scope "drops to sixteen items" (2275, 2302) but "stays at eighteen items" (2351), and both are dated 2026-09-08. Which is current?
+- **Query:** the bold opening at 2289 says "and one added", but 2302-2303 says the total "rises by two, for `PL-ZX12` and `PL-GS3R`", and both entries are marked "added 2026-09-08".
+- **Query:** the counts disagree.
+  - The gate total is given as 132 (2352, 2377), although 2302 says it rose by two that same day.
+  - The headings in rows 2287-2612 add up to 151 entries (7+8+39+49+9+8+2+11+17), and the heading at 2614 announces one more.
+  - "44 cleared" (2378) breaks the rule at 2215-2217 against recording closed counts.
+- **Query:** 2344 says "`PL-2FM6` is in this group" (Cleared by v0.5.0 itself), but `PL-2FM6` is listed under the `v0.4.x` group (2309).
+- **Query:** 2340-2341 says "It was in the product lane above", but the product-lane heading is below, at 2354.
+- **Query:** `PL-T691` is described as a restructure still to come that the product half must be ordered against (2258-2260), and it is listed under "Cleared by v0.5.0 itself" (2330). But 2300 says `PL-T691` and `PL-P1Z3` "had already shipped in v0.4.8".
+- **Query:** 2245-2247 pairs `PL-NBWP`, `PL-NBCJ` and `PL-B1WW`, in that order, with "the step size, the control resolution of the playback burst, and the oracle". Their entries say `PL-NBWP` concerns the burst (2481) and `PL-NBCJ` the step size (2482).
+- **Query:** 2531-2532 says the list "contained none" of the project's open P1 items on 2026-09-07. But 2244-2245 and 2493 put five safety or science items on it on 2026-09-06 (`PL-NBWP`, `PL-NBCJ`, `PL-B1WW`, `PL-X35V`, `PL-ZVS7`). The claim holds only if all five had closed by then, and the text does not say they had.
+
+Outline:
+- 2206: heading "Debt gate: the frozen list".
+- 2208-2218: what the list holds and how it is counted.
+  - Frozen 2026-09-06, the day the milestone was scoped. Holds every open item that is debt by § "The debt gate".
+  - Debt means classed `defect`, `safety`, `science`, `refactor` or `perf`, or at `needs-decision`.
+  - The largest gate the project has held: Gate 0 held 21 items and v0.2.8's frozen scope held 38.
+  - The group headings and the timeline row naming this release state the size, and `tools/doc_check.py` checks those numbers against the list.
+  - The section records no closed count, for the reason the v0.4.0 section gives: a written count goes stale when an item closes.
+  - `bin/docket wave` reads the entries against `docs/items/` and reports the split.
+- 2220-2229: three groups, and only the third is a precondition.
+  - (1) The remaining `v0.4.x` track work. "The timeline" places it ahead of this gate, and it ships as a patch, not inside the milestone. This is not an exception to "A gate does not get a version", because these items were already placed on an earlier step at the freeze.
+  - (2) Debt inside the milestone's Required scope, which the milestone clears itself, per "Debt inside the milestone's own scope".
+  - (3) Everything else, cleared before implementation of this milestone begins.
+- 2231-2240: fifteen items were untriaged at the freeze, so the list could not decide them.
+  - An untriaged item has no `classes`, so nothing can say whether it is debt.
+  - This is a hole, not an exemption, and "The gate is a snapshot" closes it.
+  - Each was captured before the freeze, so its problem was present at the freeze.
+  - Any that triage classes as debt re-enters this gate, not Gate 2.
+  - It is added with its date and reason, as with v0.4.0's three post-freeze notes.
+- 2242-2252: the hole closed and cost eight entries.
+  - The 2026-09-06 triage classed the eleven captures that were not this session's own, and eight are debt (the "sixth group below").
+  - Three are P1 `safety` or `science`: `PL-NBWP`, `PL-NBCJ` and `PL-B1WW`, concerning the step size, the control resolution of the playback burst, and the reference gate's oracle. These are the kind of finding the rule exists to catch.
+  - The session's own four captures: `PL-QYPX` and `PL-3P2P` closed with the change that scoped the milestone; `PL-D9GM` is `planning`; `PL-M26Q` is `infra` (an unbuilt tooling capability, not debt per "What counts"). None of the four adds to the list.
+- 2254-2263: how the third group is worked.
+  - It splits almost evenly between the two lanes that `docket.toml` declares. The halves share no files, so two sessions work them at the same time, which is what the lane split was built for.
+  - The product half is ordered against the milestone's own work: much of it names `app/controller.py`, `core/` and `docs/MODEL.md`, which `PL-T691` restructures.
+  - Clearing it after that restructure would mean diagnosing each item again against moved code. This is the cost "The debt gate" names, and the reason the list was frozen whole rather than narrowed (project owner, 2026-09-06).
+- 2265-2270: reconciled 2026-09-19 (`PL-C4RS`). Three entries sat under headings that contradicted the milestone's scope. § "Debt inside the milestone's own scope" makes `Required scope` the test. All three now agree with `Required scope`, and each placement is stated.
+- 2272-2279: `PL-2FM6` and `PL-8LXM` placement.
+  - `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation path) are under § "Cleared by the `v0.4.x` track, ahead of this gate" and have left `Required scope`.
+  - The note under that heading recorded this on 2026-09-08 ("Required scope below drops to sixteen items"), but the entries were not removed, so the two disagreed until now.
+  - Prose under `Required scope` records what v0.5.0 required of them and that the patch track shipped it. That prose does not place an item in scope.
+- 2280-2285: `PL-GVXP` placement.
+  - `PL-GVXP` (separate the six chart traces by more than colour) is under § "Cleared before v0.5.0 begins, the product lane" and is not in `Required scope`.
+  - It was never an entry there, only cited in the prose of the `PL-8PSW` entry.
+  - On 2026-09-19 `PL-HWW1` made a declaration, not a mention, the record of membership, so the disagreement ended by a parsing change, not an edit.
+- 2287: heading "Cleared by the `v0.4.x` track, ahead of this gate — 7 entries".
+- 2289-2304: two moved here from "Cleared by v0.5.0 itself" on 2026-09-08, and "one added" (project owner). The reason is a measurement.
+  - `PL-4RBD` was re-measured against the shipped time bases. Its `P2` banding rested on a 0.04 pp figure from a chart window removed four releases ago.
+  - At the 12 h base, the MAC-bearing alveolar trace departed from the run by 0.65 pp (0.32 MAC), and nothing on the chart said the shape between points was inferred.
+  - `PL-4RBD` is now `P1` `safety`. Its fix pins only the kink. The rest is curvature drawn as a chord across a 4 096-sample bucket, which no selection of recorded extremes can represent.
+  - So the sampler had to come first, and `PL-2FM6` came forward with it.
+  - `PL-T691` and `PL-P1Z3` had already shipped in v0.4.8 under the same group heading, so the move continues that pattern.
+  - Required scope drops to sixteen. The gate total rises by two, for `PL-ZX12` and `PL-GS3R`. `PL-2FM6` and `PL-8LXM` moved between groups and did not join the gate.
+- 2306: `PL-9SH6` (M): one accessor name for the partial-pressure-equivalent fraction across every compartment in core/.
+- 2307: `PL-X2XX` (M): doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing checks the queue's or the code's citations.
+- 2308: `PL-VZL0` (S): cite MODEL.md from every core/ function that implements a governing equation; restate the solved form the spec lacks.
+- 2309: `PL-2FM6` (M): delete RunHistory; draw the chart from the closed-form sampler instead of recorded samples.
+- 2310: `PL-8LXM` (M): delete chart_downsampling.py, its tests, the M4 paper and every citation of them.
+- 2311-2319: `PL-GS3R` (M), added 2026-09-08, `safety`.
+  - The chart's worst error moved from the control change to the steep early wash-in. `PL-4RBD`'s 0.32 MAC fell only to 0.26 MAC, because uniform columns chord across the old bucket width.
+  - Measured after `PL-2FM6` landed, so captured well after the freeze. It re-enters under the rule that admits a `safety` finding regardless of presence; the problem is older than the freeze, since the same chord error was in `PL-4RBD`'s re-banding number.
+  - `needs-decision`: three routes trade resolution against the frame budget, and the choice is the project owner's.
+- 2320-2326: `PL-ZX12` (S), added 2026-09-08.
+  - Rename RunScore to RunDefinition, because 'score' is a metaphor a domain reader must be taught.
+  - Captured after the freeze. It re-enters, not Gate 2, because the problem predates the freeze (the module landed in v0.4.8).
+  - Sequenced after `PL-8LXM` (its citation sweep opens the same documents) and before `PL-49R8` (whose rule file would otherwise carry the retired term).
+- 2328: heading "Cleared by v0.5.0 itself — 8 entries".
+- 2330: `PL-T691` (L): the run is its control-input timeline; keyframes at every event; any window answered in closed form.
+- 2331: `PL-P1Z3` (M): state the canonical evaluation rule that carries determinism once the step is no longer fixed, and gate it.
+- 2332: `PL-Y5WR` (M): the 30-day scenario cap is enforced nowhere as an explicit halt; dropping PL-011 removes the only item that required it.
+- 2333: `PL-1PSX` (M): the control-input timeline is unbounded and regrouped in full on every frame.
+- 2334: `PL-B9PY` (M): decompose SimulationView so two runs can be rendered at once.
+- 2335: `PL-RD3B` (M): app/controller.py holds the trace vocabulary and the drawn window as well as the UI-to-core boundary, and these are separable.
+- 2336: `PL-TCD1` (M): SimulationSnapshot names six flat compartment floats, so the readouts cannot show a second substance, though the recorded run can.
+- 2337: `PL-YDKJ` (S): decide whether the chart keeps patching one control per plotted point.
+- 2339-2352: why `PL-YDKJ` is here.
+  - It is here as a consequence of `PL-2FM6`, not as a nineteenth Required-scope entry (moved 2026-09-08, `PL-YXXG`). It was in the product lane "above", which asked for the decision before v0.5.0 begins.
+  - `PL-2FM6`'s brief says to decide after it lands, because the point-movement rate is the main input and `PL-2FM6` changes it. The note says `PL-2FM6` "is in this group".
+  - A sizing question: its closing note reduces it to two inputs, `2 * P^2 * T / window_seconds` drawn points and how often they change, and `PL-2FM6` replaces both.
+  - Its trigger ("answer it only when a scale, a trace count or a render cadence is actually blocked by the ceiling") is unmet.
+  - It now carries `blocked-by: PL-2FM6`. Required scope stays at eighteen, and the gate total stays at 132.
+- 2354: heading "Cleared before v0.5.0 begins, the product lane — 39 entries".
+- 2356: `PL-6Q8N` (M): the reference adult's eleven physiologic parameters have no primary source.
+- 2357: `PL-HB58` (M): validate washout against the same published cohorts the wash-in gate uses.
+- 2358: `PL-4GN8` (S): the mass-balance release gate's absolute tolerance tracks whichever dial its test runs at.
+- 2359: `PL-GYH2` (S): bound or document the two gas volumes, which no supported range covers.
+- 2360: `PL-L2F2` (S): the fixed-volume alveolus blocks nitrous oxide, not just omits it.
+- 2361: `PL-BLHV` (M): record the intended-use statement and the IEC 62304 safety classification in docs/MODEL.md.
+- 2362: `PL-FDBK` (M): docs/MODEL.md has no hazard table; every mitigation is argued forward and none is checked backward.
+- 2363: `PL-KGNF` (M): docs/MODEL.md still names sevoflurane in section headings and Purpose, four releases after three agents shipped.
+- 2364: `PL-WVSK` (M): nothing tells a concentration fraction from a percent at the type level; two boundaries convert implicitly.
+- 2365: `PL-0NQ1` (S): the reference patient's cited sources disagree on vessel-rich perfusion.
+- 2366: `PL-11YF` (S): MODEL.md says the readouts sit in one row without saying above what width.
+- 2367: `PL-3355` (S): the 'Simulated time' and compartment readouts wrap onto a second line at some window widths.
+- 2368: `PL-4RBD` (S): the drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one.
+- 2369: `PL-8PZ1` (S): MODEL.md's release gate is still headed 'Version v0.1.0 is complete only when', but entries are added for v0.3.0.
+- 2370: `PL-B32L` (S): core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its docstring promises.
+- 2371-2378: `PL-C4PH` (S), dropped 2026-09-08 (project owner).
+  - Its task: record the history sampling cadence as a decision separate from the integration step.
+  - Superseded by `PL-2FM6`, which deletes the store that has a cadence; afterwards `SIMULATION_STEP_S` plays one role.
+  - Its durable half, the owner's 2026-09-05 chart-faithful-only decision (recorded nowhere else), moved to `PL-2FM6`'s **Done when**, where a `verify:` grep checks it.
+  - Counts as cleared: the gate stands at 132 entries, 44 cleared. `PL-4RBD` is deliberately not dropped.
+- 2379: `PL-DXQC` (S): the v0.4.0 Goal states two now-fixed problems in the present tense.
+- 2380: `PL-F5GN` (S): the oracle's independence check walks only ImportFrom, so a plain import bypasses it.
+- 2381: `PL-GVXP` (S): separate the six chart traces by more than colour, and meet contrast minima.
+- 2382: `PL-GZP6` (S): two of docs/MODEL.md's required tests are not implemented.
+- 2383: `PL-LKCN` (S): pin PL-010's no-rebuild property with an allocation test on the render tick.
+- 2384: `PL-Q4M4` (S): the simulated-time clock reads in seconds, while the chart's time axis reads in hours and minutes.
+- 2385: `PL-Q4VH` (S): the compartment chart labels its percent axis at a different interval from its gridlines.
+- 2386: `PL-X204` (S): require_valid_agent_accounting() reads nothing from self, so it will judge a result from another accounting period.
+- 2387: `PL-YK2V` (S): _apply_setting catches a narrower exception class than the timer paths, so an unexpected raise escapes into Flet's dispatch.
+- 2388: `PL-16ZC` (M): the two clinical references and the control marks have no show/hide control, though the traces do.
+- 2389: `PL-F0L8` (M): establish what accessibility Flet's rendering backend can deliver.
+- 2390: `PL-WZVZ` (M): make an inter-machine difference attributable: which parameter differs, and its effect on the result.
+- 2391: `PL-0SHZ` (S): README's bare-interpreter paragraph names two ruff.toml pins; there are now three, with .claude/hooks/.
+- 2392: `PL-4MHK` (S): pyproject.toml's metadata does not describe the project: a vague description and no classifiers.
+- 2393: `PL-6194` (S): 46 redundant parentheses around bare keyword-argument values across src/, from the initial build.
+- 2394: `PL-79YX` (S): six exact float-equality branch guards in core/ are correct but nowhere explained.
+- 2395: `PL-BTSW` (S): README.md was edited 2026-09-05 despite the freeze, and the edit left an unwrapped line.
+- 2396: `PL-KCWD` (S): APP_VERSION falls back to 'unknown' in the one line that ties a displayed value to its model.
+- 2397: `PL-LL9Y` (S): check the warning and alert colours against the medical alarm-colour convention.
+- 2398: `PL-QM5P` (S): README still says doc_check candidates prints lines mentioning anything the diff touched; PL-B2NS narrowed it to code mentions.
+- 2399: `PL-TCW5` (S): FLOW_FRACTION_TOLERANCE is defined twice, so the two perfusion-sum guards can drift apart.
+- 2400: `PL-TG60` (S): stop printing six decimals of an exhaust integral that is good to three.
+- 2401: `PL-YTX9` (S): decide whether a hidden compartment trace keeps its legend entry.
+- 2403: heading "Cleared before v0.5.0 begins, the workflow lane — 49 entries".
+- 2405: `PL-7QKY` (M): the working-notes discovery instruction is circular; a session must read the whole file to learn whether its task touches a thread.
+- 2406: `PL-8M8H` (M): docket branch tells a session whose pull request merged to merge the base in, not restart, so the push that loses work looks correct.
+- 2407: `PL-NBCS` (M): docket next reads an exclusion inside a Required scope bullet as membership, so PL-B9PY ranks in scope for v0.4.0 though ROADMAP sends it to Gate 1.
+- 2408: `PL-PGZK` (M): docket concurrent is dominated by docs/MODEL.md, so it rules out almost everything and cannot tell real contention from nominal.
+- 2409: `PL-XLQ5` (M): the orphaned report asks whether the base ever held the branch's exact blob, so a path superseded on either side reads as work left behind.
+- 2410: `PL-20CQ` (S): docket check runs every open item's verify:, so a verify: that invokes docket check recurses without bound.
+- 2411: `PL-39B7` (S): docket stranded should tell a merged-and-deleted branch from an abandoned one, and say when its main is stale.
+- 2412: `PL-4WQS` (S): the docket summary and digest label 'open' a count that excludes untriaged items, understating the queue by the number beside it.
+- 2413: `PL-CW14` (S): the top-band advisory tells a session to demote work that docket check pins to P1.
+- 2414: `PL-D188` (S): a brief written into an untriaged item is appended below docket new's template, so the stub survives to triage.
+- 2415: `PL-F4JS` (S): bin/docket triage omits the **Decision needed.** requirement, so triaging to needs-decision fails check.
+- 2416: `PL-GBBZ` (S): clear the four undeclared prose prerequisites the new advisory names.
+- 2417: `PL-GJDW` (S): contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong.
+- 2418: `PL-HKF4` (S): doc_check's tag advisory prints `<merge commit>`, a shell redirection, so pasting it fails with "no such file or directory: merge".
+- 2419: `PL-JBZK` (S): docket.toml's workflow_paths names three tools tests by path, so the other seven and every new one fall on the product side.
+- 2420: `PL-JL2M` (S): docket new seeds a template that a later brief appends to, leaving empty required headings that block triage.
+- 2421: `PL-JSRH` (S): a closed item's closed: and milestone: are records, and nothing stops a branch rewriting either.
+- 2422: `PL-K2C8` (S): the stranded-branch recovery deletes only the local remote-tracking ref, which the next non-prune fetch restores.
+- 2423: `PL-KBD0` (S): a blocked-by edge without status blocked is invisible to the ranking.
+- 2424: `PL-KD98` (S): bin/docket wave reports 'implement' for a milestone whose Required scope is complete, because it reads only the frozen gate list.
+- 2425: `PL-MGF9` (S): the process-work grooming advisory examines only the top band, so it cannot fire for P2 and P3, where the process work sits.
+- 2426: `PL-N2X4` (S): check tools/contrast_check.py's line citations against the file, or drop them.
+- 2427: `PL-NB4D` (S): docket verify reports "1 commit(s)" when the checked work is entirely uncommitted.
+- 2428: `PL-S5LB` (S): _number_closing walks git log without rename detection, so a renamed closed item recovers the renaming commit's pull request.
+- 2429: `PL-WGXJ` (S): apparatus-standard.md exempts the apparatus from the expert-review standard, so the largest part of the tree has no review bar.
+- 2430: `PL-YDL6` (S): an item whose work and whose status done landed in different pull requests recovers the later number.
+- 2431: `PL-YNCW` (S): docket new --touches before the title swallows it (nargs='*' is greedy), and the error names the title.
+- 2432: `PL-7790` (M): a session that starts by pushing only queue-file edits stakes no claim docket next can see.
+- 2433: `PL-B73C` (M): decide whether docket flight and the digest name unlanded refs with no item id.
+- 2434: `PL-VV4D` (M): decide whether the left-behind check compares against refs/pull/<n>/head (exact, but GitHub-specific).
+- 2435: `PL-01CK` (S): the in-flight content test walks the default branch's history once per blob a candidate branch adds.
+- 2436: `PL-3833` (S): an item file's name can drift from its title unchecked, leaving a stale slug.
+- 2437: `PL-BZCM` (S): docket status shows no plan placement, so the feature survey cannot say which work the current step includes.
+- 2438: `PL-GNN1` (S): the contrast checker cannot express a requirement met by either of two channels.
+- 2439: `PL-GVNS` (S): workflow_paths lists docs/worker.md but not docs/maintainer.md, so an apparatus item recorded there ranks in the product lane.
+- 2440: `PL-H1JD` (S): an outstanding needs_action is lost when its session is archived, so it drops out of the closing-block read.
+- 2441: `PL-J7C5` (S): cite symbols, not line numbers, in the contrast table's reasons.
+- 2442: `PL-JQVB` (S): CLAUDE.md's four dispositions for a new rule list no carrier for a paste-able brief or agent definition, and measure_resident cannot see a skill's resident cost.
+- 2443: `PL-KJ63` (S): doc_check reads any double-quoted phrase as a section citation, so quoting a measured figure hard-fails.
+- 2444: `PL-MHQK` (S): the contrast checker prints its known-shortfall detail on every run, unlike the narrowed verify advisory.
+- 2445: `PL-PMT7` (S): memoize branches_in_flight so cmd_next and cmd_digest stop computing _flight twice per invocation.
+- 2446: `PL-R6D8` (S): git log --source does not attribute a shared commit to the ref named first, though _unmerged_commits' docstring says it does.
+- 2447: `PL-S2L4` (S): bin/docket delegable offers items that docs/worker.md forbids a worker to touch.
+- 2448: `PL-V4LS` (S): docket check recovers a merged pull request number, then asks a human to transcribe it.
+- 2449: `PL-VFVW` (S): docket feature draws a dropped item with an open checkbox, so the box count disagrees with 'N left'.
+- 2450: `PL-VP40` (S): docket verify reads per-commit patches, so a line added and then removed still reads as added.
+- 2451: `PL-W1LN` (S): the in-flight walk guard misses a false positive whose walk ends at a commit the base reaches by another path.
+- 2452: `PL-WTQ1` (S): doc_check's math-rendering check reads a regex in a verify: command as LaTeX and hard-fails.
+- 2453: `PL-Z0G0` (S): doc_check candidates attributes a hit to the alphabetically first matching term, so a render.py match prints as (render).
+- 2455: heading "Cleared before v0.5.0 begins, reaching both halves — 9 entries".
+- 2457-2458: neither lane can complete these items alone, so each needs a session that works across both lanes.
+- 2460: `PL-1JDD` (M): make the source tier machine-readable so doc_check can decide it.
+- 2461: `PL-028F` (M): work landing between a release cut and its merge is inside the tag's span but missing from the release notes; nothing reconciles the two.
+- 2462: `PL-7J96` (M): make the interface renderable in a check, so a presentation change can be looked at.
+- 2463: `PL-8XPQ` (M): nothing checks that interface strings use glyphs the Flutter client can draw.
+- 2464: `PL-3MJH` (S): CLAUDE.md's capture rule exempts a same-session fix but gives no way to enter the exemption, so every trivial fix becomes an item.
+- 2465: `PL-4YY1` (S): record provenance for the circuit volume and the default fresh gas flow.
+- 2466: `PL-K2YF` (S): ROADMAP.md's release narrative skips v0.2.6; the one-paragraph-per-release convention was missed once.
+- 2467: `PL-GLBF` (S): ROADMAP.md's subset counts (not-delegable, entries reaching into src/) are maintained by hand and unchecked.
+- 2468: `PL-W8DQ` (S): the four slider active tracks use ACCENT and miss the non-text minimum.
+- 2470: heading "Added 2026-09-06 under the presence rule — 8 entries".
+- 2472-2479: the eight entries added on the freeze day.
+  - The 2026-09-06 triage classified the eleven captures untriaged at the freeze earlier that day, and eight are debt.
+  - Each describes a problem that existed at the freeze but could not be decided then, so they re-enter under § "The gate is a snapshot", not Gate 2.
+  - None is in Required scope, so all eight clear before implementation.
+  - Five are in the product lane or both lanes, three in the workflow lane.
+- 2481: `PL-NBWP` (M): app/playback.py says faster playback is 'never a modelling one', but the uninterruptible tick burst makes control resolution multiplier × 0.1 s, which is 30 s at 300x.
+- 2482: `PL-NBCJ` (S): decide whether MAXIMUM_SIMULATION_STEP_S moves to 0.05 s, so an abrupt manoeuvre's timing stays within one parameter SD.
+- 2483: `PL-74R0` (M): core/ still holds four compartment-level advance methods the coupled step no longer calls.
+- 2484: `PL-R460` (M): the exact step costs 27 us against the split's 18 us per step at held settings, and 1.2 ms on every settings change.
+- 2485: `PL-5TRV` (M): bin/docket stranded calls an open pull request's branch merged-and-abandoned when another PR wrote the same pr: lines, and its recovery would discard the branch.
+- 2486: `PL-B1WW` (S): the reference gate's oracle step is not converged during a transient, so 86-99.8 percent of the error it reports is the oracle's own RK4 truncation.
+- 2487: `PL-RC0M` (S): a blocked item's verify: command is never replayed, so it can rot and redden the pull request that unblocks it.
+- 2488: `PL-1KTV` (S): docket.toml counts .github as the workflow lane but apparatus-standard.md does not, so 500 lines of workflow comments fall under the simulator's standard.
+- 2490: heading "Added 2026-09-06 after `PL-NBWP` closed — 2 entries".
+- 2492-2502: the two captures `PL-NBWP`'s session left.
+  - Triaged 2026-09-06 after `PL-NBWP` merged. Both are `safety`, so they re-enter under the second unconditional exception in "The gate is a snapshot", not the presence rule.
+  - The presence test gives each a different result, and the safety test does not.
+  - `PL-X35V`'s deficiency predates the freeze: the interface never stated what a playback rate costs in control resolution, and `PL-NBWP` only made that cost nameable.
+  - `PL-ZVS7`'s subject is new: `PL-NBWP` wrote the table it pins.
+  - Neither is in Required scope, so both clear before implementation.
+- 2504: `PL-X35V` (M): the playback-rate control does not state the control resolution each rung costs, so the PL-NBWP disclosure reaches only a reader with docs/MODEL.md open.
+- 2505: `PL-ZVS7` (M): MODEL.md's control-resolution tolerance table is a measured safety claim with no regression test. Re-measuring it on 2026-09-06 reproduced it, but nothing would catch a drift.
+- 2507: heading "Added 2026-09-07 under the unconditional safety/science exception — 11 entries".
+- 2509-2518: the eleven added on 2026-09-07.
+  - Eleven `safety` or `science` items were filed between the 2026-09-06 freeze and 2026-09-07, and belong here whatever the presence test says.
+  - Two passages state this rule: the second unconditional exception in "The gate is a snapshot", and step 4 of "The cadence".
+  - None is in Required scope, so all clear before implementation. Nine are in the product lane, two in both.
+  - Nine are `science`, and eight of those declare `docs/MODEL.md`, so they are ordered against one another. Under `PL-VRMK`'s tiering in `bin/docket concurrent`, a shared file means sequence, not contention.
+- 2520-2524: four more `safety`/`science` items from the same window are not here. `PL-1XPX`, `PL-CTD7`, `PL-W7H9` and `PL-Z3W6` are in Required scope and clear with the milestone, the distinction the "Cleared by v0.5.0 itself" group draws.
+- 2526-2536: why none of the eleven was recorded for two days (`PL-KTKP`).
+  - The procedure existed and had run twice on the freeze day, but nothing reconciled the queue's classes against this list.
+  - `bin/docket wave` reported 84 open of 121. That was arithmetically right, but it left out every open P1, because `docket check` pins `safety` and `science` to the top band and the list contained none of them.
+  - `tools/doc_check.py` now raises an advisory naming any open `safety`/`science` item this section does not place. Which of the three dispositions such an item takes is still a reader's judgment.
+- 2538: `PL-CXYT` (S): docs/MODEL.md does not say whether fresh gas flow includes the vaporizer's added vapor.
+- 2539: `PL-WT07` (S): MODEL.md says the ventilator start binds the per-rate displacement table 'throughout', but at 300x it leads the unperfused load by only 3% (10.36 vs 10.03 pp).
+- 2540: `PL-5K5C` (M): record the model's sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial.
+- 2541: `PL-7HDS` (M): read Lowe and Ernst 1981, the source the Gas Man Workbook names for its volume and flow values.
+- 2542: `PL-YKSM` (M): Lowe and Ernst's cardiac output is allometric (0.2 × M^0.75 = 4.84 L/min at 70 kg), not the stored fixed 5.0, and no equation reads weight_kg.
+- 2543: `PL-ZP7Z` (M): the Workbook attributes the volatile partition coefficients to Yasuda's Anesthesiology abstract and Abbott package-insert data, which the agent files do not say.
+- 2544: `PL-73G7` (M): explain desflurane's opposite-sign washout disagreement once rebreathing is removed.
+- 2545: `PL-W21J` (M): give the elimination comparison a test-only open-circuit driver, so washout is validated, not only measured.
+- 2546: `PL-8PS6` (M): the fresh gas flow range is a machine property held in supported_ranges.py, not a global constant.
+- 2547: `PL-XJ5P` (M): Citing-sources says there is always a route, but a pre-abstract subscription paper has none, and docs/references cannot hold one.
+- 2548: `PL-61WW` (M): during a run, the agent name in the selector loses contrast against the agent colour.
+- 2550: heading "Added 2026-09-08 under the presence rule — 17 entries".
+- 2552-2557: the 2026-09-08 audit (`PL-36R4`) applied the presence test to every open item outside both this list and Required scope. There were 42, all filed on or after the freeze day, none placed or declined before. "The gate is a snapshot" forbids leaving an item neither placed nor declined, so each needed a decision.
+- 2559-2566: thirteen admitted, with `docket.toml` as the boundary (project owner, 2026-09-08).
+  - Ten product-lane and three both-lane items come in. Twenty-nine wholly workflow-lane items are declined "below".
+  - The split is a recorded fact, not a judgment per item, using the same `workflow_paths` reading that separates two sessions, which makes it reviewable.
+  - None is in Required scope, so all thirteen clear before implementation.
+- 2568-2575: the fourteenth arrived after the audit and is admitted for its own reason (2026-09-08).
+  - `PL-QXSB` asks whether the interface stays on Flet. It qualifies for presence under "The gate is a snapshot"'s late-finding exception.
+  - The problem long predates the freeze (`PL-001`, `PL-010`, `PL-0VM7` and `PL-Q197` all tried to solve it); only the measurement ruling out routes inside Flet is new.
+  - It is product lane, so the reason for declining the 29 does not apply.
+- 2577-2583: why it is admitted, not merely qualified.
+  - v0.5.0 puts a second chart on screen for a branched run, and `PL-QXSB`'s cost is paid per on-screen control per frame.
+  - The milestone that doubles the interface should not begin without an answer.
+  - The answer may be "stay", which needs only a reply, not a migration.
+- 2585-2594: its three follow-up items come with it (2026-09-08).
+  - `PL-55DH` builds the throwaway PySide6 spike. `PL-X9T3` runs it on hardware the container lacks. `PL-JRS3` establishes what a port costs the two checks that read `theme.py`.
+  - Without `PL-JRS3`, those checks would pass on a tree they no longer describe, the failure `PL-20PT` had just fixed.
+  - The three are on the list for the same reason as `PL-QXSB`: a gate with the decision but not its evidence includes nothing.
+  - `PL-JRS3` could stop a port cheaply, which is worth as much as the two that would start one.
+- 2596: `PL-0Q1T` (S): the new-case dialog leads its carry-over list with circuit volume, the one entry a user cannot set and now the interface's only mention of it.
+- 2597: `PL-3PRZ` (M): the agent-accounting guard catches an absurdly small alveolar volume at 1e-9 L but not by 1e-300 L, where the run returns a concentration of exactly zero with accounting passing.
+- 2598: `PL-8GV5` (M): decide whether to model anaesthesia's effect on cardiac output and regional perfusion, now held fixed.
+- 2599: `PL-B9VL` (S): rename the wash-in validation module and its MODEL.md section, now that both cover elimination.
+- 2600: `PL-CZFY` (M): the elapsed-time readout states seconds, so at the newly declared 24-hour limit it reads '86400.0 s', seven characters plus tenths for a quantity read in hours.
+- 2601: `PL-F9TQ` (S): PL-6580 strips only the concentration chart; the wash-in panel's two paragraphs are the largest prose block on screen, and no item covers them.
+- 2602: `PL-L7JB` (S): docs/MODEL.md names MASS_BALANCE_ABSOLUTE_TOLERANCE and MASS_BALANCE_RELATIVE_TOLERANCE, but core/ calls them AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L and AGENT_ACCOUNTING_RELATIVE_TOLERANCE, so grepping the documented names finds nothing.
+- 2603: `PL-THXF` (S): the legend swatch is a solid bar for a dashed trace, so the legend's redundant channel is words only.
+- 2604: `PL-WSDY` (S): ROADMAP's current-baseline section hardcodes 'Gate 1 remains open at 92 of its 121 entries', which the gate section's convention forbids and which is now wrong twice over.
+- 2605: `PL-XF89` (S): README's opening says inhaled-anesthetic where the About field and pyproject say volatile; decide the scope word.
+- 2606: `PL-2CS8` (M): nothing carries roadmap item 24's prerequisite; display constants are scattered across theme.py, simulation_view.py and duplicated core/app defaults, with no item to consolidate them.
+- 2607: `PL-36R4` (M): forty-two presence-qualifying items had neither a gate placement nor a recorded deferral, the disposition the presence rule forbids.
+- 2608: `PL-NGF7` (M): tools/contrast_check.py can see no disabled-state colour, because none is a constant in theme.py.
+- 2609: `PL-QXSB` (M): decide whether the interface stays on Flet; every route inside it has been measured, and the remaining lever is fewer controls.
+- 2610: `PL-55DH` (M): build the PySide6 + pyqtgraph spike (the concentration chart and readout row behind the existing controller), disposable and touching no shipped app/ module.
+- 2611: `PL-X9T3` (S): run the Qt spike on the project owner's machine and record frame cost, input latency and look, the half no session here can measure.
+- 2612: `PL-JRS3` (S): establish what a Qt port costs the checks that read theme.py; contrast_check and agent_identity_check would pass silently on a tree they no longer describe.
+- 2614: heading "Added 2026-09-10 under the unconditional safety/science exception — 1 entry".
+- 2616-2621: `PL-LT51`.
+  - Filed 2026-09-10 out of `PL-8SDL`, which identified the four references Lowe and Ernst cite for the reference patient's organ volumes and blood flows.
+  - `science`-classed, so it re-enters whatever the presence test says, under the second unconditional exception in "The gate is a snapshot".
+  - Not in Required scope, so it clears before implementation.
+  - Its list entry falls after row 2621, so the next chapter should open with it.

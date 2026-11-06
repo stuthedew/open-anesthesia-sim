@@ -1,0 +1,205 @@
+[1] keep
+
+Structure:
+- **Repeat: the list of machinery.** 684-686 lists "the merge path, the release script, the queue's ranking, the session-start digest, the type-check and lint gates, and the instructions that a session reads before it does anything else". 955-958 gives the same list again, and 842 says "one of the six pieces of machinery the goal names". Keep the list in § "Goal". At 955-958, keep only "the machinery the goal names".
+- **Repeat: the simulator is untouched.** Five places say it: 686-687 "None of this work touches the simulator"; 700-701 "adds nothing to the simulator. It changes no equation, parameter, numerical method, unit or displayed value"; 981-982 "which this release does not touch"; 1035-1036 "No equation, parameter, numerical method, unit or displayed value has changed"; and 1065-1068 "Any simulator change at all". Keep one sentence in § "Goal" (686-687). Keep only "crosses no capability boundary" at 700-701. Keep the testable condition in § "Definition of done" (1035-1042) and the paths in § "Explicitly out of scope for v0.2.8" (1065-1068). At 981-982, keep only where those findings go.
+- **Repeat: what "new scope" means.** 937-938 says "new behavior, new capability, or another workflow idea raised while this release runs". 963-965 says "a new workflow capability, a better tool that nobody is blocked by, or an idea someone had". 1069-1070 says "new tools, better tools, or an idea this release made someone think of". Merge 937-938 into 963-965 as the one definition. The out-of-scope bullet keeps a pointer and the fact that the queue holds more process items, which wait for the next release (1070-1072). Cut 1072-1073 ("The scope test admits a defect in machinery that the goal already names"), which repeats 966-967 and 973-975.
+- **Repeat: the four entries added under the completion rule.** 985-988 lists PL-J295, PL-KWC1, PL-XCYB and PL-WFJ9. Each of those entries already says "Added after the freeze because it completes …" (757, 765, 876, 883). Cut 985-988. The entries keep the fact.
+- **Repeat: why PL-XCYB was added.** The entry at 875-879 ("completes PL-ZQ9C … the check as specified reports sound provenance as broken") and the paragraph at 990-997 ("fails loudly against correct data … Shipping PL-ZQ9C without PL-XCYB would close an entry that was known to be half-fixed") make the same point. The entry keeps the problem. How it was found goes to item PL-XCYB. The paragraph keeps nothing.
+- **Repeat: why PL-WFJ9 was added.** The entry at 880-885 ("the widened gate passes over the digest and `status` outputs … completes PL-020") and the paragraph at 999-1007 make the same point. The entry keeps it, and the paragraph keeps nothing.
+- **Repeat: why entries are `not-delegable`.** 926-934 gives every reason. 1030-1034 repeats one ("No command in this repository can verify either of them, which is why both are marked `not-delegable`"), and so does 844-846 ("marked `not-delegable` only because confirming it means ending a session"). The reasons belong in 926-934. § "Definition of done" keeps "confirmed in effect on a real pull request". The PL-1Q3S entry keeps nothing.
+- **Repeat: the closed and open count.** 727-730 ("`bin/docket wave` checks these entries against `docs/items/` and reports how many are closed") and 1026-1027 ("`bin/docket wave` reports the split against `docs/items/`") say the same thing. Keep it in § "Definition of done". Cut 727-731, which also points to "the reason given in the v0.4.0 section" and then gives that reason anyway.
+- **Repeat: where Gate 0 is recorded.** 724 says "Gate 0 is still recorded under v0.4.0 below" and 1062 says "which is recorded under v0.4.0 below". Keep 724. 1062 keeps only "Anything on Gate 0's frozen list".
+- **Repeat: the four flaws in one function.** 798-804 retells the closes of PL-CPSY and PL-MGNC, which their own entries give at 793-795 and 821-825. 811-815 retells PL-S1P1, PL-MGNC and PL-KWC1. "Six readers" appears at both 807 and 836. Each entry keeps its own problem and close. The story across entries goes to the items.
+- **Overlap: a needed change to a modelled value goes to Gate 0.** 981-982 and 1040-1042 both route such a change to Gate 0. Keep the rule at 981-982. 1040-1042 keeps only that such a change is not this release's work.
+- **Another reader's: why the list sits under "Debt gate".** 719-723 explains it: `bin/docket wave` reads that subsection, and the passage on the "beat" follows from it. That explains how a tool works and belongs in item PL-NSN9 or a comment in the tool. This reader keeps the rest of 715-725: the list is not a gate, the first group is debt, the second is new capability, and Gate 0 still binds v0.4.0.
+- **Another reader's: the documentation check enforces the counts.** At 734-735, "`tools/doc_check.py` enforces that those three statements match the entries" is a rule for writers and belongs in item PL-H8MQ. This reader keeps only that the group headings give the list's size.
+- **Another reader's, and in the wrong section: which counts the check verifies.** The note at 1044-1058 explains which counts the check verifies and why a check built on `touches:` would fail. It is reasoning about a tool, it serves a writer, and it says nothing about when the release is done. Move all of it to `PL-GLBF` and leave nothing here.
+- **Decision history.** 948-949 ("When the section was first written, this paragraph said the opposite, and it was wrong") and 967-971 ("This paragraph used to offer only two cases … On 2026-08-31, nine findings were triaged") record how the rules came about. That history belongs in an item, but neither decision tag, at 936 or 951, names one. See the queries.
+- **Decision history: PL-68XK.** 1009-1022 belongs in items PL-68XK and PL-T63T. Keep one sentence: PL-68XK predates the freeze, was left off the approved list on purpose, and was dropped when PL-T63T retired the `commit:` field. The PL-HDY6 entry relies on this paragraph (851-852), so that sentence must stay.
+- **List entries grown into essays (pattern 5).** Many entries carry admission reasoning, details of how the fix was built (`in_flight_ids`, `FlightReport`, the commit walk) and links to other entries: 755-761, 762-768, 769-777, 778-784, 796-807, 808-815, 816-825, 826-831, 832-837, 838-846, 847-855, 899-904, 905-910 and 911-917. For this reader, cut each entry to one line on the problem, plus how and when it was admitted and how it closed. The reasoning goes to each named item. The entries are also written for a developer: they use code and tool names this reader does not know, such as `render.py`, `[tool.mypy] files`, `warn_unused_ignores`, RUF100 and `docket flight`. The sentence edit should fix those.
+- **Rules that may belong in another section.** The membership rules at 936-983 read as rules for any frozen list. 945-947 calls them "the correct reading of" a general section. A reader deciding what a future release holds would look for them in "The gate is a snapshot, not a moving target" or "What counts". If they apply beyond v0.2.8, move them there and leave a pointer (see the queries).
+- **Order: the rules come after the list that uses them.** From 757 on, entries cite "the scope test" and "the rule beneath this list", but those rules come only after 38 entries (936-983). 985-988 sits apart from the completion rule (936-949) and says "The scope test is described below this rule", although the scope test (951-979) now sits above it. Use this order:
+  1. 707-713, the freeze;
+  2. 919-924, approved items that are not entries;
+  3. 936-943 merged with 951-979, the membership rules, then 981-983;
+  4. 715-725, what the two groups are;
+  5. the two groups;
+  6. 926-934, the `not-delegable` entries;
+  7. the one PL-68XK sentence.
+- **Planning tense in a completed release.** Several rows still speak to someone planning the work:
+  - 926-927, "worth knowing before the work is planned";
+  - 855, "the item carries both candidate rules and what each costs";
+  - 903-904, "the first to drop if this list needs shortening";
+  - 996-997, "worked together and closed together";
+  - 1007, "worked with PL-020 rather than behind it";
+  - 727-731, "goes stale the next time an item closes".
+
+  Rewrite them as outcomes (see the query on outcomes).
+- **Section too long.** § "Debt gate: the frozen list" (705-1022, about 3,000 words) needs subheadings:
+  - "What the list admits" before the rules;
+  - "Entries" before the two groups, which already have labels;
+  - "Entries that need the project owner" before 926-934;
+  - "Items left off the list" for 919-924 and the PL-68XK sentence.
+- **Heading that does not fit.** "Debt gate: the frozen list" (705) does not say what the section holds: 715-719 says the list is not a gate and half its entries are not debt. A tool reads this heading (720), so renaming it means changing the tool too. Query the owner. If renamed, "The frozen list of entries" would fit.
+- **Section references.** 716 ("the section "What counts"") and 946 ("The gate is a snapshot, not a moving target") do not use the § "Heading" form, so the documentation check may not find them.
+- **For the outline read.** 693 gives Gate 0's size ("twenty entries of inherited product debt"), and 1062-1064 says v0.3.0 clears Gate 0. The v0.4.0 chapter probably gives both facts too.
+- Query: The reader needs each entry's outcome, done or dropped with its reason, and the text does not give it. 712-713 says "Each entry records its own outcome when it closes", 1026 allows "`dropped` with its reason recorded", and 1056 says "every id on it is closed". Yet only PL-1CYR, PL-CPSY, PL-S1P1 and PL-MGNC record a close. Also missing: which rule PL-HDY6 chose (855), PL-CMCB's verdict (933-934) and PL-ZQ9C's migration choice (929-930).
+- Query: The reader needs the date v0.2.8 shipped, and the chapter does not give it.
+- Query: 986-987 says "The rest were added under the scope test", but PL-1CYR was added "at the project owner's direction rather than under the completion rule" as new scope (771-772, and 710). Only the author knows which is right.
+- Query: 988 says "The scope test is described below this rule", but the scope test (951-979) sits above 985.
+- Query: 849 says "after the four above" and 917 says "the four of 2026-09-01". The list shows six entries admitted on 2026-09-01: PL-3576, PL-1Q3S, PL-HDY6, PL-QDH7, PL-RWZV and PL-H8MQ. Which four are meant?
+- Query: At 902, "The weakest of the seven": seven of what? Perhaps the seven defects among the nine findings at 969-970, but the PL-CMCB entry does not say it came from that triage.
+- Query: 1055-1056 gives "This list is frozen" as the reason no count can drift, but 707-708 says entries kept being admitted after the freeze. The real reason seems to be that every entry is closed.
+- Query: The decision tags "(project owner, 2026-08-30)" (936) and "(project owner, 2026-08-31)" (951) name no item. Name the item that should hold their history (945-949, 967-971).
+- Query: Do the rules at 936-983 apply only to v0.2.8, or to every frozen list?
+- Query: If subheadings are added, does `bin/docket wave` still read entries under them (715-720)?
+- Query: This chapter does not explain these terms: "beat" (722, 786), "cadence" (713, 715), "parse floor" (896), "grandfathered items" (749), "Gate 0's minor-version exception" (702), "captures" (830, 909) and "groom" (834). It also uses tool names the reader does not know: `docket next`, `docket flight`, `docket check` and `bin/docket wave`. Say what each means, or point to the section that does.
+
+Outline:
+- 678: Heading "Completed: v0.2.8 - the workflow works".
+- 680: Heading "Goal".
+- 682-687: Aim: make the development loop reliable before two long milestones run through it. All work is machinery the project already depends on: the merge path, the release script, the queue's ranking, the session-start digest, the type-check and lint gates, and the instructions a session reads first. None of it touches the simulator.
+- 689-697: Why this release comes first.
+  - A standing decision in `CLAUDE.md`, dated 2026-08-30: workflow work outranks product work until the workflow is settled. The reason: friction in the loop is paid again every session, a deferred feature once.
+  - v0.3.0 clears twenty entries of inherited product debt, and v0.4.0 builds the first teachable case on it. Both are long runs through the loop.
+  - Three faults cost more than fixing them: the merge path does not wait for CI, the release script stops halfway, and `docket next` ranks work the current milestone excludes.
+- 699-703: Versioning. A patch under the ordinary rule in § "Versioning decision". It crosses no capability boundary and adds nothing to the simulator: no change to any equation, parameter, numerical method, unit or displayed value. Gate 0's minor-version exception is not extended to this release, and it does not need it.
+- 705: Heading "Debt gate: the frozen list".
+- 707-713: The freeze. Frozen 2026-08-30, the day the release was scoped, at seventeen entries. More were admitted later under the completion rule and the scope test, and one at the owner's direction. The list is the entries below. The text after the list sets out what the freeze closes. Each entry records its outcome when it closes, per § "The cadence".
+- 715-725: The list is not a fourth gate in the cadence.
+  - The first group is debt as "What counts" defines it, and every entry in it is classed `defect`. The second group is new workflow capability, which "What counts" says is not debt and does not hold a gate closed.
+  - It sits under "Debt gate" because `bin/docket wave` reads that subsection. A release records a gate to say it comes ahead of an already open gate, so the beat follows the release (queue item `PL-NSN9`).
+  - The numbered gates are unaffected. Gate 0 is recorded under v0.4.0, still binds v0.4.0, and becomes the nearest gate again once this release ships.
+- 727-730: The closed count is not recorded here, for the reason given in the v0.4.0 section: a written count goes stale when an item closes. `bin/docket wave` checks the entries against `docs/items/` and reports closed and open.
+- 732-735: The list's size is not restated in prose, for the same reason. The group headings and the two table rows that name this release give it, and `tools/doc_check.py` enforces that those three match the entries.
+- 737: Group label: "The loop is visibly broken without these — twenty-two entries".
+- 739: PL-J786 (S): require a green `checks` run before any merge into main.
+- 740: PL-64LS (S): detect items stranded on an unmerged branch.
+- 741-742: PL-8HJ2 (S): `make release` stops midway on the ROADMAP table it does not write, so every release ends in a red test.
+- 743-744: PL-M5FK (S): this file's tag statements go stale every release, and no check reads them.
+- 745-746: PL-1TPM (S): `docket next` ranks work the current milestone excludes and gives no sign of it.
+- 747-748: PL-019F (S): the "what should we work on next" rule answers one level below the roadmap step that should decide it.
+- 749-750: PL-5YK8 (S): the `verify:` advisory nags about grandfathered items, so it can never reach zero.
+- 751-752: PL-H7XN (M): `CLAUDE.md` keeps every rule resident, which reduces adherence to the rules a session needs.
+- 753-754: PL-NSN9 (S): a self-gating milestone reports `implement` when its gate clears, where `release` is due.
+- 755-761: PL-J295 (S).
+  - Problem: the release-train check reads a tag missing from a shallow clone as never tagged, so `make check` fails on unmodified `main` in every web-session container.
+  - Added after the freeze because it completes `PL-XCYB`. That entry established that a check must refuse to answer in a shallow checkout rather than answer wrongly, and it fixed the pull-request reader. The tag reader had the same exposure and was missed. Points to the rule beneath the list.
+- 762-768: PL-KWC1 (S).
+  - Problem: `docket flight` reads item ids from branch names only. A branch the web harness named carries none and is invisible, so `docket next` hands out items another session is implementing.
+  - Added after the freeze because it completes PL-64LS. That entry read the same refs through the same module and left the in-flight signal blind on every branch the project produces.
+- 769-777: PL-1CYR (S).
+  - Problem: nothing re-checks the branch against `main` once a session is underway, so a discussion that becomes implementation builds on a base that moved.
+  - Added 2026-08-31 at the owner's direction, not under the completion rule, as new scope: every session that opens as a discussion, the normal way of working, pays for the staleness.
+  - Closed 2026-08-31 (pull request 125): the check is `bin/docket branch` and can be run at any moment. The hook keeps only the fetch.
+- 778-784: PL-D2GW (S).
+  - Problem: the digest offers a release whose version names a milestone with an open gate, so it tells sessions to cut v0.2.8 while v0.2.8 entries are unfinished.
+  - Admitted 2026-08-31 under the scope test: the digest and the release script are named machinery. The fault recurs on every later release that records a gate (v0.3.0 shipping Gate 0 is next), which is the run this release protects.
+- 785-788: PL-Q2BJ (S).
+  - Problem: the digest's `Top:` line leads with work the current step excludes, contradicting the beat printed two lines below.
+  - Admitted 2026-08-31 under the scope test: it is `PL-1TPM`'s defect on the surface every session reads.
+- 789-795: PL-CPSY (S).
+  - Problem: a squash-merged branch whose ref survives reports its items in flight forever, so `docket next` withholds finished work.
+  - Admitted 2026-08-31 under the scope test: squash-merge is the merge path `PL-S4M2` installed, and the queue's ranking reads it.
+  - Closed 2026-08-31 (pull request 121): a branch counts as finished when its content has landed, and this is asked before the commit walk.
+- 796-807: PL-S1P1 (S).
+  - Problem: refs whose history could not be read are dropped before the in-flight ids reach `docket next`, so a partial answer looks complete everywhere except `docket flight`.
+  - Admitted 2026-08-31 under the scope test. `PL-CPSY` and `PL-MGNC`, the other two flaws in that function, closed 2026-08-31 ahead of it, one before the commit walk and one inside it. They left a larger `unreadable` half. `PL-YSXF` is the same flaw from inside: one pass.
+  - Closed 2026-08-31 (pull request 123): `in_flight_ids` is gone and every caller takes `FlightReport`, so the gap travels with the answer. One sentence appears under all six callers.
+- 808-815: PL-YSXF (S).
+  - Problem: a ref named as unread loses the item id its own branch name carries, which needs no history to read, so `docket next` offers an item a live session holds.
+  - Admitted 2026-08-31 under the scope test, at the owner's direction after `PL-S1P1` closed. It is the fourth and last flaw in that function, and the only one where the checkout knew the answer for certain.
+  - The guards `PL-MGNC` added widened it beyond where `PL-KWC1` left it.
+- 816-825: PL-MGNC (S).
+  - Problem: a readable merge-base does not make the in-flight commit walk complete, so a shallow clone, the normal state of a session container, reports merged items in flight.
+  - Admitted 2026-08-31 under the scope test. It is the only member of this group seen firing: the digest that opened the reassessing session named twenty-seven ids, eighteen of them closed and one the open entry `PL-NSN9`.
+  - Closed 2026-08-31 (pull request 122): the walk now stops at a commit the default branch accounted for. The reproduction builds the intermediate depth with real git.
+- 826-831: PL-3CBS (S).
+  - Problem: nothing notices that an open item's work already landed on `main`, so `docket next` offers finished work and the gate's open count overstates what is left.
+  - Admitted 2026-08-31 under the scope test: it corrupts the two numbers that steer the release, in the direction nobody double-checks. It was not among the nine captures reassessed that day and was admitted right after, on the same reading.
+- 832-837: PL-3576 (S).
+  - Problem: `docket check`'s offered-item advisory comes from a possibly partial in-flight answer and does not say so, so a shallow checkout is told to groom the wrong item.
+  - Admitted 2026-09-01 under the scope test: `PL-S1P1` carried the unread refs to six readers and left `check` out as a placement question, not as out of scope. This is the seventh and last.
+- 838-846: PL-1Q3S (S).
+  - Problem: a merged pull request leaves a stale remote-tracking ref, so the stop hook counts landed commits as unpushed and tells the session to push a branch identical to `main`.
+  - Admitted 2026-09-01 under the scope test: the hook is outside the repository, but the fix is a line in the session instructions, one of the six named pieces of machinery. It fires after every merged pull request, several times a session.
+  - The "workable here" limit excludes findings nothing in the tree can close, and this one closes with a repository edit. It is `not-delegable` only because confirming it means ending a session.
+- 847-855: PL-HDY6 (S).
+  - Problem: the scope reader counts any id a milestone's section names, so `docket next` reports an id named "to exclude" as in scope.
+  - Admitted 2026-09-01 under the scope test, after "the four above": it tells sessions on `main` that `PL-68XK` clears this gate, though the paragraph below says it does not.
+  - The fix is not simply to prefer this subsection, because v0.4.0 names nine open ids as its own Required scope and those are in scope. The item carries both candidate rules and what each costs.
+- 857: Group label: "Stops new debt being introduced — sixteen entries".
+- 859-860: PL-ZQ9C (M): record each item's pull request so provenance survives squash-merge.
+- 861-865: PL-S4M2 (S): switch main to squash-merge so each item lands as one commit. Blocked by PL-ZQ9C and ordered after it: squash-merge discards the branch history, today the only record of which pull request closed an item.
+- 866: PL-F5HB (S): the project runs a Python 3.14 release candidate, not 3.14 final.
+- 867-868: PL-020 (S): widen the type-check gate past `src` and ship a `py.typed` marker.
+- 869: PL-W5LG (S): hold CI config to the same path checks as the documentation.
+- 870: PL-ZN0N (S): enable ruff RUF100 so inert `noqa` directives fail the build.
+- 871-872: PL-69J3 (S): clear the inert `noqa` directives RUF100 will catch, and record why the deliberate suppressions exist.
+- 873-874: PL-STNV (S): retire the review-verification harness and capture its last live finding.
+- 875-879: PL-XCYB (S).
+  - Problem: a provenance check must refuse to answer in a shallow checkout, not answer wrongly.
+  - Added after the freeze because it completes PL-ZQ9C. That check asserts a `(#N)` subject on a commit reachable from main, and web-session checkouts are shallow, so it would report sound provenance as broken. Points to the rule.
+- 880-885: PL-WFJ9 (S).
+  - Problem: `render.py` reads `Readiness` and `Feature` through `object` annotations and twelve `type: ignore[attr-defined]`, so the widened gate passes over the digest and `status` outputs without checking them.
+  - Added after the freeze because it completes PL-020, whose claim that `subprojects/docket/src` is type-checked was false in the two outputs every session reads first.
+- 886-890: PL-DL1X (S).
+  - Problem: `docket release` stamps every item file before bumping the version, so a failed bump leaves the store recording a release that never happened.
+  - Admitted 2026-08-31 under the scope test: the release script is named machinery, and this is a provenance error the release path exists to prevent.
+- 891-894: PL-921W (S).
+  - Problem: the formatter target applies to `tools/`, which must run under bare `python3`, and nothing guards it the way `subprojects/docket/` is guarded.
+  - Admitted 2026-08-31 under the scope test: the lint gate is named. It is the same second-site miss as `PL-J295`, one tool over.
+- 895-898: PL-QDH7 (S).
+  - Problem: `tools/` promises standard-library-only imports and nothing guards that, the way the parse floor is now guarded.
+  - Admitted 2026-09-01 under the scope test: the lint gate is named. It is the unguarded other half of `PL-921W`'s promise.
+- 899-904: PL-CMCB (S).
+  - Problem: all ten `type: ignore` directives sit under `tests/`, outside `[tool.mypy] files`, so `warn_unused_ignores` has never evaluated one.
+  - Admitted 2026-08-31 under the scope test: it is the mypy half of what `PL-ZN0N` and `PL-69J3` did for `noqa`. It is the weakest of "the seven" (inert reporting, not a misfiring loop) and the first to drop if the list must shorten.
+- 905-910: PL-RWZV (S).
+  - Problem: the brief check tests for a literal marker, so an elaborated heading fails and an empty section passes.
+  - Admitted 2026-09-01 under the scope test: it is a `docket check` misfire, the same machinery as `PL-5YK8`, and the gate for reaching `ready`. Two captures triaged on 2026-09-01 carried the empty-section stub it accepts.
+- 911-917: PL-H8MQ (S).
+  - Problem: `ROADMAP.md` states the entry count in six places and the group and debt splits in three more, with nothing tying them to the list.
+  - Admitted 2026-09-01 under the scope test. Measured that day, three totals (eighteen, thirty-one and thirty-two) were live at once, so a session read a wrong number. Every admission pays the correction by hand, the four of 2026-09-01 included.
+- 919-924: Two items on the approved list are not entries: `PL-J3ZK` (restore the tag provenance) and `PL-20ZR` (the workflow-before-features ordering is re-explained every session). Both closed before the list was written here, and counting them would inflate the release's size.
+- 926-934: Seven entries are `not-delegable`, which is high for this size and worth knowing before planning.
+  - PL-J786 and PL-S4M2 change GitHub repository configuration, which no session can access.
+  - PL-8HJ2 can only be proved by cutting a release.
+  - PL-ZQ9C leaves open a migration choice that rewrites the provenance of every closed item.
+  - PL-1Q3S's effect shows only when a session ends, in a hook no session can read.
+  - PL-H7XN's test is that no rule was lost, which needs a review rather than a command.
+  - PL-CMCB's deliverable is a verdict on ten suppressions, not an exit code.
+- 936-943: What the freeze closes (project owner, 2026-08-30).
+  - Closed to new scope: new behavior, new capability, or another workflow idea raised during the release.
+  - Open to work an entry needs before it is done: a post-freeze finding belongs if it addresses what a frozen entry fixes, and it is recorded with what it completes.
+  - Shipping a half-fixed entry keeps the list's length but defeats its purpose.
+- 945-949: Not a new rule: it is the correct reading of "The gate is a snapshot, not a moving target", which already admits a finding that continues or completes a frozen item. This paragraph first said the opposite, and that was wrong.
+- 951-961: The list is a scope, not a set of items (project owner, 2026-08-31).
+  - The scope decides membership, and the completion rule is one case of it. The scope is the goal: a loop reliable enough for two long milestones, across the named machinery (the list repeated).
+  - A finding that a named piece misfires is in scope however late, whether or not it completes an entry. Otherwise a release titled "the workflow works" would ship with the workflow broken.
+- 963-971: "New scope" means a different goal: a new workflow capability, a better tool nobody is blocked by, or an idea the release prompted. It does not mean a new instance of the frozen goal. A defect in named machinery is a third case, and the list admits it. The paragraph once offered only two cases, and on 2026-08-31 nine findings went to the queue as neither, though seven were defects in the digest, the release script, the merge path and the lint gate.
+- 973-979: Two limits.
+  1. The finding must be a defect in machinery the goal names. An improvement does not count, and neither does unnamed machinery.
+  2. It must be workable here. A cause outside the repository means the finding is captured and left off the list, because nothing in the tree could close it and the gate would stay open forever.
+- 981-983: A `safety` or `science` finding goes to Gate 0, because it concerns the simulator, which this release does not touch. A `P0` finding is a hotfix on its own branch under the `docket` skill and joins no list.
+- 985-988: Four entries came in under the completion rule: PL-J295, PL-KWC1, PL-XCYB and PL-WFJ9. "The rest" came in under the scope test, each marked with its date and reasoning. "The scope test is described below this rule."
+- 990-997: PL-XCYB is paired with PL-ZQ9C. It was found while ZQ9C was handed to a session, during a check of whether ZQ9C's migration was feasible. Without it, the check fails loudly on correct data in the environment where most sessions run, and ZQ9C would close half-fixed. The two are worked and closed together.
+- 999-1007: PL-WFJ9 is the same case one step later, found by the entry it completes. Widening the gate to `subprojects/docket/src` exposed the `render.py` suppressions that let the gate pass over that file. Closing PL-020 without it would be a half-fixed close, leaving unchecked the digest and `status` renderers, which sessions read first and which answer "what next". It is worked with PL-020.
+- 1009-1022: PL-68XK (check that a recorded commit hash resolves) is not admitted.
+  - It predates the freeze and was left off the approved list on purpose. While entangled with PL-ZQ9C, its brief was refreshed, not worked.
+  - When ZQ9C landed, `pr:` beside `commit:` made `commit:` optional, which narrowed 68XK to requiring that a `commit` value, when present, resolves.
+  - PL-T63T: the owner retired the field because 21 of the 42 checkable hashes resolved nowhere, and 68XK was dropped with it. PL-XCYB's shallow-checkout discipline is unaffected and still serves the `pr:` check.
+- 1024: Heading "Definition of done".
+- 1026-1027: Every entry is `done`, or `dropped` with its reason recorded. `bin/docket wave` reports the split against `docs/items/`.
+- 1028-1029: `make check` passes: `ruff format`, `ruff check`, `mypy`, `pytest`, `docket check` and `tools/doc_check.py`.
+- 1030-1034: PL-J786 (green `checks` run before merge) and PL-S4M2 (squash-merge) change repository configuration. Both are confirmed in effect on a real pull request. No command can verify them, hence `not-delegable`.
+- 1035-1042: No equation, parameter, numerical method, unit or displayed value changes. The v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass unaltered. Three entries may reach into `src/` and `tests/`, within their briefs: PL-020 may add type annotations, and PL-ZN0N and PL-69J3 may add, remove or annotate `noqa` directives. A change any of them needs to a modelled value is a Gate 0 finding and an item of its own.
+- 1044-1058: Two of the three counts are left unchecked (`PL-GLBF`, 2026-09-13).
+  - "Seven entries are marked `not-delegable`" is checked by `tools/doc_check.py` as a query over the `not-delegable:` field. The two counts in the bullets are not checked.
+  - `touches:` records files an item is expected to change, not the scope it may reach. A checker over it computes two where the answer is three: `PL-ZN0N` declares only `pyproject.toml` yet may annotate `noqa` in `src/`. Such a check would fail a correct sentence, which is worse than no check.
+  - The list is frozen and every id on it is closed, so neither count can drift. The same shape in a live section could drift, and that question is unsettled.
+- 1060: Heading "Explicitly out of scope for v0.2.8".
+- 1062-1064: Out of scope: anything on Gate 0's frozen list, recorded under v0.4.0. This release does not touch that gate, and clearing it is what v0.3.0 ships.
+- 1065-1068: Out of scope: any simulator change, meaning `src/anesthesia_sim/core/`, `src/anesthesia_sim/app/` and the scientific content of `docs/MODEL.md`. A release claiming the loop is reliable cannot also move the model.
+- 1069-1074: Out of scope: workflow capability beyond the entries, meaning new tools, better tools, or ideas the release prompted. The queue holds more process items than this release ships, and they wait for the next release. The scope test admits only defects in named machinery, and none of these is one. A release that absorbs every idea never ships.

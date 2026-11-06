@@ -1,0 +1,349 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read. One whole document follows, as passage 1. Every row is marked |, so rewrite none of it.
+
+Readers of docs/references/katoh-1993-anesth-analg-mac-awake-washout.md:
+  - A clinician or educator.
+    Knows: Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods.
+    Does not know: Software terms, and this repository's own names.
+    Will: Check a stored value, or a difference between machines, against its published source.
+
+[1] docs/references/katoh-1993-anesth-analg-mac-awake-washout.md, rows 1-149. Whole document: 1460 words. For: A clinician or educator
+    1 | # Katoh et al. 1993, *Anesth Analg* 77: MAC-awake of sevoflurane and isoflurane by slow and fast washout
+    2 | 
+    3 | This note records the values this repository takes from one paper, with the
+    4 | page each sits on, so that no later session has to read the paper again for
+    5 | them. The paper is held in the private corpus. Only facts cross into this
+    6 | repository: values, their units, what was measured and in whom, and where they
+    7 | sit. No table is reproduced.
+    8 | 
+    9 | > Katoh T, Suguro Y, Kimura T, Ikeda K. *Cerebral awakening concentration of
+   10 | > sevoflurane and isoflurane predicted during slow and fast alveolar washout.*
+   11 | > Anesth Analg 1993;77(5):1012-7. PMID
+   12 | > [8214700](https://pubmed.ncbi.nlm.nih.gov/8214700/), DOI
+   13 | > [10.1213/00000539-199311000-00024](https://doi.org/10.1213/00000539-199311000-00024).
+   14 | 
+   15 | `docs/references/README.md` § "Katoh et al. 1993 — MAC-awake of sevoflurane
+   16 | and isoflurane" carries this citation and the companion paper's.
+   17 | 
+   18 | Route and depth: the private corpus, through the paper's text layer, all six
+   19 | printed pages (1012 to 1017). Equation 1 on page 1013 and Table 1 on page 1014
+   20 | are missing or garbled in the text layer, so both were read from page images.
+   21 | Read on 2026-10-26 for `PL-P319`. Each value below was checked against the
+   22 | paper on that day.
+   23 | 
+   24 | ## The study
+   25 | 
+   26 | These facts are stated in the methods on pages 1012 and 1013.
+   27 | 
+   28 | - **Patients.** 49 ASA physical status I patients of either gender, having
+   29 |   elective surgery of the lower abdomen, extremities or body surface. No
+   30 |   premedication, and no intravenous anesthetic at any point.
+   31 | - **Groups.** 28 received sevoflurane and 21 isoflurane. Each agent's group
+   32 |   was randomly split into a slow-washout and a fast-washout arm: 12 and 16 for
+   33 |   sevoflurane, 12 and 9 for isoflurane (Table 1, page 1014).
+   34 | - **Anesthesia.** Inhalational induction in oxygen, a laryngeal mask without
+   35 |   muscle relaxants, then 50% oxygen, the agent and balance nitrogen.
+   36 | - **Gas analysis.** End-tidal gas was sampled at the laryngeal end of the
+   37 |   mask at 200 mL/min by an infrared analyser (Capnomac Ultima). Its 10% to 90%
+   38 |   response time was 740 ms for sevoflurane and 750 ms for isoflurane.
+   39 | - **Before washout.** The end-tidal concentration was held at 0.5 MAC for
+   40 |   15 min after the inspired-to-end-tidal difference fell below 10%.
+   41 | - **Slow washout.** The end-tidal concentration was lowered in steps of 0.1%
+   42 |   sevoflurane or 0.05% isoflurane. Each step was held for 15 min after the
+   43 |   inspired-to-end-tidal difference fell below 10%, and the patient was then
+   44 |   asked to open their eyes. MAC-awake is the midpoint between the
+   45 |   concentration that permitted the response and the one that just prevented
+   46 |   it. So the determination is descending and equilibrated.
+   47 | - **Fast washout.** The inspired concentration was cut to near zero. MAC-awake
+   48 |   is the end-tidal concentration at first eye opening, with the command
+   49 |   repeated every minute.
+   50 | - **Age correction.** Each MAC-awake was divided by the patient's own
+   51 |   age-adjusted MAC, from the equations below.
+   52 | 
+   53 | ## Values taken
+   54 | 
+   55 | | Quantity | Sevoflurane | Isoflurane | Where |
+   56 | | --- | --- | --- | --- |
+   57 | | Age-adjusted MAC, percent | 2.56 − 0.0156 × age (yr) | 1.43 − 0.0061 × age (yr) | Methods, page 1013 |
+   58 | | Slow-washout MAC-awake as a ratio to age-adjusted MAC, mean ± SD | 0.34 ± 0.05 | 0.31 ± 0.05 | Abstract, page 1012, and Table 1, page 1014 |
+   59 | | Slow-washout MAC-awake, end-tidal percent, mean ± SD | 0.63 ± 0.11% | 0.36 ± 0.08% | Table 1, page 1014 |
+   60 | | Slow-washout arm's age, yr, mean ± SD | 45.9 ± 14.0 | 45.1 ± 15.7 | Table 1, page 1014 |
+   61 | | Fast-washout MAC-awake as a ratio to age-adjusted MAC, mean ± SD | 0.22 ± 0.07 | 0.22 ± 0.05 | Abstract, page 1012, and Table 1, page 1014 |
+   62 | | Calculated cerebral concentration at first eye opening, fast washout, arterial = end-tidal, fraction of MAC | 0.30 ± 0.07 | 0.26 ± 0.07 | Table 1, page 1014 |
+   63 | | The same, with the end-tidal value corrected for dead-space gas, fraction of MAC | 0.34 ± 0.08 | 0.30 ± 0.08 | Abstract, page 1012, and Table 3, page 1016 |
+   64 | 
+   65 | All values are stated in the text or a table. None was read from a figure. The
+   66 | slow-washout arms have n = 12 each. The sevoflurane slow-washout age prints as
+   67 | "45.9 ± 2 14.0", where the stray 2 is most likely a typesetting fault, so the
+   68 | SD is read as 14.0.
+   69 | 
+   70 | **The age-adjusted MAC.** The paper cites its references 11 to 14 for the two
+   71 | equations: Stevens et al. 1975 for isoflurane, and Katoh and Ikeda 1987,
+   72 | Scheller et al. 1988 and Nakajima et al. 1993 for sevoflurane (page 1017). It
+   73 | does not say how the equations were derived from those studies. At age 40
+   74 | they give 1.94% sevoflurane and 1.19% isoflurane. At the slow-washout arms'
+   75 | mean ages they give 1.84% and 1.15%, which matches Table 1's mean MAC-awake
+   76 | percent divided by its mean ratio (0.63 / 0.34 = 1.85 and 0.36 / 0.31 = 1.16).
+   77 | 
+   78 | **The brain-uptake calculation.** The brain is one well-mixed compartment, "a
+   79 | one-compartment mass transport model like those of Fukui and Smith (4) or
+   80 | Lowe and Ernst (5)" (page 1013). Its equation 1 is:
+   81 | 
+   82 | $$
+   83 | \frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
+   84 | $$
+   85 | 
+   86 | Every patient was given the same rules for the flow and the volume, and the
+   87 | same coefficients (page 1013):
+   88 | 
+   89 | - cerebral blood flow is 14.3% of cardiac output, with the cardiac index
+   90 |   assumed to be 3.5 L/min/m², so it scales with body surface area;
+   91 | - brain volume is 21 mL/kg of body weight, so it scales with weight;
+   92 | - the blood:gas coefficient is 0.63 for sevoflurane and 1.36 for isoflurane;
+   93 | - the brain:gas coefficient is 1.15 for sevoflurane and 2.09 for isoflurane.
+   94 | 
+   95 | Equation 2 (page 1013) takes the arterial partial pressure to equal the
+   96 | end-tidal one. Equation 3 (page 1016) corrects for end-tidal gas being about
+   97 | 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The abstract's
+   98 | cerebral figures are the equation 3 ones. Neither set differs significantly
+   99 | from the slow-washout MAC-awake (page 1014 and Table 3, page 1016). The paper
+  100 | gives the time to 99% blood-brain equilibration as 11.8 min for isoflurane and
+  101 | 14.4 min for sevoflurane (pages 1014 and 1015). It uses this to justify the
+  102 | 15-minute steps of slow washout.
+  103 | 
+  104 | ## Where the repository uses each value
+  105 | 
+  106 | - The slow-washout ratios, 0.34 ± 0.05 and 0.31 ± 0.05, are the stored
+  107 |   `mac_awake.fraction_of_mac` and its standard deviation in
+  108 |   `src/anesthesia_sim/data/agents/sevoflurane.json` and `isoflurane.json`.
+  109 |   They are adopted as tier 1, primary measurement, under `docs/MODEL.md`
+  110 |   § "Source hierarchy: what may be cited as the authority for a value".
+  111 | - The age-adjusted MAC equations are named in each file's
+  112 |   `mac_awake.mac_reference_basis`, as the denominator of the stored fraction.
+  113 | - `docs/MODEL.md` § "MAC-awake as a chart reference" uses the equations, the
+  114 |   slow-washout percents and the brain-uptake calculation. It compares the
+  115 |   drawn band with Katoh's patients and explains why the band is read against
+  116 |   the vessel-rich trace. None of these is a stored value.
+  117 | 
+  118 | ## What was not taken
+  119 | 
+  120 | - The fast-washout MAC-awake percents and ratios as stored values. The band
+  121 |   belongs against the vessel-rich trace, and the slow-washout figure is the
+  122 |   one that matches the paper's brain estimate.
+  123 | - Table 2's correlations of MAC-awake with the duration of anesthesia. Fast
+  124 |   washout correlated with duration and slow washout did not (page 1014). The
+  125 |   model has no use for the coefficients.
+  126 | - The paper's own blood:gas and brain:gas coefficients, as stored values.
+  127 |   They are inputs to Katoh's calculation only, and the simulator keeps its own
+  128 |   coefficients. The paper cites Strum and Eger 1987 for sevoflurane's 0.63,
+  129 |   Lerman et al. 1984 for isoflurane's 1.36 and Yasuda et al. 1989 for both
+  130 |   brain:gas values (page 1013). The first two do not match what the agent
+  131 |   files record from those papers. `sevoflurane.json` records Strum and Eger's
+  132 |   measurement as 0.686, which is 8.9% above Katoh's 0.63. `isoflurane.json`
+  133 |   records Lerman's adult value, aged 20 to 40, as 1.46, which is 7.4% above
+  134 |   Katoh's 1.36. The paper does not say how its two figures were taken from
+  135 |   those sources. Katoh's brain:gas values, 1.15 and 2.09, are within 5% of the
+  136 |   vessel-rich tissue:gas coefficients this project stores, 1.10 and 2.10.
+  137 | 
+  138 | ## The companion paper
+  139 | 
+  140 | > Katoh T, Suguro Y, Ikeda T, Kazama T, Ikeda K. *Influence of age on
+  141 | > awakening concentrations of sevoflurane and isoflurane.* Anesth Analg
+  142 | > 1993;76(2):348-52. PMID [8424514](https://pubmed.ncbi.nlm.nih.gov/8424514/).
+  143 | 
+  144 | It is held in the private corpus as a scan with no text layer. Pages 349 and
+  145 | 350 were read as page images on 2026-10-26. It studied 39 ASA I patients by
+  146 | slow, equilibrated washout. Its MAC ratios are not the washout paper's: for
+  147 | isoflurane it divides its regression line by the group MACs of Stevens et al.
+  148 | (page 350), not by the linear equation above. Nothing is taken from it, and
+  149 | pages 348, 351 and 352 were not read.

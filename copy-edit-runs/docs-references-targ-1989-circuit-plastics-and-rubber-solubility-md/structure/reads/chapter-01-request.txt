@@ -1,0 +1,283 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read. One whole document follows, as passage 1. Every row is marked |, so rewrite none of it.
+
+Readers of docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md:
+  - A clinician or educator.
+    Knows: Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods.
+    Does not know: Software terms, and this repository's own names.
+    Will: Check a stored value, or a difference between machines, against its published source.
+
+[1] docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md, rows 1-83. Whole document: 786 words. For: A clinician or educator
+    1 | # Targ, Yasuda & Eger 1989: anesthetic solubility in a circuit's plastics and rubber
+    2 | 
+    3 | This note records the facts this repository takes from one paper, with the
+    4 | page each sits on, so that no later session has to read the paper again for
+    5 | them. The paper is held in the private corpus. Only facts and short quotations
+    6 | cross into this repository. No table is reproduced.
+    7 | 
+    8 | > Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+    9 | > isoflurane, and halothane in plastics and rubber composing a conventional
+   10 | > anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID
+   11 | > [2764290](https://pubmed.ncbi.nlm.nih.gov/2764290/). PubMed gives no DOI.
+   12 | 
+   13 | `docs/references/README.md` § "Targ, Yasuda & Eger 1989 — anesthetic
+   14 | solubility in a circuit's plastics and rubber" carries this citation.
+   15 | 
+   16 | This is the **circuit** paper. Its companion, Yasuda, Targ & Eger, *Anesth
+   17 | Analg* 1989;69(3):370-3, PMID 2774233, has the same authors in another order
+   18 | and ends "in human tissues". That one is the source of the tissue
+   19 | coefficients. I-653 is the code name desflurane carried before it had its
+   20 | name.
+   21 | 
+   22 | Route and depth: the private corpus, through the paper's text layer, printed
+   23 | pages 218 to 222 and the reference list on page 224. First read in full on
+   24 | 2026-09-13. The facts below were checked against the text layer again on
+   25 | 2026-10-26 for `PL-N701`.
+   26 | 
+   27 | ## What was measured
+   28 | 
+   29 | - **The circuit** (page 220): three corrugated polyethylene tubes, a
+   30 |   polypropylene Y-piece and elbow, a soda lime absorber with its inspiratory
+   31 |   and expiratory valves, fresh soda lime with 15% water, a rubber bellows in a
+   32 |   ventilator, and "a latex reservoir bag ... attached at the Y-piece elbow to
+   33 |   simulate the patient's lungs". The ventilator was set to 500 ml at 25
+   34 |   breaths per minute to circulate the gas.
+   35 | - **Wash-in and washout** (page 220): one test at each flow. Wash-in at 0.5, 1
+   36 |   and 2 L/min for 60 minutes, and washout at 1, 3 and 5 L/min for 120 minutes,
+   37 |   of all four agents together from one tank, in 30% oxygen with nitrogen.
+   38 |   Samples were taken from the expiratory limb, just past the expiratory valve.
+   39 | - **Partition coefficients** (Table 1, page 220): each plastic or rubber
+   40 |   component's coefficient against gas, after 6 to 9 weeks' equilibration.
+   41 | 
+   42 | ## Values and facts taken
+   43 | 
+   44 | | Fact | Value | Where |
+   45 | | --- | --- | --- |
+   46 | | The assembled system's volume, by water filling | 9860 ml | Methods, page 220 |
+   47 | | The order of the components' partition coefficients | halothane > isoflurane > sevoflurane > desflurane, from 7.5 min to 9 weeks | Results, page 220 |
+   48 | | The "ideal" wash-in and washout line drawn against the data | % change = 100[1 − e^(−(V̇/Vs)t)], with V̇ the inflow and Vs the system volume | Figures 3 and 5, desflurane's wash-in and washout, pages 221 and 222 |
+   49 | | The authors' reading for desflurane | absorption "by circuit components or soda lime should not hinder induction of or recovery from anesthesia" | Abstract, page 218 |
+   50 | | The authors' reference 10 | Yasuda N, Targ AG, Eger EI 2nd, *Anesthesiology* 1988;69:A615, a conference abstract on the same tissue measurements | References, page 224 |
+   51 | 
+   52 | The plastic/gas and rubber/gas coefficients of Table 1 that this repository
+   53 | uses are in `docs/MODEL.md` § "Known limitations", in the entry on the inert
+   54 | circuit. They are not repeated here.
+   55 | 
+   56 | ## Where the repository uses them
+   57 | 
+   58 | - **The 9860 ml volume** is recorded and not adopted, in
+   59 |   `src/anesthesia_sim/data/machines/reference_circle_system.json` and in
+   60 |   `docs/MODEL.md` beside `circuit_volume_l`. The measured system included the
+   61 |   reservoir bag that stood in for the lungs, so the volume bounds the
+   62 |   circuit's volume and cannot replace it (`PL-QBKQ`).
+   63 | - **The desflurane reading and the ideal line** are why `docs/MODEL.md` §
+   64 |   "Desflurane's residual, and why the parameter file was not changed" strikes
+   65 |   circuit-wall absorption as a cause of desflurane's residual (`PL-XWCY`).
+   66 | - **Table 1's coefficients and their order** support the inert-circuit entry
+   67 |   in `docs/MODEL.md` § "Known limitations". The model's inert circuit is most
+   68 |   nearly true for desflurane and least true for halothane (`PL-LS3H`).
+   69 | - **Reference 10** settled that the 1988 abstract is a preliminary report of
+   70 |   the 1989 tissue paper, not a separate measurement. Each agent file under
+   71 |   `src/anesthesia_sim/data/agents/` records that (`PL-8GJ6`).
+   72 | 
+   73 | None of these is adopted as the authority for a stored value, so the adoption
+   74 | rules of `docs/MODEL.md` § "Source hierarchy" do not apply.
+   75 | 
+   76 | ## What was not taken
+   77 | 
+   78 | - The coefficients for the mask plate, nasal airway, flask plug and stopcock
+   79 |   grease, which are not parts of the circuit this model describes.
+   80 | - The partition coefficients' approach to equilibrium (Figures 1 and 2), and
+   81 |   the soda lime results for sevoflurane. The model has no absorber chemistry.
+   82 | - The wash-in and washout curves' individual points. Only the comparison with
+   83 |   the ideal line was used.

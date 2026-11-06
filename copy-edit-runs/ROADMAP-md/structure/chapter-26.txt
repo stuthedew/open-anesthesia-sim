@@ -1,0 +1,86 @@
+[1] keep
+
+Structure:
+- Rows 5543-5544 and 5555-5556 both describe `PL-ZW0J`: "whether returning to a mark forks or truncates, and the setting that chooses between the two" and "`PL-ZW0J` asks whether returning to a mark forks, or truncates after a confirmation". The description belongs once, in the list of five deferred items at 5543-5544, with "after a confirmation" added there. Rows 5555-5556 keep only "that question".
+- Rows 5568-5569, 5573 and 5573-5574 give the same limit three times: "The comparison is specified for a trunk and one branch", "this milestone never compares one branch directly against another" and "A comparison is always of a branch against the trunk". Keep one sentence ("A comparison is always of a branch against the trunk") and cut the other two.
+- Rows 5567, 5569 and 5578 give the two-run cap three times: "More than two runs displayed at once", "`MAX_DISPLAYED_RUNS` stays 2" and "The display is capped at two runs under either answer". The bullet's opening (5567) states the cap. Cut 5569. Rows 5577-5580 keep only the reason: a selector buys the choice of pair, not more curves.
+- Rows 5570-5572 and 5582-5584 make one point twice: "a stable order, chosen so that a later selector does not renumber the branch a learner is looking at" and "adding the selector later is additive rather than a rework". Keep one sentence at 5582-5584 saying that the selector can be added later without rework, because branches keep a stable order. Cut 5570-5572.
+- Rows 5565-5566 and 5569-5570 both say that N branches are allowed: "one trunk with N branches" and "N branches may exist". Keep the fact at 5565-5566 and cut it from 5569-5570.
+- Rows 5563 and 5591 both send work to item 9. Merge them into one bullet: "Scenario save/load (item 9), including persisting bookmarks or branches across a restart", followed by the replay control (item 10) and its sentence on the resimulation driver.
+- Rows 5537-5541 are in-scope work under an out-of-scope heading: "This milestone keeps four of them and does not defer them." The four items belong in Required scope and the definition of done. Here, keep one clause saying that four of the nine items are required there. Cut "They are named where they are required rather than here, because readers treat this heading as a scope declaration" (5540-5541), because it describes the text itself.
+- Rows 5586-5590 describe in-scope behaviour: a second fork is refused while a comparison is displayed. The text itself says that "the fork-control entry in Required scope settles" this, so it belongs in that entry. Keep nothing here, or at most a pointer.
+- Rows 5580-5582 are editing history of the roadmap text: "The sentence this bullet replaced read 'N branches may exist and be selected between'. That sentence stated a permitted future as though it were scope." They belong in `PL-XJ37` or the commit message. Cut them here.
+- Rows 5557-5559 are decision history: "The project owner deferred that question on 2026-09-20 because they wanted to use the feature first". The date belongs in `PL-ZW0J`. Keep here only the reason a contributor acts on: the question waits until the owner has used the feature, and widening v0.5.0 would answer it first.
+- Rows 5533-5536 are also decision history: the owner's quotation "a bit of a mess …" and "The count supports this: on 2026-09-21, nine open items concerned that surface". They belong in the item that records the 2026-09-21 decision. Keep "nine open items" here only if the arithmetic of four kept and five deferred is kept.
+- Rows 5546, 5569 and 5570 use internal code names this reader does not know: `has_recorded_run`, `MAX_DISPLAYED_RUNS` and `BranchedCase.branches`. Each one belongs in its item or in the code. Here, describe it in words. For `PL-7TBQ`, for example, write "the case reports a recorded run before the learner has touched the branch".
+- Order within the first bullet (5530-5561): the reader needs the exclusion, then the five deferred items, then where they go, then why. Use this order: 5530-5532 with the decision tag, the five items (5541-5547), Gate 2 (5549-5553), the reason (5555-5561), then a one-clause pointer to the four kept items.
+- Order of the bullets: the branch exclusions are split up by the save/load bullet. Use this order: fork and bookmark interaction (5530), sub-forks (5565), more than two runs and the selector (5567), the merged save/load, persistence and replay bullet (5563, 5591), then the remaining bullets. Putting the remaining bullets in item-number order (items 1-5, 6-7, 27-28, 30, then panning, then the equations) would let the owner check them against the numbered list.
+- Length: the bullets at 5530-5561 and 5567-5590 have each grown into a three-paragraph essay, together about 580 of the section's 773 words. Subheadings would not help. After the moves above, each bullet should be the exclusion, where it goes, and its reason in two or three sentences, and the list shape then fits.
+- Heading: "Explicitly out of scope for v0.5.0" fits once rows 5537-5541 and 5586-5590 move out.
+- Query (5549-5553): the reader needs to know what Gate 2 is. This chapter says only when it freezes and when it is cleared, and points to § "The cadence". Check that § "The cadence" defines Gate 2.
+- Query (5545-5546): the reader needs the range of one-decimal times behind "refuses 35.5%" and the date the figure was found. This chapter gives neither, and it does not explain "the whole-step fork guard".
+- Query (5552): "the area system" that v0.6.0 builds is not explained in this chapter.
+- Query (5557): "the act this milestone is named for" leaves the act unnamed. Name it, for example as returning to a mark.
+- Query (5599-5600): "the fit-run scale" is not explained, and "still" points to a context this chapter does not give.
+- Query (5530-5532): the 2026-09-21 decision tag names no item. The quotation, the count and the reasoning at 5555-5561 have no item to move to until one is named.
+- Query (5538-5540): the four kept items are not named here. The outline read should check that Required scope and the definition of done name them, and that the four plus the five deferred make nine.
+
+Outline:
+- 5528: heading "Explicitly out of scope for v0.5.0".
+- 5530-5547 (one paragraph): completing the fork and bookmark interaction is out of scope.
+  - It is out beyond what Required scope and the definition of done already name.
+  - Decision tag: (project owner, 2026-09-21, ratified, over widening this milestone to close the interaction gap before cutting).
+  - Owner's quotation: "a bit of a mess with forks and bookmarks ... half implemented in terms of user interaction".
+  - On 2026-09-21, nine open items concerned that surface.
+  - The milestone keeps four of them and does not defer them. One is in Required scope. Three fall under the definition of done's requirement of "no readout, label, legend entry or reference band ambiguous as to which run it describes".
+  - The four are named where they are required, because readers treat this heading as a scope declaration.
+  - The five not kept are:
+    - `PL-W4XQ`: there is no way back to a mark set behind the clock.
+    - `PL-ZW0J` with `PL-8XMV`: whether returning to a mark forks or truncates, and the setting that chooses between the two.
+    - `PL-LLBV`: the whole-step fork guard refuses 35.5% of the one-decimal times a user could type.
+    - `PL-7TBQ`: `has_recorded_run` is true before the learner has touched the branch.
+    - `PL-3QSX`: the unit of a listed MAC target.
+- 5549-5553: the five go to Gate 2.
+  - This is "the intended mechanism, not a deferral".
+  - Gate 2 freezes on the day this milestone ships and is cleared before v0.6.0's implementation begins.
+  - So the interaction debt is paid before the area system is built on top of it.
+  - § "The cadence" already arranges this for findings made inside a milestone.
+- 5555-5561: `PL-ZW0J` decided the cut, not the schedule.
+  - `PL-ZW0J` asks whether returning to a mark forks, or truncates after a confirmation.
+  - The answer decides what the act the milestone is named for does.
+  - The owner deferred the question on 2026-09-20 to use the feature first.
+  - Widening v0.5.0 would settle the question without that use.
+  - So the milestone is cut on its stated definition of done.
+- 5563-5564: scenario save/load (item 9) and a user-facing deterministic replay control (item 10) are out of scope. Only the resimulation driver that replay needs is in scope.
+- 5565-5566: sub-forks of forks are out of scope, and so is any branch structure other than one trunk with N branches (project owner, 2026-08-25).
+- 5567-5575: more than two runs displayed at once is out of scope, and so is the selector that would choose which two (project owner, 2026-09-20, `PL-XJ37`).
+  - The comparison is specified for a trunk and one branch.
+  - `MAX_DISPLAYED_RUNS` stays 2.
+  - N branches may exist.
+  - `BranchedCase.branches` returns them in a stable order, so that a later selector does not renumber the branch a learner is looking at.
+  - "Selecting which two runs are displayed" is not built.
+  - The milestone never compares branch against branch. A comparison is always a branch against the trunk.
+  - The milestone does not return to a branch the learner has left.
+- 5577-5584: why the selector was declined.
+  - It was declined on the educational question, not the technical one.
+  - The display is capped at two runs under either answer, so a selector buys the choice of pair, not more curves.
+  - Branch-against-branch was judged not to be a teaching case for a first release.
+  - This bullet replaced the sentence "N branches may exist and be selected between", which stated a permitted future as scope.
+  - Adding the selector later is additive rather than a rework.
+- 5586-5590: the fork-control entry in Required scope settles a consequence of having no selector.
+  - A learner who forks twice could not say which branch is shown.
+  - So a second fork is refused while a comparison is displayed, instead of silently replacing the branch on the chart.
+- 5591: persisting bookmarks or branches across a restart is out of scope; it belongs to item 9.
+- 5592: a schematic compartment view (item 27) and agent cost (item 28) are out of scope.
+- 5593-5594: out of scope:
+  - nitrous oxide, coadministered gases, and the concentration and second-gas effects (items 6-7);
+  - the multi-substance patient state behind them.
+- 5595-5596: out of scope:
+  - the anesthesia-machine abstraction;
+  - interlocks;
+  - agent switching with residual washout;
+  - direct injection;
+  - end-tidal control (items 1-5).
+- 5597-5598: patient factors (age, sex, weight and body composition) and any change to the MAC basis (item 30) are out of scope.
+- 5599-5600: horizontal panning of the chart window (queue item PL-Z7LY) is out of scope. The fit-run scale makes panning optional rather than necessary.
+- 5601-5603: no change to the governing equations, the parameter set, or the exact solution the matrix exponential computes. The milestone changes the questions the model can be asked, never the answers it gives.

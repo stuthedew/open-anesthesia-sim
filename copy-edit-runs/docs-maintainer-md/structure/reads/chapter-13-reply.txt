@@ -1,0 +1,40 @@
+[1] keep
+
+Structure:
+- **Rows 914-925: the first paragraph makes four points, so split it.** It covers what the tool sends, which model it uses and why it runs once, what the model reports and who checks it, and where to run it. Open with what the review does and reports, taken from rows 920-922 ("It sends one request per `##` section … their own units") and rows 914-915. Give the model and the API credit (rows 915-918) a paragraph of their own. Make rows 923-925 ("Run it on your Mac … steps 1 to 3") the paragraph that leads into the steps.
+- **Rows 918-919: move the decision to the item.** "The project owner chose on 2026-10-25 to run it once on the table's model, over dropping it" is decision history, so it belongs in `PL-5S71`, the item the section names. The section keeps only that the review runs once, which the heading already says.
+- **Rows 918, 920 and 929: gather the dated values in step 1.** The three rows are "on 2026-10-25 that was Opus 5.5 at `high`", "25 on 2026-10-25" and "On 2026-10-25 the bound was $27.05 on Opus 5.5". They give "Opus 5.5" twice, and all three are what `estimate` printed that day. Step 1 should give them as one dated line: 25 requests, Opus 5.5 at `high`, and a bound of $27.05. The first paragraph keeps the rules that produce these values (the `review` role in `[models]`, and one request per `##` section) and no dated figures.
+- **Rows 922-923 and 941-942: say once that a session checks the findings.** Rows 922-923 say "A session then checks each one and files the confirmed ones", and rows 941-942 say "ask for `PL-5S71`'s findings to be checked". Give this once, in step 4, where the reader acts, and let the step also say that the confirmed findings are filed. The first paragraph keeps only what the model reports.
+- **Rows 916 and 941: move the pointer to `PL-5S71`.** At row 916 the pointer follows "the same API credit as the headless workers", but step 4 (row 941) uses `PL-5S71` as the review's own item. Put the pointer after the sentence that says what the review does.
+- **Rows 941-943: step 4 makes two points, so split it.** One is handing over the findings and the other is sending unreviewed sections again. "A section marked `not reviewed` names its reason" describes what step 3 prints, so move it to step 3 beside "prints one line per section" (row 939). Make sending those sections again a step 5.
+- **No subheadings needed.** At 330 words with numbered steps, the section is short enough to find your way in, and its heading says what it holds.
+- Query: a later session picking up the work needs to know whether the single run in the heading has been made, and where its findings file and the items it filed are. The text does not say.
+- Query: rows 942-943 say a `not reviewed` section "can be sent again in a later batch". The reader needs the command or option that sends only those sections, and the text does not give it.
+- Query: `--credit-left 197.72` in row 932 has no date. The reader needs to know whether it was the credit left on a given date or is a placeholder, and the text does not say. Without that, a later session may copy it and make the refusal check meaningless.
+
+Outline:
+- 912: Heading: "Have a strong model read the model document against the data, once".
+- 914-925: What the review tool does, which model it uses, and where to run it.
+  - `tools/model_doc_review.py` sends `docs/MODEL.md` and every data file under `src/anesthesia_sim/data/` through the Message Batches API.
+  - It uses the same API credit as the headless workers (`PL-5S71`).
+  - Model, effort and price come from the `[models]` table in `docket.toml`, role `review`. On 2026-10-25 that was Opus 5.5 at `high`.
+  - The project owner chose on 2026-10-25 to run it once on the table's model, over dropping it.
+  - It sends one request per `##` section, 25 on 2026-10-25, and each request carries the whole document and the data.
+  - The model reports statements in its section that contradict a stored value, another statement or their own units.
+  - A session checks each finding and files the confirmed ones.
+  - Run it on your Mac from a checkout of `main`, with the key exported as in § "Spend the monthly API credit on delegable items", steps 1 to 3.
+- 927-931: Step 1, estimate the cost.
+  - `uv run python tools/model_doc_review.py estimate` prints the number of requests, the model and effort, and the most the batch could cost (the bound). It sends nothing.
+  - On 2026-10-25 the bound was $27.05 on Opus 5.5.
+  - The bound assumes no prompt-cache hit and every request using its full output allowance, so the bill should be well below it.
+- 932-936: Step 2, send the batch.
+  - `uv run python tools/model_doc_review.py submit --credit-left 197.72` sends the batch, with the figure taken from platform.claude.com/settings/billing.
+  - It refuses when the bound is more than the credit left.
+  - It prints a batch id that starts `msgbatch_` and saves a manifest in `~/.local/state/open-anesthesia-sim/model-doc-review/`.
+- 937-940: Step 3, fetch the results.
+  - `uv run python tools/model_doc_review.py fetch <batch id>` reports progress until the batch ends.
+  - Most batches end within an hour, and all within 24 hours.
+  - Once the batch has ended, it prints one line per section and writes `<batch id>.findings.json` in the same folder as the manifest.
+- 941-943: Step 4, hand over the findings.
+  - Attach the findings file to a project thread and ask for `PL-5S71`'s findings to be checked.
+  - A section marked `not reviewed` names its reason and can be sent again in a later batch.

@@ -1,0 +1,41 @@
+[1] keep
+
+Structure:
+- One point appears twice: a squash body that differs from its pull request is left as it is. Line 648-649 says "That drift is accepted rather than repaired, so `--compare` is a measurement you run by hand". Line 653-654 says "That older body is accepted as part of the record (`PL-3PH2`)". The point belongs in the last paragraph (651-656), because that paragraph explains how such a body comes about: someone edits the description after auto-merge is armed. Move the `--compare` sentence (647-649) there as the way to find such bodies, and state the acceptance once, with `PL-3PH2`. Bullet 643-649 then keeps only the recovery of empty bodies.
+- The opening paragraph (616-630) makes two points. The first is the rule: which routes to merge by (616-620). The second is why the app breaks the record, with the evidence (620-630). Split it before "In this repository, a pull request's description becomes the squash commit message", and keep the rule first.
+- Bullet 634-641 has grown into an essay (writing-rule pattern 5). It holds an instruction, the counts 49, nine and six, a caveat, two incidents and a past repair. The counts look like the measurements that line 629-630 says "`PL-WFFX` has". If so, either move them to `PL-WFFX` with their date ("by 2026-09-22"), or put the `PL-WFFX` pointer beside them. The bullet would then keep the instruction and the caveat, with `#1044` as the example. "Both bodies have been recovered under `docs/pr-bodies/` (`PL-HZ0M`)" (641) records a past repair. Bullet 643-647 already says that missing bodies are fetched into `docs/pr-bodies/`, and `PL-HZ0M` keeps the repair, so this place can keep nothing.
+- Query: the heading says "never in the GitHub app", and line 617-618 says "not in the app". Bullet 642 says "If the app is the only option, check the message behind its cog icon first", which allows the app as a last resort. Only the author knows which is the rule. If the app is a last resort, the heading's "never" claims more than the section, and renaming it means updating the files that cite it.
+- Query: "So a merge in the app empties the record, and nothing says that it did" (625-626) reads as contradicting bullet 643-645, where the release step's script "names every squash commit that reached `main` with no body". It probably means nothing warns at merge time, but the text does not say so.
+- Query: a session needs to know how to arm auto-merge so that "nothing sets its message" (634): the command or option. It also needs to know whether to set the message to the description explicitly instead, because `#1044` was armed with no message set and still landed empty (638-639). The text gives neither.
+- Query: the reader needs to know what to do when the Mac's commit message box (632-633), or the message behind the app's cog icon (642), does not hold the description, for example paste it in. The text does not say.
+- Query: "the next release recovers it" (643) says the release recovers bodies by itself. The rows say only that the release step runs `python3 tools/pr_body_check.py`, which names missing bodies, and that `--recover` is an option. The reader needs to know whether the release step runs `--recover` or a person must.
+
+Outline:
+- 614: heading. Merge on the Mac or by auto-merge, never in the GitHub app.
+- 616-630: The routes, the rule, and why the app breaks the record.
+  - The owner merges by three routes: the Mac's browser, auto-merge armed through Claude, and the GitHub iPhone app (project owner, 2026-09-22).
+  - The rule: squash-merge and arm auto-merge by the first two routes, not in the app (project owner, 2026-09-22, ratified, over leaving after-the-fact detection as the whole remedy).
+  - In this repository, a pull request's description becomes the squash commit message.
+  - That body on `main` is the record of the reasoning behind the change (project owner, 2026-09-26, ratified, over keeping `PL-979D`'s copy of every body in the tree behind `pr-title`'s required check, `PL-3PH2`).
+  - The iPhone app submits the squash with an empty message, and GitHub uses that message instead of the repository's default. A merge in the app therefore empties the record, and nothing says that it did.
+  - `#918` was merged in the app and reached `main` with no body.
+  - GitHub has acknowledged the defect since 2023, in community discussion #51016 (https://github.com/orgs/community/discussions/51016).
+  - `PL-WFFX` has the measurements.
+- 632-633: In the Mac's browser, check that the commit message box holds the pull request's description before you confirm.
+- 634-641: Auto-merge is the safer route when nothing sets its message, but it is not a guarantee.
+  - All 49 auto-merges armed with no message set by 2026-09-22 kept their body.
+  - The nine that lost their body had carried an explicitly empty message.
+  - Six of those nine were armed in the hours away from the desk, when the app is in use.
+  - A session armed `#1044` with no message set, and it landed with an empty body on 2026-09-25.
+  - `#1015` landed with an empty body the same day, by a merge path nobody identified.
+  - Both bodies have been recovered under `docs/pr-bodies/` (`PL-HZ0M`).
+- 642: If the app is the only option, check the message behind its cog icon first.
+- 643-649: A body that a merge empties is recovered at the next release.
+  - The release step runs `python3 tools/pr_body_check.py`. It names every squash commit that reached `main` with no body and no file under `docs/pr-bodies/`.
+  - `--recover` fetches each missing body back from GitHub into that folder.
+  - `--compare` reports a squash body that says something other than its pull request.
+  - That difference is accepted rather than repaired, so `--compare` is a measurement run by hand.
+- 651-656: A description edited on GitHub after auto-merge is armed does not land on `main`.
+  - Auto-merge takes its message when it is armed, so the squash lands the body as it stood then (`PL-M7W1`).
+  - That older body is accepted as part of the record (`PL-3PH2`).
+  - To land the edit, disarm auto-merge and arm it again, or merge in the Mac's browser, where the message box shows what will land.

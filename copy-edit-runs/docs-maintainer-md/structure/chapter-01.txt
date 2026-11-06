@@ -1,0 +1,11 @@
+[1] keep
+
+Structure: no change. The chapter is the document's title and one opening paragraph, and that paragraph tells a later session who the document is for and why it is kept apart from `CLAUDE.md`, which is what that reader needs before going on.
+
+Outline:
+- Row 1: the heading and document title, "Notes for the project owner".
+- Rows 3-7: who the document is for, and why it is a separate file.
+  - Everything in the document is addressed to the person running the sessions, not to the sessions themselves.
+  - For that reason, the document is kept outside `CLAUDE.md`.
+  - The reason: every session pays the context cost of reading a rule, even a rule it cannot act on.
+  - `docs/worker.md` is the opposite kind of document. It holds instructions to a worker agent.

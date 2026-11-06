@@ -1,0 +1,33 @@
+[1] keep
+
+Structure:
+- The same point appears in two places. Rows 989-990 say "Both are already reported on Anthropic's public issue tracker, so neither needs a new report (`PL-90CJ`)", and row 998 says "so do not post it again". The point belongs in the opening, which covers both issues. Item 1 should keep only what the comment contains (the runnable script and the five-line fix), because that is the reason no new report is needed.
+- The answer to "how will the owner learn that #83490 is fixed?" is split in two. Rows 999-1001 say GitHub notifies you when the issue closes. Rows 1009-1013 say nothing in the repository tells you if the proposed fix lands, and that the patch prints a message if a different fix lands. The owner looks for this in the last paragraph, which says when to act. Move the notification sentence and its GitHub citation there, beside "nothing in this repository will tell you". Item 1 then keeps nothing about notifications.
+- The opening paragraph (rows 985-991) makes two points. The first is why the patch exists. The second is that both faults are already reported upstream and were open on 2026-10-03. Split it after "the patch corrects both" (row 989), so the second paragraph leads into the list of issues.
+- The order and heading need no change. The heading already names the action, so the section can end with it.
+- Query: item 2 (rows 1005-1006) says "you do not need to watch this issue", but rows 1008-1009 say to retire a half of the patch "once either issue closes as fixed". The reader needs to know whether the #82624 half should be retired at all, and if so, how they will learn the issue has closed. The text does not say.
+- Query: row 1003 says #82624 lists more than one false positive but names only the second. The reader needs to know what the first one is. It may be the stale-branch case of #83490, or a case the patch does not handle. The text does not say.
+
+Outline:
+- Row 983: heading. The section tells the owner when and how to retire the stop hook patch.
+- Rows 985-991: why the patch exists, and that the hook's faults are already reported upstream. Facts:
+  - The cloud container's `Stop` hook is `~/.claude/stop-hook-git-check.sh`.
+  - The hook belongs to Anthropic and is rewritten at every container start.
+  - `.claude/hooks/stop_hook_patch.py` corrects the hook at each session start, for this project only (`PL-WW08`, `PL-483K`).
+  - The hook makes two false demands to push, and the patch corrects both.
+  - Both are already reported on Anthropic's public issue tracker, so neither needs a new report (`PL-90CJ`).
+  - Both issues were open on 2026-10-03.
+- Rows 993-1001: issue anthropics/claude-code#83490 (with link), about the outdated `origin/<branch>` that a merged pull request leaves behind. Facts:
+  - In Claude Code 2.1.288 the hook still counts commits as unpushed against that outdated branch.
+  - The owner commented on 2026-10-03 with the reproduction drafted in `PL-90CJ`.
+  - The comment gives a runnable script that tests the shipped hook, and a five-line fix. Do not post it again.
+  - Commenting subscribed the owner, so GitHub sends a notification when the issue closes. Source: GitHub Docs, "About notifications", section "Default subscriptions" (with URL).
+- Rows 1002-1006: issue anthropics/claude-code#82624 (with link). Facts:
+  - The issue lists more than one false positive.
+  - The second is a `git clone --depth 1` that fetches only `main`, so a push records no `origin/<branch>`.
+  - The half of the patch that handles this case costs nothing to keep running.
+  - The owner does not need to watch this issue.
+- Rows 1008-1013: what to do once an issue closes, and how the #83490 fix will show. Facts:
+  - Once either issue closes as fixed, ask a session to retire the half of `stop_hook_patch.py` that the fix covers.
+  - For #83490, if the fix is the one the comment proposes, nothing in the repository signals it. The patch finds its own line already in place and stays silent.
+  - If the fix takes any other form, the patch prints a message at every session start saying that the line it rewrites is not there.

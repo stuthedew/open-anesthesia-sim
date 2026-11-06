@@ -1,0 +1,616 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Debt gate: the frozen list (run 1 of 3)", rows 2206-2621. Whole section: 5931 words. For: The project owner, or a contributor deciding what to build next
+ 2206 | ### Debt gate: the frozen list
+ 2207 | 
+ 2208 | **Frozen 2026-09-06, the day this milestone was scoped.** This list holds
+ 2209 | every open item that is debt by § "The debt gate" below. An item is debt when
+ 2210 | it is classed `defect`, `safety`, `science`, `refactor` or `perf`, or when it
+ 2211 | is at `needs-decision`. This is by a wide margin the largest gate this project
+ 2212 | has held. Gate 0 held twenty-one items, and v0.2.8's frozen scope held
+ 2213 | thirty-eight. The group headings below state the size, and so does the
+ 2214 | timeline row that names this release. `tools/doc_check.py` checks those
+ 2215 | numbers against the list. This section deliberately does not record how many
+ 2216 | items are *closed*, for the reason the v0.4.0 section gives. A count written
+ 2217 | into a document goes stale the next time an item closes. `bin/docket wave`
+ 2218 | reads these entries against `docs/items/` and reports the split.
+ 2219 | 
+ 2220 | **Three groups, and only the third is a precondition.** The first group is
+ 2221 | the remaining work of the `v0.4.x` track. "The timeline" places that work
+ 2222 | *ahead* of this gate, and it ships as a patch rather than inside this
+ 2223 | milestone. That looks like an exception to "A gate does not get a version",
+ 2224 | but it is not one. Those items were already placed on an earlier step when
+ 2225 | this list was frozen. A gate frozen today cannot go back and claim a step that
+ 2226 | the plan had already reached. The second group is debt inside this
+ 2227 | milestone's own Required scope. The milestone clears that debt itself, as
+ 2228 | "Debt inside the milestone's own scope" says. The third group is everything
+ 2229 | else, and it is cleared before implementation of this milestone begins.
+ 2230 | 
+ 2231 | **Fifteen items were untriaged at the freeze, so the list could not decide
+ 2232 | them.** An untriaged item has no `classes` yet, so nothing can say whether it
+ 2233 | is debt. Freezing against the store means freezing against what the store
+ 2234 | knows. That leaves a hole in the gate, not an exemption, and
+ 2235 | "The gate is a snapshot" closes it. Each of these items was captured
+ 2236 | *before* this freeze, so the problem it describes was already present at the
+ 2237 | freeze. Any of them that the triage pass classes as debt re-enters this gate
+ 2238 | rather than waiting for Gate 2. The list below records what could be decided
+ 2239 | on the day. A re-entering item is added to it with the date and the reason,
+ 2240 | exactly as v0.4.0's three post-freeze notes record theirs.
+ 2241 | 
+ 2242 | **The hole is closed, and it cost eight entries.** The 2026-09-06 triage pass
+ 2243 | classed the eleven captures that were not this session's own, and eight of
+ 2244 | them are debt. Those eight are the sixth group below. Three of them,
+ 2245 | `PL-NBWP`, `PL-NBCJ` and `PL-B1WW`, are `P1` `safety` or `science` findings.
+ 2246 | They concern the step size, the control resolution of the playback burst, and
+ 2247 | the oracle of the reference gate. That is the class of finding this rule
+ 2248 | exists to catch rather than defer. This session also captured four items of
+ 2249 | its own. `PL-QYPX` and `PL-3P2P` closed with the change that scoped this
+ 2250 | milestone. `PL-D9GM` is `planning`. `PL-M26Q` is `infra`, a tooling
+ 2251 | capability nobody has built, and "What counts" says explicitly that such an
+ 2252 | item is not debt. So none of the four adds to the list.
+ 2253 | 
+ 2254 | **How the third group is meant to be worked.** The third group splits almost
+ 2255 | evenly between the two lanes that `docket.toml` declares. The two halves share
+ 2256 | no files, so they are worked at the same time in two sessions rather than
+ 2257 | one after the other. That is what the lane split was built for. The product
+ 2258 | half must also be ordered against the milestone's own work. Much of it names
+ 2259 | `app/controller.py`, `core/` and `docs/MODEL.md`, which `PL-T691`
+ 2260 | restructures. Clearing it *after* that restructure would mean diagnosing each
+ 2261 | item again against code that had moved. That is exactly the cost that
+ 2262 | "The debt gate" names when it opens. It is also the reason this list was
+ 2263 | frozen whole rather than narrowed (project owner, 2026-09-06).
+ 2264 | 
+ 2265 | **Reconciled 2026-09-19 (`PL-C4RS`).** Three entries sat under headings that
+ 2266 | said the opposite of what the milestone's own scope said about them.
+ 2267 | § "Debt inside the milestone's own scope" makes `Required scope` the test. So
+ 2268 | the document gave two answers to a question that it says has only one. After
+ 2269 | this pass, the three ids below sit under headings that agree with `Required
+ 2270 | scope`, and each placement is stated rather than implied:
+ 2271 | 
+ 2272 | - `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation
+ 2273 |   path) are under § "Cleared by the `v0.4.x` track, ahead of this gate". They
+ 2274 |   have also left `Required scope`. The note under that heading had already
+ 2275 |   recorded this on 2026-09-08: "Required scope below drops to sixteen items".
+ 2276 |   But the entries were never removed, so the two structures had disagreed ever
+ 2277 |   since. Prose under `Required scope` now records what v0.5.0 required of these
+ 2278 |   two items, and that the patch track shipped it. Prose there does not place
+ 2279 |   an item in the scope.
+ 2280 | - `PL-GVXP` (separate the six chart traces by more than colour) is under
+ 2281 |   § "Cleared before v0.5.0 begins, the product lane" and is not in `Required
+ 2282 |   scope`. It never was an entry there. It was only cited inside the prose of
+ 2283 |   the `PL-8PSW` entry. On 2026-09-19, `PL-HWW1` made a declaration, rather
+ 2284 |   than a mention, the record of membership. So the disagreement ended when the
+ 2285 |   parsing changed, not through an edit to this document.
+ 2286 | 
+ 2287 | **Cleared by the `v0.4.x` track, ahead of this gate — 7 entries**
+ 2288 | 
+ 2289 | **Two moved here from "Cleared by v0.5.0 itself" on 2026-09-08, and one added** (project
+ 2290 | owner). The reason is a measurement rather than a preference. `PL-4RBD` was
+ 2291 | measured again against the time bases that the interface actually ships. Its
+ 2292 | `P2` banding rested on a 0.04 pp figure taken at a chart window that was
+ 2293 | removed four releases ago. At the 12 h base, the MAC-bearing alveolar trace
+ 2294 | departed from the run by 0.65 pp, **0.32 MAC**. Nothing on the chart said that
+ 2295 | the shape between plotted points was inferred. `PL-4RBD` is now `P1`,
+ 2296 | `safety`. Its own fix pins only the kink. The rest of the error is ordinary
+ 2297 | curvature drawn as a chord across a 4 096-sample bucket, and no selection of
+ 2298 | recorded extremes can represent that curvature. So the sampler had to arrive
+ 2299 | before the safety item could close properly, and `PL-2FM6` came forward with
+ 2300 | it. `PL-T691` and `PL-P1Z3` had already shipped in v0.4.8 under the same group
+ 2301 | heading, so this move continues that pattern rather than breaking it. Required
+ 2302 | scope below drops to sixteen items. The gate total rises by two, for `PL-ZX12`
+ 2303 | and `PL-GS3R`. `PL-2FM6` and `PL-8LXM` moved between groups rather than
+ 2304 | joining the gate.
+ 2305 | 
+ 2306 | - PL-9SH6 (M) Give the partial-pressure-equivalent fraction one accessor name across every compartment in core/
+ 2307 | - PL-X2XX (M) doc_check's citation check reads neither docs/items/*.md nor source docstrings, so nothing holds the queue's or the code's citations to the docs they name
+ 2308 | - PL-VZL0 (S) Cite MODEL.md from every core/ function implementing a governing equation, and restate the solved form the spec lacks
+ 2309 | - PL-2FM6 (M) Delete RunHistory and draw the chart from the closed-form sampler instead of from recorded samples
+ 2310 | - PL-8LXM (M) Delete chart_downsampling.py, its tests, the M4 paper and every citation of them
+ 2311 | - PL-GS3R (M) — **added 2026-09-08, `safety`.** The drawn chart's worst error
+ 2312 |   moved from the control change to the steep early wash-in, and `PL-4RBD`'s
+ 2313 |   0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width
+ 2314 |   the old buckets did. Measured after `PL-2FM6` landed and so captured well
+ 2315 |   after the freeze, but it re-enters this gate under the rule that admits a
+ 2316 |   `safety` finding regardless of presence — and the problem it describes is
+ 2317 |   older than the freeze, since the same chord error was in the number
+ 2318 |   `PL-4RBD` was re-banded on. `needs-decision`: the three routes trade
+ 2319 |   resolution against the frame budget, and choosing is the project owner's.
+ 2320 | - PL-ZX12 (S) — **added 2026-09-08.** Rename RunScore to RunDefinition: 'score' is a
+ 2321 |   metaphor a domain reader has to be taught, in the package that should read like
+ 2322 |   the domain. Captured after the freeze, and it re-enters this gate rather than
+ 2323 |   waiting for Gate 2 because the problem predates it: the module landed in v0.4.8.
+ 2324 |   Sequenced after `PL-8LXM`, whose citation sweep opens the same documents, and
+ 2325 |   before `PL-49R8`, whose rule file would otherwise be born carrying the retired
+ 2326 |   term.
+ 2327 | 
+ 2328 | **Cleared by v0.5.0 itself — 8 entries**
+ 2329 | 
+ 2330 | - PL-T691 (L) The run is its control-input timeline: hold keyframes at every event and answer any window in closed form
+ 2331 | - PL-P1Z3 (M) State the canonical evaluation rule that carries determinism once the step is no longer fixed, and gate it
+ 2332 | - PL-Y5WR (M) The 30-day scenario cap is enforced nowhere as an explicit halt, and dropping PL-011 removes the only item that required it
+ 2333 | - PL-1PSX (M) The control-input timeline is unbounded and regrouped in full on every frame
+ 2334 | - PL-B9PY (M) Decompose SimulationView so two runs can be rendered at once
+ 2335 | - PL-RD3B (M) app/controller.py holds the run's trace vocabulary and drawn window as well as the UI-to-core boundary, and they are separable
+ 2336 | - PL-TCD1 (M) SimulationSnapshot still names six flat compartment floats, so the readouts cannot express a second substance now that the recorded run can
+ 2337 | - PL-YDKJ (S) Decide whether the chart should keep patching one control per plotted point
+ 2338 | 
+ 2339 | **`PL-YDKJ` is here as a consequence of `PL-2FM6`, not as a nineteenth
+ 2340 | Required-scope entry** (moved 2026-09-08, `PL-YXXG`). It was in the product
+ 2341 | lane above, which asked for the decision *before* v0.5.0 begins. But
+ 2342 | `PL-2FM6`'s brief says it "should be decided after this lands rather than
+ 2343 | before - the point-movement rate is its main input, and this item changes it",
+ 2344 | and `PL-2FM6` is in this group. `PL-YDKJ` is also a sizing question. Its own
+ 2345 | closing note reduces it to two inputs: `2 * P^2 * T / window_seconds` in the
+ 2346 | drawn point count, and how often those points change. `PL-2FM6` replaces both
+ 2347 | of them. `PL-YDKJ`'s own trigger condition ("answer it only when a scale, a
+ 2348 | trace count or a render cadence is actually blocked by the ceiling") is also
+ 2349 | unmet.
+ 2350 | It now carries `blocked-by: PL-2FM6`, so no check has to work out that
+ 2351 | dependency from the prose again. Required scope below stays at eighteen items,
+ 2352 | and the gate total stays at 132.
+ 2353 | 
+ 2354 | **Cleared before v0.5.0 begins, the product lane — 39 entries**
+ 2355 | 
+ 2356 | - PL-6Q8N (M) The reference adult's eleven physiologic parameters have no primary source at all
+ 2357 | - PL-HB58 (M) Validate washout against the same published cohorts the wash-in gate already uses
+ 2358 | - PL-4GN8 (S) The mass-balance release gate's absolute tolerance tracks whichever dial its test happens to run at
+ 2359 | - PL-GYH2 (S) Bound or document the two gas volumes, which no supported range covers
+ 2360 | - PL-L2F2 (S) The fixed-volume alveolus blocks nitrous oxide, not just omits it
+ 2361 | - PL-BLHV (M) Record the intended-use statement and the IEC 62304 safety classification in docs/MODEL.md
+ 2362 | - PL-FDBK (M) docs/MODEL.md has no hazard table, so every mitigation is argued forward and none is checked backward
+ 2363 | - PL-KGNF (M) docs/MODEL.md still names sevoflurane specifically in section headings and Purpose, four releases after three agents shipped
+ 2364 | - PL-WVSK (M) Nothing distinguishes a concentration fraction from a percent at the type level, and two boundaries convert implicitly
+ 2365 | - PL-0NQ1 (S) The reference patient's cited sources disagree on vessel-rich perfusion
+ 2366 | - PL-11YF (S) MODEL.md says the readouts sit in one row without saying above what width
+ 2367 | - PL-3355 (S) The 'Simulated time' and compartment readouts wrap their value onto a second line at some window widths
+ 2368 | - PL-4RBD (S) The drawn chart smooths through a control change that leaves the trace monotone, because M4 selects extremes and such a change is not one
+ 2369 | - PL-8PZ1 (S) docs/MODEL.md's release gate is still headed 'Version v0.1.0 is complete only when', but entries are being added to it for v0.3.0
+ 2370 | - PL-B32L (S) core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its own docstring promises
+ 2371 | - PL-C4PH (S) — **dropped 2026-09-08** (project owner). Record the history
+ 2372 |   sampling cadence as a decision of its own, separate from the integration step.
+ 2373 |   Superseded by `PL-2FM6`, which deletes the store that has a cadence; after it
+ 2374 |   lands there is no recording cadence to state and `SIMULATION_STEP_S` plays one
+ 2375 |   role again. Its durable half — the owner's 2026-09-05 chart-faithful-only
+ 2376 |   decision, recorded nowhere else — is transplanted into `PL-2FM6`'s **Done when**
+ 2377 |   and held there by a `verify:` grep. Counts as cleared, so the gate stands at 132
+ 2378 |   entries, 44 cleared. `PL-4RBD` is deliberately **not** dropped with it.
+ 2379 | - PL-DXQC (S) The v0.4.0 Goal section states two problems in the present tense that are now fixed
+ 2380 | - PL-F5GN (S) The oracle's independence check walks only ImportFrom, so a plain import bypasses it
+ 2381 | - PL-GVXP (S) Separate the six chart traces by more than colour, and meet contrast minima
+ 2382 | - PL-GZP6 (S) Two of docs/MODEL.md's required tests are not implemented
+ 2383 | - PL-LKCN (S) Pin PL-010's no-rebuild property with an allocation test on the render tick
+ 2384 | - PL-Q4M4 (S) The simulated-time clock reads in seconds while the chart's own time axis reads in hours and minutes
+ 2385 | - PL-Q4VH (S) The compartment chart labels its percent axis at a different interval from the gridlines it rules
+ 2386 | - PL-X204 (S) require_valid_agent_accounting() reads nothing from self, so it will judge a result from another accounting period
+ 2387 | - PL-YK2V (S) _apply_setting catches a narrower exception class than the timer paths, so an unexpected raise escapes into Flet's dispatch
+ 2388 | - PL-16ZC (M) The two clinical references and the control marks have no show/hide control, though the chart's traces now do
+ 2389 | - PL-F0L8 (M) Establish what accessibility Flet's rendering backend can actually deliver
+ 2390 | - PL-WZVZ (M) 'Make an inter-machine difference attributable: which parameter differs, and what it does to the result'
+ 2391 | - PL-0SHZ (S) README's bare-interpreter paragraph names two ruff.toml pins and there are now three, since .claude/hooks/ carries one too
+ 2392 | - PL-4MHK (S) pyproject.toml's package metadata does not describe the project - a vague description and no classifiers
+ 2393 | - PL-6194 (S) 46 redundant parentheses around bare keyword-argument values across src/, from the initial build
+ 2394 | - PL-79YX (S) Six exact float-equality branch guards in core/ are correct and nowhere explained
+ 2395 | - PL-BTSW (S) README.md was edited on 2026-09-05 despite the freeze, and the edit left an unwrapped line
+ 2396 | - PL-KCWD (S) APP_VERSION falls back to 'unknown' in the one line tying a displayed value to the model that produced it
+ 2397 | - PL-LL9Y (S) Check the warning and alert colours against the medical alarm-colour convention
+ 2398 | - PL-QM5P (S) README.md's description of doc_check candidates still says it prints lines mentioning anything the diff touched, which PL-B2NS narrowed to code mentions
+ 2399 | - PL-TCW5 (S) FLOW_FRACTION_TOLERANCE is defined twice, so the two perfusion-sum guards can drift apart silently
+ 2400 | - PL-TG60 (S) Stop printing six decimals of an exhaust integral good to three
+ 2401 | - PL-YTX9 (S) Decide whether a hidden compartment trace should keep its legend entry or vanish from the legend entirely
+ 2402 | 
+ 2403 | **Cleared before v0.5.0 begins, the workflow lane — 49 entries**
+ 2404 | 
+ 2405 | - PL-7QKY (M) The working-notes discovery instruction is circular - a session must read the whole file to learn whether its task touches one of its threads
+ 2406 | - PL-8M8H (M) docket branch tells a session whose pull request already merged to merge the base in, not to restart, so the push that loses work looks correct
+ 2407 | - PL-NBCS (M) docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
+ 2408 | - PL-PGZK (M) docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
+ 2409 | - PL-XLQ5 (M) The orphaned report asks whether the base ever held the branch's exact blob, so a path superseded on either side reads as work the squash left behind
+ 2410 | - PL-20CQ (S) "docket check runs every open item's verify: command, so a verify: that invokes docket check recurses without bound"
+ 2411 | - PL-39B7 (S) Make docket stranded distinguish a merged-and-deleted branch from an abandoned one, and say when its main is stale
+ 2412 | - PL-4WQS (S) The docket summary and session digest label a count 'open' that excludes untriaged items, understating the queue by exactly the number beside it
+ 2413 | - PL-CW14 (S) The top-band advisory tells a session to demote work docket check itself pins to P1
+ 2414 | - PL-D188 (S) A brief written into an untriaged item is appended below docket new's template rather than replacing it, so the dead stub survives to triage
+ 2415 | - PL-F4JS (S) bin/docket triage omits the **Decision needed.** requirement from the rules it prints, so triaging an item to needs-decision fails check after the edit
+ 2416 | - PL-GBBZ (S) Clear the four undeclared prose prerequisites the new advisory names
+ 2417 | - PL-GJDW (S) contrast_check's requirement descriptions cite simulation_view line numbers, and all eight are wrong
+ 2418 | - PL-HKF4 (S) doc_check's tag advisory prints `<merge commit>`, which a shell reads as redirection, so pasting it fails with "no such file or directory: merge" instead of tagging
+ 2419 | - PL-JBZK (S) docket.toml's workflow_paths names three tools tests by path, so the other seven and every new one fall on the product side of the lane boundary
+ 2420 | - PL-JL2M (S) docket new seeds a template brief that a later-written brief appends to rather than replaces, leaving empty required headings that block triage
+ 2421 | - PL-JSRH (S) A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
+ 2422 | - PL-K2C8 (S) The docket skill's stranded-branch recovery deletes only the local remote-tracking ref, which the next non-prune fetch restores while the branch still exists on the remote
+ 2423 | - PL-KBD0 (S) A blocked-by edge with no status blocked is invisible to the ranking, which is the same silent wrong answer one step along
+ 2424 | - PL-KD98 (S) bin/docket wave reports 'implement' for a milestone whose Required scope is complete, because the beat reads only the frozen gate list and never the scope's item ids
+ 2425 | - PL-MGF9 (S) The process-work grooming advisory only examines the top band, so it cannot fire for the P2 and P3 bands where all the process work actually sits
+ 2426 | - PL-N2X4 (S) Hold tools/contrast_check.py's line citations to the file, or drop them
+ 2427 | - PL-NB4D (S) '`docket verify` reports "1 commit(s)" when the work it just checked is entirely uncommitted'
+ 2428 | - PL-S5LB (S) _number_closing walks git log without rename detection, so an item whose file was renamed after it closed recovers the renaming commit's pull request instead of its own
+ 2429 | - PL-WGXJ (S) apparatus-standard.md structurally exempts the apparatus from the expert-review standard, so the largest part of the tree has no review bar
+ 2430 | - PL-YDL6 (S) An item whose work landed in one pull request but whose status done was written in a later one recovers the later number, which carries the closure but none of the work
+ 2431 | - PL-YNCW (S) docket new --touches before the title swallows it, because nargs='*' is greedy and the error names the title instead
+ 2432 | - PL-7790 (M) A session that starts an item by pushing only queue-file edits stakes no claim docket next can see
+ 2433 | - PL-B73C (M) Decide whether docket flight and the digest should name unlanded refs carrying no item id at all
+ 2434 | - PL-VV4D (M) Decide whether the left-behind check should compare against refs/pull/<n>/head, which is exact but makes the check GitHub-specific
+ 2435 | - PL-01CK (S) The in-flight content test walks the default branch's history once per blob a candidate branch adds
+ 2436 | - PL-3833 (S) An item file's name can drift from its title and nothing checks it, so the store carries a stale slug until some unrelated rewrite happens to fix it
+ 2437 | - PL-BZCM (S) docket status shows no plan placement, so the feature survey a session leads with cannot say which work the current step includes
+ 2438 | - PL-GNN1 (S) The contrast checker cannot express a requirement met by either of two channels
+ 2439 | - PL-GVNS (S) docket.toml's workflow_paths lists docs/worker.md but not docs/maintainer.md, so an apparatus item whose record lands in the maintainer doc ranks in the product lane
+ 2440 | - PL-H1JD (S) An outstanding needs_action is lost when its session is archived, so a request nobody acted on drops out of the closing-block read
+ 2441 | - PL-J7C5 (S) Cite symbols rather than line numbers in the contrast table's reasons
+ 2442 | - PL-JQVB (S) CLAUDE.md's four dispositions for a new rule list no carrier for a paste-able brief or an agent definition, and a skill's resident cost is invisible to measure_resident
+ 2443 | - PL-KJ63 (S) doc_check reads any double-quoted phrase in a doc as a section citation, so quoting a measured figure hard-fails the check
+ 2444 | - PL-MHQK (S) The contrast checker prints its known-shortfall detail on every run, where the verify advisory was narrowed to what a session is about to trip over
+ 2445 | - PL-PMT7 (S) Memoize branches_in_flight so cmd_next and cmd_digest stop computing _flight twice per invocation
+ 2446 | - PL-R6D8 (S) git log --source does not attribute a shared commit to the ref named first, and _unmerged_commits' docstring says it does
+ 2447 | - PL-S2L4 (S) bin/docket delegable offers items that docs/worker.md forbids a worker to touch
+ 2448 | - PL-V4LS (S) docket check recovers a merged pull request number and then asks a human to transcribe it, which is a decidable half left as prose
+ 2449 | - PL-VFVW (S) docket feature draws a dropped item with the same empty checkbox as an open one, so counting the boxes disagrees with the 'N left' figure printed beside them
+ 2450 | - PL-VP40 (S) docket verify reads per-commit patches, so a line a branch added and then removed still reads as added
+ 2451 | - PL-W1LN (S) The in-flight walk guard cannot catch a false positive whose walk ends against a commit the base reaches by another path
+ 2452 | - PL-WTQ1 (S) doc_check's math-rendering check reads a regex in an item's verify: command as LaTeX and hard-fails
+ 2453 | - PL-Z0G0 (S) doc_check candidates attributes a hit to the alphabetically first matching term, so a line matched through render.py prints as (render)
+ 2454 | 
+ 2455 | **Cleared before v0.5.0 begins, reaching both halves — 9 entries**
+ 2456 | 
+ 2457 | Neither lane can complete these items on its own. So each one needs a session
+ 2458 | that can work on the whole change across both lanes.
+ 2459 | 
+ 2460 | - PL-1JDD (M) Make the source tier machine-readable so doc_check can decide it
+ 2461 | - PL-028F (M) Work that lands between a release cut and its merge is inside the tag's span but absent from the release notes, and nothing reconciles the two
+ 2462 | - PL-7J96 (M) Make the interface renderable in a check, so a presentation change can be looked at
+ 2463 | - PL-8XPQ (M) Nothing checks that an interface string uses glyphs the Flutter client can actually draw
+ 2464 | - PL-3MJH (S) CLAUDE.md's capture rule exempts a finding fixed in the same session but gives no session a way to enter that exemption, so every trivial fix becomes a queue item
+ 2465 | - PL-4YY1 (S) Record provenance for the circuit volume and default fresh gas flow
+ 2466 | - PL-K2YF (S) ROADMAP.md's release narrative skips v0.2.6, so the convention that each release adds a paragraph has already been missed once
+ 2467 | - PL-GLBF (S) ROADMAP.md's subset counts - not-delegable, entries reaching into src/ - are still hand-maintained and unchecked
+ 2468 | - PL-W8DQ (S) The four slider active tracks use ACCENT and miss the non-text minimum
+ 2469 | 
+ 2470 | **Added 2026-09-06 under the presence rule — 8 entries**
+ 2471 | 
+ 2472 | The 2026-09-06 triage pass classified the eleven captures that were still
+ 2473 | untriaged when this list was frozen earlier that day. Eight of them are debt.
+ 2474 | Each of the eight describes a problem that already existed at the freeze but
+ 2475 | could not be decided then. So they re-enter this gate under
+ 2476 | § "The gate is a snapshot" rather than waiting for Gate 2. None of them is inside this
+ 2477 | milestone's Required scope, so all eight clear before implementation begins.
+ 2478 | Five are in the product lane or apply to both halves, and three are in the
+ 2479 | workflow lane.
+ 2480 | 
+ 2481 | - PL-NBWP (M) app/playback.py claims a faster playback is 'never a modelling one', but the uninterruptible tick burst makes control resolution multiplier x 0.1 s - 30 s at 300x
+ 2482 | - PL-NBCJ (S) Decide whether MAXIMUM_SIMULATION_STEP_S should move to 0.05 s so an abrupt manoeuvre's timing stays inside one parameter SD
+ 2483 | - PL-74R0 (M) core/ still holds four compartment-level advance methods that the coupled step no longer calls
+ 2484 | - PL-R460 (M) The exact step costs 27 us against the split's 18 us per step at held settings, and 1.2 ms on every settings change
+ 2485 | - PL-5TRV (M) bin/docket stranded calls an open pull request's branch merged-and-abandoned when another PR independently wrote the same docket record pr: lines, and its recovery would discard the branch
+ 2486 | - PL-B1WW (S) The reference gate's oracle step is not converged during a transient, so 86-99.8 percent of what it reports is the oracle's own RK4 truncation rather than the shipped step's error
+ 2487 | - PL-RC0M (S) "A blocked item's verify: command is never replayed, so it can rot unnoticed and redden whichever pull request unblocks it"
+ 2488 | - PL-1KTV (S) docket.toml counts .github as the workflow lane but apparatus-standard.md's paths do not, so 500 lines of workflow comments sit under the simulator's standard by default
+ 2489 | 
+ 2490 | **Added 2026-09-06 after `PL-NBWP` closed — 2 entries**
+ 2491 | 
+ 2492 | These are the two captures that `PL-NBWP`'s own session left behind. They were
+ 2493 | triaged on 2026-09-06, once `PL-NBWP` had merged. Both are classed `safety`.
+ 2494 | So they re-enter under the second of the two unconditional exceptions in "The
+ 2495 | gate is a snapshot", not under the presence rule. That matters, because the
+ 2496 | presence test gives a different result for each of them, and the `safety` test
+ 2497 | does not. `PL-X35V` describes a deficiency that predates the freeze. The
+ 2498 | interface has never stated what a playback rate costs in control resolution,
+ 2499 | and `PL-NBWP` only made that cost possible to name. `PL-ZVS7`'s subject is
+ 2500 | new, because the table it asks to pin is one that `PL-NBWP` wrote. Neither is
+ 2501 | inside this milestone's Required scope, so both clear before implementation
+ 2502 | begins.
+ 2503 | 
+ 2504 | - PL-X35V (M) The playback-rate control does not state the control resolution its rung costs, so the PL-NBWP disclosure reaches only a reader who has docs/MODEL.md open
+ 2505 | - PL-ZVS7 (M) docs/MODEL.md's control-resolution tolerance table is a measured safety claim with no regression test; re-measuring it 2026-09-06 reproduced it, but nothing would have caught a drift
+ 2506 | 
+ 2507 | **Added 2026-09-07 under the unconditional safety/science exception — 11 entries**
+ 2508 | 
+ 2509 | Eleven items classed `safety` or `science` were filed between the 2026-09-06
+ 2510 | freeze and 2026-09-07. They belong here whatever the presence test says about
+ 2511 | them. Two passages state this same rule: the second of the two unconditional
+ 2512 | exceptions in "The gate is a snapshot", and step 4 of "The cadence". None is
+ 2513 | inside this milestone's Required scope, so all eleven clear before
+ 2514 | implementation begins. Nine are in the product lane and two apply to both
+ 2515 | halves. Nine are `science`, and eight of those declare `docs/MODEL.md`. So
+ 2516 | they are ordered against one another rather than run eleven ways at once.
+ 2517 | Under the tiering that `PL-VRMK` added to `bin/docket concurrent`, a shared
+ 2518 | file means the items must be sequenced, not that they contend.
+ 2519 | 
+ 2520 | **Four further `safety`/`science` items from the same window are deliberately
+ 2521 | not here.** `PL-1XPX`, `PL-CTD7`, `PL-W7H9` and `PL-Z3W6` are placed in this
+ 2522 | milestone's own Required scope below. So they clear *with* the milestone
+ 2523 | rather than before it. That is the distinction that the
+ 2524 | "Cleared by v0.5.0 itself" group above draws.
+ 2525 | 
+ 2526 | **That none of the eleven was recorded for two days is `PL-KTKP`.** The
+ 2527 | procedure existed, and it had been run twice on the freeze day itself, in the
+ 2528 | two groups above. What was missing was anything that reconciles the classes
+ 2529 | in the queue against this list. So `bin/docket wave` reported 84 open of 121.
+ 2530 | That count was arithmetically correct against what was written. But it left
+ 2531 | out every open `P1` the project had, because `docket check` pins `safety` and
+ 2532 | `science` to the top band, and this list therefore contained none of them.
+ 2533 | `tools/doc_check.py` now raises an advisory that names any open `safety`- or
+ 2534 | `science`-classed item that this section does not place. That is the
+ 2535 | decidable half of the problem. Which of the three dispositions an unplaced
+ 2536 | item takes is still a reader's judgment.
+ 2537 | 
+ 2538 | - PL-CXYT (S) docs/MODEL.md does not say whether fresh gas flow includes the vapor the vaporizer adds
+ 2539 | - PL-WT07 (S) docs/MODEL.md says the ventilator start binds the per-rate displacement table 'throughout', but at 300x it leads the unperfused load by only 3% (10.36 vs 10.03 pp) and 'throughout' reads as a comfortable margin
+ 2540 | - PL-5K5C (M) Record the model's sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial
+ 2541 | - PL-7HDS (M) Read Lowe and Ernst 1981, the upstream the Gas Man Workbook names for its volume and flow values
+ 2542 | - PL-YKSM (M) Lowe and Ernst's cardiac output is allometric (0.2 x M^0.75 = 4.84 L/min at 70 kg), not the stored fixed 5.0, and weight_kg is still read by no equation
+ 2543 | - PL-ZP7Z (M) The Workbook attributes the volatile partition coefficients to Yasuda's Anesthesiology abstract and to Abbott package-insert data, which is not what the agent files say
+ 2544 | - PL-73G7 (M) Explain desflurane's opposite-sign washout disagreement once rebreathing is removed
+ 2545 | - PL-W21J (M) Give the elimination comparison a test-only open-circuit driver, so washout can be validated rather than only measured
+ 2546 | - PL-8PS6 (M) Fresh gas flow range is a machine property held in supported_ranges.py, not a global constant
+ 2547 | - PL-XJ5P (M) Citing-sources says there is always a route, but a pre-abstract subscription paper has none and docs/references can no longer hold one
+ 2548 | - PL-61WW (M) During a run, the agent name in the agent selector loses contrast against the agent colour
+ 2549 | 
+ 2550 | **Added 2026-09-08 under the presence rule — 17 entries**
+ 2551 | 
+ 2552 | The 2026-09-08 audit (`PL-36R4`) applied the presence test to every open item
+ 2553 | that both this list and the Required scope below leave out. There were
+ 2554 | forty-two of them. All were filed on or after the freeze day, and none had
+ 2555 | been placed or declined before. Leaving an item neither placed nor declined is
+ 2556 | the one disposition that "The gate is a snapshot" forbids by name. So each of
+ 2557 | the forty-two needed a decision either way.
+ 2558 | 
+ 2559 | **Thirteen are admitted, and the boundary is `docket.toml`'s own** (project
+ 2560 | owner, 2026-09-08). The ten items in the product lane and the three that apply
+ 2561 | to both halves come in. The twenty-nine that are wholly in the workflow lane
+ 2562 | are declined below. That split is a fact recorded in the files, not a
+ 2563 | judgment made again for each item. It uses the same reading of
+ 2564 | `workflow_paths` that separates two sessions, and that is what makes it
+ 2565 | reviewable. None is inside this milestone's Required scope, so all thirteen
+ 2566 | clear before implementation begins.
+ 2567 | 
+ 2568 | **The fourteenth arrived after that audit, and is admitted for a reason of its
+ 2569 | own** (2026-09-08). `PL-QXSB` asks whether the interface should stay on Flet.
+ 2570 | It qualifies for presence under the exception that "The gate is a snapshot"
+ 2571 | states for a late finding. The problem it describes long predates the freeze:
+ 2572 | `PL-001`, `PL-010`, `PL-0VM7` and `PL-Q197` are all attempts to solve it. Only
+ 2573 | the measurement that rules out the routes inside Flet is new. `PL-QXSB` is in
+ 2574 | the product lane, so the reason the twenty-nine below are declined does not
+ 2575 | apply to it.
+ 2576 | 
+ 2577 | It is admitted, and not merely qualified, because of what this milestone is.
+ 2578 | This milestone, v0.5.0, puts a **second chart** on the screen for a branched
+ 2579 | run. The cost that `PL-QXSB` names is paid for each control on screen in each
+ 2580 | frame. So the one milestone whose defining feature doubles the interface is
+ 2581 | the one that should not begin without an answer. The answer may well be
+ 2582 | "stay", as the item itself says. That answer needs only a reply, not a
+ 2583 | migration.
+ 2584 | 
+ 2585 | **Its three consequences come with it** (2026-09-08). `PL-55DH` builds the
+ 2586 | throwaway PySide6 spike. `PL-X9T3` runs the spike on hardware that this
+ 2587 | container does not have. `PL-JRS3` establishes what a port would cost the two
+ 2588 | checks that read `theme.py`. Without that work, those checks would *pass* on
+ 2589 | a tree they no longer describe. That is the failure mode `PL-20PT` had just
+ 2590 | been fixed for. The three are on the list, not merely near it, for the same
+ 2591 | reason `PL-QXSB` is: they are how the question gets decided. A gate that
+ 2592 | included the decision but not its evidence would in effect include nothing.
+ 2593 | `PL-JRS3` is the one that could stop a port cheaply. That is worth as much as
+ 2594 | the two that would start one.
+ 2595 | 
+ 2596 | - PL-0Q1T (S) The new-case dialog leads its carry-over list with circuit volume, the one entry in it a user cannot set, and it is now the interface's only mention of the parameter
+ 2597 | - PL-3PRZ (M) The agent-accounting guard catches an absurdly small alveolar volume at 1e-9 L but stops catching it by 1e-300 L, where the run returns a concentration of exactly zero with accounting passing
+ 2598 | - PL-8GV5 (M) Decide whether the model should represent anaesthesia's own effect on cardiac output and regional perfusion, which it currently holds fixed
+ 2599 | - PL-B9VL (S) Rename the wash-in validation module and its MODEL.md section now that both cover elimination too
+ 2600 | - PL-CZFY (M) The elapsed-time readout states seconds, so a run at the newly declared 24-hour limit reads '86400.0 s' - seven characters of tenths on a quantity a reader thinks about in hours
+ 2601 | - PL-F9TQ (S) PL-6580 strips only the concentration chart, but the wash-in panel's two paragraphs are the largest standing prose block on the screen and no item covers them
+ 2602 | - PL-L7JB (S) docs/MODEL.md names the mass-balance tolerances MASS_BALANCE_ABSOLUTE_TOLERANCE and MASS_BALANCE_RELATIVE_TOLERANCE, but core/ calls them AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L and AGENT_ACCOUNTING_RELATIVE_TOLERANCE, so a reader grepping the documented name finds nothing
+ 2603 | - PL-THXF (S) The trace legend swatch is a solid bar for a trace that is dashed, so the legend's own redundant channel is words only
+ 2604 | - PL-WSDY (S) ROADMAP.md's current-baseline section hardcodes 'Gate 1 remains open at 92 of its 121 entries', which the gate section's own convention forbids and which is now wrong twice over
+ 2605 | - PL-XF89 (S) README's opening says inhaled-anesthetic where the About field and pyproject say volatile - decide which scope word the project's one-line self-description uses
+ 2606 | - PL-2CS8 (M) Nothing carries roadmap item 24's stated prerequisite: the display constants are scattered across theme.py, simulation_view.py and duplicated core/app defaults, with no item to consolidate them
+ 2607 | - PL-36R4 (M) Forty-two presence-qualifying items carry neither a gate placement nor a recorded deferral, which is the one disposition ROADMAP's presence rule forbids
+ 2608 | - PL-NGF7 (M) tools/contrast_check.py can see no disabled-state colour, because none of them is a constant in theme.py
+ 2609 | - PL-QXSB (M) Decide whether the interface should stay on Flet: every route inside it has now been measured, and the remaining lever is fewer controls
+ 2610 | - PL-55DH (M) Build the PySide6 + pyqtgraph spike: the concentration chart and the readout row behind the existing controller, disposable and touching no shipped app/ module
+ 2611 | - PL-X9T3 (S) Run the Qt spike on the project owner's own machine and record frame cost, input latency and how it looks, which is the half no session here can measure
+ 2612 | - PL-JRS3 (S) Establish what a Qt port would cost the checks that read theme.py: contrast_check and agent_identity_check would pass silently on a tree they no longer describe
+ 2613 | 
+ 2614 | **Added 2026-09-10 under the unconditional safety/science exception — 1 entry**
+ 2615 | 
+ 2616 | `PL-LT51` was filed on 2026-09-10 out of `PL-8SDL`. `PL-8SDL` identified the
+ 2617 | four references that Lowe and Ernst cite for the reference patient's organ
+ 2618 | volumes and blood flows. `PL-LT51` is `science`-classed. So it re-enters this
+ 2619 | gate whatever the presence test says about it, under the second of the two
+ 2620 | unconditional exceptions in "The gate is a snapshot". It is not inside this
+ 2621 | milestone's Required scope, so it clears before implementation begins.

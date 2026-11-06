@@ -1,0 +1,57 @@
+[1] keep
+
+Structure:
+- One fact appears in three places. Row 517 says "Extend the existing circuit model", row 531 says "Keep the v0.0.2 circuit model and its analytic regression tests", and row 560 says "the v0.0.2 circuit reference behavior remains unchanged". Rows 531 and 560 state the same requirement. It belongs in Definition of done (560) as a pass condition. Required scope keeps nothing, because the Goal already says the model extends the existing circuit model. If the reader needs "analytic regression tests", the section edit can fold it into 560.
+- Row 546 says "so that mass balance can be checked within a documented numerical tolerance", and row 566 says "total sevoflurane mass closes within the stated tolerance". The tolerance belongs in Definition of done (566). The scope entry (544-546) keeps the tracking of agent delivered, exhausted and stored, and ends at "so that mass balance can be checked".
+- Row 527 says "while preserving deterministic behavior and explicit units", and row 547 says "Preserve explicit simulation time, deterministic results". Determinism belongs in Required scope (547), which can take "explicit units" as well. The Goal paragraph (525-527) then ends at "washout". Row 567 is the pass condition for determinism and stays.
+- Order: put "### Explicitly out of scope for v0.1.0" (576-589) straight after "### Required scope" (529-552), before "### Definition of done" (554-574). There are two reasons:
+  - This reader decides what a release holds and what it leaves out, and those two lists answer that together.
+  - The last criterion of Definition of done (570) mentions "deferred feature" before the reader has seen what was deferred. After the move it points back to a list they have already read.
+  
+  The section edit should then use one name, "out of scope" or "deferred", for both. If the other milestone chapters use the same order, change them all so they stay parallel. The outline read can confirm this.
+- Two passages are written for a developer, which the section edit can fix in place:
+  - Rows 558-559 list Ruff, strict mypy, pytest and GitHub Actions. The owner's row does not say they know these tools. The roadmap needs only what passing guarantees: formatting, lint, type and test checks all pass on the locked Python 3.14 setup. The tool list belongs in the item.
+  - Row 548 names "Flet" without saying it is the interface library.
+- Query: row 546 says "a documented numerical tolerance" and row 566 says "the stated tolerance". The chapter gives no tolerance value and names no place that gives one. Rows 564 ("documented reference scenarios") and 565 ("supported step sizes") have the same gap. The reader needs at least a pointer to where each is stated, and the chapter does not give one.
+- The headings say what their sections hold. At 475 words with four subheadings, the chapter is easy to find one's way in.
+
+Outline:
+- 513: chapter heading, "Completed: v0.1.0 - first patient sevo model".
+- 515: heading "Goal".
+- 517-518: Goal. Extend the existing circuit model into the smallest useful, testable volatile-anesthetic patient model.
+- 520-523: diagram of the model path. Delivered sevo -> breathing circuit -> alveoli -> blood -> vessel-rich group / muscle / fat -> mixed venous return.
+- 525-527: sevoflurane only. Should show recognizable wash-in, uptake, tissue distribution, mixed-venous return and washout, while keeping deterministic behaviour and explicit units.
+- 529: heading "Required scope".
+- 531: keep the v0.0.2 circuit model and its analytic regression tests.
+- 532: add an explicit alveolar gas compartment driven by alveolar ventilation.
+- 533-534: add sevoflurane blood:gas and tissue:blood partition data, with source provenance and validation.
+- 535-536: add cardiac output and perfusion-limited vessel-rich, muscle and fat tissue groups.
+- 537-538: compute mixed-venous return from tissue outflow and couple it back to the lung-blood exchange.
+- 539-540: fresh gas flow, delivered sevo concentration, alveolar ventilation and cardiac output can change during a run without resetting state.
+- 541-543: show at least the delivered, circuit/inspired, alveolar/end-tidal, and mixed-venous or representative tissue concentrations, in snapshots and in the interface.
+- 544-546: track agent delivered, exhausted, and stored in gas, blood and tissue compartments, so that mass balance can be checked within a documented numerical tolerance (value and place not given).
+- 547-548: keep explicit simulation time, deterministic results, and the scientific core separate from Flet.
+- 549-550: document equations, units, assumptions, parameter sources, numerical method and model limitations in `docs/MODEL.md`.
+- 551-552: add unit, integration, invariant and independent reference tests before the release is tagged.
+- 554: heading "Definition of done".
+- 556: v0.1.0 is complete only when all of the following hold.
+- 558-559: the locked Python 3.14 environment passes Ruff formatting and linting, strict mypy, pytest and GitHub Actions.
+- 560: the v0.0.2 circuit reference behaviour is unchanged.
+- 561: zero-flow and zero-ventilation limits behave safely.
+- 562: concentrations stay finite and nonnegative.
+- 563-564: more ventilation or cardiac output gives the expected directional effects in documented reference scenarios (not named).
+- 565: wash-in and washout are stable across supported step sizes (values not given).
+- 566: total sevoflurane mass closes within the stated tolerance (not stated here).
+- 567: Start, Pause, Reset and live parameter changes behave deterministically.
+- 568-569: the interface states that this is an educational model, not a clinical prediction.
+- 570: no deferred feature has entered the release by accident.
+- 572-574: all of these criteria were met when the release was tagged (no date given). `docs/MODEL.md` § "Release gate" holds the matching checklist for the scientific documentation.
+- 576: heading "Explicitly out of scope for v0.1.0".
+- 578: out of scope: desflurane, isoflurane, nitrous oxide, simultaneous gases.
+- 579-580: out of scope: vaporizer interlocks, agent switching, direct injection, flush, automated end-tidal control.
+- 581-582: out of scope: multiple alveolar units, dead space, shunt, ventilation-perfusion mismatch.
+- 583: out of scope: metabolism, renal or hepatic clearance, ECMO, cardiopulmonary bypass.
+- 584-585: out of scope: MAC, BIS/eBIS, nociceptive response, hemodynamic response, decision support.
+- 586: out of scope: IV anesthetics and effect-site models.
+- 587: out of scope: scenario persistence, replay, comparison, forking.
+- 588-589: out of scope: packaging, signing or release installers beyond what is needed to run and test the milestone.

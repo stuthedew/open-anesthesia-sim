@@ -1,0 +1,311 @@
+[1] keep
+
+Structure:
+
+- **One admission paragraph is repeated in every group.** Row 2649 says "All seven are `safety`- or `science`-classed. So they re-enter this gate whatever the presence test says about them, under the second of the two unconditional exceptions in "The gate is a snapshot". None is inside this milestone's Required scope, so all seven clear before implementation begins". Row 3033 says "Each is classed `safety` or `science`, so each re-enters this gate whatever the result of its presence test. The rule that allows this is the second of the two unconditional exceptions … so all three must be cleared before implementation begins". The same thing is said again at 2732-2735, 2765, 2773-2774, 2802-2803, 2811-2813, 2876-2877, 2880-2881, 2884-2885, 2914-2917, 2969-2974, 3008-3014, 3090-3094, 3134-3135 and 3150-3151. Say it once, in a paragraph just before row 2645. Each group then keeps its capture and triage dates, its triage pass, and any exception to that paragraph:
+  - PL-YVHK is sequenced behind the port (2814-2816).
+  - PL-9KDK enters under the presence rule as a `defect` (2887-2890).
+  - PL-LHBY is debt the milestone clears itself (2906-2909).
+  - The four `PL-JRS3` entries land before the port's first commit (2868-2870).
+- **Sizes are given twice.** "Each is `S`." (2918), "Its size is `S`." (3014), "All three are `S`." (3037) and "Both are `S`." (3094) repeat the "(S)" that each list line already shows. Cut these sentences and keep the size in the list line.
+- **Dates are given twice.** From row 2873 on, each list entry opens "added 2026-09-…" (2873, 2878, 2882, 2886, 2894, 2920, 2931, 2938, 2978, 2993, 3016, 3046, 3060, 3071, 3101, 3126, 3142), and the group heading above it gives the same date. Keep the date in one place only: in the entry if the groups are regrouped by subject, as proposed below, or in the heading if they stay grouped by date.
+- **The rule that `safety` and `science` entries cannot be deferred, and its one exception, appear in four places:**
+  - 2749-2754: "`checks.py` exempts the class from the band only at `status: blocked`, and nothing blocks this item".
+  - 2903-2904: "because the rule below makes `safety` not deferrable".
+  - 2945-2951: "There is one carve-out: an `anticipated` finding whose hazard a later milestone creates. That carve-out also needs `status: blocked`".
+  - 2971-2972: "Neither is `anticipated`, so the one carve-out to that exception does not apply to them".
+
+  State the rule and its exception once, in the opening paragraph proposed above. PL-V6M0 keeps only why it does not qualify: nothing blocks it, and v0.5.0 makes its route real (2752-2759). Rows 2971-2972 and 2903-2904 keep nothing. The sentence naming `tools/doc_check.py` and the "disposition error" and "re-entry advisory" in a `### Declined to Gate ...` entry (2947-2949) are instructions for whoever maintains the gate. Move them to § "The gate is a snapshot". PL-KZ99's placement (2951-2953) belongs in the declined subsection, with a pointer left here.
+- **The class of problem the exception covers is named twice.** Rows 2655-2656 ("which is the class of problem this exception exists for") and 2772-2773 ("This is the class of finding that this exception exists for") say the same thing. So do 2656-2657, 2782-2783, 2962-2963, 2973 and 3022-3023, which each say again that a reader turns to `docs/MODEL.md` to judge a displayed value. Say both once, in the opening paragraph, and cut the rest.
+- **The argument that the item can be closed is made twice.** Rows 2627-2629 say "The project owner turned around two interlibrary loans in three days … `PL-7HDS` on 2026-09-08 and `PL-8SDL` on 2026-09-10". Rows 2671-2675 say "on the same evidence as `PL-LT51` above … the project owner has turned around three interlibrary loans". Keep the argument with PL-LT51. PL-RFLN keeps only the pointer "on the same evidence as PL-LT51". PL-RFLN closed on 2026-09-13 (2679), so its admission argument is history and belongs in its item. The reader keeps the result: only the published value is left.
+- **The point that a value must be marked as modelled is made in five places:** 2686-2693, 2710-2713, 2827-2830, 2834-2836 and 2854-2855. The point that the paused tooltip is where a reader studies a number is made in 2688-2690, 2827-2828 and the list line at 2727. Explain both once, at PL-YLKR or at PL-YVHK, the half that is still open. PL-2K1R and PL-27H0 then keep one clause each that points back.
+- **The design's independence from the toolkit is stated twice.** Rows 2693-2694 ("The design does not depend on the toolkit and survives the port. Only its implementation moves") and 2822-2827 (design landed on v0.4.x, building it against pyqtgraph remains) make one point. Keep it at PL-YVHK and cut it from 2693-2694.
+- **PL-DZFJ's paragraphs (2696-2719) are a correction history, written about the text itself.** Examples: "The seventh is the paragraph immediately above", "Until that date, the paragraph argued…", "That is why this is a rewrite and not a removal" and "The brief was corrected along with this paragraph". Move the history to PL-DZFJ's item. The reader keeps one sentence: PL-DZFJ corrected the gate text and PL-YLKR's brief on 2026-09-13. Rows 2709-2713 restate 2686-2693, so cut them. Row 2648-2649 ("A seventh was added later the same day and is explained at the foot of this group") goes with them.
+- **PL-2FM6's removal of the recorded-sample store is stated twice.** Rows 2700-2704 ("`PL-2FM6` deleted `RunHistory`… in v0.4.12. The chart now evaluates the run's score *at* the instants it plots") and 2850-2853 ("`PL-2FM6` deleted that store, and `app/chart_frame.py` now deliberately says the opposite") give one fact. Keep it at PL-27H0, which is still open, and cut it from PL-DZFJ.
+- **PL-LHBY and PL-4KZD describe the same defect, and the text contradicts itself about them.** Rows 2894-2896 say "draws the marks panel from the reference run alone, and a mark's *standing* is per-run where its *set* is not". Rows 3126-3128 say "drawn once from `snapshots[0]`, so while two runs are shown it states the reference run's standings for a set every run carries". The text then gives opposite dates for this defect: "the problem postdates the freeze by a fortnight" (2903) against "the problem is older than the freeze" (3135-3136). See the first query.
+- **"PL-3K9B's decision unmasks PL-4KZD" is said three times:** at 3087 ("one problem and its consequence"), 3123-3124 and 3137-3138. Keep it once, in PL-4KZD.
+- **The machine survey is described at its second mention.** Rows 3039-3043 describe `PL-4DCG`'s machine survey, but it first appears at 3007 and 3019. Merge the PL-NM7X group (3005-3028) with the PL-WQF1 group (3030-3083), which share a date and a source, and describe the survey where it first appears.
+- **PL-D126's closing fragment repeats the group paragraph.** "A statement about the limits of a comparison rather than a defect in this implementation" (3069-3070) repeats 3041-3043. Cut it.
+- **Rows 2680 and 2793-2794 may give the same fact.** PL-RFLN says "the apparatus was excluded" (2680), and PL-XWCY says "rules out circuit-wall absorption as a candidate for desflurane's residual" (2793-2794). Both come from the 2026-09-13 reading. If they are one fact, keep it in PL-XWCY and point to it from PL-RFLN. See the queries.
+- **One group is out of date order.** The PL-LHBY group (2892-2909, dated 2026-09-20) sits between the 2026-09-14 and 2026-09-17 groups. Move it after the 2026-09-19 group, next to the other bookmark entries: PL-3K9B, PL-4KZD, PL-N3N5 and the 2026-09-21 entry. Both PL-N3N5 (3147-3154) and the 2026-09-21 paragraph (3161) refer back to it. Its phrase "the rule below" (2904) then needs rewording, or it goes once the rule is stated in the opening paragraph.
+- **The 2026-09-13 group is out of order, and its opening is wrong.** PL-DJYF's paragraph (2761-2774) comes before PL-V6M0's list line (2776), but PL-DJYF's own list line is at 2805. Put PL-V6M0's line right after 2759. The group's opening, "These entries were found by the triage pass over the fourteen captures open that day (`PL-TQJ4`)" (2731-2732), covers only PL-V6M0. PL-DJYF came from a later pass over twenty-seven captures (2761-2762), and PL-QBKQ and PL-XWCY came from reading the Targ paper (2778-2780). Name each entry's source in the opening.
+- **Two paragraphs in the 2026-09-17 group are in the wrong place.** The rule paragraph (2945-2953) applies to every group but sits after this group's list. Move it to the opening paragraph proposed above. The "not live" paragraph (2955-2963) explains PL-H4N8 and PL-QBX0. Put it before the list or inside those two entries.
+- **Several headings do not say what their group holds.** The bold group headings at 2892, 3005, 3030, 3085 and 3140 all read "Added 2026-09-20 under the unconditional safety/science exception" and differ only in the count, so a reader scanning cannot tell them apart. Name each group's subject, for example "Default fresh gas flow wording", "Machine survey: what `docs/MODEL.md` must say about its limits" or "Bookmarks on branched runs". Alternatively, adopt the subject grouping in the next finding.
+- **The section is too long to navigate.** At 5,898 words, a reader looking for one entry has to scan twelve groups ordered by triage date. Add subheadings by subject, and give each entry its added date:
+  - Sources behind the reference patient: PL-LT51.
+  - Statements in `docs/MODEL.md` that the shipped files no longer support: PL-7KDC, PL-S3Q0, PL-Q5NS, PL-27H0, PL-S6WW, PL-7DMJ, PL-D126, PL-WJNS, PL-NM7X.
+  - Planned-milestone entries to correct before they are built: PL-MMWX, PL-H4N8, PL-QBX0.
+  - Breathing circuit volume and absorption: PL-QBKQ, PL-XWCY, PL-DJYF, PL-RFLN.
+  - Chart hover and the modelled-value notice: PL-YLKR, PL-YVHK, PL-DZFJ, PL-2K1R, PL-JVHL, PL-0RZ0.
+  - Bookmarks on branched and failed runs: PL-LHBY, PL-3K9B, PL-4KZD, PL-N3N5, the 2026-09-21 entry.
+  - Checks the interface port depends on: PL-BXB2, PL-V53R, PL-0PJG, PL-9KDK.
+  - What happens when applying a setting fails: PL-V6M0.
+
+  Make sure the new subheadings do not disturb the `### Declined to Gate ...` headings that the gate's check reads (2948).
+- **Much of the chapter is written for a developer, not for this reader.** The reader does not know internal names of tests, checks and tools, yet the text is full of them:
+  - error classes and `core/exceptions.py` (2737-2747);
+  - `checks.py` and "the band" (2750-2751);
+  - dataclass field names (2765-2769);
+  - a test file name (2797);
+  - check and tool names (2873-2890);
+  - functions, constants and attributes (2894, 2978-2980, 3104-3123, 3127-3132, 3142-3147).
+
+  These belong in the item briefs. The roadmap keeps what a learner sees and what each entry asks for. Several list entries have grown into essays, the writing rule's fifth pattern: PL-LHBY, PL-S6WW, PL-JVHL, PL-0RZ0, PL-3K9B, PL-4KZD and PL-N3N5. Their measurement details belong in each item, along with the derivation of PL-S6WW's decision (0.35 %, 5.6–6.2 %): PL-JVHL's 43.8–81.4 %, PL-3K9B's seven cases and its 3 600 of 3 600, and PL-0RZ0's 480 px row. In PL-S6WW and PL-3K9B, either keep the decision tag whole beside the decision or move it whole to the item.
+- **Statements about the gate's rules belong in the section that sets out the rules.** Rows 2816-2820 ("The two statements do not conflict … Silence is the third option, and the only one that is forbidden") explain how the gate works and belong in § "The gate is a snapshot". Three sentences are rules for writers and should be cut here: "It is written down here because that rule requires it" (2813-2814), "They are listed because the presence rule requires their disposition to be written down…" (2870-2871), and "`test` is not a debt class, so they owe this gate no disposition" (3164-3165).
+- **Most presence answers can go.** The text gives a presence answer for entries that the exception admits whatever that answer is: 2924-2925, 2989-2991, 3001-3003, 3011-3012, 3096-3099, 3135-3136, 3151-3153, and "Captured after the freeze" at 2876. Row 2991 itself says the exception "makes irrelevant" the answer, so the reader can do without them. Keep the answer only where it changes when the entry clears, as for PL-LHBY (2903-2909).
+- Query: the reader needs to know whether PL-LHBY and PL-4KZD are one defect, or whether PL-LHBY's change fixed PL-4KZD. Row 3153-3154 says PL-LHBY now draws "the standing … in words on an attributed row". The text also says the defect both "postdates the freeze by a fortnight" (2903) and "is older than the freeze" (3135-3136).
+- Query: the reader deciding what a release holds needs each entry's current status in one place, and the chapter gives it inconsistently. Only PL-S6WW's list line says "closed" (2920). These entries have no status in their list lines although the text implies they are done:
+  - PL-RFLN: "Closed 2026-09-13" (2679), list line 2725.
+  - PL-DZFJ: "corrected 2026-09-13" (2697), list line 2722.
+  - PL-YLKR: its design landed (2823-2825), list line 2727.
+  - PL-JVHL: "while closing `PL-JVHL`" (3051), list line 2978.
+  - PL-LHBY: rows 3153-3154 describe what it changed.
+- Query: § "Completed: v0.4.26 - the interface moves to Qt" (2866) says the port is complete. Yet PL-YVHK "cannot be done before the toolkit exists" (2826-2827), PL-2K1R "rides the Qt port" (2836), and the four PL-JRS3 entries "land before the port's first commit" (2868-2869). Are these entries closed, or is the text out of date?
+- Query: rows 3087-3089 say that by 2026-09-20 work on a Required-scope item was under way: PL-B8MK was being built, and PL-VKJW's change is also mentioned at 2905-2906. So what does "must be cleared before implementation begins" (3013-3014, 3036-3037, 3093-3094) mean for entries added from that date? And how does it differ from PL-LHBY's "debt this milestone clears itself rather than a precondition to beginning it" (2906-2907)?
+- Query: PL-2K1R "clears before v0.5.0 begins" (2839), but § "Sequenced past v0.5.0" "carries it in that table" (2840). Row 2814 also calls PL-YVHK "the one entry in this block that does not clear before implementation begins". Which is right? The text also does not say which "the five carried entries" are (2839).
+- Query: two numbers conflict. Rows 2627-2628 give "two interlibrary loans in three days", and 2674-2675 give "three interlibrary loans". Which is right, and what is the third loan's item and date? "The last week" (2631, 2674) does not say which week.
+- Query: rows 2945-2946 say "The gate is a snapshot" makes `safety` and `science` entries impossible to defer. Does the argument that the item can be closed (2623-2631, 2671-2675) still decide anything for PL-LT51 and PL-RFLN? This chapter does not give PL-LT51's class.
+- Query: "Its three feature-mates from that review … One is deferred below. The other three are classed `test` alone" (3162-3164) adds up to four, not three. The text calls the 2026-09-21 entry "the third `safety` finding" from the review of `#784` (3159), but never names the second. Neither the entry's id nor its list line appears in this chapter.
+- Query: PL-0RZ0's problem is "two slow compartments of one run" (3049), but its example is "the trunk's and the branch's fat values land on the same pixel row" (3052-3053). That is two runs' copies of one compartment, which is PL-JVHL's problem.
+- Query: what does "not deferred with the apparatus" (2800) mean, given that PL-RFLN says "the apparatus was excluded" (2680)? Is that exclusion the same finding as PL-XWCY's ruling out of circuit-wall absorption?
+- Query: row 2961-2962 says PL-S6WW's "sentence is false as written", in the present tense. Row 2920 says the entry closed on 2026-09-17, and rows 2925-2926 say it was resolved.
+- Query: PL-LT51's list line says "starting with ICRP Committee II page 151" (2643), but rows 2634-2636 report that page as already read. Is the list line out of date?
+- Query: in "`docs/MODEL.md` § "Parameter provenance" and `docs/machine-survey.md` § "(a2)" both restate it" (3020-3021), it is unclear whether "it" means the superseded claim or the survey's finding.
+- Query: this chapter uses terms the reader needs but never explains them. If the first chapter does not explain them either, the reader needs them explained:
+  - the presence test, presence rule and presence answer;
+  - the two unconditional exceptions, of which only the second is cited;
+  - Required scope;
+  - tier 1, tier 2 and tier 3;
+  - the carried-fix rule;
+  - the `anticipated` class and "the band";
+  - `status: blocked`, `P1` and debt class;
+  - capture and triage pass, and "the store" (2968);
+  - workflow lane, Gate 2 and M4.
+
+  The chapter never states the freeze date either. It follows only from 2889: a tool shipped on 2026-09-04, "two days before this freeze".
+
+Outline:
+
+- 2623-2631: An entry, named PL-LT51 only at 2643, is admitted, not deferred, because it has twice been shown it can be closed.
+  - The case for deferring: it needs three papers from the 1960s and 1970s, PubMed holds no abstract or full text for them, and the egress proxy refuses every publisher.
+  - The case against: the owner turned around two interlibrary loans in three days for this chain, `PL-7HDS` on 2026-09-08 and `PL-8SDL` on 2026-09-10.
+  - Reference 26 was read on the day the item was filed.
+  - Deferring would shrink the gate on a claim "the last week" disproves.
+- 2633-2641: What the reading has established.
+  - ICRP Committee II Table 8, p. 151, is *Organs of standard man*. It gives masses and effective radii and no blood flows.
+  - So the perfusion fractions cannot come from the one reference of the four that is not itself a model. These fractions set every time constant the model computes.
+  - They come from references 9, 19 or 20, which are uptake-and-distribution models.
+  - The chain of sources behind `reference_adult.json` ends at tier 2 in both halves and reaches tier 1 nowhere.
+- 2643: List line, PL-LT51 (M): obtain and read Lowe and Ernst's four upstream references for the reference patient's volumes and flows, starting with ICRP Committee II page 151.
+- 2645: Group heading: added 2026-09-12 under the unconditional safety/science exception, 7 entries.
+- 2647-2653: Who found these entries, and the admission rule.
+  - Six were found by the triage pass that took the queue from 46 untriaged captures to none (`PL-3B47`). A seventh was added later the same day and is explained at the group's foot.
+  - All seven are `safety` or `science`. They re-enter whatever the presence test says, under the second of the two unconditional exceptions in "The gate is a snapshot".
+  - None is in Required scope, so all seven clear before implementation begins.
+- 2655-2669: Four entries are cases of the specification disagreeing with the shipped tree, the class of problem the exception exists for. A reader consults `docs/MODEL.md` to decide whether to trust a displayed value.
+  - `PL-7KDC` and `PL-S3Q0` follow from `PL-8ZJQ`, which adopted Davis and Mapleson for the venous pool.
+  - `PL-7KDC`: the paragraph counting what the parameter set rests on still says all eleven values are Gas Man's.
+  - `PL-S3Q0`: two notes still say a tier-2 source may never be the authority for a stored value, which the project has now done.
+  - `PL-Q5NS`: an omission from Known limitations, worth about 20% of every agent's fast pool.
+  - `PL-MMWX`: `ROADMAP.md` item 30 scopes weight as an input but does not record that the scaling is safe only as a coupled package. A session scoping from the item alone would ship paediatric kinetics wrong in the direction taught most.
+- 2671-2683: `PL-RFLN` is admitted on the same evidence as PL-LT51, and has since closed.
+  - It needs the methods sections of two 1991 papers that neither PubMed Central nor `docs/references/` holds. The owner has turned around three interlibrary loans for this kind of chain.
+  - The task is bounded: either name the cause against the methods, or record that the question cannot be answered from what the project can reach, in place of the two open candidates.
+  - It closed on 2026-09-13 the second way, and went one candidate further. The methods were read and the apparatus was excluded. End-tidal sampling was struck on Carpenter & Eger's measurement of the gradient it depends on.
+  - Only the published value is left, and nothing the project runs can settle it.
+- 2685-2694: `PL-YLKR` is admitted for what the tooltip may imply.
+  - The tooltip shows a bare number, with no unit, compartment or agent, and nothing marking the value as modelled.
+  - `PL-KP7H` made the tooltip appear only while the run is paused, which is when a reader studies a number: the most time and the least context.
+  - A modelled alveolar fraction read as a measurement is the confusion `CLAUDE.md` names.
+  - The design does not depend on the toolkit and survives the port; only the implementation moves.
+- 2696-2707: The seventh entry is `PL-DZFJ`: found by the `PL-0QQP` triage pass on 2026-09-12, corrected 2026-09-13.
+  - Until 2026-09-13, the paragraph above argued from a mechanism the tree no longer has: every drawn point was an M4 representative of its bucket, about 120 recorded samples at 300x, and the hover "presents it as the value at that instant".
+  - `PL-2FM6` deleted `RunHistory`, `HistoryWindow`, `SimulationHistorySample` and the M4 decimation module in v0.4.12.
+  - The chart now evaluates the run's score at the instants it plots, and a control event always gets its own column, so the hover's "value at that instant" is correct.
+  - The gate's stated reason for admitting a `P1` `safety` entry was false, in the direction that made the entry look necessary.
+- 2709-2719: The admission survives the correction, and the argument does not, so the paragraph was rewritten rather than removed.
+  - A bare number with no unit, compartment or agent is a presentation-safety matter, whatever produces it.
+  - A correct number with nothing marking it as modelled is a failure `CLAUDE.md` names.
+  - `PL-YLKR` stays, on the same ground as `PL-MMWX`: a wrong statement here about what a displayed value represents misleads the session that scopes the work.
+  - `PL-YLKR`'s brief carried the same sentence. Its `touches` are `docs/MODEL.md`, `README.md` and the chart-series module, and the brief was corrected with this paragraph.
+- 2721: PL-7KDC (S): `docs/MODEL.md`'s 'Where this project stands' still says all eleven reference-patient parameters are the Gas Man default patient and that 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source.
+- 2722: PL-DZFJ (S): the gate text and PL-YLKR's brief say every drawn point is an M4 representative of a bucket of recorded samples, which PL-2FM6 deleted in v0.4.12. The chart evaluates the score at the plotted instants.
+- 2723: PL-MMWX (S): planned-milestone item 30 does not say that cardiac-output scaling is one of its obligations, or that weight scaling is safe only as a coupled package.
+- 2724: PL-Q5NS (S): Known limitations does not list lung tissue and pulmonary blood as an omitted store, worth about 20 percent of every agent's fast pool.
+- 2725: PL-RFLN (M): settle what causes desflurane's five-minute washout residual, which PL-73G7 narrowed to end-tidal sampling or the published datum.
+- 2726: PL-S3Q0 (S): two paraphrases of the tier-2 absolute survived PL-FJGY's sweep, in `docs/MODEL.md`'s Kharasch note and in reference_adult.json's Frayn and Karpe note.
+- 2727: PL-YLKR (M): design what a chart tooltip says. fl_chart's default is a bare number, and PL-KP7H makes the tooltip a paused-only readout that a reader will stop and study.
+- 2729: Group heading: added 2026-09-13, 4 entries.
+- 2731-2735: These entries were found by the triage pass over the fourteen captures open that day (`PL-TQJ4`). `PL-V6M0` is `safety` and re-enters whatever the presence test says, under the second exception. It is not in Required scope, so it clears before implementation begins.
+- 2737-2747: What PL-V6M0 is.
+  - `PL-YK2V` widened the catch in `_apply_setting`, so that any exception outside the project hierarchy halts the run.
+  - The narrow arm it kept catches `AnesthesiaSimulationError`, the base class.
+  - That is right for `SimulationConfigurationError`, where a value was refused and nothing was miscalculated.
+  - It inverts `SimulationExecutionError`, whose docstring in `core/exceptions.py` says the run must stop. Such an error would be reported as a refused setting while the run keeps producing readings.
+  - `SimulationDomainLimitError` would likewise be mislabelled as a refusal, when it means the run has reached the edge of its supported domain.
+- 2749-2759: Why the `anticipated` class does not defer PL-V6M0.
+  - No route raises either type into `_apply_setting` today, which is why the item is classed `anticipated`.
+  - `checks.py` exempts that class from the band only at `status: blocked`, and nothing blocks this item. Its trigger is a future route, not a named item or milestone.
+  - So the exemption is unavailable, and that is no reason to rank safety work lower.
+  - v0.5.0 makes the route concrete. It turns a run from a sequence of applied steps into a closed-form function of its control-input timeline, so a setting can be applied to a run that has already been evaluated. That is the "applied by re-stepping" route the item names, newly in play.
+- 2761-2774: The second entry, `PL-DJYF`, came from the triage pass over the twenty-seven captures open later the same day.
+  - It is `science` for the same reason as its twin `PL-4YY1`, which records provenance for the circuit volume and default fresh gas flow, is already on this gate, and shipped in v0.4.20. It re-enters whatever its presence answer.
+  - `AlveolarCompartment` carries `gas_volume_l` and `alveolar_ventilation_l_min` as dataclass defaults. `data/patients/reference_adult.json` stores both values with provenance, and nothing keeps the two copies equal.
+  - `PL-4YY1` pinned the circuit's copies with a test, which `PL-M85T` later retired along with the default.
+  - A constant free to drift gives a run on a value the specification does not name, presented with provenance that looks correct. This is the class of finding the exception exists for.
+  - It is not in Required scope, so it clears before implementation begins.
+- 2776: PL-V6M0 (S): `_apply_setting` reports a SimulationExecutionError as a refused setting and lets the run continue, the opposite of what that type means.
+- 2778-2783: Two more entries came from the Targ, Yasuda and Eger 1989 circuit paper, read in full text from the private corpus on 2026-09-13. The items were merged that evening. Both are `science`, and neither changes a displayed value. They are here because they have the `PL-Q5NS` shape: the specification understates what is known.
+- 2785-2791: `PL-QBKQ`.
+  - The `provenance_gap` in `data/machines/reference_circle_system.json` says a measured circle-system volume "has not been sought yet".
+  - One has been read: 9.86 L, measured by water filling. It does not close the gap, because it includes a reservoir bag that simulates the lungs, and saying so is the work.
+  - In increasing order, with only the last one measured: this project's 6.0 L, Gas Man's published 8.0 L, and the 9.86 L upper bound.
+- 2793-2800: `PL-XWCY`.
+  - The paper rules out circuit-wall absorption as a cause of desflurane's residual.
+  - In the same measurement, a real circle system measurably slows sevoflurane and isoflurane against an ideal one. The model has no term for this.
+  - It points at cohorts in `tests/reference/test_published_wash_in_and_elimination.py` already at +3.79 SD and +4.15 SD.
+  - Ruling out the desflurane candidate is bookkeeping. The second half is a named, quantified departure that bears on an existing discrepancy, so it is not deferred with the apparatus.
+- 2802-2803: Neither is in Required scope, so both clear before implementation begins.
+- 2805: PL-DJYF (S): AlveolarCompartment restates the reference patient's gas volume and ventilation as core/ dataclass defaults, the restatement PL-4YY1 found on BreathingCircuit.
+- 2806: PL-QBKQ (S): the only measured conventional circle-system volume the project holds is 9.86 L including a simulated lung, against a stored 6.0 L and Gas Man's published 8.0 L.
+- 2807: PL-XWCY (M): the one paper that measured circuit-component absorption rules it out as a cause of desflurane's residual. It remains a live candidate for the other two agents.
+- 2809: Group heading: added 2026-09-14, 3 entries.
+- 2811-2820: `PL-YVHK`.
+  - It is `safety` and re-enters whatever its presence answer, under the second exception. It is written down here because the rule requires it.
+  - It is the one entry in this block that does not clear before implementation begins. Its disposition is in § "Sequenced past v0.5.0" → "Sequenced behind the port".
+  - The presence rule records a safety finding against the current gate. The snapshot rule makes a recorded deferral the way to sequence it out. Silence is the only forbidden option.
+- 2822-2830: PL-YVHK is the build half of `PL-YLKR`, split off by the owner's decision of 2026-09-14.
+  - The design and its derivation landed on v0.4.x, in `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show".
+  - What remains is writing the hover against pyqtgraph, which cannot be done before the toolkit exists.
+  - It is `safety` for its parent's reason: a reader may stop the run to look at a number, and if nothing says the value is modelled, that is the failure `CLAUDE.md` names.
+- 2832-2842: `PL-2K1R`: found 2026-09-13, triaged 2026-09-14 (project owner), `P1` `safety`.
+  - It asks for an interpretation disclaimer beside the use disclaimer, saying the compartment readouts and chart traces are modelled. That is the line `CLAUDE.md`'s safety standard draws on the surface a clinician reads.
+  - It rides the Qt port behind `PL-25KS` (port the dashboard) under the carried-fix rule, because text on a dashboard being rewritten from scratch should be written once.
+  - Like the five carried entries, it clears before v0.5.0 begins. § "Sequenced past v0.5.0" carries it in its table.
+  - The port names it under § "Decisions the port has to make anyway", so that the port's parity claim stays checkable.
+- 2844: PL-2K1R (S): the interface carries a use disclaimer but no interpretation disclaimer, so nothing tells a reader that compartment readouts and chart traces are modelled.
+- 2845: PL-YVHK (S): implement the chart hover readout on pyqtgraph to the derivation in `docs/MODEL.md`, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists.
+- 2847-2858: `PL-27H0` draws the same modelled-versus-measured line in the specification.
+  - `docs/MODEL.md` still says every drawn point *is a recorded sample*, selected from a per-step store.
+  - `PL-2FM6` deleted that store, and `app/chart_frame.py` now says the opposite (quoted).
+  - It is `safety`, not `docs`, because the sentence concerns the provenance of a displayed value, which `CLAUDE.md` names as a safety failure, and because the numbers are correct, which makes the error hard to notice.
+  - It needs no toolkit and clears before implementation begins.
+- 2860: PL-27H0 (M): `docs/MODEL.md` still specifies a per-step recorded sample store and a display operation that selects recorded samples, both deleted by PL-2FM6.
+- 2862: Group heading: added 2026-09-14 under the exception and the presence rule, 4 entries.
+- 2864-2871: `PL-JRS3`'s pre-port survey found four entries, triaged that day into `feature: qt-port`.
+  - § "Completed: v0.4.26 - the interface moves to Qt" → "Required scope" item 4 places the first three by name, and its opening paragraph names the fourth.
+  - All four land before the port's first commit, on the branch that records them, so they clear ahead of this gate.
+  - They are listed because the presence rule requires their disposition, not because clearance changes.
+- 2873-2877: PL-BXB2 (S), added 2026-09-14, `safety`: contrast_check reads only theme.py and simulation_view.py, so a colour declared in any other app/ module is checked by nothing. Captured after the freeze, it re-enters under the exception, because the check it repairs is the accessibility floor.
+- 2878-2881: PL-V53R (M), added 2026-09-14, `safety`: agent_identity_check reads only simulation_view.py and finds `_apply_agent_color_scheme` by name, so a class moved out of that module escapes both of its rules. Same exception, for the ISO 5360 agent-colour guard.
+- 2882-2885: PL-0PJG (S), added 2026-09-14, `safety`: agent_identity_check prints "none of them rendered disabled" from an empty measurement set, so the message cannot be told apart from an earned result. Same exception and guard.
+- 2886-2890: PL-9KDK (S), added 2026-09-14: tools/import_boundary_check.py confines no UI toolkit and no numpy. It is a `defect` and enters under the presence rule: the tool shipped on 2026-09-04 with no toolkit boundary, two days before the freeze, and the `CLAUDE.md` rule it now measures predates both.
+- 2892: Group heading: added 2026-09-20, 1 entry.
+- 2894-2901: PL-LHBY (M), added 2026-09-20, `safety`.
+  - `SimulationView._refresh_bookmarks` draws the marks panel from the reference run alone. A mark's standing differs per run, but its set does not.
+  - With a branch displayed, a branch halted on a learner's MAC target shows no standing, so the halt looks like a Pause.
+  - A mark the trunk reached shows `reached` beside a branch whose own standing says it never can be.
+  - `CLAUDE.md` names a correct value under the wrong patient context as a failure, and a standing is a claim about which run got there.
+- 2903-2909: PL-LHBY is admitted although the problem postdates the freeze by a fortnight.
+  - The rule below makes `safety` not deferrable.
+  - This gate's Required scope created the problem: `PL-VKJW` first made two runs reachable from a shipped entry point.
+  - So it is debt this milestone clears itself, not a precondition for starting it.
+- 2911: Group heading: added 2026-09-17, 3 entries.
+- 2913-2918: Captured on 2026-09-16 or 2026-09-17 and triaged on 2026-09-17 (`PL-Y4D6`). All are `science` or `safety` and re-enter whatever their presence answer, under the second exception. None is in Required scope, so all clear before implementation begins. Each is `S`.
+- 2920-2930: PL-S6WW (S), added and closed 2026-09-17, `science`.
+  - `docs/MODEL.md` § "Agent amount" said every compartment stores agent as an equivalent gas volume "at one documented reference temperature and pressure". It documented the pressure but gave no temperature anywhere: not in the file, `core/` or `data/`.
+  - Its presence answer was yes: the sentence had been wrong since long before the freeze.
+  - Resolved at 20 °C and 760 mmHg, dry (project owner, 2026-09-17, ratified — over 37 °C), on the reference implementation's own five expansion constants. The 20 °C derivation reproduces them within 0.35 %, and the 37 °C derivation misses by 5.6–6.2 %.
+  - § "Known limitations" now records and sizes what one condition costs for a circuit at ambient temperature and tissues at 37 °C.
+- 2931-2937: PL-H4N8 (S), added 2026-09-17, `science`.
+  - Planned-milestone item 28 specifies agent cost "from the exhausted-agent amount". Cost is what left the bottle, which is the delivered amount.
+  - By `initial + delivered = exhausted + currently stored`, exhausted understates delivered by exactly what is still stored. The gap is largest during wash-in, the phase the low-flow lesson is about.
+  - Gas Man bills delivered agent (`Cost = DELIVERED Flow x Cost/mL vapor`, Workbook p. 174).
+- 2938-2943: PL-QBX0 (S), added 2026-09-17, `safety`: planned-milestone item 24's gating sentence keeps `data/**/*.json` out of the preferences panel. It therefore covers neither the three ISO 5360 agent-identification colours nor the contrast-checked trace palette, both of which `app/theme.py` holds. A panel that let a reader recolour agent identification would let one agent display in another's colour.
+- 2945-2953: These entries are admitted by rule, not judgment.
+  - "The gate is a snapshot" ends by making `safety` and `science` entries impossible to defer. `tools/doc_check.py` says so where a session would turn to the declined subsection.
+  - A `### Declined to Gate ...` entry clears the disposition error but leaves the re-entry advisory.
+  - There is one exception: an `anticipated` finding whose hazard a later milestone creates, which also needs `status: blocked`.
+  - `PL-KZ99` qualifies, and is recorded in the declined subsection with `PL-0S0V` and `PL-VJZK`.
+- 2955-2963: Two of the three hazards are not live, and that is a reason to do them now.
+  - No cost readout or preferences panel exists, so nothing displayed today is wrong.
+  - Each item fixes a planned-milestone sentence that a later session would build from, and now is the cheapest moment. So both are `ready` at `S`, not blocked on the milestone they protect.
+  - `PL-S6WW` is the live one: its sentence "is false as written" in the document the project calls authoritative for units and assumptions.
+  - The other two rest on what `PL-S6WW` settles.
+- 2965: Group heading: added 2026-09-19, 2 entries.
+- 2967-2976: Captured 2026-09-17 and triaged 2026-09-19, in the pass that placed nineteen of the store's twenty untriaged items.
+  - Both are `safety` or `science` and re-enter whatever their presence answer, under the second exception.
+  - Neither is `anticipated`, so the one exception to the rule does not apply: the hover is live on the shipped chart, and `docs/MODEL.md` is the authoritative specification today.
+  - Neither is in Required scope, so both clear before implementation begins.
+  - The pass's eleven other debt items are declined below, all in the workflow lane.
+- 2978-2992: PL-JVHL (M), added 2026-09-19, `safety`.
+  - `nearest_trace_point` and `nearest_wash_in_point` keep the single nearest drawn point within `HOVER_RADIUS_PIXELS`. With two runs on one axis, the hover reads whichever is marginally nearer, and a 2 px hand movement silently swaps which run is read.
+  - Measured 2026-09-17: both runs' points sit inside the radius across 100 % of the shared axis for the fat compartment, under every branch management tried.
+  - 43.8–81.4 % of the hovers that could answer for either run would print different text: `0.03 %  0.02 ×MAC` against `0.01 % <0.01 ×MAC` at one instant. That is a threefold difference in stored fat between a run still carrying agent and one 48 minutes into emergence.
+  - It is `safety` under the standard's presentation clause: the correct number read against the wrong run is the wrong patient context.
+  - Its presence answer is no, because a second run on one axis is this milestone's own capability. The exception makes that irrelevant.
+  - `PL-MN4J` names the run in the box, which makes the swap visible: a large mitigation, not a fix.
+- 2993-3003: PL-7DMJ (S), added 2026-09-19, `science`.
+  - `docs/MODEL.md` never names water vapour. Alveolar gas is saturated at 47 mmHg, so dry agent from the circuit is diluted by 47/760, or 6.2 %, before any uptake. The alveolar equation V̇A(FI − FA) has no such factor.
+  - Changing the equation is out of scope: Gas Man makes the same simplification, and the partition coefficients were assembled against it.
+  - The fault is narrower. Nine smaller simplifications are listed, but this one is in neither "Assumptions" nor "Known limitations", so a reader sizing the model against a real circle system cannot see it.
+  - Its presence answer is yes: the omission predates the freeze by the document's whole life.
+- 3005: Group heading: added 2026-09-20, 1 entry.
+- 3007-3014: Captured by `PL-4DCG`'s machine survey on 2026-09-19 and triaged on 2026-09-20. It is `science` and re-enters whatever its presence test, under the second exception. It predates the freeze anyway: the sentence has been in the data file since before 2026-09-06. It is not in Required scope, so it must clear before implementation begins. Size `S`.
+- 3016-3028: PL-NM7X (S), added 2026-09-20, `science`.
+  - `src/anesthesia_sim/data/machines/reference_circle_system.json` justifies its 4 L/min `default_fresh_gas_flow_l_min` as "a routine mid-range clinical fresh gas flow", and its `provenance_gap` says a clinical convention for a default flow "HAS NOT BEEN SOUGHT".
+  - `PL-4DCG`'s survey has since sought one and found the claim superseded. `docs/MODEL.md` § "Parameter provenance" and `docs/machine-survey.md` § "(a2)" both restate it.
+  - A reader consulting the provenance authority is told a clinical-practice claim that the project's own survey contradicts.
+  - The number is not open. The owner ruled on 2026-09-20 (ratified, over lowering the default to match contemporary low-flow practice) that 4.0 stays. The reasons: an unlabelled default teaches a norm whatever it holds, and the 90 s circuit time constant makes the machine's lag legible inside a teaching run.
+  - Changing the wording clears the entry.
+- 3030: Group heading: added 2026-09-20, 3 entries.
+- 3032-3037: Captured on 2026-09-19 or 2026-09-20 and triaged on 2026-09-20 (`PL-WQF1`). All are `safety` or `science` and re-enter, under the second exception. None is in Required scope, so all must clear before implementation begins. All are `S`.
+- 3039-3044: The two `science` entries are the rest of `PL-4DCG`'s survey as it applies to `docs/MODEL.md`. The survey compared the machines in current clinical use with the model's claims. Most of what it found was not an arithmetic defect but statements the document owes its readers about its limits. The `safety` entry is `PL-JVHL`'s successor, one axis over.
+- 3046-3059: PL-0RZ0 (S), added 2026-09-20, `safety`.
+  - `PL-JVHL` stopped the pointer from choosing the run, but left distance deciding which compartment answers.
+  - The percent axis is scaled by the alveolar peak, so two slow compartments of one run contend inside one hover radius.
+  - Measured while closing `PL-JVHL`: at 20 minutes on the branched sevoflurane case, the trunk's and the branch's fat values land on the same pixel row of a 480 px plot.
+  - It is `safety` for `PL-JVHL`'s reason: the box prints a compartment name and a value, fat and muscle at one instant can differ severalfold, and a hand movement too small to aim changes which is read.
+  - Scan before choosing any rule: two of `PL-JVHL`'s three candidate rules changed nothing once counted.
+  - The outcome may be to record the measurement and drop this entry for `PL-QYBW`, the axis underneath it, which is declined to Gate 2 below.
+- 3060-3070: PL-D126 (S), added 2026-09-20, `science`.
+  - Gas Man is the project's reference implementation, compared against throughout `docs/MODEL.md`.
+  - Candries, De Wolf and Hendrickx's prospective in-patient validation (*J Clin Monit Comput* 2022;36(6):1881–1890) splits Gas Man's agreement by phase. Over the first 15 minutes: MDPE 18% and MDAPE 21% on the FLOW-i, and 7% and 13% on the Zeus. Over the last 45 minutes: 0% and 6%, and −1% and 5%.
+  - The authors say the model performs better for maintenance than for wash-in.
+  - Wash-in is the phase the simulator shows most, and § "Known limitations" does not say so.
+  - It is a limit of a comparison, not a defect in this implementation.
+- 3071-3083: PL-WJNS (S), added 2026-09-20, `science`.
+  - § "Breathing circuit" says "an equal fresh-gas volume leaves through the exhaust at the current mixed-circuit concentration". § "Circuit exhaust" and the mass-balance identity assume this always holds.
+  - That is true of a semi-closed circle, not of every machine in every mode. Meyer et al. record that on the Zeus "the surplus gas valve can be closed to prevent any loss of gas volume", which is a different conservation statement.
+  - Confirmed at triage: `docs/MODEL.md` states no semi-closed assumption anywhere, and § "Model boundary" and § "Assumptions" are silent. A reader cannot tell whether closed-circuit machines were excluded or overlooked.
+  - It matters before any machine implementation, because this is the one machine variable that reaches an equation rather than a coefficient.
+- 3085: Group heading: added 2026-09-20, 2 entries.
+- 3087-3094: These two entries are one problem and its consequence.
+  - The first was found while building `PL-B8MK` (a bookmark is a forkable instant), which is in Required scope. The second was found later the same day, while the first was being decided.
+  - Both are `safety` and re-enter, under the second exception.
+  - Neither is in Required scope, so both must clear before implementation begins. Both are `S`.
+- 3096-3099: The problem is older than `PL-B8MK` in the code, but not in how easily a learner could meet it. The comparison has always been strict. Before bookmarks could be forked, a mark sat on a fork instant only if the learner had marked a control-event instant.
+- 3101-3124: PL-3K9B (S), added and decided 2026-09-20, `safety`.
+  - A branch taken at a halt starts on the crossing it was taken at, yet the panel says the crossing has not happened on that run.
+  - Three cases were measured on 2026-09-20, all with one root:
+    - A time bookmark on the step grid reads `still_running` ("the run can still reach this mark"), which no step can make true. `crossed_between` is `before_s < instant_s <= after_s`, the branch's first `before_s` is the fork, and every whole-second mark is on the grid (3 600 of 3 600 over 1 s to 3 600 s).
+    - An instant off the grid reads `before this branch opened`, so which row a learner gets depends on whether the typed number is a multiple of 0.1 in binary.
+    - A MAC target reads `still_running` on the branch and `reached` on its trunk, for the one crossing the two runs share.
+  - Four more cases were then measured, two of them on a trunk with no branch: a mark added behind a running clock, a fork taken at a control event, a mark re-added at a fork instant, and a branch `reset()`.
+  - The root: `still_running` is inferred from the mark's absence from the halt set, when the question is whether the instant is still ahead on a clock that only runs forward.
+  - Decided (project owner, 2026-09-20, ratified, over reusing `REACHED` for the at-or-behind case and over the item's original seed-and-reorder answer): add `PASSED` as a fifth `MarkStanding`, and decide a time bookmark from the run's own clock. `REACHED` keeps its meaning and its word for MAC targets.
+  - The decision unmasks `PL-4KZD`.
+- 3126-3138: PL-4KZD (S), added 2026-09-20, `safety`.
+  - The bookmark panel is drawn once from `snapshots[0]`. With two runs shown, it gives the reference run's standings for a set every run carries, and nothing on the row names a run.
+  - `_refresh_bookmarks` justifies the single read because the marks are shared. That is true of `snapshot.bookmarks` and false of `snapshot.bookmark_standings`, which comes from each run's own clock, `began_at_s` and halt set.
+  - Measured 2026-09-20: a trunk halted at 0.4 ×MAC reads `reached`, while the branch forked there reads `still_running`.
+  - Captured after the freeze, it re-enters under the `safety` exception. The problem is older than the freeze: the panel has read one snapshot since two runs could first be drawn.
+  - The problem stays hidden while a standing behaves almost like a permanent latch. `PL-3K9B`'s decision unmasks it.
+- 3140: Group heading: added 2026-09-20, 1 entry.
+- 3142-3155: PL-N3N5 (S), added 2026-09-20, `safety`.
+  - `_bookmark_standings` passes `stopped_at_cap` and nothing about whether the run can take another step. So every mark on a failed run reports `MarkStanding.STILL_RUNNING` ("the run can still reach this mark, and has not yet"), while `SimulationController.start` refuses that run ("cannot resume a failed simulation … reset it first").
+  - Found by the adversarial review of `PL-LHBY`, and reproduced by failing one of two displayed runs: the run's panel read `Stopped — simulation error` while its mark clause said the mark was still ahead.
+  - Captured after the freeze, it re-enters under the `safety` exception. The problem is older than the freeze and older than `PL-LHBY`: the standing has been wrong since `PL-CTD7`, and was hidden only because `STILL_RUNNING` showed as silence.
+  - `PL-LHBY` now draws the standing in words on a row that names its run.
+- 3157: Group heading: added 2026-09-21, 1 entry.
+- 3159-3165: This entry is the third `safety` finding from the adversarial review of `#784`, placed in the triage pass of 2026-09-21. `PL-LHBY` is the first, admitted on 2026-09-20 under the same exception. The entry's three feature-mates from that review are not here: one is deferred below, and "the other three" are classed `test` alone, which is not a debt class, so they need no disposition. The entry's own id and list line are not in this chapter.

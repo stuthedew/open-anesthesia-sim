@@ -1,0 +1,270 @@
+[1] keep
+
+Structure:
+- **Section order (7554, 7588, 7589-7590, 7598, 7801):** the reader keeps getting sent to sections further down. Use this order:
+  1. The opening rule and its reason (7517-7526).
+  2. "What counts" (7528-7566).
+  3. "Debt inside the milestone's own scope" (7860-7877), moved directly after "What counts" because it narrows what counts.
+  4. "The cadence" (7720-7831), with its four steps kept short.
+  5. "The gate is a snapshot, not a moving target" (7568-7654).
+  6. One section on deferring an entry, merging 7757-7798 with 7885-7905.
+  7. "Recording it".
+  8. A section on how gate work is released (7832-7858).
+- **Inside "The gate is a snapshot" (7570-7605):** 7597-7605 says what the freeze is and when a finding comes back in. It should open the section, ahead of 7570-7595, which only makes sense once the freeze is known.
+- **Misplaced block (7656-7718):** the rule on `anticipated` findings says it decides "what it takes for a finding to count against the current gate at all" (7661-7663). That is a "What counts" question, so move it under "What counts". 7550-7555 then becomes its opening sentence, and 7651-7654 points to it.
+- **Repeated fact, freeze day (7597-7599, 7730-7731, 7808-7823):** 7597-7599 says "the later of two events: the milestone's scoping, and the ship of the milestone before it", and 7730-7731 says "the later of two days: the day the milestone is scoped, and the day the milestone before it ships". 7808-7823 gives the reason again.
+  - It belongs in step 2 (7729-7731), with the reason from 7810-7813 beside it.
+  - 7597-7599 keeps only "at the freeze".
+  - The history in 7813-7823 goes to `PL-KKRP`.
+- **Repeated fact, empty gate heading (7727-7728, 7804-7806):** "Add the heading that its frozen list goes under, with no entries in it until the freeze" repeats "carries its gate heading from the day it is scoped, empty until the freeze". It belongs in step 1, which also takes "A milestone without one has not been scoped". 7804-7806 keeps nothing.
+- **Repeated fact, where the list is written (7729-7730, 7881-7883):** "record the debt list in that milestone's own section, as item ids" repeats "Record the frozen list in the milestone's own section here, as the ids". It belongs in step 2, along with the reason in 7882-7883. "Recording it" keeps nothing of it, which leaves that section about deferrals only.
+- **Repeated fact, `anticipated` (7551-7553, 7663-7664):** "describes a hazard that a later milestone will create" appears in both places. It belongs in the moved `anticipated` block. 7550-7555 keeps nothing beyond that block's opening.
+- **Misquote (7539-7544, 7670-7672):** 7670-7672 quotes 7539-7544 and gets it wrong: it says "The distinction is state, not layer", but 7543-7544 reads "The distinction is about state, not layer". Once the block moves, keep "the same test as for process work" and cut the quote.
+- **Repeated fact, `defect` not `infra` (7542, 7557-7562):** "It is classed `defect` like any other defect" repeats 7557-7562. Fold the example (`uv.lock` left stale is a defect, release tagging is not) into 7539-7548. Cut 7557's account of the first pass.
+- **Repeated fact, how an item ends (7564-7566, 7733-7734):** "Clearing means `done` **or** `dropped`, with the reason recorded" repeats "Each item ends `done`, or `dropped` with its reason, or **deferred to a later gate**". It belongs in step 3, which also takes "deciding that something is not worth doing is a legitimate way to clear it". 7564-7566 keeps nothing.
+- **Repeated fact, where a new finding goes (7603-7605, 7651-7652, 7799-7802):** findings made during the gate go to the next gate unless the problem was there at the freeze or the finding is `P0`, `safety` or `science`. This is stated in both places. It belongs in the snapshot section. Step 4 keeps a pointer in the full form, § "The gate is a snapshot, not a moving target". 7801's shortened § "The gate is a snapshot" is not the heading's text.
+- **Repeated point in one section (7599-7602, 7612-7614):** "The gate tests when a problem was present, not when it was discovered" repeats 7599-7602. 7607-7617 keeps its reason and the case of a problem found again under a new id (`PL-64LS`).
+- **Repeated fact, check on entries waiting on other work (7593-7595, 7897-7900):** "`bin/docket check` rejects an open frozen entry that waits on work none of the three homes covers" repeats "fails an open frozen entry that is waiting on work outside the plan". It belongs in the deferral section, in the 7897-7900 wording, which says what "outside the plan" means. 7593-7595 keeps nothing.
+- **Repeated fact, the `deferred-from:` field (7590-7591, 7765-7766, 7774-7776, 7886-7888, 7893-7894):** "The field names the gate the entry leaves, not the one it reaches" repeats "It is never the gate that the item goes to". Give the field, its form and the version it names once, in the merged deferral section. 7590-7591 keeps "recorded as `deferred-from:`".
+- **Repeated fact, the next freeze takes deferred entries (7771-7772, 7888, 7894-7896):** "The next gate's freeze carries every open entry that this list deferred, debt or not" repeats "The next freeze takes it whatever its classes". State it once, in the deferral section.
+- **Repeated fact, the entry stays listed (7777-7778, 7894-7895):** "stays written on the frozen list" repeats "The entry stays on its list". Keep it once, with its reason.
+- **Repeated fact, written grounds (7768-7769, 7900-7902):** "The gate section may also set out the decision behind the deferral" repeats "A section may state the grounds that its deferrals share". Keep it once, with "no tool reads that prose".
+- **Repeated point, renegotiation (7647-7649, 7777-7778, 7813, 7882-7883):** the point that freezing prevents renegotiation is made four times. 7813, "Nothing in this rule is open to renegotiation", adds nothing to the others.
+- **Repeated fact, release numbers (7832-7835, 7848-7850, 7857-7858):** "ships in patch releases" repeats "Ordinary maintenance ships in patches and takes no number of its own". "A session cuts one whenever it judges" and "Since 2026-09-27 the occasion for a cut is a feature finishing" both say when to cut.
+  - Both belong in 7832-7839, with the date kept.
+  - 7854-7858 keeps only the Gate 0 exception.
+- **Repeated fact, Gate 0 (7845-7846, 7854):** "Gate 0 closed across the v0.2.6 to v0.3.0 patch series" overlaps "released as the *minor* v0.3.0". Keep 7854. 7845-7846 goes with its history to `PL-LPH9`.
+- **List item grown into an essay (7732-7798):** step 3 runs 66 rows, the fifth machine-writing pattern.
+  - Move the staleness sweep (7734-7755) to a subsection headed "Sweep the frozen list for staleness".
+  - Move the third outcome (7757-7798) into the deferral section.
+  - Step 3 keeps one sentence for each, with a pointer.
+- **Long section, "The gate is a snapshot, not a moving target" (7568-7718, about 150 rows):** once the `anticipated` block moves, add subheadings before 7597 ("Which findings re-enter the gate") and before 7570 ("What a frozen entry may take in").
+- **Long section, "The cadence" (7720-7858, about 140 rows):** once steps 3 and 4 shrink, give 7832-7858 a section of its own, "How gate work is released". It says what a release holds, which is this reader's job.
+- **Decision history to move to items (cut whole tags only where the item holds the decision):**
+  - 7557-7558: account of the first pass.
+  - 7641-7642: `PL-SWFM`.
+  - 7674-7682: why this option was chosen, to the item for the 2026-09-16 decision, which the text does not name (see queries). Keep the rule "placed in the milestone that creates the hazard, never deferred" and the ten findings in v0.6.0's `Required scope`.
+  - 7741-7744: the rejected advisory that counted repeated changes, to `PL-LKGL`.
+  - 7751-7754: `PL-6ZQY`, to `PL-D8KW`. Keep the rule and its one-sentence reason.
+  - 7785-7798: to `PL-F0L8` and `PL-Y949`. Keep "completed milestones' bullets are left as written".
+  - 7813-7823: to `PL-KKRP`.
+  - 7841-7852: to `PL-LPH9`.
+  - 7902-7904: to `PL-WD5Z`. Keep "Completed sections keep those subsections, because they are the record of that period".
+- **Text written for another reader:** 7675-7679 (`tools/doc_check.py`), 7693-7696 (`checks.py`), 7706-7708 (`check_gate_reentries`, `make check`), 7895-7896 and 7908-7909 describe how the tools read fields.
+  - They are for a later session, so they belong in the items they name or in code comments.
+  - This reader keeps what each guarantees, such as "the check enforces this on every run".
+- **Text about the text itself, which goes with the moves above:** 7518-7519, 7557, 7661-7663, 7710 ("recorded rather than waved past"), 7785, 7841-7843 and 7851-7852.
+- **Out-of-date tense:** 7792 says "Gate 2 freezes the day v0.5.0 ships", but 7817 says "Gate 2 froze on 2026-09-21". 7834's "while Gate 2 does" carries no date.
+- **Query:** the safety and science rule contradicts itself across rows.
+  - 7651-7653 says these classes cannot be deferred ("This project's own standard does not allow those to be deferred"), and so do 7680 and 7874-7875.
+  - 7780-7783 lets such an entry be deferred when its hazard is not live, and 7786 records `PL-WZVZ` deferred that way.
+  - Only the author knows which is right.
+- **Query:** 7566 says "Leaving it open and starting anyway is not legitimate". Step 3's deferral (7759-7760) leaves an entry open and ships without it.
+- **Query:** "Phase 0" (7517-7518, 7644) and "Gate 0" (7845, 7854) may or may not be the same thing. 7517-7518 says Phase 0 applied this rule, but 7644 says the debt gate "replaced Phase 0".
+- **Query:** 7689-7690 says the exemption "lapses when that wait ends". 7698 says it "lapses when the item is promoted, not when its blocker closes".
+- **Query:** in 7586-7595, I cannot tell whether homes 2 and 3 split the remaining cases or are two choices for the same case, and so what 7591's "anything else" covers.
+- **Query:** the reader needs these terms explained, and the chapter does not explain them:
+  - "the store" (7896, 7909);
+  - "release train" (7594, 7900);
+  - "places" and "placement" (7679, 7886), and "takes" (7886);
+  - "promoted" (7698), and "item blocker" against "milestone blocker" (7701-7702);
+  - "grooming pass" (7703);
+  - "capture rule" (7609);
+  - "safety-band exemption" (7694) and "safety-class advisory" (7676);
+  - "fails closed" (7715);
+  - `partly` and `yes` (7744), and the `verify:` field (7735);
+  - "Area" and "splitter handle" (7664-7665), and `status: blocked` and `blocked-by` (7687-7688);
+  - what `bin/docket` is, and what each of its commands is for.
+- **Query:** to move the decision history, the reader needs the items that hold these decisions. Their tags name no item:
+  - 2026-08-30 (7570, 7577, 7619);
+  - 2026-09-16 (7656, 7684);
+  - 2026-09-17 (7734);
+  - 2026-09-21 (7757).
+- **Query:** these figures carry no date: the staleness pass's "12 of 134 open items dead and 31 more overtaken" (7741), "thirteen items in one session generated fourteen new ones" (7608), and "Gate 2's 190" (7848).
+- **Query:** the field `deferred-from: vX.Y.Z` "naming this gate" (7765, 7887) needs the link between gate numbers and milestone versions. The chapter only implies it (Gate 1 for v0.5.0, Gate 2 for v0.6.0).
+- **Query:** 7869-7870's "a heading that says so" does not say which heading, or whether it is the gate heading from step 1.
+- **Query:** 7630-7631's "the saving the release exists to deliver" does not say which release or what saving.
+
+Outline:
+- 7515: heading "The debt gate".
+- 7517-7520: the rule.
+  - Recorded technical debt is cleared before a new milestone begins.
+  - Phase 0 applied the rule once, to get out of a queue that had stopped shrinking.
+  - This section makes the rule standing, so it runs before every milestone.
+- 7522-7526: why.
+  - Debt is cheapest to clear while someone still remembers the code.
+  - A defect carried across a milestone boundary has to be diagnosed again, against code that has moved.
+  - A decision left unanswered stops being one that anyone can make.
+  - Deferred debt is either paid twice or silently dropped.
+- 7528: heading "What counts".
+- 7530-7533: what debt is.
+  - Debt is what the queue records, minus new work.
+  - An open item is debt when it is classed `defect`, `safety`, `science`, `refactor` or `perf`.
+  - It is also debt when its status is `needs-decision`, whatever it is about.
+- 7535-7537: `feature` and `planning` items are not debt.
+  - They are the work the gate protects.
+  - Counting them would mean "do everything before doing anything", and no gate could open.
+- 7539-7548: process work is debt once the mechanism is live.
+  - Building a new tooling capability is new work and does not keep a gate shut.
+  - A mechanism that `main` depends on and that is unreliable is debt, classed `defect`. The class carries the rule, so nothing extra is tracked.
+  - What decides is the mechanism's state, not its layer. An unbuilt idea costs nothing, while a half-working mechanism costs something every session.
+  - Half-finished process machinery must not be in production use: it is either made reliable or abandoned and removed.
+- 7550-7555: the same test decides a hazard, the one carve-out from the `safety` and `science` exception.
+  - An `anticipated` finding describes a hazard a later milestone will create, so it is not debt until that milestone builds it.
+  - Points to § "The gate is a snapshot, not a moving target" for the rule, what it was chosen over, and its cost.
+- 7557-7562: caution from the first pass.
+  - Classing tooling breakage `infra` rather than `defect` makes it look like a capability nobody has built.
+  - `docket release` leaving `uv.lock` stale and breaking `make check` at every release is a defect. Adding release tagging is not.
+  - If the class does not separate them, the gate cannot.
+- 7564-7566: clearing an item.
+  - Clearing means `done` or `dropped`, with the reason recorded.
+  - Deciding that something is not worth doing is legitimate, and often right.
+  - Leaving an item open and starting anyway is not legitimate.
+- 7568: heading "The gate is a snapshot, not a moving target".
+- 7570-7575: a freeze closes new scope, not the completeness of a fix (project owner, 2026-08-30).
+  - A frozen list exists to fix a specific set of problems, and an entry may need a further finding before it is fixed.
+  - Refusing that finding defeats the list's purpose.
+  - The rule is deliberately asymmetric: it keeps new work out and lets in what an entry needs.
+- 7577-7582: an admitted finding is worked with the entry it completes (project owner, 2026-08-30).
+  - Working it later lets the first entry ship half-fixed.
+  - Both go in one branch with one review and close together, before anything else starts.
+- 7584-7595: three homes for what a frozen entry waits on (`PL-D388`, project owner, 2026-10-03, ratified, over admitting every open prerequisite of an entry automatically).
+  - First: work named in the milestone's `Required scope` makes the entry the milestone's, per § "Debt inside the milestone's own scope".
+  - Second: work that no release schedules before the milestone begins defers the entry on the terms of § "The cadence" step 3, recorded as `deferred-from:`.
+  - Third: anything else is let in beside the entry, dated, and worked with it.
+  - `bin/docket check` rejects an open frozen entry waiting on work that none of the three covers, when the release train does not schedule that work first (`PL-8QMD`).
+- 7597-7605: the list freezes when the gate freezes.
+  - The moment is the later of the milestone's scoping and the ship of the milestone before it (§ "The cadence").
+  - A finding re-enters this gate when its problem was present at that moment, whatever its id and however late someone noticed it.
+  - A finding defers to the next gate only when its problem is new: introduced while clearing this gate, or while implementing the milestone it protects.
+- 7607-7617: why the test is presence, not discovery.
+  - Work generates findings: clearing 13 items in one session generated 14 new ones, which is normal and is the capture rule doing its job.
+  - If a gate reopened for everything noticed after the freeze, its queue would never empty and its milestone would never start.
+  - The rule would then be abandoned, which is worse than not having it.
+  - The test still closes one gap: a problem found again under a new id, after a stranded branch or a slow session, re-enters (`PL-64LS`).
+- 7619-7626: friction that compounds is the clearest case of a problem present at the freeze (project owner, 2026-08-30).
+  - Such a finding costs something again on every remaining entry. Examples: a tool that answers the wrong question, a check that cries wolf, a command that ends red when it succeeds.
+  - It was almost always present at the freeze, and only became visible once the gate's work started paying its cost.
+  - Deferring it means paying that cost once per remaining entry, so it re-enters and is worked early.
+- 7628-7636: the test is arithmetic.
+  - Multiply what each remaining entry pays by the number of entries left.
+  - `PL-0RS6` qualified at 18 entries, each paying a twelve-command detour. That is a large fraction of the saving the release exists to deliver.
+  - Work that is merely valuable, cleaner or more interesting fails the test and waits for the roadmap, for example rewriting a working tool in another language or adopting a nicer abstraction.
+  - If nobody can name the saving per entry, the finding does not qualify.
+- 7638-7649: presence is a presumption, and sessions should favour it.
+  - A finding that continues or completes a frozen item belongs to this gate and is recorded with that item. `PL-SWFM`, which continues `PL-Z4GF`, motivated this.
+  - A session may still defer a finding that qualifies when it has no real link to anything frozen, or when pulling it in would recreate the refilling-queue problem that the debt gate replaced Phase 0 to solve.
+  - A session may also decline a finding that only superficially resembles frozen scope.
+  - Either way it must say so and why. Silently changing which gate a finding belongs to is the renegotiation the freeze prevents.
+- 7651-7654: two exceptions re-enter regardless of presence.
+  - They are anything at `P0`, and anything classed `safety` or `science`.
+  - The project's standard does not allow those to be deferred.
+- 7656-7672: an `anticipated` `safety` or `science` finding is not debt until its hazard exists.
+  - Decision tag: project owner, 2026-09-16, ratified, chosen over placing each finding on the next milestone's frozen list behind a marker nothing enforces, and over leaving the rule as it was and putting the 2026-09-16 area-model findings on v0.5.0's list.
+  - The paragraph above is about timing; this one is about whether a finding counts at all.
+  - Example: a splitter handle can only resize an Area (`AreaLayout` in `src/anesthesia_sim/app/area_layout.py`, live since `PL-W9P6` on 2026-10-18). So no reader can close, replace or cover a required value until the docking operations of planned-milestone item 34 are built.
+  - A gate cannot clear a hazard that its own milestone introduces.
+  - This is the live-mechanism test, quoted from § "What counts" with "is about" dropped.
+- 7674-7682: why this option.
+  - It is the only one of the three that ends in a state a session can reach.
+  - The other two leave the corrected safety-class advisory in `tools/doc_check.py` lit against items nobody can close. That is the defect `CLAUDE.md` names: a check that "fires every run without changing a decision".
+  - Such a finding is placed in the milestone that creates the hazard, never deferred. These two classes are still not offered a deferral.
+  - v0.6.0's `Required scope` lists the ten findings this rule was written for.
+- 7684-7696: the carve-out expires with the wait it is granted for.
+  - Decision tag: project owner, 2026-09-16, ratified, chosen over leaving it on the class alone, which never stopped.
+  - `anticipated` claims the hazard is not live yet. An item stops saying `status: blocked` once the hazard is live, and `blocked-by` names what must happen first.
+  - Only an item that has written down what it waits for keeps the exemption, which lapses when the wait ends.
+  - The class alone kept the exemption running past the milestone that created the hazard, the one event the rule exists to notice (`PL-ZF2G`).
+  - `subprojects/docket/src/docket/checks.py` already requires the same pair of fields for the safety-band exemption. This rule reuses that pair, so `anticipated` means one thing in both tools.
+- 7698-7704: the exemption lapses when the item is promoted, not when its blocker closes.
+  - Nothing changes `status` by itself.
+  - Since `PL-2349` (2026-10-12), `bin/docket check` rejects a `blocked` item whose item blockers have all closed. For an item blocker, the promotion therefore lands in the pull request that closes the blocker, with no gap.
+  - A milestone blocker leaves one grooming pass, through the "is scoped and every other blocker has closed" advisory. That replaces an open-ended gap.
+- 7706-7708: `check_gate_reentries` in `tools/doc_check.py` reads both fields, so the rule runs on every `make check`.
+- 7710-7718: what it costs.
+  - `anticipated` now carries weight, so a wrongly classed `safety` item becomes invisible to the gate, the same failure as `PL-MVC2`.
+  - Two things narrow the risk without removing it. The class is claimed, not inferred. And `PL-MVC2` made a class outside the declared list a `bin/docket check` error, so a misspelling fails closed and the item stays named.
+  - A correctly spelled but wrongly applied class is caught only by a reviewer's judgment.
+- 7720: heading "The cadence".
+- 7722-7724: the gate is a recurring step on the plan. Every milestone goes through four steps, which § "The plan" shows on one timeline.
+- 7726-7728: step 1, scope.
+  - Give the milestone's goal, required scope, definition of done and explicit out-of-scope list.
+  - Add the heading for its frozen list, empty until the freeze.
+- 7729-7731: step 2, freeze and record.
+  - Record the debt list in the milestone's own section, as item ids, on the day it froze.
+  - The freeze day is the later of the day the milestone is scoped and the day the milestone before it ships.
+- 7732-7755: step 3, clear.
+  - Clear the list before implementation begins. Each item ends `done`, `dropped` with its reason, or deferred to a later gate.
+  - Sweep the list for staleness first. Decision tag: project owner, 2026-09-17, ratified, chosen over a second `verify:`-style field recording a fault test beside each fix test, and over leaving the sweep to whoever next noticed.
+  - A `verify:` command fails before the work and passes after it, so it tests that the fix is there, never that the fault is. An entry whose defect no longer reproduces therefore fails forever and looks outstanding.
+  - One pass (no date given) found 12 of 134 open items dead and 31 more overtaken, 32% in all. Nothing noticed this, and nothing can.
+  - An advisory based on how often items changed was built, tested against that pass's verdicts, and rejected, because `partly` changes less than `yes` (`PL-LKGL`).
+  - Staleness is a judgment, so it is a step, not a check. Read each entry against the tree, drop what no longer reproduces with its reason, and correct briefs that overstate what is left, all before spending a session on any of them.
+  - File the pass as its own item under `feature: gate-staleness-sweep`, and do not name a standing one here.
+  - An item named here can close: `PL-6ZQY` closed on 2026-09-19, two days before Gate 2 froze on a list it never saw (`PL-D8KW`). An instruction to file an item cannot go stale that way.
+- 7757-7761: the third outcome.
+  - Decision tag: project owner, 2026-09-21, ratified, over leaving each milestone's own bullet to be read at its own cut.
+  - An entry may be deferred instead of cleared, and the release ships without it, but only when all three conditions below hold.
+- 7763-7769: condition 1.
+  - The snapshot section permits the deferral, and the deferral says so and why.
+  - The item carries `deferred-from: vX.Y.Z - <why>`, naming this gate. That field is the one record every reader of the gate reads (`PL-8QMD`, project owner, 2026-10-11, ratified, over the deferral group headings this section used to carry).
+  - The gate section may set out the decision at any length.
+- 7770-7776: condition 2.
+  - The deferral lands in the next gate. That gate's freeze carries every open entry this list deferred, debt or not, from what `bin/docket gate` prints.
+  - An entry deferred to nowhere holds a release open (`PL-S5Q9`).
+  - The field names the gate the entry leaves, not the one it reaches (`PL-WD5Z`). That is enough, because the next freeze always takes the entry.
+- 7777-7778: condition 3: the entry stays on the frozen list, because removing it is the renegotiation the freeze prevents.
+- 7780-7783: a `safety` or `science` entry may be deferred only when the deferral records that its hazard is not live. That must be checked against the tree, and is recorded in the field's reason or in the gate section.
+- 7785-7798: why the terms are stated here and not in each definition of done.
+  - The case recurs: Gate 1's last entry, `PL-WZVZ`, was deferred to Gate 2 on these terms.
+  - v0.5.0's bullet allows only `done` or `dropped`. A session at that cut would have had to drop a `safety` entry whose hazard is real but not yet live, or hold the release.
+  - `PL-F0L8` records `dropped` being chosen once, because the bullet was treated as exhaustive.
+  - Gate 2 "freezes" the day v0.5.0 ships and inherits the entry, so a deferral is the normal case.
+  - Completed milestones' bullets are left as written, because they record conditions those releases met (`PL-Y949`).
+- 7799-7802: step 4, implement.
+  - A finding made while clearing or implementing goes to the next gate.
+  - It re-enters this gate instead when its problem predates the freeze (§ "The gate is a snapshot") or when it is `P0`, `safety` or `science`.
+- 7804-7806: a scoped milestone carries its gate heading from the day it is scoped, empty until the freeze. A milestone without one is not scoped.
+- 7808-7823: why the later of the two days.
+  - Decision tag: project owner, 2026-10-03, ratified, over keeping scoping as the trigger with exceptions recorded against it, `PL-KKRP`.
+  - A gate holds the previous milestone's findings, so a list frozen before that milestone ships misses them. A list frozen before its own milestone is scoped has no section to be recorded in.
+  - The timeline fixes the freeze date.
+  - Gate 1 froze on 2026-09-06, the day v0.5.0 was scoped; v0.4.0 had shipped the day before.
+  - Gate 2 froze on 2026-09-21, the day v0.5.0 shipped. v0.6.0 had been scoped early, on 2026-09-16, and that freeze was then recorded as an exception (project owner, 2026-09-16, ratified while scoping v0.6.0).
+  - The timeline rows for Gates 3 and 4 were already written on the ship day.
+  - v0.4.26 was counted as a second exception in error: it was a `v0.4.x` patch, and a patch freezes no gate.
+- 7825-7830: which step is due is computed, not remembered.
+  - `bin/docket wave` reads the version, the timeline, the milestone sections and their frozen lists, and reports the current step and the step that follows it.
+  - It does not report whether a gate should open early, or whether what is written beside a step is still true.
+- 7832-7839: a gate gets no version of its own.
+  - Its work ships as it clears, in patch releases on the previous milestone's track: `v0.4.x` while Gate 1 drained, `v0.5.x` while Gate 2 does.
+  - A session cuts a patch when it judges the finished work worth releasing.
+  - The milestone's own number is reserved for its capability boundary (§ "Versioning decision"), and its release notes carry its own scope.
+- 7841-7852: this records the practice, not a change to it (project owner, 2026-09-27, `PL-LPH9`).
+  - The sentence this replaced forbade interim releases while clearing, but every gate was worked the other way.
+  - Gate 0 closed across the v0.2.6 to v0.3.0 patch series.
+  - At v0.4.32, on 2026-09-20, `bin/docket wave` treated 172 of Gate 1's 175 entries as clear.
+  - v0.5.1 to v0.5.14 shipped 67 of Gate 2's 190.
+  - Since 2026-09-27, a release is cut when a feature finishes: a session cuts it and the project owner pushes the tag. This is dated to keep the current instance apart from the rule.
+- 7854-7858: Gate 0 is the single exception.
+  - It was released as the minor v0.3.0 (§ "Versioning decision"), because it held the backlog from before this mechanism existed.
+  - Later gates hold one milestone's findings. They are ordinary maintenance, ship in patches and get no number.
+- 7860: heading "Debt inside the milestone's own scope".
+- 7862-7866: debt that the milestone exists to clear is cleared by it.
+  - v0.4.0 was scoped partly because six `safety`, `science`, `defect` and `perf` items were symptoms of one thing.
+  - Requiring them to be cleared first would leave no order that works.
+- 7868-7872: the test is whether the item is in the milestone's "Required scope".
+  - If it is, it is milestone work, listed under a heading that says so, and the gate opens when everything outside the scope is clear.
+  - If it is not, it is cleared first.
+- 7874-7877: this does not weaken the `safety` and `science` rule. Such an item inside the scope still cannot be deferred, and cannot be finished before the work it belongs to. The milestone's definition of done enforces this.
+- 7879: heading "Recording it".
+- 7881-7883: record the frozen list in the milestone's own section, as item ids. An unwritten gate gets renegotiated.
+- 7885-7905: record a deferral on the item.
+  - A debt item that the current gate neither places nor takes carries `deferred-from: vX.Y.Z - <why>`.
+  - The version is the milestone whose list excuses the item, never the gate it goes to, because the next freeze takes every open debt item. The reason states the grounds.
+  - `bin/docket set <id> --deferred-from "..."` writes the field. `bin/docket check` fails an open debt item that the gate neither places nor defers, and prints that command (`PL-WD5Z`).
+  - A frozen entry deferred on the terms of step 3 carries the same field (`PL-8QMD`) and stays on its list. The next freeze takes it whatever its classes, because `bin/docket gate` prints every open entry of the last frozen list beside the store's open debt.
+  - `bin/docket check` fails an open frozen entry waiting on work outside the plan, unless the field defers it. Work is outside the plan when neither the list nor `Required scope` includes it and the release train does not schedule it first.
+  - A section may state its deferrals' shared grounds, as v0.6.0's does, but no tool reads that text.
+  - Until `PL-WD5Z`, deferrals were ids in `###` subsections headed `Declined`, `Deferred` or `Sequenced`, and each disagreement between those and the items became an item of its own. Completed sections keep those subsections as the record of that period.
+- 7907-7910: do not write a deferred item's state or release beside it. `bin/docket wave` prints them from the store (`PL-B60Q`), so a hand-written mark would only copy a field.

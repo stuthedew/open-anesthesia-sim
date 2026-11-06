@@ -1,0 +1,111 @@
+[1] keep
+
+Structure:
+- **Repeated fact and contradiction, the merge-rule file's own hold.** Rows 502-506 say "A change to that file waits on you in only three cases. It changes or deletes an existing test that pins `arm`'s results, it moves the file, or it carries a `needed` record." Rows 611-612 say "Since 2026-10-19, a change to the rule waits on your review only where it edits a test that pins `arm`'s results (`PL-9JHM`)." The fact belongs in the new subsection on changes to the merge rule (see the subheadings finding below). Rows 611-612 keep nothing. Query: rows 611-612 drop two of the three cases, moving the file and a `needed` record. The rule they describe is written in `arming.py` (row 611), so the three cases seem to apply. Which statement is right?
+- **Repeated fact, a pinned test waits whatever the record says.** Rows 503-505 and 512-513 give it, and rows 558-559 give it again: "A change to a test that pins `arm`'s results still waits for you whatever that record says, so its ask is a review." The fact belongs with the merge-rule subsection. Rows 558-559 keep only "so its ask is a review". That clause should sit beside rows 529-530, "Where there is no such question, it says so and recommends merging", because that case is this hold.
+- **Repeated fact, which tests wait.** Rows 496-497 say "a test under `tests/` that imports the simulator", and rows 603-604 say "A test of the simulator still waits for the session's `Owner-read` record." Rows 604-609 then add to the list: a branch that drops a simulator import or deletes a simulator test, `tests/conftest.py` and every file pytest does not collect, and any test `arm` could not read. The full list belongs in the list of paths at rows 495-498, so that list is complete where the reader first meets it. Rows 597-599 keep the tooling-test rule with its tag, "(project owner, 2026-10-05, ratified, over keeping every change under `tests/` on the read list, `PL-552M`)". Rows 600-601, "Of the 51 merges held for a review since 2026-10-03, 16 had been held by such tests alone", are the decision's reason. They go to `PL-552M` with their date.
+- **Repeated fact, `.github/workflows/` and `.claude/hooks/`.** Rows 569-572 say "So a change to `.github/workflows/`, `.claude/hooks/` or docket's lexer arms on green ... the first two since 2026-10-03 and the lexer since 2026-10-10." Rows 590-595 say "Second, `.github/workflows/` and `.claude/hooks/` joined the list. ... They left the list again under your rule of 2026-10-12 above." The current rule, rows 569-571 with "(project owner, 2026-10-12, `PL-KPM2`)" whole, belongs beside the list of paths at rows 495-498. The hold of 2026-10-03, which was later reversed, goes to `PL-KKHD` together with its reason and its cost of "about one review a day". Neither place in this section keeps the history.
+- **Repeated fact, `ROADMAP.md` arms on green since 2026-10-03.** Rows 576-577 say "Since 2026-10-03, so do `CLAUDE.md`, `ROADMAP.md`, `tools/` ...". Rows 585-589 say "First, `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green. ... (project owner, 2026-10-03, ratified, over holding them as before, `PL-KKHD`)". The current fact belongs beside the list of paths, with its tag whole. A reader might expect the roadmap to be held, so it is worth stating there. That `PL-0JGZ` had held these files goes to `PL-KKHD`. Rows 576-577 keep nothing.
+- **Repeated fact, the ask quotes the text before and after.** Row 491 says "the ask quotes it before and after", and rows 532-535 say "the reply quotes the text you are to judge, before and after, with enough of the surrounding paragraph". The rule belongs in rows 518-535. Row 491 keeps "still comes to you".
+- **Overlap, what a high-risk ask contains.** Rows 473-474 say "For a high-risk change, the ask gives the case for the change, its risks, and what was checked." Rows 521-527 define the ask as a decision or a review, and say a review "says what was already checked". Move rows 473-474 into the paragraph at rows 518-535. Query: is a high-risk ask a third kind of ask, or a review that also gives the case and the risks?
+- **Repeated point, `#1516`.** Rows 474-476 say "`#1516` set this rule. The path list held that pull request for you, although nothing in it needed a decision." Row 556 says "A question whose answer is obvious is a wrong question, as on `#1516`." The incident is decision history and goes to `PL-DKBG`. Row 556 keeps the rule in words, with `#1516` at most as a trailing pointer.
+- **Overlap, `not needed` merges on green.** Rows 500-501 say "`not needed` arms the pull request to merge on green", and rows 557-558 say "the session records `Owner-read: not needed`, and the change merges on green". Rows 500-501 keep what the record does. Rows 557-558 keep only when to record it.
+- **Order, the `docs/MODEL.md` rewrite paragraph (rows 478-491).** It comes before the `Owner-read` record it depends on (rows 493-495). A rewrite merges on green only because the session records `not needed`, and `docs/MODEL.md` is on the list at row 497. Move rows 478-491 after the record and its list of paths.
+- **Order, rows 556-559.** They say what the ask's question must be, so they belong right after rows 518-535, before the hook paragraphs at rows 537-554.
+- **Current rules buried in history (rows 565-582).** Four current rules sit inside this history paragraph:
+  - "A workflow item needs no merge confirmation from you (project owner, 2026-10-12, `PL-KPM2`)"
+  - "Every other change arms on green."
+  - "The store, the body records (`PL-979D`) and the queue's tooling arm on green as before (project owner, 2026-09-25, ratified, over holding every path outside `docs/items/`, `PL-SQTR`)"
+  - "`arm` names each path outside the store that it armed, so the session's report carries the reason."
+
+  These belong beside the list of paths at rows 495-498, with their tags whole. The rest is decision history and goes to the items it names: the hold before 2026-10-17 and the trial's instructions to `PL-KKHD`, "`PL-K6B2` built that rule" and the clicked-through holds of 2026-09-25 to `PL-SQTR`, and the unread diffs to `PL-CBDX`.
+- **History elsewhere in the section.** Row 507, "Before that decision, every change to it waited on you (`PL-VKHD`)", is decision history and goes to `PL-9JHM` or `PL-VKHD`. Rows 584-595 and 597-603 are decision records that tell the reader what the text is doing: "Two decisions of 2026-10-03 are recorded here, so that the list is seen as decided rather than left at a default" and "One decision of 2026-10-05 is recorded here too". Their history goes to `PL-KKHD` and `PL-552M`.
+- **Order of the history, if it stays in this file.** If the owner wants the history kept here, gather rows 565-612's history under one subheading at the end, in date order. The dates now run 10-17, 10-03, 10-12, 10-03, 10-10, 09-25, 10-03, 09-25, 09-23, 10-03, 09-26, 10-03, 10-12, 10-05, 10-19, so the reader keeps reading back and forth.
+- **Paragraph too long (rows 493-516).** It makes four points:
+  1. the record and what it does (rows 493-495 and 500-502);
+  2. which paths wait for the record (rows 495-500);
+  3. when a change to `arming.py` waits (rows 502-507);
+  4. what a pinned test is, and the modules `arm` reads through (rows 507-516).
+
+  Split it there. Points 3 and 4 go to the merge-rule subsection.
+- **Section too long, needs subheadings.** At 1632 words under one heading, a later session cannot find the current rule among the history. Suggested subheadings, in this order:
+  - **Opening:** rows 466-473, without the `#1516` history.
+  - **"Which pull requests wait for your read":** the record, the complete list of paths, what arms on green, then rows 478-491.
+  - **"Changes to the rule that arms pull requests":** rows 502-516 and 609-611.
+  - **"What the ask says":** rows 518-535, rows 473-474 and rows 556-559, with rows 561-563 last.
+  - **"How the question reaches you":** rows 537-554.
+  - **"How the holds changed":** only if any history stays in this file.
+- **One list, several names.** The same list is called "the path list" (row 475), "those simulator paths" (row 565), "the list" (rows 585, 590 and 594) and "the read list" (row 602). Row 475 uses the name before the list is given at rows 495-498, and row 565's "those" points back 70 rows. Name the list once, at rows 495-498, and use that name throughout.
+- **Opening paragraph claims "only".** Rows 466-467 say a pull request comes to the owner "only for a real decision or a high-risk change". Yet rows 558-559 hold a change to a pinned test whatever the session records. Either the opening names this hold, or it says which kind of high-risk change a pinned-test edit is. Query: is a pinned-test edit high-risk because CI would not show its breakage (row 473)?
+- **Query:** rows 497-498 list both `src/` and `src/anesthesia_sim/data/`, and the second lies inside the first. Does `src/` here mean all of `src/`? If it does, the data entry repeats it.
+- **Query:** rows 571-572 say docket's lexer had waited "since 2026-10-10". No row names the decision or item that put the lexer on the list, and a reader trying to find out why it was held needs that.
+
+Outline:
+- 464: Heading "What comes to you before it merges".
+- 466-476: When a pull request comes to the owner.
+  - It comes only for a real decision or a high-risk change; housekeeping merges on green (project owner, 2026-10-17, `PL-DKBG`).
+  - A real decision is one that `.claude/skills/docket/modes/design.md` step 4 already makes the owner's.
+  - A high-risk change is any of three kinds: it changes a clinical value the simulator computes or displays, or what `docs/MODEL.md` says such a value means; it is a rule sessions run under that the owner did not ask for in their own words; or CI would not show its breakage, or a revert would not undo it.
+  - A high-risk ask gives the case for the change, its risks and what was checked.
+  - `#1516` set this rule; the path list had held `#1516` although nothing in it needed a decision.
+- 478-491: When a `docs/MODEL.md` rewrite merges on green.
+  - A rewrite that changes no value, equation, code span or citation merges on green (project owner, 2026-11-02, ratified, over holding each section rewrite of `PL-ZT47` for the owner's read, `PL-ZTZF`).
+  - The session runs `python3 tools/model_rewrite.py lost`, which lists every equation, code span, citation, number and "no test yet" declaration the rewrite dropped or added.
+  - The rewrite is housekeeping when it added none and each one dropped is history moved to an item, or a duplicate the document still holds.
+  - A number restated in the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept; the tool checks that the values are equal and in the same section (`PL-TZ7R`).
+  - The blind review passes and the prose review still run.
+  - A sentence whose meaning needs a clinician's judgment, such as what a hazard row or a limitation promises, still comes to the owner, and the ask quotes it before and after.
+- 493-516: The `Owner-read` record, the paths that wait for it, and the merge rule's own hold.
+  - The session decides which kind a change is and records it on a commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`; `bin/docket arm` reads the record.
+  - Changes to `src/`, to a test under `tests/` that imports the simulator, to `docs/MODEL.md`, to `src/anesthesia_sim/data/` or to `README.md` wait until a record made after their newest change covers them.
+  - With no record, the pull request waits rather than merging an unreviewed clinical change.
+  - `not needed` arms a merge on green, with the reason in the pull request body; `needed` holds the pull request for the owner whatever paths it changes.
+  - `subprojects/docket/src/docket/arming.py` decides what merges without the owner. A change to it waits only if it changes or deletes an existing test that pins `arm`'s results, moves the file, or carries a `needed` record; otherwise it merges on green (project owner, 2026-10-19, ratified, over holding every change to it, `PL-9JHM`). Before that decision, every change to it waited (`PL-VKHD`).
+  - A pinned test, in `subprojects/docket/tests/test_cli.py`, is a `test_arm_` test, a test that runs `arm` or reads `arming`, or one of those tests' `_arm` helpers and `ARM_` constants.
+  - The modules `arm` reads through, such as `vcs.py`, `claims.py` and `cli.py`, arm on green; a change there that loosens one of `arm`'s results must edit a pinned test, and that edit waits (project owner, 2026-10-12, ratified, `PL-WW0Q`).
+  - The hold covers the pinned tests, not the code they test: a new test arms on green, and so does a loosening that no test pins, even in `arming.py`.
+- 518-535: What the ask contains.
+  - A hold comes with its question or its risk, never a bare "read #N" (project owner, 2026-10-18, `PL-9JHM`).
+  - The session records the ask as an `Owner-ask:` commit trailer, and `arm` prints it as the ask's first line.
+  - The ask is a decision or a review.
+  - A decision has at least two options and a recommendation; each option says what it changes for the owner or a learner, in clinical or learner terms; a choice between interface approaches has one annotated screenshot per option (project owner, 2026-10-19, `PL-KYTY`).
+  - A review gives what changed in one plain sentence, one yes-or-no question, what was already checked, and what to reply. The question is one the owner can decide as owner or clinician, and never asks for a re-check of what tests or reviews covered, such as whether a rewording kept its meaning. Where there is no such question, the review says so and recommends merging.
+  - No part of the ask names a tool, file, command or item id, and `arm` refuses a record that does (project owner, 2026-11-02, `PL-BGN1`).
+  - The reply quotes the text to judge, before and after, with enough of the surrounding paragraph that the owner never opens a file (project owner, 2026-11-02, `PL-77QB`).
+- 537-541: Before a question is recorded.
+  - `arm` tells the session to send the owner nothing about the pull request.
+  - The hook `.claude/hooks/owner_ask_guard.py` puts the record into the thread's message (`PL-X4MD`): when a thread's message in Projects names a pull request, and that thread's own pull request waits for the owner's read, the hook adds a line at the end.
+- 543-544: When a question is recorded, the line is that question, unless the message already quotes it word for word.
+- 545-546: When no question is recorded, the line is "No question is recorded on this pull request yet, so there is nothing to decide."
+- 548-554: Which messages get the line.
+  - Every other message arrives as written, and the hook refuses none.
+  - A progress note that names a held pull request also gets the line, so the owner may see the question more than once.
+  - The coordinator's messages are not changed, because its checkout is on no pull request's branch; it quotes the thread's recorded question itself.
+  - A decision card has no free-text field, so a card about a held pull request arrives without the line, and the thread is told so.
+- 556-559: When there is nothing to ask.
+  - A question with an obvious answer is a wrong question, as on `#1516`.
+  - With nothing to decide or review, the session records `Owner-read: not needed`, and the change merges on green without asking.
+  - A change to a pinned test waits whatever the record says, so its ask is a review.
+- 561-563: Merging a held pull request.
+  - A held pull request merges when the owner says so; "Merge it" is enough.
+  - It merges by the route in § "Bring a stale base in when you merge, with Update branch".
+- 565-582: History of the hold, with current rules mixed in.
+  - Before 2026-10-17, the simulator paths waited on their own whatever the change (the Projects trial's instructions, 2026-10-03, kind unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/` and `subprojects/docket/`); `PL-KKHD` built that hold.
+  - A workflow item needs no merge confirmation (project owner, 2026-10-12, `PL-KPM2`), so a change to `.github/workflows/`, `.claude/hooks/` or docket's lexer arms on green like the rest of the workflow lane. Those paths had waited, the first two since 2026-10-03 and the lexer since 2026-10-10.
+  - Every other change arms on green.
+  - The store, the body records (`PL-979D`) and the queue's tooling arm on green as before (project owner, 2026-09-25, ratified, over holding every path outside `docs/items/`, `PL-SQTR`); `PL-K6B2` built that rule.
+  - Since 2026-10-03, `CLAUDE.md`, `ROADMAP.md`, `tools/`, the rest of `.claude/` and `.github/`, and everything else also arm on green.
+  - `arm` names each path outside the store that it armed, so the session's report carries the reason.
+  - Before that, the hold fired on every change outside the store; the owner confirmed on 2026-09-25 that those holds were being clicked through, so they guarded nothing.
+  - `PL-CBDX` reviews the diffs that merged unread since 2026-09-23.
+- 584-595: Two decisions of 2026-10-03, recorded so that the list reads as decided.
+  - First: `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green. `PL-0JGZ` (project owner, 2026-09-26, ratified) had held them because the roadmap is where the owner sets direction. The owner settled it (project owner, 2026-10-03, ratified, over holding them as before, `PL-KKHD`).
+  - Second: `.github/workflows/` and `.claude/hooks/` joined the list, because `update-armed.yml`, `tag-release.yml` and the merge guard decide merges and tags as `arming.py` does. Holding them cost about one review a day at recent rates (project owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`). They left the list under the owner's rule of 2026-10-12.
+- 597-612: The decision of 2026-10-05 on tests, and which tests still wait.
+  - A test of the tooling under `tests/` arms on green, as `subprojects/docket/tests/` does. A test of the tooling is a file that pytest collects and that imports no `anesthesia_sim`.
+  - Of the 51 merges held for review since 2026-10-03, 16 were held by such tests alone, with nothing for the owner to judge (project owner, 2026-10-05, ratified, over keeping every change under `tests/` on the read list, `PL-552M`).
+  - A simulator test still waits for the `Owner-read` record. So does a branch that drops a test's simulator import or deletes a simulator test, because `arm` reads the file before and after the change.
+  - `tests/conftest.py` and every file pytest does not collect wait, because they serve the simulator's tests whatever they import.
+  - Any test `arm` could not read waits, with the reason beside the hold.
+  - The rule is the one `tools/workflow_paths_check.py` uses to sort the lanes, and it is written once, in `arming.py`.
+  - Since 2026-10-19, a change to the rule waits only where it edits a test that pins `arm`'s results (`PL-9JHM`).

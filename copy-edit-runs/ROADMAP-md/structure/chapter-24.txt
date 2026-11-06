@@ -1,0 +1,157 @@
+[1] keep
+
+Structure:
+- **The same fact in two places: the added entry.** Rows 5228-5233 say "The nineteenth item was added on 2026-09-20 (`PL-XJ37`) … every mechanism that the Goal sentence depends on had shipped, but no shipped entry point called any of it." Rows 5453-5456 say "This is the entry the milestone was missing. The four entries above build every part of a branch, but none of them is reachable … Added 2026-09-20 (project owner, 2026-09-20, `PL-XJ37`)." The fact belongs in the `PL-VKJW` entry, and the decision history belongs in item `PL-XJ37`. The opening paragraph should keep only the count and the three groups.
+- **Rows 5235-5245 are mostly decision history, about two items that are not on this milestone's list.** This reader needs one sentence: `PL-2FM6`, which draws the chart from the sampler, and `PL-8LXM`, which removed the decimation path, were required here and shipped in the `v0.4.x` track, so the list leaves them out. That sentence fits after the count in the opening paragraph, or after the list. Several details should go to items `PL-C4RS`, `PL-2FM6` and `PL-8LXM`: `PL-011`'s debt, what the decimation deletion took with it, the quoted note "drops to sixteen items", "frozen gate" and "declaration slot". Rows 5239-5240, "A sampler that computes any window in closed form", repeat rows 5248-5249 and can be cut.
+- **The closed form is stated three times.** The fact appears at rows 5248-5250, 5239-5240 and 5296-5299 ("`state_at` computes any instant of it in closed form"). It belongs in the `PL-T691` entry, and the other two places keep nothing.
+- **The canonical evaluation rule is stated in two places.** Rows 5253-5259 (`PL-P1Z3`) say what the rule is for. Rows 5302-5306 (`PL-J2TD`) say what it requires: "every replayed, compared or branch-opening value to be taken canonically", which rules out a resimulation driver. That requirement belongs in the `PL-P1Z3` entry. The `PL-J2TD` entry keeps only what it leaves out: no resimulation driver and no replay control. The figures 6.7e-16 and 1.8e-14 at rows 5300 and 5306 belong in `docs/MODEL.md` § "The canonical evaluation rule", which rows 5324-5325 say "carries the measurements". Leave a pointer there.
+- **Rows 5293-5325, `PL-J2TD`'s "Narrowed" and "Mechanism replaced" paragraphs, are history and developer detail.** They cover the old wording, the 2026-09-14 changes, `PL-2R2C`, `RunDefinition`, `state_at`, the test file and `origin_s`. They belong in items `PL-J2TD` and `PL-ZMRT`. Rows 5317-5318, "opens the branch's definition *at* the fork, on the case's axis. So there is one time frame", repeat rows 5284-5285, "It runs on the case's own clock, and its run definition opens at the fork instant." Keep the version at rows 5284-5285.
+- **Branch-equals-parent is stated four times.** Rows 5394-5397 (`PL-Z3W6`) say the branch reproduces its parent element by element, and rows 5306-5307, 5371 and 5414-5416 say it again. The fact belongs in `PL-Z3W6`. The `PL-8PSW` entry needs it as a reason, so it keeps a short clause there. The other places keep nothing.
+- **Rows 5265-5270, `PL-RD3B`'s "Re-briefed" note, are history and belong in item `PL-5328`.** Rows 5268-5269 ("the vocabulary that addresses a trace, and the window that a frame draws") repeat rows 5264-5265. The entry keeps its first two sentences.
+- **Rows 5352-5359, `PL-TFX5`'s "Split" paragraph, are history and belong in item `PL-TFX5`.** Its point that bookmark forking waits for the items that build the bookmark and its halt repeats row 5339 and rows 5371-5373, and belongs in the `PL-B8MK` entry. Its keyframe-only rule repeats row 5284. The entry keeps one sentence: forking at a bookmark is the next entry.
+- **Rows 5363-5367 compare the two routes, which is how the decision was reached.** That comparison belongs in item `PL-B8MK`. The entry keeps the chosen route and what it guarantees: marking a run does not change the run. Rows 5377-5384, on the day when the model could fork at a bookmark and the control could not, belong in item `PL-TYWQ`. The entry keeps how the second control behaves, with its whole "ratified" tag. Rows 5370-5371 and 5380-5381 both say that no keyframe is recorded, so keep it at rows 5370-5371. The method names `resumed_at_halt`, `fork_at_halt` and `fork_points_s` are written for a developer and belong in the items.
+- **Rows 5411-5448, the four `PL-8PSW` sub-paragraphs, argue reasons that `docs/MODEL.md` § "The six compartment traces" already holds.** Row 5421 says that section "carries this decision", and row 5427 says it gives the 1.01:1 figure. The 3:1 minimum appears twice, at rows 5419-5420 and row 5428. The compartment encoding stated at rows 5399-5400 is argued again at rows 5430-5431, 5435 and 5441. Keep these in the entry:
+  - the encoding;
+  - the stacked panels that were rejected, with their tag;
+  - that the first run is drawn wider;
+  - that the two-compartment cap is required because it frees line width for the run;
+  - the fallback to test.
+
+  The contrast and channel reasoning belongs in that `docs/MODEL.md` section, with a pointer from here. The history belongs in items `PL-HLD5` and `PL-GVXP`: `PL-HLD5`'s assumption, the reversal of 2026-09-07 and `PL-GVXP`'s finding.
+- **The agent rule is given twice.** Rows 5349-5350 say "The branch carries its parent's agent and patient", and rows 5466-5467 say "`SimulationController.set_agent` already refuses on a branch (`PL-TFX5`)". Keep the fact in `PL-TFX5`. The `PL-VKJW` disposition can give its reason as "because a branch keeps its parent's agent".
+- **Rows 5450-5452 and 5455-5456 are written for a developer.** They name `main()`, `BranchedCase`, `SimulationView`, `RunView` and `fork_at`, and belong in the brief for `PL-VKJW`. The entry should say what the learner can do. Rows 5468-5470 (`PL-QRD1`) are history and belong in that item.
+- **The `PL-1XPX` and `PL-MN4J` entries overlap.** Both are owner decisions about naming which run a display describes. Row 5473 says "a decision rather than an implementation", and rows 5484-5485 say "Like `PL-1XPX`, it is a decision rather than an implementation". The safety reason at rows 5473-5475 matches the definition-of-done quote at rows 5489-5491. Say once that both are the owner's decisions and why. Rows 5479-5484 say twice that the hover is unclear only in compare mode. Rows 5478-5479 ("debt that this gate can clear") and row 5487 ("no session can close it") are rules for sessions. This reader needs only that the owner decides, and that the decision cannot come before compare mode.
+- **Several entries have grown into essays.** Rows 5295-5307, 5333-5337 and 5460-5465 use "First … Second". The two `PL-LPLD` deviations and the two `PL-VKJW` dispositions are what the release leaves out, and each pair reads better as a short list. Once the history moves, each entry needs only a few sentences.
+- **The section is too long to find one's way in.** It runs to 3065 words in one list of 19 entries. Add subheadings for the three groups that the opening paragraph names:
+  - before row 5247: "Score architecture", or a plainer name (see the query on "score architecture");
+  - before row 5263: "Boundaries that this milestone's code moves";
+  - before row 5283: "Taking a branch".
+
+  You could also add "Showing and comparing two runs" before row 5398.
+- **Bold opening phrases that do not say what their paragraph holds.**
+
+  | Rows | Current phrase | Suggested phrase |
+  | --- | --- | --- |
+  | 5459 | "Two dispositions are settled in that item's brief rather than left to its pull request" | "A second fork is refused while a comparison is shown, and a branch shows its agent without a dropdown" |
+  | 5411 | "Which run carries the width offset was settled when it was built" | "The first run is drawn wider" |
+  | 5423-5424 | "The channel assignment is reversed from what this bullet said until 2026-09-07 …" | "Line style and colour show the compartment, and line width shows the run" |
+  | 5377 | "The interface half is `PL-TYWQ` and shipped 2026-09-21" | "A second fork control appears while the run stands on a bookmark halt" |
+  | 5253 | "The canonical evaluation rule that carries determinism" (uses "carries" in a private sense) | "A rule for which route to an instant is authoritative" |
+
+  The labels "Narrowed", "Mechanism replaced", "Split" and "Re-briefed" go with their paragraphs to the items.
+- **Pointers by position break once anything moves.** The list is not numbered, and the subheadings or moves above would change positions. Pointers like this appear at row 5288 ("item 12's fork", "two bullets down") and in other places that point to "the entry below" or "the entry above" (rows 5295, 5306, 5339, 5358, 5373-5374, 5415 and 5453-5454). Name each entry by what it does instead.
+- **Query: no single place gives each item's status.** The reader needs to know whether each of the 19 items has shipped or is still open, and in which release, to decide what v0.5.0 holds. Status is given in an item's own entry for `PL-LPLD`, `PL-B8MK` and `PL-TYWQ`. It is given only inside another entry for `PL-T691` (row 5296), `PL-CTD7` (row 5373), `PL-VKJW` (row 5377), `PL-J2TD` (row 5317) and `PL-8PSW` (rows 5411 and 5488). No place gives it for `PL-P1Z3`, `PL-49R8`, `PL-RD3B`, `PL-TCD1`, `PL-1PSX`, `PL-B9PY`, `PL-Y5WR`, `PL-Z3W6`, `PL-1XPX` or `PL-W7H9`.
+- **Query: "the nineteenth item" (row 5228) is `PL-VKJW`, which stands sixteenth in the list.** A reader who counts arrives at `PL-W7H9`.
+- **Query: rows 5373-5374 quote a phrase that the entry below does not contain.** They say the entry below is a branch "taken between two recorded samples". The entry below, `PL-Z3W6` (rows 5394-5397), does not contain that phrase.
+- **Query: rows 5453-5456 are written in the present tense and contradict row 5377-5378.** They say "none of them is reachable. Nothing in `src/` constructs a `BranchedCase`", but rows 5377-5378 say `PL-VKJW` landed the fork panel on 2026-09-20.
+- **Query: `PL-Y5WR` may not fit its group.** Rows 5280-5282 justify it as "carried here rather than lost", not as a boundary that this milestone's code moves. Which of the three groups does it belong to?
+- **Query: the counts do not add up.** Row 5242 records a move that left "sixteen items". The only additions the text names are the split of 2026-09-14 (row 5352) and `PL-XJ37`, which make 18. The section lists 19. This needs an answer only if that sentence stays.
+- **Query: the reader needs these terms, and this chapter does not explain them:**
+  - "score architecture" (row 5225);
+  - "frozen gate", "the heading that says so" and "declaration slot" (rows 5243-5244);
+  - "gate" (rows 5278 and 5479);
+  - "path-scoped rule" (row 5260);
+  - "`PL-011`'s dropped growth debt" (row 5237);
+  - "M4 decimation path" (row 5238);
+  - "selector" (rows 5384 and 5461);
+  - "running-agent chip" (row 5466);
+  - "the Goal sentence" (rows 5230 and 5457), whose words are not given here.
+- **Query: row 5461 calls the branch selector "out of scope" but does not say where it goes.** The reader needs to know which later milestone or item holds it.
+
+Outline:
+- 5222: heading "Required scope".
+- 5224-5233: what the milestone requires.
+  - 19 items, listed in the order their dependencies allow.
+  - The first 3 are the score architecture that the 2026-09-05 design round filed and the project owner placed here. The next 5 are work on boundaries that this milestone's code moves. The last 11 are the feature.
+  - The "nineteenth" item was added on 2026-09-20 (`PL-XJ37`), when the owner settled that forking is what v0.5.0 is. By then every mechanism the Goal sentence depends on had shipped, but no shipped entry point called any of it, so the milestone could have closed with a learner unable to take a branch.
+- 5235-5245: two more items were required here and are already done (`PL-C4RS`, 2026-09-19).
+  - `PL-2FM6` deleted `RunHistory`, and the chart is now drawn from the sampler. That deletion paid `PL-011`'s dropped growth debt.
+  - `PL-8LXM` deleted the M4 decimation path, with its tests, the cited paper and every reference to them. A sampler that computes any window in closed form has nothing to decimate.
+  - Both items moved to the `v0.4.x` track on 2026-09-08 and shipped there. The note on that move said "Required scope below drops to sixteen items".
+  - They sit on the frozen gate under the heading that says so, and are named here without a declaration slot, deliberately. This section does not place them.
+- 5247-5252: `PL-T691`, the run becomes a closed-form function of its control-input timeline.
+  - Keyframes are kept at every control event, and any window is computed in closed form, so the state at a time is computed, not looked up.
+  - It heads the milestone, and every entry below that touches a run depends on it.
+  - It makes a branch's history before the branch point the same object as its parent's history.
+- 5253-5259: `PL-P1Z3`, the canonical evaluation rule.
+  - Once an instant can be reached by stepping or from a keyframe, the promise that "identical inputs give identical results" needs a rule saying which route is authoritative.
+  - The rule is stated in `docs/MODEL.md` and enforced by a test.
+  - The item is classed as safety and science, and cannot be deferred within the milestone.
+- 5260-5262: `PL-49R8`, a path-scoped rule against re-introducing a sample store. A later session that adds a convenience buffer is told why the store is absent.
+- 5263-5270: `PL-RD3B`, the trace vocabulary and the boundary between the interface and the simulation core are separated.
+  - Two runs need the boundary. Each run needs its own drawn window, addressed through the same vocabulary.
+  - Re-briefed 2026-09-14 (`PL-5328`). Until `PL-2FM6` deleted the store, the entry read "The controller's storage … without a second copy of the storage". What is left to separate is the vocabulary that addresses a trace and the window a frame draws. The scope is unchanged.
+- 5271-5273: `PL-TCD1`, the snapshot stops naming six flat compartment floats, so a readout can name which run and which substance it describes.
+- 5274-5276: `PL-1PSX`, the control-input timeline is bounded and is no longer regrouped in full on every frame. In this milestone it is read on every branch operation.
+- 5277-5279: `PL-B9PY`, `SimulationView` is decomposed so that two runs can be drawn at once. v0.4.0 held the item at this gate because only this milestone needs it (project owner, 2026-09-02).
+- 5280-5282: `PL-Y5WR`, the 30-day scenario cap becomes an explicit halt. It is classed as safety. The only item that required it was dropped with `PL-011`, so it is carried here.
+- 5283-5291: `PL-J2TD`, a fork resumes into a live run.
+  - The branch opens at a canonical keyframe state of another run, runs on the case's clock, and its run definition opens at the fork instant. From there it advances by the same path as a live run.
+  - A learner can manage a branch, which separates it from a second curve.
+  - `PL-TFX5`'s fork ("item 12") and the in-loop crossing detection ("two bullets down", `PL-CTD7`) assume this resumption.
+  - The work is internal. It adds no user-facing replay control, which stays in planned item 10, behind item 9's save/load.
+- 5293-5309: `PL-J2TD` narrowed 2026-09-14 (project owner).
+  - The old wording was "a recorded control timeline can be applied to a run … the mechanism by which a point *between* recorded samples is reached at all".
+  - `PL-T691` delivered the applied timeline: the segment list of `RunDefinition` is the recorded timeline, and `state_at` computes any instant in closed form. `tests/integration/test_controller.py` asserts the reproduction to 6.7e-16 as a fraction of one atmosphere.
+  - The resimulation driver is refused by § "The canonical evaluation rule", which requires every replayed, compared or branch-opening value to be taken canonically. A driver that re-runs the fixed-step path composes a third order of floating-point operations, whose result is 1.8e-14 from the canonical result ("measured" by that section). The branch-reproduction entry asserts element-wise equality.
+  - The resumption is what remains.
+- 5311-5325: `PL-J2TD`'s mechanism replaced (project owner, 2026-09-14, queue item `PL-ZMRT`), with the scope unchanged.
+  - The old wording was "with its clock re-based by subtracting the fork instant". That gave the branch a second time frame, and made exactness depend on every caller subtracting the fork instant.
+  - The branch's definition now opens at the fork on the case's axis, so there is one time frame. `SimulationController.origin_s` and both subtractions are gone, and the round-trip hazard cannot be represented.
+  - This dissolved `PL-2R2C`: a branch's drawn columns were anchored to the branch's own zero and landed at case instants the trunk never draws. `PL-2R2C` needed no fix of its own.
+  - `docs/MODEL.md` § "The canonical evaluation rule" carries the measurements.
+- 5326-5339: `PL-LPLD`, time bookmarks and MAC targets as two separately listed collections.
+  - The shape follows the Gas Man reference simulator, which sets the minimum scope: an absolute simulated time, and a percent of MAC on any graphed compartment, not the alveolar trace alone. There are two kinds so that a list can show them as Gas Man does.
+  - Shipped in v0.4.33 with two deviations. First, the height is stored as a multiple of the running agent's 1 MAC, because every compartment is read in that unit: no conversion is needed, and a target survives a change of agent. Second, the rising/falling/either crossing direction was withdrawn (project owner, 2026-09-20), for the reason under planned-milestone item 26.
+  - Halting at a mark is `PL-CTD7`.
+- 5340-5347: `PL-CTD7`, crossings are detected inside the advance loop, with an explicit not-reached outcome that looks different from a reached one.
+  - Testing once per drawn frame overshoots by one frame of simulated time, and the overshoot grows with the playback multiplier. A bookmark would then halt at a concentration that depends on playback speed.
+  - That is a presentation-correctness failure by the standard in `CLAUDE.md`, and it breaks the reproducibility of a branch taken there.
+- 5348-5350: `PL-TFX5`, a run forks at any control-input event. Forking is flat: one trunk with N branches and no sub-forks. The branch carries its parent's agent and patient.
+- 5352-5359: `PL-TFX5` split 2026-09-14 (project owner).
+  - The old wording was "at any control-input event **or bookmark**". The bookmark half was a refused operation: a bookmark's instant is not in general a keyframe, and the keyframe-only rule from `PL-J2TD` admits no other opening point.
+  - On the 120 s run with two changes that the fork tests use, 3 of the 1 201 instants where a halt can land are keyframes.
+  - The bookmark clause is now the entry below, behind the two items that build a bookmark and its halt. This entry keeps what shipped.
+- 5360-5375: `PL-B8MK` and `PL-TYWQ`, a bookmark is an instant a run can fork at, so a branch can start where the learner stopped.
+  - Two routes were compared. Recording a keyframe at the halt makes the branch exact, but moves the trunk's later results, so marking changes the run. Opening at the keyframe before the bookmark costs the trunk nothing and is exact too.
+  - Shipped 2026-09-20 on the second route, as `SimulationController.resumed_at_halt` and `BranchedCase.fork_at_halt`. No keyframe is recorded, and the trunk matches the unmarked case element for element.
+  - The item waited behind `PL-LPLD` and `PL-CTD7`, which both closed the same day. It stays ahead of the entry below, whose branch "taken between two recorded samples" is this one.
+- 5377-5393: the interface half, `PL-TYWQ`, shipped 2026-09-21.
+  - `PL-VKJW` landed the fork panel on 2026-09-20 on a different branch. The panel offered only `BranchedCase.fork_points_s`, the trunk's keyframes, and a bookmark halt adds nothing to that list, because recording no keyframe is what makes the route safe. For a day, the model could fork at a bookmark and the control could not. Example: a learner marks 45 s, is stopped at 45 s, and is offered only induction and the control events.
+  - Now a second control sits beside the selector. It appears only while the trunk stands on the halt, and is labelled with the instant the branch will open (project owner, 2026-09-21, ratified, over one list that grows a row while the run is halted). Reason: a row that comes and goes changes the selector's contents under a reader who looked away, while a control that is either there or not can be seen at a glance.
+  - The two ways to fork stay as two methods and two fields, which stops a fork at a mark the run no longer stands on. Both ids are declared in this entry.
+- 5394-5397: `PL-Z3W6`, the branch reproduces its parent element by element up to the branch point. A test asserts this at every sampled point, with no tolerance. Where exactness cannot be reached, the divergence is bounded, documented and shown.
+- 5398-5409: `PL-8PSW`, two branches are overlaid on one time axis.
+  - Line style and colour show the compartment, as on the single-run chart, and line width shows the run. At most two compartments are drawn while two branches are shown. The branch point is marked.
+  - Two stacked panels on a shared time axis were decided against (project owner, 2026-09-06). The comparison is the point of the release, and stacking makes the eye travel.
+  - Javed W, McDonnel B, Elmqvist N, IEEE Trans Vis Comput Graph 2010;16(6):927-34, doi:10.1109/TVCG.2010.162: line graphs in a shared space are more efficient for comparisons over small visual spans, and one compartment under two settings is such a comparison.
+- 5411-5421: which run is drawn wider (`PL-8PSW`, 2026-09-16, project owner).
+  - The first run is drawn wider, and the second keeps the single-run width.
+  - `PL-HLD5` had assumed the curves are merely adjacent. They coincide exactly before the branch point, so the thicker one hides the other there.
+  - Widening keeps every trace at 2 px or wider. A 1 px antialiased line renders lighter than its colour and falls below the 3:1 minimum contrast that `.claude/rules/ui-color.md` treats as an error.
+  - `docs/MODEL.md` § "The six compartment traces" carries this decision.
+- 5423-5431: the channel assignment was reversed from this bullet's wording before 2026-09-07 (`PL-HLD5`).
+  - The old wording was "the run encoded by line style and the compartment by colour". The next day `PL-GVXP` showed that assignment is unavailable: `docs/MODEL.md` § "The six compartment traces" puts the worst pair of traces at 1.01:1 against a 3:1 requirement, so colour cannot carry six categories, and a new palette does not fix that.
+  - Line style is the only non-data channel with room for six categories, so it shows the compartment.
+- 5433-5439: why the cap is required.
+  - At six compartments no channel is free for the run: style, colour and width are all used, with width from 2 px to 3 px across the six. Capping the drawn compartments frees width.
+  - "One shared compartment selection across both runs" is a constraint the design rests on.
+  - 2 compartments × 2 runs is 4 curves, which is the comparison a learner makes.
+- 5441-5448: colour shows the compartment in both modes, deliberately.
+  - Giving colour to the run would make one channel mean two things across a mode change, and a misread here is a misread of a clinical value.
+  - Fallback if two compartments prove too few: three compartments, with the run as a direct label at each curve's end. Position is the strongest channel and survives every colour-vision deficiency. The fallback is to be tested, not assumed.
+- 5449-5457: `PL-VKJW`, a learner takes the fork and the dashboard holds the branch.
+  - `main()` builds a `BranchedCase`. `SimulationView` gains a way to add a `RunView` after construction. One control offers `BranchedCase.fork_points_s` and calls `fork_at`.
+  - This is the entry the milestone was missing: the four entries above build every part of a branch, none of it is reachable, nothing in `src/` constructs a `BranchedCase`, and `SimulationView` fixes its runs at construction.
+  - Added 2026-09-20 (project owner, 2026-09-20, `PL-XJ37`). It delivers the milestone's Goal sentence word for word.
+- 5459-5470: two decisions settled in the item's brief.
+  - A second fork is refused while a comparison is shown. The selector is out of scope, so a learner who forks twice could not choose which branch is displayed, and a quiet swap would be hidden state. There is one comparison at a time, and Reset starts the next.
+  - A branch's `RunView` shows the running-agent chip in place of the agent dropdown, because `set_agent` refuses on a branch (`PL-TFX5`), and a control that always refuses presents itself as working.
+  - These settle `PL-QRD1`'s question, which asked for both to be decided together.
+- 5472-5476: `PL-1XPX`, what the readouts show while two branches are displayed. It is a decision, not an implementation. A readout that does not say which run it describes is a safety-critical failure, because presentation is part of safety. There is more than one defensible answer.
+- 5477-5492: `PL-MN4J`, the chart's hover says which run it is reading.
+  - The item is classed as safety. It is milestone-scope debt under § "Debt inside the milestone's own scope", and this gate cannot clear it.
+  - The hover is unclear only while two runs are drawn, which happens only in compare mode, so the item cannot be cleared before compare mode. Until then, the hover names everything there is to name.
+  - It is the owner's decision, like `PL-1XPX`. It amends `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show", which derives the three-line form, so no session can close it.
+  - `PL-8PSW` shipped the legend and panel naming that make a curve attributable, and this item covers the rest. The definition of done requires "no readout, label, legend entry or reference band ambiguous as to which run it describes", which keeps the item in scope.
+- 5493-5497: `PL-W7H9`, what a comparison asserts, in `docs/MODEL.md` and `docs/ARCHITECTURE.md`. It states what two branches share and what they do not, that a difference can be attributed only to the settings that differ, and that neither branch is a prediction for a patient.

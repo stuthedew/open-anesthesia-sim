@@ -1,0 +1,283 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of docs/maintainer.md:
+  - A later session, or the owner reading the history.
+    Knows: Python, anesthesia, and this repository's rules.
+    Does not know: What the writing session knew and did not write down.
+    Will: Pick up the work, or find out why a change was made.
+
+[1] docs/maintainer.md § "Spend the monthly API credit on delegable items", rows 828-910. Whole section: 855 words. For: A later session, or the owner reading the history
+  828 | ## Spend the monthly API credit on delegable items
+  829 | 
+  830 | Max 20x includes $200 a month of Claude Platform API credit. The credit pays
+  831 | for `claude -p` only when it runs with an API key from the Console
+  832 | organization linked to the credit. It never pays for a cloud session. Credit
+  833 | left unused expires at the end of each billing cycle
+  834 | (https://support.claude.com/en/articles/17154008, read 2026-10-19).
+  835 | `tools/headless_worker.py` spends the credit on the items that
+  836 | `bin/docket delegable` lists (`PL-80R5`). Each run clones the repository and
+  837 | works one item on Opus 5.5, following `docs/worker.md`. It pushes a branch
+  838 | named `claude/<id>-worker`. It then subtracts its reported cost from the
+  839 | figure for the credit left, which you give the runner at launch. The runner
+  840 | stops before a run that the credit left cannot cover. It also stops after any
+  841 | run that fails, because an empty credit, a lost connection or a sleeping Mac
+  842 | makes every later run fail too (`PL-44SP`). Every run uses the effort level
+  843 | in `.claude/settings.json`, which is `high`. That is the level that
+  844 | § "Match effort to the standard the work is held to" sets for sessions
+  845 | (`PL-4N0K`). Run `tools/headless_worker.py` on your Mac, from a checkout of `main`, with
+  846 | `claude` and `uv` installed. Start it through `uv run python`, never a bare
+  847 | `python3`. macOS's own `python3` is Xcode's Python 3.9, which is older than
+  848 | the 3.11 that the tools need. `uv run` also puts the project's Python first on
+  849 | `PATH` for the workers (`PL-W38C`).
+  850 | 
+  851 | A worker runs `make check` before it commits, so the Mac needs the tools the
+  852 | suite compares its readers against: bash 5.2 or newer, and GNU Make 4 or newer.
+  853 | macOS ships bash 3.2 and GNU Make 3.81, and with them 89 tests fail whatever the
+  854 | change, so a worker cannot see its own failures among them (`PL-TSH9`).
+  855 | `brew install bash make` installs both. Homebrew installs the new make as
+  856 | `gmake`, so also add `export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`
+  857 | to the end of `~/.zshrc`, which makes it `make` in a new Terminal window
+  858 | (the formula's own caveat, `Formula/m/make.rb` in Homebrew/homebrew-core,
+  859 | read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
+  860 | 4.4.1 or newer. The runner refuses to start, before it spends any credit,
+  861 | while the bash or make on its `PATH` is older than bash 5.2 or GNU Make 4
+  862 | (`PL-44R1`).
+  863 | 
+  864 | 1. Claim the credit. On claude.ai, go to Settings, Billing, API credits, Link
+  865 |    organization. This links one Console organization. Changing that
+  866 |    organization later needs a request to support.
+  867 | 2. Create a key in that organization. On platform.claude.com, go to API keys,
+  868 |    Create key.
+  869 | 3. Run `export ANTHROPIC_API_KEY=<the key>` in the shell you run from.
+  870 | 4. Read the credit left at platform.claude.com/settings/billing, under
+  871 |    **Promotional credits**. The runner takes this figure from you as
+  872 |    `--credit-left` for two reasons. This account cannot read the Console's
+  873 |    Cost API. And a figure kept on your Mac would miss spending made anywhere
+  874 |    else (`PL-NQ0M`).
+  875 | 5. Run
+  876 |    `uv run python tools/headless_worker.py --credit-left 197.72 --dry-run --runs 3`,
+  877 |    with the figure from step 4. It prints the items it would run and the
+  878 |    credit left, and it starts nothing.
+  879 | 6. Run `uv run python tools/headless_worker.py --credit-left 197.72 --runs 3`
+  880 |    to run those items, one after another. On macOS, the runner first keeps the
+  881 |    Mac awake with `caffeinate -i` until the batch ends. So you no longer need
+  882 |    to start the runner under `caffeinate` yourself. Keep the lid open, because
+  883 |    caffeinate's manual does not say that it keeps the Mac awake with the lid
+  884 |    closed (`PL-BT70`). Each run prints one line: the item, its effort, the
+  885 |    cost, and the branch it pushed. A run that pushed adds a second line that
+  886 |    names its record.
+  887 |    A run that pushed everything it made removes its clone. It keeps its log
+  888 |    in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
+  889 |    `--no-push` one, keeps both the clone and the log. Its line names the
+  890 |    clone to read (`PL-TX7K`).
+  891 | 
+  892 | Each branch belongs to a worker, so review it as delegated work. Run
+  893 | `bin/docket verify <id>` on the branch, then open its pull request. A pushed
+  894 | run also commits its record to the branch, as
+  895 | `docs/worker-runs/<branch>-<started>.json`. The run's line names that file.
+  896 | Before it opens the pull request, the reviewing session runs
+  897 | `python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`.
+  898 | `make check` fails until the session does this (`PL-87BR`). The records are
+  899 | how headless work is compared with chat-session work. So the record of a
+  900 | sent-back branch still belongs on `main`. Carry its two record commits to a
+  901 | branch of their own. Once that lands, the daily branch sweep deletes the
+  902 | sent-back worker branch, so its item returns to `bin/docket next` (`PL-W5JR`). `--item <id>` runs one named item. `--per-run-usd` caps
+  903 | the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is
+  904 | the form used for `PL-6FX6`'s trial. In that form the clone cannot push, so the
+  905 | work stays on your machine. The cost that each run reports is Claude Code's
+  906 | own estimate, which can differ from the bill. So read the Console's figure
+  907 | again at each launch, rather than carrying forward the runner's last figure.
+  908 | Runners before `PL-NQ0M` kept a ledger at
+  909 | `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads
+  910 | it now, so you can delete it.

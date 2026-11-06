@@ -1,0 +1,47 @@
+[1] keep
+
+Structure:
+- Rows 6881–6894: the first paragraph makes four points. It says what the release holds, gives decision history, states two decisions as "First, … Second, …" (pattern 5 in the writing rule) plus a third about Views and Areas, and says how the remaining choices were made. Split it in this order:
+  1. What v0.7.0 holds: the compartment schematic (item 27) and the agent cost readout (item 28), each a View that any Area can hold.
+  2. A numbered list of the decisions, each keeping its tag whole.
+  3. The sentence saying that look, wording and placement are placeholders, and that the remaining choices were not put to the project owner.
+- Rows 6882 and 6890–6893: "`PL-LF0P` scoped it on 2026-10-25", "The project owner confirmed this in the same round" and "because each remaining choice either had one clearly better option or concerned look, wording or placement" are decision history. That history belongs in `PL-LF0P`. The roadmap keeps a pointer to `PL-LF0P`, and it keeps which choices the owner made and which were made without the owner.
+- Rows 6896–6907 and 6909–6920: these two paragraphs explain why the decision's two rejected options fail ("over containers drawn to scale and over Gas Man's Picture as it is", rows 6885–6886). Neither paragraph says so. Put them directly after that decision, and open each by naming the option it rules out.
+- Row 6896: the bold phrase "What Gas Man's Picture shows, read at the source" describes the text rather than stating the point. The point comes last, at rows 6905–6907. Open with it, for example "**Gas Man's Picture shows where the tension is, not where the agent is.**", and follow it with the readings of the source.
+- Row 6907: "Item 27 now says so" is history about an edit to the planned-milestone list. It belongs in `PL-LF0P`. The roadmap keeps nothing here.
+- Row 6901: "A setting turns these into money" is Gas Man's model for agent cost (item 28), but it sits in a paragraph about tension. It belongs in a paragraph about the agent cost readout, and the section has no such paragraph (see the queries).
+- Row 6909: in the bold phrase "Drawing each container to scale does not rescue it in this model", "it" points at no noun. State the point, for example "**Containers drawn to scale would leave four compartments 1 to 7 px wide.**"
+- Rows 6911–6914: the Mapleson sentences repeat the relation that row 6910 already states ("holds an amount equal to its filled area"). A reader deciding what to build decides the same way without them. They could move to `PL-LF0P` together with their reading record ("read from the private reference corpus, equations 5 and 6"). If they stay, they stay whole.
+- Rows 6919–6920: "The measurement used `AgentUptakeSystem.for_agent` on the shipped parameter files" names a tool this reader does not know. It also calls a model run a measurement. The method belongs in `PL-LF0P`. Keep the date beside the figures in rows 6916–6918, for example "(simulated from the shipped parameter files, 2026-10-25)".
+- Row 6879: the heading "v0.7.0 - the schematic" leaves out agent cost, which this milestone also builds (rows 6881–6882 and 6887–6888). A heading that fits is "v0.7.0 - the schematic and agent cost". Renaming it means changing every citation of the old heading at the same time, so the owner should decide.
+- Section length: three paragraphs need no subheadings once the first paragraph is split.
+- Query: rows 6890–6893 say the rest of the section was decided in the scoping round, but the rest is the two reason paragraphs. They state no further choice, so the reader cannot tell which parts of v0.7.0 those choices cover.
+- Query: the reader needs what the agent cost readout shows and what item 28's "four entries" are (row 6888). The section gives neither.
+- Query: the reader needs to know whether v0.7.0's schematic lets the learner change the simulation's state. Appendix E says Gas Man's Picture is for "viewing and manipulating the state" (rows 6902–6903), and the section does not say.
+- Query: the View decision has no tag in the form the other two use, only "confirmed this in the same round" (row 6890). The reader cannot tell whether it was ratified.
+- Query: the Gas Man Workbook is cited only by printed page. It has no edition, year or record of how it was read (route, date), unlike the Mapleson citation (rows 6912–6914).
+- Query: "View", "Area" and "Gate 4" are this repository's names, and this section does not explain them. The outline read should check whether another chapter of `ROADMAP.md` does.
+
+Outline:
+- 6879: heading "v0.7.0 - the schematic".
+- 6881–6894: what the milestone holds and how its choices were made.
+  - The milestone is planned-milestone item 27 (the compartment schematic), with item 28 (agent cost) beside it.
+  - `PL-LF0P` scoped it on 2026-10-25. Two choices went to the project owner.
+  - Decision 1: the schematic's containers fill to tension, as in Gas Man. They are labelled with their amounts, and a bar shows each compartment's share of the agent (project owner, 2026-10-25, ratified, over containers drawn to scale and over Gas Man's Picture as it is).
+  - Decision 2: item 28 is built in this milestone rather than left unscheduled (project owner, 2026-10-25, ratified, over leaving it out and deferring its four entries to Gate 4).
+  - The schematic and the agent cost readout are each a View of their own, which any Area can hold. The project owner confirmed this in the same round.
+  - The remaining choices were made in the scoping round and not put to the owner, because each had one clearly better option or concerned look, wording or placement.
+  - Look, wording and placement are placeholders while structure and function are built.
+- 6896–6907: Gas Man's Picture shows tension, not where the agent is.
+  - The Gas Man Workbook's Figure 2-1 (printed p. 11) draws seven compartments as containers of one width: circuit, alveoli, arterial blood, vessel-rich group, muscle, fat and venous blood.
+  - Each container fills "to a height representing partial pressure or tension in that compartment" (printed p. 11).
+  - The only amounts shown are two totals in litres, Uptake and Delivered. A setting turns these into money.
+  - Appendix E (printed p. 188) gives the Picture's purpose as "viewing and manipulating the state of an experiment at a given point in its evolution". It also says "the compartment schematic helps you visualize the relationships between compartment tensions".
+  - Conclusion: the Picture shows where the tension is, not where the agent is. Showing where the agent is is the lesson planned-milestone item 27 was written for, and item 27 now says so.
+- 6909–6920: containers drawn to scale do not work in this model.
+  - A container whose width is its capacity holds an amount equal to its filled area.
+  - Mapleson's electric analogue rests on the same relation, q = C·v: a condenser's charge equals its capacitance times its voltage (Mapleson WW, *J Appl Physiol* 1963;18(1):197-204, https://doi.org/10.1152/jappl.1963.18.1.197, read from the private reference corpus, equations 5 and 6).
+  - This model's capacities span almost three orders of magnitude. For sevoflurane, fat holds 493 L of gas equivalent and venous blood 0.79 L, a ratio of about 620.
+  - In a View 600 px wide drawn to scale, fat takes about 500 px. The circuit, alveoli, venous blood and vessel-rich group take 1 to 7 px each.
+  - Isoflurane and desflurane give the same picture.
+  - The figures come from `AgentUptakeSystem.for_agent` run on the shipped parameter files on 2026-10-25.

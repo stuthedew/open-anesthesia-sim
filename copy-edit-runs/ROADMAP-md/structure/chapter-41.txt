@@ -1,0 +1,67 @@
+[1] keep
+
+Structure:
+- Repeat (rows 7367-7368 and 7372-7373): "and inject liquid, from the Picture itself" and "Gas Man draws a button for each of them on its Picture" both describe liquid injection from Gas Man's Picture. It belongs in the injection entry (7372-7374). The controls entry (7366-7371) drops "and inject liquid" and keeps nothing.
+- Repeat (rows 7368-7371 and 7376-7378): "Here the settings stay in the parameter controls View … A control on the schematic would be a second way to change the same setting, and that needs its own design round" and "The parameter controls View already states all three. Drawing them a second time belongs with the controls above" make one point. Showing or changing these settings in a second place waits for one design round. Merge the gauges entry (7375-7378) into the controls entry, so that it covers both controls and gauges on the schematic. The gauges entry then keeps nothing.
+- Pointer back (row 7379): "The measurement above" sends the reader to a section this chapter does not name, and that section probably gives the same figures. The figures are short, so keep them in this entry and replace "above" with that section's heading in the form § "Heading". Query: the reader needs the heading of the section that reports the container widths, and the date they were measured, and the chapter gives neither.
+- Wrong reader and wrong place (rows 7391-7392): "So `PL-L6QR`, which waits on item 36, now waits on v0.8.0 instead" records a change to another item's dependency, which is decision history. The change belongs in the `PL-L6QR` item. The current fact, that `PL-L6QR` waits on v0.8.0, belongs in the v0.8.0 chapter, where the reader looks for what that release holds. This entry keeps nothing.
+- Order and subheadings (rows 7366-7411): the 13 entries mix the schematic, the agent cost View and the whole milestone, so a reader looking for one topic has to read the whole list. Use this order:
+  - First, the entries that cover the whole milestone: equations and parameters (7395-7398), then the View catalogue (7389-7392).
+  - Next, the schematic entries (7366-7388), with the visual pass (7393-7394) moved up after "Showing a past instant".
+  - Next, the cost entries: price (7399-7401), carbon dioxide equivalent (7402-7405) and uptake (7409-7411).
+  - Last, the preferences workflow (7406-7408).
+  - Put a subheading over the schematic group and one over the cost group, such as "The schematic View" and "The agent cost View".
+- Pointers to Required scope (rows 7397, 7401, 7402, 7406): entries 6, 8, 10 and 11 send the reader back to another section for short material. The second part should state each thing in place.
+- Query (row 7397): the reader needs to know what "the two constants per agent" are, and the chapter does not say.
+- Query (row 7402): "The unit decision behind entry 8" points to a decision the reader did not see. The reader needs to know which unit was chosen, which list "entry 8" belongs to, and which item records the decision. The chapter gives none of these.
+- Query (rows 7404-7405): carbon dioxide equivalent "waits for a decision of its own", which is a decision for the owner, but no item tracks it. The reader needs that item's id.
+- Query (rows 7372-7374): liquid injection has planned-milestone item 4, but the circuit flush has no item or release. The reader needs to know whether the flush is planned anywhere.
+- Query (rows 7393-7394): the visual pass is "on the `v0.6.x` track", but "until then" the v0.7.0 schematic is a placeholder. The reader needs to know whether the visual pass comes before or after v0.7.0, and the chapter does not say.
+- Query (rows 7392, 7405): the chapter does not say what `PL-L6QR` is. It also uses "Picture", "View", "the share bar", "the per-compartment record" and "the `v0.6.x` track" without explaining them. The outline read should confirm that an earlier chapter explains each one where it first appears.
+- The heading "Explicitly out of scope for v0.7.0" says what the section holds.
+
+Outline:
+- 7364: Heading: what v0.7.0 leaves out.
+- 7366-7371: Controls on the schematic are deferred, not rejected.
+  - Gas Man lets the reader set the vaporizer, fresh gas flow, ventilation and cardiac output, and inject liquid, from its Picture.
+  - Here the settings stay in the parameter controls View, so for now each setting has one control.
+  - A schematic control would be a second way to change the same setting and needs its own design round. No item or release is named.
+- 7372-7374: Liquid injection and the circuit flush are out.
+  - Gas Man draws a button for each on its Picture.
+  - Each is a new input to the model, not a display.
+  - Planned-milestone item 4 is direct injection. No item is given for the flush.
+- 7375-7378: The flows drawn as gauges are out.
+  - Gas Man's lower half draws fresh gas flow, alveolar ventilation and cardiac output as bars.
+  - The parameter controls View already states all three.
+  - Drawing them a second time waits with the controls entry.
+- 7379-7382: Containers drawn to scale are out.
+  - "The measurement above": four of the six containers are 1 to 7 px wide in a 600 px View. No date is given.
+  - So a filled area cannot show the amount, and the share bar shows it instead.
+- 7383-7385: More than one agent on one schematic is out.
+  - Gas Man keeps one Picture for each agent.
+  - This model holds one substance at a time until v0.8.0.
+  - v0.8.0 will key the per-compartment record by substance.
+- 7386-7388: Showing a past instant is out.
+  - The schematic shows the run's current instant, as the readouts do.
+  - Drawing it at an instant picked on the chart first needs a way to scrub through a run, and no release schedules one.
+- 7389-7392: The View catalogue (planned-milestone item 36) is out.
+  - This milestone adds the schematic View and the agent cost View.
+  - It does not decide which of today's surfaces become Views.
+  - `PL-L6QR`, which waited on item 36, now waits on v0.8.0.
+- 7393-7394: The visual pass (planned-milestone item 33, on the `v0.6.x` track) is out. Until it ships, the schematic's look is a placeholder.
+- 7395-7398: No change to the governing equations or parameters.
+  - The model already computes every amount the schematic draws.
+  - The only change under `src/anesthesia_sim/data/` is the two constants per agent that Required scope entry 6 stores.
+  - Only the agent cost View reads them.
+- 7399-7401: No shipped price or price list. A price goes stale and differs between institutions, so the reader sets it (Required scope entry 11).
+- 7402-7405: Carbon dioxide equivalent is out.
+  - The unit decision behind entry 8 lists it as a candidate unit with the same shape as money.
+  - Like money, it needs a stored factor for each agent from a source that can go stale.
+  - No source has been read for it, and it waits for its own decision. No item is named.
+- 7406-7408: The rest of a preferences workflow is out.
+  - Required scope entry 10 builds the preferences file and what this milestone stores in it.
+  - Save, Revert and Load Factory Preferences (`PL-GL5X`) are not in this milestone.
+- 7409-7411: Uptake as a headline figure is out.
+  - Gas Man pairs Uptake with Delivered.
+  - `PL-DWHV` records that this model computes uptake but shows it nowhere.
+  - Showing it would be a display of its own, not part of the cost.

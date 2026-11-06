@@ -1,0 +1,13 @@
+[1] keep
+
+Structure:
+- Rows 3-4 and 5-9: no blank line separates them, so they show as one paragraph that makes two points. Rows 3-4 say what the directory holds. Rows 5-9 say that holding a file here does not make its source an authority. Split them at row 5, so that "**Being here promotes nothing.**" starts its own paragraph.
+- Rows 3-4, "so a session can read the source rather than recall it": this reason is for the workflow's reader, a later session. The clinician does not know what a "session" is here and does nothing with the reason. Move it to the item that set up this directory. In its place, tell the clinician what the directory gives them: the full text of a source, to check a stored value against.
+- Row 9, "Cite the work, never the file path.": this rule is for the people who write citations, not for the clinician who checks a value. Move it to the place writers look for rules on citing sources, such as `.claude/rules/sources-and-docstrings.md`. Leave the clinician what the rule guarantees: every citation names the published work, so they can find the source whether or not its file is here.
+- Query: the clinician needs a way to find the document behind a given stored value, such as how the files are named or listed. This chapter does not give that. If a later chapter does, this chapter should point to it.
+- Query: rows 3-4, "the citations for sources this repository may not carry". The reader cannot tell whether "may not" means the repository is not permitted to hold these texts or only that it does not hold them. The chapter also does not say where those citations are listed, or how the reader gets a source that is not held here.
+
+Outline:
+- Row 1: heading "Source documents held on hand". It is the document's title (level 1).
+- Rows 3-4: what the directory holds. It holds full texts kept in the repository so a session can read a source rather than recall it. It also holds citations for sources the repository may not carry. There is no blank line before row 5, so these rows show as one paragraph with rows 5-9.
+- Rows 5-9: being here does not make a source an authority. `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value" decides what may be cited as the authority for a stored number. A PDF in this directory is evidence a session can open, not a level ("tier") in that ranking ("hierarchy"). Rule for writers: cite the work, never the file path.

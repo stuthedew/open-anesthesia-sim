@@ -1,0 +1,128 @@
+[1] keep
+
+Structure:
+
+- **Repeat: the tag's span is the provenance guarantee.** Rows 172-173 say "That span of resolving commits is the provenance guarantee that PL-J3ZK was opened to restore". Rows 216-217 say "`git describe --contains` is authoritative for what shipped, and it is the provenance guarantee described above". The point belongs at 215-217, where the tag's span and the notes are compared. Rows 168-171 keep the fact that every commit up to the latest release resolves, with "verified on 2026-08-30" beside it, and drop the pointer. Why PL-J3ZK was opened goes in PL-J3ZK.
+- **Repeat: every completed version has a tag.** Three places say it:
+  - rows 163-164: "Every version that the table above marks Completed carries an annotated tag";
+  - rows 261-263: "A version that has genuinely gone out untagged is named in a bold sentence here … There are none";
+  - rows 265-266: "v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`) were the last two untagged versions".
+
+  The fact belongs at 163-164, with the date the last two versions were tagged (2026-08-30). Rows 261-263 keep nothing for this reader. Rows 265-273 keep nothing beyond that date (see the findings on history and the shallow checkout below).
+- **Repeat: a release's own cut pull request is named by the next release.** Rows 220-222 say "This project already writes that convention down for the one case that recurs every time, which is a release's own cut item". Rows 237-239 say "a release's own cut pull request. It is inside its own span by construction, and the next release stamps it every time". The fact belongs at 237-239, with the exemption. Rows 220-222 keep nothing.
+- **Repeat: the pointer only helps you find things.** Rows 242-243 say "The claim this section makes is about navigation only". Rows 248-249 say "The pointer above is navigation, and it leaves the reconciliation untouched". The point belongs at 247-249. Rows 242-243 describe the text itself and go. Rows 243-245, the two mechanisms the pointer depends on, go to the developer's place (see "Written for another reader").
+- **Repeat: notes at the cut, tag on the merge.** Three places give it: rows 188-190, rows 203-204 ("The notes are rendered at the *cut*, and the tag goes on the *merge*") and rows 244-245 ("the tag going on the merge commit, or the notes being rendered at the cut"). The fact belongs at 188-190, where the cut is defined. Rows 203-204 keep only a short clause giving it as the cause of the span problem, and rows 244-245 keep nothing. See the query on "cut".
+- **Repeat: this happens often.** Three places make the point:
+  - row 206: "This is not rare";
+  - rows 206-209: the 2026-09-14 count, "close to one release in four";
+  - rows 211-213: the 2026-09-22 recount, "the rate has held".
+
+  Keep the 2026-09-22 recount at 211-213, with its date and the rate of about one release in four. The 2026-09-14 count is superseded and goes, with its date, to PL-028F or PL-P669. "This is not rare" keeps nothing.
+- **Order inside 202-213.** Rows 210-211 ("A squash merge also gives the release commit one date, so `main`'s own history cannot say how long the branch was open") sit between the two counts. They explain "it is not visible afterwards" in row 206 and belong straight after it.
+- **Order inside 202-225.** The point this reader needs comes only at 215-218: the tag's span is what shipped, and the notes are what the cut recorded. Open the subsection with it, then give the evidence from 202-213, then the examples from 219-225.
+- **Order of paragraphs.** Rows 175-186 ("A tag also has to sit on its own release's commit") come before rows 188-200, which say where the tag goes. The reader needs to know where the tag goes before learning how a misplaced tag is caught. Use this order:
+  1. 163-173, with the outcome of 261-273;
+  2. 188-200;
+  3. 175-186;
+  4. 202-225;
+  5. 227-245;
+  6. 247-259.
+- **Written for another reader: how the release tools work.** Rows 166-168, 178-180, 191-200, 230-235, 249-252 and 256-259 explain how the tools check and enforce the release process. They name `tools/doc_check.py`, `check_tag_span_covers_its_notes`, `.github/workflows/tag-release.yml`, `make check`, `GITHUB_TOKEN`, `bin/docket release`, `bin/docket check` and `make release VERSION=X`. This reader does not know these names. They act only on what each one guarantees.
+
+  The detail belongs in the release workflow's own documentation, for a later session. The writing rule assigns `docs/maintainer.md` and `docs/apparatus.md` to that reader. The alternative is a comment in the code it names. The reason a re-stamping job cannot land (249-252, `PL-N5WZ`) explains why an alternative fails, so it moves with the rest and is not cut.
+
+  This chapter keeps one sentence per guarantee:
+  - a Completed version without a tag is caught;
+  - a tag on a commit whose `pyproject.toml` declares another version is caught;
+  - the tag is pushed automatically once the cut lands on `main`;
+  - the next release cannot be cut while the previous tag is missing;
+  - a notes file whose span holds work its cut did not name, and that lacks the pointer section, is caught;
+  - a warning appears when re-running a release would take in work merged after the cut.
+- **Decision history that belongs in the items.** Rows 164-166 ("This section deliberately does not restate … which it twice was not") describe the text and its history; cut them. The rest goes to the item named beside it:
+  - rows 176-177, the v0.5.3 incident, go to `PL-YKSD`;
+  - rows 172-173 go to PL-J3ZK;
+  - rows 194-198, what PL-8HJ2 removed and the old warning, go to PL-8HJ2 and PL-R7C0.
+
+  Rows 247-248 ("That was the decision rather than an omission") keep the decision and lose the contrast. Rows 266-273, the "untaggable" episode, go to its item (see the queries). The chapter keeps only the outcomes.
+- **Pitfall for a later session.** Rows 268-273 explain that a shallow checkout reports several roots and that `git merge-base` then returns nothing. They also say "The superseded reasoning is kept here because …", which describes the text itself. This is a trap for whoever repeats the measurement, not for this reader. It belongs in `docs/dead-ends.md` or the item, and this chapter keeps nothing of it.
+- **Rule for writers.** Rows 261-263 say how to record an untagged version and what the checker requires. The rule belongs with the check's documentation. This reader keeps "No Completed version is untagged" at 163-164.
+- **Unrelated paragraph.** Rows 275-276, on the v0.0.3 milestone, are not about tags or notes. They belong beside the version table that row 163 calls "the table above", wherever `ROADMAP.md` lists its versions.
+- **Subheadings and heading.** This half of the section alone runs 1281 words, and "Versioning decision" does not say that it holds the rules for release tags and notes. Keep the heading, because other files cite it, and add subheadings:
+  - "Every completed version has a tag" before 163;
+  - "Where and when the tag is made" before 188, with 175-186 placed under it;
+  - "What a tag ships that its notes may not name" in place of the bold lead-in at 202, covering 202-245;
+  - "Why nothing reconciles the two automatically" before 247.
+
+  The decision tag "(`PL-028F`, decided 2026-09-14)" moves whole into the first sentence under its subheading.
+- **Query: v0.2.0's commit.** Row 182 puts v0.2.0's tag on release commit `69a5888c`. Rows 265 and 270 give v0.2.0 as `796bf4f`, and row 271 says the tags were placed where the release commits are. Which commit carries v0.2.0's tag?
+- **Query: two meanings of "cut".** Rows 188-189 say "The tag goes on the release's cut" and define the cut as its squash commit on `main`. Rows 203-204 and 244-245 set the cut against the merge, with notes at the cut and the tag on the merge. The reader needs to know which commit "cut" names.
+- **Query: "span".** Row 172 first uses "span" and no row defines it. The reader needs to know which commits a tag's span contains, and the text does not say.
+- **Query: "stamp".** Rows 217-218 ("what the cut stamped"), 228 ("work that the cut did not stamp") and 239 ("the next release stamps it") use the word without explaining it. The reader needs to know what it means for a release to stamp a pull request.
+- **Query: the two choices.** Rows 258-259 say the warning names "both dispositions". The reader needs to know what the two choices are, and the text does not give them.
+- **Query: an item for the 2026-08-30 history.** Rows 265-273 name no item for the closing of the tag gap or for the shallow-checkout finding. The history needs an item to move to. PL-J3ZK (row 173) may be it.
+
+Outline:
+- 163-173: every Completed version is tagged, and the tag says what shipped.
+  - Every version that the table above marks Completed carries an annotated tag.
+  - The section does not list which versions those are: the table is the list, and a second copy was twice wrong.
+  - `tools/doc_check.py` checks the completed rows against `git tag`, so a release shipped without a tag fails the check.
+  - `git describe --contains` resolves for every commit up to and including the latest release, verified 2026-08-30 across the whole of `main`.
+  - The commits that do not resolve are the unreleased ones after the newest tag, and the next release's tag will cover them.
+  - That span of resolving commits is the provenance guarantee that PL-J3ZK was opened to restore.
+- 175-186: a tag must sit on its own release's commit, with v0.2.0 as the one exception.
+  - A tag's name cannot show which commit it sits on.
+  - `v0.5.3` was pushed before its release merged, onto the commit before its own, and every check treated it as tagged (`PL-YKSD`).
+  - `tools/doc_check.py` reads `pyproject.toml` at each release tag. It fails when the declared version differs from the tag's, and it names the commit and the version.
+  - Bold: one version shipped with a stale version file, v0.2.0.
+  - v0.2.0's tag is on release commit `69a5888c`, whose `pyproject.toml` read 0.1.0.
+  - The version bump `8687bdf2`, "Fix stale app version", went out in v0.2.1.
+  - Moving the tag onto the bump would make that commit appear to have shipped in v0.2.0, so the tag stays and the exception is named here.
+- 188-200: where and when the tag is made.
+  - The tag goes on the release's cut: the commit that added the release's notes file, which is the cut's own squash commit on `main`.
+  - It does not go on whatever `main` holds when the tag is made (PL-QHCW).
+  - `.github/workflows/tag-release.yml` pushes the tag once the cut lands on `main` (PL-2FY6).
+  - Between that merge and the workflow run, the newest version is Completed and has no tag, and the check stays silent.
+  - Failing in that window would turn `make check` red on every release branch, the failure PL-8HJ2 removed.
+  - The check's former warning could not tell a tag that was never pushed from one this checkout had not fetched (PL-R7C0).
+  - `bin/docket release` refuses to cut the next release while that tag is missing, which closes the window.
+- 202-213: work that merges while a release branch is open ships in that tag but is missing from its notes (`PL-028F`, decided 2026-09-14).
+  - The notes are rendered at the cut, and the tag goes on the merge.
+  - Work merged while the release branch is open is inside the tag's span, and no notes name it until the next release claims it.
+  - This is not rare, and it is not visible afterwards.
+  - Count on 2026-09-14: across 47 tagged spans, 12 closing pull requests merged inside a span and were not named in that span's notes. They fell in 11 spans, close to one release in four.
+  - A squash merge gives the release commit one date, so `main`'s history cannot show how long the branch was open.
+  - Recount on 2026-09-22: across 65 spans, 20 closing pull requests in 16 spans, including the two most recent completed spans. The rate held (`PL-P669`).
+- 215-225: the two records answer different questions.
+  - The tag span is what shipped. `git describe --contains` is the authority for it, and it is the provenance guarantee.
+  - The notes are what the cut stamped, the release's own account of its work.
+  - Where the two differ, another release's notes describe the work, usually the next release's.
+  - That convention is already written down for a release's own cut item.
+  - It is not always the next release: `#412` was attributed back to v0.4.6, the release its code shipped in, and `#225` was recorded twelve releases later, by v0.4.15.
+  - The pointer therefore names the release.
+- 227-245: since 2026-09-22, each notes file carries a pointer to work in its span that its notes do not name.
+  - The section is headed `### also inside this tag's span` and names the pull request and the release that describes the work.
+  - `check_tag_span_covers_its_notes` in `tools/doc_check.py` fails `make check` on the next span that holds such work and lacks the section.
+  - The section only adds, so the cut's own account is untouched.
+  - It is written after the tag. That is the only edit made to a notes file, and it is safe because a tagged release is never re-cut.
+  - Exemption 1: a release's own cut pull request, which is inside its own span by construction and which the next release stamps every time.
+  - Exemption 2: the newest tag's span, until the next release's notes exist, because its pointer would have to name a release nobody has cut. The cut that writes those notes is asked for the pointer on its own branch (`PL-JLYG`).
+  - The claim is about navigation only. It fails if the tag stops going on the merge commit or the notes stop being rendered at the cut.
+- 247-259: nothing reconciles the two records automatically, by decision.
+  - The pointer helps find work and does not reconcile.
+  - Re-stamping at merge would need a job triggered by the merge, and such a job cannot write to `main` here. A push made with `GITHUB_TOKEN` starts no workflow, so required status checks never report on it (`PL-N5WZ`).
+  - Every variant that would land needs a person at the merge.
+  - Absorbing a newcomer, meaning work the base took in after the cut, would make the notes describe work the session that cut the release did not do. No tool should make that judgment.
+  - `bin/docket check` warns on a checkout that carries an unmerged cut, while re-running `make release VERSION=X` would still absorb newer work.
+  - The warning names what the base took in since the cut, and both dispositions.
+- 261-263: no version has gone out untagged.
+  - Such a version would be named in a bold sentence here, and the checker requires the stated count to match the versions named.
+  - There are none.
+- 265-273: the tag gap closed on 2026-08-30.
+  - v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`) were the last two untagged versions.
+  - They were once recorded as untaggable, because `main` seemed to have three unrelated roots and `git merge-base 796bf4f 97cc66a` returned nothing.
+  - That came from a shallow checkout, where boundary commits report no parents.
+  - The full history has one root: `97cc66a` (v0.1.0) is an ancestor of `796bf4f` (v0.2.0), which is an ancestor of `bc5f823`.
+  - The tags were placed on the actual release commits.
+  - The old reasoning is kept because a shallow checkout reproduces it.
+- 275-276: there is no active v0.0.3 milestone.
+  - Any guide that labels the first patient sevoflurane build v0.0.3 is superseded by this roadmap.

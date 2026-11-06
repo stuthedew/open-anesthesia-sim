@@ -1,0 +1,33 @@
+[1] keep
+
+Structure:
+- Repeated fact, rows 321 and 335–336: "has one row per session in this repository" and "So the ledger stores each session once". Rows 321–327 should keep it, with its reason from rows 334–335 (a session's facts belong to the session, about two closed items share each session, and a session keeps spending after it closes its item) and the whole tag "(project owner, 2026-10-19, ratified, over model and effort fields on each closed item, `PL-70M6`)". Rows 335–336 keep nothing.
+- Repeated point, rows 325–326 and 336–337: "A closed item is linked to its sessions through its `pr:` field" and "an item is joined to its sessions when the ledger is read". Both say how an item reaches its sessions. Rows 325–327 should say it once: the item is joined to its sessions when the ledger is read, through its `pr:` field and the squash commit's `Claude-Session:` trailer, with `docs/pr-bodies/` as the fallback. Rows 336–337 keep nothing.
+- Rows 329–338 make two points: who writes the ledger (rows 329–333, `PL-92ZN`) and why it stores sessions rather than items (rows 334–338, `PL-70M6`). Split them. Rows 334–338 join the first paragraph, as in the first finding. Rows 329–333 merge with rows 340–342, which also cover the model review's work on the ledger.
+- Order after the split: the first paragraph says what a row holds, why there is one row per session, and how to find an item's sessions (rows 321–327 with 334–338). The second paragraph says that only the model review writes the ledger, from the harness's own record, and when it refreshes it, with the pointer to the steps (rows 329–333 with 340–343). A later session then learns what the file is before learning who may change it.
+- Rows 343–345 ("The review also refreshes `docs/ci-runs.tsv`, the CI run history … 90 days after it ran (`PL-4SFQ`)") are about a different record, which the heading does not cover. They belong where the document describes the CI run history or the model review's records. If no place does, give them a short section of their own. This section keeps nothing. The outline read should check whether another chapter already describes `docs/ci-runs.tsv`.
+- Heading, row 319: "what model and effort worked each item" presents the ledger as kept by item, but rows 334–336 say its facts belong to a session and an item is joined only when the ledger is read. The heading also leaves out tokens and cost, and "worked each item" uses "work" in an unusual sense. A heading that fits: "The session ledger records each session's models, effort and cost". Any file that cites the old heading must be updated with it.
+- Query, row 327: "`docs/pr-bodies/` is the fallback source". The text does not say what this folder supplies or when a reader turns to it. The text also uses "fallback" in a different sense in row 333, where a different model serves the session.
+- Query, rows 340–341: "after any generator or cluster appears". The text does not say what a generator or a cluster is, or where the document explains them.
+- Query, rows 334–335: "About two closed items share each session". The text gives no date or source for this figure.
+
+Outline:
+- Row 319: heading, "The session ledger records what model and effort worked each item".
+- Rows 321–327: what the ledger holds and how a closed item links to its sessions.
+  - The ledger is `docs/session-ledger.tsv`, with one row per session in this repository.
+  - Each row gives the configured model, the model the session context names, the model that served its last turn, any model the owner switched to, the effort level, tokens by kind, the cost in USD as the harness reports it, and the date the row was written.
+  - A closed item links to its sessions through its `pr:` field.
+  - The squash commit for that pull request carries the session's `Claude-Session:` trailer.
+  - `docs/pr-bodies/` is the fallback source.
+- Rows 329–338: only the model review writes the ledger, and the ledger stores sessions rather than items.
+  - Only the model review writes the ledger, from the harness's own record (project owner, 2026-10-17, ratified, over a field or trailer that each working session writes about itself, `PL-92ZN`).
+  - A working session writes nothing about itself, so the ledger costs working sessions nothing.
+  - A self-report would name the configured model, but a fallback can serve a different model.
+  - The facts belong to a session rather than an item.
+  - About two closed items share each session, with no date or source given.
+  - A session keeps spending after it closes its item.
+  - The ledger stores each session once, and an item is joined to its sessions when the ledger is read (project owner, 2026-10-19, ratified, over model and effort fields on each closed item, `PL-70M6`).
+- Rows 340–345: when the model review refreshes the ledger, and the CI run history.
+  - The model review refreshes the ledger monthly, and after any generator or cluster appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly cadence, `PL-63CB`).
+  - The steps are in `.claude/skills/model-review/SKILL.md` § "Refresh the records first".
+  - The review also refreshes `docs/ci-runs.tsv`, the CI run history, with `python3 tools/ci_runs.py refresh`, because GitHub deletes a workflow run 90 days after it ran (`PL-4SFQ`).

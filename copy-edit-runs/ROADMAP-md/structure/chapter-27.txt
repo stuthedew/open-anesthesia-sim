@@ -1,0 +1,67 @@
+[1] keep
+
+Structure:
+- **Missing: what the release builds.** Query: the reader's job is to decide what v0.6.0 holds and what it leaves out, and none of rows 5605-5643 says either. Row 5617 says "This section describes what gets built", but the section then gives only the scheduling (5607-5617) and the naming (5619-5643). The list of what v0.6.0 builds, and what it leaves for the second half of item 34, should come first, right under the heading. Row 5617's sentence then goes, because it only describes the text.
+- **Missing: what item 34 is.** Query: rows 5607 and 5613-5614 call this milestone "the first half of planned-milestone item 34", but the chapter never says in words what item 34 is. It also does not say what the second half holds or which release gets it.
+- **Missing: "the gate decision".** Query: rows 5610-5611 list "The placement, the split and the gate decision" as decisions the owner agreed to, but they were taken in sessions this reader did not see. "The placement" and "the split" can be guessed: the early slot and the halving of item 34. Nothing explains "the gate decision".
+- **Missing: "lower bar to reopen".** Query: rows 5611-5612 name "`CLAUDE.md`'s lower bar to reopen", and the chapter does not say what that bar is. The owner needs it in words, for example that an agreed recommendation is easier to reopen than a decision the owner specified. The text implies this through "*specified*" (5613) but does not state it.
+- **Order.** The section opens with how the milestone came to be scheduled (5607-5613), not with what it delivers. Use this order:
+  1. What v0.6.0 builds (missing), with a sentence on what item 34 is.
+  2. The three words, Area, View and Workspace (5620-5622), which the reader needs to read that list.
+  3. Why it is scheduled early, and which parts the owner can easily reopen (5607-5614). Keep the tag "(project owner, 2026-09-16, **ratified** on `PL-NMTF`)" whole beside it.
+- **Bold opening contradicts its paragraph.** Row 5619 says "The vocabulary is Blender's for two of its three words", but the paragraph then defines all three, View included (5621). The reader learns only from row 5627 that View is the word not taken from Blender. Merge rows 5620-5622 with the core of 5629-5633 into one paragraph:
+  - the three definitions;
+  - Area and Workspace come from Blender;
+  - View replaces Blender's "Editor", because three of the four views (5631-5633) only display modelled values;
+  - the decision tag "(project owner, 2026-09-17, ratified - chosen over keeping `Editor`, and over `Component` and `Widget`)", kept whole.
+- **Naming history written for another reader.** Rows 5635-5642 are decision history and developer detail that someone deciding a release's scope does not act on:
+  - `QWidget` is the base class of every view;
+  - "Component" was rejected as vaguer;
+  - `view_kind`;
+  - `app/run_view.py` and `app/simulation_view.py`;
+  - "collides with no Qt class";
+  - the Eclipse precedent, with "lifecycle" and "multiplicity".
+  This belongs in `PL-GPYV`. Row 5640 already says that item "carries the comparison and the Eclipse precedent", so the Eclipse sentence (5640-5642) repeats it. The roadmap keeps the pointer to `PL-GPYV`.
+- **Repeat: rejected words.** The tag at 5627-5628 names the rejected words ("chosen over keeping `Editor`, and over `Component` and `Widget`"). Rows 5635-5637 then go through each rejection again ("`Widget` was unavailable…", "`Component` was rejected…"). The roadmap keeps the whole tag, and the reasons go to `PL-GPYV`.
+- **Repeat: `view_kind`.** Rows 5622-5623 say "`PL-C842` wrote `Pane` and `view_kind`", and rows 5637-5638 say "`View` restores `PL-C842`'s own `view_kind`". This history belongs in `PL-C842` and `PL-GPYV`. "This section supersedes `Pane` and nothing else in `PL-C842`" (5623-5624) belongs as a note in `PL-C842`, and the roadmap keeps nothing of it. Query: "while it recommended the container" (5623) uses "the container" without saying what it is.
+- **Rules for writers in the roadmap.** Two sentences tell people who write code and documents what to do, and belong in the vocabulary rule that row 5619 cites (`.claude/rules/ui-areas.md`):
+  - "A model that says `Pane` while the roadmap says Area is the drift that the vocabulary rule exists to prevent" (5624-5625);
+  - "Wherever `docs/interface-provenance.md` describes Blender, Blender's own editors keep their name" (5642-5643).
+  The roadmap keeps only the pointer at 5619. I cannot tell whether "a model" in 5624 means a data model or a working session.
+- **Unclear sentence.** I cannot tell what "a mutability that the reader does not have" (5633) means. It probably means the three display-only views cannot be changed by the learner. The second part should confirm this before rewording.
+- **Possible repeat across files.** Query: rows 5614-5616 give two homes for the Blender sources. Item 34 "carries … the Blender provenance behind every decision below", and `docs/interface-provenance.md` "carries what was read, what this project adopts and what it deliberately does differently". The reader cannot tell which one holds the record and which only points to it.
+- **Heading.** "v0.6.0 - the layout is the reader's" uses "reader" in a private sense: the person at the screen is a learner, not a reader. Nothing in the body says that person owns or arranges the layout. Query what the release lets the user do with the layout. Once the build list says it, the heading can say the same in plain words, keeping "v0.6.0". Any change needs every file that cites this heading updated.
+- **Length.** At 398 words the section needs no subheadings.
+
+Outline:
+- 5605, heading: "v0.6.0 - the layout is the reader's". Names release v0.6.0.
+- 5607-5617, what the milestone is and why it is scheduled early:
+  - it is the first half of planned-milestone item 34;
+  - it was scheduled two releases ahead of its turn (project owner, 2026-09-16, **ratified** on `PL-NMTF`);
+  - reason: the design was already settled, and fourteen prerequisites were waiting on a build item that did not exist;
+  - the placement, the split and the gate decision were recommendations put to the owner and agreed, so `CLAUDE.md`'s lower bar to reopen applies to each;
+  - the owner *specified* item 34's own content, which this milestone builds and does not re-decide;
+  - item 34 carries the design and the Blender provenance behind every decision in the section;
+  - `docs/interface-provenance.md` carries what was read, what the project adopts and what it deliberately does differently;
+  - "This section describes what gets built."
+- 5619-5625, the three words of the layout vocabulary, two of them Blender's:
+  - the rule is in `.claude/rules/ui-areas.md`;
+  - an Area is a rectangle that reserves screen space and holds one thing;
+  - a View is what occupies an Area;
+  - a Workspace is a set of Areas geared to a task, and Workspaces are switched as tabs;
+  - `PL-C842` wrote `Pane` and `view_kind` while recommending "the container";
+  - this section supersedes `Pane` and nothing else in `PL-C842`;
+  - a model that says `Pane` while the roadmap says Area is the drift the vocabulary rule exists to prevent.
+- 5627-5643, why the third word is View and not Blender's "Editor":
+  - decision tag: (project owner, 2026-09-17, ratified - chosen over keeping `Editor`, and over `Component` and `Widget`);
+  - Blender calls an Area's occupant an Editor, and most Blender editors do edit: the 3D viewport, the dope sheet, the text editor;
+  - this project's occupants are the concentration graph, the compartment table, the MAC readout and the control panel;
+  - only one of the four takes input, and the other three display modelled values;
+  - so "Editor" would assert a mutability "the reader does not have";
+  - `CLAUDE.md`'s clinical-output standard treats that kind of wrong implication as a presentation defect;
+  - `Widget` was unavailable because `QWidget` is the base class of every view;
+  - `Component` was rejected as vaguer, not as wrong;
+  - `View` restores `PL-C842`'s `view_kind`, is already used by `app/run_view.py` and `app/simulation_view.py`, and collides with no Qt class used here;
+  - `PL-GPYV` carries the comparison and the Eclipse precedent;
+  - Eclipse uses Perspective/View/Editor, which matches this project on lifecycle but not on multiplicity;
+  - wherever `docs/interface-provenance.md` describes Blender, Blender's own editors keep their name.

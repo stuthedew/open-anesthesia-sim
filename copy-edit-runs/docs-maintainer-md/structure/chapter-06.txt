@@ -1,0 +1,83 @@
+[1] keep
+
+Structure:
+- **Repeated fact: the owner's reason that price never decides the model.** Rows 374-377 say "The owner would rather pay for Opus and get correct work than take incorrect work from a cheaper model for free. So price is never the reason to choose a weaker model (project owner, 2026-10-19)". Rows 399-401 say "price, even a price of zero, does not justify a model that may be less correct (project owner, 2026-10-19)". Give it once, in the rule for all subagents (see the move finding below). Neither item keeps a copy.
+- **Repeated fact: the 2026-10-17 decision on searches.** Rows 360-362 give it with its full tag: "(ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper model for quick lookups; `PL-2D28` carries the case)". Rows 398-399 repeat it: "`PL-2D28` reached the same answer for searches on 2026-10-17". Keep item 2's version with the tag whole. Item 3 keeps nothing.
+- **Repeated fact: effort level.** Row 373 says "A search runs at the session's effort level". Rows 401-403 say "A subagent runs at the session's own effort level unless the owner approves a lower one for that task". Keep rows 401-403, which carry the condition, in the rule for all subagents. Item 2 keeps only the "at the session's effort level" in row 383, which belongs to its dated measurement.
+- **Repeated fact: how long the main conversation's cache lasts.** Rows 350-352 say "On a Max subscription, the main conversation defaults to a 1-hour prompt cache". Rows 423-424 say "The cache lasts an hour on your plan's included usage, and five minutes once usage credits are drawn". Give it once, with the condition about usage credits and a source, in a short opening paragraph over items 1 and 4 once they stand together (see the order finding). Item 4 keeps "Type it within the hour" and points to that paragraph.
+- **Repeated fact that conflicts: the price of a cache read.** Row 356 says "the 0.1x cache-read rate". Rows 416-417 say "0.05x the input price on Opus 5.5 and 0.1x on most models". Exploration subagents run on Opus (row 360), so for an Opus 5.5 subagent the two rates disagree. Query: which rate applies to the subagents in item 1? Give the price once, with the pricing citation, in the opening paragraph described above.
+- **Conflict: which model the built-in Explore subagent runs on.** Rows 368-371 say that in a Fable session the built-in Explore ran on "the Opus model the alias points to". Rows 386-387 say the built-in Explore and Plan subagents "run on the main conversation's model", which in a Fable session is not Opus. Query: which is right? Then state it once, in item 2.
+- **Conflict: what lets a session use a cheaper model.** Rows 378-379 say "Opus stays unless a measurement shows that a cheaper model is no less correct at the task". Rows 396-398 say a session asks for no cheaper model "unless the owner approves it for that task". Query: does either condition suffice, or must both hold? State the answer once, in the rule for all subagents.
+- **Move: the rule for every subagent's model and effort** (rows 373-379 and 395-404). It applies to all subagents, and its point is that cost never decides. It belongs in § "Which model each flag means", which row 395 cites as the place that rules on model choice. If the outline read shows that section does not hold the rule, give the rule its own list item after item 2. Either way, this section keeps a one-line pointer.
+- **Move: the account of what `CLAUDE_CODE_SUBAGENT_MODEL` did** (rows 385-392). It left the `env` block on 2026-10-17. It was unset in the Bash shell of four cloud sessions on 2026-10-01 and 2026-10-17. A `general-purpose` subagent started with no model ran on its parent's model. This is evidence, and it belongs in `PL-KLN5` and `PL-2D28`. The item keeps four facts that tell a session why the variable must not come back: it is set nowhere, it never chose the model for the built-in subagents, it had no effect in cloud sessions, and in a local trusted session it would put every `general-purpose` subagent on Haiku (rows 392-395).
+- **Move: decision history** (rows 405-406): "On 2026-10-19, a session set Sonnet runners to work on the session ledger's values because of the old wording here, and the owner asked why." This belongs in the item that records the 2026-10-19 decision. The text names no item. Query: which item? Row 404 ("This rule covers subagents that copy values as well as those that search") stays with the rule.
+- **Heading:** "Settings that make sessions cheaper" fits items 1 and 4 only. Items 2 and 3 say cost never decides a model. Item 5 lets a cloud thread run `make check` without repairs. Item 6 sets the permission mode. Keep this heading over items 1 and 4, since other files may cite it. Move items 2 and 3 as described above, and put items 5 and 6 under a new section, "Cloud projects and permission mode". If the section must stay whole, rename it "Session settings" and change every citation of the old heading with it.
+- **Order:** item 4 relies on item 1's cache facts but stands three items later, after two items about models. Use the order 1, 4, then 2 and 3 (if they stay), then 5 and 6.
+- **Length:** the section runs 1238 words in six list items, and each item has grown into an essay (item 2 runs 24 rows, item 3 runs 23). If the section stays whole, add three subheadings: "Prompt cache" over items 1 and 4, "Subagent model and effort" over items 2 and 3, and "Cloud projects and permission mode" over items 5 and 6. Items 1 to 3 open with a code name and no bold lead. Give each a bold lead that states its point, as items 4 to 6 have.
+- **Order within item 4:** the instruction comes before its condition. "Type it within the hour" is at rows 413-414, but "five minutes once usage credits are drawn" does not come until rows 423-424. Put the cache lifetime, with its five-minute case, before the instruction.
+- **Query:** item 1 (rows 350-359) states the default cache lifetimes, the 2x and 1.25x write prices and the 0.1x read price with no source or read date. Item 4 cites the prompt caching and pricing pages.
+- **Query:** item 1 says the main conversation's cache lasts one hour on a Max subscription. Item 4 says the cache lasts five minutes "once usage credits are drawn". The reader needs to know whether the `1h` setting for subagents still holds once usage credits are drawn, and the text does not say.
+- **Query:** row 437 says "Both projects so far started in that environment" with no date, so the count reads as true today.
+- **Query:** a "Fable session" (row 368) is not explained anywhere in this chapter.
+
+Outline:
+- 348: heading "Settings that make sessions cheaper".
+- 350-359: Subagents get a 1-hour prompt cache. Facts:
+  - `subagentPromptCacheTtl` is set to `1h` in `.claude/settings.json`.
+  - On a Max subscription, the main conversation's prompt cache defaults to 1 hour.
+  - Subagents, workflows and background tasks default to 5 minutes.
+  - `CLAUDE.md` tells every session to delegate broad search to subagents.
+  - A subagent whose turns are more than 5 minutes apart re-pays its prefix at full input price instead of the 0.1x cache-read rate.
+  - Such gaps are routine when several subagents queue behind the concurrency cap.
+  - A 1-hour cache write costs 2x, against 1.25x. It pays back after two cache reads, and any subagent doing real work clears that many times over.
+  - No source or read date is given.
+- 360-383: Exploration subagents run on Opus, and correctness, not cost, decides the model. Facts:
+  - The owner decided this on 2026-10-17 (ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper model for quick lookups; `PL-2D28` carries the case).
+  - `.claude/agents/Explore.md` sets `model: opus`, has no `effort` line, sets `omitClaudeMd: true`, and allows only the read-only tools Read, Grep and Glob.
+  - Its `model:` copies the `exploration` rule in the `[models]` table of `docket.toml`. `tools/config_home_check.py` fails when the two differ (`PL-0XDM`).
+  - In an Opus session the `opus` alias resolves to the session's own model. In a Fable session on a Claude subscription it resolves to the Opus model the alias points to.
+  - The built-in Explore did the same in both kinds of session (subagents page, "Choose a model" and "Built-in subagents", read 2026-10-17), so the file changes no model.
+  - The file adds a report footer that names what was searched and what was not, and the narrow tool set.
+  - A search runs at the session's effort level.
+  - The owner would rather pay for Opus and get correct work than take incorrect work from a cheaper model for free. Price is never the reason to choose a weaker model (project owner, 2026-10-19).
+  - A session never argues for a cheaper model by trading correctness against cost.
+  - Opus stays unless a measurement shows that a cheaper model is no less correct at the task.
+  - A cloud session loads the definition. In an Opus 5.5 cloud session started after the definition merged, the Explore transcript recorded the definition's own system prompt, and every turn ran on `claude-opus-5-5` at the session's effort level (measured 2026-10-17, `PL-PTHZ`).
+- 384-406: `CLAUDE_CODE_SUBAGENT_MODEL` is unset, and every subagent runs on the session's model and effort unless the owner approves otherwise. Facts:
+  - The variable is set nowhere in the repository. It left the `env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`).
+  - It never chose the model for the built-in Explore and Plan subagents, which run on the main conversation's model.
+  - It was a default for any subagent that gets no model from anywhere else, such as `general-purpose` (subagents page, "Choose a model", read 2026-10-17).
+  - In a cloud session it did not even do that. It was unset in the Bash shell of four cloud sessions on 2026-10-01 and 2026-10-17, and a `general-purpose` subagent started with no model ran on its parent's model (`PL-KLN5`, `PL-2D28`).
+  - In a local session whose folder is trusted, it would have put every `general-purpose` subagent on Haiku with no per-item judgment, which § "Which model each flag means" rules out.
+  - A subagent that names no model runs on the session's own model.
+  - A session asks for no cheaper model for any subagent unless the owner approves it for that task (project owner, 2026-10-19, ratified, over asking for a cheaper model per call).
+  - `PL-2D28` reached the same answer for searches on 2026-10-17.
+  - The owner's reason: price, even a price of zero, does not justify a model that may be less correct (project owner, 2026-10-19).
+  - The same rule applies to effort: a subagent runs at the session's effort level unless the owner approves a lower one for that task (project owner, 2026-10-19).
+  - The rule covers subagents that copy values as well as those that search.
+  - On 2026-10-19 a session set Sonnet runners to work on the session ledger's values because of the old wording here, and the owner asked why.
+- 407-427: A session that asks the owner to type `/compact` is resetting at its budget. Facts:
+  - The owner decided this on 2026-09-25 (ratified, over pasting a handoff prompt into a new session, `PL-YJG1`).
+  - The session pushes everything first, so anything the summary drops is already on disk. It keeps its branch, its claim and its pull-request watch.
+  - `/compact` works in cloud sessions and takes optional focus text (`/compact keep the open question about X`). `/clear` does not work in cloud sessions.
+  - Type it within the hour. The session names the clock time.
+  - One more request, over the whole history, writes the summary. While the cache is warm, that request reads the history from the cache.
+  - On the API, a cache read bills at 0.05x the input price on Opus 5.5 and 0.1x on most models.
+  - After a break longer than the cache lasts, the request reprocesses the whole history as uncached input (prompt caching page, "Compacting the conversation"; pricing page).
+  - In the one measured reset, that came to 248,803 tokens (`PL-384P`).
+  - The cache lasts 1 hour on the plan's included usage and 5 minutes once usage credits are drawn.
+  - Once the cache has expired, a fresh session is cheaper by about that one read, as long as the work is pushed and nothing needs the pull-request watch.
+  - For an unrelated topic, start a fresh session, because a clean prompt beats a carried-over conversation.
+- 428-443: Set a new Claude Code project's cloud environment to `Default` before sending it work. Facts:
+  - The **New project** dialog asks only for a name, a goal and context. Cloud threads use a default Anthropic-hosted environment until one is picked in **Project settings > Environment** (Projects page, "Choose an environment for threads", read 2026-10-01).
+  - That environment runs none of `Default`'s setup script. Each thread finds a `uv` older than `pyproject.toml` requires and no `libegl1`, and must repair both before `make check` will run (`PL-QKXZ`).
+  - Both projects so far started in that environment (undated).
+  - The fix: open the project, click the gear icon in its header to open **Project settings**, go to **Environment**, and set **Cloud environment** to **Default**.
+  - The setting saves as you change it. It applies to new threads only, so make the change before the first task.
+  - A thread can confirm the setting: `get_session` returns `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
+- 444-462: Auto mode as the default applies only to sessions on the owner's Mac, and no repository file can set it (`PL-ZLS5`). Facts:
+  - The right place is `"permissions": {"defaultMode": "auto"}` in `~/.claude/settings.json`. A project file would be ignored without an error.
+  - Documentation quote: `auto` and `bypassPermissions` don't take effect from project or local settings; set them in user or managed settings, or pass `--permission-mode` for one session (Settings page, "A value you set is ignored", read 2026-10-18).
+  - A cloud session reads neither `~/.claude/settings.json` nor `.claude/settings.local.json` ("not read. Both stay on your machine", same page, "Settings in cloud sessions").
+  - A cloud session's permission mode is picked from the mode dropdown, both when the task is created and while the session runs ("Use Claude Code in the cloud", "Permission modes in cloud sessions", read 2026-10-18).
+  - A cloud session that asks for permissions you thought you had turned off is in the mode its dropdown names, so change the mode there.

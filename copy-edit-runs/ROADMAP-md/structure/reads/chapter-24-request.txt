@@ -1,0 +1,476 @@
+# Write plainly
+
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. The project owner asked for this
+rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
+each point.
+
+Write all prose that a person will read in plain English: docstrings, comments,
+error messages, documents, rules, item briefs, commit messages, pull request
+titles and bodies, replies, and every question or review request sent to the
+project owner, including each field of the line `bin/docket arm` prints. In
+those, say what changes for the owner or a learner, and never name a test,
+check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
+Write for the readers that the table below names for that kind of text. They
+should understand each sentence the first time they read it (project owner,
+2026-11-02, ratified, `PL-H76S`).
+
+| Kind of text | Reader | What they know | What they do not know | What they will do with it |
+| --- | --- | --- | --- | --- |
+| `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
+| `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
+| `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
+| `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
+| `docs/machine-survey.md` and `docs/references/` | A clinician or educator | Anesthesia pharmacology, physiology and equipment, and how to read a paper's methods. | Software terms, and this repository's own names. | Check a stored value, or a difference between machines, against its published source. |
+| `ROADMAP.md` | The project owner, or a contributor deciding what to build next | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and decisions taken in sessions they did not see. | Decide what a release holds and what it leaves out. |
+| `docs/consultant-brief.md` | An outside reviewer: a new session given the text below the brief's dividing line as its first message | Python, anesthesia and software review. | This repository, its history and its rules. | Review the repository critically, and report what it finds. |
+| Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
+| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
+| Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `tools/new_prose.py` reads this table. It prints a changed file's passages
+for the copy editor only when a row names that file, and it gives each passage
+that row's readers. A new row therefore brings the files it names into the
+review with no other change.
+
+**Write what the reader needs to act on, and stop.** Find the reader and what
+they will do with the text in the table above. Put what they see first, then
+what it means for them, then why. Move each reason, derivation, test name and
+piece of history that they do not act on to where its own reader looks, or cut
+it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
+note for developers at the end of the section it came from, a paragraph that
+opens with "**For developers.**" That note may name the tests for the paragraphs
+directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
+document must specify the numerical method (`PL-TZ7R`). State a model limitation
+only where it could change what a clinician concludes from a displayed value
+(`PL-BS6N`).
+
+**Give a chosen value its reason from a record.** Where a docstring or a
+comment gives a chosen value, such as a tolerance or a limit, say what the
+value does, why it is this number, and what changing it would do. In
+`docs/MODEL.md`, say it in the note for developers. Take each answer from the
+code or test that uses the value, or from a cited record. When the reason is
+not at hand, trace the value's history first, with `git log -S` and the items.
+Search for the value as the code writes it. The step-size test's 0.5% tolerance,
+removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
+`git log -S 5e-3` finds the commit that first set it. When the trace finds no
+reason, file an item for the missing record, and say in the text what the trace
+found. Never state a reason that no record holds.
+
+1. **Write whole sentences.** Keep the small words that show how a sentence
+   fits together: "a" and "the", "that", "which" and "who", and the verb.
+   Start a docstring or a paragraph with a sentence, not a phrase and a colon.
+2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
+   the reader work out where each clause ends. Write "Each entry at which the
+   plan was not read in full."
+3. **Use words in their everyday sense.** Prose here has drifted into private
+   senses that a newcomer cannot guess. Write "returns" and "result", not
+   "answers" and "answer"; "review", not "read" as a noun; "treats as", not
+   "reads as"; "enforces", not "holds"; "still applies", not "stands";
+   "applies to", not "reaches"; "less than", not "under"; and "bypasses", not
+   "writes past". Name the rule or the exception you mean instead of calling it
+   a "floor" or a "door". When the project needs a term of its own, define it
+   where it first appears.
+4. **Make one point per sentence.** Put the subject and its verb early and
+   close together. When a sentence needs a semicolon, a dash or a second
+   parenthesis, split it. Keep a cause and its consequence in one sentence
+   where they fit: "One step for all agents keeps the last MAC digit worth the
+   same amount whatever the agent", not three sentences joined by "So".
+5. **State the reason in words.** An item id, a pull request number or a
+   section name can follow as a pointer, but the sentence must make sense
+   without it.
+6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
+   reader can find.
+7. **Plain is not longer.** Say each thing once, where the reader needs it.
+   Cut words that add nothing. Keep every fact where its own reader will look
+   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
+   section, or in the item. A unit, a value, an equation, a condition, an
+   exception and a citation are facts. Moving or restating one never changes
+   its value.
+8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
+   it.
+
+**Five patterns that make prose read as machine-written.** The points above
+catch prose that is too compressed. These five catch the opposite failure:
+padding that sounds careful and adds nothing. The project owner judged
+`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
+of them (`PL-ZT47`).
+
+1. **A tautological aside.** A clause restates what its sentence already
+   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
+   Delete it. Where it carries a real fact, make that fact a sentence.
+2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
+   option no reader proposed. State the positive claim. Keep a contrast only
+   where a reader would otherwise assume Y.
+3. **Narration about the text itself.** The sentence describes how the
+   document records, sources or decides something, instead of the subject:
+   "it is recorded at that depth", "the pages above are what the citation is
+   being used for". Give the citation with its page numbers and stop. Who
+   supplied a source, and how a choice was reached, belong in the item file.
+4. **A defensive scope statement.** The sentence says what is not relied on,
+   against an objection nobody raised: "no page beyond them is relied on
+   here". Delete it. Where a reader would plausibly assume a source was used,
+   say once that it was not, as a limitation.
+5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
+   ("First", "Second" through "Sixth") or several separate points inside one
+   table cell mean the content wanted to be a list. Move it to a numbered list
+   or a short section, and leave the cell one sentence and a pointer.
+
+Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
+Wolf's, which is the field's naming. They set out the gas-phase cascade and the
+symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
+source, and it is recorded at that depth. The pages above are what the
+citation is being used for, and no page beyond them is relied on here."
+
+After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
+De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
+sentences go.
+
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
+**Match the code around you, not its prose.** Copy the structure, naming and
+idiom of the code you are working in. Much of the existing prose here breaks
+the points above, so do not copy its sentences. Write each sentence you add or
+change plainly, even when the text around it is dense. Rewriting sentences you
+did not need to touch is work for its own item, in the `prose-quality`
+feature. The exception is the copy editor at close-out, which may also rewrite
+the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
+shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+
+## Three examples from this repository
+
+Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
+agent held."
+
+After: "Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+
+Before: "The fresh gas admitted over the step, and as much circuit gas
+exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
+without the time constant, which overflows to `inf` below about 2e-306 L/min in
+a 6 L circuit."
+
+After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
+during the step. The same volume of circuit gas leaves through the exhaust.
+Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
+constants, dt/tau. The code does not compute tau first, because tau overflows
+to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.
+
+The writing rule ends here, and the prose to review follows.
+
+Structure read of one chapter. One chapter of a longer document follows, as passage 1. Every row is marked |, so rewrite none of it, and end with its outline.
+
+Readers of ROADMAP.md:
+  - The project owner, or a contributor deciding what to build next.
+    Knows: Anesthesia, critical care, and what the project is for.
+    Does not know: The internal names of tests, checks and tools, and decisions taken in sessions they did not see.
+    Will: Decide what a release holds and what it leaves out.
+
+[1] ROADMAP.md § "Required scope", rows 5222-5497. Whole section: 3065 words. For: The project owner, or a contributor deciding what to build next
+ 5222 | ### Required scope
+ 5223 | 
+ 5224 | This milestone requires nineteen items, listed in the order that their
+ 5225 | dependencies allow. The first three are the score architecture that the
+ 5226 | 2026-09-05 design round filed and that the project owner placed here. The next
+ 5227 | five are work on boundaries that this milestone's own code moves.
+ 5228 | The last eleven are the feature itself. The nineteenth item was added on
+ 5229 | 2026-09-20 (`PL-XJ37`), when the project owner settled that forking is what
+ 5230 | v0.5.0 is. By then every mechanism that the Goal sentence depends on had
+ 5231 | shipped, but no shipped entry point called any of it. So the milestone could
+ 5232 | have closed with every other entry done and a learner still unable to take a
+ 5233 | branch.
+ 5234 | 
+ 5235 | **Two more were required here and are already done** (`PL-C4RS`, 2026-09-19).
+ 5236 | `PL-2FM6` deleted `RunHistory`, so the chart is now drawn from the sampler.
+ 5237 | That deletion is where `PL-011`'s dropped growth debt was actually paid.
+ 5238 | `PL-8LXM` deleted the M4 decimation path along with it, including its tests,
+ 5239 | the cited paper and every reference to them. A sampler that computes any
+ 5240 | window in closed form has nothing to decimate. Both items moved into the
+ 5241 | `v0.4.x` track on 2026-09-08 and shipped there. That is the move whose own
+ 5242 | note said "Required scope below drops to sixteen items". They sit on the
+ 5243 | frozen gate under the heading that says so. They are named here without a
+ 5244 | declaration slot, deliberately. The milestone required them and the patch
+ 5245 | track cleared them, and neither fact means that this section places them.
+ 5246 | 
+ 5247 | - **The run becomes a closed-form function of its control-input timeline**
+ 5248 |   (queue item PL-T691). Keyframes are kept at every control event, and any
+ 5249 |   window is computed in closed form. So the state at a given time is computed
+ 5250 |   rather than looked up. This item is the head of the milestone. Everything
+ 5251 |   below it that touches a run depends on it. It is also what makes a branch's
+ 5252 |   history before the branch point the same object as its parent's history.
+ 5253 | - **The canonical evaluation rule that carries determinism** (queue item
+ 5254 |   PL-P1Z3). Once a time can be reached by more than one route, either by
+ 5255 |   stepping to it or by evaluating it from a keyframe, the promise that
+ 5256 |   "identical inputs give identical results" needs a rule. The rule says which
+ 5257 |   route is authoritative. It is stated in `docs/MODEL.md` and enforced by a
+ 5258 |   test. The item is classed as both safety and science, and it cannot be
+ 5259 |   deferred within this milestone.
+ 5260 | - **A path-scoped rule against re-introducing a sample store** (queue item
+ 5261 |   PL-49R8). A later session that adds a convenience buffer is then told why
+ 5262 |   the store is absent, rather than having to rediscover the reason.
+ 5263 | - **The controller's trace vocabulary and its UI-to-core boundary are
+ 5264 |   separated** (queue item PL-RD3B). Two runs need the boundary, and each run
+ 5265 |   needs its own drawn window, addressed through the same vocabulary.
+ 5266 |   **Re-briefed 2026-09-14** (`PL-5328`): until `PL-2FM6` deleted the store,
+ 5267 |   this entry read "The controller's storage ... without a second copy of the
+ 5268 |   storage". So what is left to separate is not a store. It is the vocabulary
+ 5269 |   that addresses a trace, and the window that a frame draws. The scope is
+ 5270 |   unchanged. Only the noun was stale.
+ 5271 | - **The snapshot stops naming six flat compartment floats** (queue item
+ 5272 |   PL-TCD1), so that a readout can name which run and which substance it
+ 5273 |   describes.
+ 5274 | - **The control-input timeline is bounded and stops being regrouped in full on
+ 5275 |   every frame** (queue item PL-1PSX). In this milestone the timeline is read on
+ 5276 |   every branch operation, not only drawn.
+ 5277 | - **`SimulationView` is decomposed so two runs can be rendered at once** (queue
+ 5278 |   item PL-B9PY). v0.4.0 held this item at this gate, on the grounds that only
+ 5279 |   this milestone needs it (project owner, 2026-09-02). This is that milestone.
+ 5280 | - **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
+ 5281 |   The item is classed as safety. The only item that required it was dropped
+ 5282 |   with `PL-011`, so it is carried here rather than lost.
+ 5283 | - **A fork resumes into a live run** (queue item PL-J2TD). A run is opened at a
+ 5284 |   canonical keyframe state of another run. It runs on the case's own clock,
+ 5285 |   and its run definition opens at the fork instant. From there it advances by
+ 5286 |   the same path that a live run already takes. A branch has to become
+ 5287 |   something a learner can *manage*. That is what separates a branch from a
+ 5288 |   second curve. Both item 12's fork and the in-loop crossing detection two
+ 5289 |   bullets down assume that a branch resumes this way. The work is internal. It
+ 5290 |   adds no user-facing replay control, which stays in planned item 10, behind
+ 5291 |   item 9's save/load.
+ 5292 | 
+ 5293 |   **Narrowed 2026-09-14** (project owner) from "a recorded control timeline can
+ 5294 |   be applied to a run ... the mechanism by which a point *between* recorded
+ 5295 |   samples is reached at all". The first bullet of this list has since made
+ 5296 |   that wording wrong in two ways. First, `PL-T691` delivered the applied
+ 5297 |   timeline. A `RunDefinition`'s segment list *is* the recorded timeline, and
+ 5298 |   `state_at` computes any instant of it in closed form. So a point between
+ 5299 |   recorded samples is already reached. `tests/integration/test_controller.py`
+ 5300 |   asserts the reproduction to 6.7e-16 as a fraction of one atmosphere. Second,
+ 5301 |   the bullet's other half was a resimulation driver that shares the live
+ 5302 |   advance path. § "The canonical evaluation rule" now refuses that driver. The
+ 5303 |   rule requires every replayed, compared or branch-opening value to be taken
+ 5304 |   canonically. A driver that re-drives the fixed step path composes a third
+ 5305 |   order of floating-point operations. That section measured its result at
+ 5306 |   1.8e-14 away from the canonical result. The branch-reproduction entry below
+ 5307 |   also asserts element-wise equality rather than a tolerance. Once both halves
+ 5308 |   were gone, the resumption was what was left, and that is what this entry
+ 5309 |   now asks for.
+ 5310 | 
+ 5311 |   **Mechanism replaced 2026-09-14** (project owner, 2026-09-14, queue item PL-ZMRT), with
+ 5312 |   the scope unchanged. Until the fork was built and drawn, this entry read
+ 5313 |   "with its clock re-based by subtracting the fork instant". That arrangement
+ 5314 |   gave the branch a second time frame. The clock was on the case's axis, and
+ 5315 |   the definition was on an axis of its own. It also made exactness depend on
+ 5316 |   every caller subtracting the fork instant, rather than naming the branch's
+ 5317 |   own elapsed time. What ships instead opens the branch's definition *at* the
+ 5318 |   fork, on the case's axis. So there is one time frame, and
+ 5319 |   `SimulationController.origin_s` and both subtractions are gone. The
+ 5320 |   round-trip hazard that the old rule guarded against cannot be represented at
+ 5321 |   all, rather than being forbidden. The change also dissolves PL-2R2C. In that
+ 5322 |   defect, a branch's drawn columns were anchored to the branch's own zero, so
+ 5323 |   they landed at case instants that the trunk never draws. PL-2R2C needed no
+ 5324 |   fix of its own once both runs shared an axis. `docs/MODEL.md` § "The
+ 5325 |   canonical evaluation rule" carries the measurements.
+ 5326 | - **Time bookmarks and MAC targets, as two separately listed collections**
+ 5327 |   (queue item PL-LPLD). This follows the shape of the Gas Man reference
+ 5328 |   simulator, and that shape sets the minimum scope. The minimum is an absolute
+ 5329 |   simulated time, and a percent of MAC on any graphed compartment rather than
+ 5330 |   on the alveolar trace alone. The two are kept as two kinds rather than one
+ 5331 |   kind with a field, so that a list can show them the way the reference
+ 5332 |   simulator does. **Shipped in v0.4.33, with two deviations from that minimum
+ 5333 |   scope recorded here rather than silently taken.** First, the height is
+ 5334 |   stored as a multiple of the running agent's 1 MAC rather than as a percent of
+ 5335 |   it. Every compartment is already read in that unit. So a target is compared
+ 5336 |   against the readouts with no conversion, and it survives a change of agent
+ 5337 |   intact. Second, the rising/falling/either crossing direction is **withdrawn
+ 5338 |   rather than met** (project owner, 2026-09-20), for the reason given under
+ 5339 |   planned-milestone item 26. Halting at a mark is the entry below, PL-CTD7.
+ 5340 | - **Crossings are detected inside the advance loop** (queue item PL-CTD7), with
+ 5341 |   an explicit not-reached outcome that looks different from a reached one.
+ 5342 |   Testing once per rendered frame overshoots by one frame's worth of simulated
+ 5343 |   time, and the overshoot grows with the playback multiplier. The same
+ 5344 |   bookmark would then halt at a different concentration depending on how fast
+ 5345 |   the learner was running. That is a presentation-correctness failure by
+ 5346 |   `CLAUDE.md`'s standard. It also breaks the reproducibility of any branch
+ 5347 |   taken at that point.
+ 5348 | - **A run forks at any control-input event** (queue item PL-TFX5), flat rather
+ 5349 |   than as a tree: one trunk with N branches, and no sub-forks. The branch
+ 5350 |   carries its parent's agent and patient rather than choosing them again.
+ 5351 | 
+ 5352 |   **Split 2026-09-14** (project owner). Until the fork was built, this entry
+ 5353 |   read "at any control-input event **or bookmark**". The bookmark half turned
+ 5354 |   out not to be unbuilt work but a *refused* operation. A bookmark's instant
+ 5355 |   is not in general a keyframe. The keyframe-only rule that `PL-J2TD` landed
+ 5356 |   deliberately admits no other opening point. On the 120 s two-change run that
+ 5357 |   the fork tests use, 3 of the 1 201 instants where a halt could land are
+ 5358 |   keyframes. The bookmark clause is now the entry below, behind the two items
+ 5359 |   that build a bookmark and its halt. This entry keeps what shipped.
+ 5360 | - **A bookmark is a forkable instant** (queue items `PL-B8MK` and `PL-TYWQ`),
+ 5361 |   so a branch can be
+ 5362 |   taken where a learner deliberately stopped, not only where they moved a
+ 5363 |   control. That item measures two routes, and the obvious one is the worse.
+ 5364 |   Recording a keyframe where the run halts makes the branch exact against the
+ 5365 |   trunk it forked from. But it also moves that trunk's own later results away
+ 5366 |   from what the case would have given unmarked, so marking a run changes it.
+ 5367 |   Opening the branch's definition at the keyframe *before* the bookmark costs
+ 5368 |   the trunk nothing, and it is exact too. **Shipped 2026-09-20 on that
+ 5369 |   second route**, as `SimulationController.resumed_at_halt` and
+ 5370 |   `BranchedCase.fork_at_halt`. No keyframe is recorded anywhere, and the trunk
+ 5371 |   is element-for-element the case it would have been unmarked. This item
+ 5372 |   waited behind `PL-LPLD` and `PL-CTD7`, which build the bookmark and the halt
+ 5373 |   it is taken at, and both closed the same day. It remains ahead of the entry
+ 5374 |   below, because that entry's branch "taken between two recorded samples" is
+ 5375 |   this one.
+ 5376 | 
+ 5377 |   **The interface half is `PL-TYWQ` and shipped 2026-09-21.** `PL-VKJW` landed
+ 5378 |   the fork panel on 2026-09-20, on a different branch. That panel offered only
+ 5379 |   `BranchedCase.fork_points_s`, which lists the trunk's keyframes. A bookmark
+ 5380 |   halt deliberately adds nothing to that list, because recording no keyframe
+ 5381 |   is the whole of what makes the route safe. So for a day the capability
+ 5382 |   existed in the model, but the control did not offer it. A learner could mark
+ 5383 |   45 s, be stopped at 45 s, and still be offered only induction and the
+ 5384 |   control events. It is now a **second control** beside that selector. It
+ 5385 |   appears on the panel only while the trunk is standing on the halt, and it is
+ 5386 |   labelled with the instant at which the branch will open (project owner,
+ 5387 |   2026-09-21, ratified, over one list that grows a row while the run is
+ 5388 |   halted). The reason is that a row that arrives and leaves changes the
+ 5389 |   selector's membership under a reader who looked away. A control that is
+ 5390 |   either there or not can be detected on sight. The two ways to fork stay as
+ 5391 |   two methods and two fields rather than one list. That is what stops a fork
+ 5392 |   being requested at a mark that the run is no longer standing on. This entry
+ 5393 |   completes with that sequence, which is why both ids are declared in it.
+ 5394 | - **The branch reproduces its parent element-wise up to the branch point**
+ 5395 |   (queue item PL-Z3W6). A test asserts this at every sampled point, rather
+ 5396 |   than within a tolerance. Where exactness cannot be reached, the divergence
+ 5397 |   is bounded, documented and shown, rather than implied to be absent.
+ 5398 | - **Two branches are overlaid on one time axis** (queue item PL-8PSW). The
+ 5399 |   **compartment is encoded by line style and colour, exactly as the single-run
+ 5400 |   chart draws it. The run is encoded by line width. At most two compartments
+ 5401 |   are drawn while two branches are shown.** The branch point is marked. Two
+ 5402 |   stacked panels sharing a time axis were decided against (project owner,
+ 5403 |   2026-09-06). The comparison is the whole point of the release, and stacking
+ 5404 |   makes the eye travel to make it. The evidence supports that choice. Line
+ 5405 |   graphs that share one space are the more efficient technique for
+ 5406 |   comparisons over *small* visual spans. Comparing one compartment against
+ 5407 |   itself under two settings is that kind of comparison (Javed W, McDonnel B,
+ 5408 |   Elmqvist N. *Graphical Perception of Multiple Time Series.* IEEE Trans Vis
+ 5409 |   Comput Graph. 2010;16(6):927-34. doi:10.1109/TVCG.2010.162).
+ 5410 | 
+ 5411 |   **Which run carries the width offset was settled when it was built**
+ 5412 |   (`PL-8PSW`, 2026-09-16, project owner). The first run is drawn wider, and the
+ 5413 |   second keeps the width that the single-run chart draws it at. `PL-HLD5` had
+ 5414 |   assumed that the two curves are merely adjacent. They are not. The entry
+ 5415 |   above requires a branch to reproduce its parent element-wise up to the fork.
+ 5416 |   So before the branch point the two curves coincide exactly, and whichever is
+ 5417 |   thicker hides the other entirely over that stretch. Widening rather than
+ 5418 |   narrowing also keeps every trace at 2 px or wider. A 1 px antialiased line
+ 5419 |   renders lighter than its declared colour. It then falls below the 3:1
+ 5420 |   minimum contrast that `.claude/rules/ui-color.md` treats as an error.
+ 5421 |   `docs/MODEL.md` § "The six compartment traces" carries this decision.
+ 5422 | 
+ 5423 |   **The channel assignment is reversed from what this bullet said until
+ 5424 |   2026-09-07, and the compartment cap is what makes it possible** (`PL-HLD5`).
+ 5425 |   The bullet read "the run encoded by line style and the compartment by
+ 5426 |   colour". The next day `PL-GVXP` established that this assignment is not
+ 5427 |   available. `docs/MODEL.md` § "The six compartment traces" measures the worst
+ 5428 |   trace-against-trace pair at **1.01:1**, against a 3:1 requirement. So colour
+ 5429 |   cannot carry six categories here, and choosing a new palette does not fix
+ 5430 |   that. Line style is the only non-data channel with capacity for six
+ 5431 |   categories, so the compartment keeps it.
+ 5432 | 
+ 5433 |   That leaves no channel free for the run at six compartments. Line style,
+ 5434 |   colour and width are all already used, with width varying from 2 px to 3 px
+ 5435 |   across the six. **Capping the drawn compartments is what frees width.** That
+ 5436 |   is why the cap is load-bearing rather than a convenience. It is also why "one
+ 5437 |   shared compartment selection across both runs" is now a constraint that the
+ 5438 |   design rests on, rather than an interface nicety. Two compartments times two
+ 5439 |   runs is four curves, which is also the comparison a learner actually makes.
+ 5440 | 
+ 5441 |   **Colour keeps meaning "compartment" in both modes, deliberately.** Handing
+ 5442 |   colour to the run would make one channel mean two different things on either
+ 5443 |   side of a mode change. On this chart, a misread is a misread of a clinical
+ 5444 |   value. If two compartments prove too tight in practice, the fallback is three
+ 5445 |   compartments, with the run moved to a direct label at each curve's end.
+ 5446 |   Position is the strongest channel available, and it is the one that
+ 5447 |   survives every colour-vision deficiency. But that fallback is a change to
+ 5448 |   test rather than to assume.
+ 5449 | - **A learner takes the fork, and the dashboard comes to hold the branch**
+ 5450 |   (queue item PL-VKJW). `main()` builds a `BranchedCase` rather than a bare
+ 5451 |   controller. `SimulationView` gains a path that adds a `RunView` after
+ 5452 |   construction. One control offers `BranchedCase.fork_points_s` and calls
+ 5453 |   `fork_at`. This is the entry the milestone was missing. The four entries
+ 5454 |   above build every part of a branch, but none of them is reachable. Nothing
+ 5455 |   in `src/` constructs a `BranchedCase`, and `SimulationView` freezes its set
+ 5456 |   of runs at construction. Added 2026-09-20 (project owner, 2026-09-20, `PL-XJ37`). What
+ 5457 |   this entry delivers is this milestone's Goal sentence, word for word.
+ 5458 | 
+ 5459 |   **Two dispositions are settled in that item's brief rather than left to its
+ 5460 |   pull request.** First, a **second fork is refused while a comparison is
+ 5461 |   shown**. The selector is out of scope, so a learner who forks twice has no
+ 5462 |   way to say which branch is displayed. Quietly swapping the displayed branch
+ 5463 |   while the first one lives on in the `BranchedCase` would be the hidden state
+ 5464 |   that this project refuses. There is one comparison at a time, and Reset is
+ 5465 |   how the next one starts. Second, **a branch's `RunView` shows the
+ 5466 |   running-agent chip in place of the agent dropdown**. The reason is that
+ 5467 |   `SimulationController.set_agent` already refuses on a branch (`PL-TFX5`). A
+ 5468 |   control that always refuses is a control presenting itself as working. The
+ 5469 |   second disposition also settles the question `PL-QRD1` asked, which is why
+ 5470 |   that item asked for the two to be decided together.
+ 5471 | 
+ 5472 | - **What the readouts show while two branches are displayed** (queue item
+ 5473 |   PL-1XPX). This is a decision rather than an implementation. A numeric
+ 5474 |   readout that does not say which run it describes is a safety-critical
+ 5475 |   failure, because this project treats presentation as part of safety. There
+ 5476 |   is more than one defensible answer.
+ 5477 | - **The chart's hover says which run it is reading** (queue item PL-MN4J).
+ 5478 |   The item is `safety`-classed. It is milestone-scope debt under § "Debt
+ 5479 |   inside the milestone's own scope", not debt that this gate can clear. A
+ 5480 |   hover that names the agent and the instant but not the run is ambiguous only
+ 5481 |   while two runs are drawn. That happens only in this milestone's own compare
+ 5482 |   mode, so the item cannot be cleared before the compare mode it is about.
+ 5483 |   Until that mode ships, there is one run on the chart, and the hover names
+ 5484 |   everything there is to name. Like `PL-1XPX`, it is a decision rather than an
+ 5485 |   implementation, and the decision is the project owner's. It amends
+ 5486 |   `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show",
+ 5487 |   which derives the three-line form, so no session can close it either way.
+ 5488 |   `PL-8PSW` shipped the legend and panel naming that make a curve attributable
+ 5489 |   today. This item covers the remaining surface. The definition of done
+ 5490 |   requires "no readout, label, legend entry or reference band ambiguous as to
+ 5491 |   which run it describes", and that requirement is what keeps this item in
+ 5492 |   scope.
+ 5493 | - **What a comparison asserts and what it does not** (queue item PL-W7H9), in
+ 5494 |   `docs/MODEL.md` and `docs/ARCHITECTURE.md`. It states what two branches
+ 5495 |   share and what they do not. It states that a difference between them can be
+ 5496 |   attributed only to the settings that differ. It also states that neither
+ 5497 |   branch is a prediction for a patient.
