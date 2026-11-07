@@ -156,6 +156,14 @@ structure. Two part review"):
    last read takes all the outlines together.
 2. Apply the findings you accept to the document, before any line edit,
    because a sentence that is about to move would be edited for nothing.
+   Never line edit a document ahead of its restructure, even when applying
+   the findings by hand would take hours (project owner, 2026-11-07,
+   ratified, over filing the restructure as items and line editing first).
+   `docs/MODEL.md` was line edited first in `#2049`, and that edit dropped
+   about 120 statements that had to be restored. It also edited paragraphs
+   that the restructure will cut as repeats. A document that was line edited
+   before its restructure gets the restructure next. Step 3 then runs only on
+   the sections that the restructure changed.
 3. Run `python3 tools/copy_edit.py --sections FILE` and save its reply. It
    line-edits each section alone, from its heading to the next heading of any
    level, with the audits that every run has.
