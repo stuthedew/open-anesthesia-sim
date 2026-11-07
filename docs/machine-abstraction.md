@@ -40,12 +40,9 @@ one. It sits beside `docs/machine-survey.md` for the same reason, and
 **A machine contributes exactly two rates and one volume** to the breathing
 circuit's row of the system matrix, and nothing else anywhere in the model. The
 two rates are the agent delivery rate $`\dot m_{\mathrm{in}}`$ and the circuit
-gas removal rate $`\dot m_{\mathrm{out}}`$, both in L/s. The volume is the
-machine's apparatus volume, its part of $`V_C`$, the space that the circuit gas
-occupies. The rest of $`V_C`$ is the patient circuit, which the run supplies.
-Today one field, `circuit_volume_l`, holds the whole of $`V_C`$ (§ "Which values
-belong to the machine, the run and the model"). Everything the survey found
-falls under one of the three.
+gas removal rate $`\dot m_{\mathrm{out}}`$, both in L/s. The volume $`V_C`$ is
+the space that the circuit gas occupies in the apparatus. Everything the survey
+found falls under one of the three.
 
 The model is one system matrix $`A`$ over nine states, built in
 `src/anesthesia_sim/core/governing_equations.py`. Its exact propagator is
@@ -274,8 +271,9 @@ condition lines are the monitoring, and they are already written.
 **The testable form: adding a machine adds a row, not a column.** Once the
 abstraction is right, a new machine is values for fields that already exist. A
 machine needing a *new field* is a design event — the survey missed an axis, or
-the field is trivia — and Question 7 gives the route, which starts in the
-survey.
+the field is trivia — and the route is: the survey gains an entry, this
+document's closed set or schema gains the member, *then* the machine is added.
+Never the other way.
 
 **That is decidable, so it belongs in a script rather than in this paragraph.**
 A check under `tools/` reading every file in `data/machines/`, asserting that
@@ -332,8 +330,9 @@ together and nothing displayed changes.
 
 The abstraction separates three things one file currently holds together.
 
-**The machine owns what a machine specifies**: the fields in the schema table
-under Question 2.
+**The machine owns what a machine specifies.** Apparatus volume, flow range and
+floor, agents it can mount, per-agent dial maxima, sampling, and the three
+strategy names.
 
 **The run owns its opening conditions.** The opening fresh gas flow, the
 opening dial position, and the patient circuit volume. None of these is a
@@ -499,12 +498,6 @@ true when item 39 lands a per-compartment gas-phase model, or when any
 multi-limb circuit enters the model. Written as a rule it would outlive its
 own evidence and be obeyed by sessions that were not here.
 
-**Why declining is not merely the cheap option.** The decline is needed
-under *either* answer. Even with item 39 built, a machine whose inlet
-position is unknown — which is every surveyed machine but the two Fukuda
-et al. instrumented — still needs the statement. Building item 39 first would
-change which machines the statement covers, not whether it is owed.
-
 The survey's headline finding is that **apparatus volume alone does not explain
 the measured differences between machines**, and its sharpest instance is
 Fukuda et al.'s randomised patient study: moving only the fresh gas inlet
@@ -528,6 +521,12 @@ three options and refused one. Besides the decline above, they are:
   has to be recorded there before the model is extended that way. That is a
   change to the model boundary, which is planned-milestone item 39's
   (per-compartment gas-phase condition), not item 1's.
+
+**Why declining is not merely the cheap option.** The decline is needed
+under *either* answer. Even with item 39 built, a machine whose inlet
+position is unknown — which is every surveyed machine but the two Fukuda
+et al. instrumented — still needs the statement. Building item 39 first would
+change which machines the statement covers, not whether it is owed.
 
 ## Question 5: naming a real machine in the interface
 
@@ -576,7 +575,8 @@ Three facts decide it, and none is a matter of taste:
 
 The weaker options, so the choice is visible rather than asserted. **Full trade
 name everywhere** is what makes the feature feel real and is what a user will
-ask for; it claims the most and is supported the least (fact 1 above).
+ask for; it claims the most and is supported the least, and it is the option
+the survey's measurement argues directly against.
 **Archetype only, no trade
 name anywhere** is safe and throws away the provenance: a reader cannot check a
 parameter against a manual for a machine nobody names. The decision is the
@@ -592,7 +592,8 @@ affects the model only through the three quantities that § "A machine changes
 only two rates and one volume" names, and each comes from declared fields:
 
 - the volume $`V_C`$: the apparatus volume (`apparatus_volume_l`) plus the run's
-  patient-circuit volume, as that section says;
+  patient-circuit volume, which today is the assembled circuit volume
+  (`circuit_volume_l`);
 - the inflow $`\dot m_{\mathrm{in}}`$: the `delivery` strategy and the fields it
   declares;
 - the outflow $`\dot m_{\mathrm{out}}`$: the `removal` strategy and the sample
@@ -663,8 +664,6 @@ below is re-derived from scratch.
   only once the machine owns the ventilator, which this abstraction does not
   give it. Ventilation stays a patient-side control, and decoupling is a fourth
   strategy slot opened by whichever milestone moves it.
-- **Fresh gas inlet position.** Planned-milestone item 39, under § "Fresh gas
-  inlet position is not modelled".
 - **Automated end-tidal control.** Planned-milestone item 5, for the reason
   that ends § "A machine changes only two rates and one volume".
 - **Every `unknown` in the survey.** Apparatus volumes, flow floors, agent
