@@ -14,3 +14,5 @@ added: 2026-11-07
 **Why it matters.** `docs/MODEL.md` is the safety-critical specification. A requirement restated as a description, or a limit that loses "only", reads as a weaker claim to a later session that cites it to decide what the code must do. The same tool edited `docs/machine-abstraction.md` and `docs/machine-survey.md` (`PL-B7V7`), and rule 16 runs it on replies.
 
 **Open question for the fix.** Whether the copy editor's instructions (`.claude/agents/copy-editor.md`) should forbid these four kinds of change, or whether `tools/copy_edit.py` should add a comparison read like the one that found them. The project owner debugs the copy editor one section at a time and approves each (2026-11-04), so the change is the project owner's to direct.
+
+**Decision.** The remaining copy edits of the repository wait until this is fixed (project owner, 2026-11-07, ratified, over continuing with a six-reviewer audit of each document before it merges). The references and maintainer-guide edits run on the owner's Mac (branch `claude/repo-copy-edit-api`) stay unmerged until then, and are re-run or audited on the fixed copy editor.
