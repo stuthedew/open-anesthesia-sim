@@ -2,17 +2,19 @@
 
 ## Status
 
-This document specifies the scientific model that the simulator has implemented
-since v0.1.0. Its equations and compartment structure have not changed since
-then, and every supported agent shares them.
+The simulator is an educational model. It is not a clinical prediction, dosing
+tool, patient monitor, or medical device.
 
-**This document names no current release.** The version table in `ROADMAP.md`
-records it. A statement here that needs a version says what has been true
-*since* that version.
+This document specifies the scientific model that the simulator implements. Its
+equations and compartment structure have not changed since v0.1.0, and every
+supported agent shares them.
 
-Release v0.0.2 modelled an ideal breathing circuit's wash-in and washout with no
-patient, checked against exact formulas. Its reference tests are unchanged
-(§ "Preserved circuit reference tests"). v0.1.0 extends it along this path:
+A statement here that gives a version has been true *since* that version. The
+project's roadmap (`ROADMAP.md`) lists the current release in its version table.
+
+Release v0.0.2 modelled the wash-in and washout of an ideal breathing circuit
+with no patient. Its reference tests check the circuit against exact formulas
+and are unchanged (§ "Preserved circuit reference tests"). v0.1.0, the “Sevo works” milestone, was the first sevoflurane model with a patient. The agent follows this path:
 
 ```text
 delivered agent
@@ -28,16 +30,11 @@ venous blood
 alveolar gas
 ```
 
-v0.1.0 is the first sevoflurane model with a patient, the “Sevo works”
-milestone.
-
-This is an educational model. It is not a clinical prediction, dosing tool, patient monitor, or medical device.
-
 ## Intended use, and the safety class this project holds itself to
 
-The medical-device standards ISO 14971 (risk management) and IEC 62304
-(software) judge every hazard and every software safety class against what the
-product is intended for. This section states that intended use.
+Two medical-device standards judge every hazard and every software safety class
+against what the product is intended for: ISO 14971, for risk management, and
+IEC 62304, for software.
 
 ### Intended use
 
@@ -53,79 +50,78 @@ to be run on hypothetical or illustrative parameters. It is not intended for
 entering, importing, or reproducing an identifiable patient's parameter values,
 or for informing the management of a specific patient.
 
-The boundary is drawn at the *data*, not at physical nearness to a patient. A
-simulator open on a workstation while a case runs is ordinary teaching and
-carries no hazard of its own. A run built from a particular patient's weight,
-age, and cardiac output is a prediction about that patient, whatever the
-window is labelled. The patient-factor work planned in `ROADMAP.md` will make
+This limit concerns the *data*, not nearness to a patient. Keeping the
+simulator open on a computer during a case is ordinary teaching use, with no
+hazard of its own. A run built from a particular patient's weight, age, and
+cardiac output is a prediction about that patient, whatever the simulator's
+window is labelled. Planned work on patient factors (`ROADMAP.md`) will make
 such runs possible.
 
 ### Software safety classification: Class C, for the whole application
 
-IEC 62304 § 4.3 assigns a software safety class from the severity of the harm
-that a software failure could contribute to. **Class A** applies where no
-injury or damage to health is possible, **Class B** where injury is possible
-but not serious, and **Class C** where death or serious injury is possible.
-Annex B.4.3 makes the class depend on severity alone. Where software sits in a
-sequence of events leading to a hazardous situation, the probability of its
-failure is **set to 1**, not estimated. So "this would rarely be wrong" is not
-an argument for a lower class.
+This project assigns **Class C to the whole application**, the interface
+included. IEC 62304 § 4.3 classifies software by the severity of the harm that
+its failure could contribute to. **Class A** applies where no injury or damage
+to health is possible, **Class B** where injury is possible but not serious, and
+**Class C** where death or serious injury is possible. The class depends on
+severity alone (Annex B.4.3). Where software sits in a sequence of events
+leading to a hazardous situation, the standard sets the probability of its failure to 1, rather than estimating it. So an argument that a failure would rarely happen does not justify a lower class.
 
-This project assigns **Class C to the whole application**, the interface layer
-included, for three reasons:
+A failure of the interface could contribute to injury, which rules out Class A.
+A correct number is still a safety failure if the interface shows it with the
+wrong units, label, patient context or model version, or after it has gone out
+of date. The interface also has safety features, such as the distinction
+between a halted and a paused run, the rule on displayed precision and the
+ISO 5360 agent colours.
 
-- A lower class saves no work. Class A excuses low-risk software from detailed
-  design, unit verification, and integration testing. This project checks all
-  its code the same way, so nothing would be excused.
-- Class A asserts that *no injury is possible*, and the interface layer cannot
-  claim that. The correct number with the wrong units, label, patient context,
-  stale state, or model version is still a safety failure. The interface also
-  carries several safety features: the distinction between a halted and a
-  paused run, the displayed-precision rule, the ISO 5360 agent colours, and
-  the extreme-preserving decimation.
-- A split would not hold, because code that looks cosmetic carries clinical
-  meaning. The chart's frame (`app/chart_frame.py`) decides what a chart line
-  claims about a run. The styling file (`app/theme.py`) holds the colours that
-  identify each agent.
+**For developers.** A lower class for any part of the application would save no
+work, because this project checks all its code the same way. Class A, for
+example, excuses software from detailed design, unit verification and
+integration testing.
+
+Code that looks cosmetic cannot be split off into a lower class, because it
+carries clinical meaning. The chart's frame (`app/chart_frame.py`) decides what
+a chart line claims about a run. The styling file (`app/theme.py`) defines the
+ISO 5360 agent colours. The extreme-preserving decimation is a safety feature of
+the interface.
 
 A split would pay off only where the exempted part is large, genuinely
-non-clinical, and costly to verify. None of those holds now.
+non-clinical and costly to verify. None of those holds now.
 
 ### This is an engineering bar, not a regulatory status
 
-The class is adopted as an engineering standard, as the accessibility standard
-WCAG 2.2 AA is (§ "Color contrast, and the standard this interface is held to").
-Nothing here claims conformance to IEC 62304, to a quality management system, or
-to any regulatory status. Writing the class down gives a reviewer a stated bar
-for the code.
+The project adopts Class C for the whole application as an engineering standard,
+like WCAG 2.2 AA for accessibility (§ "Color contrast, and the standard this
+interface is held to"). The project claims no conformance to IEC 62304 or to a
+quality management system, and no regulatory status. Writing the class down gives
+anyone reviewing the code a bar to hold it to.
 
-The class does not settle device status. FDA publishes examples of software
-functions that are *not* medical devices. They include software intended for
-health care professionals as educational tools for medical training. One
-worked example is "games that simulate various cardiac arrest scenarios to
-train health professionals in advanced cardiopulmonary resuscitation (CPR)
-skills" ([FDA, Examples of Software
+The class does not settle whether the simulator is a medical device. FDA
+publishes examples of software functions that are *not* medical devices. They
+include software intended for health care professionals as educational tools
+for medical training. One example is "games that simulate various cardiac
+arrest scenarios to train health professionals in advanced cardiopulmonary
+resuscitation (CPR) skills" ([FDA, Examples of Software
 Functions That Are NOT Medical Devices](https://www.fda.gov/medical-devices/device-software-functions-including-mobile-medical-applications/examples-software-functions-are-not-medical-devices),
 and the guidance "Policy for Device Software Functions and Mobile Medical
-Applications"). That exclusion depends on intended use, not on which
-physiologic parameters the software accepts: the software must not support a
-health professional's assessment of a *specific patient*. That is why the
-intended-use boundary above is drawn at a specific patient's data.
+Applications"). Whether software is excluded depends on its intended use, not
+on which physiologic parameters it accepts. To qualify, the software must not
+support a health professional's assessment of a *specific patient*. That is why
+the intended-use boundary above is drawn at a specific patient's data.
 
-ISO 14971:2019, the risk-management standard for medical devices, defines
-**reasonably foreseeable misuse**, and its clause 5.2 requires documenting that
-misuse. Using this simulator outside the intended use above is such misuse. The
-hazard table in the next section has a row for it. § "What keeps a real
-patient's data out of a run" names the two safeguards against it and the tests
-that enforce them.
+Using this simulator outside the intended use above is **reasonably foreseeable
+misuse** under ISO 14971:2019, the risk-management standard for medical devices.
+Its clause 5.2 requires documenting such misuse. The hazard table in the next
+section has a row for it. Two safeguards protect against this misuse, and tests
+enforce them (§ "What keeps a real patient's data out of a run").
 
-**Sources for this section.** IEC 62304 and ISO 14971 are published standards
-and are not open access. The clause structure, the three class definitions,
-and Annex B.4.3's probability rule were read from secondary summaries, not from
-the standards' own text. The FDA material was read at the source. A reviewer
-revising this section should check the standards directly. The conclusion,
-Class C for the whole application, does not depend on their wording, but the
-clause numbers cited here do.
+**Sources for this section.** Because IEC 62304 and ISO 14971 are not open
+access, the project read their clause structure, the three class definitions, and
+Annex B.4.3's probability rule from secondary summaries. The Class C conclusion
+does not depend on the standards' wording, but the clause numbers cited here do.
+The project read the FDA material at the source.
+
+**For developers.** Before you revise this section, check the standards directly.
 
 ## Reasonably foreseeable misuse, and the hazards the presentation carries
 
@@ -169,138 +165,147 @@ reviewer still has to judge whether each test is any good.
 
 ### Every value and what qualifies it come from one step
 
-Each group of widgets that states one value with what qualifies it is written
-from a single step:
+Where the screen shows a value with what qualifies it, both come from a single
+simulation step. A test checks each of these groups:
 
 - the readout cards, with their heading and 1 MAC line;
 - the dials, with the delivered line;
 - the accounting verdict, with the totals it judges.
 
-A test checks every group. For each scenario, every member of a group must
-describe the step that scenario names. Every other screen element must be
-listed with the reason it belongs to no group.
+A run stops when it fails or reaches the supported run length, the longest run
+the model allows.
 
-**After a halt that comes before the screen has been redrawn since the run
-started over**, by an agent change or a Reset, the screen still shows the run
-that was discarded. So each card withholds its percent and its ×MAC number
-("—%", "— ×MAC") under the heading and 1 MAC line of the run that replaced it,
-and the clock withholds its time ("—"). The accounting panel withholds its
-verdict and amounts too. The banner says that the readouts are withheld and that
-the chart still shows the run before it started over.
+**If an agent change or a Reset starts a new run, and the new run stops before
+the screen is redrawn**, the last values drawn belong to the discarded run. Each
+card therefore withholds its percent and ×MAC number ("—%", "— ×MAC") under the
+new run's heading and 1 MAC line. The clock reads "—", and the accounting panel
+shows no verdict or amounts. The banner says that the readouts are withheld and
+that the chart still shows the discarded run.
 
-**After a step fails its accounting check**, the model undoes that step, and
-the run's own accounting passes again. So the panel shows the rejected step's
-check: "Validation failed", with that step's totals. The banner names the panel
-as the one exception to "the values shown are the last completed step". If the
-screen is not redrawn after the halt, the panel shows the same check from the
-run's record.
+**After a step fails its accounting check**, the accounting panel shows the
+check: "Validation failed", with that step's totals. The run stops, and the
+model undoes the step, so the run's own accounting passes again. The banner
+names the panel as the one exception to "the values shown are the last
+completed step". If the screen is not redrawn after the failure, the panel
+shows the same check from the run's record.
 
-**A dial moved on a stopped run**, failed or at the supported run length (the
-longest run the model allows), is refused before anything is applied, and springs
-back to the setting the run holds. No step runs after a stop. So the new setting
-would sit beside values it never produced, and the record would claim a change
-that never acted on the patient. A run can also fail on the first step after a
-setting was accepted. Then none of its values was computed under that setting
-either. The banner states the refusal and the way out. The way out is Reset,
-which keeps every setting. At the supported run length, it can also be a branch,
-a new run from an earlier instant, where each dial starts at what it was set to
-then. The banner names the branch only while one can be taken. So it names Reset
-alone when the run is compared with another, which locks its branch control, and
-on a dashboard with no branch control.
+**A dial moved on a stopped run is refused** before anything is applied, and
+springs back to the run's setting. The model computes no step after a stop, so
+the new setting would sit beside values it never produced, and the run's record
+would claim a change that never acted on the patient. A run can also fail on the
+first step after a setting was accepted. Then none of its values was computed
+under that setting either.
+
+The banner states the refusal and the way out: Reset, which keeps every setting.
+At the supported run length, a branch is a second way out: a new run from an
+earlier instant, with each dial at its setting from that instant. The banner
+names a branch only when one can be taken. It names Reset alone on a dashboard
+with no branch control, and while the run is compared with another, because
+comparison locks the branch control.
+
+**For developers.** For each scenario, the test requires every screen element in
+a group to describe the step that the scenario names. It also requires every
+other screen element to be listed with the reason it belongs to no group.
 
 ### Naming the run in a comparison
 
 While two or more runs are drawn, each of these places names its run in text:
 
 1. Each run's own readout panel (§ "Minimum displayed outputs").
-2. The chart's hover readout. With one run under the pointer, the name is on
-   its first line (§ "The hover and the run it belongs to"). With several, it
-   is on each value line. Every run inside the hover radius is reported, so a
-   small pointer movement cannot swap which run is read (§ "Where more than one
-   trace answers").
+2. The chart's hover readout. With one run under the pointer, its name is on
+   the readout's first line (§ "The hover and the run it belongs to"). With
+   several, each value line gives its run's name. The readout reports every run
+   inside the hover radius, so a small pointer movement cannot swap which run is
+   read (§ "Where more than one trace answers").
 3. The three advisory lines inside a chart: the wash-in state, the off-scale
    notice, and the count of control changes the chart could not mark. They
    stack one line per run.
 4. The headings of the two record panels: the agent-accounting validation in
-   the sidebar, and the control-change record in the right column of the
-   unconditional region, the part of the window that is always shown. Each of
-   the two stacks whole panels, one per run. So the name is in each panel's own
-   heading and moves with the panel.
+   the sidebar, and the control-change record ("What was changed during this
+   run") in the right column of the always-shown region of the window. Each
+   record stacks one whole panel per run, so a run's name is in its panel's
+   heading and moves with that panel.
 5. The notice banner, between the runs' control rows and their readouts. Both
-   runs use this one place, and a banner with nothing to say is hidden and
-   takes no room, so its position does not show whose banner it is.
+   runs use this one place, and an empty banner is hidden and takes no room. A
+   banner's position therefore does not show which run it belongs to.
 6. The heading over each run's compartment schematic, taken from the name on
    the run's own panel.
 7. The heading over each run's agent cost panel, in the same way.
 
-Colour, line width and drawing order cannot do this. The hover box is separate
-from the legend. Line width has no text equivalent, and nothing shows which
-run is drawn on top. The run names sit in the always-shown region above the
-charts. Without these names, a learner could misread a comparison in three ways:
+With only one run drawn, the hover readout, the chart's advisory lines, the
+sidebar panel headings and the banner show no run name.
 
-- One run's F_A/F_I could be read as the other's, or its off-scale notice
-  attributed to a run whose traces are all inside the axis.
-- The control-change record, "What was changed during this run", read as the
-  other run's, says that run received an intervention it never got.
-- A halt banner read as covering the whole dashboard says both runs are frozen.
-  "The values shown are the last completed step" then claims both runs stopped
-  at a failed step when one is still going. "The simulation is unchanged and
-  still running its previous setting" is false of the run that took the
-  setting.
+Without the run names, a learner could misread a comparison in three ways:
 
-With only one run drawn, the hover, the chart's advisory lines, the sidebar
-panel headings and the banner show no run name.
+- One run's F_A/F_I could be read as the other's, or its off-scale notice could
+  be attributed to a run whose traces are all inside the axis.
+- If read as the other run's, the control-change record says that run received
+  an intervention it never got.
+- If read as covering the whole dashboard, a halt banner says both runs are
+  frozen. "The values shown are the last completed step" then claims both runs
+  stopped at a failed step when one is still going. "The simulation is
+  unchanged and still running its previous setting" is false of the run that
+  accepted the setting.
+
+**For developers.** Colour cannot name the run, because the hover readout is
+separate from the legend. Line width cannot, because it has no text equivalent.
+Drawing order cannot, because nothing shows which run is drawn on top. The run
+names sit in the always-shown region above the charts.
 
 ### The statement that the readouts are model outputs
 
-The readout section's heading row carries **"Model outputs — not
-measurements."**, beside "Modelled concentrations:" and the agent's name. It
-sits beside the values it qualifies and says what they are, as the timeline's
-"Settings only — not a measurement." does for control marks. The compartments
-this simulator exists to show are the ones no monitor displays. So a reader has
-no measured value to check them against, and a polished display invites reading
-them as measurements. The statement is not repeated on the chart. A repeated
-disclaimer stops being read, and the chart's hover already names every value it
-reports as modelled. The requirement behind it is the hazard row for reading a
-modelled compartment value as a measured one.
+The heading row of the readout section shows **"Model outputs — not
+measurements."** beside "Modelled concentrations:" and the agent's name. The
+chart's hover text labels every value as modelled. No monitor displays the
+compartments that this simulator exists to show, so a user cannot check these
+readouts against a measured value. A polished display makes them easy to
+mistake for measurements.
+
+**For developers.** The statement is required by the hazard row for reading a
+modelled compartment value as a measured one. It sits beside the values it
+qualifies, as the timeline's "Settings only — not a measurement." does for
+control marks. The statement is not on the chart because people stop reading a
+repeated disclaimer.
 
 ### What keeps a real patient's data out of a run
 
-§ "Intended use" excludes entering an identifiable patient's data, and using a
-run to inform the management of a specific patient. Two safeguards stand
-against that misuse today:
+The simulator's intended use excludes entering an identifiable patient's data,
+and using a run to inform the management of a specific patient
+(§ "Intended use"). Two safeguards protect against that misuse today:
 
-1. The use statement (`USE_DISCLAIMER_TEXT` in `app/dashboard_frame.py`) sits
-   at the foot of the window. It says that the simulator is for teaching and
-   is not a clinical prediction, monitoring or dosing tool. In each built-in
-   Workspace it stays in view, however the page scrolls.
-2. The simulated patient is always the reference adult in
-   `data/patients/reference_adult.json`. No control accepts a weight, age, sex,
-   height or body composition. Every run keeps that patient's compartment
-   volumes and perfusion fractions, whatever the learner sets.
+1. The use statement at the foot of the window says that the simulator is for
+   teaching and is not a clinical prediction, monitoring or dosing tool. In
+   each built-in Workspace it stays in view, however the page scrolls.
+2. The simulated patient is always the same reference adult. No control accepts
+   a weight, age, sex, height or body composition. Every run keeps that
+   patient's compartment volumes and perfusion fractions, whatever the learner
+   sets. The planned patient factors (`ROADMAP.md` planned-milestone item 30)
+   will remove this safeguard.
 
-Changing cardiac output and alveolar ventilation is a core teaching feature.
-It also lets a learner set either one to a value measured in a real patient.
-The run then shows the reference adult at that flow, and it is not a
-prediction for that patient. The simulator accepts such a value, so the use
-statement is the only safeguard against reading that run as a prediction.
+A learner can still set cardiac output or alveolar ventilation to a value
+measured in a real patient, because changing them is a core teaching feature.
+The run then shows the reference adult at that flow, not a prediction for that
+patient. Only the use statement guards against reading the run as one.
 
-The patient factors planned in `ROADMAP.md` (planned-milestone item 30) will
-remove the second safeguard. `test_every_run_simulates_the_shipped_reference_adult`
-checks each way a patient could get into a run today, so adding patient factors
-will make it fail. The work that adds them must then rewrite this section and
-the hazard table's row for this misuse.
+**For developers.** The use statement is `USE_DISCLAIMER_TEXT` in `app/dashboard_frame.py`,
+and the reference adult is stored in `data/patients/reference_adult.json`. A test checks each
+way a patient could get into a run today, so adding patient factors will make it fail
+(`test_every_run_simulates_the_shipped_reference_adult`). The change that adds them must then
+rewrite this section and the hazard table's row for a real patient's data.
 
-**For developers.** `SimulationController.reset()` builds the new run's settings record
-before it clears anything. So a refused Reset leaves the run exactly as it was, and the halt
-goes through the failed-step path. Before each step, `SimulationController.advance()`
-compares `AgentUptakeSystem.settings_key()` with the key saved when the run last recorded
-settings. Code in `app/` changes settings only through the controller, which records the
-whole settings record at each change. The agent selector and the sliders read the snapshot
-only inside handlers guarded by `halt_gate` in `app/halt_gate.py`. A halt resets the
-selector from the run's record, because the refused snapshot is the one that would name the
-agent. If a halt comes before the screen is redrawn, every withheld value is hidden before
-the dials are written, because writing a dial can raise an exception.
+Code in `app/` changes settings only through the simulation controller, which saves the whole
+settings record at each change. Before each step, the controller compares the current settings
+key (`AgentUptakeSystem.settings_key()`) against the key saved with the last settings record.
+It makes the comparison in the method that advances the run, `SimulationController.advance()`.
+A refused Reset leaves the run exactly as it was, because the controller builds the new run's
+settings record before it clears anything (`SimulationController.reset()`). The run then halts
+through the same code as a failed step.
+
+The agent selector and the sliders read the snapshot only inside handlers guarded by
+`halt_gate` in `app/halt_gate.py`. A halt resets the selector from the run's settings record,
+because the selector would otherwise read the agent from the refused snapshot. If a halt comes
+before the screen is redrawn, every withheld value is hidden before the dials are written,
+because writing a dial can raise an exception.
 
 ## How this document is held to the tree
 
@@ -437,12 +442,13 @@ The milestone must demonstrate:
 - cardiac-output-dependent delivery to tissues;
 - perfusion-limited distribution into vessel-rich, muscle, and fat groups;
 - mixed-venous return to the lungs;
-- dynamic changes in fresh gas flow, delivered concentration, alveolar ventilation, and cardiac output;
-- deterministic numerical behavior; and
+- dynamic changes in fresh gas flow, delivered concentration, alveolar ventilation,
+  and cardiac output;
+- identical results from identical inputs; and
 - explicit conservation of agent mass.
 
 v0.1.0 modeled sevoflurane only. v0.2.0 added isoflurane and desflurane as
-selectable agents, using the same equations unchanged (see § "Status" and
+selectable agents, using the same equations (see § "Status" and
 "v0.2.0: isoflurane and desflurane" under § "Parameter provenance").
 
 ## Model boundary
@@ -456,39 +462,50 @@ The modeled system contains:
 5. one muscle tissue group; and
 6. one fat tissue group.
 
-**Perfusion-limited exchange.** Agent moves between blood and alveolar gas,
-and between blood and each tissue group, by perfusion-limited exchange. The
-term describes that exchange, not the blood itself. Blood leaves the lung or
-the tissue at equilibrium with it, so the barrier between them never limits
-how fast agent moves. The rate is set by the blood flow, the agent's blood:gas
+Agent and carrier gas enter only with the fresh gas, and mixed circuit gas
+leaves only through the circuit exhaust. Apart from this inflow and outflow, the
+circuit and the patient form a closed path in which gas recirculates. The model
+has no metabolism or other chemical destruction of the agent.
+
+**The breathing circuit is semi-closed.** The exhaust runs whenever fresh gas
+flows, at exactly the fresh-gas rate. In closed-circuit operation, the fresh gas
+flow is titrated down to the patient's uptake, or a machine mode shuts the
+surplus gas valve outright. The model's equations do not describe that
+operation, whose balance of agent in and out differs. § "Breathing circuit"
+explains this limit and estimates its size, and § "Known limitations" lists it.
+
+**Exchange with blood is perfusion-limited.** Agent moves between blood and
+alveolar gas, and between blood and each tissue group. Blood leaves the lung or
+the tissue at equilibrium with it, so the barrier between them never limits how
+fast agent moves. The rate is set by the blood flow, the agent's blood:gas
 partition coefficient and the difference in partial pressure, as the uptake
-equations in § "Governing equations" show. In diffusion-limited exchange,
-which this model does not represent, blood leaves before it has equilibrated,
-and the barrier limits the rate. Jones and Rowland-Yeo call the two tissue
-cases perfusion rate-limited and permeability rate-limited, and give the first
-as typical of small lipophilic molecules, which the volatile agents are
-(Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
-pharmacokinetic modeling in drug discovery and development.
+equations in § "Governing equations" show. The model does not represent
+diffusion-limited exchange, in which blood leaves before it has equilibrated and
+the barrier limits the rate. Jones and Rowland-Yeo call the two tissue cases perfusion rate-limited and permeability rate-limited, and give the first as typical of small lipophilic molecules, which the
+volatile agents are (Jones HM, Rowland-Yeo K. Basic concepts in physiologically
+based pharmacokinetic modeling in drug discovery and development.
 *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63, doi:10.1038/psp.2013.41).
 Yasuda et al. assumed perfusion-limited delivery to the tissues when they
 fitted sevoflurane and isoflurane kinetics in volunteers (*Anesth Analg*
 1991;72:316-24, p. 319).
 
-Arterial blood is not a separate mixing compartment. The model has no shunt
-and only one alveolar compartment, so it has no ventilation-perfusion mismatch,
-and all arterial blood has passed through the lung's perfusion-limited exchange
-with alveolar gas. Arterial partial pressure, as a fraction, is therefore
-defined as $`F_a \equiv F_A`$, with no arterial volume, mixing delay, or value
-of its own. In patients, the arterial partial pressure runs below the
-end-tidal one during administration, as Carpenter and Eger measured
-(§ "Desflurane's residual, and why the parameter file was not changed"), so
-this identity is a deliberate simplification of the model and not a property
-of the agents. It matches the structure of the Gas Man simulator, the source
-of this project's sevoflurane and patient parameters. In Gas Man too, each
-tissue group exchanges agent only with blood, by perfusion-limited exchange.
-Gas Man computes four compartments: alveolar gas and the vessel-rich, muscle,
-and fat groups. It displays arterial partial pressure without tracking it as a
-compartment. See:
+Arterial blood is not a separate mixing compartment. The model has no shunt and
+only one alveolar compartment, so it has no ventilation-perfusion mismatch, and
+all arterial blood has passed through the lung's perfusion-limited exchange with
+alveolar gas. Arterial partial pressure, as a fraction, is therefore defined as
+the alveolar fraction, $`F_a \equiv F_A`$, with no arterial volume, mixing delay,
+or value of its own. This identity is a deliberate simplification of the model,
+not a property of the agents. In patients, the arterial partial pressure runs
+below the end-tidal one during administration, as Carpenter and Eger measured
+(§ "Desflurane's residual, and why the parameter file was not changed").
+§ "Known limitations" lists this simplification.
+
+This project's sevoflurane and patient parameters come from the Gas Man
+simulator, whose structure matches this model's in two respects. In Gas Man,
+each tissue group exchanges agent only with blood, at a perfusion-limited rate,
+and arterial partial pressure is displayed without being tracked as a
+compartment. Gas Man tracks four compartments: alveolar gas and the vessel-rich,
+muscle, and fat groups. See:
 
 - Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
   Technology in Anesthesia. <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
@@ -496,25 +513,19 @@ compartment. See:
   flows? A computer simulation. BMC Anesthesiology.
   <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1508141/>
 
-This simplification is listed in § "Known limitations."
+Inspired gas is not a separate compartment. The circuit is perfectly mixed and
+has no dead space and no separate inspiratory and expiratory limbs, so the gas
+the patient inspires *is* the circuit gas, with no transport delay between the
+two. The model therefore tracks one gas concentration between the vaporizer and
+the alveoli. That concentration is the **inspired fraction** $`F_I`$, the middle
+term of the literature's $`F_D \rightarrow F_I \rightarrow F_A`$ cascade.
+$`V_C`$ is the circuit's volume, and $`M_C`$ is the amount of agent it holds, so
+$`M_C = V_CF_I`$.
 
-Inspired gas is not a separate compartment either. The circuit is one ideal,
-perfectly mixed volume, with no dead space and no separate inspiratory and
-expiratory limbs. So the gas the patient inspires *is* the circuit gas, and
-there is no transport delay between the two. The model therefore tracks one gas
-concentration between the vaporizer and the alveoli. That concentration is the
-**inspired fraction** $`F_I`$, the middle term of the literature's
-$`F_D \rightarrow F_I \rightarrow F_A`$ cascade. $`V_C`$ is the circuit's
-volume, and $`M_C`$ is the agent it holds, so $`M_C = V_CF_I`$.
-
-This is an assumption of the circuit model, not a property of breathing
-systems in general. It makes the displayed $`F_A/F_I`$ ratio the textbook one,
-the canonical teaching curve of inhaled-anesthetic uptake (§ "F_A/F_I as a
-displayed ratio"). A multi-limb system, such as Lerou and Booij's three-part
-model, separates inspired gas from mean circuit gas. There the two would be
-distinct states, and this model's single $`F_I`$ would no longer describe both.
-Extending the model that way would first require recording that change in this
-document.
+Equating inspired gas with circuit gas is an assumption of this circuit model,
+not a property of breathing systems in general. It makes the displayed
+$`F_A/F_I`$ ratio the textbook curve of inhaled-anesthetic uptake
+(§ "F_A/F_I as a displayed ratio").
 
 Symbols and the gas-phase cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx
 and De Wolf (pp. 161-162). They attribute the $`F_D - F_I`$ gradient to
@@ -524,137 +535,105 @@ De Wolf A. Special aspects of pharmacokinetics of inhalation anesthesia. In:
 Schüttler J, Schwilden H, eds. Modern Anesthetics. Handbook of Experimental
 Pharmacology 182. Springer, 2008:159-186).
 
-**One symbol to read carefully.** $`F_I`$ is the inspired fraction, and
-$`F_i`$ is tissue group $`i`$'s fraction. The two differ only in case. Both
-conventions are standard in the literature. Renaming either symbol would make
-this model's symbols disagree with every source a reader is likely to come
-from. Where both appear in one expression, the tissue index is written out.
+**The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
+is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where
+both appear in one expression, the tissue index is written out.
 
-The external inputs and outputs are:
+**For developers.** Before extending the model to a multi-limb system, record
+the change in this document. Such a system separates inspired gas from mean
+circuit gas, as Lerou and Booij's three-part model does. The two would then be
+distinct states, and this model's single $`F_I`$ would no longer describe both.
 
-- agent entering through fresh gas;
-- carrier gas entering through fresh gas;
-- an equal volume of mixed circuit gas leaving through the circuit exhaust; and
-- no metabolism or other chemical destruction of the agent.
-
-The circuit and patient form a closed recirculating exchange path, apart from
-fresh-gas inflow and circuit exhaust.
-
-**That circle is semi-closed.** The exhaust described above runs whenever fresh
-gas flows, at exactly the fresh-gas rate. Closed-circuit operation is different.
-It uses a fresh gas flow titrated down to the patient's uptake, or a machine mode
-that shuts the surplus gas valve outright. Its balance of agent in and out
-differs, and these equations do not describe it. The section "Breathing circuit"
-explains this limit and estimates its size, and the section "Known limitations"
-lists it.
+The case-only difference between $`F_I`$ and $`F_i`$ stays because both are
+standard in the literature. Renaming either would make this model's symbols
+disagree with every source a reader is likely to come from.
 
 ## Conventions
 
 ### Time
 
-Simulation time is explicit state and is measured internally in seconds.
+Times are in seconds throughout this document, the model's code and a saved run.
+The model keeps its own simulation time and never takes it from the computer's
+clock. That clock may still decide when the screen updates.
 
-Flows entered in liters per minute are converted to liters per second:
+A run stores each flow as it was set, in liters per minute. Each time the
+equations need a flow, the model converts it to liters per second:
 
 $$
 \dot V_{\mathrm{s}} = \frac{\dot V_{\mathrm{min}}}{60}
 $$
 
-**The setting in liters per minute is the record, and the per-second value is
-derived from it.** A run stores each flow as it was set, in liters per minute.
-The equations use a per-second value. That value is computed from the stored
-setting each time the equations need it, and it is never stored. Multiplying it
-by 60 does not always give back the setting, and the tissue flows formed from
-cardiac output share that error. So settings rebuilt from per-second values
-could describe a run that nobody set up.
+The screen shows time in one form. The displayed clock, the time stamp on each
+recorded control change and the chart's axis ticks are all durations. Each part
+of a duration carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A part
+that is zero is left out. Tenths of a second appear only where there are some.
 
-Wall-clock time may schedule interface updates, but it must never be used as simulation time.
+The one exception is the time span that the chart draws. It is written out in
+words, such as `15 minutes` above an axis whose last tick reads `15m`. The
+reader picks that phrase from a selector and sees it again in a caption.
+§ "Displayed precision" sets the precision at which each form is shown.
 
-Every time in this document, in the model's code and in a saved run is in
-seconds. The screen shows time in one form only. The clock, every recorded
-control stamp and the chart's axis ticks are all durations, and each part
-carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A part that is zero
-is left out. Tenths of a second appear only where there are some, so a stamp
-still identifies the step at which it was taken.
+**For developers.** The per-second value of each flow is never stored because
+multiplying it by 60 can give a number that differs from the setting. The tissue
+flows formed from cardiac output share that difference. Settings rebuilt from
+per-second values could therefore describe a run that nobody set up.
 
-The clock and the stamps use the axis's form because all three are on screen
-together. A control mark stamped `5400.0 s` on an axis reading `1h30m` would
-make the reader convert by hand between two displayed forms of one quantity.
-At the supported 24-hour run length, a clock in seconds would read
-`86400.0 s`. That figure shows false precision for a limit that this document
-states in hours.
+The displayed clock and the stamps use the axis's form because all three are on
+screen together. A control mark stamped `5400.0 s` on an axis reading `1h30m`
+would leave the reader to convert between the two by hand. At the supported
+24-hour run length, a clock in seconds would read `86400.0 s`. That figure shows
+false precision for a limit that this document states in hours. The tenths of
+a second are there so that a stamp identifies the simulation step at which it
+was taken.
 
-The time span that the chart draws is still written out in words:
-`15 minutes` above an axis whose last tick reads `15m`. The reader picks that
-phrase from a selector and sees it again in a caption. Neither place is a tick
-label, so the phrase does not have to fit in a tick's width. § "The chart's time
-base" explains that choice, and § "Displayed precision" sets the precision at
-which each form is shown.
+The span's wording does not have to fit in a tick's width, because neither the
+selector nor the caption is a tick label. § "The chart's time base" explains why
+the span is written in words.
 
 #### Simulated time is a count of steps, not a running total
 
-A run takes one step size and keeps it for its whole length. Simulated time
-is the number of completed steps multiplied by that step. It is one
-multiplication, rounded once. It is never a total accumulated one step at a
-time.
-
-The two methods agree within about 35 nanoseconds over a four-hour run at the
-app's 0.1 s step. That is far below anything displayed, so multiplying gains
-no accuracy. Its advantage is that the product depends only on how far
-the run has gone. A running total also depends on the order and number of the
-additions that produced it. Ten steps of 0.1 s sum to 0.9999999999999999
-and multiply to 1.0.
+Simulated time is the number of completed steps multiplied by the step size,
+which a run keeps for its whole length. At the app's 0.1 s step, the product
+and a running total of the step sizes agree within about 35 nanoseconds over
+a four-hour run. That is far below anything displayed, so multiplying gains
+no accuracy.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-A step of a different size from the one a run has already taken is rejected
-with an error, and it is not counted. Time is the count multiplied by one step
-size, so the count means a time only while every step is the same size. Reset
-clears the count and the step size together, so a fresh run may use a
-different step.
+**For developers.** The advantage of multiplying is that the product is rounded
+once and depends only on how far the run has gone. A running total also depends
+on the order and number of the additions that produced it. Ten steps of 0.1 s
+sum to 0.9999999999999999 and multiply to 1.0.
+<!-- not-restated: 0.1 s -->
+
+When a step differs in size from the run's earlier steps, it is rejected with
+an error and not counted, because the count of steps gives the time only while
+every step is the same size. Reset clears the count and the step size together,
+so a fresh run may use a different step size.
 
 #### The reproducibility guarantee
 
-**A run depends only on its inputs and on the number of steps taken.** The
-screen uses the computer's clock to decide when to update. But how many steps
-each update takes is a setting the reader chooses, never something measured
-from the clock. The simulation never takes extra steps to catch up after a slow
-update, and it reads no clock. So a slow or busy computer reaches a given step
-*later in real time*, and every value it computes and every record it stores
-is identical. The run is slower, not different.
-
-**An automatic check enforces this.** It stops the build if any part of the
-model's code reads the computer's clock, draws an unseeded random number, or
-makes an identifier from either. The screen code may still use the clock, as
-the paragraph above allows. If the check missed any of these routes, a run
-could stop being reproducible while the check still passed.
-
-So two runs with the same starting state, parameters, step size, setting
-changes and order of events, taken to the same step, are **exactly identical**
-in every stored value. They do not merely agree within a tolerance. At step
-*n*, which falls at *n* times the step size in both runs, they hold the same
-state. Every comparison of one run with another relies on this. That includes
+Two runs with the same inputs are **exactly identical** in every stored value at
+any step *n*, which falls at *n* times the step size in both. Those inputs are
+the starting state, parameters, step size, setting changes and order of events.
+Every comparison of one run with another relies on the guarantee. That includes
 comparing a branched run with the run it branched from, at every instant they
-share. § "What a branch comparison asserts, and what it does not" says what
-such a comparison may and may not claim.
+share. § "What a branch comparison asserts, and what it does not" says what such
+a comparison may and may not claim.
 
-**A state computed from a saved run has a guarantee of its own.** The guarantee
-above holds because every run uses the same step size, so only one sequence of
-calculations reaches step *n*. A saved run stores no samples and no step size.
-Its states are computed on request, and more than one sequence of calculations
-can reach the same instant. For those states, "The canonical evaluation rule"
-under § "Runtime controls" gives the guarantee. That rule is stronger in one
-way. Two computations of one saved run at one instant give exactly the same
-bits. It is narrower in another. Only values computed the canonical way may be
-stored, exported or branched from.
+**A slow or busy computer reaches each step later in real time, but computes and
+stores the same values as a fast one.** The screen uses the computer's clock to
+decide when to update. But the number of steps in each update is a setting the
+user chooses, and is never measured from the clock. The simulation never takes
+extra steps to catch up after a slow update, and it reads no clock.
 
 **Playing a run faster does not make it a different run.** The playback rate is
 how much simulated time passes per second of real time. A faster rate takes
 more *whole steps* per screen update, never a larger step. So a case played at
 real time and at three hundred times real time takes the same steps, in the
-same order, at the same size, and gives exactly the same results sooner. A
-rate that enlarged the step would fall under the first exclusion below. It
-would compute a second solution of the same equations, and a displayed value
-would depend on how fast the reader was watching. No label could fix that.
+same order, at the same size, and gives exactly the same results sooner.
+
+**An automatic check keeps the model's code from reading the clock.** It also
+stops that code from drawing a random number that differs from run to run.
 
 The guarantee does not cover four things, and none of them is a defect:
 
@@ -666,98 +645,104 @@ The guarantee does not cover four things, and none of them is a defect:
   the two runs differ by more than rounding.
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
-- **A different platform.** Basic arithmetic gives identical results on every
-  computer. But each step also uses an exponential function, whose last digit
-  can differ between platforms, Python builds and math libraries.
-  Reproducibility is claimed for one installation, not across all of them.
-- **Elapsed real time.** How long a machine takes to reach step *n* is a
-  property of the machine. So is how many steps it has reached when a
+- **A different installation.** Basic arithmetic gives identical results on
+  every computer. But each step also uses an exponential function, whose last
+  digit can differ from one installation of the simulator to another.
+- **Elapsed real time.** How long a computer takes to reach step *n* is a
+  property of the computer. So is how many steps it has reached when a
   wall-clock minute is up. Neither is a property of the model.
 
-**For developers.** `UptakeEquationSettings` in `core/governing_equations.py` stores each
-flow in the unit the user set it in. Converting to a per-second flow and multiplying by 60
-does not always return the setting. On a 0.1 L/min grid across the supported 0 to 10 L/min
-range, it fails for 7 of the 101 cardiac outputs (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min). A
-step of another length than the run's earlier steps raises a `SimulationConfigurationError`,
-because `elapsed_s` is the step count times one step length.
+**A state computed from a saved run has a guarantee of its own.** The guarantee
+above holds because two runs with the same inputs take every step at the same
+size, so only one sequence of calculations reaches step *n*. A saved run stores
+no samples and no step size. Its states are computed on request, and more than
+one sequence of calculations can reach the same instant. The guarantee for
+these states comes from a rule for computing them
+("The canonical evaluation rule" under § "Runtime controls"). That rule is
+stronger in one way: two computations of one saved run at one instant give
+exactly the same bits. It is narrower in another: only values computed by that
+rule may be stored, exported or branched from.
+
+**For developers.** Faster playback never enlarges the step, because a larger
+step would compute a second solution of the same equations, one that the
+guarantee does not cover. A displayed value would then depend on how fast the
+user was watching, and no label could fix that.
+
+The check on the model's code is `tools/import_boundary_check.py`. It runs in
+`make check` and CI, and it fails the build when any module under
+`src/anesthesia_sim/core/` imports `time`, `datetime`, `random`, `secrets` or
+`uuid`. If it missed any of these imports, a run could stop being reproducible
+while the check still passed. The check stops at `core/` so that the screen
+code outside it may use the clock. A table in the check (`BOUNDARIES`) gives
+the reason for each entry.
+
+Seeding cannot make `secrets` or `uuid` repeatable. Python's `secrets` module
+draws from `random.SystemRandom`, whose `seed()` is documented to do nothing
+and whose `getstate()` raises an error. The function `uuid.uuid1()` mixes the
+current time with the host's hardware address, so a run that used it would
+differ between *machines* as well as between runs.
+
+Taking a step whose length differs from the run's earlier steps raises a
+`SimulationConfigurationError`, because the model computes the elapsed time
+(`elapsed_s`) as the step count times one step length.
+
+The model stores each flow in the unit the user set it in
+(`UptakeEquationSettings` in `core/governing_equations.py`). Converting to a
+per-second flow and multiplying by 60 does not always return the setting. On a
+0.1 L/min grid across the supported 0 to 10 L/min range, the round trip fails
+for 7 of the 101 cardiac outputs (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min).
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
-`tools/import_boundary_check.py` is the check on the model's code. It runs in
-`make check` and CI, and it fails the build on a `time`, `datetime`, `random`,
-`secrets` or `uuid` import in any module under `src/anesthesia_sim/core/`. Its
-`BOUNDARIES` table gives the reason for each entry. The restriction stops at
-`core/` because the interface may use the wall clock. Seeding cannot undo two
-of those imports. `secrets` draws from `random.SystemRandom`, whose `seed()` is
-documented to do nothing and whose `getstate()` raises an error.
-`uuid.uuid1()` mixes the current time with the host's hardware address, so a
-run would differ between *machines* as well as between runs. The exponential
-in a step is one `exp()` call, a library function whose last bit may differ
-between platforms. The propagator is also built from a series and a sequence
-of squarings, and a compiler may reassociate their summation order.
+The exponential in each step is one `exp()` call, a library function whose last
+bit can differ between platforms, Python builds and math libraries. The
+propagator is also built from a series and a sequence of squarings, and a
+compiler may change the order in which their terms are summed.
 
 ### Concentrations
 
 Every concentration that the model computes is a dimensionless
-partial-pressure-equivalent fraction from 0 through 1. Only one concentration
-is set rather than computed: the vaporizer dial. The model stores the dial as the
-percent that was dialled, and it derives $`F_D`$ from that percent, as
-described below.
+partial-pressure-equivalent fraction. For example, $`F = 0.02`$ represents a 2%
+gas-phase concentration.
+<!-- not-restated: 2 % -->
 
 The gas-phase symbols follow the inhaled-anesthetic literature:
 $`F_D \rightarrow F_I \rightarrow F_A`$. The middle one, $`F_I`$, is the
-inspired gas, although the breathing circuit holds it. The circuit keeps the
-subscript $`C`$. $`V_C`$ is its volume and $`M_C`$ is the agent in it.
-§ "Model boundary" above states the assumption that makes circuit gas and
-inspired gas one quantity, and what would break it.
+inspired fraction, taken from the gas in the breathing circuit. The circuit's
+quantities carry the subscript $`C`$: $`V_C`$ is its volume and $`M_C`$ is the
+amount of agent in it. § "Model boundary" above states the assumption that
+makes circuit gas and inspired gas one quantity, and what would break it.
 
-For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
-<!-- not-restated: 2 % -->
-
-Two other places quote the same quantity in percent of an atmosphere, and
-they cannot do otherwise: a vaporizer dial and a MAC. The conversion between
-the two forms is:
+The vaporizer dial and MAC are given in percent of an atmosphere. The
+conversion between a fraction and a percent is:
 
 $$
 \text{percent} = 100F
 $$
 
-One module in the model's code does this conversion, in both directions, and
-no other code repeats it. The code treats a percent and a fraction as different
-kinds of number. It rejects one where the other is wanted, both before the
-program runs and wherever a concentration is stored. It also rejects a value
-that is already converted, or one that does not say which form it is in. The
-conversion is used in only two places. The circuit and the recorded settings
-derive $`F_D`$ from the dial's percent where the equations use it, and the
-screen converts for display.
+**The vaporizer setting is stored as the percent dialled.** The vaporizer dial
+is the only concentration that is set rather than computed. The circuit stores
+that percent, as do the settings that a run records for each stretch and the
+record of control changes. The flows are stored as set, too (§ "Time").
+Converting a fraction back to a percent does not always return the setting, so
+a value kept as a fraction could not give back what a learner dialled. A new run
+starts the dial at the agent's published percent, without converting it. An
+error message about a setting gives it in percent, beside the vaporizer maximum,
+which is also stored in percent.
 
-**The percent dialled is the record, and $`F_D`$ is derived from it.** The
-circuit, the settings that a run records for each stretch, and the record of
-control changes all store the vaporizer setting as the percent dialled. A new
-run starts the dial at the agent's published percent, without converting it.
-Converting a fraction back to a percent does not always return the setting. On
-a 0 to 8% dial in 0.01% steps, it fails for 126 of the 801 settings. So a
-record kept as a fraction could not give back what a learner dialled.
-§ "Time" applies the same rule to the flows. An error message about a setting
-gives it in percent, beside the vaporizer maximum, which is also stored in
-percent.
-<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+The conversion has only two uses. Where the equations need $`F_D`$, the model
+derives it from the dial's percent, both in the circuit and in the recorded
+settings. The screen converts for display.
 
-The interface also converts to the second display unit, a multiple of the
-running agent's 1 MAC. This unit rescales the percent above by one constant
-per agent, and it introduces no new state:
+Besides percent, the screen can show a concentration as a multiple of 1 MAC of
+the agent in use:
 
 $$
 \text{MAC multiple} = \frac{100F}{\mathrm{MAC}_\%}
 $$
 
-The section "MAC multiples as a display unit" states what that quotient does
-and does not assert. It defines no modeled quantity, and the model's own
-calculations never compute it. The stored MAC cannot be zero, and every
-display that divides by it accepts only a MAC stored that way. No other lower
-limit is set, so a MAC far below any real agent's would still give multiples
-too large to read. The shipped MACs are 1.2% to 6.0%.
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+The MAC multiple introduces no new state and defines no modeled quantity, and the model's own calculations never compute it.
+§ "MAC multiples as a display unit" states what a MAC multiple does and does
+not assert.
 
 A concentration fraction must always be finite and satisfy:
 
@@ -765,97 +750,91 @@ $$
 0 \leq F \leq 1
 $$
 
-**The range is checked once, when a concentration is created.** A fraction
-must lie from 0 to 1 and a percent from 0 to 100, and both must be finite.
-Each rejects a value of the other form, because that is a missed conversion
-rather than a concentration out of range. Anything that is not a plain number
-is rejected before the range is checked. Minus zero is stored as zero.
+**The range is checked once, when a concentration is created.** A fraction must
+be finite and lie from 0 to 1, and a percent must be finite and lie from 0 to 100. The model treats a fraction and a percent as
+different kinds of number, and rejects one where the other is wanted. Every
+place that stores a concentration accepts only a checked value.
 
-Every place that stores a concentration accepts only a checked value and
-rejects a plain number. These places include each compartment, the breathing
-circuit and its saved state, the settings a run is built from, and the agent's
-parameters, which hold its MAC and vaporizer maximum. So a concentration is
-checked once, where it is created.
-
-A fraction that a step computes is checked before any compartment stores it,
-under that compartment's name. A value outside 0 through 1 halts the run and
-names the compartment, instead of being stored or shown. Rounding in the
-calculation can carry a computed fraction a little above the largest fraction
-it started from. So the delivered concentration and each starting fraction
-must be at or below 0.99 of ambient pressure (§ "The numerical envelope"). No
-supported setting computes a fraction outside the range.
+Each fraction computed in a step is checked before a compartment stores it. A
+value outside 0 through 1 halts the run and names the compartment, instead of
+being stored or shown. Supported settings never lead to such a value. The
+delivered concentration and each starting fraction must be at or below 0.99 of
+ambient pressure (§ "The numerical envelope").
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
-**For developers.** `src/anesthesia_sim/core/concentration.py` is the only
-place where the conversion between a fraction and a percent is written. The two
-forms are distinct types there, so a type checker rejects a percent where a
-fraction is wanted, and the conversion rejects a bare number.
-`AgentUptakeSystem.for_agent()` starts the dial at the published percent
-without converting it, because multiplying a fraction by 100 does not always
-return the percent it came from. The first failure is at 0.23%, and 0.9% comes
-back as 0.9000000000000001. Nothing in `core/` computes the MAC multiple. Its
-divisor is stored as a `MacPercent`, a `Percent` that rejects zero when it is
-built, and every formatter that forms the quotient rejects a divisor that was
-not built as a `MacPercent`.
+**For developers.** The conversion between a fraction and a percent is written
+only in `src/anesthesia_sim/core/concentration.py`, in both directions. The two
+forms are distinct types there, `Fraction` and `Percent`, so a type checker
+rejects a percent where a fraction is wanted before the program runs. When the
+program runs, a value of the wrong form is rejected as a missed conversion
+rather than as a value out of range. The code also rejects a value that is
+already converted, or one that does not say which form it is in.
 
-`Fraction` and `Percent` check a value when it is built. Each rejects a value
-that is not finite, or that lies outside 0 to 1 for a `Fraction` or 0 to 100
-for a `Percent`. Each raises a `TypeError` for anything that is not an `int` or
-a `float`, such as a `bool`, a `Decimal` or a string, before the range is
-checked. `core/checked_number.py` states these rules once, for the
-concentrations and the flows: what counts as a number, that one checked
-quantity is never built from another, and that minus zero is stored as zero
-(§ "Supported input ranges"). The places that store a concentration are each
-compartment's setter, the driving fraction that a compartment's own closed
-form takes, `BreathingCircuit` when it is built or set, the
-`BreathingCircuitState` that a rollback restores it from, the
-`UptakeEquationSettings` that a run is built from, and the `AgentParameters`
-that an agent's data file is parsed into. `AgentParameters` stores the agent's
-MAC and vaporizer maximum. A computed fraction is checked under the name of the
-compartment that will store it, in `AgentUptakeSystem._write_state_vector`.
-`core/concentration.py` records the measurements behind the 0.99 input limit.
+On a 0 to 8% dial in 0.01% steps, multiplying a fraction by 100 fails to return
+the percent it came from for 126 of the 801 settings. The first failure is at
+0.23%, and 0.9% comes back as 0.9000000000000001. A new run's dial is set in
+`AgentUptakeSystem.for_agent()`.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+
+The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
+it is built. Every formatter that forms a MAC multiple rejects a divisor that
+was not built as a `MacPercent`. No other lower limit is set on the MAC, so a
+MAC far below any real agent's would still give multiples too large to read. The
+shipped MACs are 1.2% to 6.0%.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+
+The fraction and percent types raise a `TypeError` for anything other than an
+`int` or a `float`, such as a `bool`, a `Decimal` or a string, before they check
+the range. The rules they share with the flows are written once, in
+`core/checked_number.py` (§ "Supported input ranges"): what counts as a number,
+that one checked quantity is never built from another, and that minus zero is
+stored as zero.
+
+The places that store a concentration are these:
+
+- each compartment's setter
+- the driving fraction that a compartment's own closed form takes
+- the breathing circuit, when it is built or set (`BreathingCircuit`)
+- the saved state that a rollback restores the circuit from
+  (`BreathingCircuitState`)
+- the settings that a run is built from (`UptakeEquationSettings`)
+- the parameters that an agent's data file is parsed into, which hold its MAC
+  and vaporizer maximum (`AgentParameters`)
+
+Each computed fraction is checked in `AgentUptakeSystem._write_state_vector`.
+The 0.99 input limit is there because rounding can carry a step's result a
+little above the largest fraction that the step started from. The figures
+behind the limit are recorded in `core/concentration.py`.
 
 ### Agent amount
 
-Every compartment stores the agent as an equivalent gas volume at one
-documented reference temperature and pressure. That condition is **20 °C and
-760 mmHg, dry**, where the ideal-gas molar volume is 24.055 L/mol. The
-condition defines the *unit*. It is not a claim about where any of the gas
-physically is. "Known limitations" records what it costs to carry the whole
-model at one condition.
-
-The implementation must use the same reference conditions everywhere. It must
-not add gas fractions, dissolved blood concentrations, and tissue
-concentrations directly.
-
-Let $`M_x`$ denote the equivalent gas volume of the agent stored in
+Every compartment stores its agent as an equivalent gas volume, in litres of
+pure agent gas at one reference condition: **20 °C and 760 mmHg, dry**. At that
+condition the ideal-gas molar volume is 24.055 L/mol. The condition defines the
+unit only. It does not mean that any of the agent is physically at 20 °C and
+760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
 compartment $`x`$.
 
-The unit used in code is liters of equivalent pure agent gas, unless the
-implementation document explicitly selects another consistent unit.
+**The reference condition matters only when an amount is converted out of the
+unit**, into moles, mass, or the millilitres of liquid that a vaporizer is filled
+from. Every governing equation works with dimensionless fractions and physical
+volumes, and every partition coefficient is a ratio. So the condition changes no
+concentration curve, mass balance or displayed concentration, and no other
+number under § "Governing equations", "Conservation of agent mass" or
+"Minimum displayed outputs". The ideal-gas molar volume is 25.450 L/mol at
+37 °C, so declaring 37 °C instead would change each converted amount by a
+factor of 1.058.
 
-**Nothing the model computes depends on the reference condition.** Every
-governing equation works with dimensionless fractions and physical volumes, and
-every partition coefficient is a ratio. So the concentration curves, the mass
-balance and every displayed concentration do not depend on which condition
-the unit names. If the condition changed, no number under § "Governing
-equations", "Conservation of agent mass" or "Minimum displayed outputs" would
-move. The condition matters only when an amount is converted *out* of the unit,
-into moles, mass, or the millilitres of liquid that a vaporizer is filled from.
-For that conversion, the two conditions differ by a factor of 1.058,
-because the ideal-gas molar volume is 24.055 L/mol at 20 °C and 25.450 L/mol at
-37 °C.
-
-**Why 20 °C.** Three grounds support it, and the first can be checked by
-arithmetic.
+**Three reasons favour 20 °C.**
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
-   consumption literature quotes one composite number per agent: the vapour
-   volume obtained from 1 mL of liquid. Biro gives isoflurane 195 mL,
-   sevoflurane 184 mL and desflurane 210 mL. That number can instead be
-   derived from the primary density measurement and the molar volume above.
-   The derivation reproduces all three within 0.7 % at 20 °C. It reproduces
-   none of them at 37 °C, where the same derivation runs 5.1–6.3 % high:
+   consumption literature quotes one number per agent, the vapour volume
+   obtained from 1 mL of liquid. Biro gives isoflurane 195 mL, sevoflurane
+   184 mL and desflurane 210 mL. The same number can be derived from the
+   liquid's measured density, its molar mass and the molar volume. At 20 °C the
+   derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.3 %
+   high:
 
    | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | At 37 °C |
    | --- | --- | --- | --- | --- | --- |
@@ -863,35 +842,37 @@ arithmetic.
    | Isoflurane | 1.5019 | 184.49 | 195.8 | 195 | 207.2 |
    | Desflurane | 1.4651 | 168.04 | 209.7 | 210 | 221.9 |
 
-   The densities are those of Laster, Fang and Eger. They were measured in
-   four 50-mL volumetric flasks at 20 °C, with a temperature coefficient of
-   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are the
-   formula masses, which the ChEMBL chemistry database gives to two decimals.
-   So the table shows that the field's constants are 20 °C constants. A model
-   that declared 37 °C would either mix two conditions or print consumption
-   figures 5.5 % below the published ones. That 5.5 % is $`1 - 1/1.058`$, the
-   same for every agent. Put the other way, 1 L of vapour comes from 5.47 mL of
-   liquid sevoflurane here, and would come from 5.17 mL at 37 °C.
+   The densities are those of Laster, Fang and Eger, measured in four 50-mL
+   volumetric flasks at 20 °C, with a temperature coefficient of
+   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are formula
+   masses, which the ChEMBL chemistry database gives to two decimals.
 
-2. **The amounts a consumption figure converts are fresh gas, and fresh gas is
-   at room temperature.** The delivered and exhausted amounts,
-   $`M_{\mathrm{delivered}}`$ and $`M_{\mathrm{exhausted}}`$, both add up
+   A model that declared 37 °C would either convert its 37 °C litres with 20 °C
+   constants, or print consumption figures 5.5 % below the published ones.
+   That 5.5 % is $`1 - 1/1.058`$, the same for every agent. For sevoflurane,
+   1 L of vapour comes from 5.47 mL of liquid at 20 °C, and would come from
+   5.17 mL at 37 °C.
+
+2. **A consumption figure is converted from amounts of fresh gas, and fresh gas
+   is at room temperature.** The delivered amount $`M_{\mathrm{delivered}}`$
+   and the exhausted amount $`M_{\mathrm{exhausted}}`$ both accumulate from
    $`\dot V_F`$, the flow at the common gas outlet. That flow is carrier gas
    plus the vapour that the vaporizer added. It is on the machine side of the
-   patient, at operating-room temperature, not at 37 °C. A cost or waste figure
-   is computed from those two amounts (`ROADMAP.md` "Planned milestones" item
-   28). Declaring 20 °C makes them exact. Declaring 37 °C would leave them
-   approximate. It would *also* need a room-to-body temperature correction on
-   $`\dot V_F`$, which would change the governing equations, not a label.
+   patient, at operating-room temperature, not at 37 °C. A cost or waste
+   figure is computed from those two amounts (`ROADMAP.md` "Planned milestones"
+   item 28). Declaring 20 °C makes them exact. Declaring 37 °C would leave them
+   approximate, and would need a correction from room to body temperature on
+   $`\dot V_F`$. That correction would change the governing equations, not just
+   a label.
 
 3. **Gas Man's own constants are 20 °C constants, and its litres carry no
-   condition at all.** Gas Man states a condition in one place only, its
-   `GASMAN.INI` setting `Volatility=209 Vapor/Liquid volume ratio (20'C)`. It
-   never states a condition on the litres of uptake and of delivered agent
-   that it displays. This model does the same. It uses the condition only where
-   vapour is converted to liquid. Gas Man's five printed constants for vapour
-   per volume of liquid settle which condition that is. The 20 °C derivation
-   reproduces every one of them, and the 37 °C derivation reproduces none:
+   condition at all.** Gas Man states a condition in one place only, the line
+   `Volatility=209 Vapor/Liquid volume ratio (20'C)` in its settings file,
+   `GASMAN.INI`. It never states a condition on the litres of uptake and of
+   delivered agent that it displays. This model likewise uses the condition
+   only where vapour is converted to liquid. The 20 °C derivation reproduces all
+   five of Gas Man's printed vapour-to-liquid constants within 0.35 %, and the
+   37 °C derivation runs 5.6–6.2 % high:
 
    | Agent | Gas Man | Derived, 20 °C | Derived, 37 °C |
    | --- | --- | --- | --- |
@@ -901,14 +882,14 @@ arithmetic.
    | Sevoflurane | 183 | 182.8 (−0.10 %) | 193.4 (+5.7 %) |
    | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
 
-   The 20 °C derivation is within 0.35 % on all five, against 5.6–6.2 % at
-   37 °C. The table adds halothane and enflurane to the three agents this
-   model carries, because Laster, Fang and Eger measured their densities in
-   the same experiment. This model takes its partition coefficients, MACs and
-   reference patient from Gas Man ("Source hierarchy"), so the amounts here
-   follow Gas Man's arithmetic. A different reference condition would make this
-   model's litre and Gas Man's litre different quantities, although every
-   parameter behind them is shared.
+   The table adds halothane and enflurane to the three agents this model
+   carries, because Laster, Fang and Eger measured their densities in the same
+   experiment.
+
+   This model takes its partition coefficients, MACs and reference patient from
+   Gas Man (§ "Source hierarchy"), so its amounts follow Gas Man's arithmetic. A
+   different reference condition would make this model's litre and Gas Man's
+   litre different quantities, although every parameter behind them is shared.
 
 <!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
 <!-- provenance: data/agents/isoflurane.json liquid_density.g_ml = 1.5019 -->
@@ -920,43 +901,34 @@ arithmetic.
 <!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
 
-**37 °C was the alternative.** This model's partition coefficients were
-measured at 37 °C. The alveolar, venous and tissue compartments are physically
-at 37 °C. So 37 °C is the condition at which the *stored* amounts are natively
-exact. It was not chosen, for two reasons. The amounts that are converted out
-of the unit are the fresh-gas terms, not the stored amounts. And the published
-constants that any figure will be compared against are 20 °C constants.
-§ "Known limitations" gives what choosing 20 °C costs.
+**Converting an alveolar, venous or tissue amount at 20 °C overstates it by
+5.8 %** (§ "Known limitations", under § "One reference condition, where the
+model physically has two"). Those compartments are physically at 37 °C, and this
+model's partition coefficients were measured at 37 °C, so declaring 37 °C would
+make their amounts exact. The circuit's gas is at room temperature, so
+converting its amount is exact.
 
-**The conversion's inputs are stored, and one part of the code does the
-conversion.** Each agent file stores the liquid's density, with its spread,
-the temperature at which it was measured and its source. It stores the
-molar mass with its own source. The code derives the millilitres of vapour per
-millilitre of liquid from them, as the table above does. It computes the molar
-volume from the gas constant, 20 °C and one standard atmosphere, and does not
-store it. A density measured at any temperature other than 20 °C is rejected
-when the file loads, because no temperature correction is stored. The
-conversion is exact for the delivered and exhausted agent and the circuit's
-amount, which are at room temperature. It overstates an alveolar, venous or
-tissue amount by 5.8 % (§ "Known limitations", under § "One reference
-condition, where the model physically has two"). A cost is computed from the
-delivered amount, so it is exact.
+The agent cost display is the only part of the simulator that converts an amount
+to liquid. It converts only the delivered agent, so no figure it shows carries
+the 5.8 % error. It reads the delivered amount and the vapour-to-liquid ratio of
+the agent in use from the same moment of the run, so it cannot pair one agent's
+vapour with another agent's ratio. Using desflurane's ratio would misstate
+sevoflurane by about 13 %. The same display multiplies the liquid figure by the
+reader's price to give a cost (§ "A cost at the reader's price").
 
-The published ratios are not stored. A test checks the derived ratios against
-Biro's within 1 % and against Gas Man's within 0.5 %. It also prices the
-isoflurane delivered in the Gas Man Workbook's Exercises 14-1 and 14-2 with the
-derived ratio. The prices must match the book's costs, allowing for rounding
-to the cent and for Gas Man's ratio being rounded to a whole
-millilitre.
+**The simulator derives each agent's vapour-to-liquid ratio, as the first table
+above does.** It stores the liquid density and the molar mass, each with its
+source, and the temperature at which the density was measured. It refuses to
+load a density measured at any temperature other than 20 °C, because it has no
+temperature correction. It computes the molar volume from the gas constant,
+20 °C and one standard atmosphere. Neither the molar volume nor the published
+constants are stored.
 
-The agent cost display is the only code that uses the conversion. It shows the
-delivered agent as liquid and converts nothing else, so no figure it shows
-carries the 5.8 % error. It reads the amount and the running agent's ratio from
-the same moment of the run, so it cannot pair one agent's vapour with another
-agent's ratio. Using desflurane's ratio would misstate sevoflurane by about
-13 %. A test fails if any other code uses the conversion. The cost on the same
-display multiplies this liquid figure by the reader's price (§ "A cost at the
-reader's price").
+A test checks the derived ratios against Biro's within 1 % and against Gas
+Man's within 0.5 %. It also computes the cost of the isoflurane delivered in
+the Gas Man Workbook's Exercises 14-1 and 14-2 with the derived ratio. Those
+costs must match the book's, allowing for rounding to the cent and for Gas
+Man's constant, which is rounded to a whole millilitre.
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -971,15 +943,14 @@ was read.
   formulas and the molar masses. Read through a ChEMBL connector (an MCP
   server) on 2026-10-26. It is tier 2 under § "Source hierarchy", because a
   molar mass is computed from the formula and the standard atomic weights, not
-  measured on the agent. Each agent file says why no tier-1 source exists for
-  it.
+  measured on the agent.
 - Mohr PJ, Newell DB, Taylor BN, Tiesinga E. *CODATA recommended values of the
   fundamental physical constants: 2022.* Rev Mod Phys 2025;97(2):025002.
   doi:10.1103/RevModPhys.97.025002. Table XXXII gives the gas constant as the
   product of the exact Avogadro and Boltzmann constants. Table XXXIII gives
   the standard atmosphere, 101 325 Pa exactly, and the molar volume of an
   ideal gas at 0 °C, which the tests use to check the 24.055 L/mol above.
-  Read at full text from arXiv:2409.03787v1 on 2026-10-26.
+  Read in full from arXiv:2409.03787v1 on 2026-10-26.
 - Biro P. *Calculation of volatile anaesthetics consumption from agent
   concentration and fresh gas flow.* Acta Anaesthesiol Scand
   2014;58(8):968-72. PMID 25060161, doi:10.1111/aas.12374. Retrieved from
@@ -989,37 +960,40 @@ was read.
 - Philip JH. *Workbook for Gas Man*. Appendix C's `GASMAN.INI` listing is the
   source for the `Volatility` setting. Chapter 10's closed-circuit
   liquid-injection section (printed pp. 103-105) is the source for the five
-  expansion constants. There the constants convert an *input*, the volume of
-  liquid injected, rather than a displayed amount. Both were read from the
-  project owner's private reference library on 2026-09-16.
-  `docs/references/README.md` § "Philip — *Workbook for Gas Man*" has the
-  reading notes. The workbook is Tier 3 under § "Source hierarchy": it
-  defines what Gas Man does, and it measures nothing.
+  vapour-to-liquid constants. There the constants convert an *input*, the volume
+  of liquid injected, rather than a displayed amount. Both were read from the
+  project owner's private reference library on 2026-09-16. The reading notes are
+  in `docs/references/README.md` § "Philip — *Workbook for Gas Man*". The
+  workbook is tier 3 under § "Source hierarchy": it defines what Gas Man does,
+  and it measures nothing.
 
-**For developers.** Each agent file stores the liquid's density as
-`liquid_density`, with its spread and the temperature at which it was
-measured, and the molar mass as `molar_mass_g_mol`. Each has its own `sources`
-entry, which says why no tier-1 source (§ "Source hierarchy") exists.
-`core/liquid_agent.py` derives the millilitres of vapour per millilitre of liquid from them.
-`tests/reference/test_published_vapour_to_liquid.py` checks the derived ratios
-against Biro's within 1% and against Gas Man's within 0.5%. The display reads
-the amount and the ratio from one snapshot, which pairs the ratio with the running agent
-(`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other code under
-`src/` calls `liquid_volume_ml`.
+**For developers.** The code must use the one reference condition everywhere,
+and must never add gas fractions, dissolved blood concentrations and tissue
+concentrations directly. It works in litres unless the implementation document
+explicitly selects another consistent unit.
+
+Each agent's file in `data/agents/` stores the density as `liquid_density`,
+with its spread and measurement temperature, and the molar mass as
+`molar_mass_g_mol`. The `sources` entry for each says why no tier-1 source
+(§ "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
+`core/liquid_agent.py` and checked by
+`tests/reference/test_published_vapour_to_liquid.py`, within 1% of Biro's
+constants and within 0.5% of Gas Man's. The agent cost display reads the
+amount and the ratio from one snapshot of the run, which pairs the ratio with
+the running agent (`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other
+code under `src/` calls the conversion to liquid (`liquid_volume_ml`).
 
 ## Symbols
 
 The **Code** column names the one place in the model's code that holds each
-symbol, written `ClassName.accessor`. A reader who knows these variables
-should be able to follow the code without the column, so code that needs the
-column to be understood has a defect.
+symbol.
 
 | Symbol | Meaning | Unit | Code |
 | --- | --- | --- | --- |
-| $`t`$ | Explicit simulation time | s | `SimulationState.elapsed_s` |
+| $`t`$ | Elapsed simulation time | s | `SimulationState.elapsed_s` |
 | $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
 | $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
-| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see § "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
+| $`F_I`$ | Inspired agent fraction, taken as the fraction in the breathing circuit (see § "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
 | $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction, defined as $`F_a \equiv F_A`$ (§ "Model boundary") | dimensionless | — the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
@@ -1032,33 +1006,40 @@ column to be understood has a defect.
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
-| $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$, so that $`Q_i = f_iQ`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, at age 40. It is used only as a display divisor and appears in no governing equation | percent | `AgentParameters.mac_percent` |
-| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
-| $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, which is the coefficient the agent data files store | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
+| $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, at age 40. It is used only as a display divisor | percent | `AgentParameters.mac_percent` |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
+| $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
 | $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas | `BreathingCircuit.agent_amount_l` |
 | $`M_A`$ | Agent stored in alveolar gas | L equivalent gas | `AlveolarCompartment.agent_amount_l` |
 | $`M_v`$ | Agent stored in venous blood | L equivalent gas | `VenousBloodCompartment.agent_amount_l` |
 | $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas | `TissueGroup.agent_amount_l` |
 
-A symbol may be defined by the model but have no expression of its own in the
-implementation. For such a symbol, the Code cell holds an em dash followed by
-what the code reads in its place. $`F_a`$ is the only such symbol.
+The symbols for the two tissue coefficients name both phases in order, because
+the primary literature has no convention that would let a reader supply a
+missing phase. Baker and Farmery's 2011 review gives one quantity three names in
+a single chapter: the tissue-gas partition coefficient (p. 569), the
+tissue-blood partition coefficient (p. 570) and the blood tissue partition
+coefficient (Table 2). The review's Eq. (4) shows that the quantity is the
+tissue:blood coefficient. The full citation is in the reference list,
+`docs/references/README.md`.
 
-The two tissue coefficients are related by
-$`\lambda_{i:g} = \lambda_{i:b}\lambda_{b:g}`$. The agent data files store
-$`\lambda_{i:g}`$ and $`\lambda_{b:g}`$, and $`\lambda_{i:b}`$ is derived from
-them. This is why § "Tissue compartments" below writes the tissue capacity as
-$`V_i\lambda_{i:b}\lambda_{b:g}`$ but computes it as the equivalent single
-multiplication $`V_i\lambda_{i:g}`$. Both symbols name their two phases in
-order, and so do both identifiers. They do so because the primary literature
-has no convention that would let a reader supply a missing phase. Baker and
-Farmery's 2011 review gives one quantity three names in a single chapter: the
-tissue-gas partition coefficient (p. 569), the tissue-blood partition
-coefficient (p. 570) and the blood tissue partition coefficient (Table 2). Its
-Eq. (4) settles the quantity as tissue:blood. `docs/references/README.md` has
-the full citation.
+**For developers.** Each Code cell is written `ClassName.accessor`. Where a
+symbol has no place of its own in the code, its Code cell shows an em dash
+followed by what the code reads instead. $`F_a`$ is the only such symbol.
+
+A reader who knows the model's symbols should be able to follow the code
+without the Code column, so code that needs the column to be understood has a
+defect.
+
+The code's names for the two tissue coefficients give both phases in order, as
+their symbols do.
+
+In § "Tissue compartments" below, the tissue capacity is
+$`V_i\lambda_{i:b}\lambda_{b:g}`$. The code computes it as the equivalent
+single multiplication $`V_i\lambda_{i:g}`$, because the agent data files store
+$`\lambda_{i:g}`$.
 
 ## Compartment capacities
 
@@ -1067,25 +1048,13 @@ the full citation.
 The equivalent agent amount in the breathing circuit is:
 
 $$
-M_C = V_C F_I
+M_C = V_C F_I, \qquad \text{so} \qquad F_I = \frac{M_C}{V_C}
 $$
 
 The equivalent agent amount in the alveolar gas compartment is:
 
 $$
-M_A = V_A F_A
-$$
-
-Therefore:
-
-$$
-F_I = \frac{M_C}{V_C}
-$$
-
-and:
-
-$$
-F_A = \frac{M_A}{V_A}
+M_A = V_A F_A, \qquad \text{so} \qquad F_A = \frac{M_A}{V_A}
 $$
 
 ### Blood compartments
@@ -1093,15 +1062,8 @@ $$
 The blood:gas partition coefficient relates the concentration of agent
 dissolved in blood to the gas-phase concentration at equilibrium.
 
-**The patient holds one blood:gas coefficient.** The agent's parameter file
-stores it, and the model writes it once, into the venous pool. The lung's
-uptake term and every tissue group's tissue:blood coefficient read that one
-value, and the tissue groups store none. The pool refuses a second value, and
-the patient refuses a replacement pool with a different one. If each group
-kept its own copy, the copies could disagree and no check would fire. A pool at
-0.1 beside groups at sevoflurane's 0.65 would still conserve agent, and the run
-would give uptake curves that look plausible and are wrong.
-<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+**The simulated patient has one blood:gas coefficient.** It comes from the
+agent's data. The lung's uptake term and every tissue group's tissue:blood coefficient read that one value, and the tissue groups store none.
 
 Arterial blood has no compartment, capacity or amount balance of its own.
 Instead, $`F_a \equiv F_A`$ at every instant, for the reasons § "Model
@@ -1113,21 +1075,46 @@ $$
 M_v = V_v \lambda_{b:g} F_v
 $$
 
-Therefore:
+Solving for $`F_v`$ gives:
 
 $$
 F_v = \frac{M_v}{V_v\lambda_{b:g}}
 $$
 
+**For developers.** The model writes the blood:gas coefficient once, into the
+venous pool. The pool refuses a second value, and the patient refuses a
+replacement pool with a different one. If each tissue group kept its own copy,
+the copies could disagree and no check would fire. A pool at 0.1 beside groups
+at sevoflurane's 0.65 would still conserve agent, and the run would give uptake
+curves that look plausible and are wrong.
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+
 ### Tissue compartments
 
-For tissue group $`i`$:
+The effective tissue capacity $`C_i`$ of tissue group $`i`$ is the group's
+volume times its tissue:blood partition coefficient and the agent's blood:gas
+partition coefficient:
 
 $$
-M_i = V_i \lambda_{i:b}\lambda_{b:g}F_i
+C_i =
+V_i\lambda_{i:b}\lambda_{b:g}
 $$
 
-Therefore:
+The product of the two coefficients is the group's stored tissue:gas
+coefficient, so:
+
+$$
+C_i =
+V_i\lambda_{i:g}
+$$
+
+The capacity relates $`M_i`$ to $`F_i`$:
+
+$$
+M_i = C_iF_i
+$$
+
+Dividing $`M_i`$ by the capacity gives $`F_i`$:
 
 $$
 F_i =
@@ -1135,32 +1122,13 @@ F_i =
 {V_i\lambda_{i:b}\lambda_{b:g}}
 $$
 
-The effective tissue capacity is:
-
-$$
-C_i =
-V_i\lambda_{i:b}\lambda_{b:g}
-$$
-
-Written equivalently with the stored tissue:gas coefficient, it is:
-
-$$
-C_i =
-V_i\lambda_{i:g}
-$$
-
-which is the single multiplication that `TissueGroup.capacity_l` computes.
-
-Either way, the same relationship may be written:
-
-$$
-M_i = C_iF_i
-$$
-
-**For developers.** `PatientCompartments.from_parameters` writes the agent's
-blood:gas coefficient once, into the venous pool. The lung's uptake term and
-every tissue group's tissue:blood coefficient read it through
-`PatientCompartments.blood_gas_partition_coefficient`.
+**For developers.** The code computes the capacity from the tissue:gas
+coefficient, in one multiplication (`TissueGroup.capacity_l`). When the model
+sets up the patient's compartments (`PatientCompartments.from_parameters`), it
+stores the agent's blood:gas coefficient once, in the venous pool. The code
+takes that value (`PatientCompartments.blood_gas_partition_coefficient`) from
+there for the lung's uptake term and for each tissue group's tissue:blood
+coefficient.
 
 ## Tissue groups
 
@@ -1174,26 +1142,17 @@ Each group has:
 
 - a tissue volume $`V_i`$;
 - a fraction of cardiac output $`f_i`$;
-- a tissue blood flow $`Q_i = f_iQ`$, which is computed from the patient's
-  cardiac output whenever it is needed and is not stored on the group;
-- an agent tissue:gas partition coefficient $`\lambda_{i:g}`$, which is the
-  coefficient stored for each agent;
-- an agent tissue:blood partition coefficient $`\lambda_{i:b}`$, derived
-  from the tissue:gas coefficient and the patient's one blood:gas
-  coefficient (the group stores no blood:gas coefficient);
+- a tissue blood flow $`Q_i = f_iQ`$, computed from the patient's cardiac
+  output $`Q`$ each time the flow is needed, and not stored with the group;
+- a tissue:gas partition coefficient $`\lambda_{i:g}`$, stored for each agent;
+- a tissue:blood partition coefficient $`\lambda_{i:b}`$, derived from the
+  tissue:gas coefficient and the patient's one blood:gas coefficient (the group stores no blood:gas coefficient);
 - a stored agent amount $`M_i`$; and
 - a derived partial-pressure-equivalent fraction $`F_i`$.
 
-Tissue flow is:
-
-$$
-Q_i = f_iQ
-$$
-
-The flow fractions must satisfy $`f_i > 0`$ and $`\sum_i f_i = 1`$ within a
-documented validation tolerance.
-
-Consequently:
+The fractions of cardiac output must satisfy $`f_i > 0`$ and $`\sum_i f_i = 1`$
+within a documented validation tolerance, so the three groups together receive
+the whole cardiac output:
 
 $$
 \sum_i Q_i = Q
@@ -1207,219 +1166,197 @@ used here.
 
 ### Breathing circuit
 
-Fresh gas enters at concentration $`F_D`$. A volume of gas equal to the fresh
-gas volume leaves through the exhaust, at the current concentration of the
-mixed circuit gas, $`F_I`$.
-
-**$`\dot V_F`$ is the flow at the common gas outlet, not the flowmeter
-setting.** The balance below uses one $`\dot V_F`$ both for the agent that
-arrives and for the gas that leaves, so both must refer to the same stream.
-Agent enters at $`\dot V_F F_D`$, which must be the vapour flow that the
-vaporizer actually adds. Mixed circuit gas leaves at that same total flow.
-$`\dot V_F`$ is therefore the whole gas stream delivered to the circuit, which
-is the carrier gas plus that added vapour. The balance is wrong if
-$`\dot V_F`$ is read as the carrier gas alone.
-
-A vaporizer adds vapour to the carrier stream. It does not displace part of
-that stream. Let $`\dot V_c`$ be the carrier flow, which is what the
-flowmeters are set to, and let $`\dot V_v`$ be the added vapour flow. The
-delivered fraction is then $`F_D = \dot V_v/(\dot V_c + \dot V_v)`$, and the
-two flows are related by:
-
-$$
-\dot V_F = \dot V_c + \dot V_v = \frac{\dot V_c}{1-F_D}
-$$
-
-The gap between the two flows is small at ordinary dial settings. It is not
-small at the top of a desflurane dial. At 2% delivered, the two flows differ
-by 2%. The calibrated maximum of the Tec 6 vaporizer is 18%, and this model
-uses it as desflurane's dial maximum. At 18% the two flows differ
-by 22%. Gas from flowmeters set to 2 L/min then leaves the common gas outlet
-at about 2.44 L/min. Suppose a reader takes the interface's fresh-gas-flow
-control for a flowmeter setting. That reader is then wrong by the same factor
-in the circuit time constant $`V_C/\dot V_F`$, which is the quantity the
-wash-in curve is about.
-<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- not-restated: 2 % -->
-
-The interface therefore labels that control "Fresh gas flow", with the gloss
-"common gas outlet" on the line below it. The alveolar readout uses the same
-two-line form for "end-tidal-equivalent", for the same reason. The unqualified
-name is the one on a real flowmeter bank, and the label must not be shortened
-back to that name to fit a layout.
-
-**$`V_C`$ is the assembled breathing system, never a manufacturer's apparatus
-figure.** The model has one well-mixed gas compartment in front of the
-patient, so the corrugated limbs and the Y-piece can only be inside $`V_C`$.
-The machine's circuit volume, which supplies $`V_C`$, is therefore the
-assembled total of the apparatus plus the patient circuit.
-
-- The *apparatus* is the workstation's internal volume, including its
-  absorber and excluding the breathing circuit. Every volume that
-  `docs/machine-survey.md` § "(a1) Apparatus gas volume" found is stated that
-  way (Shin et al. cite Dräger's instructions for use for theirs).
-- The *patient circuit* is the disposable limbs and Y-piece fitted for the
-  case.
-
-A profile author who has an apparatus figure therefore adds a patient-circuit
-volume to it and stores the sum. That volume is 1.2 L unless the profile
-assumes a circuit with a stated volume of its own. It is the internal volume
-of the Hudson RCI circuit that Shin et al. added to each machine's figure
-(*BMC Anesthesiol* 2017;17(1):10, PMID 28103806; read at full text 2026-10-04
-from PubMed Central, PMC5248460).
-
-The stored total leaves out the circuit's reservoir bag, whatever the source of
-the figure. Shin et al.'s sums leave out the 3 L bag of their set-up, so a
-total built from them already does. Adding the bag would nearly double a
-Perseus A500's assembled 3.3 L.
-
-If the apparatus figure is stored alone, $`\tau_C`$ is shortened by the
-circuit's share. A Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min, where its
-assembled 3.3 L gives 49.5 s, so the first value is 36% short. No automatic
-check can catch that error, because both are correctly cited volumes. This rule
-applies until the machine and the patient circuit get separate volumes, as
-`docs/machine-abstraction.md` plans. The shipped 6.0 L is such a total, and no
-source divides it between the two (§ "Parameter provenance").
-<!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
-<!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
-<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
-
-Ventilation transfers gas between the breathing circuit and the alveolar
-compartment.
-
-The circuit amount balance is:
+Fresh gas enters the circuit at flow $`\dot V_F`$ and concentration $`F_D`$. A
+volume of gas equal to the fresh gas volume leaves through the exhaust, at the
+current concentration of the mixed circuit gas, $`F_I`$. Ventilation exchanges
+gas between the circuit and the alveolar compartment. The amount of agent in the
+circuit, $`M_C`$, therefore changes as:
 
 $$
 \frac{dM_C}{dt} = \dot V_F(F_D-F_I) - \dot V_A(F_I-F_A)
 $$
 
-Because:
-
-$$
-M_C = V_CF_I
-$$
-
-the concentration equation is:
+Since $`M_C = V_CF_I`$, where $`V_C`$ is the circuit volume, the concentration
+equation is:
 
 $$
 \frac{dF_I}{dt} = \frac{\dot V_F}{V_C}(F_D-F_I) - \frac{\dot V_A}{V_C}(F_I-F_A)
 $$
 
-When alveolar ventilation is zero, this reduces to the v0.0.2 circuit equation:
+With no alveolar ventilation, this reduces to the equation for the circuit
+alone:
 
 $$
 \frac{dF_I}{dt} = \frac{\dot V_F}{V_C}(F_D-F_I)
 $$
 
-For constant input and no patient connection, the exact v0.0.2 solution still
-applies:
+When the fresh gas is constant and no patient is connected, this equation has an
+exact solution over a time $`\Delta t`$:
 
 $$
 F_I(t+\Delta t) = F_D+\left[F_I(t)-F_D\right]\exp\left(-\frac{\dot V_F\Delta t}{V_C}\right)
 $$
 
-The existing v0.0.2 analytic reference tests must continue to pass unchanged.
+**$`\dot V_F`$ is the flow at the common gas outlet, not the flowmeter
+setting.** The balance uses one $`\dot V_F`$ for the agent that arrives, at
+$`\dot V_F F_D`$, and for the mixed circuit gas that leaves. $`\dot V_F`$ is
+therefore the whole gas stream delivered to the circuit: the carrier gas plus
+the vapour that the vaporizer adds to it. Let $`\dot V_c`$ be the carrier flow,
+which is what the flowmeters are set to, and let $`\dot V_v`$ be the added
+vapour flow. The delivered fraction is then
+$`F_D = \dot V_v/(\dot V_c + \dot V_v)`$, and $`\dot V_F`$ is related to the
+flowmeter setting by:
 
-**The exhaust is a semi-closed circle's, and it runs whenever fresh gas
-runs.** $`\dot V_F`$ appears twice in the balance above and does two
-different jobs. It is the rate at which agent arrives, and it is the rate at
-which mixed circuit gas leaves. The two jobs share one symbol because the
-outflow is not an independent quantity here. The outflow is fixed equal to
-the inflow, which is what a circle system does while gas is passing through
-its surplus gas valve. Two of this model's own assumptions fix it there.
-First, both gas compartments have fixed volumes. Second, the modeled patient
-takes up no net volume, since "Alveolar gas" removes agent from a constant
-$`V_A`$ without removing gas from it. Every litre admitted therefore has to
-leave, and the exhaust is the only way out.
+$$
+\dot V_F = \dot V_c + \dot V_v = \frac{\dot V_c}{1-F_D}
+$$
+
+At ordinary dial settings $`\dot V_F`$ is only slightly higher than the
+flowmeter setting, by 2% at 2% delivered. The model sets the top of the
+desflurane dial at 18%, the calibrated maximum of the Tec 6 vaporizer. At that
+setting $`\dot V_F`$ is 22% higher, so gas from flowmeters set to 2 L/min leaves
+the common gas outlet at about 2.44 L/min. If a reader takes the simulator's
+fresh gas flow control for a flowmeter setting, they misjudge the circuit time
+constant, $`V_C/\dot V_F`$, by the same factor. The wash-in curve depends on
+that time constant.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- not-restated: 2 % -->
+
+The simulator therefore labels that control "Fresh gas flow", with "common gas
+outlet" on the line below it. On a real machine, "Fresh gas flow" alone is the
+name on the flowmeter bank. The alveolar readout uses the same two-line form for
+"end-tidal-equivalent", for the same reason.
+
+**$`V_C`$ is the assembled breathing system, never a manufacturer's apparatus
+figure.** The model has one well-mixed gas compartment in front of the
+patient, so the corrugated limbs and the Y-piece can only be inside $`V_C`$.
+$`V_C`$ is therefore the sum of two volumes:
+
+- The *apparatus* is the workstation's internal volume, including its
+  absorber and excluding the patient circuit. This project's survey of
+  anesthesia machines found every apparatus volume stated that way
+  (`docs/machine-survey.md` § "(a1) Apparatus gas volume").
+- The *patient circuit* is the disposable limbs and Y-piece fitted for the
+  case.
+
+Where a machine's $`V_C`$ is built from an apparatus figure, it includes 1.2 L
+for the patient circuit, unless the machine's data assumes a circuit with a
+stated volume of its own. The 1.2 L is the internal volume of the Hudson RCI
+circuit that Shin et al. added to each machine's figure (*BMC Anesthesiol*
+2017;17(1):10, PMID 28103806; read at full text 2026-10-04 from PubMed Central,
+PMC5248460). Shin et al. cite Dräger's instructions for use for their apparatus
+volumes.
+
+$`V_C`$ leaves out the reservoir bag, whatever the source of the volume.
+Shin et al.'s totals also leave out the 3 L bag of their set-up. Adding that bag
+would nearly double a Perseus A500's assembled 3.3 L.
+
+The circuit volume that the simulator ships with, 6.0 L, is an assembled total,
+and no source divides it between apparatus and patient circuit
+(§ "Parameter provenance").
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
+
+**The exhaust is a semi-closed circle's, and it vents whenever fresh gas
+flows.** Two of the model's assumptions keep the outflow equal to the inflow, as
+in a circle while gas is passing through its surplus gas valve. Both gas
+compartments have fixed volumes. The modeled patient takes up no net volume,
+because the model removes agent from a constant alveolar volume, $`V_A`$,
+without removing gas from it (§ "Alveolar gas"). Every litre admitted therefore
+has to leave, and the exhaust is the only way out.
 
 **A real circle spills less than it is given**, by the volume the patient
-removes. That volume is the oxygen consumed, the vapour taken up, and any
-nitrous oxide. Carbon dioxide is not a fourth term. Carbon dioxide gives back
-to the circuit the volume that the blood took from the circuit, and the
-absorbent then removes it again, so it nets to nothing here. The gap is an
-absolute rate rather than a share of the flow. So it is small where the flow
-is large, and it is the whole of the spill where the flow is small. For the
-reference adult it is on the order of 0.3 L/min early in a case. About
-240 ml/min of that is oxygen, from the $`10M^{3/4}`$ allometry that
-"Parameter provenance" takes from page 17 of Lowe and Ernst. That allometry is
-Brody's interspecies metabolic relation, not a measurement in an anaesthetised
-adult, and it carries that section's caution with it. The rest is the
-65 ml/min of sevoflurane vapour that "Alveolar gas" computes at the early
-induction gradient, which falls away as uptake does. Against the 4.0 L/min
-that this project ships as its opening fresh gas flow, the gap is 6 to 8%.
-Against the 0.5 L/min that the supported range also allows, it is half or
-more.
+removes: the oxygen consumed, the vapour taken up, and any nitrous oxide.
+Carbon dioxide nets to nothing, because the absorbent removes as much as the
+patient breathes out. The gap is an absolute rate, not a share of the flow, so
+it is small where the flow is large and is the whole of the model's spill where
+the flow is small. For the simulator's reference adult it is on the order of
+0.3 L/min early in a case. About 240 ml/min of that is oxygen, from the
+$`10M^{3/4}`$ allometry on page 17 of Lowe and Ernst (§ "Parameter provenance").
+That allometry is Brody's interspecies metabolic relation, not a measurement in
+an anaesthetised adult, and the caution given in that section applies to it.
+The rest is the 65 ml/min of sevoflurane vapour that the model computes at the
+early induction gradient (§ "Alveolar gas"), a figure that falls as uptake
+slows. At the opening fresh gas flow of 4.0 L/min, the gap is 6 to 8%. At
+0.5 L/min, which the simulator also allows, it is half or more.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 <!-- derived: 6 to 8 percent from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 
-**At the bottom of that range the valve shuts**, which is closed-circuit
-technique. Fresh gas is titrated down to uptake, with no surplus left to vent.
-A machine may also shut the valve as a mode of its own. Meyer et al., who
-wrote for the manufacturer of one of the machines this project has surveyed,
-state: *"In the automatic controlled mode of the Zeus anesthesia machine, the
-surplus gas valve can be closed to prevent any loss of gas volume"* (Meyer
-J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and devices
-for inhalational anesthetic drug dosing. In: Schüttler J, Schwilden H, eds.
-*Modern Anesthetics.* Handbook of Experimental Pharmacology vol. 182. Berlin:
-Springer; 2008:451–470; read at full text 2026-09-19, with the record and
-route in `docs/machine-survey.md` § "Sources").
+**When fresh gas is titrated down to uptake, nothing is left to vent and the
+surplus gas valve shuts.** This is closed-circuit technique. A machine may also
+shut the valve as a mode of its own. Meyer et al. wrote for the manufacturer of
+one of the surveyed machines. They state: *"In the automatic controlled mode of
+the Zeus anesthesia machine, the surplus gas valve can be closed to prevent any
+loss of gas volume"* (Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced
+technologies and devices for inhalational anesthetic drug dosing. In:
+Schüttler J, Schwilden H, eds. *Modern Anesthetics.* Handbook of Experimental
+Pharmacology vol. 182. Berlin: Springer; 2008:451–470; read at full text
+2026-09-19, with the record and route in `docs/machine-survey.md` § "Sources").
 
 **Neither is modeled here, and the reason is not the exhaust term.** The
-circuit equation is the part that still applies with a shut valve. Gas that
-the patient's uptake pulls out of the circuit leaves at $`F_I`$, exactly as
-spilled gas does. So $`\dot V_F(F_D-F_I)`$ is the same balance either way, and
-$`F_I`$ is not what changes. Two other things change.
+circuit equation still applies with the valve shut. Gas that the patient's
+uptake pulls out of the circuit leaves at $`F_I`$, exactly as spilled gas does.
+The term $`\dot V_F(F_D-F_I)`$ is therefore the same either way, and so is
+$`F_I`$. Two other things change.
 
-- **Where that agent goes.** "Circuit exhaust" counts the whole of
-  $`\dot V_FF_I`$ as leaving the system. With the valve shut, that agent is
-  carried into the alveolus and kept there. That needs the extra inspired gas
-  that "Alveolar gas" writes as
+- **Where the agent in the outflow goes.** The model counts the whole of
+  $`\dot V_FF_I`$ as leaving the system (§ "Circuit exhaust"). With the valve
+  shut, that agent is carried into the alveolar compartment and kept there.
+  Carrying it there needs the extra inspired gas that § "Alveolar gas" writes as
   $`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$, and this model does not
   include that term.
 - **What sets the flow.** A closed circuit's fresh gas flow *is* the
-  patient's total uptake, so $`\dot V_F`$ stops being a free input and
-  becomes an output. This model computes no part of that sum. It does not
-  track oxygen, which is the largest of the three streams. Its fixed alveolar
-  volume also assumes that the agent it does compute removes no volume at
-  all.
+  patient's total uptake, so $`\dot V_F`$ stops being a setting and becomes a
+  result. This model cannot compute that total. It does not track oxygen,
+  which is the largest part. It computes the agent's uptake, but its fixed
+  alveolar volume assumes that this uptake removes no volume at all.
 
-So closed-circuit operation is blocked twice over. It is **not** a fourth
-member of the three "Known limitations" entries that the fixed alveolar
-volume blocks by itself. Lifting that constraint is necessary here but not
-sufficient. An oxygen-consuming patient is the other half, and this model has
-no such patient.
+**For developers.** The tests from v0.0.2 that check the equation for the
+circuit alone against its exact solution must still pass unchanged.
 
-**Setting the removal rate to zero and leaving the rest alone would be
-wrong.** Such a model runs without error and gives a plausible curve. The
-circuit settles at $`F_I = F_A + \dot V_FF_D/\dot V_A`$. With the shipped
-4.0 L/min fresh gas flow, the reference adult's 4 L/min alveolar ventilation
-and a 2% dial, the circuit settles two percentage points above alveolar. In
-the steady state, every litre of delivered agent reaches the patient, as in a
-closed circuit. But it is not a closed circuit, because nothing ties the fresh
-gas flow to uptake. At 4.0 L/min, for the same dial, the vaporizer adds agent
-about thirteen times faster than at the 0.3 L/min that this patient's uptake
-would set. Closed-circuit operation is a property of the machine, and one
-coefficient switched by a condition is the wrong way to model it.
+Desflurane's dial maximum is stored in `data/agents/desflurane.json` as
+`max_delivered_concentration_percent`.
+
+Never shorten the "Fresh gas flow" label to its first line to fit a layout.
+
+A machine's $`V_C`$ is stored as `circuit_volume_l` in its file in
+`data/machines/`. It holds the assembled total of machine and patient circuit until the split planned in `docs/machine-abstraction.md` stores the apparatus volume separately, as `apparatus_volume_l`.
+
+An apparatus figure stored alone shortens the circuit time constant by the
+patient circuit's share. At 4.0 L/min, a Perseus A500's 2.1 L apparatus volume
+gives a time constant of 31.5 s, 36% shorter than the 49.5 s from its assembled
+3.3 L. No automatic check can catch that error, because both are correctly cited
+volumes. The documentation check (`check_provenance` in `tools/doc_check.py`)
+confirms only that each stored number appears in this document.
+<!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
+Closed-circuit operation needs both a variable alveolar volume and a patient who
+consumes oxygen, so it is not among the three entries in § "Known limitations"
+that come from the fixed alveolar volume alone.
+
+Setting only the exhaust's removal rate to zero does not model a closed circuit.
+The changed model runs without error and gives a plausible curve. Its circuit
+settles at $`F_I = F_A + \dot V_FF_D/\dot V_A`$.
+At the opening fresh gas flow of 4.0 L/min, with the reference adult's 4 L/min
+alveolar ventilation and a 2% dial, that is two percentage points above
+alveolar. In the steady state every litre of delivered agent reaches the
+patient, as in a closed circuit, but nothing ties the fresh gas flow to uptake.
+At 4.0 L/min and the same dial, the vaporizer adds agent about thirteen times
+faster than at the 0.3 L/min that this patient's uptake would set.
+Closed-circuit operation is a property of the machine, and one coefficient
+switched by a condition is the wrong way to model it. The machine design in
 `docs/machine-abstraction.md` reserves a place for it, a `closed_circuit`
 removal strategy, recorded there as not implemented.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 <!-- not-restated: 2 % -->
 
-**For developers.** The machine profile's `circuit_volume_l` supplies $`V_C`$, so it holds
-the total of the apparatus and the patient circuit. Nothing checks that a stored volume is
-that total. `check_provenance` in `tools/doc_check.py` checks only that each stored number
-appears in this document. The planned split in `docs/machine-abstraction.md` adds an
-`apparatus_volume_l`. Desflurane's 18% is stored as `max_delivered_concentration_percent`.
-<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-
 ### Alveolar gas
 
 Ventilation moves gas between the circuit and the alveolar compartment.
-
-Pulmonary blood flow enters the lungs at the venous concentration $`F_v`$. It
+Pulmonary blood flow enters the lungs at the venous concentration $`F_v`$ and
 leaves in equilibrium with alveolar gas, at $`F_A`$.
 
 The alveolar amount balance is:
@@ -1428,63 +1365,64 @@ $$
 \frac{dM_A}{dt} = \dot V_A(F_I-F_A) - Q\lambda_{b:g}(F_A-F_v)
 $$
 
-Because:
-
-$$
-M_A = V_AF_A
-$$
-
-the alveolar concentration equation is:
+Because $`M_A = V_AF_A`$, the alveolar concentration equation is:
 
 $$
 \frac{dF_A}{dt} = \frac{\dot V_A(F_I-F_A) - Q\lambda_{b:g}(F_A-F_v)}{V_A}
 $$
 
-Alveolar gas has no single time constant. If ventilation acted alone, that is,
-at $`Q = 0`$, it would turn the alveolar volume over with:
+Blood exchanges agent with alveolar gas at the pulmonary uptake rate:
+
+$$
+\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)
+$$
+
+A positive value is net uptake from alveolar gas into blood. A negative value is
+net return from blood to alveolar gas during washout.
+
+**Alveolar gas has no single time constant.** If ventilation acted alone, at
+$`Q = 0`$, it would turn the alveolar volume over with the time constant:
 
 $$
 \tau_A^{\mathrm{vent}} =
 \frac{V_A}{\dot V_A}
 $$
 
-using compatible time and flow units. For the reference adult, where
-$`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min, this is 37.5 s.
+For the reference adult, where $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min, this
+is 37.5 s.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 37.5 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 
-That quantity is not the time constant of the coupled system, and the model
-does not offer it as a derived output. Two things separate it from what a run
-exhibits. First, blood uptake is a second exchange term that
-acts on the same compartment. If $`F_I`$ and $`F_v`$ are held fixed, $`F_A`$
-relaxes with the time constant $`V_A/(\dot V_A + Q\lambda_{b:g})`$. For the
-reference adult on sevoflurane, that is 20.7 s rather than 37.5 s. Second,
-$`F_I`$ and $`F_v`$ are not fixed. They are state variables of the same system.
-So the alveolar trajectory is a sum of exponentials over all six modeled
-compartments, and no single constant describes it. A
-$`\tau_A^{\mathrm{vent}}`$ presented as "the alveolar time constant" would be a
-plausible number for a rate that the simulation does not exhibit.
+The model does not offer 37.5 s as a derived output. Shown as "the alveolar
+time constant", it would look plausible but match no rate in the simulation.
+Blood uptake acts on alveolar gas alongside ventilation. If $`F_I`$ and $`F_v`$
+were held fixed, $`F_A`$ would change with the time constant
+$`V_A/(\dot V_A + Q\lambda_{b:g})`$, which is 20.7 s for the reference adult on
+sevoflurane. But $`F_I`$ and $`F_v`$ are not fixed, because the model computes
+them together with $`F_A`$. The alveolar trajectory is therefore a sum of
+exponentials over all six compartments, and no single time constant describes
+it.
 <!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
 <!-- derived: 20.7 s from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 
-**The coupled system's own time constants.** The model's six concentrations
-change together. Any run is the level set by the delivered fraction plus six
-exponential terms, each with its own time constant. The delivered fraction
-does not affect those time constants. They depend only on the three flows, the
-volumes and the partition coefficients. The table gives them at the reference
-adult's default flows and at the corner of the supported settings, where fresh
-gas flow, alveolar ventilation and cardiac output are all at their maximums of
-10, 12 and 10 L/min. The circuit volume is the reference circle system's 6 L in
-both.
+**Six time constants set the pace of every run.** The model computes the
+concentrations in its six compartments together. Each is the level that the
+delivered fraction sets plus six exponential terms, one for each time constant.
+These time constants depend only on fresh gas flow, alveolar ventilation,
+cardiac output, the volumes and the partition coefficients, and not on the
+delivered fraction. The table gives them at the reference adult's default flows
+and with all three flows at their supported maximums: fresh gas flow 10 L/min,
+alveolar ventilation 12 L/min and cardiac output 10 L/min. The circuit volume is
+the reference circle system's 6 L in both.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12, MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 
-| Flows (L/min): fresh gas, $`\dot V_A`$, $`Q`$ | Agent | $`\tau_1`$ (s) | $`\tau_2`$ (s) | $`\tau_3`$ (s) | $`\tau_4`$ (s) | $`\tau_5`$ (s) | $`\tau_6`$ (s) | Period of the fastest pair (s) |
+| Flows (L/min): fresh gas, $`\dot V_A`$, $`Q`$ | Agent | $`\tau_1`$ (s) | $`\tau_2`$ (s) | $`\tau_3`$ (s) | $`\tau_4`$ (s) | $`\tau_5`$ (s) | $`\tau_6`$ (s) | Oscillation period (s) |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 4, 4, 5 (defaults) | sevoflurane | 15.8 | 15.8 | 63.1 | 365 | 10 300 | 167 000 | 753 |
 | | isoflurane | 13.7 | 13.7 | 54.5 | 426 | 11 500 | 187 000 | 466 |
 | | desflurane | 16.6 | 16.6 | 66.1 | 264 | 6 020 | 95 500 | 1 540 |
-| 10, 12, 10 (corner) | sevoflurane | 6.89 | 6.89 | 27.2 | 161 | 4 890 | 81 300 | 398 |
+| 10, 12, 10 (maximums) | sevoflurane | 6.89 | 6.89 | 27.2 | 161 | 4 890 | 81 300 | 398 |
 | | isoflurane | 6.02 | 6.21 | 22.4 | 190 | 5 280 | 89 500 | none |
 | | desflurane | 7.17 | 7.17 | 29.1 | 114 | 2 890 | 47 000 | 384 |
 <!-- derived: 15.8 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, venous_pool_volume_l = 1.222, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5, tissue_groups.vessel_rich.volume_l = 6, tissue_groups.vessel_rich.perfusion_fraction = 0.76, tissue_groups.muscle.volume_l = 33, tissue_groups.muscle.perfusion_fraction = 0.18, tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06 -->
@@ -1493,55 +1431,38 @@ both.
 <!-- derived: 13.7 s from data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3, tissue_gas_partition_coefficients.vessel_rich = 2.1, tissue_gas_partition_coefficients.muscle = 4.5, tissue_gas_partition_coefficients.fat = 70 -->
 <!-- derived: 16.6 s from data/agents/desflurane.json blood_gas_partition_coefficient = 0.42, tissue_gas_partition_coefficients.vessel_rich = 0.54, tissue_gas_partition_coefficients.muscle = 0.97, tissue_gas_partition_coefficients.fat = 13 -->
 
-Three things follow from the table.
-
 - **The fastest time constant is 13.7 to 16.6 s at the default flows, and 6.02
-  to 7.17 s at the corner.** The corner is not where the model is fastest,
-  though. A search over all three flows for each agent found the fastest time
-  constant anywhere in the supported settings to be 5.83 s. That is isoflurane
-  at 10 L/min of fresh gas, 12 L/min of ventilation and 9.32 L/min of cardiac
-  output. For sevoflurane and desflurane the fastest is at the corner. No
-  change in the model is faster than 5.83 s. § "Supported simulation step"
-  compares the step with it.
+  to 7.17 s at the maximum flows.** For sevoflurane and desflurane, the maximum
+  flows give the fastest time constant of any supported setting. Isoflurane's
+  fastest is 5.83 s, at 10 L/min of fresh gas, 12 L/min of ventilation and
+  9.32 L/min of cardiac output. Nothing in the model changes faster.
+  § "Supported simulation step" compares the simulation step with this 5.83 s.
 - **The slowest time constant is the fat group's, at 47 000 s (13 hours) to
-  187 000 s (52 hours).** It is about 5 700 to 14 900 times the fastest. Many
-  numerical methods would then need steps short against the fastest time
-  constant to stay stable, over runs long enough for the slowest to matter.
-  The exact method of § "Selected method (as implemented)" has no such limit.
-- **In five of the six rows, the two fastest time constants are one
-  oscillating pair, so they are equal.** Gas moves both ways between the
-  circuit and the alveoli, and blood carries agent from the alveoli through the
-  tissues and back. Exchange around such a loop allows an oscillation, but it
-  cannot be seen. Its period is 384 to 1 540 s, and over half a period it
-  shrinks by a factor of at least $`e^{17}`$, about $`2.5\times10^{7}`$. At
-  the corner, isoflurane's two fastest are separate and do not oscillate.
+  187 000 s (52 hours).**
+- **In five of the six rows, the two fastest terms form one oscillation, so
+  their time constants are equal.** Gas moves both ways between the circuit and
+  the alveoli, and blood carries agent from the alveoli through the tissues and
+  back. Exchange around such a loop allows an oscillation, but it cannot be
+  seen. Its period is 384 to 1 540 s, and over half a period it shrinks by a
+  factor of at least $`e^{17}`$, about $`2.5\times10^{7}`$. At the maximum
+  flows, isoflurane's two fastest time constants differ, and there is no
+  oscillation.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
-A test recomputes every figure in the table from its own independent copy of
-the equations. It fails when a change to a parameter file or to the equations
-moves any of them, and its message says to re-derive this table. On 2026-11-01
-the model's code agreed with those figures to within a relative difference of
-3 × 10⁻¹⁵.
-
-The pulmonary uptake rate is:
-
-$$
-\dot M_{\mathrm{pulmonary}} = Q\lambda_{b:g}(F_A-F_v)
-$$
-
-A positive value represents net uptake from alveolar gas into blood. A negative value represents net return from blood to alveolar gas during washout.
+A test recomputes every figure in the table from an independent copy of the
+equations. It fails when a change to a stored parameter or to the equations
+moves any of them. On 2026-11-01, the model's code and the independent copy
+agreed to within a relative difference of 3 × 10⁻¹⁵.
 
 **The alveolar volume is held constant, and that is what excludes nitrous
-oxide.** The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as a constant
-and divides through by it. The model's code does exactly that, and keeps the
-volume fixed for the whole step. Ventilation carries the same volume in and
-out. No term adds inspired gas to replace the agent that blood takes up. That
-treatment is correct for the agents this model ships and wrong for nitrous
-oxide, as the arithmetic below shows.
+oxide.** The concentration equation above divides by $`V_A`$ as a constant.
+Ventilation carries the same volume in and out. No term adds inspired gas to
+replace the agent that blood takes up. A fixed volume is correct for the agents
+the model includes and wrong for nitrous oxide.
 
-Compare the pulmonary uptake rate above with alveolar ventilation at the early
-induction gradient, where $`F_v \approx 0`$. Use the reference adult, with
-$`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min:
+The table below compares the pulmonary uptake rate with alveolar ventilation
+early in induction, when $`F_v \approx 0`$. It uses the reference adult, with
+$`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min.
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5, alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 
 | Gas | $`\lambda_{b:g}`$ | $`F_A - F_v`$ | $`\dot M_{\mathrm{pulmonary}}`$ | Of $`\dot V_A`$ |
@@ -1553,25 +1474,50 @@ $`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min:
 <!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- not-restated: 2 % -->
 
-The last column decides the question. For sevoflurane, uptake removes 1.6% of
-each inspired alveolar volume. A fixed volume can ignore that, and this model
-does. For nitrous oxide, uptake removes 29%. That removal *is* the
-concentration effect. The gas left behind is concentrated by the volume that
-departed, and replacement inspired gas is drawn in to fill the deficit. A
-fixed-volume compartment represents neither half of the effect.
+For sevoflurane, uptake removes 1.6% of the volume that ventilation brings into
+the alveoli. A fixed volume can ignore that, and this model does. For nitrous
+oxide, uptake removes 29%, and that removal *is* the concentration effect. The
+gas left behind is concentrated by the volume that departed, and inspired gas is
+drawn in to replace that volume. A fixed-volume compartment represents neither
+half of the effect.
 
 **Nitrous oxide's $`\lambda_{b:g} = 0.47`$ above is the conventional textbook
-figure and is not a stored parameter.** This project ships no nitrous oxide
-parameter file at all. The value is used here only to size the comparison.
-Adopting it would need an entry of its own that meets the standard set in
-"Source hierarchy".
+figure and is not a stored parameter.** This project ships no nitrous oxide parameter file at all. The value is used here only to size the comparison.
 
-**One constraint, not three omissions.** "Known limitations" lists three
-separate absent features: nitrous oxide, simultaneous gases, and concentration
-or second-gas effects. They are one feature. The fixed alveolar volume blocks
-all three, and lifting that constraint unblocks all three. Two standard
-formulations lift it. They are equivalent to first order, and a milestone that
-adds several gases could adopt either one. The first lets $`V_A`$ change over time, and the
+**The fixed alveolar volume blocks three features.** "Known limitations" lists
+them separately: nitrous oxide, simultaneous gases, and concentration or
+second-gas effects. Lifting the fixed-volume constraint would unblock all three.
+
+**For developers.** With the delivered fraction set to zero, the six equations
+become $`d\mathbf{F}/dt = A_6\mathbf{F}`$. $`A_6`$ is the 6×6 block of the
+matrix of the model's equations (`build_system_matrix` in
+`core/governing_equations.py`), in that module's state order. Each of the six
+exponential terms is $`e^{\lambda_k t}`$ for one eigenvalue $`\lambda_k`$ of
+$`A_6`$, with time constant $`\tau_k = -1/\operatorname{Re}\lambda_k`$. The
+5.83 s figure comes from a search over a grid of 11 fresh gas flows, 13
+ventilations and 21 cardiac outputs for each agent, refined along cardiac
+output.
+
+Many numerical methods need steps short compared with the fastest time constant
+to keep their errors from growing. The slowest time constant is about 5 700 to
+14 900 times the fastest, so these methods would take many steps over a run
+long enough for the slowest to matter. The exact method of
+§ "Selected method (as implemented)" does not need such short steps.
+
+The test that recomputes the table is
+`test_modal_time_constants_are_the_pinned_ones` in
+`tests/reference/test_coupled_dynamics.py`. It recomputes every figure from
+that module's own transcription of the equations, independent of
+`core/governing_equations.py`. When it fails, its message says to re-derive the
+table. On 2026-11-01 the eigenvalues of the matrix that `build_system_matrix`
+assembles agreed with the table's figures to within a relative difference of
+3e-15.
+
+In the matrix of the model's equations, the alveolar row divides each of its
+terms by the alveolar volume (`alveolar_volume_l`), which the equation settings
+hold fixed for the whole step. Two standard formulations lift this constraint,
+and a milestone that adds several gases could adopt either one. They are
+equivalent to first order. The first lets $`V_A`$ change over time, and the
 concentration equation gains a volume term:
 
 $$
@@ -1581,34 +1527,20 @@ $$
 $$
 
 The second keeps $`V_A`$ constant and replaces the volume lost to total uptake
-with inspired gas. The effective inspired ventilation then becomes
-$`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$. It is the smaller change to
-this model, and it is the form the classical treatment uses.
+with inspired gas, so the effective inspired ventilation becomes
+$`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$. This second form is the
+smaller change to this model, and the classical treatment uses it.
 
-Either way, the second-gas effect follows from the alveolus containing more
-than one gas. It needs no machinery of its own. So the work for `ROADMAP.md`'s
-planned items 6 and 7 is not the sum of two separate pieces. Item 7 is nearly
-free if item 6 is built this way. Item 7 is unreachable if nitrous oxide is
-bolted on beside a volatile agent. Item 6 already says to model the patient as
-a set of substances instead of bolting nitrous oxide on. The alveolar-volume
-coupling is the reason.
+Either way, the second-gas effect follows from the alveolus holding more than
+one gas, and needs no machinery of its own. Because the gases are coupled
+through the alveolar volume, the roadmap says to model the patient as a set of
+substances instead of bolting nitrous oxide on beside a volatile agent
+(`ROADMAP.md` planned item 6). A patient model built that way makes planned
+item 7 nearly free. Bolting nitrous oxide on instead would leave item 7
+unreachable.
 
-**For developers.** With the delivered fraction set to zero, the six equations
-become $`d\mathbf{F}/dt = A_6\mathbf{F}`$. $`A_6`$ is the 6×6 block of the
-matrix that `build_system_matrix` in `core/governing_equations.py` assembles,
-in that module's state order. Each of the six terms is $`e^{\lambda_k t}`$ for
-one eigenvalue $`\lambda_k`$ of $`A_6`$, with time constant
-$`\tau_k = -1/\operatorname{Re}\lambda_k`$. The search for the fastest time
-constant used a grid of 11 fresh gas flows, 13 ventilations and 21 cardiac
-outputs for each agent, refined along cardiac output.
-`test_modal_time_constants_are_the_pinned_ones` in
-`tests/reference/test_coupled_dynamics.py` recomputes every figure in the
-table from that module's independent transcription of the equations. On
-2026-11-01 the eigenvalues of the matrix that `build_system_matrix` assembles
-agreed with those figures to within a relative difference of 3e-15. The
-alveolar row of `build_system_matrix` divides each of its terms by
-`alveolar_volume_l`, and the equation settings keep that volume fixed for the
-whole step.
+Adopting the 0.47 figure for nitrous oxide would need an entry of its own that
+meets the standard set in "Source hierarchy".
 
 ### Arterial blood
 
@@ -1621,10 +1553,10 @@ $`F_a`$ uses the current alveolar fraction $`F_A`$ in its place.
 
 ### Tissue uptake and return
 
-For tissue group $`i`$, arterial blood enters at $`F_a`$. Venous blood leaves
-in equilibrium with the tissue, at $`F_i`$.
+Tissue group $`i`$ receives a blood flow $`Q_i`$. Arterial blood enters at
+$`F_a`$, and venous blood leaves in equilibrium with the tissue, at $`F_i`$.
 
-The tissue amount balance is:
+The tissue's amount of agent, $`M_i`$, changes as:
 
 $$
 \frac{dM_i}{dt} = Q_i\lambda_{b:g}(F_a-F_i)
@@ -1636,16 +1568,14 @@ $$
 \frac{dF_i}{dt} = \frac{Q_i}{V_i\lambda_{i:b}}(F_a-F_i)
 $$
 
-The tissue time constant is therefore:
+With time and flow in compatible units, the tissue time constant is therefore:
 
 $$
 \tau_i =
 \frac{V_i\lambda_{i:b}}{Q_i}
 $$
 
-with compatible time and flow units.
-
-At zero tissue flow:
+When the tissue's blood flow is zero, its amount of agent must remain unchanged:
 
 $$
 Q_i = 0
@@ -1653,11 +1583,9 @@ Q_i = 0
 \frac{dM_i}{dt}=0
 $$
 
-The tissue amount must remain unchanged.
-
 ### Venous blood
 
-Blood leaving the tissue groups enters the venous pool. Venous blood leaves
+Blood from the tissue groups enters the venous pool. Venous blood leaves
 that pool for the lungs at concentration $`F_v`$.
 
 The venous amount balance is:
@@ -1666,34 +1594,27 @@ $$
 \frac{dM_v}{dt} = \lambda_{b:g}\left(\sum_i Q_iF_i-QF_v\right)
 $$
 
-Because:
-
-$$
-M_v = V_v\lambda_{b:g}F_v
-$$
-
-the venous concentration equation is:
+Because $`M_v = V_v\lambda_{b:g}F_v`$, the venous concentration equation is:
 
 $$
 \frac{dF_v}{dt} = \frac{\sum_i Q_iF_i-QF_v}{V_v}
 $$
 
-The instantaneous flow-weighted concentration entering the venous pool is:
+When $`Q>0`$, the instantaneous flow-weighted concentration entering the venous
+pool is:
 
 $$
 F_{\mathrm{tissue\ return}} = \frac{\sum_i Q_iF_i}{Q}
 $$
 
-when $`Q>0`$.
-
 At zero cardiac output, the pulmonary and tissue perfusion transfers are zero,
-and the model performs no division by $`Q`$.
+and the model does not divide by $`Q`$.
 
 ## Conservation of agent mass
 
 ### External delivery
 
-The cumulative delivered agent amount is:
+The cumulative amount of agent delivered is:
 
 $$
 M_{\mathrm{delivered}}(t) = \int_0^t \dot V_FF_D\,dt
@@ -1701,20 +1622,22 @@ $$
 
 ### Circuit exhaust
 
-The cumulative exhausted agent amount is:
+In the semi-closed circle system, the amount of agent sent to the exhaust by
+time t is:
 
 $$
 M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
 $$
 
-This term belongs to the semi-closed circle system. For a machine running with
-its surplus gas valve shut, the term is zero. That machine needs a different
-model. It is not this model with a coefficient turned down. See
-§ "Breathing circuit".
+A machine with its surplus gas valve shut sends no agent to the exhaust. It
+needs a different model. See § "Breathing circuit".
+
+**For developers.** Turning down a coefficient does not make this model fit
+such a machine.
 
 ### Stored amount
 
-The total stored amount is:
+The total stored amount of agent is:
 
 $$
 M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
@@ -1922,101 +1845,106 @@ project's `v0.7.0/pl-xst1/` folder.
 
 ## Numerical method
 
-The model advances in explicit simulation time. Every setting is held constant
-over each step (piecewise-constant settings).
+The model advances in explicit simulation time, in steps, and holds every setting constant over each step (piecewise-constant settings).
 
 The implementation must:
 
 1. derive concentrations from the current stored amounts;
 2. evaluate every transfer from one consistent state;
-3. carry every internal transfer as an equal and opposite pair, so that no
-   compartment can gain what another does not lose;
-4. integrate fresh-gas delivery and exhaust by the same method, and over the
-   same trajectory, as the compartments whose boundary they cross;
-5. advance the cumulative delivery and exhaust amounts;
+3. make each transfer between two compartments remove from one exactly what it adds to the
+   other, so that such transfers leave the total stored amount unchanged;
+4. calculate fresh-gas delivery and exhaust in the same step as the compartments whose boundary
+   they cross, by the same method and over the same time course;
+5. update the cumulative amounts delivered and exhausted;
 6. advance explicit simulation time; and
 7. calculate the post-step mass-balance residual.
 
-The method in § "Selected method (as implemented)" advances every compartment together in one
-step, so no transfer is applied before another, and nothing is held fixed while another value
-moves. Requirement 2 is met because every rate is computed from the same state. Requirement 3
-is met because each exchange between two compartments removes from one exactly what it adds to
-the other, so the total stored amount is unchanged. Requirement 4 is why delivered and
-exhausted agent are calculated in the same step.
+The method in § "Selected method (as implemented)" meets the requirements for transfers and for
+fresh-gas delivery and exhaust. It advances every compartment together in one step, so no
+transfer is applied before another, and nothing is held fixed while another value moves. Every rate is computed from the same state, which meets requirement 2.
 
-A step is all-or-nothing. The step writes each compartment in turn, and a check can reject a
-value after earlier compartments have been written. A step that cannot be completed must
-leave every tracked value exactly as it was before the step. § "Step atomicity" explains why,
-and what the run is left with.
+A step is all-or-nothing. A step that cannot be completed must leave every tracked value exactly
+as it was before the step. § "Step atomicity" explains why, and what the run is left with.
 
-**How each limit in this section was chosen.** Each limit below has a reason,
-and the subsection named after it gives the measurements.
+**The model works within these limits.** § "Supported simulation step" gives the results behind
+the step limits, and § "The numerical envelope" gives those behind the other limits.
 
-- **The largest step, 0.1 s.** Each step is exact, so accuracy does not set it. It sets how
-  late a dial change reaches the model. For an ordinary dial change, the delay causes about a
-  tenth of the error that one standard deviation in a measured partition coefficient causes.
-  For an abrupt ventilation change, it causes about twice the error of one standard deviation.
-  The screen is redrawn every 0.2 s, so a shorter step would not show. See § "Supported simulation step".
-- **The smallest step, 1 ms.** It is the finest step at which the results have
-  been tested and shown to match the results at 0.1 s. Nothing finer has been
-  checked, so nothing finer is allowed. See § "Supported simulation step".
-- **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from
-  0.001 to 10 000.** These limits sit far outside any real patient or agent.
-  The arithmetic has been checked against a high-precision calculation across
-  the whole range. The smallest volume is 0.01 L because at 0.001 L the error at
-  the hardest settings grew to 0.049% of the state over 24 hours. See
-  § "The numerical envelope".
-- **Delivered and stored fractions up to 0.99.** A gas cannot exceed the
-  ambient pressure, so no fraction can pass 1. The model stops at 0.99 so that
-  rounding near the top cannot carry a fraction above 1. See § "The numerical
-  envelope".
-- **The accounting check's tolerance, one part in 10⁹.** In the measured
-  runs, a correct 24-hour run's error stayed below 4e-11, at least 25 times
-  inside the tolerance. A looser tolerance would let a real accounting error pass. See
-  § "The numerical envelope".
+- **The largest step, 0.1 s.** Each step is exact, so this limit is set by how late a dial
+  change reaches the model rather than by accuracy. For an ordinary dial change, the delay
+  causes about a tenth of the error from one standard deviation in a measured partition
+  coefficient. For an abrupt ventilation change, it causes about twice that error.
+- **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from 0.001 to
+  10 000.** These limits sit far outside any real patient or agent. The arithmetic has been
+  checked against a high-precision calculation across the whole range.
+- **Delivered and stored fractions up to 0.99.**
+- **The tolerance on the mass-balance residual, one part in 10⁹.**
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_PARTITION_COEFFICIENT = 10000 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+
+**For developers.** In the system matrix, each transfer between two compartments is a pair of
+off-diagonal entries whose contributions to the total stored amount cancel. A test checks this
+cancellation as a property of the matrix (`tests/unit/test_governing_equations.py`).
+
+The all-or-nothing rule is there because a step writes each compartment in turn, and a check
+can reject a value after earlier compartments have been written.
+
+Each limit is set where it is for these reasons:
+
+- Lowering the largest step would make no visible difference, because the screen is redrawn
+  every 0.2 s.
+- The smallest step is 1 ms because it is the finest step whose results have been tested and
+  found to match those at the largest step.
+- The smallest volume is no lower because, at 0.001 L, the error at the hardest settings grew
+  to 0.049% of the state over 24 hours.
+- The fraction limit is below 1 so that rounding near the top cannot carry a fraction above 1.
+- The tolerance is at least 25 times a correct 24-hour run's residual, which stayed below 4e-11.
+  A looser tolerance would let a real accounting error pass.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 <!-- not-restated: 24 hours -->
 
-**For developers.** Each exchange between two compartments appears in the
-system matrix as a pair of off-diagonal entries whose contributions to the
-total stored amount cancel. `tests/unit/test_governing_equations.py` checks
-that cancellation as a property of the matrix.
-
 ### Step atomicity
 
-A partially applied step leaves some compartments at the new time and others at the old time.
-The model never produced that set of numbers at any instant, yet on screen they cannot be told
-apart from numbers it did produce. The project prefers an obvious failure to a
-plausible-looking number, so a failed step must be undone.
+When a step of simulated time fails, the model undoes it. The run then stops, because the same
+step would fail again. The model is left at the last completed step, which is a real result at a
+real simulation time. Undoing the step decides only what the screen may show while the run is stopped: that result, which a reader may reason about. The error message names the check that failed and the step size, so nobody has
+to infer the cause from the numbers.
 
-Before each step, the model saves every value it tracks, and it puts them back if the step
-fails (`AgentUptakeSystem.advance()`). The model then holds the last completed step. That is a
-real result at a real simulation time, which the interface may display and a reader may reason
-about. The error raised (`SimulationNumericalError`) names the failed check and the step size,
-so nobody has to infer the cause from the numbers.
+The model puts back the eight values that change from step to step: the circuit's inspired
+fraction, the alveolar amount, the three tissue amounts, the venous amount, and the running
+totals of agent delivered and exhausted. Settings and parameters keep their current values.
+Restoring cardiac output, for example, would undo a change that the run had accepted. If the
+circuit volume has changed, the volume stays at its new setting, and the model puts back the
+circuit's saved amount of agent rather than its saved fraction.
 
-The values saved are the eight that change from step to step, plus the starting amount of the
-mass-balance check. The eight are the circuit's inspired fraction, the alveolar amount, each
-of the three tissue amounts, the venous amount, and the total agent delivered and exhausted so
-far. Settings and parameters are not restored. Restoring cardiac output, for example, would
-undo a change that the run had accepted. If the circuit volume has changed, a restore puts
-back the saved amount of agent rather than the saved fraction, and the volume stays at its
-setting.
+A failed step is undone because a partly applied step would leave some compartments at the new
+time and others at the old time. The model never produced that set of numbers at any instant,
+yet on screen they could not be told apart from numbers it did produce. The project prefers an
+obvious failure to a plausible-looking number.
 
-Undoing the step does not let the run continue. The model reached a state it could not step
-from, so the step would fail again and the run must stop anyway. Undoing it decides only what
-the screen may *show* while the run is stopped.
-
-Three constants are set to 0.1 s, and each of them states a different thing:
+The program advances the model in steps of 0.1 s of simulated time, the largest step the model
+allows. § "Supported simulation step" explains this choice and the timing error it accepts. The
+program updates every 0.1 s of real time, the same as the step, so that real-time playback runs
+one step per update. At a faster playback speed, each update runs more steps of the same size.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+
+**For developers.** Before each step, the model saves the eight values listed above and the
+starting amount of the mass-balance check, and it restores them if the step fails
+(`AgentUptakeSystem.advance()`). A failed step raises an exception (`SimulationNumericalError`).
+
+The step type (`SimulationStep`) cannot be built with a value below 1 ms or above the largest
+step. Each limit is a named constant (`MINIMUM_SIMULATION_STEP_S` and
+`MAXIMUM_SIMULATION_STEP_S`). The two methods that advance the model accept only the step type
+(`AgentUptakeSystem.advance()` and `SimulationState.advance()`).
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+
+Three constants have the same value and mean different things:
 
 ```text
 MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
@@ -2024,114 +1952,103 @@ SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
 SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
 ```
 
-`MAXIMUM_SIMULATION_STEP_S`, 0.1 s, is the largest step the model supports, and
-`MINIMUM_SIMULATION_STEP_S`, 1 ms, is the smallest. Both limits are allowed values. A
-`SimulationStep` cannot be built outside that range, and `AgentUptakeSystem.advance()` and
-`SimulationState.advance()` accept only a `SimulationStep`. `SIMULATION_STEP_S` is the step
-the interface takes, set at the upper limit on purpose. § "Supported simulation step" gives
-the timing error this accepts and why the two are equal. The two values are set separately
-and are equal only in this configuration, which is why they have separate names.
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+The step the program uses (`SIMULATION_STEP_S`) is set separately from the largest step and
+equals it only in this configuration, so the two have separate names.
 
-`SIMULATION_TICK_INTERVAL_S` is not a step. It is how often the program updates, in *real*
-seconds. It equals the step because real-time playback means one step per update. The
-playback speed is the ratio between the two: each update takes
-`multiplier × tick interval ÷ step` whole steps. Written that way, "60× real time" is a claim
-that a test can check. If the two shared one name, someone could change how often the program
-updates, to suit a different computer, without recomputing the speeds. Every speed on screen
-would then be false, and nothing would fail.
+The tick interval, the time between updates, has a name of its own
+(`SIMULATION_TICK_INTERVAL_S`). Each update runs `multiplier × tick interval ÷ step` whole steps,
+so a test can check a playback speed such as "60× real time". If the interval shared the step's
+name, someone could change how often the program updates to suit a different computer, without
+recomputing the speeds. Every speed on screen would then be false, and nothing would fail.
 
 ### Selected method (as implemented)
 
 Each step solves the **whole model at once, exactly**. Every setting is held constant during a
-step, so within that step the six modelled fractions follow fixed linear equations,
-$`dy/dt = Ay + b`$, where $`A`$ holds the rate constants and $`b`$ the constant inputs. Adding
-a ninth state whose value is always 1 folds $`b`$ into $`A`$, giving $`dy/dt = Ay`$. The
-seventh and eighth states are described below. The exact solution is
+step, so within that step the six modelled fractions follow fixed linear equations, which have
+an exact solution. The same step also updates two running totals: the agent delivered to the
+circuit and the agent exhausted from it, at the rates in § "External delivery" and
+§ "Circuit exhaust".
+
+**The only error this method leaves is rounding.** In a 3600 s run at 1 MAC on 2026-09-06, the
+agent left unaccounted for at any step was at most 13 picolitres, for desflurane, and less than
+one part in a trillion of the agent handled for every agent.
+
+**The exact step has two consequences.**
+
+First, **a step cannot drive a fraction negative**, whatever the step size and the parameters,
+because the solution is exact and every transfer rate is zero or positive. The calculation keeps
+this true after rounding.
+
+Keeping each fraction below 1 depends on what the model accepts as input. Without rounding, no
+fraction exceeds the larger of the delivered fraction and the largest fraction the run started
+with. Rounding could still carry a fraction just above 1 from a state already at 1. No supported
+setting reaches that state, because every vaporizer in the simulator keeps each fraction far
+below 1, even at its maximum. The model also refuses such a state as an input: the delivered
+concentration and every starting fraction are limited to 0.99 of the ambient pressure. In runs
+started at 0.99, no computed fraction exceeded 0.99 by more than 0.0033 percentage points
+(§ "The numerical envelope").
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+
+Second, **a shorter step does not change the result**. A test checks that all supported step
+sizes agree to within rounding. That test cannot show the result is *right*, because a wrong
+transfer rate would give the same error at every step size. Nor can a check that no agent goes
+unaccounted for, because every transfer between compartments adds exactly what it removes.
+Another test checks that the result is right. It compares all six modelled fractions with an
+independent solution of the governing equations (§ "Independent-solution test").
+
+**For developers.** Within a step, the six fractions follow $`dy/dt = Ay + b`$, where $`A`$
+holds the rate constants and $`b`$ the constant inputs. The two running totals are the seventh
+and eighth states. Adding a ninth state whose value is always 1 folds $`b`$ into $`A`$, giving
+$`dy/dt = Ay`$. The exact solution is
 
 $$
 y(t+\Delta t) = \exp(A\,\Delta t)\,y(t)
 $$
 
-with no truncation error at any step size.
+The model builds $`A`$ in `core/governing_equations.py`. Each entry of $`A`$ is one term of one
+balance equation in § "Governing equations", in the order this document gives them. The model
+computes $`\exp(A\Delta t)`$ in `core/matrix_exponential.py`, which contains no physiology. That
+module's docstring gives the method's source and how its constants were derived. Neither module
+needs an outside library.
 
-`core/governing_equations.py` builds $`A`$. Each entry of $`A`$ is one term of one balance
-equation in § "Governing equations", in the order this document gives them.
-`core/matrix_exponential.py` computes $`\exp(A\Delta t)`$ and contains no physiology. Neither
-module needs an outside library. The module's docstring gives the method's source and how its
-constants were derived.
-
-Two of the nine states are not fractions. They are the running totals of agent delivered to
-the circuit and exhausted from it, at the rates in § "External delivery" and § "Circuit
-exhaust": $`\dot M_{\mathrm{delivered}} = \dot V_FF_D`$ and
+The totals' rates are $`\dot M_{\mathrm{delivered}} = \dot V_FF_D`$ and
 $`\dot M_{\mathrm{exhausted}} = \dot V_FF_I`$. Delivered agent has a simple formula of its own.
 Exhausted agent does not, because it depends on the inspired fraction as that fraction changes.
-Solving it in the same step meets requirement 4 of § "Numerical method".
+It is $`\dot V_F\int F_I\,dt`$ along the coupled solution. The step matrix that advances the
+fractions also computes it, which meets requirement 4 of § "Numerical method".
 
-**The only error this method leaves is rounding.** Measured on 2026-09-06 over a 3600 s run at
-1 MAC, the agent left unaccounted for at any step was at most 13 picolitres, for desflurane,
-and less than one part in a trillion of the agent handled for every agent. Rounding scales
-with the largest amount in play, which over an hour at desflurane's dial setting is about
-43 L of delivered agent.
+On 2026-09-06, the largest amount of agent left unaccounted for was 1.0e-12 L for sevoflurane,
+2.4e-12 L for isoflurane and 1.3e-11 L for desflurane, and as a share of the agent handled it was at most 9.2e-13 for every
+agent. Conservation is built into the matrix. Because the arithmetic is done in fractions, each
+transfer's equal-and-opposite terms cancel only to within rounding.
 
-That error is a thousand times smaller than the check allows, so no accuracy is lost. In
-litres, though, it grows with how much agent the run has handled. So a long run routinely
-exceeds the check's fixed limit in litres, `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` (a
-millionth of a microlitre), and is then passed by its limit as a share of the agent alone.
-Measured on 2026-09-06, the limit in litres was first exceeded after 3452 s at the reference
-settings, and after 538 s at the most extreme sevoflurane settings the model accepts.
+The check on agent accounting (`check_agent_accounting`) accepts an error within either of two
+limits: a fixed 1 picolitre, set in `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L`, or a share of the
+agent handled. The fixed limit catches a gross error early, while little agent has been
+delivered, and the share limit takes over after that. The rounding error is a thousand times
+smaller than the share limit, so no accuracy is lost.
 
-So the check (`check_agent_accounting`) accepts an error that passes either limit. The limit
-in litres catches a gross error early, while little agent has been delivered. The limit as a
-share does the checking after that. The reference runs test against the share limit,
-`MASS_BALANCE_RELATIVE_GATE` (§ "Mass-balance identity"). A release test on the error in
-litres would rest on a claim that depends on the dial setting and stops being true after
-about an hour of simulated time.
+In litres, though, that error scales with the largest amount in play, which over an hour at
+desflurane's dial setting is about 43 L of delivered agent. A long run therefore routinely
+exceeds the fixed limit and passes on the share limit alone. In runs on 2026-09-06, the fixed
+limit was first exceeded after 3452 s at the reference settings, and after 538 s at the most
+extreme sevoflurane settings the model accepts.
 
-**The exact step has two consequences.**
+The reference runs test against the share limit, `MASS_BALANCE_RELATIVE_GATE`
+(§ "Mass-balance identity"). A release test on the error in litres would rest on a claim that
+depends on the dial setting and stops being true after about an hour of simulated time.
 
-First, **a step cannot drive a fraction negative**. Every transfer rate is zero or positive,
-so the exact solution cannot take a compartment below zero. `core/matrix_exponential.py`
-computes the solution so that this also holds after rounding. So no step size and no
-parameter set can drive a compartment negative.
+Every off-diagonal entry of $`A`$ is a transfer rate, so it is nonnegative. That makes $`A`$ a
+Metzler matrix and $`\exp(A\Delta t)`$ an entrywise nonnegative matrix, whatever the parameters.
+Shifting the matrix before summing the exponential's series keeps that true in floating point.
 
-That argument covers the lower limit only. Without rounding, no fraction exceeds the larger of
-the delivered fraction and the largest fraction the run started with. Rounding could still
-carry a fraction just above 1 from a state already at 1. No supported setting reaches that
-state, because every shipped vaporizer maximum keeps each fraction far below 1. The model
-also refuses it as an input: the delivered concentration and every starting fraction are
-limited to 0.99 of the ambient pressure. Runs started at 0.99 computed fractions at most 0.0033
-percentage points above it (§ "The numerical envelope").
-<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+The capacity guard and the rollback in § "Step atomicity" cover two cases to which the reasons
+above do not apply. The first is a state at the top of the range, which a caller can pass when
+resuming a run (`resume_at`) or opening a run definition (`RunDefinition`). Those two routes
+check only that a state lies from 0 through 1. The second is a model extension whose matrix is
+not a pure transfer system.
 
-Second, **a shorter step does not change the answer**. Every supported step gives the same
-result to within rounding, and a test (`test_step_refinement_converges`) checks that. That
-test cannot show the answer is *right*, because a wrong transfer rate would also give the same
-answer at every step. Nor can the mass-balance check, because every transfer between
-compartments adds exactly what it removes. The test in § "Independent-solution test" checks
-correctness. It compares all six modelled fractions with a separate, independent solution of
-the governing equations.
-
-**For developers.** Exhausted agent is $`\dot V_F\int F_I\,dt`$ along the
-coupled solution, which the same step matrix integrates. The worst residuals
-measured on 2026-09-06 were 1.0e-12 L for sevoflurane, 2.4e-12 L for
-isoflurane and 1.3e-11 L for desflurane, and the relative error was at most
-9.2e-13 in every case. Conservation is built into the matrix. The arithmetic is done in
-fractions, so the equal-and-opposite pairs cancel only to rounding precision, relative to
-the largest quantity in play.
-
-Every off-diagonal entry of $`A`$ is a transfer rate, so it is nonnegative.
-That makes $`A`$ a Metzler matrix and $`\exp(A\Delta t)`$ an entrywise
-nonnegative matrix, whatever the parameters are. `core/matrix_exponential.py`
-shifts the matrix before summing its series, so that this also holds in
-floating point.
-
-The capacity guard and the rollback in § "Step atomicity" cover two cases. The
-first is a state at the top of the range that a caller passes to `resume_at`
-or opens a `RunDefinition` from, because those two routes check a state only
-from 0 through 1. The second is a model extension whose matrix is not a pure
-transfer system.
+The step-size test is `test_step_refinement_converges`.
 
 #### Supported simulation step
 
@@ -2854,10 +2771,10 @@ No scientific parameter may be added without:
 - the temperature or reference conditions when relevant;
 - any conversion performed;
 - the tissue-group mapping;
-- a brief justification for selecting that source; and
-- the tier of the hierarchy below that the source belongs to and, where the
-  source is not a primary measurement, what the primary literature reports
-  instead and by how much it differs.
+- a brief justification for selecting that source;
+- the source's tier in the hierarchy below; and
+- where the source is not a primary measurement, what the primary literature
+  reports and how far that differs from the source's value.
 
 ### Source hierarchy: what may be cited as the authority for a value
 
@@ -4246,7 +4163,7 @@ this document. None remain as of this revision.
 
 ## Required invariants
 
-The implementation must preserve the following invariants:
+The simulator must always meet the following conditions:
 
 - all volumes are finite and positive;
 - fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are finite and nonnegative;
@@ -4256,24 +4173,26 @@ The implementation must preserve the following invariants:
 - derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
 - internal transfers remove and add equal amounts;
-- identical runs produce identical state and run definition, element for
-  element, however the steps were grouped in real time;
-- simulated time is the number of completed steps times the run's step, and
-  a step whose length differs from the step the run has already taken is
-  refused, not counted;
-- changing a setting does not reset stored state;
-- Pause prevents simulation-time advancement;
+- changing a setting does not reset dynamic state;
+- Pause stops simulated time from advancing;
 - Reset clears dynamic state while preserving settings;
-- a delivered concentration above the agent's vaporizer maximum is rejected, not clamped;
-- a simulation step outside `MINIMUM_SIMULATION_STEP_S` to
-  `MAXIMUM_SIMULATION_STEP_S` is refused, not simulated;
-- a simulation step that cannot be completed leaves every dynamic value, and
-  the simulation time, exactly as the last completed step left them;
+- a delivered concentration above the agent's vaporizer maximum is refused, not capped;
 - zero fresh gas flow prevents new external delivery;
 - zero ventilation prevents circuit-to-patient ventilatory exchange;
 - zero cardiac output prevents pulmonary and tissue perfusion;
 - zero tissue flow prevents uptake by that tissue; and
 - equilibrium produces no net internal transfer.
+
+**For developers.** The simulator must also meet these conditions on its time steps:
+
+- identical runs produce identical state and run definition, element for
+  element, however the steps were grouped in real time;
+- simulated time is the number of completed steps times the run's step length;
+- a step is refused when its length is outside the allowed range
+  (`MINIMUM_SIMULATION_STEP_S` to `MAXIMUM_SIMULATION_STEP_S`) or differs
+  from the length of the run's earlier steps; and
+- a step that cannot be completed leaves simulated time and dynamic state
+  exactly as the last completed step left them.
 
 ## Required tests
 
@@ -4281,118 +4200,146 @@ The implementation must preserve the following invariants:
 
 The v0.0.2 analytic wash-in and washout tests must remain unchanged and continue to pass.
 
-With no patient ventilation:
+With no patient ventilation, tests check that the simulated circuit washes in and out as
 
 $$
 F_I(t) = F_D+\left[F_I(0)-F_D\right]e^{-t/\tau_C}
 $$
 
-where:
+where
 
 $$
 \tau_C =
 \frac{V_C}{\dot V_F}
 $$
 
-using compatible time and flow units.
+in compatible time and flow units.
 
-Held by `test_circuit_matches_analytic_wash_in` and
-`test_wash_in_is_monotonic_and_never_overshoots` in
-`tests/reference/test_circuit_wash_in.py`, and for the washout by
-`test_zero_delivered_concentration_washes_out_circuit` in
+**For developers.** The wash-in and washout tests from v0.0.2 must stay unchanged and keep passing.
+The tests for wash-in are `test_circuit_matches_analytic_wash_in` and
+`test_wash_in_is_monotonic_and_never_overshoots` in `tests/reference/test_circuit_wash_in.py`,
+and the test for washout is `test_zero_delivered_concentration_washes_out_circuit` in
 `tests/unit/test_circuit.py`.
 
 ### Zero-agent test
 
-If all initial stores are zero and $`F_D=0`$, then every stored amount and
-concentration must remain zero.
+If the model starts with no agent and none is delivered ($`F_D=0`$), every
+stored amount and concentration must remain zero.
 
-Held by `test_no_delivered_agent_keeps_every_store_zero` in
-`tests/reference/test_sevo_patient.py`.
+**For developers.** A test in `tests/reference/test_sevo_patient.py` enforces
+this requirement (`test_no_delivered_agent_keeps_every_store_zero`).
 
 ### Zero-ventilation test
 
 If $`\dot V_A=0`$, the circuit may wash in, but the patient compartments must receive no new agent through ventilation.
 
-Held by `test_zero_ventilation_prevents_patient_delivery` in
-`tests/reference/test_sevo_patient.py`.
+**For developers.** A test checks the zero-ventilation case
+(`test_zero_ventilation_prevents_patient_delivery` in
+`tests/reference/test_sevo_patient.py`).
 
 ### Zero-cardiac-output test
 
 If $`Q=0`$, alveolar gas may change through ventilation, but arterial blood, venous blood, and tissue stores must not change through perfusion.
 
-Held by `test_zero_cardiac_output_prevents_patient_uptake` in
-`tests/reference/test_sevo_patient.py`.
+**For developers.** A test enforces this requirement
+(`test_zero_cardiac_output_prevents_patient_uptake` in `tests/reference/test_sevo_patient.py`).
 
 ### Zero-tissue-flow test
 
-For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$.
+For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$. Two tests
+check this.
 
-Held by `test_a_zero_tissue_flow_leaves_that_group_alone` in
-`tests/unit/test_governing_equations.py`, which checks the coupled system's
-matrix, and by `test_zero_flow_preserves_tissue_state` in
-`tests/unit/test_tissue.py`.
+**For developers.** One test checks the coupled system's matrix
+(`test_a_zero_tissue_flow_leaves_that_group_alone` in
+`tests/unit/test_governing_equations.py`). The other checks that a tissue's
+state stays unchanged at zero flow (`test_zero_flow_preserves_tissue_state` in
+`tests/unit/test_tissue.py`).
 
 ### Equilibrium test
 
 If all connected compartments have the same partial-pressure-equivalent
 fraction, with $`F_I=F_A=F_a=F_v`$ and every tissue group at the same value,
-then all internal transfer rates must be zero.
+then all internal transfer rates must be zero. A test checks this for
+sevoflurane, isoflurane and desflurane.
 
-Held by `test_equilibrium_produces_no_net_internal_transfer`, for sevoflurane
-in `tests/reference/test_sevo_patient.py` and for isoflurane and desflurane in
-`tests/reference/test_multi_agent.py`.
+**For developers.** The test is
+`test_equilibrium_produces_no_net_internal_transfer`, in
+`tests/reference/test_sevo_patient.py` for sevoflurane and in
+`tests/reference/test_multi_agent.py` for isoflurane and desflurane.
 
 ### Directional ventilation test
 
-With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_I`$.
+When all else is equal, more alveolar ventilation must make $`F_A`$ approach
+$`F_I`$ faster. A test runs the default sevoflurane wash-in at 2 and 8 L/min of
+alveolar ventilation, and requires $`F_A/F_I`$ to be higher at 8 L/min at every
+whole second of the first minute. In these runs, $`F_I`$ rises more slowly at
+the higher ventilation, because the circle system rebreathes and more
+ventilation carries more agent into the patient.
 
-Held by `test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster`
-in `tests/reference/test_sevo_patient.py`. It runs the default sevoflurane
-wash-in at 2 and 8 L/min of alveolar ventilation and requires $`F_A/F_I`$ to
-be higher at 8 L/min at every whole second of the first minute. The test
-compares the ratio because $`F_A`$ alone measures the approach to $`F_I`$
-only when $`F_I`$ is the same in both runs, and here it is not. The circle
-system rebreathes, and more ventilation carries more agent into the patient,
-so $`F_I`$ itself rises more slowly at the higher ventilation.
+**For developers.** The test is
+`test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster` in
+`tests/reference/test_sevo_patient.py`. It compares $`F_A/F_I`$ because $`F_A`$
+alone shows the approach to $`F_I`$ only when $`F_I`$ is the same in both runs.
 
 ### Directional solubility test
 
-In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_I`$.
+In controlled synthetic cases, raising $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_I`$.
 
-Held by `test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise` in
+**For developers.** That test is
+`test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise` in
 `tests/reference/test_sevo_patient.py`.
 
 ### Directional tissue-capacity test
 
-Increasing either $`V_i`$ or $`\lambda_{i:b}`$, with flow held constant, must lengthen the tissue time constant:
+With the tissue's blood flow $`Q_i`$ unchanged, the tissue time constant $`\tau_i`$ must lengthen when the tissue is larger ($`V_i`$) or the agent is more soluble in it
+($`\lambda_{i:b}`$):
 
 $$
 \tau_i =
 \frac{V_i\lambda_{i:b}}{Q_i}
 $$
 
-Held by `test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant` in
+**For developers.** The test is
+`test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant` in
 `tests/unit/test_tissue.py`.
 
 ### Washout test
 
-After loading the compartments, setting $`F_D=0`$ must produce finite,
-nonnegative washout without spontaneous increases in total system mass.
-
+After loading the compartments, setting $`F_D=0`$ must produce a finite,
+nonnegative washout in which the total mass of agent in the system never rises.
 Individual tissue concentrations may rise for a time through redistribution.
-The test must therefore not require every compartment to decrease
-monotonically.
 
-Held by `test_washout_never_increases_total_system_mass` in
+**For developers.** The washout test therefore must not require every
+compartment to decrease monotonically. It is
+`test_washout_never_increases_total_system_mass` in
 `tests/reference/test_sevo_patient.py`.
 
 ### Step-refinement test
 
-Reference simulations at supported smaller steps must produce the same
-solution, to within floating-point rounding.
+**The time step changes the model's results only by computer rounding.** The
+simulation advances in steps of time. The model solves its equations exactly
+over each step. It accepts steps from 1 ms up to 0.1 s, the step the
+application uses.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
-At minimum, compare:
+Two tests compare runs at different steps and require their results to agree
+to within rounding. The first uses the application's step and two smaller
+steps, each half the one before, and compares the alveolar, vessel-rich and
+mixed-venous concentrations after 60 s. The second compares the application's
+step with the smallest step the model accepts, over the same 60 s.
+
+Passing these tests shows only that the application's step is short enough for
+the model's equations to be solved accurately. It does not show that the model
+matches a patient. A model with a wrong transfer rate would pass, because it
+gives the same answer at every step. § "Independent-solution test" below checks
+that the equations are solved correctly, and § "Published wash-in and
+elimination validation test" compares the model with measured patients.
+
+**For developers.** The first test is `test_step_refinement_converges`, and the
+second is `test_the_smallest_supported_step_lands_on_the_ceilings_solution`.
+Both are in `tests/reference/test_sevo_patient.py`. The first compares at least
+these steps:
 
 ```text
 dt = 0.1 s
@@ -4400,65 +4347,41 @@ dt = 0.05 s
 dt = 0.025 s
 ```
 
-All three steps are inside the supported domain. The first is
-`MAXIMUM_SIMULATION_STEP_S` itself, and the finest is 25 times
-`MINIMUM_SIMULATION_STEP_S`.
+The coarsest is the largest step the model accepts (`MAXIMUM_SIMULATION_STEP_S`),
+and the finest is 25 times the smallest (`MINIMUM_SIMULATION_STEP_S`). Two step
+sizes can show only that a pair of runs agree, and three show that the step does
+not change the result.
 
-The gate compares *successive* halvings (0.1 against 0.05, then 0.05 against
-0.025) rather than comparing each step against the finest. It also requires
-every gap to stay below a stated bound at the level of rounding error. Two
-step sizes can show only that a pair of runs agree. Three step sizes show that
-the step does not enter the result.
+The first test compares successive halvings (0.1 against 0.05, then 0.05
+against 0.025) rather than each step against the finest.
 <!-- not-restated: 0.05 -->
 
-**Changing the step size changes the result only by rounding, and the test requires that.** The
-model solves its equations exactly over each step, so it reaches the same answer at every
-supported step size. The gaps between runs are as small as computer rounding allows, and they do
-not shrink as the step shrinks. The test compares the alveolar, vessel-rich and mixed-venous
-concentrations after 60 s.
-
-**A second test checks the smallest supported step, 1 ms.** A minute in 1 ms steps must match the
-same minute in the application's 0.1 s steps, to within rounding. So the smallest step the model
-accepts gives the application's answer. The test expects the smallest step to be 1 ms, so
-changing it means measuring the rounding figures below again.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-
-Passing this test shows only that the 0.1 s step is short enough for the
-model's equations to be solved accurately. It does not show that the model
-matches a patient. A wrong transfer rate gives the same answer at every step,
-so it passes here. § "Independent-solution test" below checks that the
-equations are solved correctly, and § "Published wash-in and elimination
-validation test" compares the model with measured patients.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-Held by `test_step_refinement_converges`, for the three halvings, and by
-`test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
-minimum step. Both are in `tests/reference/test_sevo_patient.py`.
-
-**For developers.** Each figure is an absolute gap in fraction. The worst gap
-between successive halvings is 3.4e-16, in the alveolar fraction (measured
-2026-11-01). Euler's method, whose error halves with the step, shows gaps up to
-1.8e-6 at these steps (measured 2026-11-03). The test's limit, 1e-14, was set
-on 2026-09-06 at about twelve times the worst gap then, 8.1e-16. That
-measurement reported four values, and no record names the fourth. The test has
-compared the same three since the method became exact.
-
-The test of the smallest step, `MINIMUM_SIMULATION_STEP_S`, allows 3e-14 in
-each compared fraction. That is wider than the halvings' limit because its
-minute takes 60 000 steps rather than at most 2 400, and rounding builds up
-once per step. Measured on 2026-10-03, its worst gap is 2.4e-15, in the
-alveolar fraction, so the limit allows about twelve times that gap, the same
-margin as the halvings'. The gap does not change smoothly with the step. It
-depends on how the calculation happens to round at that step, and steps near
-1 ms reach 1.2e-14. On a machine that rounds differently, the margin could be
-nearer two and a half times.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+The first test requires every gap to stay below 1e-14, a bound at the level of
+rounding error. Gaps are absolute differences in concentration, expressed as a
+fraction. The worst gap between successive halvings is 3.4e-16, in the alveolar
+concentration (from a run on 2026-11-01). The 1e-14 limit was set on 2026-09-06
+at about twelve times the worst gap then, 8.1e-16. The run behind that figure
+reported four values, and no record names the fourth. The test has compared the
+same three concentrations since the method became exact.
 
 A method that does not solve the equations exactly fails the 1e-14 limit,
-because its result moves with the step. Test such a method by checking that
-each halving of the step shrinks every gap by a predicted factor, about two
-when its error is proportional to the step.
+because its result moves with the step. Euler's method, for example, gives gaps
+up to 1.8e-6 at the first test's steps (from a run on 2026-11-03). To test such
+a method, check that each halving of the step shrinks every gap by a predicted
+factor. The factor is about two when the error is proportional to the step, as
+Euler's is. The model's own gaps do not shrink with the step.
+
+The second test allows 3e-14 in each compared concentration. That is wider than
+1e-14 because its minute takes 60 000 steps rather than at most 2 400, and
+rounding builds up once per step. Its worst gap is 2.4e-15, in the alveolar
+concentration (from a run on 2026-10-03), so the limit is about twelve times
+that gap, the same margin as the first test's. The gap does not change smoothly
+with the step. It depends on how the calculation happens to round at each step
+size. At steps near 1 ms the gap reaches 1.2e-14, so on a machine that rounds
+differently, the margin could be nearer two and a half times. The test expects
+the smallest step to be 1 ms, so whoever changes that step must find these gaps
+again with a new run.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 ### Independent-solution test
 
@@ -5320,26 +5243,33 @@ program default. Both Yasuda papers, Carpenter 1989, and Targ 1989 were read at 
 
 #### The early wash-in curve against the published figures
 
-**The first 25 minutes are compared too, point by point** (2026-10-18). The 30-minute ratio
-alone barely registers the lung's gas volume or the circuit. Both papers plot the whole
-$`F_A/F_I`$ curve during administration as Figure 2, as mean ± SD with each SD drawn on one
-side of the marker. Neither paper tabulates it, so the values were read from the page scans.
-Read the same way, each 30-minute point lands within 0.006 of the value stated in the text,
-which is the size of a reading error here.
+**Over the first 25 minutes, sevoflurane and isoflurane follow the published
+wash-in curves within one SD** (simulated 2026-10-18). Desflurane's $`F_A/F_I`$
+runs 0.034 to 0.042 above its published curve from 1 to 10 minutes, and agrees
+from 12.5 minutes on. This early gap is a known limitation of the model. The
+model is compared with each curve point by point because $`F_A/F_I`$ at 30
+minutes alone would barely show an error in the lung's gas volume or the circuit.
 
-The run is `_clamped_wash_in()` in
-`tests/reference/test_published_wash_in_and_elimination.py`. **It is a
-test-only driver, and no setting of the shipped simulator produces the
-condition it creates.** Both papers gave the agents as a square wave from a
-non-rebreathing circuit, so the inspired fraction was the cylinder's from the
-first breath (*Anesth Analg* p. 317, *Anesthesiology* p. 490). The shipped
-circuit instead fills at its own time constant, so its $`F_I`$ lags the dial
-for the first minute or more. After every step, the driver sets the circuit
-back to the fixed $`F_I`$ and records the agent it adds or removes. That way
-the model's conservation check still passes. Everything else is the shipped
-model at the shipped operating point.
+Neither paper tabulates its $`F_A/F_I`$ curve, so the published values were read
+from page scans of each paper's Figure 2. Both figures plot the curve during
+administration as mean ± SD, with each SD drawn on one side of the marker. Each
+30-minute point read from them lies within 0.006 of the value stated in the
+paper's text, so a reading error here is about 0.006. Three of the 1-minute SDs
+are hidden among overlapping marks near the axis, so the comparison uses the
+next readable SD of the same cohort instead. A separate note records how the
+figures were read and every value taken from them
+(`docs/references/yasuda-1991-figure-2-wash-in.md`).
 
-Measured 2026-10-18, as distance from each point's mean in its SD:
+**The comparison holds $`F_I`$ fixed from the start, which no setting of the
+simulator does.** Both papers gave the agents as a square wave from a
+non-rebreathing circuit, so $`F_I`$ was the cylinder's fraction from the first
+breath (*Anesth Analg* p. 317, *Anesthesiology* p. 490). The simulator's circuit
+instead fills at its own time constant, so its $`F_I`$ lags the dial for the
+first minute or more. In every other respect, the comparison runs the simulator
+as released.
+
+Simulated on 2026-10-18, as the model's distance from each published mean, in
+units of that point's SD:
 
 | Cohort | 1 to 3 min | 5 min | 7.5 to 25 min |
 | --- | --- | --- | --- |
@@ -5352,92 +5282,91 @@ Measured 2026-10-18, as distance from each point's mean in its SD:
 
 <!-- not-restated: 0.54, 0.76, 2.10 -->
 
-**Sevoflurane and isoflurane follow the published curves within one SD**.
-They run a little slow in the first 3 minutes and a little fast after 7.5
-minutes. The one isoflurane point beyond one SD, +1.06 SD at 12.5 minutes, is
-within the reading error of the band.
+**The model's sevoflurane and isoflurane curves sit a little below the published
+ones in the first 3 minutes and a little above from 7.5 minutes on.** Their only
+point beyond one SD is isoflurane at 12.5 minutes, +1.06 SD, which is within a
+reading error of one SD.
 
-**Desflurane rises faster than its cohort from 1 to 10 minutes**, by 0.034 to
-0.042 in $`F_A/F_I`$, and agrees from 12.5 minutes on. The operating point is
-an unlikely cause, because the same eight volunteers breathed isoflurane from
-the same cylinder and the model follows their isoflurane curve. A ventilation
-or lung-volume error would also move every agent the same way, but sevoflurane
-and isoflurane sit slightly below their curves early on. So the likely cause
-is something only desflurane has, such as its blood:gas or a tissue:gas
-coefficient.
+**The desflurane gap likely comes from something that only desflurane has**,
+such as its blood:gas or a tissue:gas coefficient. The model's settings are an
+unlikely cause, because the eight volunteers in the desflurane cohort breathed
+isoflurane from the same cylinder as desflurane, and the model follows their
+isoflurane curve. An error in ventilation or lung volume would move every agent
+the same way, but sevoflurane and isoflurane sit slightly below their curves
+early on.
 
-**No single stored coefficient closes the gap when it is moved only within its
-measured range** (measured 2026-10-18). Each desflurane coefficient was moved alone in the
-reference test, with every other value unchanged:
+**No single stored coefficient closes the gap when it is varied only within its
+measured range** (simulated 2026-10-18). The runs changed one desflurane
+coefficient at a time and left every other value as stored:
 
-- **Blood:gas is the only coefficient that brings the early points into the
-  band, and it does so only at values where the 30-minute comparison fails.**
-  The 1-to-10-minute points come within one SD once blood:gas is about 0.55 or
-  higher. Esper et al. 2015 measured 0.57 ± 0.04 in surgical patients, and at
+- **Blood:gas is the only coefficient that brings the early points within one
+  SD, and it does so only at values where the 30-minute comparison fails.** The
+  1-to-10-minute points come within one SD once blood:gas is about 0.55 or
+  higher. Eger's 0.424 ± 0.024 falls short of 0.55 even at the edge of its
+  spread. Esper et al. 2015 measured 0.57 ± 0.04 in surgical patients, and at
   0.57 every early point lies within 0.83 SD. But the 30-minute ratio stays
-  within one SD at every fresh gas flow from 1 to 10 L/min only up to about
-  0.46. At 0.57 it fails at every flow, from −1.35 SD at 10 L/min to −2.61 SD
-  at 1 L/min. Eger's 0.424 ± 0.024 has too narrow a spread to reach the values
-  that bring the early points into the band.
-- **The vessel-rich and muscle coefficients** cannot close the gap at any
-  value within Yasuda et al. 1989's measurements (brain 0.54 ± 0.02, muscle
+  within one SD at every fresh gas flow from 1 to 10 L/min only while blood:gas
+  is about 0.46 or lower. At 0.57 it falls outside one SD at every flow, from
+  −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. Raising blood:gas to 0.57 moves
+  desflurane's open-circuit 5-minute washout ratio only from −2.33 SD to
+  −1.97 SD.
+- **The vessel-rich and muscle coefficients cannot close the gap** at any value
+  within Yasuda et al. 1989's measurements (brain 0.54 ± 0.02, muscle
   0.94 ± 0.35).
-- **Esper's values for all three agents** would put the sevoflurane and
-  isoflurane points in the first 3 minutes 1.0 to 1.4 SD below their curves.
-  So taking Esper's value for desflurane alone would mix two lineages of
-  blood:gas coefficients. Taking it for all three would move the two agents
-  that agree now.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- not-restated: 0.54 -->
 
-Raising desflurane's blood:gas coefficient also closes little of its washout
-residual. At 0.57, the open-circuit 5-minute ratio moves from −2.33 SD to
-−1.97 SD. No stored value is changed, and the disagreement is recorded as a
-known limitation. The five desflurane points and the isoflurane point at
-12.5 minutes are checked against a regression band from −1 to +2.5 SD instead
-of the agreement band. The band's upper edge sits above the largest distance
-measured, +2.10 SD, so the gap cannot grow past +2.5 SD without a test failing.
-`ROADMAP.md`'s planned-milestone item 31, a primary-literature coefficient set,
-is where this would be weighed again.
+No stored value is changed. Using Esper's blood:gas value for desflurane alone
+would mix coefficients from two sources. Esper's values for all three agents
+would put the sevoflurane and isoflurane points in the first 3 minutes 1.0 to
+1.4 SD below their curves. The stored values would be weighed again in the
+planned primary-literature coefficient set (`ROADMAP.md` planned-milestone item 31).
+
+**The model has no second-gas effect, and the early curve is where one would
+show first.** Caveat 1 above applies here too. The effect's size in these
+volunteers was not measured. They had breathed 70% nitrous oxide for 30 minutes
+before the potent agents started, and 65% throughout, so their nitrous oxide
+uptake was already low and the effect was probably small.
+
+**For developers.** The comparison runs in a driver that only the tests use
+(`_clamped_wash_in()` in `tests/reference/test_published_wash_in_and_elimination.py`).
+After every step, the driver sets the circuit back to the fixed $`F_I`$ and
+records the agent it adds or removes, so the model's check that the amount of
+agent is conserved still passes.
+
+The five desflurane points from 1 to 10 minutes and the isoflurane point at 12.5
+minutes are checked against a regression band, from −1 to +2.5 SD, instead of within one SD. A regression band guards the model's own result against change and claims no agreement with the data. The band's upper edge is above the largest distance simulated, +2.10 SD,
+so the gap cannot grow past +2.5 SD without a test failing.
 <!-- not-restated: 2.10 -->
-
-Caveat 1 above applies here too, and the early curve is where a second-gas
-effect would show first. Its size is not measured. The volunteers had breathed
-70% nitrous oxide for 30 minutes before the potent agents started, and 65%
-throughout. So their nitrous oxide uptake was already small by then, and the
-effect is probably small too. This model has no second-gas effect. Three of
-the 1-minute SDs are stand-ins. Those error bars are lost among overlapping
-marks near the axis, so each cohort's next readable bar is used instead, as
-the note says.
-
-**For developers.** `docs/references/yasuda-1991-figure-2-wash-in.md` records how the
-figures were read and every value read from them.
 
 #### What the published-data gate can and cannot resolve
 
-**A passing gate shows only that no stored value is wrong by more than the gate
-can detect, and for most stored values that is a lot** (measured 2026-10-18).
-The published-data gate is the set of checks whose expected value is a published human
-measurement rather than this model's own output. It contains the early wash-in points from 1
-to 25 minutes, run with F_I held at the airway (§ "The early wash-in curve against the
-published figures" above). It also contains the 30-minute wash-in band for each cohort at
-every fresh gas flow from 1 to 10 L/min, the sign of the elimination disagreement for each
-cohort, and both solubility orderings. The regression pins are not part of the gate. They
-include the 5-minute elimination pin above and the late-washout tables. A pin fails on any
-change at all, so it catches an accidental edit. It cannot show whether a published value would
-have caught a wrong stored value. So no pin may be cited as validation of a stored value.
+**For most stored values, passing the published-data gate rules out only large
+errors** (from model runs on 2026-10-18). The gate is the set of checks that
+compare the model with published measurements in people. A pass does rule out a
+model whose structure is wrong.
+
+The gate contains the early wash-in points from 1 to 25 minutes, run with F_I
+held at the airway (§ "The early wash-in curve against the published figures"
+above). It also contains the 30-minute wash-in band for each cohort at every
+fresh gas flow from 1 to 10 L/min, the sign of the elimination disagreement for
+each cohort, and both solubility orderings.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-To measure what the gate can detect, each stored parameter was multiplied by
-a factor, for one agent at a time, with every other value as shipped. The
-factor was searched between a tenth and four times the stored value, to the
-nearest half a percentage point, until some published-data assertion failed.
-A change to the blood:gas coefficient affects every compartment while the
-tissue:gas coefficients stay as shipped. So each tissue:blood coefficient
-moves inversely, exactly as it would if the stored blood:gas value alone were
-wrong. Each cell of the table is the range of change that still passes every
-published-data assertion, measured on 2026-10-18:
+The regression pins are not part of the gate, because they compare the model
+with its own output. They include the 5-minute elimination pin above and the
+late-washout tables. A pin fails on any change at all, so it catches an
+accidental edit. It cannot show whether a comparison with published data would
+have caught a wrong stored value.
+
+Each cell of the table below covers one stored parameter for one agent. It gives
+the lower and upper edges of the range of change over which the gate still
+passes (from model runs on 2026-10-18). Each parameter was varied from a tenth
+to four times its stored value, with every other value unchanged. The edges
+were found to the nearest half a percentage point. An edge marked "past", such
+as "past −90%", means that the gate still passed at a tenth or at four times the
+stored value.
 
 | Stored parameter | Sevoflurane | Isoflurane | Desflurane |
 | --- | --- | --- | --- |
@@ -5451,65 +5380,68 @@ published-data assertion, measured on 2026-10-18:
 
 <!-- not-restated: 5 %, 6 %, 8 % -->
 
-The first row is relative to the stored blood:gas coefficients. These are
-0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane.
+The first row's percentages apply to the stored blood:gas coefficients: 0.65
+for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. The tissue:gas
+coefficients stay as shipped when blood:gas changes, so each tissue:blood
+coefficient moves inversely, as it would if the stored blood:gas value alone
+were wrong.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 
-"Past" means that the gate still passed at the end of the search, at a tenth
-or at four times the stored value. A tissue's volume and its tissue:gas
-coefficient give the same edges, because a run depends only on their
-product, which is the tissue's capacity. The search found the same edges for
-both.
+A tissue's volume and its tissue:gas coefficient give the same edges, because a
+run depends only on their product, the tissue's capacity.
 
-**What a reader may conclude from a pass:**
+**Two tests keep the table in step with the code.** One fails if the gate stops
+detecting a change that it detects today. The other fails if the gate starts to
+detect a change that this section says it cannot.
 
-- **A narrow edge is not a narrow uncertainty.** Most of the tightest edges
-  come from the 12.5- and 15-minute points. At those points the shipped model
-  already sits at +0.75 to +0.94 SD. A change that raises the late curve by a
-  few tenths of an SD then takes it past +1 SD. So isoflurane's −1% edge for
-  blood:gas means that the shipped model has used most of the band there. It
-  does not mean that the stored coefficient is known to 1%. The reading error
-  of the published figure is about 0.3 SD. So an edge set by less movement
-  than that is within the reading error.
-- **Blood:gas and the vessel-rich group are now resolved on both sides**, to
-  between 1% and 15% for sevoflurane and isoflurane. The early points set
-  every lower edge, through the 12.5- and 15-minute points. Through the 2-
-  and 3-minute points, they also set isoflurane's upper blood:gas edge and
-  both agents' upper vessel-rich edges. At its 1 L/min point, the 30-minute
-  flow sweep still sets the other upper edges, and most of desflurane's. A
-  pass still rules out a structurally wrong model. It does not rule out a
-  mis-parameterized one.
-- **The gate now detects an alveolar gas volume that is too large.** Making
-  the volume a fifth to a third larger slows the first minute enough to take
-  it outside one SD for every agent. Doubling the volume moves sevoflurane's
-  1-minute F_A/F_I from 0.537 to 0.429, which is −2.85 SD. Making the volume
-  smaller still goes unseen for sevoflurane.
+**The table supports these conclusions about a pass of the gate:**
+
+- **A narrow edge is not a narrow uncertainty.** Most of the narrowest edges
+  come from the 12.5- and 15-minute points, where the shipped model already sits
+  at +0.75 to +0.94 SD. There, a change that raises the curve by a few tenths of
+  an SD takes it past the gate's limit of +1 SD. So isoflurane's −1% edge for
+  blood:gas means that the shipped model has little room left there, not that
+  the stored coefficient is known to 1%. The published figure can be read to
+  about 0.3 SD, so an edge reached by a smaller movement of the curve is within
+  the reading error.
+- **For sevoflurane and isoflurane, the gate detects both a rise and a fall in
+  blood:gas and in the vessel-rich group.** The edges lie between 1% and 15%.
+  The 12.5- and 15-minute points set every lower edge. The 2- and 3-minute
+  points set isoflurane's upper blood:gas edge and both agents' upper
+  vessel-rich edges. The 30-minute wash-in band at 1 L/min sets the other upper
+  edges, and most of desflurane's.
+- **The gate detects an alveolar gas volume that is too large.** Making the
+  volume a fifth to a third larger slows the first minute of wash-in enough to
+  take it outside one SD for every agent. Doubling the volume moves
+  sevoflurane's 1-minute F_A/F_I from 0.537 to 0.429, which is −2.85 SD. The
+  gate does not detect a smaller volume for sevoflurane.
 - **Desflurane's edges reflect its disagreement with the published data.**
   Its points from 1 to 10 minutes sit at +1.7 to +2.1 SD. They are checked
-  only against the regression band, which ends at +2.5 SD. So its lower edge
-  for alveolar gas volume, −8%, is the edge of that band rather than a
-  published SD.
-- **The gate cannot see fat for sevoflurane or isoflurane at all.** That is
-  what a 30-minute load and a 5-minute washout should look like. Fat
-  solubility and fat volume set the hours-long tail of washout, from which a
-  learner judges emergence. Nothing here checks them against a measurement.
-  § "The first 24 hours of elimination against the published mean curves"
-  compares that tail with the published fits, and it asserts no agreement.
-- **Making the circuit smaller goes unseen** for sevoflurane and isoflurane,
-  down to a tenth of the stored value. The reason is that the early points
-  are run with F_I held at the airway, so they never see the circuit. The
-  gate constrains muscle only loosely.
+  only against a looser regression band, which ends at +2.5 SD. So its −8% lower edge for
+  alveolar gas volume is set by that band, not by a limit of one published SD.
+- **The gate detects no change at all in fat for sevoflurane or isoflurane.**
+  That is expected of checks that cover 30 minutes of wash-in and 5 minutes of
+  washout. Fat solubility and fat volume set the hours-long tail of washout,
+  from which a learner judges emergence. Nothing here checks them against a
+  measurement. § "The first 24 hours of elimination against the published
+  mean curves" compares that tail with the published fits, but does not
+  require the two to agree.
+- **The gate constrains muscle only loosely.**
+- **The gate does not detect a smaller circuit** for sevoflurane or isoflurane,
+  down to a tenth of the stored value. The early points are run with F_I held
+  at the airway, so the circuit does not affect them.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 <!-- not-restated: 2.1, 8 % -->
 
-The two ratios respond to almost separate parts of the parameter set, which
-is why the edges fall where they do. The table gives how far each ratio moves
-when one coefficient is raised by 10%. The movement is in units of that
-ratio's own published standard deviation, and was measured on 2026-09-06:
+The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
+to almost separate sets of parameters, which is why the edges fall where they
+do. The table below shows how far each ratio moves when one coefficient is
+raised by 10%, in units of that ratio's own published SD (from model runs on
+2026-09-06):
 
 | Perturbed coefficient | Wash-in | Elimination |
 | --- | --- | --- |
@@ -5524,34 +5456,30 @@ Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
 group. Elimination at five minutes depends mostly on the vessel-rich group and
 barely on blood:gas. This fits the rebreathing explanation above. The circuit
 sets *where* the elimination ratio sits against the published mean, as an
-offset fixed by the reference settings. Among the model's own parameters,
-vessel-rich solubility is the one that the ratio moves with. The model's
-departure from the fitted mean curves over the rest of the day is in
-§ "The first 24 hours of elimination against the published mean curves".
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+offset fixed by the reference settings.
 
-**Two tests keep the table in step with the code.**
-`test_the_published_data_gate_fails_at_a_stated_perturbation` asserts that
-the gate fails for every agent at blood:gas ×0.90 and ×1.15, at vessel-rich
-tissue:gas ×0.80 and ×1.75, and at alveolar gas volume ×1.50. The test does
-not use ×1.10 for blood:gas, because desflurane's edge is ×1.097.
-`test_the_published_data_gate_passes_at_a_stated_perturbation` asserts that
-the gate still passes for every agent at fat tissue:gas ×0.50 and ×2.00, fat
-volume ×2.00, muscle tissue:gas ×1.50 and circuit volume ×0.50. It also
-asserts a pass at alveolar gas volume ×0.50 for sevoflurane, at venous pool
-volume ×0.50 for sevoflurane and desflurane, and at venous pool volume ×2.00
-for desflurane. The agents left out of those rows have an edge at or inside
-the factor. Each factor sits well clear of its edge, because a test placed at
-an edge would sit 0.01 to 0.03 SD from flipping. The first test fails if the
-gate goes blind along a direction that it resolves today. The second fails if
-the gate starts to resolve a change that this section says it cannot
-resolve, so that the table is measured again rather than left stale. Neither
-test widens or narrows `AGREEMENT_TOLERANCE_SD`. The limit is the published
-spread, not the band.
+**For developers.** The regression pins include the reference states recorded
+in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). No
+pin may be cited as validation of a stored value.
+
+The test that expects the gate to fail checks every agent at blood:gas ×0.90
+and ×1.15, vessel-rich tissue:gas ×0.80 and ×1.75, and alveolar gas volume
+×1.50 (`test_the_published_data_gate_fails_at_a_stated_perturbation`). It does
+not use ×1.10 for blood:gas, because that is too close to desflurane's edge at
+×1.097.
 <!-- not-restated: 1.10 -->
 
-**For developers.** The regression pins include `PINNED_REFERENCE_STATES` in
-`tests/reference/test_coupled_dynamics.py`.
+The test that expects the gate to pass checks every agent at fat tissue:gas
+×0.50 and ×2.00, fat volume ×2.00, muscle tissue:gas ×1.50 and circuit volume
+×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It also
+checks alveolar gas volume ×0.50 for sevoflurane, venous pool volume ×0.50 for
+sevoflurane and desflurane, and venous pool volume ×2.00 for desflurane. The
+other agents have an edge at or inside those factors.
+
+Each factor in the two tests sits well clear of its edge, because a test placed
+at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the gate at
+its shipped limit (`AGREEMENT_TOLERANCE_SD`). The limit is the published
+spread, not the band.
 
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -5838,7 +5766,8 @@ checks the result of lowering the muscle group's coefficient.
 
 ### Mass-balance test
 
-Long wash-in, steady-delivery, and washout simulations must satisfy:
+Long wash-in, steady-delivery, and washout simulations must satisfy either
+condition below, with the release tolerances documented above:
 
 $$
 |\varepsilon_M|
@@ -5854,208 +5783,196 @@ $$
 \varepsilon_{\mathrm{relative,max}}
 $$
 
-using the release tolerances documented above.
-
-Held by `test_long_wash_in_and_washout_validate_agent_simulation` in
-`tests/reference/test_sevo_patient.py`, and for isoflurane and desflurane by
-`test_wash_in_and_washout_validates_agent_simulation` in
-`tests/reference/test_multi_agent.py`.
+**For developers.** A sevoflurane test enforces these conditions
+(`test_long_wash_in_and_washout_validate_agent_simulation` in
+`tests/reference/test_sevo_patient.py`). A second test applies them to
+isoflurane and desflurane (`test_wash_in_and_washout_validates_agent_simulation`
+in `tests/reference/test_multi_agent.py`).
 
 ### Closed-form agreement test
 
-A run driven through its own controls must give identical results from the
-closed form and from the stepped solver. The states derived from the run
-definition, at instants that the stepped system passed through, must equal the
-states that the system reached by stepping.
+The closed form computes a run's state directly from the run definition. The
+stepped solver advances the run one time step at a time. For a run driven
+through its own controls, the two must give identical states at each instant
+that the stepped solver passed through. The stepped solver was written
+independently of the closed form to solve the same equations, so agreement is
+the evidence that the closed form solves them correctly.
 
 The comparison covers every compartment at every instant probed, not only the
-endpoints. "Deterministic replay test" gives the reason. The comparison must
-also cross at least two setting changes, because a stretch of constant settings
-is the easy case. What a run definition has to get right is the boundary
-between two of them.
-The tolerance is absolute rather than relative. It is stated in fractions of
-one atmosphere, because that is what the compartments contain and what a
-readout converts. A relative tolerance would tighten without limit on the
-near-zero tissue fractions of an induction, and it would say nothing about a
-displayed digit.
+first and the last (§ "Deterministic replay test" explains why). It must also
+cross at least two setting changes, because a stretch of constant settings is
+the easy case, and the run definition has to get each change right.
 
-The required agreement is far tighter than the two-decimal percent set under
-§ "Displayed precision", and far looser than floating-point noise. So a real
-divergence fails and a rounding difference does not.
-`tests/unit/test_run_definition.py` checks `state_at` and `evaluate` against a
-run stepped alongside its definition, and records the figures measured. Its
-`test_evaluate_matches_a_stepped_run` and `test_state_at_matches_a_stepped_run`
-make that comparison on one run that crosses two setting changes.
-`tests/unit/test_resume_at.py` and `tests/integration/test_controller.py` apply
-the same comparison in two more cases. One is a system started at a keyframe
-and stepped from there. The other is a branch compared against its parent.
-Each test records its own figure and the headroom left above it.
+The comparison's tolerance is far smaller than the second decimal place of a
+displayed percentage (§ "Displayed precision"), and far larger than the
+rounding error of computer arithmetic. A real divergence therefore fails the
+test, and a rounding difference does not.
 
-The comparison against the stepped system carries the claim, because the stepped solver is the
-independently written solution of the same equations that the closed form is
-checked against.
+**For developers.** The tolerance is absolute, in fractions of one atmosphere,
+because that is what the compartments contain and what a readout converts. A
+relative tolerance would tighten without limit on the near-zero tissue fractions
+of an induction, and it would say nothing about a displayed digit.
+
+Two tests compare the closed form's functions (`state_at` and `evaluate`) with
+a run stepped alongside its definition. Both use one run that crosses two
+setting changes
+(`test_evaluate_matches_a_stepped_run` and `test_state_at_matches_a_stepped_run`
+in `tests/unit/test_run_definition.py`). Other tests make the same comparison in
+two more cases: a system started at a keyframe and stepped from there, and a
+branch compared against its parent (`tests/unit/test_resume_at.py` and
+`tests/integration/test_controller.py`). Each test records the difference it
+found and the headroom left below the tolerance.
 
 ### Parameter-recovery test
 
-The model must return a stored parameter when it is run through a measurement
-procedure whose result that parameter fixes. Each procedure is derived from a
-physical law, not from the equations in this document. Lerou and Booij used
-this device to check their own system model. They simulated the closed-circuit
-helium dilution measurement of alveolar volume (Lerou JG, Booij LH.
+The model must return a stored value, such as the alveolar volume, when this
+test simulates a procedure that measures that value. Each procedure is derived
+from a physical law, not from the equations in this document. Like the other
+verification tests, this test checks that the equations are the ones intended.
+It cannot show that a stored value is right, because each procedure recovers
+whatever value the data files hold.
+
+**This test catches a class of error that the other verification tests miss.**
+The test in § "Independent-solution test" solves the equations as written in
+this document, so it reproduces any error in them and still agrees with the
+code. The test in § "Mass-balance test" catches an error only when agent is lost
+or created. Suppose this document gave the tissue capacity as $`V_i\lambda_{i:b}`$,
+leaving out the blood:gas factor $`\lambda_{b:g}`$, and used that capacity in the
+tissue's rate equation. Agent would still be conserved, and the independent
+solution would agree with the code. The tissue volume recovered by the Fick
+principle would be the stored volume divided by $`\lambda_{b:g}`$.
+
+The test runs two procedures for each of the three agents. The first recovers
+the alveolar volume by closed-circuit dilution. Lerou and Booij checked their
+own system model by simulating this measurement with helium (Lerou JG, Booij LH.
 Model-based administration of inhalation anaesthesia. 1. Developing a system
 model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385,
-retrieved from PubMed and read at the abstract 2026-10-25).
+retrieved from PubMed and read at the abstract 2026-10-25). The circuit fills
+while ventilation is stopped. Setting the fresh gas flow to zero then closes the
+circuit, and the lungs are ventilated from it with the cardiac output at zero.
+With no blood flow, the agent behaves as an insoluble tracer, like helium in the
+real measurement. Conservation then gives $`V_A = V_C(F_1-F_2)/F_2`$, where
+$`F_1`$ is the circuit's fraction when it is closed and $`F_2`$ is the fraction
+that the circuit and lungs share once they have mixed.
 
-**It catches a class of error that the other verification tests cannot.** The
-§ "Independent-solution test" integrates the equations that this document
-states. If this document states an equation wrongly, the oracle reproduces the
-error and agrees with the code. The § "Mass-balance test" catches an error
-only when agent is lost or created. Suppose this document had written the
-tissue capacity as $`V_i\lambda_{i:b}`$, leaving out the blood:gas factor, and
-formed the tissue's rate to match. Agent would still be conserved, and the
-oracle would agree with the code. A tissue volume measured by the Fick
-principle would come back divided by $`\lambda_{b:g}`$.
-
-`tests/reference/test_parameter_recovery.py` runs two procedures for each of
-the three agents.
-
-- `test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value`
-  is Lerou and Booij's procedure. The circuit fills while ventilation is
-  stopped. The circuit is then closed by setting the fresh gas flow to zero,
-  and the lungs are ventilated from it with the cardiac output at zero. With
-  no blood flow, the agent behaves as an insoluble tracer, which is the role
-  helium plays in the real measurement. Conservation then gives
-  $`V_A = V_C(F_1-F_2)/F_2`$, where $`F_1`$ is the circuit's fraction when it
-  is closed and $`F_2`$ is the fraction that the circuit and lungs share once
-  they have mixed.
-- `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`
-  integrates each tissue group's uptake through the opening wash-in by the
-  Fick principle, $`\dot U_i = Q_i\lambda_{b:g}(F_a-F_i)`$. It divides the
-  total by $`\lambda_{i:g}F_i`$ at the end of the run, which is the agent that
-  one litre of the tissue holds at its own fraction.
-
-Each recovered value must equal the stored one to within a relative tolerance
-at the level of rounding. The test module states each tolerance beside the
-residual it measured.
-
-The zero fresh gas flow is not the closed-circuit technique that § "Breathing
+The first procedure is not the closed-circuit technique that § "Breathing
 circuit" says this model does not represent. That technique needs fresh gas
-matched to the patient's uptake. This procedure has no fresh gas and, at zero
+matched to the patient's uptake. The procedure has no fresh gas and, at zero
 cardiac output, no uptake.
 
-Like the other verification tests, these check that the equations are the ones
-intended. They cannot show that a stored value is right, because each
-procedure recovers whatever value the data files hold.
+The second procedure recovers each tissue group's volume from its uptake over
+the initial wash-in. It adds up the uptake that the Fick principle gives,
+$`\dot U_i = Q_i\lambda_{b:g}(F_a-F_i)`$. It then divides the total by the
+amount of agent that one litre of the tissue holds at the end of the run,
+$`\lambda_{i:g}F_i`$, where $`F_i`$ is the tissue's own fraction.
+
+**For developers.** The tests for the two procedures are
+`test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value`
+and `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`,
+in `tests/reference/test_parameter_recovery.py`. The tolerance on each recovered
+value is relative and at the level of rounding. The test module gives each
+tolerance beside the difference between the recovered and stored values from a
+run of the test.
 
 ### Deterministic replay test
 
-Two runs with identical:
+When two runs have the same initial state, parameters, setting changes, order
+of events and simulation steps, they must produce identical results over the
+whole run. Agreement within a tolerance is not enough. A run branched from
+another must be identical to it at every instant the two share.
 
-- initial state;
-- parameters;
-- setting changes;
-- event ordering; and
-- simulation steps
+The results must not depend on how the run was paced in real time, as
+§ "The reproducibility guarantee" states. They must be the same at every
+playback rate that the interface offers.
 
-must produce identical snapshots and identical run definitions.
+**For developers.** The two runs' snapshots must match in every field, and each
+segment and keyframe of one run's definition must equal the matching one in the
+other's. Comparing only the end values would pass two runs that diverged and
+then came back together.
 
-Identical means element for element. Every segment and keyframe of one run's
-definition must equal the same segment and keyframe of the other's, and the
-snapshot must be the same in every field. Equal endpoints are not enough, and
-neither is agreement within a tolerance. Comparing endpoints would pass a pair
-of runs that diverged and then came back together. Also, a branched run is
-compared against its parent at every instant they share.
+To vary the pacing, one run takes one step per tick and the other takes its
+steps in uneven bursts. Between ticks, the interface reads one run more often
+than the other. Pacing both runs the same way would test one trajectory twice,
+so it could not show that pacing has no effect.
 
-The two runs must also be driven differently in real time. One run takes the
-same steps one per tick, and the other takes them in ragged bursts. The
-interface must also read the two runs between ticks at different rates.
-Driving both runs identically tests the model on one trajectory twice. That
-is a weaker claim than the one "The reproducibility guarantee" makes, which is
-that how the ticks fell cannot affect the run.
-
-The bursts that a **playback rate** produces are one case of this, and they are
-tested as one. The test uses the rates that the interface actually offers, not
-invented burst sizes. So a rate added to that ladder is covered on the day it
+A playback rate paces a run in bursts of steps. One test takes its rates from
+the interface's own list, so a rate added to that list is tested from the day it
 is added.
 
-Held by `test_identical_runs_produce_identical_snapshots`,
+The tests for this section are
+`test_identical_runs_produce_identical_snapshots`,
 `test_a_run_reaches_the_same_definition_however_the_ticks_fell` and
-`test_a_run_reaches_the_same_definition_at_every_playback_rate` in
+`test_a_run_reaches_the_same_definition_at_every_playback_rate`, in
 `tests/integration/test_sevo_controller.py`.
 
 ### Canonical evaluation test
 
-A run that is queried while it is built must give the same result as the same
-run when it is never queried. The results must match element for element,
-across the whole state vector, at every instant probed and in every keyframe
-stored. This property shows that the canonical result belongs to the run
-definition rather than to the caller. A cache, a memoised propagator or a
-reused buffer would remove the property while looking like an optimisation.
+A run must give the same result, called its canonical result, whether or not
+values are read from it while it is computed. The two results must match value
+for value, in every quantity the model tracks, at every instant checked and in
+every state the run stores. The canonical result therefore depends only on how
+the run is defined.
 
-The test enforces two further properties. First, a branch that opens from one
-of its parent's keyframes must reproduce the parent element-wise at every
-instant they share. That is what "The canonical evaluation rule" owes
-`ROADMAP.md` item 12. Second, the program must reject a value from the display
-path where a canonical value is required. That makes the rule a property of
-the program rather than of the reader.
+When a run starts from a state that its parent run stored, it must match the
+parent value for value at every instant they share.
 
-The measured separation between the two paths is published under § "The
-canonical evaluation rule". The same module holds that separation to bounds,
-one for each quantity. So a change to the equations, to the propagator or to
-how a window is walked fails there. It does not silently move a figure that
-this document prints. The compartment fractions and the cumulative
-accumulators have separate bounds because their displays resolve four orders
-of magnitude apart. A single bound covering both would have to be the looser
-one.
+Values computed for the display can differ from the canonical result.
+§ "The canonical evaluation rule" publishes the difference. A test checks it
+against a bound for each quantity, so a change to how values are computed
+cannot silently move a figure this document prints. The program must refuse a display value wherever it needs a canonical one. That makes the rule a property of the program rather than of the reader.
 
-All of these are in `tests/reference/test_canonical_evaluation.py`.
-`test_querying_a_run_does_not_change_what_it_answers` and
-`test_querying_a_run_does_not_change_the_keyframes_it_stores` hold the first
-property. `test_a_fork_opening_from_a_keyframe_reproduces_its_parent` holds
-the branch. `test_a_display_value_cannot_open_a_run_definition` holds the
-refusal, and `test_the_display_path_stays_within_its_measured_separation`
-holds the bounds.
+**For developers.** The tests are in `tests/reference/test_canonical_evaluation.py`.
+Two of them check that reading a run changes neither its results nor the states
+it stores, called keyframes (`test_querying_a_run_does_not_change_what_it_answers`,
+`test_querying_a_run_does_not_change_the_keyframes_it_stores`). A cache, a
+memoised propagator or a reused buffer would cause such a change, while looking
+like an optimisation. Another test checks that a run started from a stored state
+matches its parent (`test_a_fork_opening_from_a_keyframe_reproduces_its_parent`).
+That match is what § "The canonical evaluation rule" owes the work planned in `ROADMAP.md` item 12. The refusal
+of display values has its own test (`test_a_display_value_cannot_open_a_run_definition`).
+
+The test of the bounds fails on a change to the equations, to the propagator or
+to how a window is walked (`test_the_display_path_stays_within_its_measured_separation`).
+The compartment fractions and the cumulative accumulators have separate bounds
+because their displays differ in resolution by four orders of magnitude. A single
+bound for both would have to be the looser one.
 
 ## Runtime controls
 
-The following settings may change during a run without resetting state:
+Four settings can be changed during a run without resetting the model's state:
 
 - fresh gas flow;
 - delivered agent concentration;
 - alveolar ventilation; and
 - cardiac output.
 
-A change affects transfers prospectively from the next simulation step.
-
-Changing cardiac output recalculates tissue flows:
+From the next simulation step on, a change affects transfers. Changing delivered
+concentration does not alter the existing circuit concentration. Changing
+ventilation does not alter existing circuit or alveolar stores. Changing cardiac
+output does not alter existing blood or tissue stores, but it recalculates
+tissue flows:
 
 $$
 Q_i=f_iQ
 $$
 
-It does not alter existing blood or tissue stores.
+**The four settings above are the model's only inputs.** The interface has
+settings of its own that can also be changed during a run: the playback rate,
+the chart's time base, and which compartment traces are drawn. None of them
+affects the model's state. Identical inputs still produce identical results, so
+a case played at sixty times real time is the same run watched faster.
 
-Changing ventilation does not alter existing circuit or alveolar stores.
+**The playback rate does decide when an input acts.** A control changed
+*during* a run first acts at the next tick. In simulated time, the interval
+between ticks is 0.1 s multiplied by the playback rate: 6 s at sixty times real
+time. So the same slider moves made at two playback rates are different inputs,
+and they produce different runs. At a faster rate, the learner has a coarser
+choice of when an input acts. § "Supported simulation step" quantifies this.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-Changing delivered concentration does not alter existing circuit concentration.
-
-**These four are the model's inputs, and the list contains every model input
-and nothing else.** The interface has settings of its own that also change
-during a run without resetting state: the playback rate, the chart's time base,
-and the choice of which compartment traces are drawn. None of them is a model
-input, because none affects the model's state. Identical inputs still produce
-identical results, so a case played at sixty times real time is the same run
-watched faster. § "Interface boundary" sets the constraints on those settings,
-and § "The reproducibility guarantee" rules out treating the playback rate as
-an input.
-
-**The playback rate does decide when an input arrives.** A control changed
-*during* a run first acts at the next tick, and ticks fall every
-`multiplier × 0.1` s of simulated time, where the multiplier is the playback
-rate. So the same slider moves made at two different rates are different
-inputs, and they produce different runs. At a faster rate, the learner has a
-coarser choice of when an input acts. § "Supported simulation step" measures
-this.
+**For developers.** § "Interface boundary" sets the constraints on the
+interface's own settings. § "The reproducibility guarantee" rules out treating
+the playback rate as a model input.
 
 ### Halting on a marked crossing
 
@@ -6218,96 +6135,114 @@ withdrawn, and failing to withdraw it is a displayed value going quietly wrong.
 
 ### The control-input record
 
-Every change to a control that the model runs under is recorded against the
+The record lists each change to a control that the model runs under, with the
 simulated time at which it took effect. The record is kept with the run and
-cleared with it. § "The control-input timeline" and the display rules below say
-what the record is for, what it asserts, and why it has its shape.
+cleared with it. § "The control-input timeline" and the display rules below
+explain what the record is for, what it shows and why it takes this form.
 
 #### The run is that record, and every state is derived from it
 
-**What is held.** A run is stored as two things. The first is the settings in
-force at each moment: the four controls above, together with the patient and
-agent parameters that the equations read. The second is one *keyframe* per
-change, which is the state at the instant that change took effect. Nothing
-else about the run is stored. Flows are stored as they were set, in liters per
-minute, for the reason that § "Time" gives. The record lives in
-`core/run_definition.py`.
+**A run is stored as two things.** The first is the settings in force at each
+moment: the four controls above, together with the patient and agent parameters
+that the equations use. The second is one *keyframe* per change, which is the
+state at the instant that change took effect. Flows are stored as they were set,
+in liters per minute (§ "Time" explains why). Nothing else about the run is
+stored. The chart is drawn from this record, so there is no second record that
+could disagree with it.
 
-**What is derived.** While every setting is held constant, the equations are
-linear and time-invariant. So between two changes, the propagator under
-§ "Selected method (as implemented)" is exact over any horizon, not only over
-one simulation step. The state at any instant is therefore one propagation from
-the keyframe that opens the stretch containing that instant. No value has to
-have been recorded for the state to be recoverable. Each keyframe is computed
-the same way: one propagation per stretch, composed in order from the start of
-the run.
+**The program computes the state at a single instant in one calculation.** It starts from the keyframe that opens the stretch of constant settings containing that instant, so no value has to have been recorded for the state to be recoverable. Between two
+changes, the method in § "Selected method (as implemented)" solves the
+equations exactly over any length of time, not only over one simulation step.
+Each keyframe is computed the same way from the keyframe before it, starting at
+the beginning of the run.
 
-**Two paths, and they differ in composition order rather than in method.** To
-return the state at a single instant, the program applies one propagator to the
-keyframe that brackets the instant. To draw a window of evenly spaced columns,
-it instead reuses one propagator across the columns inside a stretch, chaining
-from the first column. That reuse is what makes a frame cheap. Both paths solve
-the same equations exactly. They differ only in the order in which the
-floating-point operations are composed. This was measured on 2026-09-07 against
-a stepped 600 s sevoflurane run with two setting changes, reaching a fraction
-of 0.0316. The single-instant path stays within 1.8e-14 of the stepped run, and
-the window path within 3.7e-15. Both figures are absolute differences in a
-fraction of one atmosphere. Both are about ten orders of magnitude below 1e-4,
-the smallest difference that the two-decimal percent readout under
-§ "Displayed precision" can show. So neither path can change a displayed digit.
-§ "The canonical evaluation rule" below states, as a guarantee, which of the
-two paths a stored, exported or branched value may be taken from.
+**The chart's values are computed a second way, and the two ways agree well
+within the last displayed digit.** To draw the chart, the program computes the
+state at evenly spaced instants, one per column, each from the one before it
+while the settings stay the same. Both ways solve the same equations exactly.
+They differ only in the order of the arithmetic, which changes the rounding. On
+2026-09-07 both were compared with a step-by-step run of the simulation. Their
+differences from it were about ten orders of magnitude below 0.01%, the
+smallest difference that the two-decimal percent readout can show
+(§ "Displayed precision"). A test checks the record against the step-by-step
+simulation that advances the run. § "The canonical evaluation rule" below
+states which of the two ways a stored, exported or branched value may be
+taken from.
 
-**Why the run is stored as a definition.** A 30-day case at the fixed 0.1 s step,
-stored as one sample per step, takes 3.16 GiB. The same case stored as its
-settings and their changes takes 1.6 MiB, about two thousand times less. The
-second gain is that the time to draw a chart window does not grow with how long
-the run has been going.
+**For developers.** The record is defined in `core/run_definition.py`. The
+method is exact because the equations are linear and time-invariant while every
+setting is held constant.
+
+The step-by-step run used for the 2026-09-07 comparison simulated 600 s of
+sevoflurane with two setting changes and reached a fraction of 0.0316. The
+state at a single instant stayed within 1.8e-14 of that run, and the drawn
+chart within 3.7e-15, both as absolute differences in a fraction of one
+atmosphere. The test of the record against the step-by-step simulation is the
+"Closed-form agreement test".
+
+A *propagator* is the matrix that carries the state across one interval at
+fixed settings. A *stretch* is the time between two changes. Drawing the chart
+reuses one propagator across the columns inside a stretch, chaining from the
+first column, and that reuse is what makes a frame cheap.
+
+Storing the run as a record keeps it small. At one sample per fixed 0.1 s
+step, a 30-day case takes 3.16 GiB: 25 920 000 samples of 130.8 bytes each
+(measured over 20 000 samples of a live run). Stored as its settings and their
+changes, the same case takes 1.6 MiB, about two thousand times less. The
+1.6 MiB assumes that every day is a busy ICU day with 50 setting changes, which
+gives 1 501 stretches over the case.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**What does move the cost is the number of changes inside the window**,
-because each stretch in view needs its own propagator. On the same thirty-day
-run, a full-span window at 600 columns costs 14.2 ms with two changes in view,
-231 ms with sixty, and about 1.1 s with six hundred, on a frame that forms all
-its propagators. Once the changes outnumber the columns, sampling 600 instants
-is the wrong way to draw the run. What to draw instead is a question for the
-interface.
+With the run stored as a record, the time to draw a chart window does not grow
+with the run's length. A one-hour window at 600 columns costs 10.6 ms to draw on
+a two-hour run and 13.0 ms on a thirty-day run. Drawing from per-step samples
+cost 62.6 ms at four hours and 207.7 ms at twelve.
 
-**The number of changes moves the cost of the first frame only.**
-`RunDefinition.evaluate_anchored` keeps the propagators that each window uses,
-so that the next window can reuse them. All but three cover an interval that
-the grid fixes: either the column spacing, which the time base fixes, or a
-stretch's offset to its first grid column, which the anchoring fixes. The three
-that change are those for the window's two bounds, and the one for the offset
-in the stretch where the window opens, whose first grid column is the first one
-past the left edge. So a window that follows the run forms two new propagators
-every frame. It forms the third only when its left edge has passed a grid
-column since the frame before. It also forms those of any stretch newly in
-view, and a new column spacing forms them all again.
+The number of changes in view does raise the cost of a frame, because each
+stretch in view needs its own propagator. A window spanning the whole thirty-day
+run at 600 columns costs 14.2 ms with two changes in view, 231 ms with sixty and
+about 1.1 s with six hundred, when no propagators are kept from an earlier frame.
+Once the changes outnumber the columns, sampling 600 instants is the wrong way
+to draw the run. What to draw instead is a question for the interface.
 
-The cost was measured on 2026-10-04 on a 24-hour run, the longest that
-§ "Supported run length" allows, with every setting distinct. The full-span
-window at 600 columns has its left edge fixed at the run's opening. With two,
-sixty and six hundred changes in view, it costs 13.2 ms, 179 ms and 819 ms on
-its first frame, and 6.3 ms, 5.9 ms and 8.3 ms on each frame after.
+The number of changes in view sets the cost of the first frame only. Drawing a
+window keeps the propagators it used (`RunDefinition.evaluate_anchored`), and
+the next window can reuse them. All but three of them cover an interval that
+the grid fixes: either the column spacing, set by the time base, or a stretch's
+offset to its first grid column, set by the anchoring. The three that change
+are the two for the window's bounds and the one for the offset in the stretch
+where the window opens. In that stretch, the first grid column is the first one
+past the window's left edge. So, for a window that follows the run, the program
+forms two new propagators every frame. It forms the third only when the
+window's left edge has passed a grid column since the frame before. It also
+forms those of any stretch newly in view. A change of column spacing makes it
+form every propagator again.
+
+The first-frame and later costs were measured on 2026-10-04 on a 24-hour run,
+the longest that § "Supported run length" allows, with every setting distinct.
+The window spanned the whole run at 600 columns, with its left edge fixed at the
+run's opening. With two, sixty and six hundred changes in view, it cost 13.2 ms,
+179 ms and 819 ms on its first frame, and 6.3 ms, 5.9 ms and 8.3 ms on each
+frame after.
 
 Only the last window's propagators are kept. Each is about 3.1 KB, and six
-hundred take 1.8 MiB, so the store is bounded by one window and does not grow
-with the run. A kept propagator is, bit for bit, the matrix that forming it
-again would give, because it is looked up by everything it is formed from: the
-settings and the interval. Which propagators are kept depends on the window
-drawn last, but no drawn value can depend on that. So the store is not a second
-record of the run, and `state_at` reads none of it.
+hundred take 1.8 MiB, so their memory is bounded by one window and does not grow
+with the run. A kept propagator is identical, bit for bit, to one formed again
+from the same inputs, because it is looked up by all of them: the settings and
+the interval. Which propagators are kept depends on the window drawn last, but
+no drawn value can depend on that. So the kept propagators are not a second
+record of the run, and the function that returns the state at an instant
+(`state_at`) reads none of them.
 
-**What `drawn_window` costs a frame, at the settings the dashboard draws with**
-(measured 2026-10-04). The dashboard redraws every 200 ms
-(`RENDER_INTERVAL_S` in `app/dashboard_frame.py`) and shows at most two runs
-(`MAX_DISPLAYED_RUNS`). Each run is drawn by one
-`SimulationController.drawn_window` call at
+At the dashboard's settings, with kept propagators, the column count sets the
+cost of a frame and the number of changes in view does not (measured
+2026-10-04). The dashboard redraws every 200 ms (`RENDER_INTERVAL_S` in
+`app/dashboard_frame.py`) and shows at most two runs (`MAX_DISPLAYED_RUNS`). It
+draws each run with one call (`SimulationController.drawn_window`) at
 `max(150, plot width in pixels + 1)` columns (`chart_columns` in
-`app/chart_frame.py`). Each cell gives one run's call without kept propagators,
-then with them, as the median of 40 frames, with a 15-minute window following
-a 30-minute run at 1x:
+`app/chart_frame.py`). Each cell of the table gives one run's cost per frame
+without kept propagators, then with them. The costs are medians of 40 frames,
+with a 15-minute window following a 30-minute run at 1x:
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 | Changes in view | 150 columns | 1 069 columns | 2 401 columns |
@@ -6316,34 +6251,22 @@ a 30-minute run at 1x:
 | Ten | 25.0 ms → 3.5 ms | 28.6 ms → 9.4 ms | 35.5 ms → 18.0 ms |
 | Sixty | 135 ms → 3.7 ms | 119 ms → 9.1 ms | 129 ms → 18.8 ms |
 
-Three costs are left. The two propagators for the window's bounds change every
-frame, at about 1.4 ms each. The third is formed only on a frame whose left
-edge has passed a grid column. Last, each column costs one chained product, at
-about 7 µs. So the column count now sets the cost, not the number of changes
-in view. At 1x, the third propagator is formed on about one frame in forty at
-150 columns, one in four at 1 069 and one in two at 2 401. From 5x up, at
-1 069 columns or more, nearly every frame forms it. Playing faster adds little.
-In a later measurement, whose times ran about a quarter above the table's, one
-run with sixty changes in view cost 13.0 ms at 20x against 12.0 ms at 1x at
-1 069 columns, and 23.9 ms against 22.8 ms at 2 401. Two runs at 2 401 columns
-therefore take about 40-50 ms of a 200 ms frame. Without kept propagators, two
-runs with sixty changes in view at 1 069 columns take about 240 ms, which is
-longer than the frame.
+With kept propagators, three costs are left. The propagators for the window's
+two bounds cost about 1.4 ms each on every frame. Each column costs one chained
+product, at about 7 µs. The third cost is forming the propagator for the offset
+in the stretch where the window opens. At 1x, it is formed on about one frame in
+forty at 150 columns, one in four at 1 069 and one in two at 2 401. From 5x up,
+at 1 069 columns or more, it is formed on nearly every frame.
+
+Even so, playing faster adds little. In a later measurement of one run with
+sixty changes in view, a frame at 1 069 columns cost 13.0 ms at 20x against
+12.0 ms at 1x. At 2 401 columns, it cost 23.9 ms against 22.8 ms. That
+measurement's times ran about a quarter above the table's.
+
+Two runs at 2 401 columns therefore take about 40-50 ms of the 200 ms between
+redraws. Without kept propagators, two runs with sixty changes in view at
+1 069 columns take about 240 ms, which is longer than the time between redraws.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
-
-**This is the only record.** The chart is drawn from the definition, through
-`SimulationController.drawn_window` and `RunDefinition.evaluate_anchored`, so
-there is no second record that could disagree with it. The stepped system that
-advances the run is still checked against the definition by the "Closed-form
-agreement test".
-
-**For developers.** Recording one sample per step costs 130.8 bytes per
-sample, measured over 20 000 samples of a live run, so the 30-day case is
-25 920 000 samples. The definition's size assumes a busy ICU day with 50
-setting changes, which over the case gives 1 501 stretches. A one-hour window at 600
-columns costs 10.6 ms to draw on a two-hour run and 13.0 ms on a thirty-day
-run. Drawing from per-step samples cost 62.6 ms at four hours and 207.7 ms at
-twelve.
 
 #### The canonical evaluation rule
 
@@ -7071,98 +6994,104 @@ envelope" and `tests/unit/test_numerical_envelope.py`, and the figures below.
 
 #### What a setting outside the range costs
 
-**The calculation is exact at any flow, so the limits are not numerical.** A setting
-outside the ranges would give a numerically correct answer. Refusing it has another
-reason. The ranges are the model's **verification domain**, the ranges over which it has
-been checked. § "Independent-solution test" runs its test trajectories across them.
-§ "Published wash-in and elimination validation test" compares the model with measured
-human data across them. Every figure in this document is measured across them. Outside
-them, neither the code nor the *model* has been checked against anything. A cardiac
-output of 1000 L/min is not a patient, and these equations were never proposed to
-describe one. Solving them exactly for that setting gives a precise answer to a question
-that physiology does not ask. Nothing on the display would invite doubt. That is exactly
-the case in which an obvious failure must be preferred to a plausible-looking number.
+**The simulator refuses a setting outside the ranges, because neither its code nor its
+model has been checked there.** The ranges are the model's **verification domain**.
+Across them, its results have been compared with an independent calculation
+(§ "Independent-solution test") and with measured human data
+(§ "Published wash-in and elimination validation test"). Every model result in this
+document comes from settings within the ranges.
 
-**The limits were chosen.** Nothing in the equations breaks at 10.01 L/min. The limits
-mark only the settings that the interface offers and that the checks measure over.
-Widening one is a legitimate change, and a safety-critical one. To widen one, first
-extend the verification domain. Then re-run the trajectories of
-§ "Independent-solution test" over it, and revise this section with the results.
+Outside the ranges, the simulator must refuse rather than show a plausible-looking number. A cardiac output
+of 1000 L/min is not a patient, and the model's equations were never proposed to describe
+one. Solving them exactly for that setting would give a precise answer to a question that
+physiology does not ask. Nothing on the display would invite doubt.
+
+**For developers.** Each limit was chosen as the edge of the settings that the interface
+offers and that the two tests above cover. Nothing in the equations breaks at 10.01 L/min,
+because the calculation is exact at any flow. Widening a limit is a legitimate change, and
+a safety-critical one. First extend the verification domain. Then re-run the test described
+in § "Independent-solution test" over the wider range, and revise this section with the
+results.
 
 #### The model's envelope and a machine's deliverable range are two claims
 
-The two are different statements about different things:
+A run accepts a fresh gas flow only when the flow lies inside two separate ranges. The model's
+envelope is the range of fresh gas flows over which the model is claimed to represent a patient.
+The model is built on lumped compartments, the reference adult's fixed volumes and constant
+partition coefficients. A machine's deliverable range is what its flowmeters, minimum flow and
+fresh gas delivery can physically set. A machine can therefore narrow the flows a run accepts, but
+never widen them beyond the envelope.
 
-| Claim | What it says | Declared in | Refused by |
-| --- | --- | --- | --- |
-| The model's envelope | The range over which the lumped compartment structure, the reference adult's fixed volumes and the constant-coefficient partition model are claimed to represent a patient | `MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py` | `FreshGasFlow`, which runs `require_supported_fresh_gas_flow` when it is built |
-| A machine's deliverable range | What that machine's flowmeters, minimum-flow floor and fresh gas delivery can physically set | `deliverable_fresh_gas_flow_range` in that machine's `data/machines/*.json` profile | `BreathingCircuit._require_deliverable_flow` |
+**The machine that ships with the simulator declares no deliverable range, so the model's
+envelope is the only limit on the flow.** It declares none because, for all eight machines
+surveyed, no operator's manual or manufacturer specification giving a deliverable range could be
+reached (`docs/machine-survey.md` § "(b8) Flow bounds, minimum oxygen flow, and the hypoxic guard").
+The survey names ISO 80601-2-13:2022 as the governing standard. That standard could not be
+reached either, so the survey does not say what it requires. No declared range means **no claim,
+not a machine known to be unlimited**. With the shipped machine, nothing displayed depends on a
+machine's range.
 
-**The effective limit on the control is the intersection.** Each side refuses
-in its own words, so a reader of a refusal can tell which claim the setting
-violated. The model's refusal names the domain over which the model is
-claimed. The machine's refusal names the device. It also says, in the same
-sentence, that the envelope is *not* what refused the setting.
-`test_machine_deliverable_flow_range_is_separate_from_model_envelope`
-in `tests/unit/test_supported_ranges.py` checks both directions.
+**The fresh gas flow slider offers only flows inside both ranges.** It moves in steps of
+0.1 L/min, the flow's displayed resolution. Where an end of the offered range falls between two
+steps, the slider offers the step just inside it. For a machine with a minimum flow of 0.25 L/min,
+the slider's lowest setting is 0.3 L/min, never the 0.2 L/min that the machine would refuse. An
+offered range that contains no step is an error, because otherwise the slider could offer only a
+flow that the run refuses.
 
-**Keeping the two ranges apart stops a machine from widening what was verified.** Suppose
-a machine profile's flowmeter reaches 15 L/min, and its range were merged with the
-model's into one pair of limits. That profile would extend the range that every reference
-test was run over, without any change to `core/supported_ranges.py`. The result would be
-an exact number, produced outside everything that was checked, and shown exactly like one
-inside it. Merging fails the other way too. Take a machine with no true off position at
-its common gas outlet, and a minimum flow of 0.5 L/min. With one pair of limits, that
-machine either could not be represented or would move the model's lower limit for every
-other machine. Kept apart, a machine profile can narrow what a run will accept, and can
-never widen it.
+**A machine whose starting flow is not one of the slider's steps is refused when the dashboard
+sets up its controls.** A user reads the slider's position like a displayed value. If a run
+started between two steps, the slider would sit on a neighbouring step beside a rounded readout,
+and both would show a flow that the run does not have.
 
-**A machine whose range does not overlap the model's range at all is refused when the
-circuit is built.** It is also refused when its range is reassigned on a built circuit.
-So the mismatch is not found one refused setting at a time. Every flow such a machine can
-deliver is outside the model's range, and every flow the model supports is outside the
-machine's. Each refusal would be correct, but none would say that the pairing itself
-cannot be simulated
-(`test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built`
-in `tests/unit/test_circuit.py`).
+**Each refusal says which of the two ranges the setting is outside.** The model's refusal names
+its envelope. The machine's refusal names the machine and says, in the same sentence, that the
+model did not refuse the setting.
 
-**The shipped profile declares no range, and nothing displayed changes.**
-`data/machines/reference_circle_system.json` records `deliverable_fresh_gas_flow_range`
-as `null`, because no operator's manual or manufacturer specification giving a deliverable
-range could be reached for any machine surveyed. `docs/machine-survey.md` § "(b8) Flow
-bounds, minimum oxygen flow, and the hypoxic guard" reports the range as unknown for all
-eight. It names ISO 80601-2-13:2022 as the governing standard, and says that its text was
-not reached, so it makes no claim about its requirements. `null`
-means **no claim, not a machine known to be unlimited**. The table above is then the only
-limit on the flow. The profile's `provenance_gap` records this reasoning, and
-`test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why` in
-`tests/unit/test_parameters.py` checks that the file keeps to it.
+**A machine whose range does not overlap the model's envelope at all is refused when the
+simulated breathing circuit is built.** If such a machine were accepted, every setting would be
+refused, each time correctly, but no refusal would say that the pairing itself cannot be simulated.
 
-**Two machine minimums are not stored.** The field table in `docs/machine-abstraction.md`
-also names `minimum_total_flow_l_min` and `minimum_oxygen_flow_l_min`, under the same
-survey section. Neither is a field here, because that document's rule is that a field
-exists only if something uses it. A minimum total fresh gas flow *is* the lower end of the
-deliverable range. Storing one number under two names in a safety-critical data file is
-the confusion this subsection removes. A minimum oxygen flow affects nothing this model
-calculates, because the model carries one volatile agent in one gas phase and no oxygen.
-It may be added when a hypoxic guard needs it, and that is a model extension, not a data
-question.
+**A machine's minimum oxygen flow is not stored.** It would affect nothing the model calculates,
+because the model carries one volatile agent in one gas phase and no oxygen.
 
-**The fresh gas flow control offers only flows that both the model and the machine accept,
-read from the circuit.** `BreathingCircuit.accepted_fresh_gas_flow_range_l_min` states
-this range once. Where a machine profile declares no range, it is the model's range. Where
-a profile declares one, it is the overlap of the two. The slider is limited to this range,
-because a slider offering a flow the attached machine cannot set would invite a refusal
-instead of preventing one. The slider moves in steps of 0.1 L/min, the flow's
-displayed resolution. An end of the range that falls between two steps is offered as the
-step just inside it. A machine with a minimum flow of 0.25 L/min is offered 0.3 L/min,
-never the 0.2 L/min it would refuse. A range that contains no step is an error, instead of
-a control whose only setting the run refuses. A machine profile
-whose opening flow is not one of the offered steps is also refused, when the dashboard sets
-up its controls. A slider position is read like a displayed value. A run that opens
-between two steps would leave the slider on a neighbouring step beside a rounded readout,
-and both would show a flow that the run does not have. Nothing displayed changes while the
-shipped profile declares no range.
+**For developers.** The two ranges are declared and enforced here:
+
+| Claim | Declared in | Refused by |
+| --- | --- | --- |
+| The model's envelope | `MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py` | `FreshGasFlow`, which runs `require_supported_fresh_gas_flow` when it is built |
+| A machine's deliverable range | `deliverable_fresh_gas_flow_range` in that machine's `data/machines/*.json` profile | `BreathingCircuit._require_deliverable_flow` |
+
+The two ranges are kept apart because one merged pair of limits fails in two ways. A profile whose
+flowmeter reaches 15 L/min would extend the range that every reference test was run over,
+without any change to `core/supported_ranges.py`. The result would be an exact number, computed outside everything that was checked and shown exactly like one inside it. Take a machine with no true off position
+at its common gas outlet and a minimum flow of 0.5 L/min. The merged pair would either fail to
+represent it or move the model's lower limit for every other machine.
+
+A test checks both refusals
+(`test_machine_deliverable_flow_range_is_separate_from_model_envelope` in
+`tests/unit/test_supported_ranges.py`). A machine range that does not overlap the envelope is
+refused when it is reassigned on a built circuit, as well as when the circuit is built
+(`test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built` in
+`tests/unit/test_circuit.py`).
+
+The circuit gives, in one place, the range of flows that both the model and the machine accept
+(`BreathingCircuit.accepted_fresh_gas_flow_range_l_min`), and the slider reads it from there. The
+slider is limited to that range because offering a flow the attached machine cannot set would
+invite a refusal instead of preventing one.
+
+The shipped profile (`data/machines/reference_circle_system.json`) records its deliverable range
+(`deliverable_fresh_gas_flow_range`) as `null` and gives the reason in its `provenance_gap` field.
+A test checks that the file still declares no range and says why
+(`test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why` in
+`tests/unit/test_parameters.py`).
+
+The field table in `docs/machine-abstraction.md` lists a minimum total flow and a minimum oxygen
+flow (`minimum_total_flow_l_min` and `minimum_oxygen_flow_l_min`) under the machine survey's
+section (b8). Neither is stored in a machine profile, because that document allows a field only
+where something uses it. A minimum total flow *is* the lower end of the deliverable range, so a
+field of its own would store one number under two names in a safety-critical data file. A minimum
+oxygen flow can be added when a hypoxic guard needs it, as an extension of the model rather than a
+change to the data.
 
 #### Supported run length
 
@@ -10146,22 +10075,22 @@ meet.
 
 #### What the concentration readouts show
 
-Every modeled concentration and relative partial pressure, in all six
-compartments, is displayed to **0.01 percentage points**, which is two decimals
-of a percent. The delivered-agent setting uses the same resolution, in the
-readout beside its slider and in the label shown while the slider is dragged, so
-the setting a reader dials and the values it produces are read at one scale. A
-positive value that would round to `0.00%` is displayed as `<0.01%`, so `0.00%`
-means only that no agent has arrived, as before a run starts.
+In all six compartments, every modeled concentration and relative partial
+pressure is displayed to **0.01 percentage points**. The delivered-agent
+setting uses the same resolution, in the readout beside its slider and in the
+label shown while the slider is dragged, so the setting and the values it
+produces are read at one scale. A positive value that would round to `0.00%`
+is displayed as `<0.01%`, so `0.00%` means only that no agent has arrived, as
+before a run starts.
 
-Each displayed digit is accurate as a statement about this model with these
-parameters. No displayed value may be read as accurate to its last digit as a
-prediction about a patient ("Known limitations").
+Each digit shown is accurate for this model with its parameters. No displayed
+value can be trusted to its last digit as a prediction about a patient
+(§ "Known limitations").
 
-**For developers.** `test_format_percent_uses_the_documented_display_resolution`
-enforces the resolution, and
-`test_format_percent_marks_a_value_below_the_resolution` enforces the `<0.01%`
-form.
+**For developers.** One test enforces the display resolution
+(`test_format_percent_uses_the_documented_display_resolution`), and another
+enforces the `<0.01%` form
+(`test_format_percent_marks_a_value_below_the_resolution`).
 
 #### Why the readouts show two decimals
 
@@ -10288,214 +10217,203 @@ hold a negative value, and the formatter is the code that refuses one.
 
 #### The MAC multiple's resolution
 
-**The MAC resolution is derived from the percent resolution.** A MAC multiple is
-a percent divided by the agent's MAC in percent (`mac_percent`), so the percent
-resolution already fixes how finely the quotient is known. The rule is to take
-**the finest power of ten that is nowhere finer than the percent resolution
-converted into MAC.** Converted, 0.01 percentage points is 0.005 MAC for
-sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane. Isoflurane sets
-the limit, at 0.0083 MAC, and **0.01 MAC** is the finest power of ten at or
-above it. `test_the_mac_resolution_is_derived_from_the_percent_resolution`
-repeats this arithmetic for every shipped agent, so adding an agent or changing
-the percent resolution fails there rather than silently over-claiming.
-
-The smallest change the MAC readout can show is therefore 0.02 percentage points
-of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane, never less than the
-percent readout's. The two readouts round separately, so the MAC value can
-occasionally change while the percent stays the same. The three per-agent
-figures have no test yet (`PL-19W8`).
+**The MAC readout shows the MAC multiple to 0.01 MAC.** The smallest change it can
+show is 0.02 percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of
+desflurane. Each is at least the percent readout's 0.01 percentage points, because the
+MAC multiple is calculated from the percent concentration and can be no more precise
+than it. The two readouts round separately, so the MAC readout can occasionally change
+while the percent readout stays the same. The three per-agent figures have no test yet
+(`PL-19W8`).
 <!-- not-restated: 0.06 -->
 
-A positive MAC multiple below the resolution reads `<0.01 ×MAC`, and this
-matters more on the MAC line than on the percent line. A compartment clears
-0.01 MAC later than it clears 0.01 percentage points, so `0.00 ×MAC` beneath a
-percent line that already shows the compartment filling would make the two
-readouts contradict each other.
+A MAC multiple above zero but below 0.01 MAC shows as `<0.01 ×MAC`. The `<` sign
+matters more on the MAC readout than on the percent readout, because a filling
+compartment reaches 0.01 percentage points before it reaches 0.01 MAC. In between,
+`0.00 ×MAC` would contradict the percent readout above it, which already shows the
+compartment filling.
 
 **For developers.**
-`test_format_mac_multiple_marks_a_value_below_the_resolution` enforces that
-form. The MAC resolution is derived rather than stored beside the percent
-resolution so that re-measuring one number never means re-deriving two.
+The MAC resolution is derived from the percent resolution rather than stored beside
+it, so that re-measuring the percent resolution never leaves a second number to
+update. Divided by the agent's MAC in percent (`mac_percent`), 0.01 percentage
+points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane.
+The MAC resolution is the finest power of ten at or above the coarsest of these,
+isoflurane's 0.0083. A test repeats this arithmetic for every shipped agent
+(`test_the_mac_resolution_is_derived_from_the_percent_resolution`) and fails if
+adding an agent or changing the percent resolution would make the MAC readout finer
+than the percent supports. Another test checks the `<0.01 ×MAC` form
+(`test_format_mac_multiple_marks_a_value_below_the_resolution`).
 
 #### What the model keeps that the display rounds
 
-**The resolution is a property of the display alone.** The model computes and
-keeps every value at full precision, including every value the chart is drawn
-from, and a slider's value reaches the model without rounding. The rounding
-happens exactly once, in the readout, which is the only place between a slider
-and a pixel where resolution is lost. With the exact method that the simulator
-uses, the model keeps about nine orders of magnitude more than the display
-shows.
+**Only the display rounds a value, and only once.** The model computes and keeps
+every value at full precision, including the values the chart is drawn from. A slider's value reaches the model without rounding. The readout is the only place between a slider and a pixel where resolution is lost. The model keeps about nine
+orders of magnitude more precision than the display shows.
 
 **For developers.** Everything upstream of the formatter carries full binary64
 precision: the compartment states, every integration step, the mixed-venous and
-tissue transfers, and every state of the `DrawnWindow` that the chart is drawn
-from. Nothing in `core/` rounds, and the snapshot fields that the interface
-reads are raw fractions. `test_the_model_keeps_precision_the_display_throws_away`
-enforces this. Two runs whose delivered concentrations differ by an amount four
-orders of magnitude smaller than the display resolution must reach states that
-differ, and must still look identical on the display.
+tissue transfers, and the states the chart is drawn from (`DrawnWindow`). Nothing
+in the model's code (`core/`) rounds. The snapshot fields that the interface
+reads are raw fractions. The figure of nine orders of magnitude applies to the
+exact method that the simulator uses. A test runs the model twice, with delivered
+concentrations that differ by an amount four orders of magnitude smaller than
+the display resolution (`test_the_model_keeps_precision_the_display_throws_away`).
+The two runs must reach different states and must still look identical on the
+display.
 
 #### Comparing two readouts
 
-**Solver error does not make the gap between two readouts less accurate than
-either reading.** Within one time step, the model updates every compartment
-from the values it had at the start of that step. Rounding does make the gap
-less accurate. Each reading is rounded to its last displayed digit, so a gap
-taken from two readings can differ from the true gap by up to one count of that
-digit.
+**A reader can rely on which of two compartments the readout row shows as higher,
+except possibly while the two cross.** The interface therefore adds no warning or
+marker when readouts are compared. Where seven panels fit, the six compartment readouts
+and the clock sit in one row, so that the readouts can be read *in order*: the circuit
+leads the alveoli, and the alveoli lead the tissues.
+§ "The readout row's width condition" below says what happens when seven panels do not
+fit.
 
-The six compartment readouts and the clock sit in one row of seven panels, where
-seven fit, so that the readouts can be read *in order*: the circuit leads the
-alveoli, and the alveoli lead the tissues. § "The readout row's width condition"
-below says what happens when seven panels do not fit. Solver error could mislead
-that reading only by reversing which of two compartments is shown as higher. A
-measurement compared every pair of the six readouts at every time step, in every
-run that § "Independent-solution test" describes and for all three agents, which
-is 1 485 000 pair comparisons. The simulator's readings **never** disagreed with
-those of the independent solution about which compartment is higher, even where
-the gap was tiny (measured 2026-10-17).
+When a reader compares two readouts, the simulator's calculation error could mislead them
+only by reversing which of the two is shown as higher. A test compared every pair of the
+six readouts at every time step, for all three agents, in every run that
+§ "Independent-solution test" describes: 1 485 000 pairs of readings in all. The
+simulator's readings **never** disagreed with those of the independent solution about
+which compartment is higher, even where the gap was tiny (checked 2026-10-17).
 
-That is a measurement on one platform, not a guarantee. Rounding to a fixed
-number of decimals never reverses the order of two values. So the display can
-show two compartments in the wrong order only where the simulator and the
-independent solution put them in opposite order. That needs a true gap smaller
-than the two compartments' solver errors added together. The largest difference
-between the two solutions in any pair's gap, over every run, is
-$`1.1\times10^{-12}`$ as a fraction, not a percent, and true gaps that small do
-occur while two compartments cross. A reversal is arithmetically possible
-there, though none was observed.
+This result comes from runs on one computer platform and is not a guarantee.
+Because rounding to a fixed number of decimals never reverses the order of two
+values, the display can show two compartments in the wrong order only where the
+simulator and the independent solution put them in opposite order. Such a reversal needs
+a true gap smaller than the two compartments' calculation errors added together. In
+every run, the simulator's gap between any two compartments differed from the
+independent solution's by at most $`1.1\times10^{-12}`$ as a fraction, not a
+percent. True gaps that small do occur while two compartments cross, so a reversal
+is arithmetically possible there.
 
-The interface therefore adds no warning or marker when readouts are compared. A
-reader who compares them in order, as the row is designed for, can rely on the
-order shown. The interface shows no gap between two readouts. A gap that a
-reader works out by subtracting two readings carries the rounding of both,
-described at the start of this subsection, and the solver limit in the
-paragraph above.
+**A gap that a reader works out from two readings can differ from the true gap by
+up to one count of the last displayed digit.** Each reading is rounded to that
+digit. The gap carries the rounding of both readings and the solver limit in the paragraph above. The simulator's calculation error does not make the gap less accurate than either reading. The interface shows no gap between two readouts.
 
-**For developers.** Two tests enforce the ordering claim. Each covers one half of
-the path from the model to the readout and can fail on its own.
-`test_exact_step_matches_the_independent_solution_everywhere` bounds the
-solver's error against the independent solution.
-`test_format_percent_preserves_order` in `tests/unit/test_formatting.py` checks
-that the shipped formatter never shows a higher fraction as a lower percent. It
-covers the "<0.01%" reading below the display resolution and both sides of every
-value at which the last displayed digit changes. Together the two tests mean that
-no reversal can occur at a true gap above $`1.0\times10^{-7}`$ counts, which is
-twice the first test's tolerance.
-`test_displayed_ordering_reverses_only_at_a_crossing` is the measurement of every
-run quoted above, and it reads each value through the shipped `format_percent`.
-It allows a reversal where the true gap is below that same threshold, instead of
-asserting that none occurs, because a reversal is possible at a crossing. It
-cannot fail unless one of the other two tests fails, so it records the
-measurement and adds no evidence of its own.
+**For developers.** Two tests enforce the claim about which compartment is shown
+as higher. Each covers one half of the path from the model to the readout and can
+fail on its own. The first bounds the simulator's calculation error against the
+independent solution
+(`test_exact_step_matches_the_independent_solution_everywhere`). The second checks
+that the interface's formatter, `format_percent`, never shows a higher fraction as
+a lower percent (`test_format_percent_preserves_order` in
+`tests/unit/test_formatting.py`). It covers the "<0.01%" reading below the display
+resolution and both sides of every value at which the last displayed digit changes.
+Together the two tests mean that no reversal can occur at a true gap above twice the
+first test's tolerance: $`1.0\times10^{-7}`$ counts of the last displayed digit. A
+third test makes the comparisons described above, reading each value through the
+interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing`). It
+allows a reversal where the true gap is below the first two tests' threshold of
+$`1.0\times10^{-7}`$ counts, because one is possible at a crossing. It fails only when
+one of those tests fails, so it records the result and adds no evidence of its own.
+
+The claim about a gap's calculation error rests on one property of the model: within one
+time step, it updates every compartment from the values at the start of that step.
 
 #### One resolution for all six readouts
 
-**The resolution is the same in every compartment, for two reasons.**
+**All six compartment readouts show the same number of decimal places, for two
+reasons.**
 
-- **The six readouts are read comparatively.** Different decimal counts across
-  them would put digits of different place value in the same position, and a
-  value scanned rather than read would then be misjudged by a factor of ten.
-  That is a property of the reading task, whatever the solver does.
-- **Parameter uncertainty is absolute in its effect across the row.** The
-  one-SD displacements tabulated above run from $`8.7\times10^{-4}`$ to
-  $`6.8\times10^{-2}`$ percentage points across all six compartments and all
-  four coefficients. That is a spread of less than two orders of magnitude, on a
-  row whose *values* span four. A single absolute resolution, set by the
-  compartments where the displacement is largest, expresses that spread directly
-  and is conservative where the displacement is smaller.
+- **The six readouts are compared with one another.** If they showed different
+  numbers of decimal places, digits of different place value would sit in the
+  same position, and someone scanning the row would misjudge a value by a factor of ten. That is a property of the reading task, whatever the solver does.
+- **The effect of parameter uncertainty varies much less across the row than the
+  values do.** The one-SD displacements tabulated above run from
+  $`8.7\times10^{-4}`$ to $`6.8\times10^{-2}`$ percentage points across all six
+  compartments and all four coefficients. That is a spread of less than two
+  orders of magnitude, on a row whose *values* span four. One number of decimal
+  places therefore fits all six readouts. It is set by the compartments where
+  the displacement is largest, so it is conservative where the displacement is
+  smaller.
 
 #### The readout row's width condition
 
-**The row has a width condition, and both reasons above rest on it.** The row's
-column count follows its width, and every panel takes exactly one column. So the
-seven panels sit **side by side wherever seven panels' reserved widths fit the
-row, four per line where seven do not, two where four do not, and one below
-that**. These four arrangements are the rungs of the row's ladder. Each column
-reserves the widest value it can show, measured in the font the interface draws
-with. The clock's column reserves its widest elapsed time, and each
-compartment's column its widest percent and MAC multiple, so the clock's width
-costs no other column. The widths at which the row steps down depend on the font
-and the display scale. With the font that the tests draw with, measured on
-2026-10-18, the row is seven across from 1005 logical pixels, four from 591 and
-two from 310. Those figures illustrate the rule and do not specify it. The
-ladder is derived from what the interface draws with, so it states no pixel
-width that a different font or display scale would make wrong.
+**The readout row's width decides how many panels share a line.** Every panel
+takes exactly one column. The panels sit seven across wherever all seven columns
+fit the row, four per line where they do not, two where four do not fit, and one
+below that. Each column is as wide as the widest value its panel can show: the
+clock's longest elapsed time, or a compartment's widest percent and MAC
+multiple. The clock's width therefore widens no other column. In every
+arrangement each panel keeps that width, so no value is wrapped away from its
+unit. The widths at which the row steps down depend on the font and the display
+scale. With the font that the project's tests use, for example, the row is seven
+across from 1005 px, four across from 591 px and two across from 310 px (measured 2026-10-18). Those figures illustrate the rule and do not specify it.
 
-The change of arrangement affects the two reasons unequally, and withdraws
-neither.
+When fewer panels share a line, both reasons given above for the row still
+apply, but not equally.
 
-- **Reading the row in order becomes harder.** Below the seven-across width the
-  six readouts are on two or more lines, and the comparison that the row invites
-  becomes a scan across the lines instead of a single glance. The measurement
-  behind the ordering claim is untouched, because it compares displayed values,
-  not their positions. What narrows is the claim that the arrangement invites
-  the comparison, not the claim that the ordering is faithful.
-- **The uniform resolution still applies at every width.** The grid aligns
-  the values within a column at every rung, so a reader scanning two panels
-  compares them against a common position, whether they are side by side or
-  stacked.
+- **Reading the row in order becomes harder.** When the row is too narrow for
+  seven across, the six readouts other than the clock sit on two or more lines,
+  so comparing them takes a scan across the lines instead of a single glance.
+  The readouts' ordering is still faithful, because it depends on the displayed
+  values, not on where they sit.
+- **The uniform resolution still applies at every width.** The grid aligns the
+  values within each column, so a reader compares two panels against a common
+  position, whether they sit side by side or stacked.
 
-**The window opens maximized, so the row opens at the widest rung the screen
-affords.** Maximized, the readout region gets the screen's available width less
-the window's own frame. A 1366 px laptop screen, one of the commonest widths,
-opens on seven across, as the paragraph after next measures. A 1280 px screen
-gives the region about 1234 px (measured 2026-09-27, with the tests' font).
-Whether it still opens on seven, now that the control-change record shares the
-region as described below, has no test yet (`PL-LKX7`).
+**The row's width follows the window, never the layout below it.** The readouts
+sit in a region above the part of the window that the reader divides into Areas
+(§ "Minimum displayed outputs" -> "What this list requires once the layout is
+the reader's"). The row's width therefore stays the same when the reader splits
+or joins an Area, drags a border or switches Workspace. Only two things change
+it: the window's width, and how the region divides that width between the
+readouts and the control-change record.
 
-Maximized is not full screen. The title bar and window controls stay, and on
-macOS the window is zoomed. Maximized is also the default window state of the
-reference design that the interface follows (`docs/interface-provenance.md`
-§ "Adopted"). A reader who un-maximizes gets the window's normal size back,
-which is a fixed fraction of the screen's available area, centred. At that size
-the row steps down the ladder above wherever its width requires. A screen too
-narrow for seven across even when maximized opens on a lower rung, because
-maximizing changes the row's width, never the rule that picks the rung.
+**The window opens maximized, so the row starts in the widest arrangement that
+the screen allows.** Maximized is not full screen: the title bar and window
+controls stay, and on macOS the window is zoomed. A maximized window gives the
+region the screen's available width less the window's frame. A reader who
+un-maximizes the window returns it to its normal size: a fixed fraction of the screen's available area, centred. At that size the row steps down the arrangements above wherever its width requires. A screen too narrow for seven across even when maximized opens on a narrower arrangement, because maximizing changes the row's width, never the rule that picks the arrangement.
 
-**The row's width follows the window, never an Area.** The readouts sit in a
-region above the layout container that the Areas replace (§ "Minimum displayed
-outputs" -> "What this list requires once the layout is the reader's"). So a
-split, a join, a border drag or a Workspace switch never changes the width that
-the row is laid out at. Only two things change it: the window's width, and how
-the region divides that width. The region holds the runs' rows in a left column
-and the control-change record in a right column, which take 0.82 and 0.18 of the
-width. The left column never narrows below its own minimum width. At every rung,
-each panel is laid out at its full reserved width, so no value is wrapped away
-from its unit.
+**On a 1366 px laptop screen, one of the commonest widths, the row opens seven
+across, with one run or two** (measured 2026-10-18). In compare mode the two
+runs share one readout row. On that screen the longest control-change lines do
+not fit the record's column, so the record wraps them. It breaks them only after
+the time or after the arrow, so every value stays beside its unit.
+
+On a 1280 px screen the control-change record takes part of the region's width,
+and whether the row still opens seven across has no test yet (`PL-LKX7`).
+
+**For developers.** A function sets the row's column count from its width
+(`readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`). A constant
+lists the four arrangements (`READOUT_ROW_LADDER`). Column widths come from the
+font that the interface draws with, so the code fixes no pixel width that
+another font or display scale would make wrong. The step-down widths above are
+in logical pixels, and the tests draw with an offscreen font. One test reads
+those widths from the row instead of asserting them
+(`test_the_readout_row_reflows_where_its_panels_stop_fitting`). Another enforces
+the column count and each panel's one-column span
+(`test_every_readout_reserves_a_qualifier_line_and_an_equal_column`).
+
+The readouts sit in their own region (`SimulationView.unconditional_region`). A
+test checks that the region stays outside the Areas
+(`test_no_unconditional_value_sits_inside_the_layout_container`). The region
+gives 0.82 of its width to a left column for the readouts and 0.18 to a right
+column for the control-change record. These are the shares that the chart
+panel's Area and the sidebar's Area had in the layout that the dashboard first
+opened on. In that layout the record was as wide as the sidebar beneath it. The
+Workspaces that ship now divide the width differently, and the region keeps its
+own shares. The left column never narrows below its own minimum width.
 <!-- not-restated: 0.18 -->
 
-**A 1366 px window opens on seven columns, with one run or two** (measured
-2026-10-18). With the tests' font, a 1366 px window gives the region 1320 px.
-The record column takes 235 px and the readout column 1073 px, which is 68 px
-more than the 1005 px that seven across needs. Two runs share that one row, so
-the outcome above for a 1366 px screen also applies in compare mode. At 235 px
-the longest control-change lines no longer fit on one line, so the record wraps
-them, but only after the time and after the arrow, which keeps every value
-beside its unit.
+The window is opened maximized (`showMaximized()` in
+`src/anesthesia_sim/app/main.py`). A constant in the same file gives the
+window's normal size as a fraction of the screen's available area
+(`WINDOW_SCREEN_FRACTION`). Opening maximized matches the default window state of
+the reference design that the interface follows (`docs/interface-provenance.md`
+§ "Adopted").
 
-**For developers.** `readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`
-sets the row's column count from its width, and the ladder is
-`READOUT_ROW_LADDER`. The pixel widths above are measured on the offscreen font
-that the test suite renders with. `src/anesthesia_sim/app/main.py` shows the
-window with `showMaximized()` over a normal geometry of `WINDOW_SCREEN_FRACTION`
-of the screen's available area. The readouts are in
-`SimulationView.unconditional_region`, and `wrapping_between_parts` wraps the
-control-change record.
-The region's two shares are those of the chart panel's Area and the sidebar's
-Area in the layout that the dashboard first opened on, which made the record as
-wide as the sidebar beneath it. The Workspaces that now ship divide the width
-differently, and the region keeps its own shares.
-`test_every_readout_reserves_a_qualifier_line_and_an_equal_column` enforces the
-column count and the one-column span.
-`test_the_readout_row_reflows_where_its_panels_stop_fitting` reads the step-down
-widths from the row rather than asserting them.
-`test_no_unconditional_value_sits_inside_the_layout_container` keeps the row
-outside the Areas.
-`test_two_runs_share_one_readout_block_whose_values_name_their_runs` and
-`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` enforce the
-1366 px outcome in compare mode.
+With the tests' font, a 1366 px window gives the region 1320 px (measured
+2026-10-18). The right column takes 235 px and the left column 1073 px, which is
+68 px more than the 1005 px that seven across needs. A 1280 px screen gives the
+region about 1234 px (measured 2026-09-27, with the tests' font). Two tests
+check that a 1366 px window opens the row seven across in compare mode
+(`test_two_runs_share_one_readout_block_whose_values_name_their_runs` and
+`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns`). A function
+wraps the control-change record (`wrapping_between_parts`).
 
 #### Time, flows and the chart
 
@@ -11708,68 +11626,64 @@ its row on reading one run's value as the other's.
 
 ## Assumptions
 
-This model assumes:
+Every value the model computes rests on these assumptions.
 
-- every modeled compartment is perfectly mixed;
-- each tissue group exchanges agent only with the blood flowing through it, so
-  no agent passes directly from one tissue group to another. "Known limitations"
-  lists that route, intertissue diffusion, as omitted;
-- partition coefficients are constant;
-- tissue volumes and flow fractions are constant;
-- outgoing pulmonary blood equilibrates with alveolar gas;
-- the alveolar gas volume is constant. Uptake removes agent from the
-  compartment without removing volume from it, and no inspired flow replaces
-  the gas taken up. This assumption excludes nitrous oxide, simultaneous
-  gases, and the concentration and second-gas effects. "Alveolar gas" gives
-  the size of the error and what lifting the assumption would take;
-- inspired gas is circuit gas. One modeled gas concentration, $`F_I`$, lies
+- Every modeled compartment is perfectly mixed.
+- Each tissue group exchanges agent only with the blood flowing through it. The
+  model therefore omits intertissue diffusion, the direct passage of agent from
+  one tissue group to another (see § "Known limitations").
+- Partition coefficients, tissue volumes and flow fractions are constant.
+- Outgoing pulmonary blood equilibrates with alveolar gas.
+- Tissue venous blood equilibrates with its tissue group.
+- There is no metabolism.
+- The selected reference patient does not change physiologically during a run.
+- The alveolar gas volume is constant. Uptake draws agent out of the alveolar
+  gas without reducing its volume, and no inspired flow replaces the gas that
+  the blood absorbs. This assumption excludes nitrous oxide, simultaneous gases,
+  and the concentration and second-gas effects. "Alveolar gas" gives the size of
+  the error and what lifting the assumption would take.
+- Carrier gases do not affect agent kinetics.
+- Inspired gas is circuit gas. One modeled gas concentration, $`F_I`$, lies
   between the vaporizer and the alveoli, because there is one perfectly mixed
-  circuit with no dead space and no separate limbs (see § "Model boundary");
-- the breathing system is a semi-closed circle whose surplus gas valve is
-  open. Exhaust outflow equals fresh-gas inflow at every instant, so one fresh
-  gas flow, $`\dot V_F`$, is both the delivery rate and the removal rate (see
-  § "Breathing circuit");
-- inspired gas reaches the alveoli undiluted by water vapour, because the
-  modeled alveoli hold no water. Real alveolar gas is saturated at body
-  temperature. This is what "dry" means in the reference condition that "Agent
-  amount" states. "Known limitations" gives its size, 47/760, and what
-  correcting it would cost;
-- tissue venous blood equilibrates with its tissue group;
-- carrier gases do not affect agent kinetics;
-- temperature is constant. Every stored gas volume is at the one reference
+  circuit with no dead space and no separate limbs (see § "Model boundary").
+- The breathing system is a semi-closed circle whose surplus gas valve is open.
+  Exhaust outflow equals fresh-gas inflow at every instant, so one fresh gas
+  flow, $`\dot V_F`$, is both the delivery rate and the removal rate (see
+  § "Breathing circuit").
+- There is no chemical degradation.
+- There is no anesthetic reaction with circuit materials.
+- There is no vaporizer or machine delivery delay beyond the modeled circuit.
+- Settings remain constant within each calculation step.
+- Temperature is constant. Every stored gas volume is at the one reference
   condition that "Agent amount" states: 20 °C and 760 mmHg, dry. No equation
-  converts between ambient and body conditions. "Known limitations" sizes
-  what that costs;
-- ambient pressure is constant at one atmosphere, 760 mmHg. Every
-  concentration in this model is a fraction of that pressure, so the model is
-  specified at sea level and nowhere else (see the note below this list);
-- there is no metabolism;
-- there is no chemical degradation;
-- there is no anesthetic reaction with circuit materials;
-- there is no vaporizer or machine delivery delay beyond the modeled circuit;
-- settings remain constant within each numerical step; and
-- the selected reference patient does not change physiologically during a run.
+  converts between ambient and body conditions. § "Known limitations" gives the
+  size of the resulting error.
+- Inspired gas reaches the alveoli undiluted by water vapour, because the
+  modeled alveoli hold no water. "Dry" in the reference condition above means
+  this absence of water vapour. Real alveolar gas is saturated at body
+  temperature. "Known limitations" gives the size of this omission, 47/760, and
+  what correcting it would cost.
+- Ambient pressure is constant at one atmosphere, 760 mmHg. Every concentration in this model is a fraction of that pressure, so the model applies only at sea level.
 
 **At one atmosphere, a fraction and a partial pressure are interchangeable.**
 They differ only by a factor of the ambient pressure, so with that pressure
 fixed at 760 mmHg, $`F_A = 0.02`$ is 15.2 mmHg. The model relies on this in
-three places. "Concentrations" stores every modeled concentration as a fraction
-with no unit, the interface displays each one as a percent of one atmosphere,
-and $`\mathrm{MAC}_\%`$ divides one sea-level percent by another.
+three places. It stores every modeled concentration as a fraction with no
+unit (see § "Concentrations"). The interface displays each concentration as a
+percent of one atmosphere. And $`\mathrm{MAC}_\%`$ is one sea-level percent
+divided by another.
 
-**The delivered-concentration control depends on it most.** The control is a
-vaporizer dial setting, not a modeled gas concentration. A dial position means
-a partial pressure, the quantity that produces the anesthetic effect, only once
-the ambient pressure is known. At 760 mmHg it means the same partial pressure
-whichever class of vaporizer the dial belongs to, so no equation, stored value
-or displayed number here is wrong at sea level. Away from 760 mmHg the two
-classes diverge in opposite directions, which limits where the model applies.
-§ "Known limitations" below describes it.
+**More than anything else in the model, the vaporizer control depends on the
+ambient pressure being 760 mmHg.** The control is a dial setting, not a modeled
+gas concentration. A dial position means a partial pressure, the quantity that produces the anesthetic effect, only once the ambient pressure is known. At 760 mmHg, both classes of vaporizer deliver the
+same partial pressure at a given dial position, so no equation, stored value
+or displayed number here is wrong at sea level. Away from 760 mmHg, the two
+classes diverge in opposite directions, as § "Known limitations" describes.
 
-**For developers.** The control is `app/control_record.py`'s
-`ControlInput.DELIVERED`, and its recorded changes carry the unit *percent of
-1 atm*. The model has no device-class parameter, which is not a defect at sea
-level. A model that adds ambient pressure will need one.
+**For developers.** The vaporizer control is `ControlInput.DELIVERED` in
+`app/control_record.py`. Each recorded change to it carries the unit *percent
+of 1 atm*. The model has no parameter for the class of vaporizer and needs none
+at sea level. A model that adds ambient pressure will need one.
 
 ## Known limitations
 
@@ -12791,19 +12705,27 @@ A release is complete only when:
 
 - all parameter values and sources are present;
 - no scientific `TBD` markers remain;
-- v0.0.2 circuit reference tests still pass;
-- unit, integration, invariant, and independent reference tests pass;
-- the published wash-in validation passes for every agent and cohort. The
-  elimination comparison in the same test module is not part of this gate. It
-  only checks that results have not changed from earlier versions, and makes
-  no claim of agreement;
+- simulated wash-in passes validation against published data for every agent
+  and cohort;
 - mass balance closes within the documented tolerance;
-- supported step sizes pass convergence and nonnegativity tests;
-- deterministic replay passes;
-- live setting changes preserve stored state;
-- the interface contains the educational and non-clinical warning;
-- Ruff formatting and linting pass;
-- strict mypy passes;
-- pytest passes;
-- GitHub Actions passes; and
-- this document describes the behavior actually present in the tagged release
+- deterministic replay passes (§ "Deterministic replay test");
+- changing a setting during a case keeps the simulation's current state;
+- the interface contains the educational and non-clinical warning; and
+- this document describes the behavior actually present in the tagged release.
+
+The comparison of simulated elimination with earlier versions is not a
+condition of release. It checks only that the results have not changed, and
+does not show that they agree with published data.
+
+**For developers.** A release also needs these checks to pass:
+
+- the circuit reference tests from v0.0.2;
+- the unit, integration, invariant and independent reference tests;
+- the convergence and nonnegativity tests at every supported step size;
+- Ruff formatting and linting;
+- strict mypy;
+- pytest; and
+- GitHub Actions.
+
+The comparison of simulated elimination with earlier versions is in the same
+test module as the wash-in validation.
