@@ -1,10 +1,13 @@
 ---
 id: PL-KDG0
 title: Restructure docs/maintainer.md as the copy editor's structure read proposes: state each decision once where it applies, give subagent rules, auto mode and the cloud environment their own sections
-status: untriaged
+status: done
 feature: repo-copy-edit
 touches: docs/maintainer.md
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2047
+verify: grep -q "^### Subagents run on the session's model and effort" docs/maintainer.md && grep -q '^## Make auto mode the default on your Mac' docs/maintainer.md
 ---
 
 **Problem.** Restructure docs/maintainer.md as the copy editor's structure read proposes: state each decision once where it applies, give subagent rules, auto mode and the cloud environment their own sections
@@ -36,3 +39,9 @@ chose on 2026-11-05 to apply the structure read before the line edit.
 
 Queries the repository could answer were answered in the text. The rest are
 filed as `PL-GZFR`, `PL-M8Z7`, `PL-WP3Z` and `PL-LJY8`.
+
+The closing prose review read the 18 changed passages and rewrote 15, and every price, command and file name a step needs is still in the guide.
+
+**Done when.** Each decision in the guide is stated once, where the owner acts on it, and no step lost a command, value or link.
+
+**Generator check.** The owner asked for this work (2026-11-05, "copy edit entire repo", and "Structure first" for this file). It is one area of a repository-wide copy edit, not a defect, so no mechanism caused it.
