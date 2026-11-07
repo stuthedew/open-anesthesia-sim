@@ -1,10 +1,10 @@
 # Yasuda et al. 1991, *Anesthesiology*: desflurane, isoflurane and halothane kinetics in volunteers
 
-This note gives the values and methods facts this repository takes from one
-paper, with their pages. None of them is a stored model parameter: they are
-values the simulator is tested against, and facts that `docs/MODEL.md` reasons
-from. No table or figure is reproduced, and the repository holds no copy of the
-paper: read it through the PMID or DOI below.
+This note gives the values and the facts about methods that this repository
+takes from one paper, with their pages. None of them is a stored model
+parameter: they are values the simulator is tested against, and facts that
+`docs/MODEL.md` reasons from. No table or figure is reproduced, and the
+repository holds no copy of the paper: read it through the PMID or DOI below.
 
 > Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
 > Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in
@@ -16,9 +16,9 @@ Route and depth: the project owner's own copy, kept outside this repository
 (the private corpus). The paper is a scan with no text layer, so it was read as
 page images. Printed pages 489, 490 and 491 were read on 2026-10-26 for
 `PL-4QCJ`, and every fact below that cites them was checked against them that
-day. Pages 492, 494 and 497 were read as page images on 2026-09-13. The facts
-below that cite those pages are as `PL-4QCJ` recorded them then, and were not
-read again.
+day. Pages 492, 494 and 497 were read on 2026-09-13. The facts below that cite
+those pages are as they were recorded then (`PL-4QCJ`), and were not checked
+against the paper again.
 
 ## Values recorded from the paper
 
@@ -87,29 +87,25 @@ Page 490 states each of these.
 
 ## Where this repository uses these facts
 
-None of these values is a stored model parameter, so they are never inputs to
-the simulation.
-
 - **The four desflurane and isoflurane ratios.** The simulator's results are
-  tested against them (`tests/reference/test_published_wash_in_and_elimination.py`).
-- **The recovery values.** `docs/MODEL.md` cites them, with halothane's
-  64 ± 9% as the same method detecting an agent that is metabolized.
-- **Halothane's 0.25, and the apparatus facts.** Both are used in `docs/MODEL.md`
-  § "Desflurane's residual, and why the parameter file was not changed".
-  Desflurane's residual is the gap that remains when the breathing circuit is
-  removed from the comparison: the simulator's desflurane then washes out
+  tested against them.
+- **The recovery values.** `docs/MODEL.md` cites them, and cites halothane's
+  64 ± 9% as evidence that the same method detects an agent that is metabolized.
+- **Halothane's 0.25, and the apparatus facts.** `docs/MODEL.md`
+  § "Desflurane's residual, and why the parameter file was not changed" uses
+  both. Desflurane's residual is the gap that remains when the breathing circuit
+  is removed from the comparison. The simulator's desflurane then washes out
   faster than the volunteers' did, and its five-minute ratio falls below the
   published 0.14. Halothane's 0.25 is the top of the range of published
   five-minute ratios that an explanation of that gap has to fit. From the
   apparatus facts, that section concludes that the 50 ml of tubing is a series
-  dead space, which reduces alveolar ventilation, and cannot carry desflurane's
-  residual.
+  dead space, which reduces alveolar ventilation, and cannot explain
+  desflurane's residual.
 
 ## Other facts from this paper, and where they are recorded
 
 `docs/references/README.md` § "Yasuda et al. 1991 — the two human kinetics
-papers" carries this citation and the companion *Anesth Analg* paper's, and
-says where each of these is recorded, with its pages:
+papers" says where each of these is recorded, with its pages:
 
 - the five-compartment fits (Tables 1 to 5), the fat-group blood flows of
   Table 5 (page 496) and the method behind them;

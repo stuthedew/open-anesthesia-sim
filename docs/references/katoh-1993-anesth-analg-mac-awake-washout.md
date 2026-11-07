@@ -16,8 +16,8 @@ Route and depth: the project owner's own copy, kept outside this repository
 (the private corpus), through the paper's text layer, all six printed pages
 (1012 to 1017). Equation 1 on page 1013 and Table 1 on page 1014 are missing or
 garbled in the text layer, so both were read from page images. Every value is
-stated in the text or a table, and none was read from a figure. Read on
-2026-10-26 for `PL-P319`. Each value below was checked against the paper on
+stated in the text or a table, and none was read from a figure. The paper was
+read on 2026-10-26 for `PL-P319`, and each value below was checked against it
 that day.
 
 ## The study
@@ -64,16 +64,17 @@ These facts are stated in the methods on pages 1012 and 1013.
 | Calculated cerebral concentration at first eye opening, fast washout, arterial = end-tidal, fraction of MAC | 0.30 ± 0.07 | 0.26 ± 0.07 | Table 1, page 1014 |
 | The same, with the end-tidal value corrected for dead-space gas, fraction of MAC | 0.34 ± 0.08 | 0.30 ± 0.08 | Abstract, page 1012, and Table 3, page 1016 |
 
-The sevoflurane slow-washout age prints as "45.9 ± 2 14.0", where the stray 2 is most likely a typesetting fault, so the
-SD is read as 14.0.
+Table 1 prints the sevoflurane slow-washout age as "45.9 ± 2 14.0". The stray 2
+is most likely a typesetting fault, so the SD is read as 14.0.
 
 **The age-adjusted MAC.** The paper cites its references 11 to 14 for the two
 equations: Stevens et al. 1975 for isoflurane, and Katoh and Ikeda 1987,
 Scheller et al. 1988 and Nakajima et al. 1993 for sevoflurane (page 1017). It
-does not say how the equations were derived from those studies. At age 40
-they give 1.94% sevoflurane and 1.19% isoflurane. At the slow-washout arms'
-mean ages they give 1.84% and 1.15%, which matches Table 1's mean MAC-awake
-percent divided by its mean ratio (0.63 / 0.34 = 1.85 and 0.36 / 0.31 = 1.16).
+does not say how the equations were derived from those studies. At age 40 the
+equations give 1.94% sevoflurane and 1.19% isoflurane. At the slow-washout
+arms' mean ages they give 1.84% and 1.15%, which matches Table 1's mean
+MAC-awake percent divided by its mean ratio (0.63 / 0.34 = 1.85 and
+0.36 / 0.31 = 1.16).
 
 **The brain-uptake calculation.** The brain is one well-mixed compartment, "a
 one-compartment mass transport model like those of Fukui and Smith (4) or
@@ -97,8 +98,8 @@ same coefficients (page 1013):
 Equation 2 (page 1013) takes the arterial partial pressure to equal the
 end-tidal one. Equation 3 (page 1016) corrects for end-tidal gas being about
 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. Neither set
-of cerebral figures differs significantly from the slow-washout MAC-awake
-(page 1014 and Table 3, page 1016).
+of calculated cerebral concentrations differs significantly from the
+slow-washout MAC-awake (page 1014 and Table 3, page 1016).
 
 ## Where the repository uses these values
 
@@ -107,28 +108,28 @@ of cerebral figures differs significantly from the slow-washout MAC-awake
   `src/anesthesia_sim/data/agents/sevoflurane.json` and `isoflurane.json`.
   They are adopted as tier 1, primary measurement, under `docs/MODEL.md`
   § "Source hierarchy: what may be cited as the authority for a value".
-- The age-adjusted MAC equations are named in each file's
-  `mac_awake.mac_reference_basis`, as the denominator of the stored fraction.
+- Both agent files name the age-adjusted MAC equations as the denominator of
+  the stored fraction (`mac_awake.mac_reference_basis`).
 - `docs/MODEL.md` § "MAC-awake as a chart reference" uses the equations, the
   slow-washout percents and ages, the fast-washout ratios and the two sets of
-  calculated cerebral concentrations. It compares the drawn band with Katoh's
-  patients and explains why the band is read against the vessel-rich trace.
-  None of these is a stored value.
+  calculated cerebral concentrations, none of them stored values. It compares
+  the MAC-awake band drawn on the chart with Katoh's patients, and explains why
+  the band is read against the vessel-rich trace.
 
 ## Values the simulator does not store
 
-- The fast-washout MAC-awake percents and ratios. The band belongs against the
-  vessel-rich trace, where the slow-washout figure is the matching one.
+- The fast-washout MAC-awake percents and ratios. The chart's MAC-awake band is
+  read against the vessel-rich trace, and the slow-washout figure is the one to
+  compare with that trace.
 - Table 2's correlations of MAC-awake with the duration of anesthesia. Fast
   washout correlated with duration and slow washout did not (page 1014). The
-  model has no use for the coefficients.
+  model has no use for these correlations.
 - The paper's own blood:gas and brain:gas coefficients. They are inputs to
   Katoh's calculation only, and the simulator keeps its own coefficients.
 
-**How the paper's coefficients compare with the stored ones.** Two of the
-paper's blood:gas coefficients do not match what the agent files record from
-the papers it cites, and the paper does not say how it took its figures from
-them.
+**How the paper's coefficients compare with the stored ones.** The paper's two
+blood:gas coefficients differ from what the agent files record from the papers
+it cites, and the paper does not say how it took its figures from them.
 
 | Coefficient | Katoh | Stored | Difference |
 | --- | --- | --- | --- |
@@ -142,9 +143,10 @@ them.
 > awakening concentrations of sevoflurane and isoflurane.* Anesth Analg
 > 1993;76(2):348-52. PMID [8424514](https://pubmed.ncbi.nlm.nih.gov/8424514/).
 
-The project owner's copy (the private corpus) is a scan with no text layer. Pages 349 and
-350 were read as page images on 2026-10-26. It studied 39 ASA I patients by
-slow, equilibrated washout. Its MAC ratios are not the washout paper's: for
-isoflurane it divides its regression line by the group MACs of Stevens et al.
-(page 350), not by the linear equation above. Nothing is taken from it, and
-pages 348, 351 and 352 were not read.
+The project owner's copy (the private corpus) is a scan with no text layer.
+Pages 349 and 350 were read as page images on 2026-10-26. The paper studied 39
+ASA I patients by slow, equilibrated washout. It forms its MAC ratios
+differently from the paper this note covers: for isoflurane it divides its
+regression line by the group MACs of Stevens et al. (page 350), not by the
+linear equation above. Nothing is taken from the companion paper, and pages
+348, 351 and 352 were not read.

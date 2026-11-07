@@ -2,11 +2,8 @@
 
 This note gives six values from one paper, with their pages: sevoflurane's and
 isoflurane's wash-in and elimination ratios and their recovery. None of them is
-a stored model parameter. The paper is also not the source of the tissue
-coefficients the simulator stores: those come from the 1989 tissue paper that
-it cites (§ "Where the tissue partition coefficients come from"). Other values
-from this paper are recorded elsewhere, as § "Values from this paper recorded
-in other notes" lists. No table is
+a stored model parameter. Other values from this paper are recorded in other
+notes (§ "Values from this paper recorded in other notes"). No table is
 reproduced, and the repository holds no copy of the paper: read its tables
 through the PMID or DOI below.
 
@@ -18,9 +15,9 @@ through the PMID or DOI below.
 
 Route and depth: the project owner's own copy, kept outside this repository
 (the private corpus), through the paper's text layer, printed
-pages 316 to 319 and 322 and the reference list on page 324. Read on
-2026-10-26 for `PL-Z3V5`. Each value below was checked against that text on
-that day.
+pages 316 to 319 and 322 and the reference list on page 324. The paper was read
+on 2026-10-26 for `PL-Z3V5`, and each value below was checked against that
+text the same day.
 
 ## The study
 
@@ -62,25 +59,24 @@ last FA during administration". The last sample during administration was at
 sample, although the paper does not say so.
 
 **Where they are used.** The simulator's wash-in and elimination are tested
-against the four ratios
-(`tests/reference/test_published_wash_in_and_elimination.py`). The recovery
-values show that metabolism is negligible over five minutes of elimination,
-and `docs/MODEL.md` cites them for that. Because none of the six is a stored
-value, none needs the standing that `docs/MODEL.md` § "Source hierarchy: what
-may be cited as the authority for a value" requires of a stored value's source.
+against the four ratios. The recovery values show that metabolism is negligible
+over five minutes of elimination, and `docs/MODEL.md` cites them for that.
+Because none of the six is a stored value, none needs the standing that
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value" requires of a stored value's source.
 
 ## Where the tissue partition coefficients come from
 
-The paper did not measure partition coefficients. Its blood-flow and volume
-estimates multiply "the tissue/blood partition coefficient (which we
-determined previously)" by a fitted rate constant, and divide a volume by "the
-tissue/gas partition coefficient" (page 319). Both cite its reference 3
-(page 324): Yasuda N, Targ AG, Eger EI 2nd, *Solubility of I-653,
-sevoflurane, isoflurane, and halothane in human tissues*, Anesth Analg
-1989;69(3):370-3, PMID 2774233. That is why the 1989 paper, and not this one,
-is the source of the tissue coefficients this project stores. Each agent's
-data file records them, and `docs/MODEL.md` § "v0.2.0: isoflurane and
-desflurane" checks them against that paper.
+The tissue coefficients this project stores come from the 1989 tissue paper
+that this paper cites as its reference 3 (page 324): Yasuda N, Targ AG, Eger EI
+2nd, *Solubility of I-653, sevoflurane, isoflurane, and halothane in human
+tissues*, Anesth Analg 1989;69(3):370-3, PMID 2774233. This paper measured no
+partition coefficients. Its blood-flow estimates multiply "the tissue/blood
+partition coefficient (which we determined previously)" by a fitted rate
+constant, and its volume estimates divide a volume by "the tissue/gas partition
+coefficient" (page 319). Both cite reference 3. Each agent's data file records
+the coefficients, and `docs/MODEL.md` § "v0.2.0: isoflurane and desflurane"
+checks them against the 1989 paper.
 
 ## Values from this paper recorded in other notes
 
@@ -89,12 +85,12 @@ papers" says where each of these is recorded, with its pages:
 
 - the five-compartment fits (Tables 1 to 5), the fat-group blood flows of
   Table 5 (page 322) and the method behind them;
-- each agent's hepatic rate constant k20;
+- each agent's hepatic rate constant k20 (Table 3, page 321);
 - the F_A/F_I curve of Figure 2 (page 320), in
   `docs/references/yasuda-1991-figure-2-wash-in.md`.
 
-None of these is a stored model parameter either. They serve as comparisons
-in `docs/MODEL.md` and in the tests.
+None of these is a stored model parameter. They serve as comparisons in
+`docs/MODEL.md` and in the tests.
 
 ## What was not taken
 
@@ -103,6 +99,6 @@ in `docs/MODEL.md` and in the tests.
 - The desflurane and halothane curves in Figures 2 and 3. They are the
   *Anesthesiology* study's data (Yasuda et al., Anesthesiology
   1991;74(3):489-98, PMID 2001028), normalized to this study's isoflurane
-  cohort (page 320), so they are not this paper's measurements.
+  cohort (page 320).
 - Table 6's total uptake and elimination volumes and the normalized recovery
   (page 322).

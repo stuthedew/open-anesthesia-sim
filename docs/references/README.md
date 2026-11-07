@@ -1,15 +1,16 @@
 # Cited sources and their readings
 
-This directory holds the sources the simulator is founded on. Each entry in
+This directory records the sources the simulator is founded on. Each entry in
 § "The documents" gives the full citation, with its DOI or PMID, which leads to
-the source. Extraction notes beside this file give each value taken from a
+the source. Extraction notes in this directory give each value taken from a
 source, with its page. The directory holds no full texts (§ "Redistribution").
 The project owner keeps copies in a private repository, the private corpus
 (§ "Where owner-supplied full texts live now").
 
-**Being listed here promotes nothing.** `docs/MODEL.md` § "Source hierarchy:
-what may be cited as the authority for a value" decides which source may be the
-authority for a stored number. It ranks sources in three tiers:
+**Being listed here does not make a source the authority for a stored value.**
+The model document decides that. It ranks sources in three tiers
+(`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value"):
 
 1. **Tier 1, primary measurement**: a study that measured the quantity in the
    population and conditions the model represents. Only this tier may be the
@@ -26,8 +27,8 @@ recorded decision.
 
 ### Allott, Steward & Mapleson 1976 — halothane in individual dogs
 
-**Not held here. Held in the private corpus.** Supplied
-by the project owner 2026-09-27.
+**Not held here. Held in the private corpus.** The project owner supplied it on
+2026-09-27.
 
 > Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the dog:
 > comparison of theory and measurement in individuals.* Br J Anaesth
@@ -54,9 +55,9 @@ results between them were not, beyond Table I.
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
-**Not held here. Held in the private corpus since 2026-10-25.** This repository held a copy until 2026-09-06, when it was
-removed as publisher-copyright material that this public repository may not
-redistribute; see § "Redistribution" below.
+**Not held here. Held in the private corpus since 2026-10-25.** This repository
+held a copy until 2026-09-06, when it was removed as publisher-copyright material
+that this public repository may not redistribute (§ "Redistribution").
 
 > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
 > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
@@ -69,14 +70,15 @@ match it. The file's own XMP packet carries Wiley's legacy identifier for the
 same article, `10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI
 above is the one to cite.
 
-This is the closest published statement of what `docs/MODEL.md` specifies. It
-derives single-compartment and multicompartment models of inert gas transfer,
-develops transport between lungs, blood and other tissues from them, and
-compares the result against experimental studies in animals and humans — then
-treats the anesthetic gases specifically, deriving how transfer depends on
-solubility in blood and in each tissue. Read it when a compartment structure,
-a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
-being questioned or extended.
+This review is the closest published statement of what `docs/MODEL.md`
+specifies. It is tier 2 under `docs/MODEL.md` § "Source hierarchy: what may be
+cited as the authority for a value". It derives single-compartment and
+multicompartment models of inert gas transfer, and from them describes
+transport between lungs, blood and other tissues. It compares the result with
+experimental studies in animals and humans. It then treats the anesthetic
+gases, deriving how their transfer depends on solubility in blood and in each
+tissue. Read it when a compartment structure, a governing equation, or a
+solubility-driven assumption in `docs/MODEL.md` is being questioned or extended.
 
 Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
 "Parameter provenance" cites for the tissue:blood division (`PL-H536`,
@@ -84,8 +86,7 @@ Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
 own. The bracketed set, which matches the derived rows, is Eger and Shafer's
 (its ref 21: *Anesth Analg* 2005;101:688–96, PMID 16115976). The plain set is
 Fiserova-Bergerova and Diaz's (its ref 26: *Int Arch Occup Environ Health*
-1986;58:75–87, PMID 3721592). Neither paper is held. The review is tier 2 under
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value".
+1986;58:75–87, PMID 3721592). Neither paper is held.
 
 Route and depth: full text, from the private corpus's copy on 2026-10-25.
 Table 2 and pp. 569–70 were read from the page images, and pp. 571 and 573–74
@@ -93,20 +94,21 @@ and the reference list through the corpus's text layer. The rest was not read.
 
 ### Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion
 
-**Not held here. Held in the private corpus.** Supplied
-by the project owner 2026-09-27, after `PL-WMCJ` had recorded it as
-abstract-only.
+**Not held here. Held in the private corpus.** The project owner supplied it on
+2026-09-27, after the project had recorded it as read from its abstract only
+(`PL-WMCJ`).
 
 > Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
 > including intertissue diffusion to and from fat.* Anesth Analg
 > 2005;100(4):1020-33. PMID [15781517](https://pubmed.ncbi.nlm.nih.gov/15781517/),
 > DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
 
-A review, so tier 2 under `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value", which counts a
-review as a secondary synthesis. PubMed types it as a review. It says its
-figures "illustrate concepts but are not necessarily precise (quantitative)
-reflections of the kinetics" (p. 1020). Its numbers come from elsewhere, Table
-3's time constants from the two Yasuda et al. 1991 papers below.
+It is a review, and PubMed classes it as one, so it is tier 2 under
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value". It says its figures "illustrate concepts but are not necessarily precise
+(quantitative) reflections of the kinetics" (p. 1020). Its numbers come from
+other studies. Table 3's time constants, for example, are those of the two
+Yasuda et al. 1991 papers below.
 
 **What has been taken from it, and where it is recorded.** For `PL-FBY3`,
 `docs/MODEL.md` § "Known limitations" takes Table 3's intertissue-diffusion
@@ -121,13 +123,13 @@ printed page, pp. 1020-33, is recovered in the corpus's text dump.
 
 ### Jugel et al. 2014 — M4 time series aggregation
 
-**Not held here. Held in the private corpus.** Its licence, CC BY-NC-ND 3.0 per the
-statement on its first page, would let this public repository carry it, and it
-did from 2026-09-04 until `PL-8LXM` removed it with the M4 decimation module
-on 2026-09-08 as a paper nothing then founded. Supplied again by the project
-owner on 2026-09-14 - the same bytes, by checksum - and placed in the private
-corpus by their decision. Since 2026-09-14 the chart's drawing guarantee
-cites its result again (`PL-GS3R`).
+**Not held here. Held in the private corpus.** Its first page gives its licence,
+CC BY-NC-ND 3.0, which would let this public repository carry it. The
+repository held it from 2026-09-04 until 2026-09-08, when it was removed with
+the code that implemented its M4 method, because nothing then rested on the
+paper (`PL-8LXM`). The project owner supplied an identical copy on 2026-09-14
+and chose to keep it in the private corpus. Since then,
+`docs/MODEL.md` § "What the chart draws" cites its result again (`PL-GS3R`).
 
 > Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
 > Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
@@ -196,13 +198,9 @@ why.
 
 ### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*
 
-**Not held here.** A publisher-copyright monograph this public repository may
-not redistribute; see § "Redistribution" below. It has no DOI and PubMed does
-not index monographs, so neither route this repository usually names reaches
-it. **It was reached by interlibrary loan**, which is the route
-`.claude/rules/citing-sources.md` now records — the project owner placed the
-request and the pages arrived inside a day because the request named the pages
-it needed.
+**Not held here.** It is a publisher-copyright monograph that this public
+repository may not redistribute (§ "Redistribution"). It has no DOI, and PubMed
+does not index monographs. **It was reached by interlibrary loan.**
 
 > Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed
 > Circuit*. Baltimore: Williams & Wilkins; 1981.
@@ -259,7 +257,7 @@ whose own four sources the book never measured.
 
 ### Philip — *Workbook for Gas Man*
 
-**Not held here. Held in the private corpus.** Supplied by the project owner
+**Not held here. Held in the private corpus.** The project owner supplied it on
 2026-09-15, split into five section PDFs. It is the manual distributed with the
 Gas Man program and carries no licence permitting redistribution, so it may not
 sit in this directory.
@@ -273,31 +271,25 @@ PubMed does not index software manuals, so there is nothing to check the
 citation against. Every field above is read off the title page and the
 preface's sign-off, 2026-09-15, which is all this entry asserts.
 
-**The title this repository cited until 2026-09-15 is not the one on the title
-page.** Every `sources` entry under `src/anesthesia_sim/data/` naming this
-document called it "Gas Man(R) Workbook and Laboratory Manual", which `PL-XTMB`
-took from the cover and from the original PDF's `/Title` and `/Author` fields.
-That string occurs zero times in the document's 209 pages of text, and the
-title page reads as quoted above. The corpus's section PDFs were rewritten by
-`pypdf` and carry no `/Title`, so the two cannot be reconciled from anything
-this project holds; a citation follows the title page, and `PL-9GP1` changed
-the data files to match.
+**Until 2026-09-15 the simulator's data files cited this document under a title
+that is not on its title page.** They called it "Gas Man(R) Workbook and
+Laboratory Manual", a title taken from the cover and from the original PDF's
+title and author fields (`PL-XTMB`). That title occurs nowhere in the document's
+209 pages of text. The citation above follows the title page, and the data files
+were changed to match (`PL-9GP1`).
 
-**Why this one is load-bearing.** Gas Man is this project's reference
-implementation, and the `sources` notes trace the reference patient's eleven
-parameters and all twelve stored partition coefficients to it. Until now the
-project had read only "a copy of the front matter and appendices supplied by
-the project owner"
-(`src/anesthesia_sim/data/patients/reference_adult.json`, 2026-09-06) — a
-route that is neither of the two in `.claude/rules/citing-sources.md`, the
-PubMed record and the private corpus, and was recorded as a
-gap by `PL-XJ5P`. The whole document is now readable, which closes that gap.
-Three things found on reading it (`PL-9GP1`), none of which changes a stored
-value:
+**The data files trace the reference patient's eleven parameters and all twelve
+stored partition coefficients to this document**, the manual of this project's
+reference implementation. Until the whole document was supplied, the project
+had read only "a copy of the front matter and appendices supplied by the
+project owner" (`src/anesthesia_sim/data/patients/reference_adult.json`,
+2026-09-06). That partial reading was recorded as a gap (`PL-XJ5P`). Three
+things were found on reading that document, and none of them changes a stored
+value (`PL-9GP1`):
 
-- **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168** — the
-  table `src/anesthesia_sim/data/patients/reference_adult.json` already
-  cites — reads exactly as that file records it.
+- **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168.** The
+  reference patient's data file already cited this table, and the table reads
+  exactly as that file records it.
 - **Appendix C, "Gas Man System Defaults", pp. 171–72** is a verbatim listing
   of `GASMAN.INI`, and a second statement of the same parameter set: `Lambda`
   (blood/gas) and `VRG`, `MUS`, `FAT` (tissue/gas) per agent, matching all
@@ -398,10 +390,10 @@ liquid-injection section, Chapter 13's p. 127 and Chapter 14's pp. 132-141.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
-**Not held here. Held in the private corpus.** Removed from this public repository
-2026-09-06 as publisher-copyright material it may not redistribute; see
-§ "Redistribution" below. Supplied again by the project owner 2026-09-15, split
-into eight section PDFs, and placed in the corpus by their decision.
+**Not held here. Held in the private corpus.** It was removed from this public
+repository on 2026-09-06 as publisher-copyright material that the repository may
+not redistribute (§ "Redistribution"). The project owner supplied it again on
+2026-09-15, split into eight section PDFs, and chose to keep it in the corpus.
 
 > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
 > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
