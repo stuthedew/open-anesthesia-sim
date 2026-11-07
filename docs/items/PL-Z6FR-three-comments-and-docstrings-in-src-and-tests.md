@@ -8,6 +8,7 @@ classes: defect
 feature: prose-quality
 touches: src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/tissue.py, tests/unit/test_governing_equations.py
 added: 2026-11-04
+deferred-from: v0.7.0 - a new problem: at the freeze docs/MODEL.md also called arterial blood flow-limited, so the comments matched it; they first disagreed when a8d87c68 (PL-T9VT, 2026-11-04) changed the term, after the freeze
 payoff: a developer reading the gas-exchange code meets the same term, with the same meaning, as the model specification
 verify: ! grep -r -q -i -E 'flow[- ]limited|perfusion limited' src/anesthesia_sim/core tests/unit
 ---
@@ -43,4 +44,4 @@ That item's brief covered only `docs/MODEL.md`, because a change made in passing
 is not allowed in `core/`, and it filed this item for the code. No head states
 the term's definition as its fact.
 
-**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Three of the sites were in the tree at `817a4d88`: `blood.py`, `governing_equations.py` and `test_governing_equations.py`. The `tissue.py` docstring (`c59abe2d`) and the conflict with `docs/MODEL.md` (`a8d87c68`) came later.
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate. At `817a4d88`, `docs/MODEL.md` itself said "Arterial blood is flow-limited" (§ "Model boundary" and the governing-equations sections), so the three comments then in the tree (`blood.py`, `governing_equations.py` and `test_governing_equations.py`) agreed with the specification. They first disagreed with it when `a8d87c68` (`PL-T9VT`, 2026-11-04) changed the term. The `tissue.py` docstring came later still (`c59abe2d`). A first reading on 2026-11-07 put the item on the list because those three comments were present at the freeze. A review the same day corrected it: the problem the item describes is the disagreement, and that was not present.

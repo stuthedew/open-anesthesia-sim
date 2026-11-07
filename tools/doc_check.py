@@ -4769,7 +4769,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         'here: § "Deferring to the next gate" defers one of these entries only '
         "while it stays on the frozen list, with a record that its hazard is not "
         "live, so a `deferred-from:` answers the disposition error and leaves "
-        "this one standing until the item is on the list"
+        "this one standing until the item is on the list or in Required scope"
     )
 
 

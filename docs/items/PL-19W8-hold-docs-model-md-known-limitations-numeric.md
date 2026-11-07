@@ -7,7 +7,7 @@ status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py, tests/reference, docs/items
-deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the figures it would hold are docs/MODEL.md prose, no displayed string carries them, and the display steps they justify (two decimals, 0.1 L) are unchanged, so no learner can see a wrong value now
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the figures it would hold are docs/MODEL.md prose, no displayed string carries them, and holding them to tests changes no display step; whether the two-decimal step holds against the stored SDs is PL-TDX0's question, which is on this gate's list undeferred, so no learner can see a wrong value through this item
 added: 2026-11-02
 payoff: the numbers in Known limitations and Displayed precision are computed by a test, so a wrong one fails the build, and the count of wrong ones decides whether the other sections are worth the same work
 verify: grep -q 'heading="Known limitations"' tools/doc_check.py

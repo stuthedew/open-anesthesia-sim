@@ -7,7 +7,7 @@ status: ready
 classes: safety, test, defect
 feature: presentation-safety
 touches: tests/integration/test_simulation_view.py
-deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): no string the view shows uses an end-tidal abbreviation, and the alveolar readout reads "end-tidal-equivalent", so no learner can see a wrong value now
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): no string the view shows uses an end-tidal abbreviation, and the alveolar readout reads "end-tidal-equivalent"; none of the eight phrases the emergence-time check guards appears in a string the view shows, only in the docstring at app/controller.py:426; so no learner can see a wrong value now
 added: 2026-11-03
 payoff: a readout labelled with an end-tidal abbreviation, or any new interface wording, cannot reach the screen without a person approving it
 verify: grep -q 'def test_every_string_the_view_shows_is_on_the_approved_list' tests/integration/test_simulation_view.py && grep -qF 'ET sevo' tests/integration/test_simulation_view.py

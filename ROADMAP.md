@@ -744,7 +744,8 @@ is clear. If it does not appear there, it is cleared first, whatever it is
 about.
 
 This does not weaken the `safety`/`science` re-entry rule below. Such an item
-inside the scope still cannot be deferred. It simply cannot be finished
+inside the scope is cleared by the milestone rather than deferred from its
+gate. It simply cannot be finished
 earlier than the work it is part of, and the milestone's definition of done is
 what enforces it.
 
@@ -841,7 +842,7 @@ rather than waiting for the next one, when the problem it describes was already
 and however long after the freeze someone happened to notice it (project owner,
 2026-11-07, over deferring a late capture by the date it was filed, `PL-GW0P`).
 A finding
-defers to the next gate only when the problem itself is new. A new problem is
+stays off this gate's list only when the problem itself is new. A new problem is
 one introduced by work done while clearing this gate, or while implementing the
 milestone that the gate protects.
 
@@ -1159,7 +1160,7 @@ on the project owner adding the paper to the reference corpus.
 
 **Six captures joined this list on 2026-10-31, after the freeze.** They are
 `PL-9B1M`, `PL-D88N`, `PL-QVBR`, `PL-PTDZ`, `PL-000W` and `PL-D1LR`, each
-classed `safety` or `science`. § "Deferred from this gate" admits such a
+classed `safety` or `science`. § "Deferred from this gate" admitted such a
 capture rather than deferring it. `PL-R4Y2`'s triage placed them, and deferred
 the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 
@@ -1178,22 +1179,25 @@ of an SD by 24 h, at the fine end of the band the section allows. The panel
 shows that step at every setting, so the gap is live and the item is admitted
 rather than deferred.
 
-**38 captures joined this list on 2026-11-07, after the freeze** (`PL-GW0P`).
-Each had been deferred because it was filed after the freeze. The project owner
-ruled that a capture joins when the problem it describes was already present
-at the freeze, as § "Which findings re-enter the gate" says. Each item's brief
-records what the check against `817a4d88` found. `PL-GW0P` and `PL-8C8W` closed
-the same day. Nine of the 38 stay deferred to the next gate on the terms of
+**36 captures joined this list on 2026-11-07, after the freeze** (`PL-GW0P`).
+34 of them had been deferred because they were filed after the freeze, and
+`PL-GW0P` and `PL-8C8W` had not yet been triaged. The project owner ruled that
+a capture joins when the problem it describes was already present at the
+freeze, as § "Which findings re-enter the gate" says. Each item's brief records
+what the check against `817a4d88` found. `PL-GW0P` and `PL-8C8W` closed the
+same day. Eight of the 36 stay deferred to the next gate on the terms of
 § "Deferring to the next gate", and each item's `deferred-from:` says why.
 `PL-J1ZM` waits on four untriaged findings that no release schedules.
-`PL-19W8`, `PL-5C1H`, `PL-5L84`, `PL-H94Q`, `PL-JP7P`, `PL-KG6S`, `PL-MCQ5` and
-`PL-86VL` are classed `safety` or `science`, and the check found that no learner
-can see a wrong value now (`PL-8C8W`). `PL-8W1B` and `PL-TDX0` are also classed
-`safety` or `science` and are not deferred. A learner can read a wrong tension
-from `PL-8W1B`'s containers today, and nobody has yet checked whether
-`PL-TDX0`'s wrong SDs make a displayed digit finer than its uncertainty. Five
-other captures stay deferred, because their problems began after the freeze:
-`PL-8G3F`, `PL-K4MQ`, `PL-JTTD`, `PL-7R8S` and `PL-LPV0`.
+`PL-19W8`, `PL-5C1H`, `PL-5L84`, `PL-H94Q`, `PL-JP7P`, `PL-MCQ5` and `PL-86VL`
+are classed `safety` or `science`, and the check found that no learner can see
+a wrong value now (`PL-8C8W`). `PL-8W1B`, `PL-TDX0` and `PL-KG6S` are also
+classed `safety` or `science` and are not deferred. A learner can misread a
+tension from `PL-8W1B`'s containers today. The fat and muscle tissue:gas SDs
+that the agent files store are far wider than the SDs `PL-TDX0` says the
+section's table used, so a displayed digit may be finer than its uncertainty,
+and `PL-KG6S`'s ratios are taken from that table. Seven other captures stay
+deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
+`PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
@@ -1216,7 +1220,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 120 entries**
+**Cleared before v0.7.0 begins unless deferred - 118 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1322,8 +1326,6 @@ brief has the tally.
 - PL-YNFS (M) Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
 - PL-501T (M) AreaLayout._fits, which stops a border drag and lights the WARNING line, still estimates each Area's drawn size as its window share minus one handle, not from the apportionment the splitters draw: the estimate ignores nested handles and overstates an Area whose split neighbour is held wider than its share, and two adapter tests pin the stop it gives, a handle's width short of the neighbour's need (found building PL-16BG)
 - PL-J1ZM (M) Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
-- PL-HXF0 (S) doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
-- PL-Z6FR (S) Three comments and docstrings in src/ and tests/ still call arterial blood flow-limited, and core/tissue.py writes "perfusion limited" unhyphenated, where docs/MODEL.md now says "perfusion-limited" for the lung's and each tissue's exchange with blood
 - PL-3WFF (S) Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
 - PL-8FT2 (L) Review the 340 regular expressions in tools/, .claude/hooks/, subprojects/docket/ and the tests that tools/regex_baseline.py lets stand without a reason, starting with the ones that read a format a module already parses
 - PL-8W1Q (M) Every other frozen record in core/ that checks its fields in __post_init__ still restores from a pickle or a copy without running the check: a saved Keyframe with instant_s as a bare -50.0, a RunDefinition's slots and cache, BreathingCircuitState, SampledWindow, DeliverableFreshGasFlowRange, LiquidDensity and the parameter records all load unchecked, and nothing makes the next such record fail; the restore is also positional, so a record saved before a field reorder loads into the wrong fields (found at review of PL-S11T)
@@ -1341,9 +1343,9 @@ brief has the tally.
 
 ### Deferred from this gate
 
-An open debt item captured after the cut joins this list when the problem it
-describes was present at the freeze, as § "Which findings re-enter the gate"
-says (`PL-GW0P`). A `safety` or `science` item joins it whatever the answer. A
+An open debt item captured after the cut joins this list when § "Which
+findings re-enter the gate" says it re-enters: its problem was present at the
+freeze, or it falls under one of that section's exceptions (`PL-GW0P`). A
 capture that an entry waits on is either let onto the list beside that entry,
 or the entry is deferred with it (`PL-D388`). Each deferred item records
 `deferred-from: v0.7.0 - <why>`. The triage pass that classes the item writes
@@ -1363,7 +1365,8 @@ head that `PL-R4Y2`'s defect review recorded on 2026-10-25, over `PL-6RJ0`,
 `PL-3B34` and `PL-HF4B`. Its guard requires values shown together on the run
 screen to come from one state, and each member is a `safety` entry already on
 this list. It was first given `deferred-from:`, which a `safety` item could not
-take until `PL-8C8W`.
+then take. Since `PL-8C8W` one may, but only on the terms of § "Deferring to
+the next gate".
 
 ### Required scope
 
@@ -9166,7 +9169,7 @@ waits on it. An item captured after the cut was not in the store that the snapsh
 taken from. § "The gate is a snapshot, not a moving target" therefore applies the
 presence test to it, and that test returns no. `PL-GW0P` replaced that reading
 on 2026-11-07: the test asks whether the problem was present, and a capture
-whose problem was present at the freeze now joins the list. A capture that an entry waits
+whose problem was present at the freeze joins the current gate's list. A capture that an entry waits
 on is not deferred because of its date. Either it is let in beside the entry,
 or the entry is deferred with it. These are two of the three places that
 section gives for a prerequisite (`PL-D388`). Each deferred item records the

@@ -6936,9 +6936,9 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     written out - advised on every `make check` under text that named no
     remedy it would accept. The refusal is the correct half: § "Deferring to
     the next gate" defers a `safety` or `science` entry only while it stays on
-    the frozen list (`PL-8C8W`), and the frozen list takes a post-freeze
-    re-entry with its date, as this gate's own `PL-GS3R` shows. It was the
-    offer that had to go.
+    the frozen list (`PL-8QMD`, `PL-8C8W`), and the frozen list takes a
+    post-freeze re-entry with its date, as this gate's own `PL-GS3R` shows. It
+    was the offer that had to go.
 
     `PL-83LS` then took the four out of this check's reach entirely, on their
     `anticipated` class rather than on their deferral - the test below pins

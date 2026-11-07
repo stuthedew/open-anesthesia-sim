@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md, subprojects/docket/README.md
+touches: ROADMAP.md, subprojects/docket/README.md, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md
 added: 2026-11-07
 closed: 2026-11-07
 pr: 2063
@@ -98,3 +98,18 @@ freeze, and not safety or science" as a ground, and now gives a new problem.
 `bin/docket gate`, `bin/docket check` and `tools/doc_check.py` read
 `deferred-from:` and the frozen list, and none of them reads an item's
 `added:` date, so no tool deferred by capture date.
+
+**Re-triaged 2026-11-07.** The 41 open debt items deferred from v0.7.0 for
+being filed after the freeze were each checked against `817a4d88`, and each
+brief records what the check found. 34 join v0.7.0's frozen list, and so do
+this item and `PL-8C8W`, which had not been triaged. The other seven stay
+deferred, because their problems began after the freeze. ROADMAP.md's v0.7.0
+section names the eight joiners that stay deferred and why. Two review passes
+the same day corrected three verdicts. `PL-Z6FR` and `PL-HXF0` describe
+disagreements that began after the freeze, so they stay deferred. `PL-KG6S`'s
+not-live finding rested on the table that `PL-TDX0` questions, so it joins
+undeferred. Two items were not re-checked. `PL-SG93` is classed `infra`, which
+is not debt, so no gate holds it. `PL-BZ21` is held by #2054. Its deferral
+reason predates this rule, and its problem probably began with `7baae320`
+(2026-11-02), after the freeze, so its reason should say that when its branch
+next changes it.
