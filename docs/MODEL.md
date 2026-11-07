@@ -518,9 +518,7 @@ shipped MACs are 1.2% to 6.0%.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
-The fraction and percent types raise a `TypeError` for anything other than an
-`int` or a `float`, such as a `bool`, a `Decimal` or a string, before they check
-the range. The rules they share with the flows are written once, in
+The rules that the fraction and percent types share with the flows are written once, in
 `core/checked_number.py` (§ "Supported input ranges"): what counts as a number,
 that one checked quantity is never built from another, and that minus zero is
 stored as zero.
@@ -1749,9 +1747,8 @@ never reach the model at all.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The physical timescale beside the step.** The fastest process in the model, anywhere in the
-supported settings, has a time constant of 5.83 s. That is for isoflurane at the highest fresh
-gas flow and ventilation, with a cardiac output of 9.32 L/min. At the default flows it is 13.7
-to 16.6 s (§ "Alveolar gas"). The 0.1 s step is about a sixtieth of the fastest. So in one
+supported settings, has a time constant of 5.83 s (§ "Alveolar gas" gives the settings at
+which it occurs). The 0.1 s step is about a sixtieth of the fastest. So in one
 step, the fastest process closes only about 1.7% of its remaining gap, and a control change
 one step late moves the values very little. A chart drawn once per step also misses no process.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
@@ -2411,6 +2408,77 @@ machine that the application uses. It sets each flow at either end of its suppor
 uses the smallest and largest step, and requires that no step needs a squaring. A patient
 profile with faster rates, such as a small patient, fails it on the day it ships, and its
 message says to widen the tolerance only by what the squarings add.
+
+**The 0.005 L alveolar compartment in § "What is not bounded this way", every volume
+below 0.01 L in the paragraphs that follow, and every circuit volume above 10 000 L can no longer
+be built.** Each is outside § "The numerical envelope". The measurements are
+kept because they show what the propagator's own refusals do when a matrix
+reaches them by another route. `tests/unit/test_matrix_exponential.py` still
+drives those refusals, with a matrix built to match.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+
+**The numerics do eventually object, and that is a backstop rather than a
+bound.** The same measurement was continued downward at the shipped 0.1 s step.
+An alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L halts the run through
+`AgentSimulationValidationError`. That error comes from the mass-balance
+guard, not from any declared domain. From $`10^{-11}`$ L down, the propagator
+is refused before any arithmetic. Down to $`10^{-308}`$ L it is refused
+because it would need more squarings than `core/matrix_exponential.py`
+performs (described below). Below that it is refused because scaling the
+matrix down overflows, and then the matrix itself overflows. Both the halt and
+the refusal are the required "obvious failure rather than a plausible-looking
+number", but they arrive by accident of arithmetic. Neither is a limit that
+this document declares, and neither may be treated as one. They sit far below
+any volume a caller would pass by mistake, and they say nothing about the
+physiological question above. Circuit volume has no such point. It was
+advanced up to $`10^{300}`$ L with accounting passing throughout.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+**A mass-balance check cannot catch a failure that wipes out every term it compares.**
+When this was measured, before the refusals described below, an alveolar volume of
+$`10^{-300}`$ L turned the propagator into the zero matrix. `propagate()` then returned all
+zeros, and the mass-balance identity compared $`0 + 0 - 0 - 0`$, because every total had
+been wiped out together. Zero does balance zero. No volume that can now be built reaches
+this, and a test reaches it only with a matrix built for the purpose. Look for the same
+weakness wherever a check compares quantities that one failure can affect together.
+
+So `core/matrix_exponential.py` refuses a zero propagator. $`\exp(A\,\Delta t)`$ can be
+inverted for every finite $`A`$, because its determinant is
+$`e^{\operatorname{tr}(A)\Delta t}`$. So a zero result can only be a floating-point
+artifact. The module also refuses the case where scaling the matrix's norm down to the
+bound that the series needs overflows. That case would otherwise raise a bare
+`OverflowError` at $`10^{-309}`$ L, outside the error types in `core/exceptions.py` that a
+caller relies on. Both refusals arrive as `SimulationNumericalError` through
+`AgentUptakeSystem.advance()`, and the step is rolled back. A matrix that carries the
+constant state cannot produce the zero matrix at all, so the model now stops those volumes
+earlier, at the limit on squarings described below. The scaling refusal still fires first
+wherever the scaling overflows.
+
+**Measured at every power of ten from $`10^{0}`$ to $`10^{-323}`$ L at the 0.1 s step**, the
+propagator is returned at 11 of them, $`10^{0}`$ to $`10^{-10}`$ L, each with the constant
+state's row exact. The other 313 are refused before any arithmetic. A single term too
+small for any double, such as `exp(-0.5 * 3600)`, is still returned as 0.0, which is
+correct. Such a single zero is what distinguishes a decayed entry from a wiped-out matrix.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+**A limit on the squarings closes the last failure in this family.** At very small volumes
+the propagator can stay finite and nonzero while the constant state's row drifts. No
+interval may change that row, which is why its row in $`A`$ is empty. The shift that the
+module applies to the matrix before summing its series lets error in, and the squarings
+amplify it. After $`s`$ squarings, the worst entry's relative error is
+$`c\cdot2^{s}\cdot2^{-52}`$. $`c`$ was between 0.6 and 2.7 at every power of ten measured on
+2026-10-03, against a high-precision calculation of the same exponential, from those
+needing no squarings to those needing 45. So every state whose own rate the shift swamps
+drifts the same way. Two changes close the failure. First, the constant state's row is set
+to the identity matrix's row before the squarings, which keep it exact to the last bit. So
+`governing_equations.UNIT_STATE`'s guarantee that no step changes the constant state holds
+in floating point as well as in the algebra. Second, a propagator that needs more than 32
+squarings is refused before any arithmetic, because beyond that the error bound exceeds one
+part in a million. The first change alone is not enough, because with the constant
+row exact a wrecked matrix is no longer zero, so only the limit refuses it.
+`tests/unit/test_agent_simulation_validation.py` holds the regression test for a case that
+the mass-balance check passed with every propagator entry wrong.
 
 **What would reopen the limits.** The 0.01 L volume limit was set at the adult supported flows.
 A patient profile with much smaller volumes would bring much smaller flows with it. A profile
@@ -4724,6 +4792,39 @@ circuit, so each stretch of a run records the limit its dial was set under. The
 propagator cache key carries the maximum with the rest of the record, although the
 matrix never reads the maximum.
 
+**Zero is a supported input on all four, deliberately.** There are three
+reasons, and the third is the one that decides it:
+
+- The governing equations stay well posed. A zero flow removes a transfer
+  term rather than dividing by one. At $`Q=0`$ the tissue and venous
+  derivatives are zero, and the alveolar equation loses its uptake term.
+  § "Required tests" below already specifies that behavior in the
+  zero-ventilation, zero-cardiac-output, and zero-tissue-flow tests.
+- Zero is the endpoint of a continuous axis. Setting a slider's lowest value
+  just above zero would place an arbitrary boundary inside the model's own
+  valid domain. A reader would have no way to tell that boundary from a
+  modeling limit.
+- The low end of each flow axis is where the teaching is, and zero is its
+  limit. Reducing cardiac output *accelerates* alveolar wash-in, because less
+  agent is carried away from the lungs per unit time. This is one of the
+  central results in uptake and distribution, and this model reproduces it.
+  With sevoflurane at 1 MAC and the reference adult's other defaults,
+  $`F_A/F_I`$ at five minutes is 0.41 at 10 L/min, 0.49 at 5 L/min, 0.58 at
+  2.5 L/min, 0.70 at 1 L/min, and 0.86 at zero. Refusing the last of those
+  would cut the demonstration off one step before its clearest case. The same
+  argument applies to alveolar ventilation at zero, which is apnoea.
+
+<!-- not-restated: 10 L/min, 5 L/min -->
+
+**What zero cardiac output does not claim.** It is a statement about agent
+transport and nothing else. Uptake stops, so alveolar gas approaches the
+inspired gas, and the tissue stores keep whatever they already had. It is not
+a model of circulatory arrest, cardiopulmonary bypass, or ECMO. The section
+"Known limitations" excludes all three. Nothing about the patient's condition
+follows from a run at zero cardiac output. A run at $`Q=0`$ answers
+"where does the agent go when perfusion stops", not
+"what is happening to this patient".
+
 **For developers.** Each flow is built as a type that only its guard produces.
 `test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`
 in `tests/unit/test_dashboard_frame.py` checks that a run opening between two
@@ -4761,6 +4862,38 @@ Then re-derive every figure measured at the flow maxima: the fastest time consta
 § "Alveolar gas" and § "Supported simulation step", the corner sweeps in § "The numerical
 envelope" and `tests/unit/test_numerical_envelope.py`, and the figures below.
 
+Each limit was chosen as the edge of the settings that the interface offers and that the two
+tests named in § "What a setting outside the range costs" cover. Nothing in the equations breaks at 10.01 L/min,
+because the calculation is exact at any flow. Widening a limit is a legitimate change, and
+a safety-critical one. First extend the verification domain. Then re-run the test described
+in § "Independent-solution test" over the wider range, and revise this section with the
+results.
+
+**These ranges define the verification domain.** § "Independent-solution test" below runs
+its test trajectories across everything these ranges allow. Its worst disagreement with
+the independent solution comes on a trajectory that holds cardiac output at zero.
+Narrowing a range would take that worst case out of reach, and widening one would admit
+trajectories that were never measured. Either way, that test must be re-measured
+(§ "What a setting outside the range costs" below). Three tests stop a range from changing
+unnoticed. `test_envelope_limits_match_the_supported_input_ranges` restates all six flow
+limits and fails if the model moves one.
+`test_displayed_resolution_and_shipped_step_match_the_interface` does the same for the
+displayed resolution and the step at which every figure is quoted.
+`test_the_sliders_span_the_supported_input_ranges` fails if the interface stops short of
+the declared ranges or goes past them. That test reads the shipped machine profile, which
+declares no deliverable range. A profile that declares one narrows the fresh gas flow
+slider to the overlap on purpose (§ "The model's envelope and a machine's deliverable range
+are two claims").
+
+**The simulation step is bounded too, and separately.** A user does not set it, but every
+`advance()` call takes it. Its limits are `MINIMUM_SIMULATION_STEP_S` and
+`MAXIMUM_SIMULATION_STEP_S`, not these ranges. § "Supported simulation step" above argues
+for both. The step's maximum is a declared limit, in seconds, on how long a change to a
+control may go unseen by the model.
+These ranges are a claim about where the compartment structure represents a patient.
+Neither is calculated from the other. Widening a range means re-running the reference
+tests at the new extreme setting, without revisiting the step.
+
 #### What a setting outside the range costs
 
 **The simulator refuses a setting outside the ranges, because neither its code nor its
@@ -4774,13 +4907,6 @@ Outside the ranges, the simulator must refuse rather than show a plausible-looki
 of 1000 L/min is not a patient, and the model's equations were never proposed to describe
 one. Solving them exactly for that setting would give a precise answer to a question that
 physiology does not ask. Nothing on the display would invite doubt.
-
-**For developers.** Each limit was chosen as the edge of the settings that the interface
-offers and that the two tests above cover. Nothing in the equations breaks at 10.01 L/min,
-because the calculation is exact at any flow. Widening a limit is a legitimate change, and
-a safety-critical one. First extend the verification domain. Then re-run the test described
-in § "Independent-solution test" over the wider range, and revise this section with the
-results.
 
 #### The model's envelope and a machine's deliverable range are two claims
 
@@ -4898,8 +5024,7 @@ arithmetic that limits the original run also limits every branch of it.
 § "Supported input ranges" describes for the flows. Every instant at which a run is opened,
 moved, keyframed, marked or branched is a `CaseInstant`. A `CaseInstant` is a `float`
 subclass, and only its constructor runs `require_supported_case_instant`. It is built only
-from an `int` or a `float`, and it stores minus zero as zero, as the flows do. A `bool`, a
-`Decimal` or a string is refused with a `TypeError` before any comparison. An `int` too
+from an `int` or a `float`, and it stores minus zero as zero, as the flows do. An `int` too
 large for a `float` is refused as past the run length. The places that keep an instant, or
 move a run to one, require the type and refuse anything else with a `TypeError`, whatever
 its value. These places are a `RunDefinition`'s opening and every point it is advanced to,
@@ -5162,78 +5287,6 @@ partition coefficients are claimed to represent a patient only near the shipped 
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 10000 L -->
 
-**The 0.005 L alveolar compartment above, every volume below 0.01 L in the
-paragraphs that follow, and every circuit volume above 10 000 L can no longer
-be built.** Each is outside § "The numerical envelope". The measurements are
-kept because they show what the propagator's own refusals do when a matrix
-reaches them by another route. `tests/unit/test_matrix_exponential.py` still
-drives those refusals, with a matrix built to match.
-<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
-<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
-
-**The numerics do eventually object, and that is a backstop rather than a
-bound.** The same measurement was continued downward at the shipped 0.1 s step.
-An alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L halts the run through
-`AgentSimulationValidationError`. That error comes from the mass-balance
-guard, not from any declared domain. From $`10^{-11}`$ L down, the propagator
-is refused before any arithmetic. Down to $`10^{-308}`$ L it is refused
-because it would need more squarings than `core/matrix_exponential.py`
-performs (described below). Below that it is refused because scaling the
-matrix down overflows, and then the matrix itself overflows. Both the halt and
-the refusal are the required "obvious failure rather than a plausible-looking
-number", but they arrive by accident of arithmetic. Neither is a limit that
-this document declares, and neither may be treated as one. They sit far below
-any volume a caller would pass by mistake, and they say nothing about the
-physiological question above. Circuit volume has no such point. It was
-advanced up to $`10^{300}`$ L with accounting passing throughout.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-**A mass-balance check cannot catch a failure that wipes out every term it compares.**
-When this was measured, before the refusals described below, an alveolar volume of
-$`10^{-300}`$ L turned the propagator into the zero matrix. `propagate()` then returned all
-zeros, and the mass-balance identity compared $`0 + 0 - 0 - 0`$, because every total had
-been wiped out together. Zero does balance zero. No volume that can now be built reaches
-this, and a test reaches it only with a matrix built for the purpose. Look for the same
-weakness wherever a check compares quantities that one failure can affect together.
-
-So `core/matrix_exponential.py` refuses a zero propagator. $`\exp(A\,\Delta t)`$ can be
-inverted for every finite $`A`$, because its determinant is
-$`e^{\operatorname{tr}(A)\Delta t}`$. So a zero result can only be a floating-point
-artifact. The module also refuses the case where scaling the matrix's norm down to the
-bound that the series needs overflows. That case would otherwise raise a bare
-`OverflowError` at $`10^{-309}`$ L, outside the error types in `core/exceptions.py` that a
-caller relies on. Both refusals arrive as `SimulationNumericalError` through
-`AgentUptakeSystem.advance()`, and the step is rolled back. A matrix that carries the
-constant state cannot produce the zero matrix at all, so the model now stops those volumes
-earlier, at the limit on squarings described below. The scaling refusal still fires first
-wherever the scaling overflows.
-
-**Measured at every power of ten from $`10^{0}`$ to $`10^{-323}`$ L at the 0.1 s step**, the
-propagator is returned at 11 of them, $`10^{0}`$ to $`10^{-10}`$ L, each with the constant
-state's row exact. The other 313 are refused before any arithmetic. A single term too
-small for any double, such as `exp(-0.5 * 3600)`, is still returned as 0.0, which is
-correct. Such a single zero is what distinguishes a decayed entry from a wiped-out matrix.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-**A limit on the squarings closes the last failure in this family.** At very small volumes
-the propagator can stay finite and nonzero while the constant state's row drifts. No
-interval may change that row, which is why its row in $`A`$ is empty. The shift that the
-module applies to the matrix before summing its series lets error in, and the squarings
-amplify it. After $`s`$ squarings, the worst entry's relative error is
-$`c\cdot2^{s}\cdot2^{-52}`$. $`c`$ was between 0.6 and 2.7 at every power of ten measured on
-2026-10-03, against a high-precision calculation of the same exponential, from those
-needing no squarings to those needing 45. So every state whose own rate the shift swamps
-drifts the same way. Two changes close the failure. First, the constant state's row is set
-to the identity matrix's row before the squarings, which keep it exact to the last bit. So
-`governing_equations.UNIT_STATE`'s guarantee that no step changes the constant state holds
-in floating point as well as in the algebra. Second, a propagator that needs more than 32
-squarings is refused before any arithmetic, because beyond that the error bound exceeds one
-part in a million. The most any supported input needs is 19, at the 24-hour limit and the
-widest supported flows. The first change alone is not enough, because with the constant
-row exact a wrecked matrix is no longer zero, so only the limit refuses it.
-`tests/unit/test_agent_simulation_validation.py` holds the regression test for a case that
-the mass-balance check passed with every propagator entry wrong.
-
 **What is left open, stated plainly.** Python code written against `core/` can still build
 either volume anywhere in the numerical envelope, 0.01 to 10 000 L, by passing a
 `CompartmentVolume`. So a 10 000 L circuit or a 0.01 L alveolar compartment is accepted.
@@ -5245,64 +5298,6 @@ chosen once, by someone who has gone to the trouble of building the model direct
 reaches the circuit, and it holds the checks for agent conservation and capacity.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
-
-**Zero is a supported input on all four, deliberately.** There are three
-reasons, and the third is the one that decides it:
-
-- The governing equations stay well posed. A zero flow removes a transfer
-  term rather than dividing by one. At $`Q=0`$ the tissue and venous
-  derivatives are zero, and the alveolar equation loses its uptake term.
-  § "Required tests" below already specifies that behavior in the
-  zero-ventilation, zero-cardiac-output, and zero-tissue-flow tests.
-- Zero is the endpoint of a continuous axis. Setting a slider's lowest value
-  just above zero would place an arbitrary boundary inside the model's own
-  valid domain. A reader would have no way to tell that boundary from a
-  modeling limit.
-- The low end of each flow axis is where the teaching is, and zero is its
-  limit. Reducing cardiac output *accelerates* alveolar wash-in, because less
-  agent is carried away from the lungs per unit time. This is one of the
-  central results in uptake and distribution, and this model reproduces it.
-  With sevoflurane at 1 MAC and the reference adult's other defaults,
-  $`F_A/F_I`$ at five minutes is 0.41 at 10 L/min, 0.49 at 5 L/min, 0.58 at
-  2.5 L/min, 0.70 at 1 L/min, and 0.86 at zero. Refusing the last of those
-  would cut the demonstration off one step before its clearest case. The same
-  argument applies to alveolar ventilation at zero, which is apnoea.
-
-<!-- not-restated: 10 L/min, 5 L/min -->
-
-**What zero cardiac output does not claim.** It is a statement about agent
-transport and nothing else. Uptake stops, so alveolar gas approaches the
-inspired gas, and the tissue stores keep whatever they already had. It is not
-a model of circulatory arrest, cardiopulmonary bypass, or ECMO. The section
-"Known limitations" excludes all three. Nothing about the patient's condition
-follows from a run at zero cardiac output. A run at $`Q=0`$ answers
-"where does the agent go when perfusion stops", not
-"what is happening to this patient".
-
-**These ranges define the verification domain.** § "Independent-solution test" below runs
-its test trajectories across everything these ranges allow. Its worst disagreement with
-the independent solution comes on a trajectory that holds cardiac output at zero.
-Narrowing a range would take that worst case out of reach, and widening one would admit
-trajectories that were never measured. Either way, that test must be re-measured
-(§ "What a setting outside the range costs" above). Three tests stop a range from changing
-unnoticed. `test_envelope_limits_match_the_supported_input_ranges` restates all six flow
-limits and fails if the model moves one.
-`test_displayed_resolution_and_shipped_step_match_the_interface` does the same for the
-displayed resolution and the step at which every figure is quoted.
-`test_the_sliders_span_the_supported_input_ranges` fails if the interface stops short of
-the declared ranges or goes past them. That test reads the shipped machine profile, which
-declares no deliverable range. A profile that declares one narrows the fresh gas flow
-slider to the overlap on purpose (§ "The model's envelope and a machine's deliverable range
-are two claims").
-
-**The simulation step is bounded too, and separately.** A user does not set it, but every
-`advance()` call takes it. Its limits are `MINIMUM_SIMULATION_STEP_S` and
-`MAXIMUM_SIMULATION_STEP_S`, not these ranges. § "Supported simulation step" above argues
-for both. The step's maximum is a declared limit, in seconds, on how long a change to a
-control may go unseen by the model.
-These ranges are a claim about where the compartment structure represents a patient.
-Neither is calculated from the other. Widening a range means re-running the reference
-tests at the new extreme setting, without revisiting the step.
 
 ## Reset behavior
 
