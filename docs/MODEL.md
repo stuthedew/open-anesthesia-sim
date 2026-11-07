@@ -4959,9 +4959,7 @@ test compares against five minutes of elimination. It explicitly refuses the
 two Yasuda papers' own multi-day curves, because *over days the missing
 metabolism is no longer negligible, and neither is the fat group's flow*. The
 fat group's flow is the second omission. The two human sources that § "Known
-limitations" weighs do not agree about which way the stored flow errs. A
-resting depot measurement puts the stored figure at about twice the truth. The
-same papers' washout fits put it at or a little below the truth. Either way,
+limitations" weighs do not agree about which way the stored flow errs. Either way,
 the flow acts directly on the slow tail of washout. A run beyond this boundary
 therefore displays a trace whose slow component is increasingly the two
 omissions rather than the model.
@@ -4970,21 +4968,12 @@ omissions rather than the model.
 displayed number does not say so.** Every washout that the two Yasuda papers fitted needed
 five compartments. Their authors took the fourth to be fat filled by diffusion from the
 well-perfused tissue beside it. This model has no such route. The fourth compartment
-carries the largest term in the measured curve over most of the supported span: from about
-1.8 to 3.1 hours after a 30-minute administration until about 20.7 to 29.4 hours. The
-intertissue-diffusion note under § "Known limitations" has the coefficients and the
+carries the largest term in the measured curve over most of the supported span. The
+intertissue-diffusion note under § "Known limitations" has the hours, the coefficients and the
 arithmetic. All else equal, a tail without that store falls faster than the measured one
 from about the third hour of elimination. Measured against the published mean curves over
 the whole supported run, the shipped tail does so (§ "The first 24 hours of elimination
-against the published mean curves"). It runs about a third below the curves from about the
-seventh hour until about the twenty-first. For desflurane it runs below them by half, from
-3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
-the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
-elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
-That is because this model's fat group returns more agent than the fitted fat term. In
-that subsection's open-circuit run, which has no rebreathing, the tissue return alone is a
-third to a half of the mean curve between hours 8 and 13.
-<!-- not-restated: 2.1 -->
+against the published mean curves").
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **That result does not move the 24 hours.** The limit rests on the two omissions above
@@ -9284,9 +9273,8 @@ prints $8.06, because Gas Man rounds isoflurane's vapour-to-liquid ratio to
 
 **The figures beside a cost are rounded, and the readout says so.** It also
 says that the cost is computed from the unrounded liquid volume and price per
-millilitre (`PL-1P15`). The readout shows the cost to three significant figures
-and never finer than a hundredth, and the price per millilitre to four
-significant figures (§ "Displayed precision"). The liquid volume is shown in
+millilitre (`PL-1P15`). § "Agent amounts in millilitres, and the cost" sets the
+precision of each figure. The liquid volume is shown in
 whole millilitres, so the product of the figures shown can differ from the cost
 by more than one unit of the cost's last digit. In the example above, 39 mL
 times USD 0.2047 is USD 7.98. The cost is USD 8.07 because it uses the
@@ -10656,10 +10644,9 @@ four belong beside any statement of this result, wherever it is restated.
    direction. The measured tail also moves beyond what this model can follow within the 24
    hours for which a run is supported, long before days have passed. Every washout that these
    papers fitted needed a fourth compartment between muscle and fat, which this model lacks. On
-   the published mean coefficients, that compartment's term becomes the largest in the measured
-   curve about 1.8 to 3.1 hours after the 30-minute administration. It stays the largest until
-   about 20.7 to 29.4 hours (the intertissue-diffusion note under § "Known limitations"). At
-   five minutes, that term is about one part in twenty of what remains. A comparison over those
+   the published mean coefficients, that compartment's term is the largest in the measured
+   curve for most of the supported span (the intertissue-diffusion note under § "Known
+   limitations" gives the hours). At five minutes, that term is about one part in twenty of what remains. A comparison over those
    hours would measure an omission rather than a parameter. So the gap over those hours is
    measured beside this comparison and is not part of it. § "The first 24 hours of elimination
    against the published mean curves" records its size and direction hour by hour, and claims
@@ -11026,10 +11013,8 @@ widest it is a third below, near 13 hours, and for desflurane it is a half
 below, near 8 hours. It finishes above the curve, by 12 to 24% at 23.5 hours
 and by a factor of 2.1 for desflurane. The middle stretch answers the
 question that the intertissue-diffusion note asked. In every fitted curve,
-the fourth compartment's term is the largest from 1.8 to 3.1 hours until
-20.7 to 29.4 hours
-(`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`
-re-derives those hours from the coefficients). This model has no such term.
+the fourth compartment's term is the largest over most of these hours (the
+intertissue-diffusion note under § "Known limitations" gives them). This model has no such term.
 Over those hours its tail falls faster than the measured mean. With the
 apparatus gone, it does so from the start. In the shipped condition, it does
 so only from the seventh hour. Until then the rebreathing circuit and the
@@ -11178,13 +11163,7 @@ sent.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 6 % -->
 
-**The result does not bear on § "Supported run length"**, which gives the full reasoning. The
-departures measured here come from the missing fourth compartment and from the fat group's own
-size, and both are present from the first hour to the last. The limit of 24 hours rests on two
-other omissions growing past negligible. So shortening the span would not remove these
-departures from the tail. Extending it would add the late excess, which is still growing at the
-boundary.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+**The result does not bear on § "Supported run length"**, which gives the full reasoning.
 
 **For developers.** The checks are in
 `tests/reference/test_late_washout_against_published_fits.py`. With these numbers, the
@@ -11670,8 +11649,8 @@ extent of sevoflurane's metabolism. Within those 24 hours:
   measurement, on which the stored flow runs about twice too high, counts
   against the 24 hours;
 - the third omission, the fourth compartment of the intertissue-diffusion
-  note, carries the largest term in the measured washout from about hour 2-3
-  of elimination to about hour 21-29. All else equal, the modelled tail
+  note, carries the largest term in the measured washout over most of the
+  supported span. All else equal, the modelled tail
   therefore falls faster than the measurement from about the third hour. That
   note gives where the shipped tail falls below the published mean curves, and
   by how much.
@@ -11790,18 +11769,12 @@ simulator:
   30-minute administration the fourth compartment's term becomes the largest
   in the measured washout at 1.8 to 3.1 hours. It stays the largest until 20.7
   to 29.4 hours, inside the 24 hours that a run is supported for (§ "Supported
-  run length"). Without that store the modelled tail should fall faster, and
-  it does. Against the mean curves themselves (§ "The first 24 hours of
-  elimination against the published mean curves"), the shipped tail runs below
-  them from about the seventh hour until about the twenty-first, and a third
-  below at the widest, near hour 13. For desflurane it is below from 3.4 to
-  15.3 hours, by about half at the widest point, near 8 hours. The shipped tail
-  is above the curves before and after that span. With the rebreathing circuit
-  taken away, the model's tissue return alone is a third to a half of the mean
-  curve between hours 8 and 13. With the circuit in place, as shipped, the gap
-  starts later than the third hour, because the rebreathing circuit and the
-  muscle group's slow return hold the tail above the curve until the seventh
-  hour. The size is known to about a factor of two, which is the fourth
+  run length").
+  `test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`
+  re-derives those hours from the coefficients. Without that store the modelled
+  tail should fall faster, and it does. § "The first 24 hours of elimination
+  against the published mean curves" gives where the shipped tail falls below
+  the mean curves, and by how much. The size is known to about a factor of two, which is the fourth
   compartment's own between-subject spread.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
