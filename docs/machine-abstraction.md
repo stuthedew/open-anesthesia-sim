@@ -30,8 +30,8 @@ found falls under one of the three.
 
 The model is one system matrix $`A`$ over nine states, built in
 `src/anesthesia_sim/core/governing_equations.py`. Its exact propagator is
-$`\exp(A\,\Delta t)`$. Five entries of that matrix involve the fresh gas flow
-$`\dot V_F`$, and the breathing circuit's own row has exactly three:
+$`\exp(A\,\Delta t)`$. Five entries of that matrix belong to the breathing circuit.
+The circuit's own row has three of them:
 
 $$
 A_{F_I,F_I} = -\frac{\dot V_F + \dot V_A}{V_C},\qquad
@@ -43,7 +43,8 @@ with two more in the accounting rows,
 $`A_{M_{\mathrm{delivered}},\mathbf 1} = \dot V_F F_D`$ and
 $`A_{M_{\mathrm{exhausted}},F_I} = \dot V_F`$.
 
-**$`\dot V_F`$ is doing two different jobs in those five entries**:
+**$`\dot V_F`$ appears in four of those five entries, and it does two
+different jobs there**:
 
 - **Delivery** is $`\dot V_F F_D`$, the litres of agent vapour arriving per
   second. It is a constant over the step, so it enters through the column of
