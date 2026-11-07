@@ -40,7 +40,7 @@ from docket.config import load as load_config  # noqa: E402
 
 import copy_edit  # noqa: E402
 from new_prose import passage_number, passage_place, read_readers_heading  # noqa: E402
-from rejected_prose import rewrites  # noqa: E402
+from rejected_prose import EMPHASIS, rewrites  # noqa: E402
 
 #: The role to look up in `docket.toml`'s `[models]` table.
 JUDGE_ROLE = "prose-judge"
@@ -50,8 +50,6 @@ JUDGE_PROMPT = ROOT / ".claude" / "agents" / "prose-judge.md"
 JUDGE_TASK = f"Judge the pairs in {copy_edit.REQUEST_NAME}."
 #: The seed for the order of A and B, so that a run can be repeated exactly.
 SEED = 20261104
-#: Deletes the emphasis and code marks that a verdict line may carry.
-EMPHASIS = str.maketrans("", "", "*_`")
 # regex: a verdict anywhere in a line of the judge's free prose. The judge's
 # instructions ask for "[N] verdict: A", "[N] verdict: B" or "[N] verdict: same".
 JUDGE_VERDICT_RE = re.compile(r"\[(\d+)\]\s*verdict:\s*(A|B|same)\b", re.IGNORECASE)

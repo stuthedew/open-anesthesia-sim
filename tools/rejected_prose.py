@@ -171,8 +171,9 @@ VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
 # regex: a passage number in brackets inside free prose, with the emphasis and
 # code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
 MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
-#: The table that removes emphasis and code marks, for comparing an entry's `fault`.
-UNMARKED = str.maketrans("", "", "*_`")
+#: Deletes emphasis and code marks: from an entry's `fault` and a rewrite before
+#: they are compared, and from a verdict line in `tools/prose_judge.py`.
+EMPHASIS = str.maketrans("", "", "*_`")
 
 
 def expected_verdict(name: str) -> str:
@@ -385,7 +386,7 @@ def _plain(text: str) -> str:
     An entry's `fault` is compared in this form, so a rewrite that only changes
     the case, the line breaks or the bold type of the words still holds them.
     """
-    return " ".join(text.translate(UNMARKED).casefold().split())
+    return " ".join(text.translate(EMPHASIS).casefold().split())
 
 
 def repeats(entries: Sequence[Entry]) -> list[str]:
