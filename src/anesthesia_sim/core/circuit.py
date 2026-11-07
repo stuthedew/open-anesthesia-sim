@@ -76,9 +76,9 @@ This value is a teaching default. It is not a clinical recommendation, and it is
 not a property of any machine. No surveyed workstation publishes a startup
 fresh gas flow (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). So
 `default_fresh_gas_flow_l_min` is optional in a `data/machines/` profile.
-`docs/machine-abstraction.md` § "Three homes, and why the shipped constants
-move" decides that the opening flow is a condition of the run rather than of
-the machine (`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run at this
+`docs/machine-abstraction.md` § "Which values belong to the machine, the run
+and the model" decides that the opening flow is a condition of the run rather
+than of the machine (`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run at this
 flow when the profile is silent.
 
 No source is this value's authority. Its authority is the rationale that

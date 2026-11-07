@@ -17,7 +17,7 @@ verify: grep -qE '^\| \(b11\).*uptake' docs/machine-abstraction.md
  — found while closing `PL-WJNS`, which argued the same boundary in
 `docs/MODEL.md`.
 
-`docs/machine-abstraction.md` § "The finding the whole design rests on" tabulates
+`docs/machine-abstraction.md` § "A machine changes only two rates and one volume" tabulates
 what each surveyed machine behavior does to the two rates a machine supplies:
 
 | Survey entry | Delivery | Removal |

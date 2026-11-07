@@ -6,9 +6,22 @@
 abstraction whose point is that **a real commercial machine can be added as a
 module**. `docs/machine-survey.md` established which ways real machines differ
 actually reach a number this simulator computes. This document is the design
-that survey exists to serve: what a module *is*, what the base owns against
-what each machine supplies, where the parameter/strategy line falls, and what
-the second machine costs.
+that survey exists to serve. It sets out what a module *is*, and it answers the
+seven questions that `PL-FG9D` asks, in this order:
+
+- § "A machine changes only two rates and one volume" gives the finding the
+  whole design rests on.
+- Question 3: how a machine composes with the existing core, which is what the
+  base owns against what each machine supplies.
+- Question 1: where the parameter/strategy line falls.
+- Question 2: what keeps the machine profile small.
+- § "Which values belong to the machine, the run and the model".
+- Question 4: validation and provenance per machine.
+- § "Fresh gas inlet position is not modelled".
+- Question 5: naming a real machine in the interface.
+- Question 6: every difference between machines traces to a named field.
+- Question 7: what the second machine costs.
+- § "What this design does not decide" lists the open matters.
 
 **Design only.** Nothing here changes `src/`. No machine class, no interlocks,
 no data migration: those are planned-milestone item 1's, and this document is
@@ -22,14 +35,17 @@ writing it into that document would put unresolvable assertions inside a bound
 one. It sits beside `docs/machine-survey.md` for the same reason, and
 `docs/MODEL.md` gains its statements when item 1 lands them.
 
-## The finding the whole design rests on
+## A machine changes only two rates and one volume
 
 **A machine contributes exactly two rates and one volume** to the breathing
 circuit's row of the system matrix, and nothing else anywhere in the model. The
 two rates are the agent delivery rate $`\dot m_{\mathrm{in}}`$ and the circuit
-gas removal rate $`\dot m_{\mathrm{out}}`$, both in L/s. The volume $`V_C`$ is
-the space that the circuit gas occupies in the apparatus. Everything the survey
-found falls under one of the three.
+gas removal rate $`\dot m_{\mathrm{out}}`$, both in L/s. The volume is the
+machine's apparatus volume, its part of $`V_C`$, the space that the circuit gas
+occupies. The rest of $`V_C`$ is the patient circuit, which the run supplies.
+Today one field, `circuit_volume_l`, holds the whole of $`V_C`$ (§ "Which values
+belong to the machine, the run and the model"). Everything the survey found
+falls under one of the three.
 
 The model is one system matrix $`A`$ over nine states, built in
 `src/anesthesia_sim/core/governing_equations.py`. Its exact propagator is
@@ -119,7 +135,7 @@ abstraction.
 
 **The machine is a boundary condition.** It supplies the two rates above and
 the apparatus volume. It appears nowhere in the state vector and holds no
-agent. It has no way to write a patient row, so adding a machine cannot change one. That is true by construction rather than by review, and it is the guarantee the item asks for.
+agent. It has no way to write a patient row, so adding a machine cannot change one. That is true by construction rather than by review, and it is the guarantee `PL-FG9D` asks for.
 
 In this design, which the matrix suggests, the machine supplies the fresh gas
 exchange: delivery and removal integrated over one step. The circuit code
@@ -131,7 +147,7 @@ A machine could instead contain or configure the circuit, and both fail:
 
 - **A machine that *contains* the circuit** makes the circuit one of its
   components. Every new machine would then reach into the compartments of the
-  validated uptake model (`AgentUptakeSystem`). The item asks the design to
+  validated uptake model (`AgentUptakeSystem`). `PL-FG9D` asks the design to
   avoid this.
 - **A machine that *configures* the circuit** sets the circuit's volume and
   fresh gas flow (`circuit_volume_l`, `fresh_gas_flow_l_min`) at construction
@@ -147,7 +163,7 @@ A machine could instead contain or configure the circuit, and both fail:
 *value* of one of the three quantities. It is behavior (a strategy) when it
 changes the *formula* producing them.**
 
-The line is decidable rather than a matter of judgment. A machine affects the simulation only through the three quantities, so each difference either enters one of the two rate expressions as a coefficient or selects which expression is used.
+The line is decidable rather than a matter of judgment. A machine affects the simulation only through the three quantities (§ "A machine changes only two rates and one volume"), so each difference either enters one of the two rate expressions as a coefficient or selects which expression is used.
 
 Data files may not hold executable equations (`CLAUDE.md`), so a strategy
 cannot go in one. The design gives it a place of its own.
@@ -157,7 +173,19 @@ cannot go in one. The design gives it a place of its own.
 Three independent slots, each filled by a named strategy from a registry in
 `core/`. A machine profile names one from each; it cannot supply one.
 
-**Delivery — what fills $`\dot m_{\mathrm{in}}`$:**
+**A strategy is a pure function** of the profile fields it declares, the run's
+current controls, and $`F_I`$ — and it declares which fields it reads. That
+declaration is what Question 6 rests on.
+
+**Two refusals, recorded so they are not re-proposed.** A strategy may not read
+a field it did not declare; and a strategy may not be added to the registry
+without an entry in the tables below, because the registry *is* the closed set
+and a member outside this document is the "too permissive" failure `PL-FG9D`
+names.
+
+#### Delivery
+
+What fills $`\dot m_{\mathrm{in}}`$:
 
 | Name | Rate | From | Status |
 | --- | --- | --- | --- |
@@ -170,7 +198,9 @@ is equivalent to a conventional vaporizer."* So a machine with two delivery
 modes is two profiles, or one profile with a mode selection, and half of it is
 already built.
 
-**Removal — what fills $`\dot m_{\mathrm{out}}`$:**
+#### Removal
+
+What fills $`\dot m_{\mathrm{out}}`$:
 
 | Name | Rate | From | Status |
 | --- | --- | --- | --- |
@@ -183,7 +213,9 @@ mainstream sensor and a returned sidestream sample both give
 $`\dot V_S = 0`$, and a scavenged sidestream sample gives the sample flow. Two
 formulas would be one formula and a branch nobody can see.
 
-**Dial mapping — what produces $`F_D`$ from the dial position:**
+#### Dial mapping
+
+What produces $`F_D`$ from the dial position:
 
 | Name | Mapping | From | Status |
 | --- | --- | --- | --- |
@@ -202,8 +234,9 @@ everywhere.** The slot is real, the second member is named, and it is currently
 a declared coincidence rather than a distinction: `PL-5K5C` (record the model's
 sea-level assumption) is what separates them, and until it lands a profile
 naming `fixed_volume_percent` gets the same numbers as one naming
-`variable_bypass`. Recording that is the point; discovering it during
-implementation is what this document exists to prevent.
+`variable_bypass`, and `PL-439V`'s discriminating test passes on paper only.
+Recording that is the point; discovering it during implementation is what this
+document exists to prevent.
 
 Hendrickx et al.'s measured flow-dependence of the same devices — within 10%
 of dial for isoflurane at 0.3–10 L/min, within 13% for desflurane at
@@ -213,16 +246,6 @@ until a milestone models it, because a flow-dependent correction fitted here
 would move every validated wash-in ratio without any measurement of *this*
 model saying it should.
 
-**A strategy is a pure function** of the profile fields it declares, the run's
-current controls, and $`F_I`$ — and it declares which fields it reads. That
-declaration is what Question 6 rests on.
-
-**Two refusals, recorded so they are not re-proposed.** A strategy may not read
-a field it did not declare; and a strategy may not be added to the registry
-without an entry in the table above, because the registry *is* the closed set
-and a member outside this document is the "too permissive" failure the item
-names.
-
 ## Question 2: what keeps the machine profile small
 
 **The admission rule.** A field exists only if something consumes it, and the
@@ -231,18 +254,28 @@ about is not added — not recorded as interesting, not carried "because the
 manual has it".
 
 **Two consumers, and a field names which.** The model is one: the field is a
-coefficient in a declared expression. `PL-WZVZ`'s comparison table is the
-other: a field that reaches no number but disambiguates one that does — which
-of the survey's three sampling configurations a $`\dot V_S`$ of zero *is* — is
-admissible on that ground and on no other. Naming the consumer is what stops
-the second ground becoming an escape hatch for the first.
+coefficient in a declared expression. `PL-WZVZ`'s comparison table, the
+machine's own panel that Question 5 describes, is the other: a field that
+reaches no number but disambiguates one that does — which of the survey's three
+sampling configurations a $`\dot V_S`$ of zero *is* — is admissible on that
+ground and on no other. Naming the consumer is what stops the second ground
+becoming an escape hatch for the first.
+
+**What the rule is wrong about, if it is wrong.** It suppresses every machine
+specification the survey put in its "Ruled out" section — seven categories,
+each already carrying the condition that brings it back. The rule is a mistake
+only if one of those turns out to reach a number the model computes, and the
+survey's own test is what put them there: none has a path to a computed value
+under the model as it will be through this milestone. The cost of being wrong
+is one field added late; the cost of the opposite error is a profile of
+specifications nothing reads, which is the failure mode `PL-FG9D` names. Those
+condition lines are the monitoring, and they are already written.
 
 **The testable form: adding a machine adds a row, not a column.** Once the
 abstraction is right, a new machine is values for fields that already exist. A
 machine needing a *new field* is a design event — the survey missed an axis, or
-the field is trivia — and the route is: the survey gains an entry, this
-document's closed set or schema gains the member, *then* the machine is added.
-Never the other way.
+the field is trivia — and Question 7 gives the route, which starts in the
+survey.
 
 **That is decidable, so it belongs in a script rather than in this paragraph.**
 A check under `tools/` reading every file in `data/machines/`, asserting that
@@ -252,20 +285,9 @@ column. It runs from a bare checkout with no virtualenv, answers identically
 every run, and states its rule where a reviewer can read it, which is what
 `CLAUDE.md` asks of the decidable half of a rule. Building it is item 1's.
 
-**Unknown is not a value.** The survey's rule carries straight through: an
-unknown apparatus volume is a machine that cannot be added yet, not a machine
-with a plausible apparatus volume. See Question 4 for what that does at load
-time.
-
-**What the rule is wrong about, if it is wrong.** It suppresses every machine
-specification the survey put in its "Ruled out" section — seven categories,
-each already carrying the condition that brings it back. The rule is a mistake
-only if one of those turns out to reach a number the model computes, and the
-survey's own test is what put them there: none has a path to a computed value
-under the model as it will be through this milestone. The cost of being wrong
-is one field added late; the cost of the opposite error is a profile of
-specifications nothing reads, which is the failure mode the item names. Those
-condition lines are the monitoring, and they are already written.
+**Unknown is not a value.** A machine whose apparatus volume is unknown cannot
+be added yet, and it is never given a plausible apparatus volume instead.
+Question 4's refusal 2 carries this survey rule to load time.
 
 ### The schema
 
@@ -297,32 +319,21 @@ The fields the survey's evidence admits:
 column per agent: adding an agent adds a key inside every profile, and that is
 agent-milestone work, not machine work.
 
-**`apparatus_volume_l` and the tree's `circuit_volume_l` are two quantities,
-not two names for one** (project owner, 2026-09-27, ratified, over recording
-`circuit_volume_l` as the apparatus alone, `PL-HGB6`). `apparatus_volume_l` is
-the machine's half of the split under § "Three homes, and why the shipped
-constants move" below: the apparatus including its absorber and excluding the
-disposable patient circuit, which is how the survey's section (a1) records every
-figure it found. `circuit_volume_l`, the field the tree ships, is $`V_C`$ whole:
-it is the assembled total, apparatus plus patient circuit, because the model has
-one well-mixed gas compartment in front of the patient and the limbs and Y-piece
-have nowhere else to be. So a
-profile written today from Shin et al.'s figures for a Perseus A500 stores the
-with-circuit 3.3 L, never the 2.1 L apparatus figure, which would give a
-$`\tau_C = V_C/\dot V_F`$ of 31.5 s at 4 L/min where 49.5 s is right. **The
-condition is the split itself:** the two names stay distinct until item 1 moves
-the patient circuit to the run, and from then a machine profile carries
-`apparatus_volume_l` and the run supplies the rest of $`V_C`$. `PL-TBMX` wrote
-today's meaning where a profile author reads it — the schema docstring, the
-data file and `docs/MODEL.md`.
+**`max_delivered_concentration_percent` is mislocated today**, and the survey
+proves it rather than arguing it: desflurane's 18% is the calibrated maximum of
+the Tec 6, which Johnston et al. characterised *"from 1% to 18%"*, and
+`docs/MODEL.md` already names that provenance. Nothing about desflurane binds
+it to 18%. It belongs on the (machine, agent) pair as `agent_limits`. Moving it
+is item 1's work and a data migration; until then the intersection rule in
+§ "Which values belong to the machine, the run and the model" holds the two
+together and nothing displayed changes.
 
-### Three homes, and why the shipped constants move
+## Which values belong to the machine, the run and the model
 
 The abstraction separates three things one file currently holds together.
 
-**The machine owns what a machine specifies.** Apparatus volume, flow range and
-floor, agents it can mount, per-agent dial maxima, sampling, and the three
-strategy names.
+**The machine owns what a machine specifies**: the fields in the schema table
+under Question 2.
 
 **The run owns its opening conditions.** The opening fresh gas flow, the
 opening dial position, and the patient circuit volume. None of these is a
@@ -334,12 +345,12 @@ machine specification, and the reasoning differs per field:
   side of the patient/agent split it falls on and does not settle the home,
   and the survey supplies the fact that does: **no reachable source states a
   startup fresh gas flow for any surveyed machine.** A per-machine field would
-  therefore be `unknown` on every real profile — and under the rule directly
-  above, a machine with an unknown required field cannot be added. So making
-  it a machine field would either block every machine or force each one to
-  fabricate a number. It is an opening condition of a run: a teaching choice,
-  which is exactly what the shipped file's own `provenance_gap` already calls
-  it. `PL-NM7X` decides the *value* and is unaffected by this; the two
+  therefore be `unknown` on every real profile — and under Question 4's
+  refusal 2, a machine with an unknown required field cannot be added. So
+  making it a machine field would either block every machine or force each one
+  to fabricate a number. It is an opening condition of a run: a teaching
+  choice, which is exactly what the shipped file's own `provenance_gap` already
+  calls it. `PL-NM7X` decides the *value* and is unaffected by this; the two
   questions are independent.
 - **Opening dial position** is the same shape and is already in the tree:
   `AgentUptakeSystem.for_agent()` starts the vaporizer at that agent's 1 MAC,
@@ -349,6 +360,24 @@ machine specification, and the reasoning differs per field:
   apparatus *plus* patient circuit, and the patient circuit is a consumable
   chosen per case. A machine profile cannot own $`V_C`$ outright.
 
+**`apparatus_volume_l` and the tree's `circuit_volume_l` are two quantities,
+not two names for one** (project owner, 2026-09-27, ratified, over recording
+`circuit_volume_l` as the apparatus alone, `PL-HGB6`). `apparatus_volume_l` is
+the machine's half of the split this section describes: the apparatus including
+its absorber and excluding the disposable patient circuit, which is how the
+survey's section (a1) records every figure it found. `circuit_volume_l`, the
+field the tree ships, is $`V_C`$ whole: it is the assembled total, apparatus plus
+patient circuit, because the model has one well-mixed gas compartment in front
+of the patient and the limbs and Y-piece have nowhere else to be. So a
+profile written today from Shin et al.'s figures for a Perseus A500 stores the
+with-circuit 3.3 L, never the 2.1 L apparatus figure, which would give a
+$`\tau_C = V_C/\dot V_F`$ of 31.5 s at 4 L/min where 49.5 s is right. **The
+condition is the split itself:** the two names stay distinct until item 1 moves
+the patient circuit to the run, and from then a machine profile carries
+`apparatus_volume_l` and the run supplies the rest of $`V_C`$. `PL-TBMX` wrote
+today's meaning where a profile author reads it — the schema docstring, the
+data file and `docs/MODEL.md`.
+
 **The model keeps its envelope.** `core/supported_ranges.py`'s bounds are the
 domain the compartment model is claimed over, and they stay exactly where they
 are. The effective limit on a control is the **intersection** of the model
@@ -356,6 +385,8 @@ envelope and the machine's deliverable range, each with its own name, source
 and refusal message. That is `PL-8PS6`'s framing and this design adopts it
 unchanged; it is also what stops a machine profile silently widening the
 model's claimed validity.
+
+### What is built so far
 
 **Built, for the fresh gas flow alone, on 2026-09-20** (`PL-8PS6`). The row
 above is in the tree: `deliverable_fresh_gas_flow_range` is a field on
@@ -392,22 +423,29 @@ opens at the agent's 1 MAC by convention, the patient-circuit volume stays
 inside `circuit_volume_l` until item 1's split, and the object, once built,
 subsumes the fallback without undoing it.
 
+### The reference breathing system
+
 **The reference profile is a breathing system, not a machine, and stays one.**
 `reference_circle_system.json` is named for what it is. Its `circuit_volume_l`
 of 6.0 L is the assembled total, apparatus plus patient circuit, on three
-grounds. The model has one well-mixed gas compartment in front of the patient,
-so the limbs and Y-piece can only be inside $`V_C`$, as the survey's section
-(a1) says. The file's Targ et al. note refuses the measured 9.86 L chiefly
-because that system held a reservoir bag standing in for the lung, while its
-corrugated limbs and Y-piece were part of the system measured, so the note's
-"the apparatus alone" meant without the lung, not without the hoses, which is
-what `PL-TBMX` reworded it to say. And
-`docs/MODEL.md` sets it beside Shin et al.'s with-circuit totals, the Primus's
-5.9 L, rather than beside their apparatus figures. What the note's comparison
-adds to the stored figure before setting it against the measured 9.86 L is the
-reference adult's 2.5 L alveolar compartment, the lung, so it bears on counting
-a lung twice and says nothing about how the 6.0 L divides between apparatus and
-patient circuit. **No source apportions it**, so splitting it into an apparatus
+grounds:
+
+1. The model has one well-mixed gas compartment in front of the patient, so the
+   limbs and Y-piece can only be inside $`V_C`$, as the survey's section (a1)
+   says.
+2. The file's Targ et al. note refuses the measured 9.86 L chiefly because that
+   system held a reservoir bag standing in for the lung, while its corrugated
+   limbs and Y-piece were part of the system measured, so the note's "the
+   apparatus alone" meant without the lung, not without the hoses, which is
+   what `PL-TBMX` reworded it to say. What the note's comparison adds to the
+   stored figure before setting it against the measured 9.86 L is the
+   reference adult's 2.5 L alveolar compartment, the lung, so it bears on
+   counting a lung twice and says nothing about how the 6.0 L divides between
+   apparatus and patient circuit.
+3. `docs/MODEL.md` sets it beside Shin et al.'s with-circuit totals, the
+   Primus's 5.9 L, rather than beside their apparatus figures.
+
+**No source apportions it**, so splitting it into an apparatus
 volume and a patient-circuit volume would invent two numbers where one is
 recorded. It therefore keeps its stored figure with a declared statement that
 it is the sum, which `PL-TBMX` wrote into its `provenance_gap`, and real
@@ -415,20 +453,12 @@ machines are added beside it
 rather than by retrofitting it into a machine it never claimed to be. A profile
 built from Shin et al.'s figures carries a true apparatus volume once the split
 lands and takes its 1.2 L patient circuit from the run; until then it stores
-the with-circuit total, as the paragraph under the schema table says.
-
-**`max_delivered_concentration_percent` is mislocated today**, and the survey
-proves it rather than arguing it: desflurane's 18% is the calibrated maximum of
-the Tec 6, which Johnston et al. characterised *"from 1% to 18%"*, and
-`docs/MODEL.md` already names that provenance. Nothing about desflurane binds
-it to 18%. It belongs on the (machine, agent) pair as `agent_limits`. Moving it
-is item 1's work and a data migration; until then the intersection rule above
-holds the two together and nothing displayed changes.
+the with-circuit total, as the paragraph on the two volumes above says.
 
 ## Question 4: validation and provenance per machine
 
 **A machine module with no provenance fails to load rather than runs.** That is
-the item's requirement and it follows from `CLAUDE.md`'s preference for an
+`PL-FG9D`'s requirement and it follows from `CLAUDE.md`'s preference for an
 obvious failure state over a plausible-looking number. Concretely, `core/parameters.py`
 refuses a profile that:
 
@@ -441,14 +471,6 @@ refuses a profile that:
 4. **declares an empty `not_modelled` list**; or
 5. **declares a `schema_version` the loader does not know.**
 
-Item 4 is the one worth arguing for. **Every machine has a non-empty
-`not_modelled` list, and the survey is what proves it**: fresh gas inlet
-position, ventilator drive, decoupling and the control loop all reach a number
-and none is represented here. A profile claiming otherwise is claiming a
-fidelity the model does not have, so an empty list is a defect rather than a
-tidy result — and requiring it non-empty makes the omission a positive
-statement the author had to write, which is what Question 5 then displays.
-
 Nothing in this adds vocabulary. `tier` and `adopted` are `docs/MODEL.md`
 § "Source hierarchy"'s, checked by `make check` against the existing closed
 vocabulary, and a machine constant is held to the same three tiers as a
@@ -457,16 +479,120 @@ specification sheet is not a measurement. The survey already applies that
 ruling to itself — Shin et al.'s apparatus volumes are recorded tier 2 because
 that paper carries them rather than measured them.
 
-## Question 6: attributability
+Refusal 4 is the one worth arguing for. **Every machine has a non-empty
+`not_modelled` list, and the survey is what proves it**: fresh gas inlet
+position, ventilator drive, decoupling and the control loop all reach a number
+and none is represented here. A profile claiming otherwise is claiming a
+fidelity the model does not have, so an empty list is a defect rather than a
+tidy result — and requiring it non-empty makes the omission a positive
+statement the author had to write, which is what Question 5 then displays.
+
+## Fresh gas inlet position is not modelled
+
+**Decline to represent internal topology, and say so where a machine is
+chosen.** Two machines differing only in inlet position are, in this model, the
+same machine — and the interface states that rather than offering two names
+that produce one curve.
+
+**This is an instance, not a rule, and its condition is named.** It stops being
+true when item 39 lands a per-compartment gas-phase model, or when any
+multi-limb circuit enters the model. Written as a rule it would outlive its
+own evidence and be obeyed by sessions that were not here.
+
+**Why declining is not merely the cheap option.** The decline is needed
+under *either* answer. Even with item 39 built, a machine whose inlet
+position is unknown — which is every surveyed machine but the two Fukuda
+et al. instrumented — still needs the statement. Building item 39 first would
+change which machines the statement covers, not whether it is owed.
+
+The survey's headline finding is that **apparatus volume alone does not explain
+the measured differences between machines**, and its sharpest instance is
+Fukuda et al.'s randomised patient study: moving only the fresh gas inlet
+significantly raised the inspired/delivered ratio of isoflurane and of
+sevoflurane during low-flow anesthesia. $`F_I/F_D`$ is the ratio this model's
+circuit equation *is*, and a machine changed it with volume held fixed.
+
+A single well-mixed compartment has no place to put that. The survey named
+three options and refused one. Besides the decline above, they are:
+
+- **Refused: fold it into an effective volume.** The survey's refusal stands
+  and is worth restating, because it is the option an implementation reaches
+  for. Calibrating a volume to reproduce observed kinetics would fit the curves
+  and attribute to volume a difference volume did not cause. `PL-WZVZ`'s table
+  would then print a sourced-looking number no measurement supports, which is
+  the exact failure that table exists to prevent.
+- **Not now: represent it.** A multi-limb circuit separates inspired gas from
+  mean circuit gas, and `docs/MODEL.md` § "Model boundary" already names the
+  consequence — under a model such as Lerou and Booij's the two become distinct
+  states, this model's single $`F_I`$ stops describing both, and the departure
+  has to be recorded there before the model is extended that way. That is a
+  change to the model boundary, which is planned-milestone item 39's
+  (per-compartment gas-phase condition), not item 1's.
+
+## Question 5: naming a real machine in the interface
+
+**Decided (project owner, 2026-09-20, ratified)**, on this session's
+recommendation and over naming the machine by its trade name in the running
+interface. It is what a learner sees, so the decision was theirs; the case
+below is the one they ratified rather than one they authored, which is the
+distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
+a measurement, a cost this case did not carry, or a constraint that appears
+later.
+
+**Show the archetype in the running interface; attach the trade name to the
+parameter set.** The machine chooser and the dashboard name a machine by what
+the model represents —
+"circle system · 3.3 L with patient circuit · variable-bypass vaporizer" — and
+the trade name appears in the machine's own panel, beside its parameters, its
+sources and its `not_modelled` list. The trade name becomes a citation rather
+than a claim.
+
+**What this binds.** `PL-WZVZ` builds the panel this puts the trade name in, so
+its comparison table and the machine's own parameter set are the same surface:
+a trade name may appear there and may not appear on a curve, a chooser entry or
+a dashboard readout. Planned-milestone item 1 inherits that as a scope
+constraint rather than a preference, and the `not_modelled` list stops being a
+provenance record only — it is what has to be on screen beside the trade name
+for the trade name to be admissible at all.
+
+Three facts decide it, and none is a matter of taste:
+
+1. **The model reproduces a known-incomplete subset, and the survey measured
+   the shortfall.** Shin et al. found the Perseus A500 and Zeus IE
+   indistinguishable on volume — 2.1 L against 2.0 L of apparatus, 3.3 L
+   against 3.2 L with the 1.2 L patient circuit, time constants of 6.6 against
+   6.4 min at 0.5 L/min — and still significantly different in
+   time to target, attributing the residue to inlet position, decoupling,
+   ventilator drive and delivery mode. Every one of those is in this model's
+   `not_modelled` list.
+2. **The decline in § "Fresh gas inlet position is not modelled" makes some
+   machines identical here.** Under a trade-name
+   label the interface would offer two names that produce one curve, with
+   nothing saying why. Under an archetype label it offers one entry, correctly.
+3. **`CLAUDE.md`'s clinical-output standard already governs it.** The correct
+   number with the wrong model identity is a presentation failure, and a
+   learner who reads a trade name on a curve attributes the curve to the
+   machine on the wall in their operating room.
+
+The weaker options, so the choice is visible rather than asserted. **Full trade
+name everywhere** is what makes the feature feel real and is what a user will
+ask for; it claims the most and is supported the least (fact 1 above).
+**Archetype only, no trade
+name anywhere** is safe and throws away the provenance: a reader cannot check a
+parameter against a manual for a machine nobody names. The decision is the
+middle one because it keeps the trade name exactly where the evidence for it is
+on screen.
+
+## Question 6: every difference between machines traces to a named field
 
 **Every difference a machine makes to a curve can be traced to declared
-fields.** The item asks for this as a constraint on the design, not only on the
+fields.** `PL-FG9D` asks for this as a constraint on the design, not only on the
 display: *design so that the parameter set is the explanation*. A machine
-affects the model only through three quantities:
+affects the model only through the three quantities that § "A machine changes
+only two rates and one volume" names, and each comes from declared fields:
 
 - the volume $`V_C`$: the apparatus volume (`apparatus_volume_l`) plus the run's
-  patient-circuit volume, which today is the assembled circuit volume
-  (`circuit_volume_l`);
+  patient-circuit volume, as that section says;
 - the inflow $`\dot m_{\mathrm{in}}`$: the `delivery` strategy and the fields it
   declares;
 - the outflow $`\dot m_{\mathrm{out}}`$: the `removal` strategy and the sample
@@ -488,103 +614,9 @@ field. The interface would then attribute it to the machine's trade name. That
 is an unsafe display, and the item behind the comparison table (`PL-WZVZ`)
 exists to prevent it. With this design, that item does not have to catch it.
 
-## The inlet-position decision, taken on the record
-
-The survey's headline finding is that **apparatus volume alone does not explain
-the measured differences between machines**, and its sharpest instance is
-Fukuda et al.'s randomised patient study: moving only the fresh gas inlet
-significantly raised the inspired/delivered ratio of isoflurane and of
-sevoflurane during low-flow anesthesia. $`F_I/F_D`$ is the ratio this model's
-circuit equation *is*, and a machine changed it with volume held fixed.
-
-A single well-mixed compartment has no place to put that. The survey named
-three options and refused one. Taking the remaining choice on the record:
-
-**Decline to represent internal topology, and say so where a machine is
-chosen.** Two machines differing only in inlet position are, in this model, the
-same machine — and the interface states that rather than offering two names
-that produce one curve.
-
-- **Refused: fold it into an effective volume.** The survey's refusal stands
-  and is worth restating, because it is the option an implementation reaches
-  for. Calibrating a volume to reproduce observed kinetics would fit the curves
-  and attribute to volume a difference volume did not cause. `PL-WZVZ`'s table
-  would then print a sourced-looking number no measurement supports, which is
-  the exact failure that table exists to prevent.
-- **Not now: represent it.** A multi-limb circuit separates inspired gas from
-  mean circuit gas, and `docs/MODEL.md` § "Model boundary" already names the
-  consequence — under a model such as Lerou and Booij's the two become distinct
-  states, this model's single $`F_I`$ stops describing both, and the departure
-  has to be recorded there before the model is extended that way. That is a
-  change to the model boundary, which is planned-milestone item 39's
-  (per-compartment gas-phase condition), not item 1's.
-- **Why declining is not merely the cheap option.** The decline is needed
-  under *either* answer. Even with item 39 built, a machine whose inlet
-  position is unknown — which is every surveyed machine but the two Fukuda
-  et al. instrumented — still needs the statement. Building item 39 first would
-  change which machines the statement covers, not whether it is owed.
-
-**This is an instance, not a rule, and its condition is named.** It stops being
-true when item 39 lands a per-compartment gas-phase model, or when any
-multi-limb circuit enters the model. Written as a rule it would outlive its
-own evidence and be obeyed by sessions that were not here.
-
-## Question 5: naming a real machine in the interface
-
-**Decided (project owner, 2026-09-20, ratified)**, on this session's
-recommendation and over naming the machine by its trade name in the running
-interface. It is what a learner sees, so the decision was theirs; the case
-below is the one they ratified rather than one they authored, which is the
-distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
-a measurement, a cost this case did not carry, or a constraint that appears
-later.
-
-**Show the archetype in the running interface; attach the trade name to the
-parameter set.** The machine chooser and the dashboard name a machine by what
-the model represents —
-"circle system · 3.3 L with patient circuit · variable-bypass vaporizer" — and
-the trade name appears in the machine's own panel, beside its parameters, its
-sources and its `not_modelled` list. The trade name becomes a citation rather
-than a claim.
-
-Three facts decide it, and none is a matter of taste:
-
-1. **The model reproduces a known-incomplete subset, and the survey measured
-   the shortfall.** Shin et al. found the Perseus A500 and Zeus IE
-   indistinguishable on volume — 2.1 L against 2.0 L of apparatus, 3.3 L
-   against 3.2 L with the 1.2 L patient circuit, time constants of 6.6 against
-   6.4 min at 0.5 L/min — and still significantly different in
-   time to target, attributing the residue to inlet position, decoupling,
-   ventilator drive and delivery mode. Every one of those is in this model's
-   `not_modelled` list.
-2. **The decline above makes some machines identical here.** Under a trade-name
-   label the interface would offer two names that produce one curve, with
-   nothing saying why. Under an archetype label it offers one entry, correctly.
-3. **`CLAUDE.md`'s clinical-output standard already governs it.** The correct
-   number with the wrong model identity is a presentation failure, and a
-   learner who reads a trade name on a curve attributes the curve to the
-   machine on the wall in their operating room.
-
-The weaker options, so the choice is visible rather than asserted. **Full trade
-name everywhere** is what makes the feature feel real and is what a user will
-ask for; it claims the most and is supported the least, and it is the option
-the survey's measurement argues directly against. **Archetype only, no trade
-name anywhere** is safe and throws away the provenance: a reader cannot check a
-parameter against a manual for a machine nobody names. The decision is the
-middle one because it keeps the trade name exactly where the evidence for it is
-on screen.
-
-**What this binds.** `PL-WZVZ` builds the panel this puts the trade name in, so
-its comparison table and the machine's own parameter set are the same surface:
-a trade name may appear there and may not appear on a curve, a chooser entry or
-a dashboard readout. Planned-milestone item 1 inherits that as a scope
-constraint rather than a preference, and the `not_modelled` list stops being a
-provenance record only — it is what has to be on screen beside the trade name
-for the trade name to be admissible at all.
-
 ## Question 7: what the second machine costs
 
-Stated as the target the item asks for. Three cases, and only the first is a
+Stated as the target `PL-FG9D` asks for. Three cases, and only the first is a
 data-entry task.
 
 **A machine whose delivery and removal are already in the closed set: one data
@@ -606,11 +638,12 @@ change to the solver.
 **A machine needing a new profile field: a design event that starts in the
 survey.** The field is added to `docs/machine-survey.md` with the stated path
 from it to a computed value, then to the schema with its consumer and effect,
-then to every existing profile. That last clause is the cost that keeps the
-schema honest: a field added for one machine must be answerable for all of
+then to every existing profile, and only then is the machine added. Never the
+other way. Adding the field to every existing profile is the cost that keeps
+the schema honest: a field added for one machine must be answerable for all of
 them, or it is trivia.
 
-**If the design cannot state that, it is not finished** — the item's own test.
+**If the design cannot state that, it is not finished** — `PL-FG9D`'s own test.
 It states it, and the statement is checkable by the column check under Question
 2.
 
@@ -620,26 +653,25 @@ Recorded so the milestone does not mistake them for settled, and so nothing
 below is re-derived from scratch.
 
 - **The value of the opening fresh gas flow.** `PL-NM7X`, the project owner's.
-  This document decides only that it is an opening condition of a run rather
-  than a machine specification.
-- **Whether the model gains an ambient pressure.** `PL-5K5C`. Until it does,
-  `variable_bypass` and `fixed_volume_percent` agree everywhere in the model's
-  domain, and `PL-439V`'s discriminating test passes on paper only.
-- **Flow-dependent vaporizer output.** Hendrickx et al. measured it; no
-  milestone models it; both mapping strategies declare it as a limitation.
+  Where the opening flow belongs is decided in § "Which values belong to the
+  machine, the run and the model".
+- **Whether the model gains an ambient pressure.** `PL-5K5C`. Question 1's
+  § "Dial mapping" says what follows until it does.
+- **Flow-dependent vaporizer output.** No milestone models it. Question 1's
+  § "Dial mapping" records it as a limitation of both mapping strategies.
 - **Ventilation, decoupling and the ventilator.** (b5) and (b6) reach a number
   only once the machine owns the ventilator, which this abstraction does not
   give it. Ventilation stays a patient-side control, and decoupling is a fourth
   strategy slot opened by whichever milestone moves it.
-- **Automated end-tidal control.** Planned-milestone item 5. It fails two of
-  this design's three admissibility conditions, which is the reason it is a
-  milestone rather than a strategy, and that reason is now recorded rather than
-  assumed.
+- **Fresh gas inlet position.** Planned-milestone item 39, under § "Fresh gas
+  inlet position is not modelled".
+- **Automated end-tidal control.** Planned-milestone item 5, for the reason
+  that ends § "A machine changes only two rates and one volume".
 - **Every `unknown` in the survey.** Apparatus volumes, flow floors, agent
   lists and sample flows for the GE and Getinge machines, and for three of the
   five Dräger ones. The survey's last section names the manuals and the route.
-  **That is a condition on each profile, not on this abstraction.** A machine
-  whose fields are `unknown` is a machine that cannot be added yet, and its
+  **That is a condition on each profile, not on this abstraction.** Question 4's
+  refusal 2 keeps such a machine out until its fields are known, and its
   manual is sought when that machine's profile is built rather than in advance
   (project owner, 2026-09-20). The design is complete without any of them: the
   reference profile is what it runs on meanwhile by construction, not for want
@@ -654,18 +686,22 @@ here is a new citation, and `docs/machine-survey.md` remains the authority for
 all of them.
 
 - Fukuda T, Fukunaga A, Toyooka H. *J Anesth.* 2006;20(4):268–273 — inlet
-  position changes $`F_I/F_D`$ at fixed volume, the measurement behind the
-  decline recorded above.
+  position changes $`F_I/F_D`$ at fixed volume, the measurement behind
+  § "Fresh gas inlet position is not modelled".
 - Hendrickx JF, De Cooman S, Deloof T, et al. *Anesth Analg.*
-  2001;93(2):391–395 — cassette-vaporizer output against dial across flow.
+  2001;93(2):391–395 — cassette-vaporizer output against dial across flow;
+  used in Question 1's § "Dial mapping".
 - Johnston RV, Andrews JJ, Deyo DJ, et al. *Anesth Analg.* 1994;79(3):548–552 —
-  the Tec 6 characterised from 1% to 18%, the provenance of the 18.
+  the Tec 6 characterised from 1% to 18%, the provenance of the 18; used in
+  Question 2's § "The schema".
 - Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. In: Schüttler J, Schwilden
   H, eds. *Modern Anesthetics.* Springer; 2008:451–470 — the Zeus's two dosing
   modes, the closed surplus gas valve, the gas module's sample draw, and the
-  fixed-volume-percentage principle.
+  fixed-volume-percentage principle; used in Question 1.
 - Shin HW, Yu HN, Bae GE, et al. *BMC Anesthesiol.* 2017;17(1):10 — the three
   Dräger apparatus volumes, and machines indistinguishable on volume differing
-  significantly in time to target.
+  significantly in time to target; used in § "Which values belong to the
+  machine, the run and the model", Question 4 and Question 5.
 - Targ AG, Yasuda N, Eger EI II. *Anesth Analg.* 1989;69(2):218–225 — the
-  measured 9.86 L the reference profile's own provenance note reasons against.
+  measured 9.86 L the reference profile's own provenance note reasons against;
+  used in § "The reference breathing system".
