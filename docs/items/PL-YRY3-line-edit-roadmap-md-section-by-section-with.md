@@ -99,3 +99,9 @@ text to find.
   example pointing at row 7; give row 3 `PL-011`'s drop date and the two items
   that replaced it; and say in Gate 2's cell that its frozen list has gone
   where v0.6.0's section says, since "when the moment comes" is past.
+
+**Added by slice 3's second review (2026-11-07).** § "What a tag ships that its
+notes may not name" uses "the tag's span" without defining it. The definition,
+the commits that `git describe --contains` resolves to a release tag, left with
+the sentence now quoted in `PL-J3ZK`.
+

@@ -187,7 +187,7 @@ commits after v0.2.7, which is the expected boundary rather than a gap.
   two await the commands above, and why the other two are an open decision —
   the corrected reason, not the superseded one.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "Release tags and release notes" carried these sentences until then. The restructure keeps the outcome there, that the gap closed on 2026-08-30, and moves the history of the measurement here. In the quote, "here" means that section of `ROADMAP.md`.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "Release tags and release notes" carried these sentences until then. The restructure keeps the outcome there, that the gap closed on 2026-08-30, and moves the history of the measurement here. In the quotes, "that span of resolving commits" means the commits that `git describe --contains` resolves to a release tag, and "they" means v0.1.0 and v0.2.0. "Kept here" meant that section of `ROADMAP.md` until 2026-11-07. This item keeps the reasoning now, for the same reason.
 
 > That span of resolving commits is the provenance guarantee that PL-J3ZK was opened to restore.
 

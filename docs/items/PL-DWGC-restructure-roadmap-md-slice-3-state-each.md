@@ -367,7 +367,7 @@ naming this slice, in the item named beside it.
 - § "Versioning decision"'s paragraph on the exception is split in two, before
   "Later gates take no version of their own."
 - Baseline: why v0.7.0 is not cut now sits with Gate 3's open entries; the
-  features finished and the release item join the opening paragraph; the
+  features finished join the opening paragraph; the
   repeated generator sentence and the paragraph of leftovers go, the
   release-train clause and the missed inflow prediction to `PL-80PZ`; the
   restated rule on later merges is a pointer, placed straight after the
@@ -461,4 +461,39 @@ cleared, v0.5.0's sixteen items against 20 ids and its undated 185 entries,
 and what "Row 11 is the intended order" covers). `PL-33FM` (Gate 0's size)
 and `PL-V82M` (the cut-item rule) came from part 1's review. v0.2.8's 38
 against 37 is `PL-TW3Q`.
+
+**Review of part 2.** Two reviewers compared the old and new text, one for
+words that depend on position and one sentence by sentence. The second
+accounted for every sentence that left the roadmap: 13 removed as duplicates,
+3 replaced by pointers and 46 quoted in items, each word for word. Their
+findings, all applied:
+
+- The decision tag `PL-028F` had been joined to the sentence on where the
+  notes and the tag go, which `PL-QHCW` and `PL-2FY6` settled. It now sits on
+  "That was the decision rather than an omission" and on "So the two records
+  deliberately answer different questions", the two sentences its bold lead
+  covered.
+- "The provenance guarantee described above" lost its antecedent when the
+  sentence naming `PL-J3ZK` moved. It now points at § "Every completed version
+  has a tag on its own release's commit".
+- "The release item is `PL-80PZ`." had been cut from a longer sentence that
+  stayed. It goes, because the v0.6.16 row's Details cell names `PL-80PZ` and
+  the whole sentence is quoted there.
+- The reserved-number rule takes the bold lead "Which numbers a patch cut may
+  take", because its new place does not say what a number is free for.
+- "Row 2 is Gate 0's release." is restored, because the note promises a
+  contrast between rows 1 and 2.
+- "Rows 2, 4, 6, 8 and 10" names § "The timeline", which no longer follows it.
+- The pointer on later merges says "after a release is cut and before its pull
+  request lands", the words of the sentence it replaced.
+- Two subheadings say what they hold: "Every completed version has a tag on
+  its own release's commit" and "Why nothing reconciles the tag span and the
+  notes automatically".
+- Lead-ins in `PL-GS5X`, `PL-QYPX`, `PL-J3ZK`, `PL-QXSB`, `PL-L9RD` and
+  `PL-LJVD` say what a quote's "row 5", "above", "that span", "they", "kept
+  here" or bare section citation refers to now.
+
+Not applied: the term "span" is not defined where § "What a tag ships that
+its notes may not name" first uses it. Defining it is rewording, so it is
+listed for the line edit (`PL-YRY3`).
 

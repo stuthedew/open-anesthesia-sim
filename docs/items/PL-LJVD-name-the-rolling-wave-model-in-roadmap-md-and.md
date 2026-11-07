@@ -100,7 +100,7 @@ multi-substance to v0.9.0. The proposal's remedy - 74 lines restating
 
 <!-- absent: docs/PLANNING.md -->
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "The planning model: a rolling wave" carried these sentences until then. The restructure keeps there the rule that no second plan is kept and why a generated view is not one, and moves the example and the reach of the first waves here. In the quote, "this section" is that section of `ROADMAP.md`, and "this prohibition" is its rule that no second plan of releases is kept. The comment below tells `tools/doc_check.py` that `docs/PLANNING.md` is named on purpose and does not exist.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "The planning model: a rolling wave" carried these sentences until then. The restructure keeps there the rule that no second plan is kept and why a generated view is not one, and moves the example and the reach of the first waves here. In the quote, "this section" is that section of `ROADMAP.md`, and "this prohibition" is its rule that no second plan of releases is kept. § "What MVP means here" is also `ROADMAP.md`'s. The comment below tells `tools/doc_check.py` that `docs/PLANNING.md` is named on purpose and does not exist.
 
 > § "What MVP means here" was the outer boundary of the first waves, and the project reached it on 2026-09-21.
 

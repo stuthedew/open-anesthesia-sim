@@ -18,7 +18,7 @@ a patch on both halves of § "Versioning decision"'s test. Every id in v0.7.0's
 Required scope is now closed. Entry 12's six items, the copy editor's fix and
 the five `docs/MODEL.md` rewrites it blocked, close here. The release finishes
 two features, `reader-first-prose` and `repo-copy-edit`, and closes one
-generator head, `PL-HGZS`, spent. The release item is `PL-80PZ`.
+generator head, `PL-HGZS`, spent.
 
 None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90 cleared,
 as at the v0.6.15 tag. The three entries still open are `PL-SP6H`, which this
@@ -68,8 +68,8 @@ now says to state a model limitation only where it could change what a
 clinician concludes from a displayed value. `#2031` merged inside the v0.6.15
 tag's span, and v0.6.15's notes point to it here.
 
-§ "What a tag ships that its notes may not name" says how work that merges
-after a cut ships.
+§ "What a tag ships that its notes may not name" says how work ships that
+merges on `main` after a release is cut and before its pull request lands.
 
 ## Versioning decision
 
@@ -95,8 +95,9 @@ marks the boundary that its scope crosses. See § "How gate work is released"
 under § "The debt gate". Unless a further deliberate exception is recorded
 here, the capability-boundary rule above applies.
 
-A number that this file has given to a milestone section ahead of the current
-one is not free (project owner, 2026-09-16, ratified, on `PL-KQHN`).
+**Which numbers a patch cut may take.** A number that this file has given to a
+milestone section ahead of the current one is not free (project owner,
+2026-09-16, ratified, on `PL-KQHN`).
 
 ### Version table
 
@@ -230,7 +231,7 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 
 ### Release tags and release notes
 
-#### Every completed version has a tag
+#### Every completed version has a tag on its own release's commit
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -280,8 +281,7 @@ tag is still missing. That refusal is what stops the window from staying open.
 
 #### What a tag ships that its notes may not name
 
-The notes are rendered at the *cut*, and the tag goes on the *merge*
-(`PL-028F`, decided 2026-09-14). So anything that merges while the release
+The notes are rendered at the *cut*, and the tag goes on the *merge*. So anything that merges while the release
 branch is open is inside the tag's span. No release notes name that work until
 the next release claims it. This is not rare, and it is not visible afterwards.
 A squash merge also gives the release commit one date, so `main`'s own history
@@ -292,9 +292,11 @@ close to one release in four. A recount on 2026-09-22 across 65 spans found
 **20 closing pull requests in 16 spans**. The two most recent completed spans
 were among them, so the rate has held rather than decayed (`PL-P669`).
 
-So the two records deliberately answer different questions. **The tag span is
+So the two records deliberately answer different questions (`PL-028F`, decided
+2026-09-14). **The tag span is
 what shipped**. `git describe --contains` is authoritative for what shipped,
-and it is the provenance guarantee described above. **The notes are what the
+and it is the provenance guarantee that § "Every completed version has a
+tag on its own release's commit" describes. **The notes are what the
 cut stamped**, which is the release's own account of the work it was for. Where
 the two records differ, the work is described in another release's notes.
 Usually that is the next release. It is not always the next release, though.
@@ -321,10 +323,10 @@ about navigation only. It stops being true the moment either mechanism behind
 it changes: the tag going on the merge commit, or the notes being rendered at
 the cut.
 
-#### Why nothing reconciles the two automatically
+#### Why nothing reconciles the tag span and the notes automatically
 
 Nothing *reconciles* the two records automatically. That was the decision
-rather than an omission. The pointer above is navigation, and it leaves the
+rather than an omission (`PL-028F`, decided 2026-09-14). The pointer above is navigation, and it leaves the
 reconciliation untouched. Re-stamping at merge would need a job triggered by
 the merge, and such a job cannot write to `main` here. A push made with
 `GITHUB_TOKEN` starts no workflow, so the required status checks can never
@@ -348,7 +350,8 @@ The gates are not a background assumption behind the features. They are half
 the work. A gate that lives in a separate document, or in a session's memory,
 gets renegotiated every time it is inconvenient. On the timeline, a gate is a
 step with a size, and skipping it is visibly skipping a step. The cadence that
-generates rows 2, 4, 6, 8 and 10 is specified under § "The debt gate" below.
+generates rows 2, 4, 6, 8 and 10 of § "The timeline" below is specified
+under § "The debt gate" below.
 
 ### The planning model: a rolling wave
 
@@ -449,7 +452,8 @@ to clear the ground that the feature releases are built on:
 | 12+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list, and
-they are not the same kind of thing.** Row 1 is not a gate at all. v0.2.8's
+they are not the same kind of thing.** Row 2 is Gate 0's release. Row 1 is not
+a gate at all. v0.2.8's
 frozen list is that release's own scope. Gates 1 onward each contain one
 milestone's findings. § "How gate work is released" says how their work ships,
 which is why rows 4, 6, 8 and 10 carry no version.
