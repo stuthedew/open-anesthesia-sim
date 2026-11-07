@@ -131,6 +131,10 @@ FAILURE_KINDS: Mapping[str, str] = {
     "unsourced-reason": (
         "a reason for a chosen value, or a claim that none was recorded, that no record supports"
     ),
+    "unclear": (
+        "a sentence that the reader cannot follow on first reading, because it does not say "
+        "what a noun refers to or what a distinction it names is"
+    ),
 }
 #: The kind of every entry in `GOLD_DIR`. It is never one of `FAILURE_KINDS`,
 #: so the start of an entry's name says which folder it belongs to.
