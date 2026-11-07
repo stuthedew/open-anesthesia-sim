@@ -13,18 +13,19 @@ explicit out-of-scope list.
 ## Current baseline: v0.6.16
 
 v0.6.16 is the release where the copy editor is fixed and back in use, and
-where the `docs/MODEL.md` rewrites it held are finished. It has 11 items and
-is a patch on both halves of § "Versioning decision"'s test. Every id in
-v0.7.0's Required scope is now closed. Entry 12's six items, the copy editor's
-fix and the five `docs/MODEL.md` rewrites it blocked, close here. v0.7.0 is
-still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0 is cut
-only after the project owner has test-driven `main`. v0.7.0 and v0.8.0 are
-given to milestone sections.
+where the `docs/MODEL.md` rewrites it held are finished. It has 11 items and is
+a patch on both halves of § "Versioning decision"'s test. Every id in v0.7.0's
+Required scope is now closed. Entry 12's six items, the copy editor's fix and
+the five `docs/MODEL.md` rewrites it blocked, close here. The release finishes
+two features, `reader-first-prose` and `repo-copy-edit`, and closes one
+generator head, `PL-HGZS`, spent.
 
-None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90
-cleared, as at the v0.6.15 tag. The three entries still open are `PL-SP6H`,
-which this gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred
-from it.
+None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90 cleared,
+as at the v0.6.15 tag. The three entries still open are `PL-SP6H`, which this
+gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
+v0.7.0 is still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0
+is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0
+are given to milestone sections.
 
 **No code, equation, model parameter or stored value changed, and no run can
 differ:**
@@ -45,10 +46,10 @@ the trajectories were not re-measured.
 
 **The copy editor** (`PL-HGZS`, `#2038`). The copy editor used to ask whether
 each sentence was clear and each fact present, so it kept text its reader did
-not need and sometimes lengthened it. Its instructions now cut a repeated
-fact, words a fact does not need, and a fact meant for another reader. A blind
-judge preferred the edited text for six of seven sections the instructions
-were not tuned on. `PL-HGZS` was a live generator and is now spent.
+not need and sometimes lengthened it. Its instructions now cut a repeated fact,
+words a fact does not need, and a fact meant for another reader. A blind judge
+preferred the edited text for six of seven sections the instructions were not
+tuned on.
 
 **The model specification in plain English.** `#2040` and `#2042` rewrote the
 rest of `docs/MODEL.md`'s interface sections, from § "Minimum displayed
@@ -62,21 +63,13 @@ a branch and its trunk (`PL-4VJG`) and the clause a gate-count check applies
 with the fixed copy editor, and its pre-release warning no longer uses
 headings that GitHub's outline put ahead of the project name.
 
-**When a limitation earns a sentence** (`PL-BS6N`, `#2031`). The writing rule
+**The writing rule on model limitations** (`PL-BS6N`, `#2031`). The writing rule
 now says to state a model limitation only where it could change what a
 clinician concludes from a displayed value. `#2031` merged inside the v0.6.15
 tag's span, and v0.6.15's notes point to it here.
 
-The release finishes two features, `reader-first-prose` and
-`repo-copy-edit`, and closes one generator head, `PL-HGZS`, spent. The release
-item is `PL-80PZ`, whose `resource: release-train` keeps it out of every later
-release. `bin/docket release` again reported the missed apparatus-inflow
-prediction for 2026-10-26 to 2026-11-01, one P1 apparatus filing outside the
-generator tier. `PL-7LMM` already records that week's miss.
-
-As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.16 tag. It is described in the
-next release, and v0.6.16's notes take a pointer to it at that release's cut.
+§ "What a tag ships that its notes may not name" says how work ships that
+merges on `main` after a release is cut and before its pull request lands.
 
 ## Versioning decision
 
@@ -93,14 +86,18 @@ reason is that clearing the inherited pre-MVP backlog is the boundary this
 project most needs to be able to point at, and a patch number would bury it.
 
 **This is an exception and not a precedent.** It applies to Gate 0 alone,
-because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog
-that accumulated before the debt gate existed, and it was twenty items deep.
-Gate 1 and every later gate contain the findings of a single milestone. Later
-gates take no version of their own. The gated milestone's own number marks
-the boundary that its scope crosses. See § "How gate work is released" under
-§ "The debt gate".
-Unless a further deliberate exception is recorded here, the capability-boundary
-rule above applies.
+because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog that
+accumulated before the debt gate existed, and it was twenty items deep. Gate 1
+and every later gate contain the findings of a single milestone.
+
+Later gates take no version of their own. The gated milestone's own number
+marks the boundary that its scope crosses. See § "How gate work is released"
+under § "The debt gate". Unless a further deliberate exception is recorded
+here, the capability-boundary rule above applies.
+
+**Which numbers a patch cut may take.** A number that this file has given to a
+milestone section ahead of the current one is not free (project owner,
+2026-09-16, ratified, on `PL-KQHN`).
 
 ### Version table
 
@@ -234,17 +231,25 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 
 ### Release tags and release notes
 
+#### Every completed version has a tag on its own release's commit
+
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
 are. The table is the list, and a second copy is a second thing to keep true,
-which it twice was not. Instead, `tools/doc_check.py` checks the completed
-rows against `git tag`. So a release that shipped without a tag fails the
-check rather than waiting to be noticed. As a result, `git describe --contains`
+which it twice was not. Instead, `tools/doc_check.py` checks the completed rows
+against `git tag`. So a release that shipped without a tag fails the check
+rather than waiting to be noticed. As a result, `git describe --contains`
 resolves for every commit up to and including the latest release. This was
 verified on 2026-08-30 across the whole of `main`. The commits it does not
 resolve are the unreleased ones after the newest tag, and the next release's
-tag will cover them. That span of resolving commits is the provenance
-guarantee that PL-J3ZK was opened to restore.
+tag will cover them.
+
+A version that has genuinely gone out untagged is named in a bold sentence
+here. The checker requires the count that the sentence states to match the
+versions it names. There are none.
+
+**The gap is closed, 2026-08-30.** v0.1.0 (`ddc868f6`) and v0.2.0 (`69a5888c`)
+were the last two untagged versions.
 
 A tag also has to sit on its own release's commit, and the tag's name cannot
 show whether it does. `v0.5.3` was pushed before its release merged, onto the
@@ -259,56 +264,56 @@ Moving the tag onto the bump would make that commit appear to have shipped in
 v0.2.0. So the tag stays where the release shipped, and the exception is named
 here instead.
 
+#### Where and when the tag is made
+
 The tag goes on the release's cut. The cut is the commit that added the
 release's notes file, which is the cut's own squash commit on `main`. The tag
 does not go on whatever `main` holds when the tag is made (PL-QHCW).
-`.github/workflows/tag-release.yml` pushes the tag once the cut lands on
-`main` (PL-2FY6). So between that merge and the workflow run, the newest
-version is marked Completed and has no tag. The check stays silent during that
-window rather than reporting an error. Failing on the window would turn
-`make check` red on every release branch. That is the failure PL-8HJ2 removed,
-coming back by another route. The advisory that the check once raised could
-not tell a tag that was never pushed from one that this checkout had not yet
-fetched (PL-R7C0). `bin/docket release` refuses to cut the *next* release
-while that tag is still missing. That refusal is what stops the window from
-staying open.
+`.github/workflows/tag-release.yml` pushes the tag once the cut lands on `main`
+(PL-2FY6). So between that merge and the workflow run, the newest version is
+marked Completed and has no tag. The check stays silent during that window
+rather than reporting an error. Failing on the window would turn `make check`
+red on every release branch. That is the failure PL-8HJ2 removed, coming back
+by another route. The advisory that the check once raised could not tell a tag
+that was never pushed from one that this checkout had not yet fetched
+(PL-R7C0). `bin/docket release` refuses to cut the *next* release while that
+tag is still missing. That refusal is what stops the window from staying open.
 
-**What that span includes, and why the notes are the narrower record**
-(`PL-028F`, decided 2026-09-14). The notes are rendered at the *cut*, and the
-tag goes on the *merge*. So anything that merges while the release branch is
-open is inside the tag's span. No release notes name that work until the next
-release claims it. This is not rare, and it is not visible afterwards. A count
-on 2026-09-14 across 47 tagged spans found 12 closing pull requests that
-merged inside a tag's span and that the span's own notes never named. They
-fell in 11 distinct spans, which is close to one release in four. A squash
-merge also gives the release commit one date, so `main`'s own history cannot
-say how long the branch was open. A recount on 2026-09-22 across 65 spans
-found **20 closing pull requests in 16 spans**. The two most recent completed
-spans were among them, so the rate has held rather than decayed (`PL-P669`).
+#### What a tag ships that its notes may not name
 
-So the two records deliberately answer different questions. **The tag span is
+The notes are rendered at the *cut*, and the tag goes on the *merge*. So anything that merges while the release
+branch is open is inside the tag's span. No release notes name that work until
+the next release claims it. This is not rare, and it is not visible afterwards.
+A squash merge also gives the release commit one date, so `main`'s own history
+cannot say how long the branch was open. A count on 2026-09-14 across 47 tagged
+spans found 12 closing pull requests that merged inside a tag's span and that
+the span's own notes never named. They fell in 11 distinct spans, which is
+close to one release in four. A recount on 2026-09-22 across 65 spans found
+**20 closing pull requests in 16 spans**. The two most recent completed spans
+were among them, so the rate has held rather than decayed (`PL-P669`).
+
+So the two records deliberately answer different questions (`PL-028F`, decided
+2026-09-14). **The tag span is
 what shipped**. `git describe --contains` is authoritative for what shipped,
-and it is the provenance guarantee described above. **The notes are what the
-cut stamped**, which is the release's own account of the work it was for.
-Where the two records differ, the work is described in another release's
-notes. Usually that is the next release. This project already writes that
-convention down for the one case that recurs every time, which is a release's
-own cut item. It is not always the next release, though. `#412` was attributed
-back to v0.4.6, the release its code shipped in, and `#225` was recorded
-twelve releases later by v0.4.15. So the pointer described below names the
-release rather than assuming one.
+and it is the provenance guarantee that § "Every completed version has a
+tag on its own release's commit" describes. **The notes are what the
+cut stamped**, which is the release's own account of the work it was for. Where
+the two records differ, the work is described in another release's notes.
+Usually that is the next release. It is not always the next release, though.
+`#412` was attributed back to v0.4.6, the release its code shipped in, and
+`#225` was recorded twelve releases later by v0.4.15. So the pointer described
+below names the release rather than assuming one.
 
 **Each notes file carries its own pointer, since 2026-09-22.** When a span
 includes work that the cut did not stamp, its notes say so in an
 `### also inside this tag's span` section. That section names the pull request
 and the release that does describe the work. `tools/doc_check.py`'s
 `check_tag_span_covers_its_notes` fails `make check` on the next span that
-includes such work and lacks the section. The section is additive, so the
-cut's own account of what it was for is untouched. The section is written
-after the tag. That is the one time a notes file is edited, and it is safe
-because a tagged release is never re-cut. Two kinds of span are exempt. Each
-exemption has a reason, and neither is there to keep the check quiet. The
-first is a
+includes such work and lacks the section. The section is additive, so the cut's
+own account of what it was for is untouched. The section is written after the
+tag. That is the one time a notes file is edited, and it is safe because a
+tagged release is never re-cut. Two kinds of span are exempt. Each exemption
+has a reason, and neither is there to keep the check quiet. The first is a
 release's own cut pull request. It is inside its own span by construction, and
 the next release stamps it every time. The second is the newest tag's span,
 until the next release's notes exist. Before then, its pointer would have to
@@ -318,8 +323,10 @@ about navigation only. It stops being true the moment either mechanism behind
 it changes: the tag going on the merge commit, or the notes being rendered at
 the cut.
 
+#### Why nothing reconciles the tag span and the notes automatically
+
 Nothing *reconciles* the two records automatically. That was the decision
-rather than an omission. The pointer above is navigation, and it leaves the
+rather than an omission (`PL-028F`, decided 2026-09-14). The pointer above is navigation, and it leaves the
 reconciliation untouched. Re-stamping at merge would need a job triggered by
 the merge, and such a job cannot write to `main` here. A push made with
 `GITHUB_TOKEN` starts no workflow, so the required status checks can never
@@ -332,25 +339,19 @@ cut. It raises the advisory while re-running `make release VERSION=X` would
 still absorb that newer work. The advisory names what the base has taken in
 since the cut and both dispositions.
 
-A version that has genuinely gone out untagged is named in a bold sentence
-here. The checker requires the count that the sentence states to match the
-versions it names. There are none.
-
-**The gap is closed, 2026-08-30.** v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`)
-were the last two untagged versions. For a time they were recorded as
-untaggable, because `main` appeared to have three unrelated roots and
-`git merge-base 796bf4f 97cc66a` returned nothing. That was measured in a
-shallow checkout, where boundary commits report as having no parents. The full
-history has one root. `97cc66a` (v0.1.0) is an ancestor of `796bf4f` (v0.2.0),
-which is an ancestor of `bc5f823`. So the tags were placed where the release
-commits actually are. The superseded reasoning is kept here because a shallow
-checkout will produce it again for anyone who repeats the measurement.
-
 ## The plan
 
 This plan has one timeline. Clearing debt and building feature milestones are
-steps on the same plan, listed in the order they happen. The gates are not a
-background assumption behind the features. They are half the work.
+steps on the same plan, listed in the order they happen.
+
+### Why the gates are on this list and not behind it
+
+The gates are not a background assumption behind the features. They are half
+the work. A gate that lives in a separate document, or in a session's memory,
+gets renegotiated every time it is inconvenient. On the timeline, a gate is a
+step with a size, and skipping it is visibly skipping a step. The cadence that
+generates rows 2, 4, 6, 8 and 10 of § "The timeline" below is specified
+under § "The debt gate" below.
 
 ### The planning model: a rolling wave
 
@@ -373,23 +374,23 @@ Each planning horizon is described to one level of detail, in one place:
 | Middle | § "The timeline", in its rows not yet scoped | each a name, the catalogue items it takes and its place in the order, with no scope and no size |
 | Far | § "Development pathway", ordering § "Planned milestones" | intent: phases over a catalogue whose entries carry no goal, required scope or definition of done |
 
+**Detail moves to a nearer horizon at two moments.** The first is when a
+catalogue entry is placed on the timeline, which gives it a row and a position.
+The second is when that row is scoped, which is beat 1 of § "The cadence" and
+writes the row's section in this document. A decision that a nearer horizon
+depends on may be taken sooner. It is then recorded where that horizon cites
+it. Break-out's display tier split is the example. It was settled on 2026-09-16
+because it fixes the shape that v0.6.0 builds. That is a decision taken early,
+not detail planned ahead.
+
+#### Where the order of releases is recorded
+
 **The order is recorded once, by horizon.** § "The timeline" records the order
 of every release it names. § "Development pathway" orders only the work that
 the timeline has not named yet, which is the work under its last row, Beyond.
 If the two disagree about a release that the timeline names, the timeline
 wins, because the timeline is where reorders are recorded. Each reorder is
 dated on the row it moved.
-
-**Detail moves to a nearer horizon at two moments.** The first is when a
-catalogue entry is placed on the timeline, which gives it a row and a
-position. The second is when that row is scoped, which is beat 1 of § "The
-cadence" and writes the row's section in this document. A decision that a
-nearer horizon depends on may be taken sooner. It is then recorded where that
-horizon cites it. Break-out's display tier split is the example. It was
-settled on 2026-09-16 because it fixes the shape that v0.6.0 builds. That is a
-decision taken early, not detail planned ahead. § "What MVP means here" was
-the outer boundary of the first waves, and the project reached it on
-2026-09-21.
 
 **No second plan of releases is kept beside this one** (`PL-LJVD`). The order
 of the releases and each milestone's scope are written here and nowhere else.
@@ -399,16 +400,7 @@ generated from this file is not a second plan. `bin/docket wave` and the plan
 line in the session digest are recomputed on every run, so they cannot drift.
 Prose can drift, and nothing compares two prose plans. A second prose plan
 therefore stays in step only while someone remembers that it exists, and a
-session remembers nothing. Pull requests #59 and #60 are the example. They
-were an external proposal, closed unmerged on 2026-08-26, and they are the
-source of this section's vocabulary. Their `docs/PLANNING.md` stated this
-prohibition. The same file also restated the order as v0.3.0, v0.4.0,
-v0.5.0, v0.6.0 the schematic and v0.7.0 multi-substance. Four days later
-v0.2.8 was inserted ahead of that order. By 2026-09-16 the schematic had moved
-to v0.8.0 and multi-substance to v0.9.0. On 2026-09-26 both moved back one
-release when break-out came off the timeline.
-
-<!-- absent: docs/PLANNING.md -->
+session remembers nothing.
 
 ### What MVP means here
 
@@ -430,8 +422,7 @@ v0.2.8 patch makes the development loop reliable, and the two feature releases
 will be built through that loop. Release v0.3.0 adds no capability. It exists
 to clear the ground that the feature releases are built on:
 
-- **v0.3.0, the foundation**: it clears Gate 0's inherited backlog. It adds no
-  new capability. See the versioning exception under § "Versioning decision".
+- **v0.3.0, the foundation**: it clears Gate 0's inherited backlog.
 - **v0.4.0, the teachable case**: one case from start to finish, in clinical
   units. It runs at a speed and on a time base that make the case's lessons
   observable at all.
@@ -442,13 +433,13 @@ to clear the ground that the feature releases are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. | 2 M, 35 S |
-| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. | 4 M, 17 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 35 S |
+| 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. See the versioning exception under § "Versioning decision". | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
-| — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it — any number that is genuinely *free*, which since 2026-09-16 excludes one this file has given to a milestone section ahead of the current one (project owner, 2026-09-16, ratified, on `PL-KQHN`). | 1 L, 6 M, 2 S |
+| — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. `PL-3TLK` leads; the rest of the naming work follows the exact step. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. [In the event it cleared across the `v0.4.x` patches as well - `bin/docket wave` read 172 of the 175 entries it then held as clear at v0.4.32, on 2026-09-20 - and § "The cadence" has stated that as the rule since 2026-09-27 (`PL-LPH9`).] | — |
-| — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, 2026-09-16, ratified, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the interface-pass row it held, which moved after item 34 on 2026-09-16 (`PL-PHKP`). What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, 2026-09-14, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **Shipped 2026-09-21**, all 20 Required-scope ids closed (`PL-4B1G`), and its own section below records what each one delivered. **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 185 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
+| — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, 2026-09-16, ratified, on `PL-L9RD`). **Moved ahead of v0.5.0 on 2026-09-14** (project owner, 2026-09-14, on `PL-RKWB`), from the row it held after MVP. | 2 L, 2 M, 3 S |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **Shipped 2026-09-21**, all 20 Required-scope ids closed (`PL-4B1G`), and its own section below records what each one delivered. **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 185 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
 | — | **MVP complete** | **Reached 2026-09-21, with v0.5.0.** A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
@@ -460,37 +451,26 @@ to clear the ground that the feature releases are built on:
 | 11 | **v0.8.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16 and `v0.9.0` from then until 2026-09-26, for the same reasons as row 9.) | — |
 | 12+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
-**Rows 1 and 2 are the only releases whose whole content is a frozen list,
-and they are not the same kind of thing.** Row 2 is Gate 0's release. That
-gate gets a version of its own because it clears the backlog inherited from
-before the debt gate existed. This is the exception recorded under
-§ "Versioning decision" above, and it is an exception, not a pattern. Row 1 is
-not a gate at all. v0.2.8's frozen list is that release's own scope. The list
-is recorded under a gate heading because `bin/docket wave` reads that
-subsection. The second of the two groups in the list is new workflow
-capability, not debt.
-Gates 1 onward each contain one milestone's findings.
-§ "How gate work is released" says how their work ships, which is why rows 4,
-6, 8 and 10 carry no version.
+**Rows 1 and 2 are the only releases whose whole content is a frozen list, and
+they are not the same kind of thing.** Row 2 is Gate 0's release. Row 1 is not
+a gate at all. v0.2.8's
+frozen list is that release's own scope. Gates 1 onward each contain one
+milestone's findings. § "How gate work is released" says how their work ships,
+which is why rows 4, 6, 8 and 10 carry no version.
 
 Rows 5, 7 and 9 are scoped and have their own sections below. So does the
-`v0.4.26` row above them. v0.5.0 was scoped on 2026-09-06. The Qt port was
-scoped on 2026-09-10 and moved ahead of row 5 on 2026-09-14. v0.6.0 was scoped
-on 2026-09-16, and v0.7.0 on 2026-10-25. Row 11 is the intended order. A row
-becomes real only when it gets its own goal, required scope, definition of
-done and out-of-scope list in this document, as the development rules
-require.
+`v0.4.26` row above them. Row 11 is the intended order. A row becomes real only
+when it gets its own goal, required scope, definition of done and out-of-scope
+list in this document, as the development rules require.
 
 **Row 7 is the first milestone scoped out of turn, and the reason is recorded
 because the cadence assumes otherwise.** Every earlier milestone was scoped
 when it was the next release. Row 7 was scoped while two releases were still
-ahead of it, for two reasons. First, its design was already settled.
-`PL-3J2P` fixed the representation, `PL-C842` fixed the container and
-`PL-FTP5` fixed the provenance. Second, a queue audit (`PL-BNYF`) had filed
-fourteen prerequisites against a build item that did not exist. Those fourteen
-were waiting for the milestone to be scoped. The consequence shows in row 6.
-Its gate froze when v0.5.0 shipped, the later of the two days that beat 2 of
-§ "The cadence" names.
+ahead of it, for two reasons. First, its design was already settled. `PL-3J2P`
+fixed the representation, `PL-C842` fixed the container and `PL-FTP5` fixed the
+provenance. Second, a queue audit (`PL-BNYF`) had filed fourteen prerequisites
+against a build item that did not exist. Those fourteen were waiting for the
+milestone to be scoped.
 
 Row 5's internal ordering put forking and comparison ahead of save/load and
 replay. That ordering was first recorded here as a proposal, not a decision.
@@ -501,13 +481,6 @@ question, and the decision matched the proposal. v0.5.0 takes items 26, 12 and
 and a user-facing replay control (item 10) out of scope. That is a deliberate
 departure from the Phase 3 sequence in "Development pathway". That sequence no
 longer applies to these four items.
-
-### Why the gates are on this list and not behind it
-
-A gate that lives in a separate document, or in a session's memory, gets
-renegotiated every time it is inconvenient. On the timeline, a gate is a step
-with a size, and skipping it is visibly skipping a step. The cadence that
-generates rows 2, 4, 6, 8 and 10 is specified under § "The debt gate" below.
 
 ## Development rules for scientific milestones
 
@@ -4605,9 +4578,8 @@ superseded as practice.
 
 **Ordinary patch numbering is untouched by that.** This track still promises no
 particular number, and a cut still takes the next number that is genuinely
-*free*. What changed is the meaning of free. A number that this file has given
-to a milestone section ahead of the current one is not free. `#606` taught the
-guard to see exactly that.
+*free*. What changed is the meaning of free. § "Versioning decision" states
+which numbers are not free. `#606` taught the guard to see exactly that.
 
 **The one question the reorder leaves open is this number, and it is recorded
 rather than settled.** `PL-RKWB` records the question, the reading taken and the

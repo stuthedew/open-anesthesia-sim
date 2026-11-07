@@ -48,3 +48,24 @@ section's refusal as the rule.
 **Generator check.** The cause is a rule stated in more than one place, with
 the copies drifting apart. That is the cause the `roadmap-structure` feature
 removes, so the feature is the fix and no new generator head is recorded.
+
+**Put to the project owner on 2026-11-07, with a different recommendation.**
+The thread finishing the roadmap restructure asked, on a decision card, whether
+a safety or science problem can wait for the next release when this release
+shows nothing wrong. **Recommendation (that thread's): yes, when the item's
+record says, checked against the code, that no learner can see a wrong value
+now.** That keeps the 2026-09-21 deferral rule and the ten safety and science
+items already deferred from v0.7.0, among them `PL-8W1B`. It matches
+medical-device practice: IEC 62304:2006+A1:2015 § 5.8.2 and § 5.8.3 release
+software with known residual anomalies once each has been evaluated as
+carrying no unacceptable risk. The recommendation above, to keep the snapshot
+section's refusal as the rule, would pull those ten items into v0.7.0's list,
+most of them `docs/MODEL.md` traceability work.
+**Answered 2026-11-07 at 22:09 UTC: yes, if recorded and checked (project
+owner, 2026-11-07, ratified, over keeping the snapshot section's refusal,
+which would pull the ten deferred safety and science items into v0.7.0's
+list).** A safety or science item may be deferred from the current gate when
+its record says, checked against the code, that no learner can see a wrong
+value now. The snapshot section's sentence that makes these two classes not
+deferrable changes to say so. `PL-C8N8`, the wording of the re-entry
+advisory in `tools/doc_check.py`, follows from this answer.

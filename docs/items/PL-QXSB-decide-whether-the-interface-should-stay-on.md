@@ -302,3 +302,7 @@ packaged build; and Flet's web target is given up, which nothing ships today.
 is where that is decided, per `CLAUDE.md`'s rule against implementing beyond the
 current milestone. This item records the direction; it does not authorise the
 work, and the items that do it are written after the milestone is scoped.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** The row for v0.4.26 — the interface moves to Qt in `ROADMAP.md` § "The timeline" carried these sentences until then. The restructure keeps each timeline row to what the step holds, its status and dates, its decisions and a pointer, and moves the argument to the item the row names. In the quote, "this row", "this track", "this step", "this port" and "here" mean that row and its step, "row N" means row N of that table, and "this file" means `ROADMAP.md`. § "Versioning decision" in the quote is `ROADMAP.md`'s.
+
+> **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row.
