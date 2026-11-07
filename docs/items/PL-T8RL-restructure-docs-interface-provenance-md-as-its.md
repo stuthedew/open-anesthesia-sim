@@ -1,9 +1,16 @@
 ---
 id: PL-T8RL
 title: Restructure docs/interface-provenance.md as its copy editor's structure read proposes: state each repeated record and judgement once, move Blender's split and join mechanics to the chapter named for them, and put the reading list and the start-here list where readers look (copy editor structure read, 2026-11-05)
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, docs
 feature: interface-provenance-structure
+touches: docs/interface-provenance.md
+deferred-from: v0.7.0 - a contributor document's structure, with no displayed value or schematic behaviour depending on it
 added: 2026-11-05
+payoff: a contributor reads each record and judgement about Blender once, in the chapter named for it, and finds the start-here list first
+verify: grep -q '^## Pages read on 2026-10-25' docs/interface-provenance.md && grep -q '^## What a later design thread owes this study' docs/interface-provenance.md
 ---
 
 **Problem.** Restructure docs/interface-provenance.md as its copy editor's structure read proposes: state each repeated record and judgement once, move Blender's split and join mechanics to the chapter named for them, and put the reading list and the start-here list where readers look (copy editor structure read, 2026-11-05)
@@ -36,3 +43,9 @@ added: 2026-11-05
 - **The "Start here" list stands too late.** Rows 148-182, § "What a later design thread owes this study", open with "Start here" and send the reader to § "What this project adopts, diverges from, and refuses". They stand at the end of § "The study protocol", after the licence analysis and the method. A contributor looking for where a change belongs needs them first, so move them to directly after the introduction. The sentence in rows 826-838, "A later session considering a tablet build should treat item 34's model as out of scope there", is a rule for those later design threads and belongs in that list.
 - **The list of pages read sits inside one chapter but serves two.** § "Pages read on 2026-10-25" (rows 840-880) sits inside § "What the code cannot answer". Rows 76-82 and 134-146 also cite it, and it holds the two licence pages that § "The study protocol" relies on (rows 879-880). Make it a section of its own at the end of the document, with its heading unchanged.
 - **The introduction points ahead without naming its targets.** Rows 10-15 ("the rules are narrow enough to write down once") and rows 3-8 ("where this project deliberately does something else") refer to later chapters without naming them. Name § "The study protocol" and § "What this project adopts, diverges from, and refuses".
+
+**Why it matters.** A contributor reads this document to learn what the project took from Blender and why, before designing a Workspace, Area or View. A record or judgement stated in two chapters can drift into two different claims, as the border-chain count already has ("once" against two workspaces). A list the reader needs first, such as "Start here", is found last.
+
+**Done when.** Each finding below is applied to the line-edited text, or recorded here with the reason it was not. No statement of the line-edited text is lost: every sentence that leaves its place is either kept at its one home or replaced by a pointer that names that home. § "What a later design thread owes this study" stands directly after the introduction, and § "Pages read on 2026-10-25" is a section of its own at the end of the document.
+
+**Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record or judgement in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in five documents in one pass (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings, not five arrivals. No check can decide whether two sentences state one fact, so no check is proposed. The procedure that catches the shape is the structure read, which the project owner put ahead of every line edit on 2026-11-07. Not recorded as a generator.
