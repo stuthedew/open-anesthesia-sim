@@ -3,12 +3,14 @@ id: PL-T8RL
 title: Restructure docs/interface-provenance.md as its copy editor's structure read proposes: state each repeated record and judgement once, move Blender's split and join mechanics to the chapter named for them, and put the reading list and the start-here list where readers look (copy editor structure read, 2026-11-05)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 deferred-from: v0.7.0 - a contributor document's structure, with no displayed value or schematic behaviour depending on it
 added: 2026-11-05
+closed: 2026-11-07
+pr: 2053
 payoff: a contributor reads each record and judgement about Blender once, in the chapter named for it, and finds the start-here list first
 verify: grep -q '^## Pages read on 2026-10-25' docs/interface-provenance.md && grep -q '^## What a later design thread owes this study' docs/interface-provenance.md
 ---
@@ -49,3 +51,9 @@ verify: grep -q '^## Pages read on 2026-10-25' docs/interface-provenance.md && g
 **Done when.** Each finding below is applied to the line-edited text, or recorded here with the reason it was not. No statement of the line-edited text is lost: every sentence that leaves its place is either kept at its one home or replaced by a pointer that names that home. § "What a later design thread owes this study" stands directly after the introduction, and § "Pages read on 2026-10-25" is a section of its own at the end of the document.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record or judgement in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in five documents in one pass (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings, not five arrivals. No check can decide whether two sentences state one fact, so no check is proposed. The procedure that catches the shape is the structure read, which the project owner put ahead of every line edit on 2026-11-07. Not recorded as a generator.
+
+**What was done.** Every finding above was applied to the line-edited text. The start-here list now follows the introduction as § "What a later design thread owes this study", and § "Pages read on 2026-10-25" is a section of its own at the end. The introduction defines area, workspace and View, and says the document keeps Blender's words for Blender. The record of how the source was read heads § "What Blender's window system is", and the record of how the documentation was read heads § "What the code cannot answer: Blender's stated reasoning". Blender's split and join mechanics moved to § "How a layout is built, and how far the operations reach". Each judgement about what the project adopts, diverges from or refuses sits in that chapter, and the descriptive chapters keep a pointer. The Diverged list gains an entry for this project's minimum Area size.
+
+Two statements that the line edit (`PL-ZMBN`, #2045) had dropped came back because this brief cites them: the warning Blender logs for an unknown region type, now described beside the silent substitution and checked against `regions_remove_invalid` in `source/blender/blenkernel/intern/screen.cc` at commit `931bb2e7` on 2026-11-07, and the conclusion that the substitution looks like an oversight. The old text placed that warning "ten lines away" from the substitution; it is in another file, so that phrase did not come back. The rest of the line edit's losses are `PL-S6WZ`'s.
+
+**How nothing was lost.** A script split the document before and after into sentences and listed each sentence of the earlier text that no longer appears word for word: 82 of them, plus the two headings that changed level. Each was traced by hand to the place that now holds its content, or to the pointer that replaced a restatement. None was dropped without a home. The copy editor was not run, because copy edits are paused until `PL-F0Q2` is fixed (project owner, 2026-11-07); the new sentences are the pointers and joins that the moves needed.
