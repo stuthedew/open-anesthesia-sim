@@ -3,12 +3,14 @@ id: PL-F0Q2
 title: The copy editor drops requirements, qualifiers and reasons that no number or code-span check sees: on docs/MODEL.md it weakened or lost about 120 statements in 42 of 78 edited sections, turning 'must' into descriptions and cutting 'only', 'no others' and stated reasons
 priority: P1
 effort: M
-status: untriaged
+status: ready
 classes: defect
 feature: repo-copy-edit
-touches: .claude/agents/copy-editor.md, tools/copy_edit.py
+touches: .claude/agents/copy-editor.md, tools/copy_edit.py, .claude/agents/meaning-check.md, tests/unit/test_copy_edit.py, docket.toml, docs/apparatus.md
 deferred-from: v0.7.0 - captured after the freeze; workflow tooling, worked now at P1 because the owner paused the remaining copy edits until it lands, and nothing the schematic release ships waits on it
 added: 2026-11-07
+payoff: a passage the copy editor rewrites keeps every requirement, limit, list count, scope and reason the original stated, so the paused copy edits of the repository can resume
+verify: grep -q 'def meaning_check' tools/copy_edit.py && grep -q '^\*\*Result on the test set\.\*\*' docs/items/PL-F0Q2-the-copy-editor-drops-requirements-qualifiers.md
 ---
 
 **Problem.** The copy editor drops requirements, qualifiers and reasons that no number or code-span check sees: on docs/MODEL.md it weakened or lost about 120 statements in 42 of 78 edited sections, turning 'must' into descriptions and cutting 'only', 'no others' and stated reasons
