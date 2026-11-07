@@ -7,7 +7,6 @@ status: ready
 classes: defect, safety
 feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/compartment_schematic.py, tests/integration/test_compartment_schematic_view.py
-deferred-from: v0.7.0 - found after the gate cleared; each container's label prints its tension, so no value is lost
 added: 2026-11-02
 payoff: a learner cannot read a compartment's tension off the concentration chart's gridlines from the height of its container
 verify: grep -rq 'def test_a_container_cannot_be_read_against_the_chart' tests/
@@ -26,3 +25,5 @@ verify: grep -rq 'def test_a_container_cannot_be_read_against_the_chart' tests/
 **Generator check.** One-off. The fact is the vertical scale a drawn height stands for, when two Views draw one quantity at different heights. No head states it.
 
 **Release question, put to the owner 2026-11-03.** v0.7.0 releases the schematic, and this item is a defect in how the schematic reads beside the chart. Whether the release waits for it is the owner's call, because the safety-critical standard reaches it. **Recommended:** release v0.7.0 with this item deferred, and take it in the first patch. The tension printed under each container is correct, so no number a learner reads is wrong. The risk is a misreading by eye in one Workspace.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`. The item is classed `safety`, so it joins v0.7.0's frozen list whatever that answer. It is not deferred, because a learner can read a wrong tension from the containers now. The schematic did not exist at `817a4d88`. It came with `489c568d`, and its place beside the chart in the Maintenance Workspace with `506c8b50`, both on 2026-11-02.

@@ -7,7 +7,7 @@ status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py, tests/reference, docs/items
-deferred-from: v0.7.0 - filed 2026-11-02 as an annotation pass of PL-B6YV's rule; docs/MODEL.md traceability work that the schematic does not wait on
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the figures it would hold are docs/MODEL.md prose, no displayed string carries them, and the display steps they justify (two decimals, 0.1 L) are unchanged, so no learner can see a wrong value now
 added: 2026-11-02
 payoff: the numbers in Known limitations and Displayed precision are computed by a test, so a wrong one fails the build, and the count of wrong ones decides whether the other sections are worth the same work
 verify: grep -q 'heading="Known limitations"' tools/doc_check.py
@@ -107,3 +107,5 @@ script made.
    Otherwise they are set ready.
 
 **Added 2026-11-03 by `PL-XQXK`.** Widening the units the numeric-paragraph check reads made one more § "Displayed precision" paragraph a member: one count of the MAC line is 0.02 percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane. `test_the_mac_resolution_is_derived_from_the_percent_resolution` holds only the property that one MAC count is coarser than one percent count, so the paragraph declares that the three figures have no test yet and names this item.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). Most of the figures it would hold were in `docs/MODEL.md` at `817a4d88`: the one-SD displacement table, the erasure figures, the first nonzero readings and 11 of the 13 unheld Known-limitations paragraphs. Some came later: § "What this section does not yet derive" (`2330f33f`, 2026-10-27), the schematic's amount and share shifts (`1f4717f2`, 2026-11-02), and two percentages (`af627f04`, `c95177a6`).

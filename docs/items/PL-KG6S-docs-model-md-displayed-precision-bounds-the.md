@@ -7,7 +7,7 @@ status: ready
 classes: defect, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze; hazard: the argument's ratios are wrong but the two-decimal count still follows from the table's three larger rows, so no displayed value changes, and the schematic does not wait on it
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the argument's ratios are wrong, but the two-decimal count it justifies still follows from the table's three larger rows, so no displayed value changes and no learner can see a wrong value now
 added: 2026-11-04
 payoff: a clinician checking why the readouts stop at two decimals finds every ratio in the argument matching the table it cites
 verify: ! grep -q -F 'a seventh of one' docs/MODEL.md && ! grep -q -F 'a fiftieth' docs/MODEL.md
@@ -49,3 +49,5 @@ two decimals, that is a new item rather than this one's work.
 computes, filed after that head closed on 2026-11-02. `PL-B6YV` routed this
 section's figures to `PL-19W8`'s tests. Those tests hold the table, not the
 ratios derived from it.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). The fat row, "one to seven counts" and the seventh-to-seven-times bound were all in `docs/MODEL.md` at `817a4d88`. Only the recap and the schematic's repeats came later (`1f4717f2`).

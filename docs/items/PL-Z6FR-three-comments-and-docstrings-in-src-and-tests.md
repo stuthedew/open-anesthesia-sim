@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: prose-quality
 touches: src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/tissue.py, tests/unit/test_governing_equations.py
-deferred-from: v0.7.0 - captured after the freeze; comment wording in core that changes no displayed value
 added: 2026-11-04
 payoff: a developer reading the gas-exchange code meets the same term, with the same meaning, as the model specification
 verify: ! grep -r -q -i -E 'flow[- ]limited|perfusion limited' src/anesthesia_sim/core tests/unit
@@ -43,3 +42,5 @@ perfusion-limited. The search above then finds only the quotation in
 That item's brief covered only `docs/MODEL.md`, because a change made in passing
 is not allowed in `core/`, and it filed this item for the code. No head states
 the term's definition as its fact.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Three of the sites were in the tree at `817a4d88`: `blood.py`, `governing_equations.py` and `test_governing_equations.py`. The `tissue.py` docstring (`c59abe2d`) and the conflict with `docs/MODEL.md` (`a8d87c68`) came later.

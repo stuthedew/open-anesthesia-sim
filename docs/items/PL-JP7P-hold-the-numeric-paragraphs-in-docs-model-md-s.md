@@ -8,7 +8,7 @@ classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py, tests, docs/items
 blocked-by: PL-19W8
-deferred-from: v0.7.0 - filed 2026-11-02 as an annotation pass of PL-B6YV's rule; docs/MODEL.md traceability work that the schematic does not wait on
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the paragraphs it would hold are docs/MODEL.md prose that no displayed string carries, so no learner can see a wrong value now
 added: 2026-11-02
 payoff: the numbers in the interface sections of docs/MODEL.md are computed by a named test, so a wrong one fails the build rather than waiting for a reader
 verify: grep -q 'heading="MAC multiples as a display unit"' tools/doc_check.py
@@ -54,3 +54,5 @@ sections (`PL-B6YV` § "What would make this wrong").
 `_numeric_paragraph_members`, every one of its numeric paragraphs carries an
 accepted form, and this brief records how many computed claims the pass
 found wrong or missing a condition.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). Every paragraph it counts was in `docs/MODEL.md` at `817a4d88` except § "A preview of an unapplied setting" (`f466af3a`, 2026-11-01). The MAC-awake paragraph's 0.84 MAC figure came with `5a8dc036` (2026-10-26).

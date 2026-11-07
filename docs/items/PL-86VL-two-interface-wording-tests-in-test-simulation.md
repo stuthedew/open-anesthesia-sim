@@ -7,7 +7,7 @@ status: ready
 classes: safety, test, defect
 feature: presentation-safety
 touches: tests/integration/test_simulation_view.py
-deferred-from: v0.7.0 - captured after the freeze; it strengthens two interface-wording tests, and no string the view shows today uses an end-tidal abbreviation, so the release displays nothing wrong
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): no string the view shows uses an end-tidal abbreviation, and the alveolar readout reads "end-tidal-equivalent", so no learner can see a wrong value now
 added: 2026-11-03
 payoff: a readout labelled with an end-tidal abbreviation, or any new interface wording, cannot reach the screen without a person approving it
 verify: grep -q 'def test_every_string_the_view_shows_is_on_the_approved_list' tests/integration/test_simulation_view.py && grep -qF 'ET sevo' tests/integration/test_simulation_view.py
@@ -69,3 +69,5 @@ end-tidal check's test names "ET sevo" among the labels it refuses.
 
 **Generator check.** One-off. The two checks are the only interface tests that
 hold wording to a list of forbidden phrases, and no head records that shape.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). Both wording checks were byte-identical at `817a4d88` (`ae8fc7bc`, 2026-09-15).

@@ -7,7 +7,7 @@ status: ready
 classes: defect, safety
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py
-deferred-from: v0.7.0 - captured after the freeze; the document's 20 °C and the code's value agree today, so the release states nothing wrong, and this is docs/MODEL.md traceability work the schematic does not wait on
+deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): REFERENCE_TEMPERATURE_CELSIUS, the three agent files' 20.0 and the caption "at 20 degrees C" all agree with docs/MODEL.md's 20 °C, so no learner can see a wrong value now
 added: 2026-11-03
 payoff: a change to the 20 °C reference temperature behind the displayed millilitres of liquid agent cannot land while docs/MODEL.md still states the old value
 verify: grep -qF '("_celsius", "°C")' tools/doc_check.py && grep -qF 'provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS' docs/MODEL.md
@@ -24,3 +24,5 @@ verify: grep -qF '("_celsius", "°C")' tools/doc_check.py && grep -qF 'provenanc
 **Done when.** `tools/doc_check.py` maps the `_celsius` ending to °C in `UNIT_ENDINGS` and lists °C in `PROSE_UNITS`. Each of the 29 paragraphs carries a `provenance:` marker naming `core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20.0`, or a `not-restated:` marker where 20 °C only coincides (such as the 37 °C comparison's companion figure). `doc_check.py check` reports no errors.
 
 **Generator check.** Instance of the fact `PL-4FBP` and `PL-G424` state (the link between a document sentence and the tree fact it restates), filed after both closed; the feature model-claims-held-by-tests already works it. Not a new head.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The stored value it must agree with began after Gate 3 froze at `817a4d88`. The item is classed `safety`, so it joins v0.7.0's frozen list whatever that answer, and it stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). At `817a4d88` nothing in `src/` stored the reference temperature, and `docs/MODEL.md` said that nothing the model computes reads it. `REFERENCE_TEMPERATURE_CELSIUS` and `measured_at_celsius` came with `c95177a6` (2026-10-26). 20 of the 31 lines it names predate the freeze.

@@ -8,7 +8,6 @@ classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, docs/maintainer.md
 blocked-by: PL-DWGC
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 payoff: a reader of the roadmap finds what each release holds without the toolchain policy or an account of what the release tools read, and the sessions that run those tools find that account in the workflow documentation
 verify: ! grep -qE '^#+ Keeping the toolchain current' ROADMAP.md && grep -qF 'Nothing upgrades on a schedule' docs/maintainer.md
@@ -133,3 +132,5 @@ repeat. `PL-V82M` corrects what the exemption says the next release does.
    after two reviewers compare old and new text: one for words that depend
    on position, one sentence by sentence.
 
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. § "Keeping the toolchain current", the release-tag account and every tool passage it names were in `ROADMAP.md` at `817a4d88`.

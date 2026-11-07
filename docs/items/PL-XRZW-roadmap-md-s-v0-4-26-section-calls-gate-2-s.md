@@ -7,7 +7,6 @@ status: untriaged
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
 
@@ -22,3 +21,5 @@ added: 2026-11-07
 **Why it matters.** A session freezing a gate reads § "The cadence" for the day it freezes. v0.4.26's record calls an earlier freeze an exception, which tells that session the rule can bend, while the rule's own section says no exception remains.
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. v0.4.26's "first of two instances" and the later sentence calling v0.4.26 a patch were both in `ROADMAP.md` at `817a4d88`.

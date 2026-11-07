@@ -1,9 +1,12 @@
 ---
 id: PL-GW0P
 title: ROADMAP.md's v0.6.0 and v0.7.0 gate sections defer a debt item captured after the cut by its capture date, while the snapshot rule re-admits any finding whose problem was present at the freeze, however late it was filed
+priority: P2
+effort: M
 status: untriaged
+classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, subprojects/docket/README.md
 added: 2026-11-07
 ---
 

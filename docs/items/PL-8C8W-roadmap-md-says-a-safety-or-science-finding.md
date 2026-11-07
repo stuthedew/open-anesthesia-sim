@@ -1,7 +1,10 @@
 ---
 id: PL-8C8W
 title: ROADMAP.md says a safety or science finding cannot be deferred, while its deferral section lets a frozen safety or science entry be deferred when its hazard is not live, as PL-WZVZ was
+priority: P2
+effort: S
 status: untriaged
+classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-11-07

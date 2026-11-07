@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: one-source-of-truth
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science; classed by the 2026-11-04 triage pass
 added: 2026-11-03
 payoff: a brief that names a deleted file in an earlier list item can be marked so the documentation check accepts it
 verify: grep -q 'def test_an_absent_marker_under_a_list_covers_its_first_item' tests/unit/test_doc_check.py
@@ -34,3 +33,5 @@ and a test puts a deleted path in the first of two list items with the marker
 under the list and finds no error.
 
 **Generator check.** One-off. The fact misread is what a marker under a list covers, and `_marked_scope` already states it; `_absent_paths` is the one reader of the three that reads it another way. No head's `misread:` states it (checked with `bin/docket generators --misread`, 2026-11-04).
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. At `817a4d88`, `_absent_paths` already used `_marked_span` (`3aaeb0b2`, 2026-09-26). The disagreement with `_marked_scope` is newer: that function arrived in `5ec0ee9b` (2026-10-25 06:17).
