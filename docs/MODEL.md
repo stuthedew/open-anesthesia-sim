@@ -1630,13 +1630,6 @@ time and others at the old time. The model never produced that set of numbers at
 yet on screen they could not be told apart from numbers it did produce. The project prefers an
 obvious failure to a plausible-looking number.
 
-The program advances the model in steps of 0.1 s of simulated time, the largest step the model
-allows. § "Supported simulation step" explains this choice and the timing error it accepts. The
-program updates every 0.1 s of real time, the same as the step, so that real-time playback runs
-one step per update. At a faster playback speed, each update runs more steps of the same size.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-
 **For developers.** Before each step, the model saves the eight values listed above and the
 starting amount of the mass-balance check, and it restores them if the step fails
 (`AgentUptakeSystem.advance()`). A failed step raises an exception (`SimulationNumericalError`).
@@ -1646,23 +1639,6 @@ step. Each limit is a named constant (`MINIMUM_SIMULATION_STEP_S` and
 `MAXIMUM_SIMULATION_STEP_S`). The two methods that advance the model accept only the step type
 (`AgentUptakeSystem.advance()` and `SimulationState.advance()`).
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-
-Three constants have the same value and mean different things:
-
-```text
-MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
-SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
-SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
-```
-
-The step the program uses (`SIMULATION_STEP_S`) is set separately from the largest step and
-equals it only in this configuration, so the two have separate names.
-
-The tick interval, the time between updates, has a name of its own
-(`SIMULATION_TICK_INTERVAL_S`). Each update runs `multiplier × tick interval ÷ step` whole steps,
-so a test can check a playback speed such as "60× real time". If the interval shared the step's
-name, someone could change how often the program updates to suit a different computer, without
-recomputing the speeds. Every speed on screen would then be false, and nothing would fail.
 
 ### Selected method (as implemented)
 
@@ -1687,9 +1663,8 @@ fraction exceeds the larger of the delivered fraction and the largest fraction t
 with. Rounding could still carry a fraction just above 1 from a state already at 1. No supported
 setting reaches that state, because every vaporizer in the simulator keeps each fraction far
 below 1, even at its maximum. The model also refuses such a state as an input: the delivered
-concentration and every starting fraction are limited to 0.99 of the ambient pressure. In runs
-started at 0.99, no computed fraction exceeded 0.99 by more than 0.0033 percentage points
-(§ "The numerical envelope").
+concentration and every starting fraction are limited to 0.99 of the ambient pressure.
+§ "The numerical envelope" gives the largest overshoot measured from that limit.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
 Second, **a shorter step does not change the result**. A test checks that all supported step
@@ -1857,7 +1832,9 @@ one step.** The table above is the error that the largest step (`MAXIMUM_SIMULAT
 allows. Above 1×, control timing is coarser. The program computes a whole update's worth of
 steps at once, so simulated time stands still for one real update interval and then jumps by
 `multiplier × 0.1` s. A setting changed during playback therefore first acts at the next
-update. The simulated instants that a reader can reach are `multiplier × 0.1` s apart:
+update. So the same slider moves made at two playback rates are different inputs,
+and they produce different runs. The simulated instants that a reader can reach are
+`multiplier × 0.1` s apart:
 
 | Playback rate | Control grid | Frames are | Worst displacement per grid step | Second worst | Margin |
 | --- | --- | --- | --- | --- | --- |
@@ -1912,6 +1889,12 @@ Three things follow.
   every two updates. So at every rate, a reader sees the run at half the resolution at which
   they can act on it. Applying control changes between the steps of an update, or updating
   more often, would time controls more finely than the screen can show.
+
+The program advances the model in steps of 0.1 s of simulated time, the largest step the model
+allows. The program updates every 0.1 s of real time, the same as the step, so that real-time playback runs
+one step per update. At a faster playback speed, each update runs more steps of the same size.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 The largest supported step and the shipped step are the same number, and the
 interface runs at it.
@@ -2079,6 +2062,23 @@ during wash-in, and `nan` (zero times `inf`) when the dial was at or below the
 circuit's fraction. The 1.4e6 time constants at the limit are about 300 decades
 inside the range of a `float`. The tissue groups and the venous pool stay
 finite at any step because `exponential_approach` saturates at equilibrium.
+
+Three constants have the same value and mean different things:
+
+```text
+MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
+SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
+SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
+```
+
+The step the program uses (`SIMULATION_STEP_S`) is set separately from the largest step and
+equals it only in this configuration, so the two have separate names.
+
+The tick interval, the time between updates, has a name of its own
+(`SIMULATION_TICK_INTERVAL_S`). Each update runs `multiplier × tick interval ÷ step` whole steps,
+so a test can check a playback speed such as "60× real time". If the interval shared the step's
+name, someone could change how often the program updates to suit a different computer, without
+recomputing the speeds. Every speed on screen would then be false, and nothing would fail.
 
 ### The numerical envelope
 
@@ -3725,12 +3725,9 @@ affects the model's state. Identical inputs still produce identical results, so
 a case played at sixty times real time is the same run watched faster.
 
 **The playback rate does decide when an input acts.** A control changed
-*during* a run first acts at the next tick. In simulated time, the interval
-between ticks is 0.1 s multiplied by the playback rate: 6 s at sixty times real
-time. So the same slider moves made at two playback rates are different inputs,
-and they produce different runs. At a faster rate, the learner has a coarser
-choice of when an input acts. § "Supported simulation step" quantifies this.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+*during* a run first acts at the next tick, so the same slider moves made at
+two playback rates produce different runs. § "Supported simulation step"
+quantifies this.
 
 **For developers.** § "Interface boundary" sets the constraints on the
 interface's own settings. § "The reproducibility guarantee" rules out treating
@@ -5915,16 +5912,12 @@ comparing the same case at different speeds are comparing the same arithmetic.
 
 The second condition is control resolution, and it limits that last claim. The
 two learners are comparing the same *case* only if neither of them touches a
-control. A tick takes all of its steps without interruption, so a setting
-changed while the run plays first acts at the next tick boundary. Tick
-boundaries are the rate times 0.1 s of simulated time apart. The same slider
-moves made at two rates therefore land at two different simulated instants and
-produce two different runs. The runs differ because the inputs differed, not
-because the arithmetic did. § "Supported simulation step" gives the grid of
+control. The same slider moves made at two rates land at two different
+simulated instants and produce two different runs. The runs differ because the
+inputs differed, not because the arithmetic did. § "Supported simulation step" gives the grid of
 tick boundaries for each rate, and how far a delay of one tick can shift a
 displayed compartment. It also gives the route that is exact at every rate:
 pause, change the setting, then resume.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 The third condition is human factors, and it is why the rate is a required
 display rather than a preference. A rate is a mode. A clock is easy to misread
