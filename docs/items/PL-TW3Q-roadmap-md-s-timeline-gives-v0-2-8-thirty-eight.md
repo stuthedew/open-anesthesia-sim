@@ -9,6 +9,7 @@ feature: roadmap-structure
 touches: ROADMAP.md
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+recurrences: 2026-11-07 PL-33FM withdrawn 2026-11-07 PL-33FM
 ---
 
 **Problem.** ROADMAP.md's timeline gives v0.2.8 thirty-eight entries at Size 2 M, 35 S, which adds to 37, while its frozen list holds 2 M and 36 S
