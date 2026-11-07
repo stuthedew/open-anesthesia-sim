@@ -977,9 +977,10 @@ application has drawn over them.
 **An Area has a minimum size, and says so when it cannot be given it.** Blender
 honours no minimum size that an editor states
 (§ "An editor cannot refuse a size, and there is no minimum-size contract at
-all"). Here, an Area that cannot be given the size its
-View needs says so rather than collapsing it, and a border drag stops where an
-Area beside the moved line reaches its minimum size (`PL-K285`).
+all"). Here, an Area that cannot be given the size its View needs says so rather
+than collapsing it, and a border drag stops where an Area beside the moved line
+reaches its minimum size (`PL-K285`; `border_range` in
+`src/anesthesia_sim/layout/sizing.py`).
 
 **Each View's isolation has to be built, not inherited from Blender.** Blender
 hands each editor a context through which it can reach the window, the screen
