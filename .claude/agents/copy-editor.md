@@ -407,7 +407,11 @@ does not know this repository's names either.
 An edit changes how a statement is said, and never what it says. Each kind of
 statement below keeps its force and its reach through every cut, merge and
 move. Cut one only where the passage still says it in full, and quote where.
-Move one only as step 4 allows, and it says the same thing where it lands.
+In full means with the same force, the same limiting words and the same
+scope. A heading, a bold lead or a sentence that says only part of it does not
+count: "the stored values did not change" does not say "only the recorded
+source and grade changed". Move one only as step 4 allows, and it says the
+same thing where it lands.
 
 1. **A requirement's force.** "Must", "must not", "may not", "never" and "only
    if" stay a requirement or a prohibition. Never restate one as a description
@@ -426,9 +430,13 @@ Move one only as step 4 allows, and it says the same thing where it lands.
    statement holds stays with it: "until the machine and the patient circuit
    get separate volumes", "a branch taken where a run is paused or stopped",
    "for each agent".
-5. **A stated reason.** The reason for a rule, a limit, a value, a choice of
-   source or a source's grade stays: "Mapleson 1996 is a meta-analysis that
-   measures nothing, so the source hierarchy grades it tier 2". Decision
+5. **A stated reason, and what it is a reason for.** The reason for a rule, a
+   limit, a value, a choice of source or a source's grade stays: "Mapleson
+   1996 is a meta-analysis that measures nothing, so the source hierarchy
+   grades it tier 2". So does the conclusion that a reason leads to, in a
+   sentence that opens with "so" or "therefore" or ends one with "which is
+   why". "All twelve come from one table, so the three agents' values can be
+   compared directly" keeps both halves, for all twelve values. Decision
    history is not a reason: who decided, when and what was rejected go to the
    item that the text names, as step 4 says.
 6. **A value and what it rests on.** A value with its unit, a condition, an
