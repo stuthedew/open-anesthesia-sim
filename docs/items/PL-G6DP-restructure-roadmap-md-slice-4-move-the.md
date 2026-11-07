@@ -3,12 +3,14 @@ id: PL-G6DP
 title: Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md, docs/maintainer.md
+touches: ROADMAP.md, docs/maintainer.md, subprojects/docket/README.md, docs/items/PL-18BD-bin-docket-wave-cannot-read-a-gate-deferral.md, docs/items/PL-82B0-doc-check-s-declined-ids-reads-only-the-first.md, docs/items/PL-BYHS-roadmap-md-says-flet-is-pre-1-0-and-its-1-0-is.md, docs/items/PL-J6HP-gate-facts-which-entries-a-milestone-clears.md, docs/items/PL-LG78-docs-maintainer-md-keeping-the-toolchain.md, docs/items/PL-P669-eleven-tagged-release-spans-cover-a-closing.md, docs/items/PL-SL70-bin-docket-wave-and-gate-count-the-seven-gate-1.md, docs/items/PL-4BCF-restructure-roadmap-md-slice-9-head-v0-5-0-s.md, docs/items/PL-B6V1-restructure-roadmap-md-slice-6-give-each-v0-6-0.md, docs/items/PL-G6DP-restructure-roadmap-md-slice-4-move-the.md
 blocked-by: PL-DWGC
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2064
 payoff: a reader of the roadmap finds what each release holds without the toolchain policy or an account of what the release tools read, and the sessions that run those tools find that account in the workflow documentation
 verify: ! grep -qE '^#+ Keeping the toolchain current' ROADMAP.md && grep -qF 'Nothing upgrades on a schedule' docs/maintainer.md
 ---
@@ -214,3 +216,35 @@ names where its fact already lives, so most moves are deletions:
 Then two blind reviewers compare old and new text (one for words that depend
 on position, one sentence by sentence), and `bin/docket wave`, `gate`,
 `check` and `tools/doc_check.py check` must match the baselines.
+
+**What this slice did (2026-11-07).** Each finding, by what happened to it. A sentence that left `ROADMAP.md` either duplicated one that stays, is held by the workflow file named beside it, or is quoted word for word, under a line naming this slice, in the item named beside it.
+
+*Applied.*
+
+- Outline finding 8: § "Keeping the toolchain current" moved whole and word for word to `docs/maintainer.md`, after § "Run tag-release yourself where a session cannot". `PL-BYHS`, the Flet error in it, now touches that file, and its `verify:` reads it.
+- Outline finding 9, the release-tag subsections. The roadmap keeps that every completed version carries an annotated tag on its own release's commit, and that the tag span, not the notes, is what shipped. The accounts of what `tools/doc_check.py`, `tag-release.yml` and `bin/docket release` do went: `docs/apparatus.md` (its `tag_release.py` line and its "Tags *are* compared" paragraph) and the comment above `TAGS_MARK_RE` hold them, and `PL-YKSD`'s and `PL-R7C0`'s briefs hold the `v0.5.3` and `PL-8HJ2` history. "Where and when the tag is made" is now "Where the tag is made". The `check_tag_span_covers_its_notes` sentence, "Each exemption has a reason, and neither is there to keep the check quiet" and the two "navigation only" sentences are quoted in `PL-P669`. The last three sentences of § "Why nothing reconciles" went to `subprojects/docket/README.md` beside the absorb route, which lacked only the clause naming what the advisory says.
+- Outline finding 9, the debt gate. § "Deferring to the next gate" keeps that each deferral is recorded on its item with the gate it leaves and why, and that `bin/docket check` fails an open debt item the gate neither places nor defers. The `bin/docket set` command, the error message, the check on entries waiting outside the plan and the store-disagreement history went, because the README's § "`deferred-from:` records which gate excused an item, and why" holds each. v0.7.0's and v0.6.0's § "Deferred from this gate" lose their `bin/docket check` and `wave` sentences, which repeat that guarantee.
+- Outline finding 9, the completed milestones. v0.5.0's "`bin/docket wave` still prints all thirteen ..." and "**What reads this, and what reads past it.**" are quoted in `PL-SL70`, and the pointer to the second says so. The `_declined_ids` paragraph is quoted in `PL-82B0`, and the `check_gate_counts` sentence after it was cut (`docs/apparatus.md`'s frozen-list count paragraph). v0.6.0's `wave` and `gate` sentence (`PL-RFHH`) went to the README's account, the `PL-CNCF` and `PL-PGZF` history is quoted in `PL-J6HP`, and v0.6.0's "**What reads this, and what reads past it.**" is quoted in `PL-18BD`.
+- `PL-4BCF` and `PL-B6V1` record which of the passages their findings quote this slice moved.
+
+*Not applied, with the reason.*
+
+- Chapter read 43's findings on the toolchain section. The section left the roadmap whole, so that the meaning review could check it as a pure move. The findings now concern `docs/maintainer.md`, and `PL-LG78` (feature `maintainer-guide-structure`) holds them with the queries the tree answers.
+- § "Recording it" keeps its three rules for writers of a gate section: no count of closed entries, no lane, and no deferred item's state. Each rule's reason is the command that prints the fact, so the tool clause stays with the rule. The finding's range at `aff76df1` ended inside the third rule.
+- "So `tools/doc_check.py` also reads the `pyproject.toml` at each release tag. The check fails when that file declares a version other than the tag's." stays. v0.2.0's "**One version shipped with a stale version file**" is an exception to that rule, and `check_tags` reads that claim only in this subsection. Only the `v0.5.3` sentence and the error message's contents went.
+- "A section may state the grounds that its deferrals share, as v0.6.0's section does, but no tool reads that prose." stays. The section's first bullet allows a decision at any length, but not grounds shared by several deferrals.
+- v0.6.0's "`wave` counts a deferred entry separately from what this gate can clear" stays, because slice 6 (`PL-B6V1`) keeps it as the one statement of that fact.
+- `PL-WZVZ`'s indented paragraph in v0.5.0 still dates what `bin/docket wave` reported. It is a disposition record, and slice 9 (`PL-4BCF`) restructures those.
+
+*Review.* Two reviewers compared the old and new text, one for words that depend on position and one sentence by sentence. The second accounted for 118 removed sentences: 80 moved word for word, 3 duplicates, 35 held elsewhere, and none lost. Their findings, applied:
+
+- "The sentence above carried the figure 66" pointed at the wrong sentence once the `_declined_ids` paragraph left. It now names the placement paragraph quoted in `PL-82B0`.
+- The v0.2.0 exception had lost the rule it is an exception to, so the two `pyproject.toml` sentences are restored.
+- "**This is what `PL-D143` asked for**" lost its antecedent. The bold lead is now "**Entries that can clear before v0.5.0 are what `PL-D143` asked for and could not get.**", which is what that item's brief asked for. A first version that named the port's move said more than the record supports.
+- "The three groups" became "the three lane groups", "**The gap is closed**" became "**The gap of untagged versions is closed**", and the README's clause names `checks._check_cut_window`'s advisory and both dispositions.
+- The lead-ins in `PL-SL70` and `PL-82B0` now gloss "all thirteen" and "the same eleven" as two sets, "the beat", and the quote's "It".
+- One partly lost sentence and one sentence that slice 6 keeps are restored, as listed above. `PL-LG78` no longer says only closed items cite the heading.
+
+Not applied: `docs/maintainer.md`'s "the gate" has no antecedent there, and the moved section speaks of the owner in the third person. Both are `PL-LG78`'s. `PL-QSWS`, a closed item, has a `verify:` that reads the heading in `ROADMAP.md`; nothing runs a closed item's command.
+
+*Checked.* `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers as before, apart from filing `PL-LG78`. `tools/doc_check.py check` reports 0 errors and the same two advisories.

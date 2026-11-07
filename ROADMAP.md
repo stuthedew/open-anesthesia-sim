@@ -240,11 +240,13 @@ verified on 2026-08-30 across the whole of `main`. The commits it does not
 resolve are the unreleased ones after the newest tag, and the next release's
 tag will cover them.
 
-**The gap is closed, 2026-08-30.** v0.1.0 (`ddc868f6`) and v0.2.0 (`69a5888c`)
+**The gap of untagged versions is closed, 2026-08-30.** v0.1.0 (`ddc868f6`) and v0.2.0 (`69a5888c`)
 were the last two untagged versions.
 
 A tag also has to sit on its own release's commit, and the tag's name cannot
-show whether it does. **One
+show whether it does. So
+`tools/doc_check.py` also reads the `pyproject.toml` at each release tag. The
+check fails when that file declares a version other than the tag's. **One
 version shipped with a stale version file**: v0.2.0. Its tag is on the release
 commit `69a5888c`, whose `pyproject.toml` still read 0.1.0. The version bump
 followed as `8687bdf2`, "Fix stale app version", which went out in v0.2.1.
@@ -873,7 +875,9 @@ item anyway. The reason states the grounds for the deferral, which is what a
 reader of the gate is owed. `bin/docket check` fails an open debt item that the current
 gate neither places nor defers
 (`PL-WD5Z`). A frozen entry deferred on the terms above carries the same field
-(`PL-8QMD`). Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
+(`PL-8QMD`). A section may state the
+grounds that its deferrals share, as v0.6.0's section does, but no tool reads
+that prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
 headed `Declined`, `Deferred` or `Sequenced`. Completed sections
 keep those subsections, because they are the record of that period.
 
@@ -6111,7 +6115,7 @@ port's parity claim checkable with this entry on the list. A `safety` entry
 re-enters the current gate whenever it is found, per § "The cadence". That is
 why it is recorded here rather than left to Gate 2.
 
-**The port's move ahead of v0.5.0 is what `PL-D143` asked for and could not get.** That item recorded the
+**Entries that can clear before v0.5.0 are what `PL-D143` asked for and could not get.** That item recorded the
 contradiction plainly. Recorded debt is cleared *before* the milestone it
 gates. These entries could not be, because the decision was to fix them during
 a release that comes *after* the release being gated. So the gate could not
@@ -6291,7 +6295,8 @@ ordinary gate work. The other is a deferral that this section has to record:
   readings agree. `bin/docket wave` reports the gate as `0 this gate can
   clear, 1 waiting on 3 open items outside it`. It computes that from the
   items, not from this prose. So a future disagreement between the two is
-  visible on the next run. `PL-SL70` asks that of every entry.
+  visible on the next run. `PL-SL70`'s brief quotes the paragraph that asks that
+  of every entry.
 
   **Why a `safety`-classed entry may be deferred at all**, stated because the
   unconditional safety exception would otherwise forbid the deferral. The
@@ -7578,7 +7583,8 @@ these are wholly inside `docket.toml`'s `workflow_paths`, so none of it can
 affect a reader of the simulator.
 
 This section deliberately does not record how many dispositions it holds. The
-sentence above carried the figure 66, while the subsection named 132 open debt
+paragraph on this section's placement, now quoted in `PL-82B0`'s brief, carried
+the figure 66, while the subsection named 132 open debt
 items on the day that was measured, 2026-09-16. Nothing reconciles the two
 numbers. The entries below are the record. A number that restates them
 becomes wrong at the next closure and tells nobody that it has. The open count
@@ -8557,14 +8563,15 @@ whether `Required scope` below names the id, not whether the item carries the
 `PL-YVP7`. The second kind is the rest. It clears before implementation of this
 milestone begins, unless this gate defers it, and it is recorded in one group,
 for the reason § "Recording it" gives for not naming lanes. On 2026-10-03 two
-of 42 open entries sat in the wrong group. The three groups were collapsed into
-one on 2026-10-24 (`PL-Z64T`).
+of 42 open entries sat in the wrong group. The three lane groups were collapsed
+into one on 2026-10-24 (`PL-Z64T`).
 
 **What this gate defers is not a group: it is each entry's `deferred-from:
 v0.6.0`** (`PL-8QMD`, project owner,
 2026-10-11, ratified, over keeping the deferral group headings, read through
 `blocked-by`, with a check per reader). § "Deferring to the next gate" gives
-the terms. The paragraphs below record the decision behind each deferral. Until
+the terms. `wave` counts a deferred entry separately from what this gate can
+clear. The paragraphs below record the decision behind each deferral. Until
 2026-10-12, three groups headed "Deferred to Gate 3" held the seven entries.
 
 **`PL-Y04W` is deferred to Gate 3 on § "The cadence" beat 3's terms, and the
