@@ -303,7 +303,9 @@ page and decides which file a session reads.
    works the same way in a Projects thread (`PL-TQ4J`). Where the first read
    rewrites a passage, fresh audits fix what it missed until one changes
    nothing or four reads have run, so a run can take up to four times as long
-   (`PL-HGZS`). For each passage the copy editor returns `[N] keep`, or
+   (`PL-HGZS`). A separate meaning check then sends back each statement the
+   edit lost, and the tool keeps a passage as it was where one is still lost
+   after three checks, naming it under "Meaning check:" (`PL-F0Q2`). For each passage the copy editor returns `[N] keep`, or
    `[N] rewrite` with the new text and each cut with its reason, as its
    instructions in `.claude/agents/copy-editor.md` say.
 

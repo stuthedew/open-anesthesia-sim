@@ -7,7 +7,11 @@ readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 first read rewrites a passage, the tool starts a fresh run of the copy editor
 to audit that edit. It audits again while the last audit changed something,
 up to four reads. Experienced technical editors make at least two passes
-(`PL-HGZS`). The tool merges the replies. Its `--reads DIR` option keeps each
+(`PL-HGZS`). A separate meaning check, `.claude/agents/meaning-check.md`, then
+compares each edited passage with its text before the edit. It sends each
+statement the edit lost back to the copy editor to restore, and the tool keeps a
+passage as it was where a statement is still lost after three checks
+(`PL-F0Q2`). The tool merges the replies. Its `--reads DIR` option keeps each
 read's request and reply, so that what each audit changed can be judged on its
 own.
 
