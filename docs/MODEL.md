@@ -3514,8 +3514,11 @@ division.
 
 ### v0.2.0: isoflurane and desflurane
 
-Isoflurane and desflurane use the same equations, compartments and reference adult patient as
-sevoflurane. Only the partition coefficients differ. All twelve values, one blood:gas and three
+Sevoflurane, isoflurane and desflurane share one set of equations, compartments and reference
+adult patient (§ "Governing equations"). An agent enters those equations only through its four
+partition coefficients: one blood:gas and three tissue:gas. Its other stored values, such as its
+MAC and its vaporizer's maximum, set a control or convert a displayed amount, and the equations do
+not use them (§ "Delivery-limit and MAC parameters", § "Agent amount"). All twelve values, one blood:gas and three
 tissue:gas coefficients for each agent, come from De Wolf et al. 2012, Table 1, the paper already
 cited for sevoflurane. So the three agents' values can be compared directly.
 
@@ -3577,10 +3580,13 @@ Two further points matter for the model:
 
 - **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 measures
   brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25,
-  0.78). Any weighted average of the four would land away from the stored
-  figure. The compartment that this document calls the vessel-rich group is
+  0.78). Their equal-weight mean, 1.0975, also rounds to the stored 1.1, so
+  sevoflurane's figure alone does not show which value was stored. Isoflurane's
+  and desflurane's stored values equal Yasuda's brain values to the stored
+  precision (the table above). The compartment that this document calls the vessel-rich group is
   parameterised as brain. A learner reading its trace is reading a brain
   trace.
+  <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
 - **This paper is not a source for the stored blood:gas values.** It measured
   none. Its Table 2 tissue:blood figures are calculated "by dividing the
   tissue/gas partition coefficient by the published values for the blood/gas
@@ -3597,9 +3603,10 @@ measurement. De Wolf et al. stays the source for the three blood:gas values, whi
 not measure. Only the recorded source and grade changed. No number did.
 
 *Declined.* Storing Yasuda's published figures instead of Gas Man's for the nine coefficients
-would move three displayed time constants. Sevoflurane's vessel-rich time constant would move
-+4.5% (coefficient 1.15 instead of 1.1), isoflurane's fat −8.3% (64.2 instead of 70.0), and
-desflurane's fat −7.7% (12.0 instead of 13.0). The accuracy gained would be smaller than the error
+would change seven of the nine stored values, and the time constant of each compartment they
+belong to. Three changes are large. Sevoflurane's vessel-rich time constant would move +4.5%
+(coefficient 1.15 instead of 1.1), isoflurane's fat −8.3% (64.2 instead of 70.0), and
+desflurane's fat −7.7% (12.0 instead of 13.0). The other four move by 3.1% or less. The accuracy gained would be smaller than the error
 that lumping brain, heart, liver, kidney and viscera into one vessel-rich compartment already
 causes. A lumped compartment cannot use a difference of 0.05 in a brain measurement. So the Gas
 Man values are kept.
@@ -3609,8 +3616,8 @@ Man values are kept.
 <!-- not-restated: 0.05 -->
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less soluble than
-isoflurane (blood:gas 0.42 < 0.65 < 1.3). With the same equations, lower solubility only makes
-the agent equilibrate faster.
+isoflurane (blood:gas 0.42 < 0.65 < 1.3). Because the equations are shared, lower solubility
+only makes the agent equilibrate faster.
 
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
