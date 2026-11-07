@@ -22,3 +22,5 @@ added: 2026-11-07
 **Why it matters.** A reader checking why a release took a patch number looks for the test those rows apply, and § "Versioning decision" names no halves.
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The v0.4.34 and v0.4.35 rows (rows 99 and 100) are now in `PL-Y3XK`'s and `PL-F1SZ`'s briefs. The baseline's "both halves" is unchanged.

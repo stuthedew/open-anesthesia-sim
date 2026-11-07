@@ -22,3 +22,5 @@ added: 2026-11-07
 **Why it matters.** The size of a 30-day case's control timeline was the ground for keeping it as a timeline. The two figures differ by a factor of two.
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The v0.4.8 row's figure is now in `PL-BKDP`'s brief.

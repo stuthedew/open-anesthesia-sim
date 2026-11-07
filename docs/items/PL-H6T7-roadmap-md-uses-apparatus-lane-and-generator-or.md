@@ -22,3 +22,5 @@ added: 2026-11-07
 **Why it matters.** The version rows and the gate sections use these terms to say what a release holds. A reader who does not know them cannot follow those rows.
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. Rows 65, 88, 94 and 95 (v0.4.0, v0.4.23, v0.4.29 and v0.4.30) are now in `PL-647D`'s, `PL-2YSL`'s, `PL-GL5P`'s and `PL-SW0D`'s briefs.
