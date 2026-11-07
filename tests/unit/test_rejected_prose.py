@@ -55,6 +55,10 @@ MIN_WORDS = 30
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
 #: A paragraph the owner named a gold standard, which differs from every rejected one.
 KEPT = " ".join(["plain"] * MIN_WORDS)
+#: The words of `FAULTY` that the owner objected to, as an entry's `fault` gives them.
+FAULT = "The parts come from two kinds of thing."
+#: A rejected paragraph whose bold lead is `FAULT`.
+FAULTY = f"**{FAULT}** " + " ".join(["word"] * MIN_WORDS)
 
 
 def _words(count: int) -> str:
@@ -78,14 +82,16 @@ def _entry(
     rejected: str = "2026-11-02",
     paragraph: str = PARAGRAPH,
     sections: str = "",
+    fault: str | None = None,
 ) -> str:
     """An entry's text, with every required section unless `sections` replaces the last two."""
     tail = sections or (
         '## The owner\'s words\n\n"Unintelligible" (2026-11-02).\n\n'
         "## Where it came from\n\nA test.\n"
     )
+    objection = "" if fault is None else f"fault: {fault}\n"
     return (
-        f"---\nkind: {kind}\nfile: {path}\nrejected: {rejected}\n---\n\n"
+        f"---\nkind: {kind}\nfile: {path}\nrejected: {rejected}\n{objection}---\n\n"
         f"## Paragraph\n\n```text\n{paragraph}\n```\n\n{tail}"
     )
 
@@ -149,6 +155,15 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
     assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).accepted_lines is None
 
 
+def test_an_entry_may_name_the_words_the_owner_objected_to() -> None:
+    entry = parse_entry(
+        "jargon-2026-11-02-a.md", _entry(paragraph=FAULTY, fault=FAULT.upper()), TABLE
+    )
+
+    assert entry.fault == FAULT.upper()
+    assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).fault is None
+
+
 @pytest.mark.parametrize(
     ("name", "text", "reason"),
     [
@@ -160,7 +175,17 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
         (
             "jargon-2026-11-02-a.md",
             _entry().replace("rejected: 2026-11-02\n", "rejected: 2026-11-02\nwho: me\n"),
-            "exactly kind, file, rejected",
+            "must have kind, file, rejected, and may add fault, and no others",
+        ),
+        (
+            "jargon-2026-11-02-a.md",
+            _entry(paragraph=FAULTY, fault="Two kinds of thing come from the parts."),
+            "its fault 'Two kinds of thing come from the parts.' is not words of its paragraph",
+        ),
+        (
+            "jargon-2026-11-02-a.md",
+            _entry(paragraph=FAULTY, fault="**"),
+            "its fault '**' is not words of its paragraph",
         ),
         (
             "jargon-2026-11-02-a.md",
@@ -274,6 +299,29 @@ def test_check_passes_once_a_run_of_the_current_prompt_flags_every_entry(tmp_pat
         {"jargon-2026-11-02-a.md": _entry(), "length-2026-11-02-b.md": _entry(kind="length")},
     )
     _run(root, "one.json", _reply("rewrite", "rewrite"))
+
+    assert check(root, PROMPT, TABLE) == []
+
+
+def test_a_rewrite_that_keeps_the_words_the_owner_objected_to_fails(tmp_path: Path) -> None:
+    """Changing the case, line breaks or bold type of the words leaves them in the rewrite."""
+    entry = _entry(kind="unclear", rejected="2026-11-07", paragraph=FAULTY, fault=FAULT)
+    root = _root(tmp_path, {"unclear-2026-11-07-a.md": entry})
+    kept = "the parts COME from two\nkinds of _thing._ " + _words(MIN_WORDS)
+    _run(root, "one.json", f"[1] rewrite\n```\n{kept}\n```\n")
+
+    assert check(root, PROMPT, TABLE) == [
+        "runs/one.json rewrote unclear-2026-11-07-a.md but kept the words the owner objected "
+        "to, 'The parts come from two kinds of thing.': change the prompt so the review fixes "
+        "them, then run the set again"
+    ]
+
+
+def test_a_rewrite_without_the_words_the_owner_objected_to_passes(tmp_path: Path) -> None:
+    entry = _entry(kind="unclear", rejected="2026-11-07", paragraph=FAULTY, fault=FAULT)
+    root = _root(tmp_path, {"unclear-2026-11-07-a.md": entry})
+    fixed = "**The parts are bolts and nuts.** " + _words(MIN_WORDS)
+    _run(root, "one.json", f"[1] rewrite\n```\n{fixed}\n```\n")
 
     assert check(root, PROMPT, TABLE) == []
 
@@ -467,7 +515,12 @@ def test_a_gold_standard_entry_records_its_file_date_and_paragraph() -> None:
 @pytest.mark.parametrize(
     ("name", "text", "reason"),
     [
-        ("gold-2026-11-05-a.md", _entry(), "exactly file, named"),
+        ("gold-2026-11-05-a.md", _entry(), "must have file, named, and no others"),
+        (
+            "gold-2026-11-05-a.md",
+            _gold().replace("named: 2026-11-05\n", f"named: 2026-11-05\nfault: {KEPT}\n"),
+            "must have file, named, and no others",
+        ),
         ("jargon-2026-11-05-a.md", _gold(), "its name must be gold-2026-11-05-SLUG.md"),
         ("gold-2026-11-05-a.md", _gold(named="soon"), "named 'soon' is not a date"),
         (

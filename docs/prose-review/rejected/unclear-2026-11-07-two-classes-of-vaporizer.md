@@ -2,6 +2,7 @@
 kind: unclear
 file: docs/MODEL.md
 rejected: 2026-11-07
+fault: The three maxima come from two classes of vaporizer.
 ---
 
 ## Paragraph

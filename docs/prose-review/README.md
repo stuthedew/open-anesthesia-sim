@@ -78,6 +78,17 @@ The `file` field decides which readers the copy editor judges the paragraph
 for, so it must be a file that a row of the reader table names. The paragraph
 must be one unit that `tools/new_prose.py` would review in that file.
 
+Where the owner objected to particular words, add a `fault` field after
+`rejected`, holding those words exactly as the paragraph has them:
+
+```text
+fault: The three maxima come from two classes of vaporizer.
+```
+
+A run that rewrites the paragraph but keeps those words counts as a miss,
+because a rewrite that changes only the words around them leaves the fault the
+owner rejected. Case, line breaks and bold type do not count as a change.
+
 ## Adding a gold-standard paragraph
 
 Add one only when the owner names a paragraph a gold standard, in those words.
