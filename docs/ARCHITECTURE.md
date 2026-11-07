@@ -13,10 +13,9 @@ start at § "Where new code belongs", the last chapter.
 
 ## Layering
 
-The codebase is split into four layers, and imports between them run in one
-direction only. The direction of imports enforces the split, and
-`tools/import_boundary_check.py` checks it at every `make check`. Never edit
-code to get around that check.
+The codebase is split into four independent layers. The direction of imports
+enforces the split, and `tools/import_boundary_check.py` checks it at every
+`make check`. Never edit code to get around that check.
 
 ```text
 data/  --loaded by-->  core/  --read by-->  app/
@@ -43,9 +42,9 @@ data/  --loaded by-->  core/  --read by-->  app/
   `core/checked_number.py`, for the way that module names a refused value.
   Its `store.py` is the one module in the package that writes outside the
   tree. It writes the reader's saved Workspaces, as described under § "User
-  state: the saved Workspaces" below. The `layout/` package holds no list of
-  the View kinds that a layout may name, so `app/` holds it
-  (`app/view_registry.py`).
+  state: the saved Workspaces" below. `app/view_registry.py` is the one list of
+  the View kinds that a layout may name (`PL-R1WQ`), because the `layout/`
+  package holds no such list.
 - **`data/`** holds the cited parameter files that `core/` reads, and the
   shipped Workspaces, which `layout/` reads. § "Data files (`data/`)" describes
   both.
@@ -106,7 +105,7 @@ src/anesthesia_sim/
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
-├── app/                  # user interface - PySide6 and pyqtgraph (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
+├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
 │   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
@@ -185,8 +184,8 @@ invisible to `tools/doc_check.py`'s provenance walk, which can only see a
 constant that has entered a data file.
 
 `data/workspaces/` holds the shipped Workspaces. These are layout rather than
-parameters: `layout/shipped.py` reads them, and nothing in `core/` does. § "User
-state: the saved Workspaces" describes the shipped set.
+parameters: `layout/shipped.py` reads them, and nothing in `core/` does. §
+"User state: the saved Workspaces" describes the shipped set.
 
 Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
@@ -420,20 +419,21 @@ and each must be readable and testable with no toolkit loaded.
 `app/formatting.py` uses the resolutions that `docs/MODEL.md` § "Displayed
 precision" derives.
 
-Three of these modules answer correctness questions, for reasons worth stating.
-In `app/control_timeline.py`, the control record is faithful to the run, and a
-drag of one slider appears in it as several settings. So collapsing that drag
-into one displayed act is a claim about what the user did. It is not a tidier
-rendering of what the model saw. In `app/wash_in.py`, the wash-in quotient has a
-domain. It is undefined before any agent reaches the circuit, and above 1 it
-stops being a wash-in fraction. So the module returns the value and the reason
-together, and the chart draws the trace in segments that break where the domain
-does. `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the specification. In
-`app/playback.py`, a playback rate is realised only as a step *count*, never as
-a larger step. So the module derives the count from the rate, and it rejects a
-rate that does not land on a whole number of steps. The alternative is a run
-that advances at a rate other than the one it displays. That would be a
-presentation failure that looks like a working feature.
+Three of the transformation modules answer correctness questions, for reasons
+worth stating. In `app/control_timeline.py`, the control record is faithful to
+the run, and a drag of one slider appears in it as several settings. So
+collapsing that drag into one displayed act is a claim about what the user did.
+It is not a tidier rendering of what the model saw. In `app/wash_in.py`, the
+wash-in quotient has a domain. It is undefined before any agent reaches the
+circuit, and above 1 it stops being a wash-in fraction. So the module returns
+the value and the reason together, and the chart draws the trace in segments
+that break where the domain does. `docs/MODEL.md` § "F_A/F_I as a displayed
+ratio" is the specification. In `app/playback.py`, a playback rate is realised
+only as a step *count*, never as a larger step. So the module derives the count
+from the rate, and it rejects a rate that does not land on a whole number of
+steps. The alternative is a run that advances at a rate other than the one it
+displays. That would be a presentation failure that looks like a working
+feature.
 
 The MAC divisor is passed to the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up. The
@@ -707,7 +707,7 @@ is a property of the display, not of the model:
   run counts, the names the runs carry, the setting sections and the agent
   locks are rewritten from the run set whenever it changes. The cap is still
   `MAX_DISPLAYED_RUNS`, which is two.
--  **One comparison at a time, and Reset is the way out.** There is no run
+- **One comparison at a time, and Reset is the way out.** There is no run
   selector, because `ROADMAP.md` § "Explicitly out of scope for v0.5.0" defers
   it. So a second branch could only replace the displayed one, while the first
   went on living inside `BranchedCase`. The control is refused while two runs
@@ -793,7 +793,7 @@ what it does not" is where it is argued.
 on it. The hierarchy has two branches, which mean different things and get
 different treatment:
 
--  `SimulationConfigurationError` means that a value was rejected before it
+- `SimulationConfigurationError` means that a value was rejected before it
   changed anything. The guards in `core/validation.py` raise it. So do the
   checked types' constructors (`Fraction`, `Percent` and `MacPercent` in
   `core/concentration.py`, and those in `core/supported_ranges.py`,
@@ -968,11 +968,12 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   headless or portable run, the environment variable `ANESTHESIA_SIM_USER_DIR`
   overrides the directory. It is the only override, and it is applied in
   `store.user_data_directory`.
--  **When.** The store writes only when the reader chooses "Save as default" in
+- **When.** The store writes only when the reader chooses "Save as default" in
   the Layout menu or a tab's menu, like Blender's startup file, never when
   something changes. A first run leaves no trace. "Save as default" first asks a
   question that names the file it will write. The two entries next to it write
   nothing: "Restore shipped Workspaces" and "Reset all layouts" (`PL-DWHG`).
+  These three entries come last in both menus.
 
   The save writes a temporary file beside the target and `fsync`s it. It then
   copies the current file to `workspaces.json.previous`, so that one prior
@@ -982,7 +983,7 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   only a crash in the middle of the replace can leave the current file torn. A
   failed save raises `WorkspaceFileError`, which names the path and the reason.
   The error is reported where the action was invoked, on the line under the
-  Workspace tabs.
+  Workspace tabs, where `app/workspace_tabs.py` shows what the store reported.
 - **The shipped set** that the store falls back to is three Workspaces in
   `data/workspaces/`, one JSON file each, in the saved file's format
   (`PL-KXTL`). In `layout/shipped.py`, they are read by the same code that
@@ -1032,8 +1033,8 @@ specifies what a price carries and what is refused. The project ships no price.
 
 - **What a launch does with the file.** Startup code in `app/main.py` opens the
   preferences store (`open_preferences`) in the directory it finds for the
-  layouts file. The store's load method (`PreferencesStore.load`) returns the
-  preferences to use, whether saving is on, and any notice, in one
+  layouts file (`PL-B396`). The store's load method (`PreferencesStore.load`)
+  returns the preferences to use, whether saving is on, and any notice, in one
   `LoadedPreferences` result. With no file, there is no price or notice, and
   the unit is millilitres of liquid. If a newer build wrote the file, or the
   file cannot be read or checked entry by entry, saving is turned off for the
@@ -1274,11 +1275,11 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   duplicated into each run. Both are properties of the value rather than of
   the container. They apply to a View exactly as they apply to a panel today.
 
-  Breaking a surface out into a second top-level window is not built, and
-  `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it stands. Once
-  it is built, the routing question gains a second half: *which window* a
-  surface is instantiated in. `docs/MODEL.md` § "Minimum displayed outputs"
-  answers that half, not this bullet.
+  Breaking a surface out into a second top-level window is wanted but not
+  scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
+  stands. Once it is built, the routing question gains a second half: *which
+  window* a surface is instantiated in. `docs/MODEL.md` § "Minimum displayed
+  outputs" answers that half, not this bullet.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
   what the display cannot resolve. Write it as a pure function with its own
@@ -1312,15 +1313,15 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   drawn, that width is the run's own channel. The table records what a
   compartment looks like, so a new trace declares no width for a run. A
   series that draws no state of the run stays out of that table by
-  construction. A reference is placed by `app/chart_frame.py` and drawn by
+  construction. Examples are a clinical reference and a control mark. Such a
+  series must meet a labelling requirement instead. `docs/MODEL.md`
+  § "Interface boundary" sets that requirement in place of the drawn-point
+  rule. A reference is placed by `app/chart_frame.py` and drawn by
   `app/qt_chart.py`, and it is deliberately not in the table, because a
   reference reads no state of the run. A control mark is a third kind of
   series on the same terms, for a stronger version of the same reason. It
   draws no value at all, only a simulated time, and it is likewise outside
-  the table. Such a
-  series must meet a labelling requirement instead. `docs/MODEL.md`
-  § "Interface boundary" sets that requirement in place of the drawn-point
-  rule. A trace of a *derived* quantity with a domain, such as the wash-in
+  the table. A trace of a *derived* quantity with a domain, such as the wash-in
   ratio, also stays out of the table. The table binds a line to one
   `RecordedSeries`. A value that is sometimes absent has no such series to
   bind to. Such a trace must state its domain instead, in `docs/MODEL.md` and
