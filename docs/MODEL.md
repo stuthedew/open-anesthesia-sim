@@ -6101,7 +6101,8 @@ sits outside "Runtime controls", with the other interface settings.
 A user cannot compare two compartments while four other lines cross them, so
 the interface may draw only some of the six traces. When it does:
 
-1. The numeric readouts still show every compartment's concentration. A chart
+1. The numeric readouts still show every compartment's concentration
+   (§ "Minimum displayed outputs"). A chart
    with two curves is a chosen view of six modelled compartments, not a model
    with two.
 2. The display states, for every compartment, whether its trace is drawn. A
@@ -6449,6 +6450,40 @@ marks for setting changes and the $`F_A/F_I`$ plot are requirements on the chart
 itself, and the reader cannot hide them. Of the chart entries, only the span of
 simulated time is the reader's choice, and no particular span is required.
 
+Arterial concentration is **not** in this list. In this model the arterial
+fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
+§ "Model boundary"). A separate arterial readout would show the alveolar number
+a second time under another name, as though the model computed an arterial
+value of its own.
+
+The alveolar readout is labelled "Alveolar", with "end-tidal-equivalent" on the
+line below. It shows the concentration in the model's one well-mixed alveolar
+compartment, which is the value a monitor's end-tidal reading estimates in a
+real patient. The model has no dead space, airway sampling delay or shunt, so
+this readout is not a simulated end-tidal measurement.
+
+**No difference readout is required, and none may be added without a stated
+sign convention.** The arithmetic difference of two alveolar fractions has no
+conventional clinical reading, because clinicians reason about depth in MAC
+multiples and time to target. Displaying it would imply a standard meaning that
+it does not have, which § "Displayed precision" rules out on grounds of
+interpretability. The chart already shows the comparison continuously, on the
+axis the reader is looking at.
+
+Telling a halted run from a paused one is a required output. Both stop the
+numbers advancing, and under § "Step atomicity" both leave the simulation in a
+state that the reader can trust. A paused run continues when the reader asks,
+but a halted run cannot. A halted run shown as "Paused" would offer a Start
+control that fails at the first simulation step, and would present a stopped
+trajectory as one still in progress. That is the mode confusion that this
+document's interface rules exist to prevent. A display that merely freezes, with
+no change of state at all, is worse still.
+
+Showing which agent is running is also a required output. A correct
+concentration attributed to the wrong agent is a display failure, and the same
+number means a different clinical depth for each agent (§ "MAC multiples as a
+display unit").
+
 **For developers.** Testing the display matters because a required output can
 stay in the simulation snapshot (`SimulationSnapshot`) long after the widget
 that draws it has gone. Three entries have no field in the snapshot at all. The
@@ -6544,10 +6579,55 @@ Without the run names, a learner could misread a comparison in three ways:
   unchanged and still running its previous setting" is false of the run that
   accepted the setting.
 
+**The run is named in text, not by colour or position.** Colour already
+identifies the compartment in both modes, so it cannot also identify the run.
+The worst contrast between two compartment traces is 1.01:1, against the 3:1
+required (§ "The six compartment traces"). The chart therefore shows the run by
+line width instead (`PL-HLD5`). Text has no equivalent of line width. Position
+alone fails a reader who looks away and back, which is the stale-context failure
+this requirement exists to prevent.
+
+**A run's name gives its identity, not its place** (`PL-7Z84`). Each run placed
+in a session gets a number, counting from 1, and its name is "Run" followed by
+that number. A run keeps its number for as long as it holds its place on screen.
+Branches fork from a run called the trunk, which holds its place from when the
+dashboard opens. A branch holds its place from its fork until it is dropped.
+Resetting a run and changing its agent both keep the number, because both start
+the run afresh in the same place, after any confirmation that
+§ "Agent-change behavior" asks for. No number is given out twice in a session,
+so a branch taken after a dropped one is "Run 3", never a second "Run 2". A
+Workspace can be pinned to a run, so that it shows that run. If a name were
+reused, a Workspace pinned to the dropped run would find a new run of that name
+and show its values as the dropped run's.
+
+A view shows its run's name whenever a reader could mistake its values for
+another run's: while another run is drawn anywhere in the application, while the
+view is pinned to a run, and always in a window broken out of the main one.
+Break-out windows are not built yet, so the dashboard is the only window that
+draws a run. In this version, therefore, the names appear when two runs are
+compared, and a pinned Workspace shows its run's name in the header of every
+area (`PL-2KXB`).
+
+**A Workspace pins a run by its identity, and says when that run is absent**
+(`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
+number, and a random code for the session that placed the run. A run with the
+same number in a later session is therefore a different run. When the pinned
+run is not open, the Workspace's areas show a named "run not present" state.
+They never show another run in its place, and the simulation is left untouched.
+The reader sets a pin on the row of Workspace tabs, and sees the absent state
+there (`PL-2KXB`).
+
 **For developers.** Colour cannot name the run, because the hover readout is
 separate from the legend. Line width cannot, because it has no text equivalent.
 Drawing order cannot, because nothing shows which run is drawn on top. The run
 names sit in the always-shown region above the charts.
+
+The run identity is defined in `src/anesthesia_sim/layout/run_identity.py`, and
+the one place that renders a run's name is `dashboard_frame.run_label`. A
+Workspace's views show the runs that `Workspace.shown_runs` returns. An earlier
+rule showed run names only when more than one run was on the dashboard. That
+rule fails for a run shown alone in a pinned area or in a window of its own
+(`PL-2KXB`).
 
 ### The statement that the readouts are model outputs
 
@@ -6601,18 +6681,6 @@ dial, circuit concentration or MAC multiple to misread. That applies to a run
 of the planned intravenous models (`ROADMAP.md` planned-milestone item 13), and
 to a run of any later substance. The same criterion selects such a run's own
 values, which are named where its substance's model is specified.
-
-Arterial concentration is **not** in this list. In this model the arterial
-fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
-§ "Model boundary"). A separate arterial readout would show the alveolar number
-a second time under another name, as though the model computed an arterial
-value of its own.
-
-The alveolar readout is labelled "Alveolar", with "end-tidal-equivalent" on the
-line below. It shows the concentration in the model's one well-mixed alveolar
-compartment, which is the value a monitor's end-tidal reading estimates in a
-real patient. The model has no dead space, airway sampling delay or shunt, so
-this readout is not a simulated end-tidal measurement.
 
 **The agent accounting must stay reachable, though not always visible.** It
 consists of cumulative agent delivered, cumulative agent exhausted, total agent
@@ -6669,7 +6737,8 @@ the region sits above it. Only the Workspace tabs, the areas and the case's
 controls scroll between them. The interpretation statement on the region's
 readout heading row stays in view with the line and the region, at any window
 height and through any scrolling. This is what "always" means in the paragraphs
-on the alert colour below.
+on the alert colour in § "Color contrast, and the standard this interface is
+held to".
 
 **No value this list requires may be covered while the application treats it
 as shown.** This occlusion rule applies to a panel drawn over the dashboard, a
@@ -6738,44 +6807,6 @@ chart's limit of two compartments in compare mode (`ROADMAP.md` v0.5.0,
 many colours the chart can use, and it does not reduce what the display must
 show.
 
-**The run is named in text, not by colour or position.** Colour already
-identifies the compartment in both modes, so it cannot also identify the run.
-The worst contrast between two compartment traces is 1.01:1, against the 3:1
-required (§ "The six compartment traces"). The chart therefore shows the run by
-line width instead (`PL-HLD5`). Text has no equivalent of line width. Position
-alone fails a reader who looks away and back, which is the stale-context failure
-this requirement exists to prevent.
-
-**A run's name gives its identity, not its place** (`PL-7Z84`). Each run placed
-in a session gets a number, counting from 1, and its name is "Run" followed by
-that number. A run keeps its number for as long as it holds its place on screen.
-Branches fork from a run called the trunk, which holds its place from when the
-dashboard opens. A branch holds its place from its fork until it is dropped.
-Resetting a run and changing its agent both keep the number, because both start
-the run afresh in the same place, after any confirmation that
-§ "Agent-change behavior" asks for. No number is given out twice in a session,
-so a branch taken after a dropped one is "Run 3", never a second "Run 2". A
-Workspace can be pinned to a run, so that it shows that run. If a name were
-reused, a Workspace pinned to the dropped run would find a new run of that name
-and show its values as the dropped run's.
-
-A view shows its run's name whenever a reader could mistake its values for
-another run's: while another run is drawn anywhere in the application, while the
-view is pinned to a run, and always in a window broken out of the main one.
-Break-out windows are not built yet, so the dashboard is the only window that
-draws a run. In this version, therefore, the names appear when two runs are
-compared, and a pinned Workspace shows its run's name in the header of every
-area (`PL-2KXB`).
-
-**A Workspace pins a run by its identity, and says when that run is absent**
-(`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
-number, and a random code for the session that placed the run. A run with the
-same number in a later session is therefore a different run. When the pinned
-run is not open, the Workspace's areas show a named "run not present" state.
-They never show another run in its place, and the simulation is left untouched.
-The reader sets a pin on the row of Workspace tabs, and sees the absent state
-there (`PL-2KXB`).
-
 **Both runs' values are shown, not only the selected run's.** Showing only the
 selected run would make the readout block a mode. The block would look the same
 whichever run was selected, so a stale selection would have no visual sign. A
@@ -6798,104 +6829,6 @@ the heading line above the block: the substance, the agent's 1 MAC, and the
 version and model. They are the same for both runs because a second run must use
 the first run's agent, and a branch's MAC is checked against its trunk's when
 the branch is opened (`PL-QLZ5`).
-
-**No difference readout is required, and none may be added without a stated
-sign convention.** The arithmetic difference of two alveolar fractions has no
-conventional clinical reading, because clinicians reason about depth in MAC
-multiples and time to target. Displaying it would imply a standard meaning that
-it does not have, which § "Displayed precision" rules out on grounds of
-interpretability. The chart already shows the comparison continuously, on the
-axis the reader is looking at.
-
-Telling a halted run from a paused one is a required output. Both stop the
-numbers advancing, and under § "Step atomicity" both leave the simulation in a
-state that the reader can trust. A paused run continues when the reader asks,
-but a halted run cannot. A halted run shown as "Paused" would offer a Start
-control that fails at the first simulation step, and would present a stopped
-trajectory as one still in progress. That is the mode confusion that this
-document's interface rules exist to prevent. A display that merely freezes, with
-no change of state at all, is worse still.
-
-Showing which agent is running is also a required output. A correct
-concentration attributed to the wrong agent is a display failure, and the same
-number means a different clinical depth for each agent: 2% is about 1 MAC of
-sevoflurane but roughly a third of a MAC of desflurane.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
-
-The agent selector and the header back the written name with the
-agent-identification colour of ISO 5360:2016 Table 2 ("Dimensions and colours
-of agent-specific bottle collars and connectors"): yellow for sevoflurane,
-purple for isoflurane, and blue for desflurane. Footnote b of that table is why
-the colour appears at all: "if a colour is used on a vaporizer, bottle, or
-package label to facilitate correct identification, it is important that only
-the colour for the appropriate anaesthetic agent be used". Showing a colour
-therefore obliges the application to show the correct one. The colour is never
-the only cue: the agent name is always shown beside it, in the selector's
-options and in the header badge.
-
-The displayed fills are two approximations away from the standard's own colour.
-Table 2 footnote c states that "Munsell colour is the original" and that the
-other colour systems it lists "show the nearest available colour sample". The
-Pantone reference is therefore already ISO's approximation, and each displayed
-fill is a screen colour (sRGB) that approximates the Pantone in turn. The
-sevoflurane and desflurane originals lie outside the range of sRGB colours, so
-no display can reproduce them exactly. Converting each Munsell original to sRGB
-directly gives each displayed fill's difference from the standard's original
-(ΔE00):
-
-| Agent | ISO Munsell original | Munsell as sRGB | Displayed fill | ΔE00 |
-| --- | --- | --- | --- | --- |
-| Sevoflurane | 6.25Y 8.5/12 | `#F2D600` | `#FEDB00` | 2.1 |
-| Isoflurane | 7.5P 4/12 | `#8D4192` | `#981D97` | 5.7 |
-| Desflurane | 10B 4/10 | `#0069A0` | `#00629B` | 2.6 |
-
-<!-- not-restated: 2.1 -->
-
-Table 2 specifies a *colour* for desflurane, and this application uses it,
-even though the Scope of ISO 5360 excludes desflurane's *dimensions* and its
-row in that table records "N.S." for the collar angle.
-
-This application keeps a known limitation of the standard. A reader with a
-colour vision deficiency cannot tell isoflurane's purple from desflurane's blue.
-With normal colour vision the two differ by only 1.09 in luminance, so hue alone
-separates them. Simulating the three dichromacies removes the hue without
-supplying the luminance difference needed to tell them apart: 1.48 for
-protanopia, 1.06 for deuteranopia, and 1.11 for tritanopia. More separable
-colours would break the match with real vaporizers, so they are the worse
-option. For a reader with a colour vision deficiency, the agent name beside each
-colour identifies the agent instead.
-
-**The alert colour deliberately does not follow the medical alarm-colour
-convention** (project owner, 2026-09-14). This interface uses the alert colour
-only for bold coloured text: the run-status word, a transient notice line, the
-agent-accounting status word, the permanent educational disclaimer, and the
-case-discard dialog. The agent colours above follow a standard because it
-requires them, and nothing requires the alert colour.
-
-IEC 60601-1-8 governs *visual alarm signals*, which are indicators that encode
-priority by colour together with a flash rate. This interface has no indicator
-lamp, filled banner, flashing element or priority tier, so the convention has
-nothing to apply to.
-
-The disclaimer settles the question against the convention. The alert colour
-marks a line that is on screen *always*, while a monitor's alarm colours carry
-meaning because they are absent until something is wrong. A permanent element
-painted in a high- or medium-priority alarm colour would teach the opposite of
-the convention it borrowed. Departing from the convention is also wanted for its
-own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
-mistaken for one, which is the view this project's disclaimers already take.
-
-*"Always" names where the line lives, not that it is in view on every screen
-today* (`PL-JSY5`, 2026-10-18). Where the line lives, and the one gap in that,
-are stated in the paragraphs on the disclaimer line above. The argument above
-needs only that the line is a permanent statement, not a conditional one, and
-that is true at every window size.
-
-The boundary of the supported run length is shown in the muted colour, not the
-alert colour, for two reasons. Colouring a correct model's declared boundary as
-a fault would teach a reader to distrust a sound number. It would also spend the
-one signal this interface has.
 
 **For developers.** The unconditional tiers and the control-input record are
 stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
@@ -6988,43 +6921,9 @@ the only controlled comparison does not support one. The case for
 non-overlapping areas rests on this project's own reasoning about covered
 values, as `ROADMAP.md` planned-milestone item 34 records.
 
-The run identity is defined in `src/anesthesia_sim/layout/run_identity.py`, and
-the one place that renders a run's name is `dashboard_frame.run_label`. A
-Workspace's views show the runs that `Workspace.shown_runs` returns. An earlier
-rule showed run names only when more than one run was on the dashboard. That
-rule fails for a run shown alone in a pinned area or in a window of its own
-(`PL-2KXB`).
-
 Stacking the two runs' values leaves each panel at its one-run width, so the row
 stays seven panels across at 1366 px. Placed side by side, the values would make
 each panel roughly twice as wide (`PL-F2YS`).
-
-The cited standard references, the screen-colour approximations and the
-accessible foregrounds are kept together in `app/theme.py`, so that the
-agent-colour mapping can be audited as one unit. Every foreground and background
-pair must meet WCAG 2.2 AA contrast. Each Munsell original was converted to sRGB
-via Illuminant C, chromatically adapted to D65. The dichromacy figures were
-computed by `tools/contrast_check.py` with the Brettel 1997 projection recorded
-under § "The six compartment traces". A test pins them, so a colour change
-cannot leave them out of date (`tests/unit/test_contrast_check.py`). Tests in
-`tests/unit/` check that the agent name is shown beside its colour in the
-selector's options and in the header badge.
-
-The alert colour is `WARNING` in `app/theme.py`, and the muted colour is
-`MUTED`. Two requirements apply whatever alert colour is chosen. The chosen
-colour must still meet the interface's contrast target, which
-`tools/contrast_check.py` enforces. The ISO 5360 agent colours stay as they are,
-because they identify an agent and carry no urgency.
-
-The alert-colour decision applies to the Qt port as much as to the current
-interface. The port chooses its palette afresh, and an indicator-shaped element
-could first appear in it, so the port must not arrive with a monitor's priority
-palette.
-
-IEC 60601-1-8's mapping of priority to colour could not be established from a
-primary source, and the secondary sources disagree. Three independent reports
-give the low-priority colour as cyan, as blue, and as "green or blue". The
-alert-colour decision does not depend on the mapping.
 
 ### MAC multiples as a display unit
 
@@ -7878,6 +7777,78 @@ status words "Running" and "Valid" differ from the words for the opposite
 states, which appear in the warning color. A reader who cannot tell the colors
 apart therefore still reads the state.
 
+The agent selector and the header back the written name with the
+agent-identification colour of ISO 5360:2016 Table 2 ("Dimensions and colours
+of agent-specific bottle collars and connectors"): yellow for sevoflurane,
+purple for isoflurane, and blue for desflurane. Footnote b of that table is why
+the colour appears at all: "if a colour is used on a vaporizer, bottle, or
+package label to facilitate correct identification, it is important that only
+the colour for the appropriate anaesthetic agent be used".
+
+The displayed fills are two approximations away from the standard's own colour.
+Table 2 footnote c states that "Munsell colour is the original" and that the
+other colour systems it lists "show the nearest available colour sample". The
+Pantone reference is therefore already ISO's approximation, and each displayed
+fill is a screen colour (sRGB) that approximates the Pantone in turn. The
+sevoflurane and desflurane originals lie outside the range of sRGB colours, so
+no display can reproduce them exactly. Converting each Munsell original to sRGB
+directly gives each displayed fill's difference from the standard's original
+(ΔE00):
+
+| Agent | ISO Munsell original | Munsell as sRGB | Displayed fill | ΔE00 |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 6.25Y 8.5/12 | `#F2D600` | `#FEDB00` | 2.1 |
+| Isoflurane | 7.5P 4/12 | `#8D4192` | `#981D97` | 5.7 |
+| Desflurane | 10B 4/10 | `#0069A0` | `#00629B` | 2.6 |
+
+<!-- not-restated: 2.1 -->
+
+Table 2 specifies a *colour* for desflurane, and this application uses it,
+even though the Scope of ISO 5360 excludes desflurane's *dimensions* and its
+row in that table records "N.S." for the collar angle.
+
+This application keeps a known limitation of the standard. A reader with a
+colour vision deficiency cannot tell isoflurane's purple from desflurane's blue.
+With normal colour vision the two differ by only 1.09 in luminance, so hue alone
+separates them. Simulating the three dichromacies removes the hue without
+supplying the luminance difference needed to tell them apart: 1.48 for
+protanopia, 1.06 for deuteranopia, and 1.11 for tritanopia. More separable
+colours would break the match with real vaporizers, so they are the worse
+option. For a reader with a colour vision deficiency, the agent name beside each
+colour identifies the agent instead.
+
+**The alert colour deliberately does not follow the medical alarm-colour
+convention** (project owner, 2026-09-14). This interface uses the alert colour
+only for bold coloured text: the run-status word, a transient notice line, the
+agent-accounting status word, the permanent educational disclaimer, and the
+case-discard dialog. The agent colours above follow a standard because it
+requires them, and nothing requires the alert colour.
+
+IEC 60601-1-8 governs *visual alarm signals*, which are indicators that encode
+priority by colour together with a flash rate. This interface has no indicator
+lamp, filled banner, flashing element or priority tier, so the convention has
+nothing to apply to.
+
+The disclaimer settles the question against the convention. The alert colour
+marks a line that is on screen *always*, while a monitor's alarm colours carry
+meaning because they are absent until something is wrong. A permanent element
+painted in a high- or medium-priority alarm colour would teach the opposite of
+the convention it borrowed. Departing from the convention is also wanted for its
+own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
+mistaken for one, which is the view this project's disclaimers already take.
+
+*"Always" names where the line lives, not that it is in view on every screen
+today* (`PL-JSY5`, 2026-10-18). Where the line lives, and the one gap in that,
+are stated in the paragraphs on the disclaimer line in § "What this list requires
+once the layout is the reader's". The argument above
+needs only that the line is a permanent statement, not a conditional one, and
+that is true at every window size.
+
+The boundary of the supported run length is shown in the muted colour, not the
+alert colour. Colouring a correct model's declared boundary as a fault would
+teach a reader to distrust a sound number. § "Supported run length" gives the
+rest of the argument.
+
 The interface goes beyond AA in two places:
 
 - **Chart traces can be told apart from each other, which WCAG does not
@@ -7969,20 +7940,9 @@ lines."* Its "Graphical Objects" section makes each line in a graph a graphical
 object in its own right. Citing the Gestalt "law of continuity", it lets
 **minor** overlaps between lines be ignored.
 
-The traces cannot all reach 3:1 against each other because contrast ratios
-multiply along a bounded scale: black to white is 21:1. With $`n`$ traces
-sorted by luminance, the smallest gap between adjacent traces is largest when
-the gaps are equal. So no arrangement of six traces gives every pair more than
-$`21^{1/5}\approx1.84`$. The bound tightens to 1.48 once every trace must also
-clear 3:1 against the panel, as displayed and under simulated dichromacy. Both
-values are less than 3:1, so the line style or marker cannot be dropped.
-
 Because the criterion does not require pairwise separation, the contrast check
 reports the contrast between every pair of traces without failing on it. It
 enforces the 3:1 minimum against the panel, which the criterion does require.
-
-Checking under simulated dichromacy has caught a shortfall: the muscle trace
-passed at 3.19:1 as displayed and failed at 2.98:1 for deuteranopia.
 
 The gridline grey's exemption (`GRIDLINE`) rests on the Understanding document
 for SC 1.4.11. The document's line-graph example does ask 3:1 of a chart's
@@ -8060,6 +8020,33 @@ reason. A requirement exists only where somebody wrote a color down, so the
 contrast check counts those kinds into its report line. Without that count, a
 control that declares no color would appear on neither side of the report
 line, and the line would show it as covered (`PL-4L49`).
+
+The cited standard references, the screen-colour approximations and the
+accessible foregrounds are kept together in `app/theme.py`, so that the
+agent-colour mapping can be audited as one unit. Every foreground and background
+pair must meet WCAG 2.2 AA contrast. Each Munsell original was converted to sRGB
+via Illuminant C, chromatically adapted to D65. The dichromacy figures were
+computed by `tools/contrast_check.py` with the Brettel 1997 projection recorded
+under § "The six compartment traces". A test pins them, so a colour change
+cannot leave them out of date (`tests/unit/test_contrast_check.py`). Tests in
+`tests/unit/` check that the agent name is shown beside its colour in the
+selector's options and in the header badge.
+
+The alert colour is `WARNING` in `app/theme.py`, and the muted colour is
+`MUTED`. Two requirements apply whatever alert colour is chosen. The chosen
+colour must still meet the interface's contrast target, which
+`tools/contrast_check.py` enforces. The ISO 5360 agent colours stay as they are,
+because they identify an agent and carry no urgency.
+
+The alert-colour decision applies to the Qt port as much as to the current
+interface. The port chooses its palette afresh, and an indicator-shaped element
+could first appear in it, so the port must not arrive with a monitor's priority
+palette.
+
+IEC 60601-1-8's mapping of priority to colour could not be established from a
+primary source, and the secondary sources disagree. Three independent reports
+give the low-priority colour as cyan, as blue, and as "green or blue". The
+alert-colour decision does not depend on the mapping.
 
 ### The six compartment traces: what separates them
 
@@ -8153,7 +8140,9 @@ section rests on it:
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
 
 Other colors would not help, because the closest pair among any six colors has a
-contrast ceiling of $`21^{1/5}\approx1.84`$. Requiring 3:1 against the white panel
+contrast ceiling of $`21^{1/5}\approx1.84`$. Contrast ratios multiply along a
+bounded scale: black to white is 21:1. With $`n`$ traces sorted by luminance, the
+smallest gap between adjacent traces is largest when the gaps are equal. Requiring 3:1 against the white panel
 caps each trace's luminance at 0.30, which lowers that ceiling to **1.48**. A
 search over lightness, with each hue and saturation held fixed, reaches **1.28**
 at best for the worst pair across the four vision models. It gets there only by
@@ -8948,11 +8937,10 @@ Alveolar (end-tidal-equivalent)
 1.43%   0.71 ×MAC
 ```
 
-The box follows the rule that § "Minimum displayed outputs" sets for the readout
-panel: "The run is named in text, not carried by colour or by position… A
-concentration that does not say which management produced it is the correct
-number under the wrong patient context." The rule matters more for the box than
-for the panel, which sits in a labelled block.
+The box follows the rule for naming the run (§ "Naming the run in a
+comparison"): a concentration that does not say which management produced it is
+the correct number under the wrong patient context. The rule matters more for the box than for the panel, which sits
+in a labelled block.
 
 Pointing at one trace does not pick out one run. Where two runs' traces for one
 compartment lie close together, the pointer is within the hover radius, 12 pixels
