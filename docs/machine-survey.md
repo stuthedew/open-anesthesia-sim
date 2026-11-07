@@ -97,17 +97,17 @@ answered, though `search.worldcat.org` rate-limited the one query put to it. On
 `www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai`. The three routes that remain are the PubMed MCP server, the project
 owner's private reference corpus, and direct identifier checks. So:
 
-1. **A measured quantity is cited to the measurement, which is tier 1.** Where a peer-reviewed
+1. **A measured quantity is cited to the measurement.** Where a peer-reviewed
    study measured the thing the model uses — an inspired concentration, a time
    to target, a vaporizer's output against its dial — that study is the
    authority, and it is a stronger one than a manual would have been. This is
    `docs/MODEL.md`'s own source hierarchy applied unchanged: a primary
    measurement outranks a specification sheet, and a specification sheet is not
    a measurement.
-2. **A figure a paper carries but did not measure is marked as such.** It is
-   recorded here as tier 2 — a secondary synthesis — and not as a measurement,
-   because that is what it is. Shin et al.'s three Dräger apparatus volumes are
-   the example, and their entry in § "Sources" says why.
+2. **A figure a paper carries but did not measure is marked as such.** Shin et
+   al. print the three Dräger apparatus volumes and cite them onward to sources
+   this session could not open. They are recorded here as tier 2 — a secondary
+   synthesis — and not as measurements, because that is what they are.
 3. **A manufacturer's own technical account is used where one is held, and
    quoted.** The private reference corpus holds *Modern Anesthetics*,
    whose chapter on inhalational dosing technology is written by five Dräger
@@ -119,10 +119,10 @@ owner's private reference corpus, and direct identifier checks. So:
 4. **A standard is named by number, title, edition and date only, and the route
    is stated because it is a weak one.** The texts were not reachable and
    neither were the ISO catalogue pages, so the editions and dates come from
-   **national adoption records surfaced by a web search**, which § "Sources"
-   records beside the two entries. So this document states what each standard
+   **national adoption records surfaced by a web search**, which this project's
+   own rule says is not a source. So this document states what each standard
    *is* and never what a clause requires. Every claim that would need the text
-   is marked as a gap.
+   is marked as a gap. § "Sources" records the route beside the two entries.
 5. **Anything else is `unknown`.** An unknown apparatus volume is a machine that
    cannot be added yet, not a machine with a plausible apparatus volume.
 
@@ -610,8 +610,7 @@ alternatives, and each machine uses one.
 compartment, which has no place for these two differences.
 
 - **Fresh gas inlet position and internal topology** (b7) measurably change
-  $`F_I/F_D`$ (Fukuda 2006, under § "The headline finding, because it decides
-  the abstraction"). `PL-WZVZ` is what makes the decision visible: a difference
+  $`F_I/F_D`$. `PL-WZVZ` is what makes the decision visible: a difference
   shown on a curve and attributed to a trade name, when the parameter that
   produced it is not in the model at all, is a presentation-safety failure
   under `CLAUDE.md`'s clinical-output standard. Choose option 1 or 2, and
@@ -654,8 +653,6 @@ The places to look are:
   must guarantee about oxygen concentration and flow.
 - **ISO 5360:2016**, for agent-specific filling, and to confirm that it
   specifies no dimensions for desflurane.
-- Hendrickx and De Wolf's 2018 review, *The anesthesia workstation: quo vadis?*
-  (§ "Sources"), as the review to read first.
 
 The comparison table (`PL-WZVZ`) takes its rows from this survey, so the sources
 above are where to look for each row it shows as `unknown`.
@@ -738,9 +735,8 @@ description).**
 - Hendrickx JFA, De Wolf AM. The anesthesia workstation: quo vadis? *Anesth
   Analg.* 2018;127(3):671–675.
   PMID 29239956; [DOI 10.1213/ANE.0000000000002688](https://doi.org/10.1213/ANE.0000000000002688).
-  Metadata only; the full text was not reachable. Not cited for any figure;
-  § "What is missing, and how the next session gets it" names it as the review
-  to read first.
+  Metadata only; the full text was not reachable. Named here as the review a
+  later session should read first, not cited for any figure.
 - Jain RK, Swaminathan S. Anaesthesia ventilators. *Indian J Anaesth.*
   2013;57(5):525–532.
   PMID 24249886; [DOI 10.4103/0019-5049.120150](https://doi.org/10.4103/0019-5049.120150).
