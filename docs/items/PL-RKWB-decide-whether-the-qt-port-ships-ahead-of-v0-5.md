@@ -156,3 +156,23 @@ written up. The hazard it inherits is the one the original section named:
 `bin/docket release` offers the next free number to whatever is finished, so a
 patch cut before the port lands takes the number and the section's heading
 moves to the next free one. That is a rename, not a re-scope.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` §
+"Completed: v0.4.26 - the interface moves to Qt" carried this record of the
+decision until then. The project owner's answer in `PL-LVN8` sends decision
+history to the item that holds it.
+
+> **The one question the reorder leaves open is this number, and it is
+> recorded rather than settled.** § "The cadence" says that a gate does not
+> get a version, and that no interim release is cut partway through clearing
+> one. Five of the fixes this port carries are Gate 1 entries. [2026-09-27,
+> `PL-LPH9`: § "The cadence" no longer says the second half. Gate work ships
+> in patch releases as it clears, and what a gate lacks is a version *of its
+> own*. So the question would not arise today, but the reading below still
+> applies.] The reading taken here is that this port is a milestone that
+> *carries* gate fixes, rather than a piece of gate work. § "Debt inside the
+> milestone's own scope" makes the test whether the item appears in the
+> milestone's `Required scope`, and all five appear at item 8. The
+> alternative is that the port ships inside v0.5.0 with no version of its
+> own. `PL-RKWB` records that alternative, and it would change this heading
+> and nothing else.

@@ -408,3 +408,11 @@ The outline read leaves the 2,000 rows to the project owner: § "Recording it" s
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Moved by slice 2 (`PL-P0C5`), 2026-11-07.** The sentence the outline read
+quotes as § "Recording it" now sits at the end of § "Deferring to the next
+gate": "Until `PL-WD5Z`, a deferral was an id named in a `###` subsection headed
+`Declined`, `Deferred` or `Sequenced`. [...] Completed sections keep those
+subsections, because they are the record of that period." The project owner's
+answer in `PL-LVN8` moves v0.5.0's dispositions to the items, so this slice also
+rewrites that last sentence to say where the records went.

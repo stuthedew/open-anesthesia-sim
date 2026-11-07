@@ -79,3 +79,18 @@ mode file the rule lives in. `bin/docket wave` needed nothing: its scope beat,
 "scope X here, which freezes its gate", is printed only for the first unscoped
 milestone past the last one shipped, and for that milestone scoping is the
 later of the two days.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "The
+cadence" carried this record of the decision until then. The project owner's
+answer in `PL-LVN8` sends decision history to the item that holds it.
+
+> Every gate frozen under this cadence froze on the later day. Gate 1 froze
+> on 2026-09-06, the day v0.5.0 was scoped. v0.4.0 had shipped the day
+> before. Gate 2 froze on 2026-09-21, the day v0.5.0 shipped. v0.6.0 had been
+> scoped two releases early, on 2026-09-16. That freeze was recorded at the
+> time as an exception to scoping as the trigger (project owner, 2026-09-16,
+> ratified while scoping v0.6.0). It is the instance that showed the rule's
+> shape. The timeline's rows for Gates 3 and 4 were already written on the
+> ship day. v0.4.26 was counted as a second exception. But it was a patch on
+> the `v0.4.x` track, and a patch freezes no gate, so it says nothing about
+> the trigger.
