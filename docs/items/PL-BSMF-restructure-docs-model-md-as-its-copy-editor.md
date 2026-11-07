@@ -1,9 +1,17 @@
 ---
 id: PL-BSMF
 title: Restructure docs/MODEL.md as its copy editor structure read of 2026-11-05 proposes: new chapter order, about 60 facts given in two to six chapters each cut to one home with pointers, misplaced passages moved; the findings are in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/outline-read.txt and its chapter reads
-status: untriaged
+priority: P2
+effort: L
+status: done
+classes: docs
 feature: model-md-structure
+touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-07
+pr: 2054
+payoff: a reader of MODEL.md meets each chapter after the ones it relies on, and finds each fact in one place, with pointers from the others
+verify: grep -qF '## Discarding a run, and the questions that guard it' docs/MODEL.md && grep -qF '### What a named test, a missing test and a date tell the reader' docs/MODEL.md && ! grep -qF 'The milestone must demonstrate' docs/MODEL.md
 ---
 
 **Problem.** Restructure docs/MODEL.md as its copy editor structure read of 2026-11-05 proposes: new chapter order, about 60 facts given in two to six chapters each cut to one home with pointers, misplaced passages moved; the findings are in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/outline-read.txt and its chapter reads
