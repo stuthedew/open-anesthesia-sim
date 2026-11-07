@@ -3962,10 +3962,120 @@ withdrawn, and failing to withdraw it is a displayed value going quietly wrong.
 
 ### The control-input record
 
-The record lists each change to a control that the model runs under, with the
-simulated time at which it took effect. The record is kept with the run and
-cleared with it. § "The control-input timeline" and the display rules below
-explain what the record is for, what it shows and why it takes this form.
+The record lists each change to a control that the model runs under.
+§ "The control-input timeline" below explains what the record is for, what it
+shows and why it takes this form.
+
+#### The control-input timeline
+
+**The timeline records the settings that a run was given.** Each entry is one
+change that the model ran under. It gives the simulated time at which the
+change took effect, the control, the values before and after, the unit of both
+values, and the user adjustment that the change belongs to, such as one drag of
+a slider. The timeline is kept with the run and cleared with it. It is shown as
+marks on the charts and as a list beside them. Settings of the delivered
+concentration appear in the same format as every other concentration on the
+page.
+
+**A curve can be checked only against the settings that produced it.** The
+exercises that this simulator exists to support all take the form "change one
+thing and look at what happened". Examples are overpressuring and then dialling
+back, dropping the flow, and halving the cardiac output. A learner who cannot
+see where they dialled back cannot read their own experiment. Given the
+recorded settings at the recorded times, a fresh run must reproduce the run
+that the timeline describes.
+
+**Each recorded value is the one that took effect.** The model refuses a
+setting outside its allowed range rather than replacing it with the nearest
+allowed value, so the value that took effect never differs silently from the
+value asked for. A refused setting is not recorded.
+
+**Only what the model saw is recorded.** A setting equal to the one already in
+place is not a change. Nor is a setting that is replaced before the next
+simulation step, because the model uses only the value in place when a step
+runs. A control moved twice between two steps is therefore one change, from the
+first value to the last. A control moved and moved back within one step is no
+change at all. Recording the values in between would describe a run that did
+not happen.
+
+**One drag of a control is one adjustment, and it applies once.** While the
+slider's handle is held, the run keeps its setting and the chart draws a preview
+(§ "A preview of an unapplied setting"). Releasing the handle applies the value
+once, so a drag records one setting change. A key press, one notch of the scroll
+wheel or a click on the slider away from its handle is a single input, and is an
+adjustment of its own.
+
+A displayed adjustment states the interval it spans and how many settings the
+model ran under during it. The count is shown because an adjustment made over
+eight settings is a different run from one made in a single step, even when
+the two start and end at the same values.
+
+**A timeline entry records an input, and says nothing about the patient.** The
+marks on the charts are labelled as inputs, and the list says so, because a
+vertical line on a chart of patient concentrations would otherwise invite the
+reader to see an event in the curves.
+
+**Bounds are displayed, not silent.** A chart shows at
+most a fixed number of marks, and the list of setting changes at most a fixed
+number of lines, so a run may record more adjustments than either can show. A
+chart or a list that ended without a count would tell the reader that nothing
+else happened. Each chart shows the count of adjustments it leaves unmarked,
+because each chart has a window of its own (§ "The chart's time base").
+
+**The timeline itself has no limit.** The limits above apply only to what is
+shown. Dropping the oldest entries would remove the start of the case, which is
+the part a learner returns to.
+
+**For developers.** The two display limits are `MAX_CHART_CONTROL_MARKS` in
+`app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS` in `app/dashboard_frame.py`.
+No record gives the reason for either value (`PL-N8G4`).
+
+The timeline reads each value from the compartment that
+holds it, after the model's setter for that control returns. A setter returns
+only when the model accepts the value, so no separate check is needed to keep a
+refused setting out.
+
+Every value is stored in the unit the model is set with, which for the
+delivered concentration is the percent of one atmosphere (`PL-NJPB`). The
+formatter for concentrations (`format_percent`) takes a fraction, so the stored
+percent is converted to a fraction on its way in and back to a percent for
+display.
+
+The interface declares an adjustment when a drag starts, and each change
+carries the number of its adjustment. A change that arrives with no declared
+adjustment, such as a call from code, gets a number of its own. Code must never
+group changes by the time between them. A playback multiplier changes how much
+simulated time one drag spans, so any time threshold would group correctly at
+one multiplier and wrongly at another.
+
+Each control is recorded under a fixed name from the clinical vocabulary:
+`fresh_gas_flow`, `delivered`, `alveolar_ventilation` and `cardiac_output`. A
+name taken from the accessor that applies the setting would change whenever the
+code was renamed, and those accessors have been renamed three times (`PL-3TLK`,
+`PL-9SH6`, `PL-NJPB`). The circuit volume was recorded as a fifth control,
+`circuit_volume`, until it became a fixed model parameter (§ "What is not
+bounded this way"). Removing that name broke no recorded timeline, because a
+timeline is held in memory and is never saved.
+
+Capping the timeline would lose the settings needed to reproduce the run. It
+would also leave memory use unbounded, because the run itself holds one stretch
+and one keyframe for each accepted change and has no limit either
+(§ "The run is that record, and every state is derived from it").
+
+The timeline can be unlimited because it grows with the number of settings
+changed, not with the length of the run. Until a drag was recorded only on its
+release (`PL-5B1N`), each drag added at most one entry per simulation step,
+however fast the slider reported. The number of entries per real second then
+depended on the tick rather than on simulated time, so it was the same at every
+playback multiplier. On 2026-09-14, under `PL-1PSX`, continuous dragging gave
+ten entries per real second at 1×, 5×, 20×, 60× and 300× alike, and a drag made
+while the run was paused gave one entry. Grouping the entries for display costs
+0.9 ms per frame at a thousand entries and 8.8 ms at ten thousand, against a
+200 ms frame. The grouping is recomputed only when the timeline changes. At a
+hundred thousand entries it would cost half a frame. Reaching that many took
+about three hours of unbroken dragging under the old behaviour, and the
+timeline would then be smaller than 9 MB.
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 #### The run is that record, and every state is derived from it
 
@@ -7157,117 +7267,6 @@ parameter change that moves a figure fails it, and so does an edit to the
 protocol or to a figure on its own.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-### The control-input timeline
-
-**The timeline records the settings that a run was given.** Each entry is one
-change that the model ran under. It gives the simulated time at which the
-change took effect, the control, the values before and after, the unit of both
-values, and the user adjustment that the change belongs to, such as one drag of
-a slider. The timeline is kept with the run and cleared with it. It is shown as
-marks on the charts and as a list beside them. Settings of the delivered
-concentration appear in the same format as every other concentration on the
-page.
-
-**A curve can be checked only against the settings that produced it.** The
-exercises that this simulator exists to support all take the form "change one
-thing and look at what happened". Examples are overpressuring and then dialling
-back, dropping the flow, and halving the cardiac output. A learner who cannot
-see where they dialled back cannot read their own experiment. Given the
-recorded settings at the recorded times, a fresh run must reproduce the run
-that the timeline describes.
-
-**Each recorded value is the one that took effect.** The model refuses a
-setting outside its allowed range rather than replacing it with the nearest
-allowed value, so the value that took effect never differs silently from the
-value asked for. A refused setting is not recorded.
-
-**Only what the model saw is recorded.** A setting equal to the one already in
-place is not a change. Nor is a setting that is replaced before the next
-simulation step, because the model uses only the value in place when a step
-runs. A control moved twice between two steps is therefore one change, from the
-first value to the last. A control moved and moved back within one step is no
-change at all. Recording the values in between would describe a run that did
-not happen.
-
-**One drag of a control is one adjustment, and it applies once.** While the
-slider's handle is held, the run keeps its setting and the chart draws a preview
-(§ "A preview of an unapplied setting"). Releasing the handle applies the value
-once, so a drag records one setting change. A key press, one notch of the scroll
-wheel or a click on the slider away from its handle is a single input, and is an
-adjustment of its own.
-
-A displayed adjustment states the interval it spans and how many settings the
-model ran under during it. The count is shown because an adjustment made over
-eight settings is a different run from one made in a single step, even when
-the two start and end at the same values.
-
-**A timeline entry records an input, and says nothing about the patient.** The
-marks on the charts are labelled as inputs, and the list says so, because a
-vertical line on a chart of patient concentrations would otherwise invite the
-reader to see an event in the curves.
-
-**Bounds are displayed, not silent.** A chart shows at
-most a fixed number of marks, and the list of setting changes at most a fixed
-number of lines, so a run may record more adjustments than either can show. A
-chart or a list that ended without a count would tell the reader that nothing
-else happened. Each chart shows the count of adjustments it leaves unmarked,
-because each chart has a window of its own (§ "The chart's time base").
-
-**The timeline itself has no limit.** The limits above apply only to what is
-shown. Dropping the oldest entries would remove the start of the case, which is
-the part a learner returns to.
-
-**For developers.** The two display limits are `MAX_CHART_CONTROL_MARKS` in
-`app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS` in `app/dashboard_frame.py`.
-No record gives the reason for either value (`PL-N8G4`).
-
-The timeline reads each value from the compartment that
-holds it, after the model's setter for that control returns. A setter returns
-only when the model accepts the value, so no separate check is needed to keep a
-refused setting out.
-
-Every value is stored in the unit the model is set with, which for the
-delivered concentration is the percent of one atmosphere (`PL-NJPB`). The
-formatter for concentrations (`format_percent`) takes a fraction, so the stored
-percent is converted to a fraction on its way in and back to a percent for
-display.
-
-The interface declares an adjustment when a drag starts, and each change
-carries the number of its adjustment. A change that arrives with no declared
-adjustment, such as a call from code, gets a number of its own. Code must never
-group changes by the time between them. A playback multiplier changes how much
-simulated time one drag spans, so any time threshold would group correctly at
-one multiplier and wrongly at another.
-
-Each control is recorded under a fixed name from the clinical vocabulary:
-`fresh_gas_flow`, `delivered`, `alveolar_ventilation` and `cardiac_output`. A
-name taken from the accessor that applies the setting would change whenever the
-code was renamed, and those accessors have been renamed three times (`PL-3TLK`,
-`PL-9SH6`, `PL-NJPB`). The circuit volume was recorded as a fifth control,
-`circuit_volume`, until it became a fixed model parameter (§ "What is not
-bounded this way"). Removing that name broke no recorded timeline, because a
-timeline is held in memory and is never saved.
-
-Capping the timeline would lose the settings needed to reproduce the run. It
-would also leave memory use unbounded, because the run itself holds one stretch
-and one keyframe for each accepted change and has no limit either
-(§ "The run is that record, and every state is derived from it").
-
-The timeline can be unlimited because it grows with the number of settings
-changed, not with the length of the run. Until a drag was recorded only on its
-release (`PL-5B1N`), each drag added at most one entry per simulation step,
-however fast the slider reported. The number of entries per real second then
-depended on the tick rather than on simulated time, so it was the same at every
-playback multiplier. On 2026-09-14, under `PL-1PSX`, continuous dragging gave
-ten entries per real second at 1×, 5×, 20×, 60× and 300× alike, and a drag made
-while the run was paused gave one entry. Grouping the entries for display costs
-0.9 ms per frame at a thousand entries and 8.8 ms at ten thousand, against a
-200 ms frame. The grouping is recomputed only when the timeline changes. At a
-hundred thousand entries it would cost half a frame. Reaching that many took
-about three hours of unbroken dragging under the old behaviour, and the
-timeline would then be smaller than 9 MB.
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
-
 ### F_A/F_I as a displayed ratio
 
 **A second plot, under the compartment chart, draws $`F_A/F_I`$.** It shows the
@@ -9592,10 +9591,12 @@ The simulator must always meet the following conditions:
 - Reset clears dynamic state while preserving settings;
 - a delivered concentration above the agent's vaporizer maximum is refused, not capped;
 - zero fresh gas flow prevents new external delivery;
-- zero ventilation prevents circuit-to-patient ventilatory exchange;
-- zero cardiac output prevents pulmonary and tissue perfusion;
-- zero tissue flow prevents uptake by that tissue; and
-- equilibrium produces no net internal transfer.
+- zero ventilation prevents circuit-to-patient ventilatory exchange
+  (§ "Zero-ventilation test");
+- zero cardiac output prevents pulmonary and tissue perfusion
+  (§ "Zero-cardiac-output test");
+- zero tissue flow prevents uptake by that tissue (§ "Zero-tissue-flow test"); and
+- equilibrium produces no net internal transfer (§ "Equilibrium test").
 
 **For developers.** The simulator must also meet these conditions on its time steps:
 
