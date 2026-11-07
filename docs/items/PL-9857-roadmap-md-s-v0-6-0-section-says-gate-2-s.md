@@ -1,0 +1,24 @@
+---
+id: PL-9857
+title: ROADMAP.md's v0.6.0 section says Gate 2's frozen list has not yet been checked for stale entries, while the v0.5.1 version row says Gate 2's 168 clearable entries were swept
+priority: P3
+effort: S
+status: untriaged
+classes: defect, docs
+feature: roadmap-structure
+touches: ROADMAP.md
+deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
+added: 2026-11-07
+---
+
+**Problem.** ROADMAP.md's v0.6.0 section says Gate 2's frozen list has not yet been checked for stale entries, while the v0.5.1 version row says Gate 2's 168 clearable entries were swept
+
+**Found by** the copy editor's structure read of `ROADMAP.md` (2026-11-06), finding 20 of its outline read. Rows are `ROADMAP.md` at `aff76df1`, before the restructure's first slice (`PL-W0TS`) moved its sections; the quoted words find each passage after the move. The finding is quoted whole, as a block.
+
+```text
+- The staleness sweep: "one measured pass found 12 of 134 items dead and 31 more overtaken" (6036-6044) and "found 12 of 134 open items dead and 31 more overtaken, 32% in all" (7732-7755). The figure belongs in § "The cadence". v0.6.0 keeps whether and when its own list was swept. Query: 6036-6044 says Gate 2's list "has not yet been checked for stale entries", but version row 102 (v0.5.1) says "Gate 2's 168 clearable entries swept".
+```
+
+**Why it matters.** Whether Gate 2's list was swept for stale entries says how far its count can be trusted. The two passages give opposite answers. The rest of the finding, where the staleness figure belongs, is slice 2 (`PL-P0C5`).
+
+**Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
