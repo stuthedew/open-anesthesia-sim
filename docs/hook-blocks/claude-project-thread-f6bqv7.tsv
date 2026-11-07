@@ -4,3 +4,4 @@ time	session	guard	rule
 2026-11-07T21:22:08.280839+00:00	30f1228f-0953-581d-85fb-3a05776af719	push-check-guard	checks-failed
 2026-11-07T21:33:27.741584+00:00	30f1228f-0953-581d-85fb-3a05776af719	gate-status-guard	status-swallowed:tools/doc_check.py
 2026-11-07T21:39:13.858681+00:00	30f1228f-0953-581d-85fb-3a05776af719	gate-status-guard	status-swallowed:ruff
+2026-11-07T21:41:57.431872+00:00	30f1228f-0953-581d-85fb-3a05776af719	gate-status-guard	arm-piped
