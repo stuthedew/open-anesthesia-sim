@@ -123,8 +123,9 @@ rejected entry needs none, because it is a known miss of the current prompt.
 
 ## Running the set
 
-Run it whenever `.claude/agents/copy-editor.md` changes, a reader-table row
-changes for a file that the set holds, or a gold-standard paragraph is added:
+Run it whenever `.claude/agents/copy-editor.md` or
+`.claude/agents/meaning-check.md` changes, a reader-table row changes for a
+file that the set holds, or a gold-standard paragraph is added:
 
 1. Run `python3 tools/rejected_prose.py show > show.txt`.
 2. Run `python3 tools/copy_edit.py show.txt`, as close-out step 8 does, and

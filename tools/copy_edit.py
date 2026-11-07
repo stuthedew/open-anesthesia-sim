@@ -95,6 +95,7 @@ from docket.release import code_spans  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 
 from new_prose import (  # noqa: E402
+    CHECK_PROMPT,
     PROMPT,
     RULE_END,
     Part,
@@ -155,8 +156,6 @@ READ_NAMES = ("first", "second", "third", "fourth")
 
 #: The role that `docket.toml`'s `[models]` table is asked about for the meaning check.
 CHECK_ROLE = "meaning-check"
-#: The meaning check's instructions.
-CHECK_PROMPT = ROOT / ".claude" / "agents" / "meaning-check.md"
 #: The heading of the section in the copy editor's instructions that lists what
 #: an edit never loses. The meaning check is given the same section, so the
 #: copy editor and the check hold an edit to one list.
