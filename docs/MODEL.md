@@ -6854,8 +6854,7 @@ one hour, and fat spans 1.5–3.7 px. Fat's trace near zero is its true partial
 pressure, and partial pressure drives effect, so one linear axis serves all six
 compartments. Because the hover readout reports every trace in reach, the
 crowding needs no change of scale. The fat trace cannot show how much agent fat
-holds: a fifth of the stored agent at one hour, and a third at three hours. The
-compartment schematic shows that amount (§ "The compartment schematic: what its
+holds. The compartment schematic shows that amount (§ "The compartment schematic: what its
 heights, amounts and share bar assert").
 
 **For developers.** Nothing in the model's code (`core/`) computes a MAC
@@ -9419,7 +9418,10 @@ the top. So a height on the schematic and a height on the chart show the same
 tension. A container that holds more agent can stand lower than one that holds
 less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
-its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). Every
+its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
+dial, across the simulator's three agents, fat holds a fifth of the stored agent
+at one hour and a third at three hours, which the chart's fat trace cannot show.
+Every
 container is drawn at one width, so its filled area is not an amount either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
