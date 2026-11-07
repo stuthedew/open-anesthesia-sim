@@ -13,3 +13,5 @@ added: 2026-11-07
 **History.** Before `#1808` (`PL-BZR4`) the sentence said the stored MAC "reads 10% low", which already blurred the stored value with the displayed multiple. `#1808` changed "reads" to "is", which made it wrong.
 
 **Fix.** Say "the displayed sevoflurane MAC multiple reads 10% low and the desflurane one 10% high", or give the stored values' own gaps, 11.1% high and 9.1% low. `PL-BSMF` would also leave this gap stated once, in § "Delivery-limit and MAC parameters", with a pointer here.
+
+**Fixed by the restructure.** The MODEL.md restructure (`#2054`, `PL-BSMF`) cuts this § "Known limitations" paragraph to a pointer at the table in § "Delivery-limit and MAC parameters", which states the gap correctly. Close this item as fixed by `#2054` once that pull request and the branch carrying this item have both merged.
