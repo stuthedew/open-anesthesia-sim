@@ -256,6 +256,16 @@ does not know this repository's names either.
      that each entry names the test, file or value that backs it. Where a
      phrase names a part of a whole, such as a "member", say of what, with an
      example the file gives: "a row for each hazard in the hazard table".
+   - A bold opening phrase must make sense to a reader who has read nothing
+     before it, because a reader who scans the page may read only the bold
+     phrases. Where it names things by a count or a kind, say which things or
+     which kinds, in the phrase or in the sentence after it. "The checks fall
+     into two groups" leaves the reader asking which groups. Write "The checks
+     fall into two groups: those that stop a merge and those that only warn".
+     Where it names values by a bare noun, such as "the limits", say limits
+     of what. Rewrite such a phrase even where the rest of the paragraph is
+     plain, because changing the words around it leaves the reader's
+     question.
    - Cut words that mean little, words that repeat another word's meaning, and
      words the reader can infer. Replace a phrase with a word where one word
      will do. Do not use the same word or say the same thing in two
@@ -336,6 +346,11 @@ does not know this repository's names either.
    count 'a dated fact that must never change'" points at clause 3, the fixed
    form for a missing link, but quotes the rule of clause 4, about dated
    statements.
+
+   Query a distinction that the paragraph names and does not explain. Where
+   it says that two things differ, or names two kinds of a thing, and the
+   file does not say how they differ, list that under the block, and never
+   explain the difference from your own knowledge.
 
    Query a term that the paragraph's reader does not know when the file does
    not explain it and no other reader's place can take the sentence. The
@@ -554,6 +569,13 @@ what changed.
   cross-references", p. 83: organize the text so that it needs few
   cross-references, and where one points to brief material, repeat that
   material instead.
+- Pernice, "F-Shaped Pattern of Reading on the Web: Misunderstood, But Still
+  Relevant (Even on Mobile)", Nielsen Norman Group (12 November 2017),
+  https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/ : in
+  one common pattern "the eyes scan headings and subheadings and skip the
+  normal text below", so "if users see only the first 2 words, they should
+  still get the gist of the following section". A bold opening phrase is read
+  the same way, which is why it must make sense on its own.
 - Google, *Technical Writing One*, "Words": define a new term where you
   introduce it, and use each term consistently, because a term renamed partway
   through a document reads as a second thing.
