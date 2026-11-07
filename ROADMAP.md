@@ -234,29 +234,17 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 #### Every completed version has a tag on its own release's commit
 
 **Tags.** Every version that the table above marks Completed carries an
-annotated tag. This section deliberately does not restate which versions those
-are. The table is the list, and a second copy is a second thing to keep true,
-which it twice was not. Instead, `tools/doc_check.py` checks the completed rows
-against `git tag`. So a release that shipped without a tag fails the check
-rather than waiting to be noticed. As a result, `git describe --contains`
+annotated tag. As a result, `git describe --contains`
 resolves for every commit up to and including the latest release. This was
 verified on 2026-08-30 across the whole of `main`. The commits it does not
 resolve are the unreleased ones after the newest tag, and the next release's
 tag will cover them.
 
-A version that has genuinely gone out untagged is named in a bold sentence
-here. The checker requires the count that the sentence states to match the
-versions it names. There are none.
-
 **The gap is closed, 2026-08-30.** v0.1.0 (`ddc868f6`) and v0.2.0 (`69a5888c`)
 were the last two untagged versions.
 
 A tag also has to sit on its own release's commit, and the tag's name cannot
-show whether it does. `v0.5.3` was pushed before its release merged, onto the
-commit before its own, and every check treated it as tagged (`PL-YKSD`). So
-`tools/doc_check.py` also reads the `pyproject.toml` at each release tag. The
-check fails when that file declares a version other than the tag's. It names
-the commit that the tag points at and the version that the file holds. **One
+show whether it does. **One
 version shipped with a stale version file**: v0.2.0. Its tag is on the release
 commit `69a5888c`, whose `pyproject.toml` still read 0.1.0. The version bump
 followed as `8687bdf2`, "Fix stale app version", which went out in v0.2.1.
@@ -264,20 +252,11 @@ Moving the tag onto the bump would make that commit appear to have shipped in
 v0.2.0. So the tag stays where the release shipped, and the exception is named
 here instead.
 
-#### Where and when the tag is made
+#### Where the tag is made
 
 The tag goes on the release's cut. The cut is the commit that added the
 release's notes file, which is the cut's own squash commit on `main`. The tag
 does not go on whatever `main` holds when the tag is made (PL-QHCW).
-`.github/workflows/tag-release.yml` pushes the tag once the cut lands on `main`
-(PL-2FY6). So between that merge and the workflow run, the newest version is
-marked Completed and has no tag. The check stays silent during that window
-rather than reporting an error. Failing on the window would turn `make check`
-red on every release branch. That is the failure PL-8HJ2 removed, coming back
-by another route. The advisory that the check once raised could not tell a tag
-that was never pushed from one that this checkout had not yet fetched
-(PL-R7C0). `bin/docket release` refuses to cut the *next* release while that
-tag is still missing. That refusal is what stops the window from staying open.
 
 #### What a tag ships that its notes may not name
 
@@ -307,21 +286,15 @@ below names the release rather than assuming one.
 **Each notes file carries its own pointer, since 2026-09-22.** When a span
 includes work that the cut did not stamp, its notes say so in an
 `### also inside this tag's span` section. That section names the pull request
-and the release that does describe the work. `tools/doc_check.py`'s
-`check_tag_span_covers_its_notes` fails `make check` on the next span that
-includes such work and lacks the section. The section is additive, so the cut's
+and the release that does describe the work. The section is additive, so the cut's
 own account of what it was for is untouched. The section is written after the
 tag. That is the one time a notes file is edited, and it is safe because a
-tagged release is never re-cut. Two kinds of span are exempt. Each exemption
-has a reason, and neither is there to keep the check quiet. The first is a
+tagged release is never re-cut. Two kinds of span are exempt. The first is a
 release's own cut pull request. It is inside its own span by construction, and
 the next release stamps it every time. The second is the newest tag's span,
 until the next release's notes exist. Before then, its pointer would have to
 name a release that nobody has cut. The cut that writes those notes is asked
-for the pointer on its own branch (`PL-JLYG`). The claim this section makes is
-about navigation only. It stops being true the moment either mechanism behind
-it changes: the tag going on the merge commit, or the notes being rendered at
-the cut.
+for the pointer on its own branch (`PL-JLYG`).
 
 #### Why nothing reconciles the tag span and the notes automatically
 
@@ -333,11 +306,7 @@ the merge, and such a job cannot write to `main` here. A push made with
 report on it (`PL-N5WZ`). Every variant that does land needs a person at the
 merge anyway. Absorbing a newcomer, meaning work that the base took in after
 the cut, would make the release narrative describe work that the session that
-cut the release did not do. That is a judgment no tool should make. So
-`bin/docket check` raises an advisory on a checkout that carries an unmerged
-cut. It raises the advisory while re-running `make release VERSION=X` would
-still absorb that newer work. The advisory names what the base has taken in
-since the cut and both dispositions.
+cut the release did not do. That is a judgment no tool should make.
 
 ## The plan
 
@@ -520,66 +489,6 @@ longer applies to these four items.
   `tools/doc_check.py` fails when an id is named under both headings of one
   milestone. It also gives an advisory where a scope bullet contains exclusion
   language.
-
-## Keeping the toolchain current
-
-**When a dependency or the interpreter moves, a scheduled run notices and the
-owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
-
-This is a multi-year project, so every version constraint in `pyproject.toml`
-will be wrong eventually. `requires-python` admits two CPython minor versions,
-3.14 and 3.15, and CPython ships a new one each year. Flet is pre-1.0, and an
-upper bound excludes its 1.0. The dev tools have only lower bounds, so their
-behaviour changes underneath the gate. The failure being guarded against
-is not a stale pin. It is returning after a gap to a tree that no longer
-builds. By then the upgrade that would fix it is several versions wide, and
-the cost of coming back exceeds what a hobby project will pay.
-
-The risk is not hypothetical here. `pyproject.toml` records the instance. In
-pydantic 2.12.4, the library began passing `prefer_fwd_module=` to
-`typing._eval_type`. CPython added that keyword between 3.14.0rc2 and 3.14.0
-final. Parameter loading in the scientific core stopped working. It took
-one dependency, one patch version and one interpreter build.
-
-**What notices.** `.github/workflows/drift.yml` runs monthly and on demand. It
-asks two questions that `quality.yml` is right not to ask, and a third
-question that runs weekly:
-
-- *`dependencies`* checks the newest release that each bound in
-  `pyproject.toml` already allows. It resolves them with `uv sync --upgrade`.
-  A failure means that a dependency broke the project inside a range that this
-  project has already said it accepts.
-- *`interpreter`* checks the newest stable CPython. It relaxes the upper bound
-  on `requires-python` in the runner only. A failure means that the next
-  interpreter is not ready for this tree, or that this tree is not ready for
-  it.
-- *`order`* runs the whole suite in a shuffled order every Monday. It uses
-  pytest-randomly, with the date as the seed. A failure means that a test
-  passes only when another test runs before it. The run's output names the
-  seed that reproduces the failure (`PL-75D9`).
-
-The workflow also prints what exists *beyond* the declared bounds, without
-failing on it. It does not fail, because crossing a major bound is a
-deliberate migration, and CI should not attempt one. That step is how anyone
-learns at all that a Flet 1.0 or a pydantic 3 is available.
-
-**What does not happen.** There are no automated dependency pull requests and
-no version-bump campaign. The current pins are correct today. The point is to
-know when one stops being correct, not to raise numbers on a schedule.
-Automated bumps were considered and rejected, on the evidence this project
-already cites about narrow versus broad automation. Broad automation
-accumulates noise until people route around it, which is the failure
-`PL-ZBJ0` records.
-
-**Why it reports rather than gates.** Nobody here controls the versions that
-the workflow resolves. So gating on them would let an unrelated upstream
-release block this project's own work. A red run is news to act on when
-convenient, not a signal to stop.
-
-**And it is retired if it stops being news.** `CLAUDE.md`'s retirement test
-applies: a check that fires every run without changing a decision is a defect
-in the check. If the workflow's failures become routine background that
-nobody acts on, delete the workflow rather than working around it.
 
 ## The debt gate
 
@@ -961,18 +870,11 @@ current gate neither places nor takes carries `deferred-from: vX.Y.Z - <why>`.
 The version is the milestone whose frozen list excuses the item. It is never
 the gate that the item goes to, because the next freeze takes every open debt
 item anyway. The reason states the grounds for the deferral, which is what a
-reader of the gate is owed. The command `bin/docket set <id> --deferred-from
-"..."` writes it. `bin/docket check` fails an open debt item that the current
-gate neither places nor defers, and its error message prints that command
+reader of the gate is owed. `bin/docket check` fails an open debt item that the current
+gate neither places nor defers
 (`PL-WD5Z`). A frozen entry deferred on the terms above carries the same field
-(`PL-8QMD`). `bin/docket check` also fails an open frozen entry that is waiting
-on work outside the plan, unless the field defers it. Work is outside the plan
-when neither the entry's list nor the milestone's `Required scope` includes it,
-and the release train does not schedule it first. A section may state the
-grounds that its deferrals share, as v0.6.0's section does, but no tool reads
-that prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
-headed `Declined`, `Deferred` or `Sequenced`. Each way in which that second
-store disagreed with the items became an item of its own. Completed sections
+(`PL-8QMD`). Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
+headed `Declined`, `Deferred` or `Sequenced`. Completed sections
 keep those subsections, because they are the record of that period.
 
 ### Recording it
@@ -1349,9 +1251,7 @@ freeze, or it falls under one of that section's exceptions (`PL-GW0P`). A
 capture that an entry waits on is either let onto the list beside that entry,
 or the entry is deferred with it (`PL-D388`). Each deferred item records
 `deferred-from: v0.7.0 - <why>`. The triage pass that classes the item writes
-that field. `bin/docket check` fails on any open debt item that this section
-neither places nor defers. `bin/docket wave` lists the deferrals with the
-state of each one (`PL-WD5Z`).
+that field.
 
 `PL-QX2G` and `PL-YT3T` (`safety`, 2026-10-25) re-entered after the cut. Both
 were split from the generator head `PL-58D7` when its design round chose to
@@ -6211,17 +6111,7 @@ port's parity claim checkable with this entry on the list. A `safety` entry
 re-enters the current gate whenever it is found, per § "The cadence". That is
 why it is recorded here rather than left to Gate 2.
 
-**`bin/docket wave` still prints all thirteen as "waiting on work outside it".
-That is correct, not stale.** The command asks whether an entry's `blocked-by`
-chain leads outside the frozen list. These chains still do. They name
-`PL-G59B`, `PL-25KS` and `PL-L9RD`, which are port items, not gate entries.
-What changed is *when* that outside work happens. That is a fact about the
-timeline above, and no field records it. The two readings answer different
-questions, and both are true. The count says that the gate cannot clear these
-entries by itself. This section says that the work they wait on now comes
-before the milestone they gate. Do not "fix" the count to agree with the prose.
-
-**This is what `PL-D143` asked for and could not get.** That item recorded the
+**The port's move ahead of v0.5.0 is what `PL-D143` asked for and could not get.** That item recorded the
 contradiction plainly. Recorded debt is cleared *before* the milestone it
 gates. These entries could not be, because the decision was to fix them during
 a release that comes *after* the release being gated. So the gate could not
@@ -6401,8 +6291,7 @@ ordinary gate work. The other is a deferral that this section has to record:
   readings agree. `bin/docket wave` reports the gate as `0 this gate can
   clear, 1 waiting on 3 open items outside it`. It computes that from the
   items, not from this prose. So a future disagreement between the two is
-  visible on the next run. § "What reads this, and what reads past it" below
-  asks that of every entry.
+  visible on the next run. `PL-SL70` asks that of every entry.
 
   **Why a `safety`-classed entry may be deferred at all**, stated because the
   unconditional safety exception would otherwise forbid the deferral. The
@@ -6416,14 +6305,6 @@ ordinary gate work. The other is a deferral that this section has to record:
   not an accident of what has been built so far, keeps the hazard inactive. The entry is
   owed its band the moment either condition lifts: a second profile, or a
   surface that names a machine.
-
-**What reads this, and what reads past it.** `bin/docket wave` arrives at the
-same eleven from the items, not from this prose. It counts an open entry whose
-`blocked-by` chain leads outside the frozen list separately from the entries
-this gate can clear. So the beat asks for a number that can be reached
-(`PL-SL70`). Two independent readings of one fact are the point, not
-duplication. If the prose and the count disagree, one of them is wrong, and the
-disagreement is visible on the next run.
 
 ### Declined to Gate 2 on the refilling-queue ground
 
@@ -7696,22 +7577,10 @@ on the refilling-queue ground, as the first thirty were. It declares the
 these are wholly inside `docket.toml`'s `workflow_paths`, so none of it can
 affect a reader of the simulator.
 
-**It is inside this section rather than beside it because the checker used to
-read only one.** `tools/doc_check.py`'s `_declined_ids` took the first
-`### Declined to Gate ...` subsection after the gate heading. It stopped at
-the next heading of any level. So a second subsection silently orphaned every
-disposition recorded in this one, and the gate reported them all as
-undisposed. `PL-82B0` fixed that on 2026-09-20. `_declined_ids` now reads every
-such subsection of the gate's own section and stops at the next `##`. Writing
-a second subsection costs nothing, and the placement above is a convention,
-not a constraint.
-
 This section deliberately does not record how many dispositions it holds. The
 sentence above carried the figure 66, while the subsection named 132 open debt
 items on the day that was measured, 2026-09-16. Nothing reconciles the two
-numbers. `check_gate_counts` checks a frozen list's count-carrying group
-headings and its `not-delegable` claims against the list, and this is a body
-paragraph. The entries below are the record. A number that restates them
+numbers. The entries below are the record. A number that restates them
 becomes wrong at the next closure and tells nobody that it has. The open count
 is not recorded here for the same reason.
 
@@ -8685,28 +8554,18 @@ whether `Required scope` below names the id, not whether the item carries the
 `interface-areas` feature. The two tests differ in both directions. On
 2026-09-23 `PL-NDKC` and `PL-Y04W` carried the feature without being named.
 `PL-CNCF` and `PL-PGZF` were named without carrying it, as they have been since
-`PL-YVP7`. So `bin/docket wave` reports this group, not `bin/docket gate`,
-which splits the whole store by feature (`PL-RFHH`). `PL-CNCF` and `PL-PGZF`
-sat in the product-lane and neither-lane groups until 2026-09-23. That was
-because `#862` declared them in Required scope after `#850` had grouped this
-list. They moved into the first group when `tools/doc_check.py` began checking
-that group against Required scope (`PL-J6HP`), and the three group counts moved
-with them. The second kind is the rest. It clears before implementation of this
+`PL-YVP7`. The second kind is the rest. It clears before implementation of this
 milestone begins, unless this gate defers it, and it is recorded in one group,
 for the reason § "Recording it" gives for not naming lanes. On 2026-10-03 two
 of 42 open entries sat in the wrong group. The three groups were collapsed into
 one on 2026-10-24 (`PL-Z64T`).
 
 **What this gate defers is not a group: it is each entry's `deferred-from:
-v0.6.0`, which `bin/docket wave` prints** (`PL-8QMD`, project owner,
+v0.6.0`** (`PL-8QMD`, project owner,
 2026-10-11, ratified, over keeping the deferral group headings, read through
 `blocked-by`, with a check per reader). § "Deferring to the next gate" gives
-the terms. `wave` counts a deferred entry separately from what this gate can
-clear. The paragraphs below record the decision behind each deferral. Until
-2026-10-12, three groups headed "Deferred to Gate 3" held the seven entries. In
-that period `wave` read a deferral from a `blocked-by` chain leaving the list.
-That counted an entry as deferred whether or not anybody had deferred it
-(`PL-D388`).
+the terms. The paragraphs below record the decision behind each deferral. Until
+2026-10-12, three groups headed "Deferred to Gate 3" held the seven entries.
 
 **`PL-Y04W` is deferred to Gate 3 on § "The cadence" beat 3's terms, and the
 three conditions are met here rather than assumed.** It is the break-out build
@@ -8811,21 +8670,6 @@ no vapour-to-liquid conversion exists that could rest on a composite constant
 conditions are a second profile or a surface naming a machine, a selectable
 agent unit, a stored price, or a liquid figure. `PL-B396` is classed `ux` and
 `docs`, so beat 3 asks for this record only of the other four.
-
-**What reads this, and what reads past it.** `bin/docket wave` counts this list
-from the items, not from this prose. It counts an open entry whose
-`deferred-from:` names v0.6.0 as deferred. It keeps such entries apart both
-from the entries this gate can clear and from those waiting on work outside
-it. `bin/docket check` refuses an open entry that waits on work which neither
-this list nor Required scope contains and which nothing schedules first, unless
-the entry's field defers it (`PL-8QMD`). Until 2026-10-12 `wave` read a
-deferral from the `blocked-by` chain leaving the list instead. That is why
-`PL-YRLM` was filed off this list: it gives item 28's scheduling the id that a
-`blocked-by` needs (`PL-18BD`, project owner, 2026-09-27, ratified, over
-teaching `wave` to read this section's group headings). `PL-0H5D` took the
-same route for `PL-WZVZ`. That way of reading is retired, but the blockers
-stay. So `bin/docket next` and the promote advisory still read the condition
-that each entry waits on.
 
 **`PL-5B1N` is deferred to Gate 3 on the terms of § "The cadence" beat 3**
 (project owner, 2026-09-27, ratified, over building the preview now as the
@@ -9174,11 +9018,8 @@ on is not deferred because of its date. Either it is let in beside the entry,
 or the entry is deferred with it. These are two of the three places that
 section gives for a prerequisite (`PL-D388`). Each deferred item records the
 deferral as `deferred-from: v0.6.0 - <why>`. The triage pass that classes the
-item writes that field. `bin/docket check` fails an open debt item that this
-section neither places nor defers. `bin/docket wave` lists the deferrals, with
-the state of each one and the release that took it (`PL-WD5Z`). A frozen entry
-that this gate defers carries the same field. `wave` counts such an entry on
-the gate's own line instead (`PL-8QMD`).
+item writes that field. A frozen entry
+that this gate defers carries the same field.
 
 The `safety` or `science` items captured after the cut are placed on the list
 above with the rest. This section names each one with the date it re-entered.
