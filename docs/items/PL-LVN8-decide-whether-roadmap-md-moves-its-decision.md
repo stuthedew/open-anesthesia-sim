@@ -1,12 +1,10 @@
 ---
 id: PL-LVN8
 title: Decide whether ROADMAP.md moves its decision history to the items, starting with each release's long version-table entry and v0.5.0's 2,000 rows of gate dispositions, and keeps one line for each
-status: done
+status: untriaged
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
-closed: 2026-11-07
-verify: grep -q 'A version-table row is one sentence' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** Decide whether ROADMAP.md moves its decision history to the items, starting with each release's long version-table entry and v0.5.0's 2,000 rows of gate dispositions, and keeps one line for each
