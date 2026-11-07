@@ -10,7 +10,7 @@ touches: docs/MODEL.md, tests/reference, docs/items
 deferred-from: v0.7.0 - filed 2026-11-02 from PL-TCD3's blind review; a correction to a precision rationale that the schematic does not wait on
 added: 2026-11-02
 payoff: the uncertainty Displayed precision states for each compartment's parameters is the uncertainty its own source measured, so the precision argument a learner reads rests on the right SD
-verify: ! grep -q 'mean for desflurane, 5.3% for sevoflurane' docs/MODEL.md
+verify: ! grep -q '3.9% of the mean for desflurane' docs/MODEL.md
 recurrences: 2026-11-04 PL-KG6S, 2026-11-04 PL-7R8S
 ---
 
