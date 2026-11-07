@@ -3,11 +3,15 @@ id: PL-GW0P
 title: ROADMAP.md's v0.6.0 and v0.7.0 gate sections defer a debt item captured after the cut by its capture date, while the snapshot rule re-admits any finding whose problem was present at the freeze, however late it was filed
 priority: P2
 effort: M
-status: untriaged
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, subprojects/docket/README.md
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2063
+payoff: a debt item filed after a gate froze joins that gate when its problem was already there, so v0.7.0's list holds every problem present at its freeze
+verify: grep -qF 'Being filed after the freeze is not such a' ROADMAP.md && ! grep -qF 'An open debt item captured after the cut is deferred to the next gate' ROADMAP.md
 ---
 
 **Problem.** Two parts of `ROADMAP.md` give different answers for a debt item

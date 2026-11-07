@@ -3,12 +3,16 @@ id: PL-C8N8
 title: tools/doc_check.py's gate re-entry advisory and two docstrings still describe ROADMAP.md's debt gate as it stood before the restructure: the snapshot section no longer ends with the safety and science exceptions, and beat 4 no longer restates them
 priority: P3
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: roadmap-structure
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.7.0 - a new problem: PL-P0C5's restructure of 2026-11-07 moved the passages the advisory names, after the freeze
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2063
+payoff: the gate re-entry advisory sends its reader to the sections that state its rules, and says why a deferral alone does not answer it
+verify: ! grep -qF 'ends by making these' tools/doc_check.py && ! grep -qF 'closes by saying these' tools/doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py` describes `ROADMAP.md`'s debt gate as it stood

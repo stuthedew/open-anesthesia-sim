@@ -3,11 +3,15 @@ id: PL-8C8W
 title: ROADMAP.md says a safety or science finding cannot be deferred, while its deferral section lets a frozen safety or science entry be deferred when its hazard is not live, as PL-WZVZ was
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2063
+payoff: the roadmap says once when a safety or science item may wait for the next release: only when a check of the code shows no learner can see a wrong value now
+verify: grep -qF 'deferral also records that its hazard is **not live**: no learner can see a' ROADMAP.md && ! grep -qF 'own standard does not allow those to be deferred' ROADMAP.md
 ---
 
 **Problem.** `ROADMAP.md` says in one place that a `safety` or `science` item can
