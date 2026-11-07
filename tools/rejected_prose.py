@@ -171,6 +171,8 @@ VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
 # regex: a passage number in brackets inside free prose, with the emphasis and
 # code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
 MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
+#: The table that removes emphasis and code marks, for comparing an entry's `fault`.
+UNMARKED = str.maketrans("", "", "*_`")
 
 
 def expected_verdict(name: str) -> str:
@@ -383,7 +385,7 @@ def _plain(text: str) -> str:
     An entry's `fault` is compared in this form, so a rewrite that only changes
     the case, the line breaks or the bold type of the words still holds them.
     """
-    return " ".join(re.sub(r"[*_`]", "", text).casefold().split())
+    return " ".join(text.translate(UNMARKED).casefold().split())
 
 
 def repeats(entries: Sequence[Entry]) -> list[str]:
