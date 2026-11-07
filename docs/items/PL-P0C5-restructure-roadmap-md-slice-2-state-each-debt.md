@@ -3,14 +3,16 @@ id: PL-P0C5
 title: Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
 priority: P2
 effort: L
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/start.md, docs/items/PL-83LS-the-debt-gate-has-no-disposition-for-an.md, docs/items/PL-D8KW-roadmap-md-cadence-beat-3-the-v0-6-0-gate.md, docs/items/PL-DXQC-the-v0-4-0-goal-section-states-two-problems-in.md, docs/items/PL-KKRP-re-examine-the-debt-gate-s-freeze-trigger.md, docs/items/PL-LKGL-a-verify-command-cannot-detect-a-stale-item-it.md, docs/items/PL-LPH9-roadmap-md-s-cadence-says-no-interim-release-is.md, docs/items/PL-NBCS-docket-next-reads-an-exclusion-written-inside-a.md, docs/items/PL-RKWB-decide-whether-the-qt-port-ships-ahead-of-v0-5.md, docs/items/PL-SWFM-roadmap-md-s-version-table-lists-v0-2-3-twice.md, docs/items/PL-Y949-v0-5-0-s-definition-of-done-admits-only-done-or.md, docs/items/PL-YRY3-line-edit-roadmap-md-section-by-section-with.md, docs/items/PL-4BCF-restructure-roadmap-md-slice-9-head-v0-5-0-s.md
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2059
 payoff: a reader finds each debt-gate and development rule stated once, in its own section, and each milestone section points there instead of restating it
-verify: grep -q '^### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md
+verify: grep -q '^#### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md && grep -q '^### Deferring to the next gate$' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
