@@ -22,3 +22,5 @@ One finding was rejected: a blind review asked that ten closed items' `verify:` 
 **Done when.** Every section outside the clinician rewrite has been line-edited or put back to its old wording, and no value, equation, code name, citation, requirement or stated reason a reader uses was lost.
 
 **Generator check.** The work was asked for (2026-11-05, "copy edit entire repo"). The losses it exposed come from one mechanism, the copy editor dropping requirements, qualifiers and reasons that no token check sees, filed as `PL-F0Q2`. The same edit on the machine documents is filed for the same audit as `PL-B7V7`.
+
+**Docs swept.** `docs/MODEL.md`, where every `§` reference resolves, and `ROADMAP.md` and the open items that cite it, which still find the text they quote.
