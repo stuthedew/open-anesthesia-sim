@@ -55,8 +55,8 @@ Do not report:
 - rewording, reordering, splitting or merging that keeps the meaning;
 - a statement cut because the passage still says it in full: quote where.
   Before you accept the quoted sentence, compare it with the cut one for each
-  kind in the list. Where it is a heading or a bold lead, or says only part of
-  the cut statement, report the statement;
+  kind in the list. Where it is a heading, a bold lead, a label or the layout
+  of the text, or says only part of the cut statement, report the statement;
 - decision history, meaning who decided, when and what was rejected, cut
   where the passage still names the item that records it;
 - a statement that the list does not name, such as how a value was derived,

@@ -407,11 +407,12 @@ does not know this repository's names either.
 An edit changes how a statement is said, and never what it says. Each kind of
 statement below keeps its force and its reach through every cut, merge and
 move. Cut one only where the passage still says it in full, and quote where.
-In full means with the same force, the same limiting words and the same
-scope. A heading, a bold lead or a sentence that says only part of it does not
-count: "the stored values did not change" does not say "only the recorded
-source and grade changed". Move one only as step 4 allows, and it says the
-same thing where it lands.
+In full means in a sentence, with the same force, the same limiting words and
+the same scope. A heading, a bold lead, a label such as *Adopted*, the layout of
+the text, or a sentence that says only part of it does not count: "the stored
+values did not change" does not say "only the recorded source and grade
+changed". Move one only as step 4 allows, and it says the same thing where it
+lands.
 
 1. **A requirement's force.** "Must", "must not", "may not", "never" and "only
    if" stay a requirement or a prohibition. Never restate one as a description
