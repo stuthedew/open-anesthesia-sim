@@ -305,6 +305,10 @@ def two_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path / "asked.json"
 
 
+#: A meaning check's reply that finds nothing lost in one passage.
+SAME = "[1] same\n\nThe edit says everything the original said.\n"
+
+
 def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -314,13 +318,13 @@ def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n\nCut a repeat.\n"
     third = "[1] keep\n\nNo fault found.\n"
     monkeypatch.setenv(
-        "FAKE_REPLIES", json.dumps([FIRST.partition("**[2]")[0], second, third, "unused"])
+        "FAKE_REPLIES", json.dumps([FIRST.partition("**[2]")[0], second, third, SAME, "unused"])
     )
 
     reply, counts = copy_edit.run(request, reads=tmp_path / "reads")
 
     asked = json.loads(two_reads.read_text(encoding="utf-8"))
-    assert len(asked) == 3
+    assert len(asked) == 4
     assert copy_edit.SECOND_READ in asked[1]
     assert "    1 > First edit of one." in asked[1]
     assert "    1 > Second edit." in asked[2]
@@ -330,7 +334,8 @@ def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     assert counts == (
         "copy_edit: read 10 tokens, wrote 3, 1 turns, $0.50; "
         "second read: read 10 tokens, wrote 3, 1 turns, $0.50; "
-        "third read: read 10 tokens, wrote 3, 1 turns, $0.50"
+        "third read: read 10 tokens, wrote 3, 1 turns, $0.50; "
+        "meaning check 1: read 10 tokens, wrote 3, 1 turns, $0.50"
     )
     assert (tmp_path / "reads" / "second-reply.txt").read_text(encoding="utf-8") == second
 
@@ -341,11 +346,11 @@ def test_an_audit_that_returns_the_same_text_ends_the_reads(
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
     same = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps([same, same, "unused"]))
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([same, same, SAME, "unused"]))
 
     copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 2
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 3
 
 
 def test_a_passage_that_never_settles_stops_at_max_reads(
@@ -354,11 +359,11 @@ def test_a_passage_that_never_settles_stops_at_max_reads(
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
     edits = [f"[1] rewrite\n\n```\nEdit {n}.\n```\n" for n in range(1, 7)]
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits))
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits[: copy_edit.MAX_READS] + [SAME]))
 
     reply, _ = copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == copy_edit.MAX_READS
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == copy_edit.MAX_READS + 1
     assert rejected_prose.rewrites(reply) == {1: (f"Edit {copy_edit.MAX_READS}.",)}
 
 
@@ -371,15 +376,16 @@ def test_an_audit_whose_reply_cannot_be_read_is_left_out_and_the_earlier_reads_k
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n"
     cut_off = "the end of a reply whose verdicts were lost\n"
     monkeypatch.setenv(
-        "FAKE_REPLIES", json.dumps(["[1] rewrite\n\n```\nFirst.\n```\n", second, cut_off, "unused"])
+        "FAKE_REPLIES",
+        json.dumps(["[1] rewrite\n\n```\nFirst.\n```\n", second, cut_off, SAME, "unused"]),
     )
 
     reply, counts = copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 3
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 4
     assert rejected_prose.rewrites(reply) == {1: ("Second edit.",)}
     assert "Notes from the third read:" not in reply
-    assert counts.endswith("third read: reply unreadable, so it was left out ([1] has no verdict)")
+    assert "third read: reply unreadable, so it was left out ([1] has no verdict)" in counts
 
 
 def test_a_first_read_that_rewrites_nothing_is_the_whole_reply(
@@ -602,3 +608,135 @@ def test_the_copy_editor_s_instructions_name_each_structure_read_s_opening() -> 
 
     for opening in (new_prose.STRUCTURE_READ, new_prose.CHAPTER_READ, new_prose.OUTLINE_READ):
         assert f'"{opening.partition(".")[0]}."' in text
+
+
+#: A meaning check's reply that finds one statement lost in passage 1.
+LOST_ONE = """[1] lost
+
+- OLD: "Old one must hold."
+- NEW: "First edit of one."
+- KIND: 1. A requirement's force
+- WHY: The requirement became a description.
+"""
+
+
+def test_a_statement_the_meaning_check_finds_lost_is_restored_and_checked_again(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The check sees the edit and the original; the restore read sees what it found."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
+    first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
+    restored = "[1] rewrite\n\n```\nOne must hold.\n```\n\nPut back the requirement.\n"
+    monkeypatch.setenv(
+        "FAKE_REPLIES", json.dumps([first, "[1] keep\n", LOST_ONE, restored, SAME, "unused"])
+    )
+
+    reply, counts = copy_edit.run(request, reads=tmp_path / "reads")
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    assert len(asked) == 5
+    assert copy_edit.MEANING_CHECK in asked[2]
+    assert "    1 > First edit of one." in asked[2]
+    assert "Old one must hold." in asked[2].partition(copy_edit.BEFORE)[2]
+    assert copy_edit.RESTORE_READ in asked[3]
+    assert "The requirement became a description." in asked[3].partition(copy_edit.LOST)[2]
+    assert "    1 > One must hold." in asked[4]
+    assert rejected_prose.rewrites(reply) == {1: ("One must hold.",)}
+    assert "Notes from the restore 1 read:" in reply
+    assert "Notes from meaning check 2:" in reply
+    assert "Meaning check:" not in reply
+    assert "restore 1 read: read 10 tokens" in counts
+    assert (tmp_path / "reads" / "meaning-1-reply.txt").read_text(encoding="utf-8") == LOST_ONE
+
+
+def test_a_passage_that_still_loses_a_statement_after_the_last_check_is_kept_as_it_was(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
+    first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
+    replies = [first, "[1] keep\n"]
+    for _ in range(copy_edit.MAX_CHECKS - 1):
+        replies += [LOST_ONE, first]
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([*replies, LOST_ONE, "unused"]))
+
+    reply, _ = copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 2 * copy_edit.MAX_CHECKS + 1
+    assert reply.startswith("[1] keep\n")
+    assert rejected_prose.rewrites(reply) == {}
+    refused = reply.partition("Meaning check:")[2].partition("Notes from")[0]
+    assert "Passage 1: the rewrite was refused" in refused
+    assert "The requirement became a description." in refused
+
+
+def test_a_meaning_check_whose_reply_cannot_be_read_keeps_every_edited_passage_as_it_was(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Nothing then shows that the edit kept the original's meaning."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    first = "[1] rewrite\n\n```\nFirst.\n```\n"
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([first, "[1] keep\n", "cut off", "unused"]))
+
+    reply, counts = copy_edit.run(request)
+
+    assert reply.startswith("[1] keep\n")
+    assert "Meaning check 1's reply could not be read" in reply
+    assert "meaning check 1: reply unreadable" in counts
+
+
+def test_the_meaning_check_s_findings_are_read_by_passage() -> None:
+    reply = '[1] same\n\nAll kept.\n\n**[2]** lost\n\n- OLD: "x"\n- WHY: gone.\n\n[3] same\n'
+
+    assert copy_edit.meaning_findings(reply, 3) == {2: '- OLD: "x"\n- WHY: gone.'}
+
+
+@pytest.mark.parametrize(
+    ("reply", "problem"),
+    [
+        ("[1] same\n", r"\[2\] has no verdicts"),
+        ("[1] same\n[1] lost\n[2] same\n", r"\[1\] has 2 verdicts"),
+        ("[1] same\n[2] same\n[3] lost\n", r"\[3\] was not shown"),
+    ],
+)
+def test_a_meaning_check_reply_without_one_verdict_per_passage_is_refused(
+    reply: str, problem: str
+) -> None:
+    with pytest.raises(ValueError, match=problem):
+        copy_edit.meaning_findings(reply, 2)
+
+
+def test_the_meaning_check_holds_an_edit_to_the_copy_editor_s_own_list(fake: Path) -> None:
+    """One list, kept in the copy editor's instructions, is given to both."""
+    check = copy_edit.checker()
+    listed = copy_edit.never_loses(
+        copy_edit.instructions(copy_edit.PROMPT.read_text(encoding="utf-8"))
+    )
+
+    assert listed.startswith(copy_edit.NEVER_LOSES)
+    assert "A requirement's force" in listed and "A stated reason" in listed
+    assert check.prompt.rstrip().endswith(listed)
+    assert check.prompt.startswith(
+        copy_edit.instructions(copy_edit.CHECK_PROMPT.read_text(encoding="utf-8")).rstrip()
+    )
+    table = copy_edit.load_config(copy_edit.ROOT).models
+    assert table is not None
+    chosen = table.choose({"role": copy_edit.CHECK_ROLE})
+    assert (check.model, check.effort) == (chosen.model, chosen.effort)
+
+
+def test_instructions_without_the_list_are_refused() -> None:
+    with pytest.raises(copy_edit.Refused, match="What an edit never loses"):
+        copy_edit.never_loses("## How to edit\n\nTake these steps.\n")
+
+
+def test_the_instructions_name_the_meaning_check_s_and_the_restore_read_s_layout() -> None:
+    """Each prompt must quote the headings its request uses, to say what to do with them."""
+    editor_text = copy_edit.PROMPT.read_text(encoding="utf-8")
+    check_text = copy_edit.CHECK_PROMPT.read_text(encoding="utf-8")
+
+    assert f'"{copy_edit.RESTORE_READ.partition(".")[0]}."' in editor_text
+    assert f'"{copy_edit.LOST}"' in editor_text
+    assert f'"{copy_edit.BEFORE}"' in check_text
