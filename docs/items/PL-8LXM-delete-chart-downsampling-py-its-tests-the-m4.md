@@ -104,3 +104,9 @@ actually supports, about how many columns are affordable.
 **Closed items citing the module are left as written.** A brief is the
 reasoning at the time it was written, and rewriting a closed one to match a
 tree it predates would falsify the record rather than repair it.
+
+**Why the M4 paper left `docs/references/` with its code** (moved here from
+`docs/references/README.md` § "Redistribution" on 2026-11-07, under
+`PL-QJD3`). That directory holds papers the code is founded on, and a paper
+nothing founds is a question a reader has to answer (project owner,
+2026-09-05).
