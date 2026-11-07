@@ -47,3 +47,14 @@ first, the text follows its answer.
 states a rule, which goes stale when the document is rearranged. This is the
 one instance the restructure has found so far, so no generator is recorded. A
 second instance in a later slice would make it worth recording.
+
+**Applied 2026-11-07, after `PL-8C8W`'s answer.** The docstring of
+`check_gate_reentries` names § "Which findings re-enter the gate" as the home
+of the unconditional rule and § "What counts" as the home of the `anticipated`
+carve-out. The paragraph on `deferred-from:` and the advisory now give the
+reason the answer leaves: § "Deferring to the next gate" defers a `safety` or
+`science` entry only while it stays written on the frozen list, so a
+`deferred-from:` alone answers `bin/docket check`'s disposition rule and leaves
+this advisory standing until the item is on the list. The check's behaviour is
+unchanged, and `test_a_deferred_safety_item_still_re_enters_the_gate` still
+holds it. The two test docstrings name the same sections.

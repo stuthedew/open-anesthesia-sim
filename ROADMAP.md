@@ -690,8 +690,7 @@ milestone introduces. This is the live-mechanism test above, applied to a
 hazard rather than to a mechanism.
 
 Such a finding is then disposed of by a **placement in the milestone that
-creates the hazard**, never by a deferral. These two classes are still not
-offered a deferral. v0.6.0's `Required scope` lists the ten findings that this
+creates the hazard**, never by a deferral. v0.6.0's `Required scope` lists the ten findings that this
 rule was written for.
 
 **The carve-out expires with the wait it is granted for** (project owner,
@@ -839,7 +838,9 @@ gate holds one milestone's findings and is ordinary maintenance.
 Beat 2 of § "The cadence" says when that is. A finding re-enters this gate,
 rather than waiting for the next one, when the problem it describes was already
 *present* at that moment. That is true whatever id the finding is filed under,
-and however long after the freeze someone happened to notice it. A finding
+and however long after the freeze someone happened to notice it (project owner,
+2026-11-07, over deferring a late capture by the date it was filed, `PL-GW0P`).
+A finding
 defers to the next gate only when the problem itself is new. A new problem is
 one introduced by work done while clearing this gate, or while implementing the
 milestone that the gate protects.
@@ -881,16 +882,17 @@ gate. Record it with the item it continues (`PL-SWFM`). Sometimes a specific
 reason argues otherwise. The finding may have no real connection to anything
 frozen. Or pulling it in may recreate the refilling-queue problem that the debt
 gate replaced Phase 0 to solve. Then a session may defer a presence-qualifying
-finding to the next gate anyway. It may also decline to pull in a finding that
+finding to the next gate anyway. Being filed after the freeze is not such a
+reason (`PL-GW0P`). It may also decline to pull in a finding that
 only superficially resembles frozen scope. Either way, the session must say so
 and say why. Silently reinterpreting which gate a finding belongs to is the
 renegotiation that freezing the list exists to prevent.
 
 Two further exceptions re-enter the current gate regardless of presence:
 anything at `P0`, and anything classed `safety` or `science`. This project's
-own standard does not allow those to be deferred. A gate that let them wait
-would invert the reason it exists. § "What counts" states the one carve-out,
-for an `anticipated` finding.
+own standard does not allow a `P0` to be deferred. A `safety` or `science`
+entry may be deferred only on the terms of § "Deferring to the next gate".
+§ "What counts" states the one carve-out, for an `anticipated` finding.
 
 #### What a frozen entry may take in
 
@@ -942,7 +944,9 @@ allowed only when all three of these conditions hold:
   the renegotiation the freeze exists to prevent.
 
 A `safety`- or `science`-classed entry may take this route only when its
-deferral also records that its hazard is **not live**. That must be
+deferral also records that its hazard is **not live**: no learner can see a
+wrong value now (project owner, 2026-11-07, ratified, over making these two
+classes never deferrable, `PL-8C8W`). That must be
 checked against the tree rather than asserted. It is recorded in the
 field's reason or in the gate section.
 
@@ -1282,8 +1286,9 @@ brief has the tally.
 
 ### Deferred from this gate
 
-An open debt item captured after the cut is deferred to the next gate, unless
-it is classed `safety` or `science` or an entry on this list waits on it. A
+An open debt item captured after the cut joins this list when the problem it
+describes was present at the freeze, as § "Which findings re-enter the gate"
+says (`PL-GW0P`). A `safety` or `science` item joins it whatever the answer. A
 capture that an entry waits on is either let onto the list beside that entry,
 or the entry is deferred with it (`PL-D388`). Each deferred item records
 `deferred-from: v0.7.0 - <why>`. The triage pass that classes the item writes
@@ -1302,8 +1307,8 @@ step. The head and its two other members, `PL-06LS` and `PL-XST1`, are not
 head that `PL-R4Y2`'s defect review recorded on 2026-10-25, over `PL-6RJ0`,
 `PL-3B34` and `PL-HF4B`. Its guard requires values shown together on the run
 screen to come from one state, and each member is a `safety` entry already on
-this list. It was first given `deferred-from:`, which a `safety` item cannot
-take.
+this list. It was first given `deferred-from:`, which a `safety` item could not
+take until `PL-8C8W`.
 
 ### Required scope
 
@@ -9104,7 +9109,9 @@ An open debt item that was captured after the cut (`e6cdfd93`, 07:04 on
 deferred if it is classed `safety` or `science`, or if an entry on the list
 waits on it. An item captured after the cut was not in the store that the snapshot was
 taken from. § "The gate is a snapshot, not a moving target" therefore applies the
-presence test to it, and that test returns no. A capture that an entry waits
+presence test to it, and that test returns no. `PL-GW0P` replaced that reading
+on 2026-11-07: the test asks whether the problem was present, and a capture
+whose problem was present at the freeze now joins the list. A capture that an entry waits
 on is not deferred because of its date. Either it is let in beside the entry,
 or the entry is deferred with it. These are two of the three places that
 section gives for a prerequisite (`PL-D388`). Each deferred item records the

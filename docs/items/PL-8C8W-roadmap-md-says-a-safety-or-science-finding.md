@@ -69,3 +69,25 @@ its record says, checked against the code, that no learner can see a wrong
 value now. The snapshot section's sentence that makes these two classes not
 deferrable changes to say so. `PL-C8N8`, the wording of the re-entry
 advisory in `tools/doc_check.py`, follows from this answer.
+
+**Applied 2026-11-07 (`PL-GW0P`'s pull request).** § "Deferring to the next
+gate" states the rule, with this answer's decision tag: a `safety` or `science`
+entry may be deferred when its record says, checked against the tree, that no
+learner can see a wrong value now. § "Which findings re-enter the gate" keeps
+`P0` not deferrable and points the two classes at that section. The v0.7.0
+paragraph on `PL-J5GC` now says a `safety` item could not take `deferred-from:`
+until this item. `tools/doc_check.py`'s re-entry advisory follows in `PL-C8N8`:
+a deferred `safety` or `science` entry still stays written on the frozen list,
+so the advisory still names one that is deferred and not listed.
+
+Removed from `ROADMAP.md`, because the answer made them false:
+
+> This project's own standard does not allow those to be deferred. A gate that
+> let them wait would invert the reason it exists.
+
+(§ "Which findings re-enter the gate", of `P0`, `safety` and `science`.)
+
+> These two classes are still not offered a deferral.
+
+(§ "What counts", after the `anticipated` carve-out's "never by a deferral",
+which stays.)

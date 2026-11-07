@@ -78,3 +78,16 @@ debt gate"; point both gate sections at it; check whether `bin/docket gate`,
 `bin/docket check` or `tools/doc_check.py` defer by capture date; and
 re-triage the open debt items deferred from v0.7.0 for being filed after the
 freeze, adding to v0.7.0's list each whose problem was present on 2026-10-25.
+
+**Applied 2026-11-07.** § "Which findings re-enter the gate" already stated the
+rule, so it gains this answer's decision tag, and the presumption paragraph
+says that being filed after the freeze is not a reason to defer a
+presence-qualifying finding. v0.7.0's § "Deferred from this gate" now says a
+capture joins the list when its problem was present at the freeze, and points
+at that section. v0.6.0's paragraph is the record of a shipped gate, so it
+keeps its reading and adds one sentence saying this item replaced it. The
+docket README's example of a `deferred-from:` value gave "captured after the
+freeze, and not safety or science" as a ground, and now gives a new problem.
+`bin/docket gate`, `bin/docket check` and `tools/doc_check.py` read
+`deferred-from:` and the frozen list, and none of them reads an item's
+`added:` date, so no tool deferred by capture date.
