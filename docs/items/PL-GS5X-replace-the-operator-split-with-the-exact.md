@@ -224,3 +224,13 @@ either reading alone, worst measured at 0.030 percentage points, so the
 numeric gap between two readouts is the least certain thing on the display."
 The plain-English rewrite (`PL-70B2`) replaced the struck-through text with
 one sentence saying the warning was withdrawn and why.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** The row for v0.4.x — the code is the model in `ROADMAP.md` § "The timeline" carried these sentences until then. The restructure keeps each timeline row to what the step holds, its status and dates, its decisions and a pointer, and moves the argument to the item the row names. In the quote, "this row", "this track", "this step", "this port" and "here" mean that row and its step, "row N" means row N of that table, and "this file" means `ROADMAP.md`.
+
+> The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan.
+
+> Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged.
+
+> `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning.
+
+> Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it — any number that is genuinely *free*, which since 2026-09-16 excludes one this file has given to a milestone section ahead of the current one (project owner, 2026-09-16, ratified, on `PL-KQHN`).

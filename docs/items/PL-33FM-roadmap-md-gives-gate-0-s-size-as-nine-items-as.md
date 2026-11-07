@@ -5,6 +5,7 @@ status: untriaged
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+recurrences: 2026-11-07 PL-PNH2 withdrawn 2026-11-07 PL-PNH2
 ---
 
 **Problem.** `ROADMAP.md` gives Gate 0's size three ways. § "Versioning

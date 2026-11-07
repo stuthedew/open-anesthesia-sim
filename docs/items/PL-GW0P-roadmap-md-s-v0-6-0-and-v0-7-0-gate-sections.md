@@ -58,3 +58,11 @@ v0.6.0's "that test returns no", which misreads the test.
 **Generator check.** The cause is a rule stated in more than one place, with
 the copies drifting apart. That is the cause the `roadmap-structure` feature
 removes, so the feature is the fix and no new generator head is recorded.
+
+**Put to the project owner on 2026-11-07.** The thread finishing the roadmap
+restructure asked, on a decision card, whether cleanup filed after a list froze
+waits for the next list. **Recommendation (that thread's, the same as above):
+it waits, as now.** About 45 items filed since Gate 3 froze on 2026-10-25 stay
+on v0.8.0's list. Only a `P0`, a live safety or science problem, a fix a frozen
+entry needs, or friction every entry pays joins v0.7.0. The other reading
+gives v0.7.0's list no point at which it closes. The answer is awaited.

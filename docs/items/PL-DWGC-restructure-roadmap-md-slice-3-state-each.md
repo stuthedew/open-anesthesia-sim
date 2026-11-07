@@ -346,3 +346,117 @@ subheadings, and § "The plan" and its timeline cells. The tool passages in the
 release-tag section are slice 4's (`PL-G6DP`). Record each finding as applied,
 deferred with its reason, or answered, then rewrite the `verify:` on the call
 that closes this item.
+
+**Part 2, the rules, the baseline, the release tags and the plan (2026-11-07).**
+Each remaining finding of the outline read and chapter reads 1 to 5, by what
+happened to it. A sentence that left `ROADMAP.md` is quoted, under a line
+naming this slice, in the item named beside it.
+
+*Applied.*
+
+- The reserved-number rule is stated once, in § "Versioning decision", with
+  its decision tag (`PL-KQHN`). v0.4.26's section keeps a pointer, and the
+  v0.4.x timeline cell's copy moved to `PL-GS5X`.
+- The v0.3.0 exception is stated once. The MVP list item keeps what v0.3.0
+  clears, row 2 of the timeline keeps the exception with a pointer, and the
+  notes under the timeline no longer restate it. The copies in § "How gate
+  work is released" and in the v0.3.x and v0.4.0 records already point at
+  § "Versioning decision".
+- § "Versioning decision"'s paragraph on the exception is split in two, before
+  "Later gates take no version of their own."
+- Baseline: why v0.7.0 is not cut now sits with Gate 3's open entries; the
+  features finished and the release item join the opening paragraph; the
+  repeated generator sentence and the paragraph of leftovers go, the
+  release-train clause and the missed inflow prediction to `PL-80PZ`; the
+  restated rule on later merges is a pointer, placed straight after the
+  `#2031` paragraph that needs it; the bold lead is "**The writing rule on
+  model limitations**".
+- Release tags: four subheadings; the gap-closed outcome sits with "Every
+  completed version has a tag"; where the tag goes comes before what a tag
+  ships; the squash-merge sentence follows "not visible afterwards"; the
+  decision tag joins the first sentence under its subheading; the second copy
+  of the cut-item convention goes; the provenance sentence and the
+  shallow-checkout account go to `PL-J3ZK`, which keeps the history of closing
+  the tag gap.
+- The plan: § "Why the gates are on this list and not behind it" follows the
+  opener and takes its gate sentences; the planning model runs rolling wave,
+  horizons, when detail moves, then "Where the order of releases is recorded";
+  the example of pull requests #59 and #60, and the reach of the first waves,
+  go to `PL-LJVD` with their comment; the scoping dates and the consequence
+  for row 6 are cut from the notes, since each row states them; row 1 takes
+  its line on new workflow capability.
+- Timeline cells: v0.4.x keeps what it holds, its dates and its decisions,
+  and its arguments go to `PL-GS5X`; v0.4.26 keeps its status, scoping, the
+  reversed absorption and the move ahead of v0.5.0, and the rest goes to
+  `PL-L9RD`, `PL-RKWB` and `PL-QXSB` (its own section states each argument);
+  v0.5.0's placement argument and its correction go to `PL-QYPX`.
+
+*Not applied, with the reason.*
+
+- The timeline is not split into shipped steps and steps ahead, for the
+  reason the version table is not split: `docket.roadmap` reads the first
+  table under § "The timeline" as the whole timeline.
+- § "Why the gates are on this list and not behind it" keeps its name, because
+  three closed items cite it (`PL-KKRP`, `PL-NSN9`, `PL-0YQX`).
+- "A tag also has to sit on its own release's commit" stays under "Every
+  completed version has a tag". `tools/doc_check.py` reads the stale-version
+  claim in it only between "**Tags.**" and the next heading.
+- § "Writing a milestone entry" keeps "An idea that is a task rather than a
+  release belongs in `docs/items/` instead." A pointer would be as long, and
+  the file's opening has no heading to cite. The plan keeps "A row becomes
+  real only when ..." until `PL-PNH2` says what "Row 11 is the intended order"
+  means.
+
+*Left to another slice.* Slice 4 (`PL-G6DP`) takes the release-tag passages
+that lead into a sentence about the tools, and the rule for recording an
+untagged version. Slice 7 (`PL-M3MV`) takes row 5's internal-ordering
+paragraph, item 29's copy of the reserved-number rule, § "Planned milestones"'
+copy of what a milestone needs, and the check that each planned item states
+the decisions part 1 moved out of the version rows. Slice 8 (`PL-V8SJ`) takes
+v0.5.0's early-shipped items and v0.4.26's copy of what a milestone needs.
+Slice 5 (`PL-YNFS`) puts the owner's test drive in v0.7.0's definition of done.
+Each brief names its part.
+
+*Left to the line edit (`PL-YRY3`).* Every finding whose fix rewords a
+sentence: trimming a cell sentence that mixes a decision with its reason, the
+patch-track rule stated once, the definitions the queries ask for, and the
+baseline's repeated facts. `PL-YRY3`'s brief lists each.
+
+*Queries answered from the tree.*
+
+- How a version, a release and a milestone relate: every release is a version
+  with a row in the version table. A milestone is a release with its own goal,
+  required scope, definition of done and out-of-scope list. A capability
+  boundary takes a minor number, but v0.2.8 and v0.4.26 are milestone
+  sections with patch numbers.
+- v0.2.0's tag is on `69a5888c` (`git ls-remote`, 2026-11-07). The commits
+  `97cc66a` and `796bf4f` that the gap-closed sentence named are not in the
+  repository, so that sentence now names the commits the tags point at, as a
+  fix of its own. The history in `PL-J3ZK` keeps the old names.
+- "Cut" names two moments: the notes are rendered on the release branch, and
+  the tag goes on the squash commit that lands them on `main`. A tag's span is
+  the commits `git describe --contains` resolves to it. A release stamps a
+  pull request when its notes name that pull request's item. The two
+  dispositions are absorbing the newer work by re-running the cut, or leaving
+  it to the next release's notes.
+- v0.6.16's 11 items are listed in `docs/releases/v0.6.16.md`. The blind judge
+  is the copy editor's blind comparison in `docs/prose-review/README.md`.
+  Whether `PL-B4P7` and `PL-WZVZ` count in Gate 3's 90 is `PL-8G3F`. v0.8.0's
+  missing section is `PL-S2LW`.
+- Whether gates ship inside their milestone or in patches: § "The cadence"
+  states the current rule (`PL-LPH9`), and Gate 1's cell carries its
+  bracketed correction.
+- "No patch in this project has ever had a section" and "the run's sample
+  store grows unbounded" were written before later events. Both now sit in
+  items as dated history (`PL-GS5X`, `PL-QYPX`).
+- The 2026-09-26 renumbering is described once in the roadmap now, as "moved
+  up one" in row 9. "Moved back one release" went to `PL-LJVD` with the
+  example it belonged to.
+
+*Queries filed.* `PL-PNH2` (what the timeline's Size column counts and as of
+when, whether rows 1 and 2, the `v0.4.x` track and Gate 3 have shipped or
+cleared, v0.5.0's sixteen items against 20 ids and its undated 185 entries,
+and what "Row 11 is the intended order" covers). `PL-33FM` (Gate 0's size)
+and `PL-V82M` (the cut-item rule) came from part 1's review. v0.2.8's 38
+against 37 is `PL-TW3Q`.
+

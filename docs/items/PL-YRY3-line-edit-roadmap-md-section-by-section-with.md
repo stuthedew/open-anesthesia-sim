@@ -60,3 +60,42 @@ first: its row no longer shows that a displayed value moved in that release,
 because the operator split was replaced by an exact step. Four rows also still
 run past 600 characters as one sentence (v0.6.12 to v0.6.15).
 
+**From `PL-DWGC` part 2 (2026-11-07).** These findings of slice 3's structure
+read need a sentence reworded, so they wait for this line edit. Each quotes the
+text to find.
+
+- § "Project roadmap": say how a version, a release and a milestone relate,
+  then keep the file's scope once ("This file covers releases only" repeats
+  the first sentence's "version and milestone map").
+- § "Versioning decision": say what a capability boundary is (the roadmap's
+  own example is "a learner can run, branch, and compare a case"); state that
+  a milestone takes its number only once every id in its Required scope is
+  closed, which only the old version rows stated; put the pointer to § "The
+  debt gate" at the first "Gate 0".
+- § "Current baseline": "where the `docs/MODEL.md` rewrites it held are
+  finished" and "Entry 12's six items ... close here" say one thing; name
+  `PL-SP6H` once; put the two app file names in the table's `src/` cell and
+  say the trajectories were not re-run, without the tool's name; say in words
+  what the two stale statements got wrong, and what "inside the v0.6.15 tag's
+  span" means for `#2031`; say what the blind judge was (`docs/prose-review/README.md`
+  § "Judging edits blind").
+- § "Release tags and release notes": the two counts of work inside a tag's
+  span ("This is not rare", the 2026-09-14 count and the 2026-09-22 recount)
+  can be one sentence with the rate; open "What a tag ships" with "The tag
+  span is what shipped" (its "So" needs rewording first); "That was the
+  decision rather than an omission" keeps the decision and loses the contrast;
+  define "cut", "span", "stamp" and the two dispositions where each first
+  appears.
+- § "The plan": state once, under the timeline, that a patch track crosses no
+  capability boundary, takes no version and freezes no gate, and let each row
+  say only that it is a patch track; trim the Gate 1, Gate 2, v0.6.0 and
+  interface-pass cells to what the step holds, its dates and its decision
+  tags (their arguments sit inside sentences that also carry a tag or a
+  date); open § "What MVP means here" with the date the MVP was reached and
+  put its plan in the past tense; shorten "Each planning horizon is described
+  to one level of detail, in one place" now that the order paragraphs have
+  their own subheading; cut "Release v0.3.0 adds no capability" once the next
+  sentence no longer needs it; keep break-out's display tier split as a short
+  example pointing at row 7; give row 3 `PL-011`'s drop date and the two items
+  that replaced it; and say in Gate 2's cell that its frozen list has gone
+  where v0.6.0's section says, since "when the moment comes" is past.

@@ -50,3 +50,29 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Left for this slice by `PL-DWGC` (2026-11-07).** Slice 3 reordered
+`ROADMAP.md` § "Release tags and release notes" under four subheadings and
+left these to this slice, because each leads into a sentence about the tools:
+
+- "This section deliberately does not restate which versions those are ...
+  which it twice was not" is decision history and moves to an item. It leads
+  into "Instead, `tools/doc_check.py` checks ...", so the two move together.
+- The v0.5.3 incident ("`v0.5.3` was pushed before its release merged ...",
+  `PL-YKSD`) goes to `PL-YKSD`. It leads into "So `tools/doc_check.py` also
+  reads the `pyproject.toml` ...".
+- "Failing on the window would turn `make check` red ... (PL-R7C0)" goes to
+  `PL-8HJ2` and `PL-R7C0`.
+- "The claim this section makes is about navigation only. It stops being true
+  the moment either mechanism behind it changes ..." goes. The first sentence
+  describes the text, and the two mechanisms go with the tool text.
+- The rule for writers ("A version that has genuinely gone out untagged is
+  named in a bold sentence here ...") goes with the check's documentation.
+  `tools/doc_check.py` reads both bold claims, the untagged count and "**One
+  version shipped with a stale version file**", only between "**Tags.**" and
+  the next heading, so they must stay in the first subsection or the check
+  must change with them.
+
+Keep in the roadmap the exemption that a release's own cut pull request is
+inside its own span. Slice 3 cut the other copy of that convention as a
+repeat. `PL-V82M` corrects what the exemption says the next release does.
