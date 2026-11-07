@@ -1022,7 +1022,8 @@ $`F_I`$. Two other things change.
   alveolar volume assumes that this uptake removes no volume at all.
 
 **For developers.** The tests from v0.0.2 that check the equation for the
-circuit alone against its exact solution must still pass unchanged.
+circuit alone against its exact solution are in § "Preserved circuit reference
+tests".
 
 Desflurane's dial maximum is stored in `data/agents/desflurane.json` as
 `max_delivered_concentration_percent`.
@@ -1036,8 +1037,8 @@ An apparatus figure stored alone shortens the circuit time constant by the
 patient circuit's share. At 4.0 L/min, a Perseus A500's 2.1 L apparatus volume
 gives a time constant of 31.5 s, 36% shorter than the 49.5 s from its assembled
 3.3 L. No automatic check can catch that error, because both are correctly cited
-volumes. The documentation check (`check_provenance` in `tools/doc_check.py`)
-confirms only that each stored number appears in this document.
+volumes (§ "How this document is held to the tree" says what the documentation
+check confirms).
 <!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 <!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 
@@ -2576,6 +2577,23 @@ primary measurement backs the value. A stored value can name a source and
 state its tier while no measurement of that quantity supports it. That is
 the ordinary case here, and it is why the `adopted` field exists.
 
+**So, three rules for a `sources` entry.**
+
+- Name the tier. Where the stored value is not a primary measurement, say in
+  the note which value the primary literature reports and by how much the two
+  differ. Use words that a reader comparing against a textbook can act on.
+- Do not let a primary citation stand in for a primary value. Citing a
+  measurement *alongside* a tier-3 number does not source that number. A file
+  that looks sourced while its number came from somewhere else is worse than
+  one that cites nothing, because it stops the reader checking.
+- Where no primary source has been adopted, record it as an open gap. "No
+  primary source has been adopted for this value" is a legitimate provenance
+  state for an educational simulator, and one that can later be fixed. A
+  tier-3 citation presented as settled is neither legitimate nor marked for fixing.
+
+Saying that a constant comes from Gas Man, or from a paper that reprints Gas
+Man's table, presents a tier-3 source as though it were a measurement.
+
 **Full texts held on hand are in `docs/references/`, and holding one changes
 nothing about its tier.** They are kept so that a claim can be checked against
 the source itself. `docs/references/README.md` gives the full citation for
@@ -2599,6 +2617,8 @@ guards against.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- not-restated: 70 kg -->
+
+#### Where each stored value comes from
 
 **Where this project stands.** Of the 49 rows in the table of stored values
 below, 27 are tier 1, 16 are tier 3, four are tier 2, and two adopt no source
@@ -2649,8 +2669,7 @@ than by hand.** It counts each `sources` entry's `authority_for` list, per file
 and in total, and names the source behind every row.
 
 No check compares these counts with this paragraph, so they can go stale
-silently. `check_provenance` confirms that a documented key holds its stated
-value, but not which tier its source has. Whoever changes a count must check
+silently. Whoever changes a count must check
 that the sentence around it is still true.
 
 Of all the stored values, `mac_percent` is the only one used as a divisor for
@@ -3100,82 +3119,6 @@ is the same object this model has, so the stored venous pool is a considered
 replacement for Gas Man's default.
 <!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
 
-**So, three rules for a `sources` entry.**
-
-- Name the tier. Where the stored value is not a primary measurement, say in
-  the note which value the primary literature reports and by how much the two
-  differ. Use words that a reader comparing against a textbook can act on.
-- Do not let a primary citation stand in for a primary value. Citing a
-  measurement *alongside* a tier-3 number does not source that number. A file
-  that looks sourced while its number came from somewhere else is worse than
-  one that cites nothing, because it stops the reader checking.
-- Where no primary source has been adopted, record it as an open gap. "No
-  primary source has been adopted for this value" is a legitimate provenance
-  state for an educational simulator, and one that can later be fixed. A
-  tier-3 citation presented as settled is neither legitimate nor marked for fixing.
-
-Saying that a constant comes from Gas Man, or from a paper that reprints Gas
-Man's table, presents a tier-3 source as though it were a measurement.
-
-**The first and third of those rules are part of the data-file format, and
-`make check` enforces them.** Each family of data file (agent, patient and
-machine) has its own `schema_version`, checked against that family's
-supported versions in `src/anesthesia_sim/core/parameters.py`, so a format
-change affects only its own family. Version 2 gave every `sources` entry two
-required fields and allowed one optional top-level string. Version 3 added a
-third required field to each entry. Version 4, for agent files alone, added
-`molar_mass_g_mol` and `liquid_density` (§ "Agent amount"). Agent files must
-be version 4, and patient and machine files version 3. The fields are a list,
-because the checker reads the first table in this section as the provenance
-table below:
-
-- `tier`, on each `sources` entry: `primary`, `secondary` or
-  `reference-implementation`. It says which of the three tiers above the
-  *document* belongs to.
-- `adopted`, on each `sources` entry: whether this file names that source as
-  the authority for a value it stores.
-- `authority_for`, on each `sources` entry since version 3: the dotted key
-  paths of the stored values that rest on this source, spelled as the
-  provenance table spells them. The list is empty exactly when `adopted` is
-  false. The per-row counts under § "Source hierarchy" are computed from it.
-- `provenance_gap`, optional and top level: why no primary source has been
-  adopted, in a file where none has been.
-
-`tools/doc_check.py`'s `check_source_tiers` enforces these as exact rules:
-
-- Every entry declares a tier from the closed vocabulary, an `adopted` flag
-  and an `authority_for` list.
-- That list is non-empty exactly when the entry is adopted.
-- Each path in the list is a stored value of the same file, and no stored
-  value is named by two entries.
-- A file with no entry that is both `primary` and `adopted` records a
-  non-empty `provenance_gap`.
-
-Each rule is an error that stops the build, not a warning, because none of
-them needs judgment to decide. `src/anesthesia_sim/core/parameters.py` also
-checks the vocabulary and the `authority_for` rules when it loads a file, so a
-bad entry fails as soon as the file is read.
-
-**`tier` and `adopted` are two fields because one field alone would decide
-nothing.** Every agent file cites primary measurements that it has explicitly
-*not* adopted, and so does the reference patient, which cites five. A check
-that read the tier alone would report all four of this project's data files as
-primary-sourced, although the reference patient adopts no primary source and
-many of the table's rows are tier 3 (§ "Where this project stands" above gives
-the counts). That is the failure the second rule above exists to prevent, so
-the check reads the adoption and not the citation list. Today each agent file
-declares two adopted primary sources, for `mac_awake` and for the vaporizer
-maximum. `src/anesthesia_sim/data/patients/reference_adult.json` declares
-none and records the gap.
-
-**What the check does not decide is whether a citation labelled `primary`
-really is one.** That needs somebody who has read the paper. A tool that
-guessed, from the author, the journal or a product name in the title, would
-look authoritative and be wrong. The tool checks that a claim was made and is
-well-formed, and a reviewer checks that the claim is true. The provenance
-table below works the same way: the checker confirms that a documented key
-exists and holds the stated value, never that the value is right.
-
 The following table records the values selected for v0.1.0. Each value is
 loaded from a versioned data file and validated against its schema, rather
 than hardcoded. Full citations, definitions and reference conditions are
@@ -3183,104 +3126,11 @@ recorded as `sources` entries in that file, not duplicated here.
 
 Each row names the file and the exact JSON key path of the value it documents,
 so a row traces to one stored value, not to a file that happens to contain a
-matching number. `tools/doc_check.py` (run by `make check` and CI) checks the
-table against the data files in both directions. Every row must name a key
-that the file contains and state the value stored there, and every numeric
-parameter in every data file must have exactly one row. A derived row states
+matching number. `tools/doc_check.py` checks each row's key and value against
+its file (§ "How this document is held to the tree"). A derived row states
 the stored value beside the derived one. The tissue:blood coefficients are
 computed when a file is loaded, from the tissue:gas and blood:gas values, so
 their rows name the stored tissue:gas key and show the division.
-
-Both directions start from a data file, so that check cannot see a constant
-that never entered one, such as a field default on a `core/` dataclass.
-`test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
-looks for such a constant. It reads every numeric field default on a `core/`
-dataclass through `dataclasses.fields()`, including one written as a named
-constant, and requires each to appear in this table's Selected-value column.
-It skips zero and a field's full scale (1, or 100 for a percent), which carry
-no scientific content. It matches values, not names, so it can miss a
-constant: a new one equal to a value the table already selects passes, and 6.0
-is selected for both the circuit and the vessel-rich tissue.
-
-The table is not the only place these values appear. Some prose restates one:
-the reference adult's alveolar volume and ventilation, and each agent's
-blood:gas coefficient, vaporizer maximum and MAC. Each such sentence carries a
-hidden marker, an HTML comment that names the file and key it restates:
-
-```text
-<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
-```
-
-`doc_check.py` checks both sides of that link: the key against the data file,
-and the stated value against the paragraph the marker sits under. So neither
-the file nor the sentence can change without the other. Without the markers,
-editing a data file would force an update to this table but leave the prose
-around it quietly wrong.
-
-Some figures are *derived* from several stored values, and no file holds
-them. Such a figure carries a `derived:` marker that names its inputs instead.
-One figure may carry several of these markers where its inputs span more than
-one file:
-
-```text
-<!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
-```
-
-When an input changes, the checker reports that the figure must be recomputed
-and names the figure. It never recomputes the figure itself. The rounding and
-the units are matters of judgment, and a plausible wrong number in this
-document is worse than none.
-
-**Rewording a marked sentence is expected to fail the check.** The failure
-asks for the marker to be moved or updated with the sentence.
-
-A marker can also name a constant in code, such as the shipped step. It is
-written as the module's path under the package, followed by the constant's
-name:
-
-```text
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-```
-
-**A figure that equals a stored value must carry a marker.**
-`doc_check.py` finds each figure in this document and in `README.md` that
-equals a stored value, in that value's unit. The stored values are every
-number in a parameter data file, and every public constant in the package
-whose name ends in a unit, such as `_S` or `_L_MIN`. A figure that restates
-its value carries a `provenance:` or `derived:` marker. A figure that only
-coincides with one carries a `not-restated:` marker that lists it:
-
-```text
-<!-- not-restated: 2 %, 0.05 -->
-```
-
-The check never decides which kind a figure is. `2.5` appears in this document
-as an alveolar volume in litres, a tolerance in seconds and a flow in litres
-per minute, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
-the next. Binding a figure to a key by its value would be confidently wrong
-where a reader trusts most. So the writer says which kind it is, and the check
-enforces only that somebody did. A marker covers only the values it names, in
-their units, so a marker for the 6 L circuit does not clear desflurane's 6%
-MAC in the same paragraph. The check reads:
-<!-- not-restated: 6 L, 6 % -->
-
-- a unit written as a word, such as "seconds", and a time in milliseconds,
-  minutes or hours, which it converts to seconds;
-- a unit in lower case, such as "l/min";
-- each number in a list joined by slashes, such as "6/33/14.5 L", with the
-  list's unit;
-- in math, a symbol given a number with `=` or `\approx`, such as
-  $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends the span
-  or comes before a comma, a semicolon or `\quad`.
-<!-- not-restated: 6 L, 33 L, 14.5 L, 2.5 L -->
-
-It reads no other number in math, because most are exponents and coefficients
-that only happen to equal a stored value, and it skips a math span split
-across two lines. A marker under a list covers the whole list, because a
-marker cannot sit inside a list item. A `not-restated:` marker fails if its
-paragraph no longer contains a figure it lists, so the declaration cannot
-outlive its sentence. A number that equals no stored value, such as a
-flow-sweep point or a worked example, needs no marker.
 
 | Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
@@ -12686,3 +12536,163 @@ measures. The FDA's *General Principles of Software Validation* (2002) § 5.2.2
 names traceability analysis among the validation tasks. Gotel and Finkelstein
 set out the problem in *An analysis of the requirements traceability problem*,
 ICRE 1994, pp. 94–101.
+
+### The provenance table, and the markers over restated values
+
+`tools/doc_check.py` (run by `make check` and CI) checks the provenance table
+in § "Source hierarchy: what may be cited as the authority for a value" against
+the data files in both directions. Every row must name a key that the file
+contains and state the value stored there, and every numeric parameter in every
+data file must have exactly one row. The function that does this,
+`check_provenance`, confirms that a documented key exists and holds the stated
+value, never that the value is right or which tier its source has.
+
+Both directions start from a data file, so that check cannot see a constant
+that never entered one, such as a field default on a `core/` dataclass.
+`test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
+looks for such a constant. It reads every numeric field default on a `core/`
+dataclass through `dataclasses.fields()`, including one written as a named
+constant, and requires each to appear in the provenance table's Selected-value column.
+It skips zero and a field's full scale (1, or 100 for a percent), which carry
+no scientific content. It matches values, not names, so it can miss a
+constant: a new one equal to a value the table already selects passes, and 6.0
+is selected for both the circuit and the vessel-rich tissue.
+
+The provenance table is not the only place these values appear. Some prose restates one:
+the reference adult's alveolar volume and ventilation, and each agent's
+blood:gas coefficient, vaporizer maximum and MAC. Each such sentence carries a
+hidden marker, an HTML comment that names the file and key it restates:
+
+```text
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+```
+
+`doc_check.py` checks both sides of that link: the key against the data file,
+and the stated value against the paragraph the marker sits under. So neither
+the file nor the sentence can change without the other. Without the markers,
+editing a data file would force an update to the provenance table but leave the prose
+around it quietly wrong.
+
+Some figures are *derived* from several stored values, and no file holds
+them. Such a figure carries a `derived:` marker that names its inputs instead.
+One figure may carry several of these markers where its inputs span more than
+one file:
+
+```text
+<!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
+```
+
+When an input changes, the checker reports that the figure must be recomputed
+and names the figure. It never recomputes the figure itself. The rounding and
+the units are matters of judgment, and a plausible wrong number in this
+document is worse than none.
+
+**Rewording a marked sentence is expected to fail the check.** The failure
+asks for the marker to be moved or updated with the sentence.
+
+A marker can also name a constant in code, such as the shipped step. It is
+written as the module's path under the package, followed by the constant's
+name:
+
+```text
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+```
+
+**A figure that equals a stored value must carry a marker.**
+`doc_check.py` finds each figure in this document and in `README.md` that
+equals a stored value, in that value's unit. The stored values are every
+number in a parameter data file, and every public constant in the package
+whose name ends in a unit, such as `_S` or `_L_MIN`. A figure that restates
+its value carries a `provenance:` or `derived:` marker. A figure that only
+coincides with one carries a `not-restated:` marker that lists it:
+
+```text
+<!-- not-restated: 2 %, 0.05 -->
+```
+
+The check never decides which kind a figure is. `2.5` appears in this document
+as an alveolar volume in litres, a tolerance in seconds and a flow in litres
+per minute, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
+the next. Binding a figure to a key by its value would be confidently wrong
+where a reader trusts most. So the writer says which kind it is, and the check
+enforces only that somebody did. A marker covers only the values it names, in
+their units, so a marker for the 6 L circuit does not clear desflurane's 6%
+MAC in the same paragraph. The check reads:
+<!-- not-restated: 6 L, 6 % -->
+
+- a unit written as a word, such as "seconds", and a time in milliseconds,
+  minutes or hours, which it converts to seconds;
+- a unit in lower case, such as "l/min";
+- each number in a list joined by slashes, such as "6/33/14.5 L", with the
+  list's unit;
+- in math, a symbol given a number with `=` or `\approx`, such as
+  $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends the span
+  or comes before a comma, a semicolon or `\quad`.
+<!-- not-restated: 6 L, 33 L, 14.5 L, 2.5 L -->
+
+It reads no other number in math, because most are exponents and coefficients
+that only happen to equal a stored value, and it skips a math span split
+across two lines. A marker under a list covers the whole list, because a
+marker cannot sit inside a list item. A `not-restated:` marker fails if its
+paragraph no longer contains a figure it lists, so the declaration cannot
+outlive its sentence. A number that equals no stored value, such as a
+flow-sweep point or a worked example, needs no marker.
+
+### What the data-file format requires of a `sources` entry
+
+**The first and third of the rules for a `sources` entry in
+§ "Source hierarchy: what may be cited as the authority for a value"
+are part of the data-file format, and `make check` enforces them.** Each
+family of data file (agent, patient and
+machine) has its own `schema_version`, checked against that family's
+supported versions in `src/anesthesia_sim/core/parameters.py`, so a format
+change affects only its own family. Version 2 gave every `sources` entry two
+required fields and allowed one optional top-level string. Version 3 added a
+third required field to each entry. Version 4, for agent files alone, added
+`molar_mass_g_mol` and `liquid_density` (§ "Agent amount"). Agent files must
+be version 4, and patient and machine files version 3. The fields are:
+
+- `tier`, on each `sources` entry: `primary`, `secondary` or
+  `reference-implementation`. It says which of the three tiers in § "Source
+  hierarchy" the *document* belongs to.
+- `adopted`, on each `sources` entry: whether this file names that source as
+  the authority for a value it stores.
+- `authority_for`, on each `sources` entry since version 3: the dotted key
+  paths of the stored values that rest on this source, spelled as the
+  provenance table spells them. The list is empty exactly when `adopted` is
+  false. The per-row counts under § "Source hierarchy" are computed from it.
+- `provenance_gap`, optional and top level: why no primary source has been
+  adopted, in a file where none has been.
+
+`tools/doc_check.py`'s `check_source_tiers` enforces these as exact rules:
+
+- Every entry declares a tier from the closed vocabulary, an `adopted` flag
+  and an `authority_for` list.
+- That list is non-empty exactly when the entry is adopted.
+- Each path in the list is a stored value of the same file, and no stored
+  value is named by two entries.
+- A file with no entry that is both `primary` and `adopted` records a
+  non-empty `provenance_gap`.
+
+Each rule is an error that stops the build, not a warning, because none of
+them needs judgment to decide. `src/anesthesia_sim/core/parameters.py` also
+checks the vocabulary and the `authority_for` rules when it loads a file, so a
+bad entry fails as soon as the file is read.
+
+**`tier` and `adopted` are two fields because one field alone would decide
+nothing.** Every agent file cites primary measurements that it has explicitly
+*not* adopted, and so does the reference patient, which cites five. A check
+that read the tier alone would report all four of this project's data files as
+primary-sourced, although the reference patient adopts no primary source and
+many of the table's rows are tier 3 (§ "Where this project stands" gives
+the counts). That is the failure the second rule for a `sources` entry exists to prevent, so
+the check reads the adoption and not the citation list. Today each agent file
+declares two adopted primary sources, for `mac_awake` and for the vaporizer
+maximum. `src/anesthesia_sim/data/patients/reference_adult.json` declares
+none and records the gap.
+
+**What the check does not decide is whether a citation labelled `primary`
+really is one.** That needs somebody who has read the paper. A tool that
+guessed, from the author, the journal or a product name in the title, would
+look authoritative and be wrong. The tool checks that a claim was made and is
+well-formed, and a reviewer checks that the claim is true.
