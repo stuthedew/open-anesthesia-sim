@@ -3865,6 +3865,38 @@ rule also makes a halt resumable. The run is left standing on the crossing
 step. So the earlier reading for the next step is the crossing step's own
 reading, and the crossing that was just halted on is not crossed again.
 
+**A crossing is decided by the canonical readings, on the trunk as on every
+branch.** A running trunk also holds its live, stepped readings. The live
+and canonical readings can lie about a hundred-trillionth apart on opposite
+sides of a height. When the trunk halted on its live readings at the exact
+height, a branch opened on the halting step could show the same target as
+still running. Testing the canonical readings at the exact height fails
+differently. A steady compartment's canonical reading
+moves in its last digit from step to step, so a run that settled on a target
+crossed it again and again. A run with no ventilation and a target on the
+circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten minutes
+(2026-11-01). So a target's height is a band, one part in a hundred thousand
+of the height on either side (`bookmarks.HEIGHT_BAND`). A reading inside the
+band is at the height, and the crossing rule above applies to the band. The
+band is about five hundred times finer than a two-decimal readout near 1 MAC
+of sevoflurane.
+
+A canonical reading costs about 2 ms, where a whole step costs about 60 µs.
+So the live readings screen each step. Where neither of a step's live
+readings lies near an edge of a band, the canonical readings lie on the same
+sides of it, and a step the live readings find crossing nothing is passed. A
+step they find crossing a mark, or one with a live reading within one part in
+a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is tested
+again from the canonical readings. So the run halts only on a crossing that
+its halt record names. The widest measured gap between the two readings, over
+2 h at the 0.001 s step (2026-11-01), was 1.2 parts per billion. Scaled
+linearly to 24 h, it is 14 parts per billion, about a seventieth of the
+allowance. A marked instant needs no canonical
+reading, because whether a step crosses it depends only on the step's two
+instants.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 **A MAC target halts on every crossing, in either direction.** A target names
 a compartment and a height and has no direction. Consider a case taken up
 through 0.8 ×MAC and back down through it. It has reached what the learner
@@ -3959,6 +3991,16 @@ a mark that will stop the learner again, and any earlier claim that it was
 reached is no longer true. "Passed" is worked out again from the clock every
 time the row is drawn, so it survives a rewind. "Reached" would have to be
 withdrawn, and failing to withdraw it is a displayed value going quietly wrong.
+
+**For developers.** These are the measured figures behind the height band and
+the live readings above.
+
+- **The height band.** The live and canonical readings can lie about 1e-14
+  apart.
+- **Halting.** A canonical reading is one matrix exponential. The widest gap
+  measured between the live and canonical readings was 1.2e-9 of the
+  reading. Extrapolated in proportion to 24 h, it is 1.4e-8.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### The control-input record
 
@@ -4096,8 +4138,7 @@ the beginning of the run.
 **The chart's values are computed a second way, and the two ways agree well
 within the last displayed digit.** To draw the chart, the program computes the
 state at evenly spaced instants, one per column, each from the one before it
-while the settings stay the same. Both ways solve the same equations exactly.
-They differ only in the order of the arithmetic, which changes the rounding. On
+while the settings stay the same. On
 2026-09-07 both were compared with a step-by-step run of the simulation. Their
 differences from it were about ten orders of magnitude below 0.01%, the
 smallest difference that the two-decimal percent readout can show
@@ -4118,9 +4159,7 @@ atmosphere. The test of the record against the step-by-step simulation is the
 "Closed-form agreement test".
 
 A *propagator* is the matrix that carries the state across one interval at
-fixed settings. A *stretch* is the time between two changes. Drawing the chart
-reuses one propagator across the columns inside a stretch, chaining from the
-first column, and that reuse is what makes a frame cheap.
+fixed settings. A *stretch* is the time between two changes.
 
 Storing the run as a record keeps it small. At one sample per fixed 0.1 s
 step, a 30-day case takes 3.16 GiB: 25 920 000 samples of 130.8 bytes each
@@ -4400,38 +4439,6 @@ branching, a branch's reset and the halt record all follow one rule:
   the step that reached a branch's fork. The record is worked out again against
   the current marks whenever it is read, as the mark outcomes are. So a mark
   removed and added back under another label is named by its new label.
-- **A crossing is decided by the canonical readings, on the trunk as on every
-  branch.** A running trunk also holds its live, stepped readings. The live
-  and canonical readings can lie about a hundred-trillionth apart on opposite
-  sides of a height. When the trunk halted on its live readings at the exact
-  height, a branch opened on the halting step could show the same target as
-  still running. Testing the canonical readings at the exact height fails
-  differently. A steady compartment's canonical reading
-  moves in its last digit from step to step, so a run that settled on a target
-  crossed it again and again. A run with no ventilation and a target on the
-  circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten minutes
-  (2026-11-01). So a target's height is a band, one part in a hundred thousand
-  of the height on either side (`bookmarks.HEIGHT_BAND`). A reading inside the
-  band is at the height, and the crossing rule above applies to the band. The
-  band is about five hundred times finer than a two-decimal readout near 1 MAC
-  of sevoflurane.
-
-  A canonical reading costs about 2 ms, where a whole step costs about 60 µs.
-  So the live readings screen each step. Where neither of a step's live
-  readings lies near an edge of a band, the canonical readings lie on the same
-  sides of it, and a step the live readings find crossing nothing is passed. A
-  step they find crossing a mark, or one with a live reading within one part in
-  a million of the height of an edge (`bookmarks.LIVE_READING_GAP`), is tested
-  again from the canonical readings. So the run halts only on a crossing that
-  its halt record names. The widest measured gap between the two readings, over
-  2 h at the 0.001 s step (2026-11-01), was 1.2 parts per billion. Scaled
-  linearly to 24 h, it is 14 parts per billion, about a seventieth of the
-  allowance. A marked instant needs no canonical
-  reading, because whether a step crosses it depends only on the step's two
-  instants.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the
 opening still replaces the opening stretch, even after a branch was taken
@@ -4672,10 +4679,9 @@ exactly, with 0 values differing. `tests/integration/test_controller.py` tests
 that pair on the 45.3 s case above. Across the 240 columns that the two runs
 share, 0 of 2 160 canonical values differ, while 1 909 of the same 2 160 drawn
 values do, and the fork is the one extra column. This is the separation that
-§ "The canonical evaluation rule" makes between the two paths. It matters to a
-reader of a trace of the difference between two runs. That trace would show a
-few units in the last digit here, where two identical runs show zero, and that
-is not a disagreement about the case.
+§ "The canonical evaluation rule" makes between the two paths. § "What a branch
+comparison asserts, and what it does not" says what it means for a trace of the
+difference between two runs.
 
 **For developers.** These are the measured figures behind the statements
 above, in the order the statements appear.
@@ -4694,11 +4700,6 @@ above, in the order the statements appear.
 - **The subtraction.** With a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
   9.999999974752427e-07 and not 1e-6. So a child asked for its own `1e-6`
   would land one unit in the last place away.
-- **The height band.** The live and canonical readings can lie about 1e-14
-  apart.
-- **Halting.** A canonical reading is one matrix exponential. The widest gap
-  measured between the live and canonical readings was 1.2e-9 of the
-  reading. Extrapolated in proportion to 24 h, it is 1.4e-8.
 - **Dial order at a reset.** On the 2026-09-20 probes, the worst of the
   differing elements was 1.21e-15.
 - **Drawn values of two identical runs.** The worst of the differing drawn
