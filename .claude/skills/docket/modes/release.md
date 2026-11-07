@@ -88,7 +88,7 @@ and unreliable, not while it is still being built; that case is classed
 The command computes and decides nothing. Whether an item is *really* debt,
 whether the gate should open, and what goes into `ROADMAP.md` are yours —
 transcribe the lists into the milestone's own section with the date they were
-frozen, per `ROADMAP.md` § "Recording it". The list is frozen at that
+frozen, per `ROADMAP.md` § "The cadence" beat 2. The list is frozen at that
 moment; a finding made afterwards goes to the next gate unless the problem it
 describes predates the freeze, or is `P0`, `safety` or `science`.
 
