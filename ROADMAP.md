@@ -247,7 +247,7 @@ A version that has genuinely gone out untagged is named in a bold sentence
 here. The checker requires the count that the sentence states to match the
 versions it names. There are none.
 
-**The gap is closed, 2026-08-30.** v0.1.0 (`97cc66a`) and v0.2.0 (`796bf4f`)
+**The gap is closed, 2026-08-30.** v0.1.0 (`ddc868f6`) and v0.2.0 (`69a5888c`)
 were the last two untagged versions.
 
 A tag also has to sit on its own release's commit, and the tag's name cannot
