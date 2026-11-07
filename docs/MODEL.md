@@ -2,8 +2,7 @@
 
 ## Status
 
-The simulator is an educational model. It is not a clinical prediction, dosing
-tool, patient monitor, or medical device.
+The simulator is an educational model (§ "Intended use").
 
 This document specifies the scientific model that the simulator implements. Its
 equations and compartment structure have not changed since v0.1.0, and every
@@ -13,8 +12,7 @@ A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.
 
 Release v0.0.2 modelled the wash-in and washout of an ideal breathing circuit
-with no patient. Its reference tests check the circuit against exact formulas
-and are unchanged (§ "Preserved circuit reference tests"). v0.1.0, the “Sevo works” milestone, was the first sevoflurane model with a patient. The agent follows this path:
+with no patient. Its reference tests are in § "Preserved circuit reference tests". v0.1.0, the “Sevo works” milestone, was the first sevoflurane model with a patient. The agent follows this path:
 
 ```text
 delivered agent
@@ -30,9 +28,28 @@ venous blood
 alveolar gas
 ```
 
+### What a named test, a missing test and a date tell the reader
+
+When a statement in this document or in `README.md` is about the simulator's
+code, data or output, it names the thing it describes. Where no test covers the
+statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
+parenthesis names the open work item for adding the test.
+
+Each name is set in fixed-width type and points to a test, a file, or a part of
+the code or its data. A number repeated from the simulator's data is linked to
+the stored value. An automatic documentation check looks up each name and link.
+Without that check, a sentence would still read as true after the test it names
+was renamed, the data it describes was removed or the value it repeats was
+changed.
+
+When a statement carries a date, sits under a dated heading or sits in a
+released version's section, it records what was true on that date. It need not
+name a test, and nothing checks it against the code. A later fact gets its own
+date, and the dated statement is never changed to carry it.
+
 ## Purpose
 
-The milestone must demonstrate:
+The “Sevo works” milestone (v0.1.0) must demonstrate:
 
 - circuit wash-in and washout;
 - ventilation between the breathing circuit and alveolar gas;
@@ -58,6 +75,7 @@ IEC 62304, for software.
 ### Intended use
 
 This is a teaching simulator for volatile-agent uptake and distribution. It is
+not a clinical prediction, dosing tool, patient monitor, or medical device. It is
 intended for anesthesia clinicians, trainees, and students. It helps them
 build intuition about how agent concentration moves between the breathing
 circuit, alveolar gas, blood, and the tissue groups, under management that the
@@ -73,14 +91,12 @@ This limit concerns the *data*, not nearness to a patient. Keeping the
 simulator open on a computer during a case is ordinary teaching use, with no
 hazard of its own. A run built from a particular patient's weight, age, and
 cardiac output is a prediction about that patient, whatever the simulator's
-window is labelled. Planned work on patient factors (`ROADMAP.md`) will make
-such runs possible.
+window is labelled.
 
 ### What keeps a real patient's data out of a run
 
-The simulator's intended use excludes entering an identifiable patient's data,
-and using a run to inform the management of a specific patient
-(§ "Intended use"). Two safeguards protect against that misuse today:
+Two safeguards protect today against the misuse that § "Intended use"
+excludes:
 
 1. The use statement at the foot of the window says that the simulator is for
    teaching and is not a clinical prediction, monitoring or dosing tool. In
@@ -101,20 +117,6 @@ and the reference adult is stored in `data/patients/reference_adult.json`. A tes
 way a patient could get into a run today, so adding patient factors will make it fail
 (`test_every_run_simulates_the_shipped_reference_adult`). The change that adds them must then
 rewrite this section and the hazard table's row for a real patient's data.
-
-Code in `app/` changes settings only through the simulation controller, which saves the whole
-settings record at each change. Before each step, the controller compares the current settings
-key (`AgentUptakeSystem.settings_key()`) against the key saved with the last settings record.
-It makes the comparison in the method that advances the run, `SimulationController.advance()`.
-A refused Reset leaves the run exactly as it was, because the controller builds the new run's
-settings record before it clears anything (`SimulationController.reset()`). The run then halts
-through the same code as a failed step.
-
-The agent selector and the sliders read the snapshot only inside handlers guarded by
-`halt_gate` in `app/halt_gate.py`. A halt resets the selector from the run's settings record,
-because the selector would otherwise read the agent from the refused snapshot. If a halt comes
-before the screen is redrawn, every withheld value is hidden before the dials are written,
-because writing a dial can raise an exception.
 
 ### Software safety classification: Class C, for the whole application
 
@@ -4906,8 +4908,7 @@ builds the settings record to report why before it takes the step. At Reset,
 `SimulationController.reset()` refuses before it clears anything, and the interface halts
 the run. A setting change that the record refuses is undone, so the compartment, the run's
 definition and the timeline keep the previous setting. No setting change repairs such a
-fraction. A new cardiac output scales every tissue flow by the same factor, so flows that
-did not sum to the old output do not sum to the new one. Putting the fractions back, or
+fraction (§ "Reset behavior"). Putting the fractions back, or
 building a new patient, is the only repair.
 
 **The alveolar and tissue agent amounts are checked against the compartment's capacity
@@ -4995,6 +4996,17 @@ simulation step").
 `test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it`
 and `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`, in the
 same file, check the three cases of the fresh gas flow control below.
+
+Code in `app/` changes settings only through the simulation controller, which saves the whole
+settings record at each change. Before each step, the controller compares the current settings
+key (`AgentUptakeSystem.settings_key()`) against the key saved with the last settings record.
+It makes the comparison in the method that advances the run, `SimulationController.advance()`.
+
+The agent selector and the sliders read the snapshot only inside handlers guarded by
+`halt_gate` in `app/halt_gate.py`. A halt resets the selector from the run's settings record,
+because the selector would otherwise read the agent from the refused snapshot. If a halt comes
+before the screen is redrawn, every withheld value is hidden before the dials are written,
+because writing a dial can raise an exception.
 
 No source chose the three flow maxima. They began as the interface
 sliders' maxima, before the model declared any range. To change a range, edit its
@@ -5587,12 +5599,18 @@ with, followed by each kept setting that differs from the one that the branch
 opened under.
 
 **The simulator refuses Reset when the tissue flows no longer sum to the cardiac
-output.** A refused Reset leaves the run exactly as it was. The interface then
-halts the run, as it does when a step fails (`PL-M4M0`). For other failures, its
-banner names Reset as the way to recover. For a refused Reset, the banner says
-instead that no setting can repair the run, because a new cardiac output scales
-every flow by one factor. It also says that closing and reopening the
-application starts a new run (`PL-01GY`).
+output.** Only a perfusion fraction written past its range check can cause
+that. A refused Reset leaves the run exactly as it was. The interface then
+halts the run, as it does when a step fails (`PL-M4M0`), and records the
+refusal as its failure. If the run had already failed for another reason, that
+failure stays the reason, and the banner's advice on recovery mentions the
+refusal. The status word, the run controls and the banner state the halt. For
+other failures, its banner names Reset as the way to recover. For a refused
+Reset, the banner says instead that no setting can repair the run, because a
+new cardiac output scales every flow by one factor. It also says that closing
+and reopening the application starts a new run (`PL-01GY`). It names neither
+the refused Reset nor a dial. The refusal message gives the two flows as they
+were set, in L/min, the unit every readout shows.
 
 **For developers.** Reset sets simulation time to zero by clearing the count of
 steps taken. It releases the step length that the run was using, so that a fresh
@@ -9763,7 +9781,7 @@ reviewer still has to judge whether each test is any good.
 | reading a correct concentration as belonging to a different agent | agent colour is never the only cue. The agent name is always visible in every top-level window, within the limit stated in § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's". `tools/agent_identity_check.py` checks the ISO 5360 colours in `src/anesthesia_sim/app/theme.py` and the text colour that stays readable on each | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. So a run still shows as stopped, and does not offer Pause, even when its own snapshot refuses a value. A banner written before any frame of the stopped run was drawn says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run that a mark stopped as one the learner paused, while two runs are compared | it reads "Paused — stopped on your mark". While two runs are compared, the branch control hides its own "stopped on your mark", so this status word is the only cue. A failure, or reaching the supported run length, overrides this word. A MAC target's row reads "reached" from its first crossing on. A new branch reads "Paused" at the instant it starts from its parent run, though it carries the parent's halt record, because no step of the branch stopped it | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
-| reading a run whose Reset the model refused as one still running, or as one that was reset | the model refuses a Reset only when the tissue blood flows no longer add up to the cardiac output, which only a perfusion fraction written past its range check can cause. A refused Reset leaves the run exactly as it was. The interface then halts the run and records the refusal as its failure. If the run had already failed for another reason, that failure stays the reason, and the banner's advice on recovery mentions the refusal. The status word, the run controls and the banner state the halt. The banner says that no setting can repair the refusal, and that closing and reopening the application starts a new run. It names neither the refused Reset nor a dial. The refusal message gives the two flows as they were set, in L/min, the unit every readout shows | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| reading a run whose Reset the model refused as one still running, or as one that was reset | a refused Reset leaves the run exactly as it was, and the interface halts the run and states the halt (§ "Reset behavior") | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
 | comparing readouts with a chart that was drawn from different settings | the readouts come from the model's steps, and the chart from the recorded settings of the run. Before each step, the two sets of settings are compared. If a setting reaches the model without being recorded, the run halts on the last step on which the two agree, and a banner says why. The interface never changes a setting that way. Reset then starts a new run from the model's settings. A recorded change after such a write brings the record back into line with the model without halting the run | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
 | reading the agent selector or a slider, used on a run whose values cannot be read, as a control that took effect | if reading the run's values fails while the selector or a slider is in use, the run halts and the halt is stated from the run's record, so the failure cannot pass unseen. The selector goes back to the agent that record names. The banner still names Reset as the way to recover, unless a refused Reset has left its own instructions. The controls stay usable on a halted run, because locking them would show the agent selector as disabled. A slider moved on a run that has already stopped is refused, as the row on values from different steps says | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
 | reading the value printed beside a dial dragged into a halt as the value the run holds | after writing its banner, the halt sets every dial from the run's record (`SimulationController.record()`), which gives the agent and the four settings in force. The record takes them from the settings the compartments hold, not from any compartment value. So the label beside the dial whose drag caused the halt shows the value that both the dial and the run hold. A run whose values cannot be read draws no new screen that could rewrite the label | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
@@ -12608,19 +12626,9 @@ test module as the wash-in validation.
 
 ## How this document is held to the tree
 
-When a statement in this document or in `README.md` is about the simulator's
-code, data or output, it names the thing it describes. Where no test covers the
-statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
-parenthesis names the open work item for adding the test. The hazard table works
-the same way: each row names the test that enforces it, or says plainly that it
-has none.
-
-Each name is set in fixed-width type and points to a test, a file, or a part of
-the code or its data. A number repeated from the simulator's data is linked to
-the stored value. An automatic documentation check looks up each name and link.
-Without that check, a sentence would still read as true after the test it names
-was renamed, the data it describes was removed or the value it repeats was
-changed.
+§ "What a named test, a missing test and a date tell the reader" gives the rules
+that a reader of this document relies on. This section gives the rest, for the
+people who write it.
 
 For a figure that the model computes or the simulator displays, such as the time
 at which a compartment first shows a nonzero reading, the sentence that gives
@@ -12641,11 +12649,6 @@ Outside these lists and sections, only the documentation review before a work
 item closes finds a number with nothing behind it, or a claim that does not name
 what it describes. The review does the same for a qualitative claim, such as
 which value a readout shows beside a halt, because the check cannot read one.
-
-When a statement carries a date, sits under a dated heading or sits in a
-released version's section, it records what was true on that date. It need not
-name a test, and nothing checks it against the code. A later fact gets its own
-date, and the dated statement is never changed to carry it.
 
 A count in this document is dated, checked against what it counts, or copied
 from a tool that prints it. For example, a check compares the count in a heading
