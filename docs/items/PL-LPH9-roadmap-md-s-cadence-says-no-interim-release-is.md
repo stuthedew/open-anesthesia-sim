@@ -227,9 +227,9 @@ entry is workable only once v0.6.0's scope lands - does not rest on where gate
 work ships. `subprojects/docket/src/docket/plan.py` argues from the old rule in
 a comment and is outside this item's `touches`, so it is filed as `PL-QVSN`.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "How gate
-work is released" carried this record of the decision until then. The project
-owner's answer in `PL-LVN8` sends decision history to the item that holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "The
+cadence" carried this record of the decision until then. The project owner's
+answer in `PL-LVN8` sends decision history to the item that holds it.
 
 > The sentence that used to be here said that no interim release is cut
 > partway through clearing. It told sessions to decline `docket release`'s

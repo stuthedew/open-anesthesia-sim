@@ -254,3 +254,42 @@ Queries answered from the tree (repeated in the pull request):
 - "The sections below" in the out-of-scope rule means § "Planned milestones".
 - The wording that draws the exclusion warning is listed in
   `tools/doc_check.py`. The example belongs to the line edit, `PL-YRY3`.
+
+**What the two reviewers found, 2026-11-07.** One reviewer read every word whose
+meaning depends on position; the other read every changed line, new heading and
+moved passage. Between them they found 17 changes of meaning, with about half
+found by both. Each is corrected on the branch:
+
+1. The definition of `anticipated` had been cut from both places as a repeat of
+   the other. It is back before its example, and "The same test" again names
+   the live-mechanism test it applies.
+2. "The gate section may also set out the decision behind the deferral at any
+   length" is restored. It was a permission, not a repeat, and v0.6.0 and
+   v0.7.0 use it.
+3. Beat 3 now gives the clearing rule before the deferral, so the deferral
+   reads as the exception. Beat 1's "A milestone without one" now says "that
+   heading".
+4. The deferral section again says that a frozen entry deferred on its terms
+   carries the same field (`PL-8QMD`). "Not here" became "not in this
+   document", "this section used to carry" became "the gate sections used to
+   carry", and the third disposition names beat 3.
+5. "The rule above applies this" now names § "Which findings re-enter the
+   gate". v0.5.0's citation of the `anticipated` rule now names § "What counts".
+   v0.7.0's Gate 4 deferral now cites § "Deferring to the next gate".
+6. v0.4.26 keeps its bold sentence word for word, and the pointer says what
+   `PL-RKWB` records without claiming an answer. The `PL-KKRP` pointer now
+   names beat 2 as the place that states the condition.
+7. Ids that left with their passages are back as pointers: `PL-LKGL`,
+   `PL-D8KW`, `PL-83LS`, `PL-SWFM` and `PL-8QMD`.
+8. The timeline's row 6 sentence no longer says beat 2 "requires" a freeze that
+   predates the rule. § "Versioning decision" says "the gated milestone's own
+   number".
+9. The lane rule is dated from 2026-10-24, when `PL-Z64T` collapsed v0.6.0's
+   lane groups, so completed sections that name lanes do not read as breaches.
+10. Eight item notes named the section a passage was moved from by its new
+    heading. Each now names the heading on `main` at `7081a909`.
+
+Kept as they are: the dated-count sentence in § "Recording it" (the decision
+above); the two pronoun repairs "`wave` counts a deferred entry" and "The pass
+runs against", which replace an "it" whose sentence was cut; and the stale tool
+text, which is `PL-C8N8`.

@@ -157,10 +157,10 @@ written up. The hazard it inherits is the one the original section named:
 patch cut before the port lands takes the number and the section's heading
 moves to the next free one. That is a rename, not a re-scope.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "v0.4.26
-- the interface moves to Qt" carried this record of the decision until then.
-The project owner's answer in `PL-LVN8` sends decision history to the item that
-holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` §
+"Completed: v0.4.26 - the interface moves to Qt" carried this record of the
+decision until then. The project owner's answer in `PL-LVN8` sends decision
+history to the item that holds it.
 
 > **The one question the reorder leaves open is this number, and it is
 > recorded rather than settled.** § "The cadence" says that a gate does not

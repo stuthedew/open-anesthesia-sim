@@ -73,9 +73,10 @@ other open items already declare in `touches` — to produce a section that
 describes neither the problem the release was taken on to solve nor the product
 that resulted.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "Writing
-a milestone entry" carried this record of the decision until then. The project
-owner's answer in `PL-LVN8` sends decision history to the item that holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` §
+"Development rules for scientific milestones" carried this record of the
+decision until then. The project owner's answer in `PL-LVN8` sends decision
+history to the item that holds it.
 
 > Two of v0.4.0's three Goal bullets were fixed while the section still
 > asserted them in the present tense. One of them had been stale for two

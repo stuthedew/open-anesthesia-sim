@@ -96,8 +96,8 @@ project most needs to be able to point at, and a patch number would bury it.
 because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog
 that accumulated before the debt gate existed, and it was twenty items deep.
 Gate 1 and every later gate contain the findings of a single milestone. Later
-gates take no version of their own. The milestone's own number marks the
-boundary that its scope crosses. See § "How gate work is released" under
+gates take no version of their own. The gated milestone's own number marks
+the boundary that its scope crosses. See § "How gate work is released" under
 § "The debt gate".
 Unless a further deliberate exception is recorded here, the capability-boundary
 rule above applies.
@@ -490,7 +490,8 @@ ahead of it, for two reasons. First, its design was already settled.
 `PL-FTP5` fixed the provenance. Second, a queue audit (`PL-BNYF`) had filed
 fourteen prerequisites against a build item that did not exist. Those fourteen
 were waiting for the milestone to be scoped. The consequence shows in row 6.
-Its gate froze when v0.5.0 shipped, as beat 2 of § "The cadence" requires.
+Its gate froze when v0.5.0 shipped, the later of the two days that beat 2 of
+§ "The cadence" names.
 
 Row 5's internal ordering put forking and comparison ahead of save/load and
 replay. That ordering was first recorded here as a proposal, not a decision.
@@ -703,16 +704,18 @@ class does not separate them, the gate cannot either.
 finding is not debt until the hazard it describes exists** (project owner,
 2026-09-16, ratified, chosen over placing each on the *next* milestone's frozen
 list behind a marker nothing enforces, and over leaving the rule as it stands
-and putting the 2026-09-16 area-model findings on v0.5.0's list). The re-entry
-exception in § "The gate is a snapshot, not a moving target" is unconditional
-about *when* a finding was made. This paragraph says what it takes for a
-finding to count against the current gate at all. For example, today the only
-thing a splitter handle can do is resize an Area
+and putting the 2026-09-16 area-model findings on v0.5.0's list, `PL-83LS`).
+The re-entry exception in § "The gate is a snapshot, not a moving target" is
+unconditional about *when* a finding was made. This paragraph says what it
+takes for a finding to count against the current gate at all. An item classed
+`anticipated` describes a hazard that a later milestone will create. For
+example, today the only thing a splitter handle can do is resize an Area
 (`src/anesthesia_sim/app/area_layout.py`'s `AreaLayout`, live since `PL-W9P6`
 on 2026-10-18). So no reader can close, replace or cover a required value until
 planned-milestone item 34's docking operations are built. A gate exists to
 clear debt *before* a milestone begins, so it cannot clear a hazard that the
-milestone introduces.
+milestone introduces. This is the live-mechanism test above, applied to a
+hazard rather than to a mechanism.
 
 Such a finding is then disposed of by a **placement in the milestone that
 creates the hazard**, never by a deferral. These two classes are still not
@@ -782,19 +785,19 @@ them on one timeline with the milestones they gate:
 
 1. **Scope** the milestone here. Give its goal, required scope, definition of
    done and explicit out-of-scope list. Add the heading that its frozen list
-   goes under, with no entries in it until the freeze. A milestone without one
-   has not been scoped, whatever else has been written about it.
+   goes under, with no entries in it until the freeze. A milestone without that
+   heading has not been scoped, whatever else has been written about it.
 2. **Freeze and record** the debt list in that milestone's own section, as item
    ids, on the day it was frozen. The list freezes on the later of two days:
    the day the milestone is scoped, and the day the milestone before it ships.
    A gate that nobody wrote down gets renegotiated. The point of freezing the
    list is that it cannot be renegotiated.
-3. **Clear** it before implementation of the milestone begins. Each item ends
+3. **Clear** it before implementation of the milestone begins. Clearing means
+   `done` **or** `dropped`, with the reason recorded. Deciding that something
+   is not worth doing is a legitimate way to clear it, and often the right one.
+   Leaving it open and starting anyway is not legitimate. Each item ends
    `done`, or `dropped` with its reason, or **deferred to a later gate** on the
-   terms of § "Deferring to the next gate". Clearing means `done` **or**
-   `dropped`, with the reason recorded. Deciding that something is not worth
-   doing is a legitimate way to clear it, and often the right one. Leaving it
-   open and starting anyway is not legitimate. **Sweep the frozen list for
+   terms of § "Deferring to the next gate". **Sweep the frozen list for
    staleness first** (project owner, 2026-09-17, ratified, chosen over a second
    `verify:`-style field recording a fault test beside each fix test, and over
    leaving the sweep to whoever next noticed).
@@ -825,14 +828,14 @@ after it. So it tests for the presence of the fix, and never for the presence
 of the fault. An entry whose defect no longer reproduces therefore fails
 forever and looks like outstanding work. One measured pass found 12 of 134 open
 items dead and 31 more overtaken, 32% in all. Nothing in the project noticed
-this, and nothing can. Staleness is a judgment, which is why this is a beat and
-not a check. Read each frozen entry against the tree. Drop what no longer
-reproduces, with its reason. Correct the briefs that overstate what is left. Do
-all this before spending a session on any of them. **File the pass as its own
-item under `feature: gate-staleness-sweep`. Do not name a standing one here.**
-Any item named here is an item that can close. The next gate's session then
-looks that item up and finds it `done`. An instruction to file an item cannot
-go stale the way a pointer to one item does.
+this, and nothing can (`PL-LKGL`). Staleness is a judgment, which is why this
+is a beat and not a check. Read each frozen entry against the tree. Drop what
+no longer reproduces, with its reason. Correct the briefs that overstate what
+is left. Do all this before spending a session on any of them. **File the pass
+as its own item under `feature: gate-staleness-sweep`. Do not name a standing
+one here.** Any item named here is an item that can close. The next gate's
+session then looks that item up and finds it `done` (`PL-D8KW`). An instruction
+to file an item cannot go stale the way a pointer to one item does.
 
 #### How gate work is released
 
@@ -902,10 +905,10 @@ qualify.
 
 **Presence is a presumption, not an absolute rule.** Favor it. A finding that
 continues or completes an item already inside the frozen list belongs to this
-gate. Record it with the item it continues. Sometimes a specific reason argues
-otherwise. The finding may have no real connection to anything frozen. Or
-pulling it in may recreate the refilling-queue problem that the debt gate
-replaced Phase 0 to solve. Then a session may defer a presence-qualifying
+gate. Record it with the item it continues (`PL-SWFM`). Sometimes a specific
+reason argues otherwise. The finding may have no real connection to anything
+frozen. Or pulling it in may recreate the refilling-queue problem that the debt
+gate replaced Phase 0 to solve. Then a session may defer a presence-qualifying
 finding to the next gate anyway. It may also decline to pull in a finding that
 only superficially resembles frozen scope. Either way, the session must say so
 and say why. Silently reinterpreting which gate a finding belongs to is the
@@ -923,8 +926,9 @@ for an `anticipated` finding.
 owner, 2026-08-30). A frozen list exists to fix a specific set of problems.
 Sometimes one of its entries needs a further finding before it is actually
 fixed. Refusing that finding keeps the list at its length but defeats its
-purpose. The rule above applies this, and it is deliberately not symmetric. It
-keeps new work out, and it lets in what an entry needs.
+purpose. The rule in § "Which findings re-enter the gate" applies this, and it
+is deliberately not symmetric. It keeps new work out, and it lets in what an
+entry needs.
 
 **And it is worked with the entry it completes, not after it** (project owner,
 2026-08-30). Suppose a finding is admitted to the list and then worked later as
@@ -944,18 +948,19 @@ entry, dated, and worked with it as described above.
 
 ### Deferring to the next gate
 
-**The third disposition, and the terms that make it legitimate** (project
-owner, 2026-09-21, ratified, over leaving each milestone's own bullet to be
-read at its own cut). An entry may be *deferred to a later gate* instead of
-cleared. The release then ships without it. That is allowed only when all
-three of these conditions hold:
+**The third disposition in beat 3 of § "The cadence", and the terms that make
+it legitimate** (project owner, 2026-09-21, ratified, over leaving each
+milestone's own bullet to be read at its own cut). An entry may be *deferred to
+a later gate* instead of cleared. The release then ships without it. That is
+allowed only when all three of these conditions hold:
 
 - § "The gate is a snapshot, not a moving target" permits the deferral.
   That means the deferral **says so and says why**. The entry's item
   carries `deferred-from: vX.Y.Z - <why>`, naming this gate. That field is
   the one record that every reader of the gate reads (`PL-8QMD`, project
-  owner, 2026-10-11, ratified, over the deferral group headings this
-  section used to carry).
+  owner, 2026-10-11, ratified, over the deferral group headings the
+  gate sections used to carry). The gate section may also set out the decision
+  behind the deferral at any length.
 - The deferral **lands in a named later gate**, which is the next one. The
   next gate's freeze carries every open entry that this list deferred,
   debt or not, taken from what `bin/docket gate` prints. This matters
@@ -974,23 +979,24 @@ Completed milestones' bullets are left as written. They record conditions those
 releases met, and editing a satisfied condition is the wider change
 (`PL-Y949`).
 
-**Record a deferral on the item, not here.** A debt item that the current gate
-neither places nor takes carries `deferred-from: vX.Y.Z - <why>`. The version
-is the milestone whose frozen list excuses the item. It is never the gate that
-the item goes to, because the next freeze takes every open debt item anyway.
-The reason states the grounds for the deferral, which is what a reader of the
-gate is owed. The command `bin/docket set <id> --deferred-from "..."` writes
-it. `bin/docket check` fails an open debt item that the current gate neither
-places nor defers, and its error message prints that command (`PL-WD5Z`).
-`bin/docket check` also fails an open frozen entry that is waiting on work
-outside the plan, unless the field defers it. Work is outside the plan when
-neither the entry's list nor the milestone's `Required scope` includes it, and
-the release train does not schedule it first. A section may state the grounds
-that its deferrals share, as v0.6.0's section does, but no tool reads that
-prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection headed
-`Declined`, `Deferred` or `Sequenced`. Each way in which that second store
-disagreed with the items became an item of its own. Completed sections keep
-those subsections, because they are the record of that period.
+**Record a deferral on the item, not in this document.** A debt item that the
+current gate neither places nor takes carries `deferred-from: vX.Y.Z - <why>`.
+The version is the milestone whose frozen list excuses the item. It is never
+the gate that the item goes to, because the next freeze takes every open debt
+item anyway. The reason states the grounds for the deferral, which is what a
+reader of the gate is owed. The command `bin/docket set <id> --deferred-from
+"..."` writes it. `bin/docket check` fails an open debt item that the current
+gate neither places nor defers, and its error message prints that command
+(`PL-WD5Z`). A frozen entry deferred on the terms above carries the same field
+(`PL-8QMD`). `bin/docket check` also fails an open frozen entry that is waiting
+on work outside the plan, unless the field defers it. Work is outside the plan
+when neither the entry's list nor the milestone's `Required scope` includes it,
+and the release train does not schedule it first. A section may state the
+grounds that its deferrals share, as v0.6.0's section does, but no tool reads
+that prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
+headed `Declined`, `Deferred` or `Sequenced`. Each way in which that second
+store disagreed with the items became an item of its own. Completed sections
+keep those subsections, because they are the record of that period.
 
 ### Recording it
 
@@ -1002,13 +1008,13 @@ had already been closed. `bin/docket wave` reads a frozen list against
 files that anyone would use to check it. A count dated to a release, as the
 version table and § "Current baseline" give, stays.
 
-A gate section does not name the lane each entry is worked in. `bin/docket
-gate` and `bin/docket picks` print the lane, because a lane written into the
-section goes stale (`PL-Z64T`). `docket.toml` computes a lane from each item's
-`touches`, which triage and every close-out rewrite. The lanes still say how
-the list is worked. The product and workflow lanes share no files, so they run
-concurrently in two sessions. The entries in neither lane cross both lanes, and
-they need a session that can hold the whole change.
+Since 2026-10-24, a gate section does not name the lane each entry is worked
+in. `bin/docket gate` and `bin/docket picks` print the lane, because a lane
+written into the section goes stale (`PL-Z64T`). `docket.toml` computes a lane
+from each item's `touches`, which triage and every close-out rewrite. The lanes
+still say how the list is worked. The product and workflow lanes share no
+files, so they run concurrently in two sessions. The entries in neither lane
+cross both lanes, and they need a session that can hold the whole change.
 
 **Do not write a deferred item's state or release beside it.** `bin/docket
 wave` prints each deferral of the current gate with its state and release,
@@ -1144,21 +1150,21 @@ question of when to schedule item 28, and it closed with that answer.
 `PL-B396` is now also classed `safety`, because it builds a unit conversion
 that is displayed.
 
-**`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on § "The cadence" beat 3's
-terms.** Both wait on machine selection, which no release schedules.
-`PL-WZVZ` waits on `PL-TBMK`, a second machine profile, and on `PL-4TWW`, the
-surface that selects between profiles. `PL-B4P7` waits on `PL-2FZ9`, which
-loads a profile by id. Through `PL-2FZ9`, it also waits on a second profile
-reaching a run. Checked against the tree at `0947408`, neither hazard is live.
-`src/anesthesia_sim/data/machines/` holds one profile,
-`reference_circle_system.json`, and nothing in `src/` selects between
-profiles. So no displayed value can be attributed to the wrong machine, and
-no run can open at another machine's flow. Each item's `deferred-from: v0.7.0`
-says so. Gate 2 deferred `PL-WZVZ` for the same reason, the same unmet condition
-(`PL-DB64`, project owner, 2026-09-27, ratified, over keeping it on the list to hold the
-gate open). `PL-B4P7` was captured after Gate 2's freeze and waits on the same
-condition. So the scoping round gave both items the same disposition, without
-putting the question to the owner again.
+**`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on the terms of
+§ "Deferring to the next gate".** Both wait on machine selection, which no
+release schedules. `PL-WZVZ` waits on `PL-TBMK`, a second machine profile, and on
+`PL-4TWW`, the surface that selects between profiles. `PL-B4P7` waits on
+`PL-2FZ9`, which loads a profile by id. Through `PL-2FZ9`, it also waits on a
+second profile reaching a run. Checked against the tree at `0947408`, neither
+hazard is live. `src/anesthesia_sim/data/machines/` holds one profile,
+`reference_circle_system.json`, and nothing in `src/` selects between profiles.
+So no displayed value can be attributed to the wrong machine, and no run can
+open at another machine's flow. Each item's `deferred-from: v0.7.0` says so.
+Gate 2 deferred `PL-WZVZ` for the same reason, the same unmet condition
+(`PL-DB64`, project owner, 2026-09-27, ratified, over keeping it on the list to
+hold the gate open). `PL-B4P7` was captured after Gate 2's freeze and waits on
+the same condition. So the scoping round gave both items the same disposition,
+without putting the question to the owner again.
 
 **`PL-5B1N` clears in this gate.** It is the preview a control draws while it
 is grabbed and not yet released. v0.6.0's gate deferred it to Gate 3
@@ -4603,9 +4609,10 @@ particular number, and a cut still takes the next number that is genuinely
 to a milestone section ahead of the current one is not free. `#606` taught the
 guard to see exactly that.
 
-**The one question the reorder leaves open is this number.** `PL-RKWB` records
-the reading taken, that this port is a milestone that *carries* gate fixes, and
-§ "How gate work is released" now answers the question.
+**The one question the reorder leaves open is this number, and it is recorded
+rather than settled.** `PL-RKWB` records the question, the reading taken and the
+alternative, and why the question would not arise under
+§ "How gate work is released".
 
 **It absorbed planned-milestone item 33, and no longer does** (project owner,
 2026-09-16, on `PL-L9RD`). The argument was that restyling a dashboard that is
@@ -4662,8 +4669,8 @@ freezes when v0.5.0 ships. This port takes no gate of its own, as was already
 true when it sat after MVP, so its own findings go to Gate 2 alongside
 v0.5.0's. **This is now the first of two instances rather than a one-off.**
 v0.6.0 was scoped on 2026-09-16 under the same reasoning. `PL-KKRP` records
-both instances and writes down the exception's condition, so that the argument
-is not re-derived for each milestone.
+both instances, and beat 2 of § "The cadence" writes down the exception's
+condition, so that the argument is not re-derived for each milestone.
 
 **What the move does change is Gate 1, and in the direction `PL-D143`
 asked for.** Nine of the twelve entries that gate could not clear were waiting
@@ -7295,7 +7302,7 @@ temporary `QByteArray`) is a toolkit defect found while measuring. It was filed
 so that the persistence work finds it already written down. Every one of the
 eight is `anticipated`. Since 2026-09-16, that status is governed by a rule
 rather than by a reason this subsection gives for itself (`PL-83LS`).
-§ "The gate is a snapshot, not a moving target" makes an `anticipated` finding
+§ "What counts" makes an `anticipated` finding
 **not debt until the hazard it describes exists**. Today the splitter handles
 can only resize an Area. So none of these hazards exists until the milestone that
 creates them is built. A gate that clears debt *before* a milestone cannot

@@ -24,6 +24,12 @@ before `PL-P0C5` rebuilt it. Three passages are now wrong about the roadmap:
 `tests/unit/test_doc_check.py`, about line 6938, repeats "ends by making" in a
 docstring.
 
+Two more passages cite the snapshot section for the `anticipated` rule, which
+now sits in § "What counts": `tools/doc_check.py` about line 4669, and
+`tests/unit/test_doc_check.py` about line 6965. Both reviewers of slice 2 found
+these. The advisory prints on every `make check` while v0.7.0's list leaves ten
+`safety` or `science` items unplaced, as it did on 2026-11-07.
+
 **Found by** `PL-P0C5` (slice 2 of the roadmap restructure), 2026-11-07. The
 restructure changed only `ROADMAP.md` and item briefs, so the tool's text waits
 for slice 4 (`PL-G6DP`), which moves tool descriptions out of the roadmap.

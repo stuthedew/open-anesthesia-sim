@@ -132,9 +132,10 @@ implements this should say so where the rule is written.
    `PL-9LNF`, `PL-NWTM` and `PL-W54S` on the new rule rather than on deferral,
    and every count `doc_check` holds to that list moves with them.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "What
-counts" carried this record of the decision until then. The project owner's
-answer in `PL-LVN8` sends decision history to the item that holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "The gate
+is a snapshot, not a moving target" carried this record of the decision until
+then. The project owner's answer in `PL-LVN8` sends decision history to the
+item that holds it.
 
 > This was also the only one of the three options that ends in a state a
 > session can actually reach. The other two options leave

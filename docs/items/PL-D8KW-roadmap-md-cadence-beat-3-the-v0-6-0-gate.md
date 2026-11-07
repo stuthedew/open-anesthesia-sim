@@ -72,10 +72,9 @@ happened, and the 134-item map whose verification never finished — which
 `.claude/rules/citation-drift.md` holds to be the correct and only use of a
 closed brief.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "Sweep
-the frozen list for staleness" carried this record of the decision until then.
-The project owner's answer in `PL-LVN8` sends decision history to the item that
-holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` beat 3 of §
+"The cadence" carried this record of the decision until then. The project
+owner's answer in `PL-LVN8` sends decision history to the item that holds it.
 
 > That is what happened to `PL-6ZQY`. It closed on 2026-09-19, two days
 > before Gate 2 froze on a list it had never seen (`PL-D8KW`).

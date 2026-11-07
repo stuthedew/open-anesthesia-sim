@@ -98,10 +98,9 @@ release — that is `PL-S5Q9`'s finding and the rider must not weaken it.
 the only wording constraint — everything around it is the implementing session's
 to write.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` §
-"Deferring to the next gate" carried this record of the decision until then.
-The project owner's answer in `PL-LVN8` sends decision history to the item that
-holds it.
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` beat 3 of §
+"The cadence" carried this record of the decision until then. The project
+owner's answer in `PL-LVN8` sends decision history to the item that holds it.
 
 > Gate 1's last entry, `PL-WZVZ`, is deferred to Gate 2 on exactly these
 > terms. Yet v0.5.0's bullet admits only `done` or `dropped`. So a session
