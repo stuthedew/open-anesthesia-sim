@@ -1,10 +1,13 @@
 ---
 id: PL-1K0L
 title: Hold the rest of each version-table row for v0.2.3 to v0.3.9, the releases cut before each release had an item of its own
-status: untriaged
+status: done
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2061
+verify: grep -qF '| `PL-1K0L` |' ROADMAP.md
 ---
 
 **Problem.** `ROADMAP.md`'s version table gave each release a long row: what
@@ -97,3 +100,9 @@ generator.
 **v0.3.9, moved from `ROADMAP.md`'s version table on 2026-11-07 (`PL-DWGC`).**
 
 > Decimation had rescanned every sample in the visible window on every frame — 62.6 ms at a four-hour window and 207.7 ms at twelve, against a 200 ms frame budget — and now reads precomputed M4 aggregates held on a dyadic grid anchored to absolute sample index, merged tier to tier without revisiting a raw sample, so a frame costs what it draws rather than what the window holds. Beside it, a checkbox per compartment: the reference implementation's own affordance, the two-trace comparison a question like *why does fat lag muscle* actually needs, and the one lever on render cost that trades no fidelity, since a trace nobody is looking at is not a resolution loss. Underneath both, simulated time became the number of steps taken times the run's step rather than a sum accumulated a step at a time, and `docs/MODEL.md` states as a guarantee what had been an implementation detail: a run is a function of its inputs and its step count and of nothing else, so a machine that wakes the loop late runs slower and never differently — with the four things that guarantee does not cover named beside it. Interface and determinism work: no equation, parameter, numerical method or solver step moved, `src/anesthesia_sim/data/` is byte-identical to v0.3.8, and no displayed number changes — the recorded sample times differ in their last bits, about 35 ns after four hours, which no readout, axis or trace resolves. Three apparatus defects close alongside: a commit pushed after its own pull request merged is reported rather than silently dropped, the check that reports it stopped calling merged work lost, and `docket next` reserves what it recommends, so two sessions handed the same answer do not both start it.
+
+**Outcome (2026-11-07).** Every row from v0.2.3 to v0.3.9 now keeps its first
+sentence in `ROADMAP.md`, and the rest of each row is quoted above under its
+version. Rows that had nothing after their first sentence have no entry here.
+The version table's Details column names this item for each release in that
+range.
