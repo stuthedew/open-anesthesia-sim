@@ -174,12 +174,17 @@ RESTORE_READ = (
     f'found the edit lost follows that, under "{LOST}".'
 )
 #: The most meaning checks one request gets: one after the copy editor's reads,
-#: and one after each restore read. A check that still finds a statement lost
-#: after a restore shows a passage that the copy editor cannot fix by restoring
-#: alone, so a third check is the last. Each check costs about one read. A
-#: higher limit gives such a passage more restore reads before it is kept as it
-#: was.
-MAX_CHECKS = 3
+#: and one after each restore read. The checks stop early when one finds nothing
+#: lost. A later check can find a loss that an earlier check missed, or one that
+#: a restore read caused. On `docs/MODEL.md` § "Supported run length", each of
+#: three checks found a different statement, and the third had been lost since
+#: the first edit. The limit was then three, so that statement never got a
+#: restore read and the whole section was kept unedited (`PL-F0Q2`). Five
+#: checks allow four restore reads. A check and a restore read together cost
+#: about half of the copy editor's first read on the same section. A lower
+#: limit keeps more passages unedited, and a higher one spends more reads on a
+#: passage whose restores keep failing.
+MAX_CHECKS = 5
 # regex: a meaning check's verdict line, such as "[3] lost"
 CHECK_VERDICT_RE = re.compile(r"^[\s*_`]*\[(\d+)\][*_`]*\s*(same|lost)\b", re.IGNORECASE)
 

@@ -9,8 +9,9 @@ to audit that edit. It audits again while the last audit changed something,
 up to four reads. Experienced technical editors make at least two passes
 (`PL-HGZS`). A separate meaning check, `.claude/agents/meaning-check.md`, then
 compares each edited passage with its text before the edit. It sends each
-statement the edit lost back to the copy editor to restore, and the tool keeps a
-passage as it was where a statement is still lost after three checks
+statement the edit lost back to the copy editor to restore. The tool keeps a
+passage as it was where a statement is still lost after its last check, and
+`MAX_CHECKS` in `tools/copy_edit.py` sets how many checks a passage gets
 (`PL-F0Q2`). The tool merges the replies. Its `--reads DIR` option keeps each
 read's request and reply, so that what each audit changed can be judged on its
 own.
