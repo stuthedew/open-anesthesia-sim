@@ -55,9 +55,6 @@ or Views, in a Project or not:
   milestone's "Explicitly out of scope" list stands either way, and
   `CLAUDE.md`'s safety-critical clinical-output standard and the milestone's
   Definition of done win wherever Blender disagrees with them.
-- **A contributor who plans a tablet build should treat item 34's model
-  as out of scope there, rather than shrink it** (§ "Where Blender says the
-  model does not apply").
 - **A Blender host refused at CONNECT is reported, naming the host**, after a
   probe of it rather than from this file's record of the day it was refused
   (`.claude/rules/instruction-writing.md` rule 14; `PL-M701`).
@@ -413,9 +410,9 @@ and one in Blender's source tree sets only its `regionid`.
 
 Blender does not require `name`. Code in the tree uses it only in diagnostics.
 One of these is the warning for an unknown region type that § "Persistence, and
-what happens when an editor is missing" describes, the one warning Blender does
-emit. If an editor had no `name`, that warning could not say which editor it was
-about.
+what happens when an editor is missing" describes, the one warning Blender emits
+that names what it dropped. If an editor had no `name`, that warning could not
+say which editor it was about.
 
 **The practised contract is larger.** All twenty editors in the tree set seven
 callbacks (`create`, `free`, `init`, `duplicate`, `operatortypes`, `keymap` and
@@ -478,12 +475,12 @@ apply to the screens of Blender's eleven default workspaces.
 ### How it was measured
 
 Blender's default workspaces were read from **version 5.0.1** of the `bpy`
-package on PyPI, not from screenshots in the Manual. It is Blender built as a Python module, and embeds the same
-startup data as Blender's source file `release/datafiles/startup.blend`. That
-file is stored in Git LFS, so an anonymous clone gets only a pointer stub. The
-Blender source studied is **5.3**, so the layouts are one minor version behind
-it. The set of default workspaces has been stable across that range, but the
-gap remains.
+package on PyPI, not from screenshots in the Manual. That package is Blender
+built as a Python module, and embeds the same startup data as Blender's source
+file `release/datafiles/startup.blend`. That file is stored in Git LFS, so an
+anonymous clone gets only a pointer stub. The Blender source studied is **5.3**,
+so the layouts are one minor version behind it. The set of default workspaces
+has been stable across that range, but the gap remains.
 
 The rectangle of each area was read from every screen in the package's startup
 data (`bpy.data.screens`). Each screen was reduced to an exact integer grid and
@@ -797,19 +794,20 @@ guidelines' "Anatomy of an Editor" page says that editors are in effect modes,
 so each must be clearly distinguishable from the others. That page names the
 header as what helps users tell editors apart.
 
-**Blender answers the hazard of an unnoticed mode by removing modes or narrowing
-their scope, not by keeping the current mode visible.** The guidelines have a
-page titled "Modal Interfaces", but when it was read on 2026-10-25, its only
-content was the heading "Preventing Mode Errors vs. Consistency". In practice,
-Blender has strong mode-awareness devices: the mode selector in the header, and
-a keymap and shading that change with the mode. None of the pages read presents
-them as a deliberate answer to the hazard.
+**Blender's guidelines answer the hazard of an unnoticed mode by removing modes
+or narrowing their scope, not by keeping the current mode visible.** The
+guidelines have a page titled "Modal Interfaces", but when it was read on
+2026-10-25, its only content was the heading "Preventing Mode Errors vs.
+Consistency". In practice, Blender has strong mode-awareness devices: the mode
+selector in the header, and a keymap and shading that change with the mode. None
+of the pages read presents them as a deliberate answer to the hazard.
 
 ### Where Blender says the model does not apply
 
 Blender says plainly that its non-overlapping area model is for desktops and
 does not apply to a standalone tablet. This project's interface is a desktop
-application, so the model applies to it.
+application, so the model applies to it. A contributor who plans a tablet build
+should treat item 34's model as out of scope there, rather than shrink it.
 
 Dalai Felinto lists the constraints of a standalone tablet in "Beyond Mouse &
 Keyboard", a post on the Blender Developers Blog dated 24 July 2025. They are a
@@ -834,10 +832,10 @@ regular editor, under the usual rules.
 ### Adopted
 
 **This project uses Blender's words for two of its three layout concepts, so
-that its code and roadmap do not drift into a private vocabulary.** It calls a
-pane an *Area* and a named set of panes a *Workspace*. What occupies an area is
-a *View*, which Blender calls an *editor*, as the introduction defines. A
-project rule requires these words (`.claude/rules/ui-areas.md`).
+that its code and roadmap do not drift apart, or into a private vocabulary.** It
+calls a pane an *Area* and a named set of panes a *Workspace*. What occupies an
+area is a *View*, which Blender calls an *editor*, as the introduction defines.
+A project rule requires these words (`.claude/rules/ui-areas.md`).
 
 **A workspace and a layout are separate levels.** A workspace is a task-level
 object, and a layout is the geometry of the areas in one window. Blender split
@@ -866,9 +864,10 @@ without the layout code knowing what an area holds.
 **Each area keeps a stack of the views previously open in it.** Switching the
 area to another view and back restores the first view's state. The roadmap's
 "induction workspace with the graph zoomed in" case depends on this restore
-(`ROADMAP.md` item 34). This project copies only the outcome of Blender's
-mechanism (§ "What survives a resize, a split, a join, and a swap"). The design
-to copy from that mechanism is how Blender bounds an area's list without a cap.
+(`ROADMAP.md` item 34). Blender does so by swapping lists of regions, which hold
+each editor's state (§ "What survives a resize, a split, a join, and a swap").
+This project copies the outcome, not the swapping. The part of Blender's design
+to copy is how it bounds an area's list without a cap.
 
 **A view kind is a tag looked up in a registry, never a subclass.** Nothing in
 the layout layer knows that any concrete view class exists. Each tag is written
@@ -938,17 +937,17 @@ is in `PL-GPYV`).
 **A missing or unknown View kind must fail loudly.** Blender silently
 substitutes a 3D viewport, and the interface looks normal (§ "Persistence, and
 what happens when an editor is missing"). Copying Blender's silent substitution
-would break this project's safety-critical standard. The project
-rules in `CLAUDE.md` require an obvious failure state rather than a
-plausible-looking wrong one, and treat a stale or out-of-context display as a
-safety failure in its own right. Blender's own asymmetry, a warning that names
-an unknown region type and none that names a lost editor type, suggests that the
-substitution is an oversight to avoid rather than a design to follow. So when a
-saved Workspace gives an Area a View kind that this build does not have, the
-interface must say so visibly, and must not quietly show a different View there.
-The interface code in `app/area_layout.py` draws a notice in that Area alone,
-naming the saved kind (`AreaNotice`). The layout model keeps the kind, so a
-later save writes it back (`PL-R1WQ`, `PL-DB5G`).
+would break this project's safety-critical standard. The safety-critical
+standard in `CLAUDE.md` prefers an obvious failure state to a plausible-looking
+wrong one, and treat a stale or out-of-context display as a safety failure in
+its own right. Blender's own asymmetry, a warning that names an unknown region
+type and none that names a lost editor type, suggests that the substitution is
+an oversight to avoid rather than a design to follow. So when a saved Workspace
+gives an Area a View kind that this build does not have, the interface must say
+so visibly, and must not quietly show a different View there. The interface code
+in `app/area_layout.py` draws a notice in that Area alone, naming the saved kind
+(`AreaNotice`). The layout model keeps the kind, so a later save writes it back
+(`PL-R1WQ`, `PL-DB5G`).
 
 A saved Qt splitter state (`QSplitter.saveState()`) goes wrong in the same way
 as Blender's substitution. Restoring a three-child state into a two-child
@@ -997,21 +996,22 @@ area system exists.
 View, the container's isolation has to be built (`PL-C842` has the
 recommendation and the evidence).
 
-**Prune the contract of a View instead of letting it grow.** This project adopts
-the shape of Blender's contract for an editor (`SpaceType`), a struct of
-metadata and function pointers, for its own contract (`PL-TH35`). A contract
-built that way collects members that nothing implements and fields that nothing
-sets, and the design does not make them visible. § "What an editor must
-implement" lists the ones in Blender's. A contract of this project's own should
-be small. Recheck this project's contract for a View against the Views that
-implement it, rather than only adding to it.
+**Prune the contract of a View instead of letting it grow.** Blender's contract
+for an editor (`SpaceType`) is a struct of metadata and function pointers. It
+has hooks that nothing implements and a field that nothing assigns, and the
+design gives no sign that they are unused (§ "What an editor must implement").
+This project should adopt this shape for its own contract (`PL-TH35`), and plan
+to prune such members. A contract of this project's own should be small. Recheck
+this project's contract for a View against the Views that implement it, rather
+than only adding to it.
 
 **A drag moves every border on the dragged line, as in Blender.** This recovers
 the one thing that the tree loses against Blender's graph. Blender's default
 drag moves the whole chain (§ "How a layout is built, and how far the operations
-reach"), while a handle in a tree of splitters moves only itself. § "The result"
-counts where the two differ in Blender's shipped Workspaces, at a four-way
-junction. The layout model keeps its tree rather than adopting Blender's graph
+reach"), while a handle in a tree of splitters moves only itself. In Blender's
+shipped Workspaces the two differ only at one four-way junction, in the Shading
+Workspace's block of four editors, which one template Workspace inherits (§ "The
+result"). The layout model keeps its tree rather than adopting Blender's graph
 of shared vertices. On a drag, it moves together every border that is collinear
 with the dragged one and adjacent to it. Because a tree has no vertices to
 share, the layout model finds the dragged line from where the borders lie
@@ -1116,7 +1116,8 @@ condition under which the project would adopt the graph (`PL-3J2P`).
 
 **This project's occlusion rule does not rest on Blender's reason for a tiled
 interface**, as § "Blender's reason for non-overlapping is not this project's
-reason" sets out.
+reason" sets out. Blender does prove that a tiled interface can be workable and
+pleasant at the scale of a professional tool.
 
 ## Attribution
 

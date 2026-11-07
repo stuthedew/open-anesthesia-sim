@@ -32,7 +32,7 @@ verify: grep -q 'deliberate narrowing of Blender' docs/interface-provenance.md &
 3. **Qualifiers and scope.** Examples are a View given no route to its container *at all*, *by construction*, as a deliberate narrowing of Blender's contract; `bScreen` as an ID block; the flag set *on the main database*; *shipped* rather than *default* workspaces; RNA as the layer `bpy` reads; the window-maximize claim read *at source* because the Manual page was unreachable; the unconditional region *outside that window's own area system*; and the occlusion rule being `docs/MODEL.md`'s, cited rather than restated.
 4. **Attribution.** Each documentation licence is tied to its team again, and the reason the README credited Blender only from v0.6.0 is back.
 
-**What was done.** Fifty-one edits put each finding back at the place where `PL-T8RL`'s restructure keeps its topic, in the restructure's own words where the two overlap. The verify line greps two of the restored phrases, which neither `origin/main` nor the restructure commit contains.
+**What was done.** Fifty edits put each finding back at the place where `PL-T8RL`'s restructure keeps its topic, in the restructure's own words where the two overlap. The verify line greps two of the restored phrases, which neither `origin/main` nor the restructure commit contains.
 
 **Not restored, and why.**
 
@@ -41,4 +41,5 @@ verify: grep -q 'deliberate narrowing of Blender' docs/interface-provenance.md &
 - "Layout menu" where the old text said "Workspace menu". The code names it "Layout" (`workspace_tabs.py`, `LAYOUT_MENU_LABEL`), so the line edit corrected a stale name.
 - Changed bold opening phrases of Adopted and Diverged entries. Only closed items quote the old phrases, and the documentation check passes.
 - The terms "extend-drag" and "snap-merge". Only the closed `PL-3J2P` uses them, and the document describes both behaviours in full.
+- "Blender's answer to mode errors" where the line edit wrote "Blender's guidelines answer the hazard". The restoration was made and then reverted after a second comparison: the same paragraph says that Blender has strong mode-awareness devices in practice, so the line edit's narrower subject is the accurate one.
 - "This file is about the outside model we studied, not about our tree." `PL-JVK4` questions exactly that claim, so restoring it would prejudge that item.
