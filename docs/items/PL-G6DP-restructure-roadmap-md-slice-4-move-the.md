@@ -78,3 +78,58 @@ left these to this slice, because each leads into a sentence about the tools:
 Keep in the roadmap the exemption that a release's own cut pull request is
 inside its own span. Slice 3 cut the other copy of that convention as a
 repeat. `PL-V82M` corrects what the exemption says the next release does.
+
+**Next steps, written when the thread that ran slice 3 stopped for length
+(2026-11-07).** Nothing of this slice is built yet. What that thread found:
+
+1. Start from `origin/main` once `#2062` (slice 3, part 2) has merged.
+   Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`,
+   `bin/docket check` and `tools/doc_check.py check` before editing, and
+   compare after.
+2. The passages, found by their words now that slices 1 to 3 moved them:
+   - § "Keeping the toolchain current" (the whole section) goes to
+     `docs/maintainer.md` as a level-2 section. Only closed items cite its
+     heading, and nothing runs a closed item's `verify:` (the docket README,
+     § "A closed item's command is a record, and it is not rewritten"), so
+     `PL-QSWS`'s closed command needs no change. The Flet error is `PL-BYHS`.
+   - § "Release tags and release notes": the passages the note above lists.
+     The tool accounts fit the docket README's § "Releases are mechanical",
+     or `docs/apparatus.md` beside `tools/doc_check.py`.
+   - v0.5.0's § "Sequenced past v0.5.0, so not clearable before it begins":
+     "`bin/docket wave` still prints all thirteen as ..." and "**What reads
+     this, and what reads past it.**".
+   - v0.5.0's § "Declined to Gate 2 on the refilling-queue ground": "**It is
+     inside this section rather than beside it because the checker used to
+     read only one.**" (`_declined_ids`).
+   - v0.6.0's § "Debt gate: the frozen list": "**Two kinds of group, and only
+     the second is a precondition.**" and "**What reads this, and what reads
+     past it.**".
+   - v0.6.0's and v0.7.0's § "Deferred from this gate": the paragraph that
+     opens "An open debt item that was captured after the cut" and the one
+     that opens "An open debt item captured after the cut is deferred".
+     `PL-GW0P`, below, is a question about the rule they state; the move
+     does not depend on its answer.
+   - § "The gate is a snapshot, not a moving target": "**What a frozen entry
+     waits on has three homes**" and "`check_gate_reentries` in
+     `tools/doc_check.py` reads both fields for this reason."
+   - § "Recording it": "**Record a deferral on the item, not in this
+     document.**".
+   The tool accounts for `bin/docket wave`, `gate` and `check` fit the docket
+   README's § "A debt gate is computed, not transcribed" and § "`deferred-from:`
+   records which gate excused an item, and why"; those for
+   `tools/doc_check.py` fit `docs/apparatus.md`'s paragraphs on frozen-list
+   counts and re-entry. Keep in the roadmap only what each guarantees, as the
+   finding above says.
+3. Two questions are on cards to the project owner in the slice 3 thread,
+   unanswered when it stopped: `PL-GW0P` (recommended: a capture after the
+   freeze waits for the next list, as now) and `PL-8C8W` (recommended: a
+   safety or science entry may be deferred while its hazard is not live, if
+   the deferral is recorded and checked). Record each answer in its item.
+   `PL-C8N8`, the wording of `tools/doc_check.py`'s re-entry advisory, is a
+   tool fix to make once `PL-8C8W` is answered.
+4. Then slices 5 to 9 in their blocked-by order: `PL-YNFS`, `PL-B6V1`,
+   `PL-M3MV`, `PL-V8SJ`, `PL-4BCF`. Each brief holds what slice 3 left it.
+   Each slice is one pull request, move and dedupe only, merged on green
+   after two reviewers compare old and new text: one for words that depend
+   on position, one sentence by sentence.
+
