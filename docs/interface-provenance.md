@@ -846,11 +846,13 @@ https://projects.blender.org/api/v1/repos/blender/blender/.
 
 ### Adopted
 
-**This project uses Blender's words for three concepts, so that the code and the
-roadmap do not drift apart.** An *area* is a rectangle that reserves screen
-space and holds one thing. An *editor* is what occupies an area. A *workspace*
-is a set of areas arranged for one task, and the user switches to it by its
-tab. A project rule requires these words (`.claude/rules/ui-areas.md`).
+**This project uses Blender's words for two of its three layout concepts, so
+that the code and the roadmap do not drift apart.** An *area* is a rectangle
+that reserves screen space and holds one thing. A *workspace* is a set of areas
+arranged for one task, and the user switches to it by its tab. What occupies an
+area is a *view*, which Blender calls an *editor*, for the reason given in
+§ "Diverged, and each divergence has a specific cause". A project rule requires
+these words (`.claude/rules/ui-areas.md`).
 
 **A workspace and a layout are separate levels.** A workspace is a task-level
 object, and a layout is the geometry of the areas in one window. Blender split
