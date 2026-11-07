@@ -4168,10 +4168,10 @@ because another reading is possible. A later reader might find a
 take its absence for a deliberate deferral. It was not one. In any case, the
 exception is written so that it cannot be deferred.
 
-The pairing rule under § "The cadence" says that an entry is worked together
-with the entry it completes, not after it. That rule cannot be met here,
-because PL-VP7N, the entry that PL-0MLQ continues, shipped in v0.2.7. So
-PL-0MLQ is listed as its own entry.
+The pairing rule under § "What a frozen entry may take in" says that an entry
+is worked together with the entry it completes, not after it. That rule cannot
+be met here, because PL-VP7N, the entry that PL-0MLQ continues, shipped in
+v0.2.7. So PL-0MLQ is listed as its own entry.
 
 The failure was invisible to the tool as well as to the reader.
 `bin/docket wave` computes the gate's split by reading the entries recorded
