@@ -8,7 +8,6 @@ classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-YNFS
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
 
@@ -338,3 +337,5 @@ added: 2026-11-07
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
 
 **Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The rest of the v0.5.30 row (its "366 → 303 px") is now in `PL-1BL8`'s brief.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Nearly every repeat in the v0.6.0 section was in `ROADMAP.md` at `817a4d88`. One sentence, on the re-reading that corrected three claims (`PL-PV5Q`), came later (`767b1e13`, 2026-10-25 20:09).

@@ -107,9 +107,9 @@ page and decides which file a session reads.
    frozen entries are done, how many remain, and what the remaining ones are,
    glossed and grouped so the shape is visible (what is blocked on the
    strongest model, what is cheap). Say the same for entries the milestone
-   clears itself. When the gate does not contain the item — anything captured
-   after the freeze, or any other work the frozen list does not name — end
-   without a gate report. Listing the remaining entries then is work arriving
+   clears itself. When the gate does not contain the item — any work the
+   frozen list does not name, such as a capture whose problem began after the
+   freeze — end without a gate report. Listing the remaining entries then is work arriving
    in a discussion that was not about it.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the

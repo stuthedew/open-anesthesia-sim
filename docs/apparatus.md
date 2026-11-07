@@ -538,7 +538,7 @@ is checked, and only in the direction that can be decided. The check reports
 an open item of that class whose id the current milestone's section does not
 place, either on its frozen list or under `Required scope`. The check does
 not decide what such an item should *become*. So the finding is an advisory,
-and it names the three dispositions rather than choosing one. The check
+and it names the two dispositions it accepts rather than choosing one. The check
 exists because the rule used to run only when a session thought of it. Eleven
 qualifying items were filed in the two days after Gate 1 froze, and none of
 them reached the list. Meanwhile every count in the file agreed, and

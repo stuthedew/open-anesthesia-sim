@@ -3457,7 +3457,7 @@ neither brief, and nothing mechanical reaches it.
 ### `deferred-from:` records which gate excused an item, and why
 
 ```yaml
-deferred-from: v0.6.0 - captured after the freeze, and not safety or science
+deferred-from: v0.7.0 - a new problem, which the schematic's own work introduced after the freeze
 ```
 
 A frozen debt gate is a snapshot, so a debt item captured after the freeze is

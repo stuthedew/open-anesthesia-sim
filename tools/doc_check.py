@@ -4617,13 +4617,12 @@ def _current_gate(text: str) -> MilestoneSection | None:
 def check_gate_reentries(root: Path, report: Report) -> None:
     """Name every open `safety`/`science` item the current gate does not place.
 
-    `ROADMAP.md` states one unconditional rule twice - step 4 of "The cadence"
-    and "The gate is a snapshot, not a moving target" - and `PL-9PMV` settled
-    that the two passages are the same rule rather than two readings of it: a
-    finding classed `safety` or `science`, or one at `P0`, re-enters the
-    *current* gate regardless of when it was found. Every other class defers to
-    the next gate unless its problem predates the freeze, which is a judgment
-    call. This one is not.
+    `ROADMAP.md` § "Which findings re-enter the gate" states one unconditional
+    rule: a finding classed `safety` or `science`, or one at `P0`, re-enters the
+    *current* gate regardless of when it was found. `PL-9PMV` settled that the
+    two passages which then stated it were one rule rather than two readings of
+    it. Every other class re-enters only when its problem predates the freeze,
+    which is a judgment call. This one is not.
 
     Nothing reconciled the two sides of it, so the rule ran only when a session
     happened to think of it. Between the 2026-09-06 freeze and 2026-09-07,
@@ -4650,12 +4649,12 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     distinguishes it from `bin/docket check`'s disposition rule**
     (`_check_gate_dispositions` in `subprojects/docket/src/docket/checks.py`,
     which lived in this file until `PL-WD5Z`). A deferral is a recorded
-    disposition, so it silences that rule; it is not a disposition
-    *this* rule offers, because "The gate is a snapshot" closes by saying these
-    two classes "are not deferrable by this project's own standard". So the two
-    advisories disagree about a deferred `safety` item deliberately, and this
-    one's text now says so rather than leaving a session to read the
-    disagreement as a bug in one of them.
+    disposition, so it silences that rule. It does not silence this one,
+    because § "Deferring to the next gate" defers a `safety` or `science` entry
+    only while it stays written on the frozen list, with a record that its
+    hazard is not live (`PL-8C8W`). So a deferral alone answers that rule and
+    leaves this one standing, and this one's text says so rather than leaving a
+    session to read the difference as a bug in one of them.
 
     Until `PL-R0Q0` the text offered the deferral it then refused, which is the
     apparatus floor's own failure - a check telling a session something that is
@@ -4666,7 +4665,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     records the cost of losing.
 
     **An `anticipated` item is excluded, and that is a rule rather than a
-    judgment.** `ROADMAP.md` § "The gate is a snapshot, not a moving target"
+    judgment.** `ROADMAP.md` § "What counts"
     makes an `anticipated` `safety` or `science` finding not debt until the
     hazard it describes exists (project owner, 2026-09-16, ratified). Without
     it this named ten area-model findings on every `make check` under two
@@ -4766,11 +4765,11 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         f"{' or '.join(config.safety_classes)}, which re-enter the current gate "
         f"regardless of presence: {listed}. Add each to the frozen list with the "
         "date and the reason it re-entered, or place it in Required scope so the "
-        "milestone clears it. Deferring is not a third option here as it is for "
-        'the other debt classes: "The gate is a snapshot" ends by making these '
-        "two not deferrable, so a `deferred-from:` answers the disposition "
-        "error and leaves this one standing - which is the disagreement to "
-        "resolve, not a fault in either check"
+        "milestone clears it. A `deferred-from:` alone is not a third option "
+        'here: § "Deferring to the next gate" defers one of these entries only '
+        "while it stays on the frozen list, with a record that its hazard is not "
+        "live, so a `deferred-from:` answers the disposition error and leaves "
+        "this one standing until the item is on the list or in Required scope"
     )
 
 

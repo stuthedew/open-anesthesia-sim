@@ -690,8 +690,7 @@ milestone introduces. This is the live-mechanism test above, applied to a
 hazard rather than to a mechanism.
 
 Such a finding is then disposed of by a **placement in the milestone that
-creates the hazard**, never by a deferral. These two classes are still not
-offered a deferral. v0.6.0's `Required scope` lists the ten findings that this
+creates the hazard**, never by a deferral. v0.6.0's `Required scope` lists the ten findings that this
 rule was written for.
 
 **The carve-out expires with the wait it is granted for** (project owner,
@@ -745,7 +744,8 @@ is clear. If it does not appear there, it is cleared first, whatever it is
 about.
 
 This does not weaken the `safety`/`science` re-entry rule below. Such an item
-inside the scope still cannot be deferred. It simply cannot be finished
+inside the scope is cleared by the milestone rather than deferred from its
+gate. It simply cannot be finished
 earlier than the work it is part of, and the milestone's definition of done is
 what enforces it.
 
@@ -839,8 +839,10 @@ gate holds one milestone's findings and is ordinary maintenance.
 Beat 2 of § "The cadence" says when that is. A finding re-enters this gate,
 rather than waiting for the next one, when the problem it describes was already
 *present* at that moment. That is true whatever id the finding is filed under,
-and however long after the freeze someone happened to notice it. A finding
-defers to the next gate only when the problem itself is new. A new problem is
+and however long after the freeze someone happened to notice it (project owner,
+2026-11-07, over deferring a late capture by the date it was filed, `PL-GW0P`).
+A finding
+stays off this gate's list only when the problem itself is new. A new problem is
 one introduced by work done while clearing this gate, or while implementing the
 milestone that the gate protects.
 
@@ -881,16 +883,17 @@ gate. Record it with the item it continues (`PL-SWFM`). Sometimes a specific
 reason argues otherwise. The finding may have no real connection to anything
 frozen. Or pulling it in may recreate the refilling-queue problem that the debt
 gate replaced Phase 0 to solve. Then a session may defer a presence-qualifying
-finding to the next gate anyway. It may also decline to pull in a finding that
+finding to the next gate anyway. Being filed after the freeze is not such a
+reason (`PL-GW0P`). It may also decline to pull in a finding that
 only superficially resembles frozen scope. Either way, the session must say so
 and say why. Silently reinterpreting which gate a finding belongs to is the
 renegotiation that freezing the list exists to prevent.
 
 Two further exceptions re-enter the current gate regardless of presence:
 anything at `P0`, and anything classed `safety` or `science`. This project's
-own standard does not allow those to be deferred. A gate that let them wait
-would invert the reason it exists. § "What counts" states the one carve-out,
-for an `anticipated` finding.
+own standard does not allow a `P0` to be deferred. A `safety` or `science`
+entry may be deferred only on the terms of § "Deferring to the next gate".
+§ "What counts" states the one carve-out, for an `anticipated` finding.
 
 #### What a frozen entry may take in
 
@@ -942,7 +945,9 @@ allowed only when all three of these conditions hold:
   the renegotiation the freeze exists to prevent.
 
 A `safety`- or `science`-classed entry may take this route only when its
-deferral also records that its hazard is **not live**. That must be
+deferral also records that its hazard is **not live**: no learner can see a
+wrong value now (project owner, 2026-11-07, ratified, over making these two
+classes never deferrable, `PL-8C8W`). That must be
 checked against the tree rather than asserted. It is recorded in the
 field's reason or in the gate section.
 
@@ -1155,7 +1160,7 @@ on the project owner adding the paper to the reference corpus.
 
 **Six captures joined this list on 2026-10-31, after the freeze.** They are
 `PL-9B1M`, `PL-D88N`, `PL-QVBR`, `PL-PTDZ`, `PL-000W` and `PL-D1LR`, each
-classed `safety` or `science`. § "Deferred from this gate" admits such a
+classed `safety` or `science`. § "Deferred from this gate" admitted such a
 capture rather than deferring it. `PL-R4Y2`'s triage placed them, and deferred
 the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 
@@ -1173,6 +1178,26 @@ agent's dial maximum and 10 L/min, one count of 0.1 L falls to about an eighth
 of an SD by 24 h, at the fine end of the band the section allows. The panel
 shows that step at every setting, so the gap is live and the item is admitted
 rather than deferred.
+
+**36 captures joined this list on 2026-11-07, after the freeze** (`PL-GW0P`).
+34 of them had been deferred because they were filed after the freeze, and
+`PL-GW0P` and `PL-8C8W` had not yet been triaged. The project owner ruled that
+a capture joins when the problem it describes was already present at the
+freeze, as § "Which findings re-enter the gate" says. Each item's brief records
+what the check against `817a4d88` found. `PL-GW0P` and `PL-8C8W` closed the
+same day. Eight of the 36 stay deferred to the next gate on the terms of
+§ "Deferring to the next gate", and each item's `deferred-from:` says why.
+`PL-J1ZM` waits on four untriaged findings that no release schedules.
+`PL-19W8`, `PL-5C1H`, `PL-5L84`, `PL-H94Q`, `PL-JP7P`, `PL-MCQ5` and `PL-86VL`
+are classed `safety` or `science`, and the check found that no learner can see
+a wrong value now (`PL-8C8W`). `PL-8W1B`, `PL-TDX0` and `PL-KG6S` are also
+classed `safety` or `science` and are not deferred. A learner can misread a
+tension from `PL-8W1B`'s containers today. The fat and muscle tissue:gas SDs
+that the agent files store are far wider than the SDs `PL-TDX0` says the
+section's table used, so a displayed digit may be finer than its uncertainty,
+and `PL-KG6S`'s ratios are taken from that table. Seven other captures stay
+deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
+`PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
@@ -1195,7 +1220,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 82 entries**
+**Cleared before v0.7.0 begins unless deferred - 118 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1279,11 +1304,48 @@ brief has the tally.
 - PL-D1LR (S) docs/MODEL.md lines 6057 and 6363 say the gas accumulators are displayed to six decimals of a litre (1e-6 L) and size the canonical-versus-display margin against that, but § on the agent-accounting panel (line 10154) says its amounts have shown 0.1 L since PL-TG60, so both margins are measured against a resolution the display no longer has (found by the PL-XK00 blind review, 2026-10-25)
 - PL-SP6H (S) Check two docs/MODEL.md agent-amount precision claims against the figures they cite: 0.1 L is said to lie between a quarter of an SD and six SDs, but the quoted 0.016-0.23 L shifts give about 0.43 SD at the coarse end; and 0.1 mL of delivered liquid is said to lie inside the density's band, though at 8% and 10 L/min over 24 h one step is about a thirtieth of an SD
 - PL-0P3F (M) The accounting panel's 0.1 L step for the agent totals is derived from partition-coefficient shifts measured only at 1 MAC with the reference flows; the model is linear in the dial, so at each agent's dial maximum and 10 L/min the 24 h shift is 3 to 4.6 times larger and one count of 0.1 L falls to about an eighth of an SD, at or past the seventh the section allows
+- PL-GW0P (M) ROADMAP.md's v0.6.0 and v0.7.0 gate sections defer a debt item captured after the cut by its capture date, while the snapshot rule re-admits any finding whose problem was present at the freeze, however late it was filed
+- PL-8C8W (S) ROADMAP.md says a safety or science finding cannot be deferred, while its deferral section lets a frozen safety or science entry be deferred when its hazard is not live, as PL-WZVZ was
+- PL-1BVB (S) ROADMAP.md's planned-milestone catalogue still states six things other chapters contradict: item 8's unrecorded control changes, item 21's concentration history, item 1's open default flow and the three items waiting on it, and item 33's prerequisites and dark mode
+- PL-392N (S) ROADMAP.md gives a 30-day case's control timeline as about 140 KiB against 3.16 GB in v0.4.0's section, and about 70 KiB at 50 changes a day in the v0.4.8 version row
+- PL-4BCF (M) Restructure ROADMAP.md, slice 9: head v0.5.0's gate dispositions by the ground each was decided on
+- PL-6LBQ (S) ROADMAP.md planned item 27 says fat holds a third of the agent at three hours, while v0.7.0's Goal table gives 30% at 180 min
+- PL-9857 (S) ROADMAP.md's v0.6.0 section says Gate 2's frozen list has not yet been checked for stale entries, while the v0.5.1 version row says Gate 2's 168 clearable entries were swept
+- PL-B6V1 (L) Restructure ROADMAP.md, slice 6: give each v0.6.0 decision one home in its Required scope, and gather v0.6.0's captures after the cut in one section
+- PL-G6DP (M) Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
+- PL-H6T7 (S) ROADMAP.md uses apparatus, lane and generator (or generator head) throughout without saying what they mean, so a reader deciding a release cannot follow the rows that use them
+- PL-HXJJ (S) ROADMAP.md's baseline and version rows test each patch against both halves, or one half, of § "Versioning decision"'s test, which names no halves
+- PL-K6DG (S) ROADMAP.md's Beyond row orders items 1-5, 9-10 and 13-15 by § "Development pathway", which also orders items 24 and 20 and item 8's scenario events, and item 30 places itself in Phase 1 but is on no row
+- PL-M3MV (L) Restructure ROADMAP.md, slice 7: keep each planned milestone to its intent and what remains, and move each shipped or scheduled record to its milestone section or item
+- PL-S2LW (S) ROADMAP.md's baseline says v0.7.0 and v0.8.0 are given to milestone sections, but there is no v0.8.0 section, and § "The plan" lists only rows 5, 7, 9 and v0.4.26 as having sections
+- PL-T5R7 (S) ROADMAP.md's v0.5.0 Required scope says PL-Y5WR makes the 30-day scenario cap an explicit halt, while the v0.4.7 version row says the cap became 24 h, enforced by the step count, before v0.5.0 shipped
+- PL-TW3Q (S) ROADMAP.md's timeline gives v0.2.8 thirty-eight entries at Size 2 M, 35 S, which adds to 37, while its frozen list holds 2 M and 36 S
+- PL-V8SJ (L) Restructure ROADMAP.md, slice 8: give each record of the milestones v0.1.0 to v0.5.0 one home in its own section, apart from v0.5.0's gate dispositions
+- PL-W6VL (S) ROADMAP.md planned item 1 targets a new machine as one data file with no change to core/, while item 40 says that target cannot be reached, because a machine is one data file plus one provenance row per number
+- PL-XRZW (S) ROADMAP.md's v0.4.26 section calls Gate 2's freeze an exception and a second instance, while § "The cadence" says the freeze trigger changed on 2026-10-03, so no exception remains, and that v0.4.26 was counted as a second exception in error
+- PL-YNFS (M) Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
+- PL-501T (M) AreaLayout._fits, which stops a border drag and lights the WARNING line, still estimates each Area's drawn size as its window share minus one handle, not from the apportionment the splitters draw: the estimate ignores nested handles and overstates an Area whose split neighbour is held wider than its share, and two adapter tests pin the stop it gives, a handle's width short of the neighbour's need (found building PL-16BG)
+- PL-J1ZM (M) Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
+- PL-3WFF (S) Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
+- PL-8FT2 (L) Review the 340 regular expressions in tools/, .claude/hooks/, subprojects/docket/ and the tests that tools/regex_baseline.py lets stand without a reason, starting with the ones that read a format a module already parses
+- PL-8W1Q (M) Every other frozen record in core/ that checks its fields in __post_init__ still restores from a pickle or a copy without running the check: a saved Keyframe with instant_s as a bare -50.0, a RunDefinition's slots and cache, BreathingCircuitState, SampledWindow, DeliverableFreshGasFlowRange, LiquidDensity and the parameter records all load unchecked, and nothing makes the next such record fail; the restore is also positional, so a record saved before a field reorder loads into the wrong fields (found at review of PL-S11T)
+- PL-86VL (M) Two interface-wording tests in test_simulation_view.py pass any wording they do not list: the end-tidal check misses ET, Et, EtSevo and FET, and the emergence-time check finds a hedge only in the 12 characters before its phrase
+- PL-8W1B (M) The Maintenance Workspace puts the schematic's 96 px containers beside the full-height concentration chart, so one tension stands at different screen heights in the two Views and a learner may read a fill level across against the chart's gridlines; align the containers to the plot's scale or caption them against that reading
+- PL-LKX7 (S) docs/MODEL.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
+- PL-TDX0 (M) docs/MODEL.md § "Displayed precision" gives the partition coefficients' measured SDs as 3.9% to 6.4% of the mean, which are Yasuda, Targ and Eger's brain:blood SDs, while the fat tissue:gas SDs the agent files record are 17% to 19%, so the section understates the fat fraction's uncertainty about 3.5 times and its one-SD displacement table may rest on the wrong SDs
+- PL-19W8 (M) Hold docs/MODEL.md § "Known limitations" numeric paragraphs to named tests, write the tests § "Displayed precision" declares it owes, and count the claims found wrong (the first pass, which decides whether the rest run)
+- PL-5C1H (M) Hold the numeric paragraphs in docs/MODEL.md's parameter and range sections (supported input ranges, delivery-limit and MAC parameters, source hierarchy, v0.2.0 agents) to named tests
+- PL-5L84 (M) docs/MODEL.md states the 20 °C reference condition in 29 paragraphs with no marker tying them to core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS, so the numeric-paragraph check cannot read °C as a unit until each is tied
+- PL-H94Q (S) Hold the numeric paragraphs in docs/MODEL.md's model sections (selected method, alveolar gas, mass balance, agent amount, concentrations) to named tests
+- PL-JP7P (M) Hold the numeric paragraphs in docs/MODEL.md's interface sections (hover readout, MAC-awake, MAC multiples, time base, control-input record and five smaller sections) to named tests
+- PL-KG6S (S) docs/MODEL.md § "Displayed precision" bounds the last displayed digit at 'between about a seventh of one parameter SD and seven times it' and calls one SD 'one to seven counts', but its own table's fat tissue:gas row, 8.7e-4 to 6.7e-3 pp, is 0.09 to 0.67 counts, which puts the digit at 1.5 to 11.5 SDs; no row gives the 'seven times' end, so the bound should be restated from the table or limited to the rows it comes from (found by PL-J37P's blind review)
+- PL-MCQ5 (M) Hold the numeric paragraphs in docs/MODEL.md's required-test sections (published wash-in and elimination, independent solution) to named tests
 
 ### Deferred from this gate
 
-An open debt item captured after the cut is deferred to the next gate, unless
-it is classed `safety` or `science` or an entry on this list waits on it. A
+An open debt item captured after the cut joins this list when § "Which
+findings re-enter the gate" says it re-enters: its problem was present at the
+freeze, or it falls under one of that section's exceptions (`PL-GW0P`). A
 capture that an entry waits on is either let onto the list beside that entry,
 or the entry is deferred with it (`PL-D388`). Each deferred item records
 `deferred-from: v0.7.0 - <why>`. The triage pass that classes the item writes
@@ -1302,8 +1364,9 @@ step. The head and its two other members, `PL-06LS` and `PL-XST1`, are not
 head that `PL-R4Y2`'s defect review recorded on 2026-10-25, over `PL-6RJ0`,
 `PL-3B34` and `PL-HF4B`. Its guard requires values shown together on the run
 screen to come from one state, and each member is a `safety` entry already on
-this list. It was first given `deferred-from:`, which a `safety` item cannot
-take.
+this list. It was first given `deferred-from:`, which a `safety` item could not
+then take. Since `PL-8C8W` one may, but only on the terms of § "Deferring to
+the next gate".
 
 ### Required scope
 
@@ -9104,7 +9167,9 @@ An open debt item that was captured after the cut (`e6cdfd93`, 07:04 on
 deferred if it is classed `safety` or `science`, or if an entry on the list
 waits on it. An item captured after the cut was not in the store that the snapshot was
 taken from. § "The gate is a snapshot, not a moving target" therefore applies the
-presence test to it, and that test returns no. A capture that an entry waits
+presence test to it, and that test returns no. `PL-GW0P` replaced that reading
+on 2026-11-07: the test asks whether the problem was present, and a capture
+whose problem was present at the freeze joins the current gate's list. A capture that an entry waits
 on is not deferred because of its date. Either it is let in beside the entry,
 or the entry is deferred with it. These are two of the three places that
 section gives for a prerequisite (`PL-D388`). Each deferred item records the
