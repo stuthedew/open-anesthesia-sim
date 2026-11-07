@@ -3549,9 +3549,7 @@ the agent equilibrate faster.
 **Desflurane's tissue coefficients were checked against a published measurement and kept.**
 Desflurane's elimination at five minutes is the only comparison where the model misses a human
 measurement by washing out too fast. That result is most sensitive to the vessel-rich
-coefficient, which makes that coefficient the obvious suspect. It is not the cause. The value
-that would close the gap is nineteen standard deviations above the human measurement, and it
-would invert the measured solubility order of the three agents. § "Desflurane's residual, and
+coefficient, which makes that coefficient the obvious suspect. It is not the cause. § "Desflurane's residual, and
 why the parameter file was not changed" gives the reasoning. Read it before changing any of
 desflurane's coefficients.
 
@@ -10597,10 +10595,7 @@ isoflurane, below.
 
 **The same study finds that a real circuit measurably retards sevoflurane and
 isoflurane. That is a limitation of this simulator, but it is not a candidate
-here, for three separate reasons, any one of which is sufficient.** The circuit components'
-partition coefficients rank halothane > isoflurane > sevoflurane > desflurane at every
-equilibration time from 7.5 min to 9 weeks, and the washin and washout curves follow the same
-order.
+here, for three separate reasons, any one of which is sufficient.**
 
 - **§ "Known limitations" already records it.** That section gives the coefficient table and the
   ranking, states that the inert circuit is most nearly true for desflurane and least true for
@@ -11530,13 +11525,7 @@ project against a human measurement that fails in the direction that
 overstates recovery. A learner who took desflurane's early washout as a
 physiologic prediction would expect a faster fall than Yasuda's volunteers
 showed. "Desflurane's residual, and why the parameter file was not changed"
-gives what was ruled out: the tissue and blood solubilities, the operating
-point, the fast capacity this model omits, a non-ideal lung, and both readings
-of the published apparatus (circuit-style rebreathing, and the 50 ml of series
-dead space that its methods section describes). End-tidal sampling bias was
-ruled out by a human measurement of the end-tidal gradient, which runs the
-other way with solubility and reverses sign through an elimination. The one
-hypothesis left is the published value itself, which this project cannot test,
+gives what was ruled out. The one hypothesis left is the published value itself, which this project cannot test,
 so the disagreement is left uncorrected.
 
 **Dead space is left out, and the effect of a series dead space is known
