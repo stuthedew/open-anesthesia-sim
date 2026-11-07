@@ -11,16 +11,13 @@ what adding a second machine costs. It builds on the machine survey
 (`docs/machine-survey.md`), which found the differences between real machines
 that change a number the simulator computes.
 
-**This document changes nothing in `src/`.** The milestone's work includes the
-machine classes, the interlocks, the data migration and each task that a
-decision below names. This design makes the milestone possible to scope.
-
-**This document is not checked against the repository.** The model document
+**None of this design is in `src/` yet, and nothing checks it against the
+repository.** The milestone's work includes the machine classes, the interlocks,
+the data migration and each task that a decision below names. The model document
 (`docs/MODEL.md`) describes the model *as implemented*. A script checks that each
 of its current statements links to something in the repository (`docs/MODEL.md`
-§ "How this document is held to the tree"). This design is not implemented, so
-its statements have nothing to link to. They join the model document when the
-milestone implements them.
+§ "How this document is held to the tree"). A statement here moves into the model
+document when the milestone implements it.
 
 ## The finding the whole design rests on
 
@@ -82,7 +79,7 @@ patient.
 $`\dot m_{\mathrm{out}} = \dot V_F`$, so the matrix is entry-for-entry what it is
 today.** The change that introduces the two rates is safe to merge, because it
 changes no computed value. The existing reference tests in `tests/reference/`
-prove this with their expected values unchanged.
+will pass with their expected values unchanged.
 
 ### Two admissibility conditions, both structural
 
@@ -95,7 +92,7 @@ solver rests on.
    only because every setting is held constant within the step. When a
    machine's rates change with the state *during* the step, the matrix $`A`$
    becomes a function of the state $`y`$ and the propagator stops being exact.
-   One such machine is a closed-loop controller that reads $`F_A`$ and moves
+   One such machine has a closed-loop controller that reads $`F_A`$ and moves
    the dial.
 2. **Nonnegative off-diagonal entries in $`A`$ (a Metzler matrix).** They keep
    every compartment from going negative. The matrix-exponential routine
@@ -118,9 +115,9 @@ abstraction.
 ## Question 3: how a machine composes with the existing core
 
 **The machine is a boundary condition.** It supplies the two rates above and
-the apparatus volume. It appears nowhere in the state vector, holds no agent,
-and touches no patient row. Adding a machine cannot change a patient row,
-because a machine has no way to write one. The item asks for this guarantee.
+the apparatus volume. It appears nowhere in the state vector and holds no
+agent. It has no way to write a patient row, so adding a machine cannot change
+one. The item asks for this guarantee.
 
 In this design, which the matrix suggests, the machine supplies the fresh gas
 exchange: delivery and removal integrated over one step. The circuit code
@@ -139,8 +136,8 @@ A machine could instead contain or configure the circuit, and both fail:
   and then plays no further part. Today's code does this implicitly: the uptake
   model reads `data/machines/reference_circle_system.json` when it is built for
   an agent (`AgentUptakeSystem.for_agent()`). This arrangement cannot express
-  (b3) or (b11), because those change the *form* of the exchange rather than
-  its coefficients.
+  direct injection (b3) or a closed surplus gas valve (b11), because those
+  change the *form* of the exchange rather than its coefficients.
 
 ## Question 1: where the parameter/strategy line falls
 
@@ -165,8 +162,9 @@ set, so a strategy that these tables do not list would make the set "too
 permissive", the failure that the item names.
 
 **A strategy reads only the profile fields it declares.** It is a pure
-function of those fields, the run's current controls and $`F_I`$. Question 6
-rests on what each strategy declares.
+function of those fields, the run's current controls and $`F_I`$. Every
+difference a machine makes can therefore be traced to declared fields
+(§ "Question 6: attributability").
 
 **Delivery** strategies set $`\dot m_{\mathrm{in}}`$:
 
@@ -176,10 +174,11 @@ rests on what each strategy declares.
 | `in_circle_injection` | injector rate, independent of $`\dot V_F`$ | (b3) | planned-milestone item 4 |
 
 A machine with two delivery modes is described by two profiles, or by one
-profile with a mode selection. One such machine is the Zeus IE, whose
-*fresh gas mode* is already built as `fresh_gas_bypass`. The manufacturer's
-own description, in Meyer et al., says: *"In this dosing mode the agent
-dosage performance is equivalent to a conventional vaporizer."*
+profile with a mode selection. One such machine is the Zeus IE. Its
+*fresh gas mode* is already described by the existing strategy for agent
+carried in the fresh gas (`fresh_gas_bypass`). The manufacturer's own
+description, in Meyer et al., says: *"In this dosing mode the agent dosage
+performance is equivalent to a conventional vaporizer."*
 
 **Removal** strategies set $`\dot m_{\mathrm{out}}`$:
 
@@ -201,15 +200,15 @@ add nothing but a hidden branch on whether $`\dot V_S`$ is zero.
 | `variable_bypass` | dial is a partial-pressure fraction | today's model | implemented, as identity |
 | `fixed_volume_percent` | dial is volumes percent | (b1), the Tec 6 | see below |
 
-**This slot is meant to test the design against a second device class, and for
-now it does not.** The Tec 6 represents that class (`PL-439V`). Meyer et al.
-contrast the two device classes: *"The desflurane vaporizer principle described
-here delivers a fixed volume percentage, making it different from conventional
-vaporizers, which deliver fixed partial pressures."* The two mappings differ by
-a factor of $`P_{\mathrm{ambient}}/P_{\mathrm{reference}}`$. This model has no
-ambient pressure, so a profile that names `fixed_volume_percent` gets the same
-numbers as one that names `variable_bypass`. Recording the model's sea-level
-assumption (`PL-5K5C`) will separate the two mappings.
+**This slot is meant to test the design against a second device class, but for
+now its two mappings give the same numbers.** The Tec 6 represents that class
+(`PL-439V`). Meyer et al. contrast the two device classes: *"The desflurane
+vaporizer principle described here delivers a fixed volume percentage, making it
+different from conventional vaporizers, which deliver fixed partial pressures."*
+The two mappings differ by a factor of
+$`P_{\mathrm{ambient}}/P_{\mathrm{reference}}`$, and this model has no ambient
+pressure. Recording the model's sea-level assumption (`PL-5K5C`) will separate
+the two mappings.
 
 **Neither dial mapping includes the flow dependence of vaporizer output.**
 Hendrickx et al. measured it for both device classes: output is within 10% of
@@ -228,12 +227,13 @@ that record is not added, even when it is interesting or appears in the
 machine's manual.
 
 **Only two things can consume a field.** The model consumes a field that is a
-coefficient in one of its declared expressions. The comparison table
-(`PL-WZVZ`) can consume a field that affects no computed number, but only when
-the field settles the meaning of one that does. For example, such a field can
-say which of the survey's three sampling configurations a $`\dot V_S`$ of zero
-stands for. Recording the consumer keeps the comparison table from becoming a
-way round the rule that a field be a coefficient in the model.
+coefficient in one of its declared expressions. The comparison table between
+machines (`PL-WZVZ`) can consume a field that affects no computed number, but
+only when the field settles the meaning of one that does. For example, such a
+field can say which of the survey's three sampling configurations a
+$`\dot V_S`$ of zero stands for. Recording the consumer keeps the comparison
+table from becoming a way round the rule that a field be a coefficient in the
+model.
 
 **Adding a machine adds a row, not a column.** When the abstraction is right, a
 new machine only supplies values for fields that already exist. A machine that
@@ -249,7 +249,7 @@ the same set of fields and that the schema records a consumer for every field.
 It will run from a bare checkout with no virtualenv, give the same result on
 every run, and state its rule where a reviewer can read it. The repository's
 instructions in `CLAUDE.md` ask these three things of any part of a rule that a
-script can check. Building the script is item 1.
+script can check. Building the script belongs to planned-milestone item 1.
 
 **Unknown is not a value, here as in the survey.** A machine whose apparatus
 volume is unknown cannot be added until the volume is known. Do not give it a
@@ -457,12 +457,10 @@ that paper carries them rather than measured them.
 
 ## Question 6: attributability
 
-The structure above meets the item's request for a constraint on the design, not
-only on the display: *design so that the parameter set is the explanation*.
-
-**Every difference a machine makes to a curve is a difference in one of three
-quantities**, because a machine affects the model only through those three. Each
-resolves to declared fields:
+**Every difference a machine makes to a curve can be traced to declared
+fields.** The item asks for this as a constraint on the design, not only on the
+display: *design so that the parameter set is the explanation*. A machine
+affects the model only through three quantities:
 
 - the volume $`V_C`$: the apparatus volume (`apparatus_volume_l`) plus the run's
   patient-circuit volume, which today is the assembled circuit volume
@@ -479,8 +477,7 @@ registry. Question 1 explains both.
 **The comparison table between machines (`PL-WZVZ`) is therefore derived.** For
 any two machine profiles, the fields that differ can be computed, and the
 `effect` clause that the schema already requires says what each one does. A
-derived table stays true, while one maintained by hand can go out of date after
-the day it is written.
+derived table stays true, while one maintained by hand can go out of date.
 
 **The design rules out a difference that nobody could explain to a learner.**
 Such a difference would arise if a machine changed a result through something
@@ -501,8 +498,8 @@ the measured differences between machines**. Its sharpest instance is Fukuda et
 al.'s randomised patient study, in which moving only the fresh gas inlet
 significantly raised the inspired/delivered ratio ($`F_I/F_D`$) of isoflurane
 and of sevoflurane during low-flow anesthesia. This model's circuit equation
-describes exactly that ratio. It treats the circuit as a single well-mixed
-compartment, so it cannot represent where the inlet sits.
+describes exactly that ratio. The model treats the circuit as a single
+well-mixed compartment, so it cannot represent where the inlet sits.
 
 The survey named two ways the model could account for inlet position:
 
@@ -515,16 +512,12 @@ The survey named two ways the model could account for inlet position:
 - **Not now: represent the topology.** A multi-limb circuit separates inspired
   gas from mean circuit gas. Under a model such as Lerou and Booij's, the two
   become distinct states, and this model's single $`F_I`$ no longer describes
-  both. `docs/MODEL.md` § "Model boundary" already says this. Representing the
-  topology therefore changes the model boundary, so it belongs to the planned
-  per-compartment gas-phase condition (planned-milestone item 39), not to
-  item 1. Record the new boundary in that section of `docs/MODEL.md` before
-  extending the model this way.
-
-**The interface's statement is needed even after a per-compartment gas-phase
-model is built (item 39).** It still applies to each machine whose inlet
-position is unknown. Of the surveyed machines, only the two that Fukuda et al.
-instrumented have a known inlet position.
+  both. The model document already says this
+  (`docs/MODEL.md` § "Model boundary"). Representing the topology therefore
+  changes the model boundary, so it belongs to the planned per-compartment
+  gas-phase model (planned-milestone item 39), not to this milestone (item 1).
+  Record the new boundary in that section of `docs/MODEL.md` before extending
+  the model this way.
 
 **This decision is for the present model only.** It stops applying when a
 per-compartment gas-phase model is built (item 39), or when any multi-limb
@@ -532,23 +525,27 @@ circuit enters the model. Written as a general rule, it would outlive its
 evidence, and later contributors who never saw that evidence would follow the
 rule.
 
+**The interface's statement about topology is needed even after the
+per-compartment gas-phase model is built.** It still applies to each machine
+whose inlet position is unknown. Of the surveyed machines, only the two that
+Fukuda et al. instrumented have a known inlet position.
+
 ## Question 5: naming a real machine in the interface
 
-**Decided (project owner, 2026-09-20, ratified).** The machine chooser and the
-dashboard name a machine by its archetype, meaning what the model represents,
-such as "circle system · 3.3 L with patient circuit · variable-bypass vaporizer".
-The trade name appears in the machine's own panel, beside its parameters and its
-sources. There it is a citation for the parameters, not a claim that the model
-reproduces that machine. Ordinary evidence can reopen the decision: a
-measurement, a cost the reasons below did not weigh, or a constraint that
-appears later.
+**The machine chooser and the dashboard name a machine by its archetype**,
+meaning what the model represents, such as
+"circle system · 3.3 L with patient circuit · variable-bypass vaporizer"
+(project owner, 2026-09-20, ratified). A change must keep the trade name off
+every curve, chooser entry and dashboard readout. The trade name may appear only
+where the machine's list of what the model leaves out (`not_modelled`) is on
+screen beside it. The machine's own panel (`PL-WZVZ`) shows that list, so the
+trade name appears there beside the machine's parameters and sources, and may
+appear in the panel's comparison table. In the panel, the trade name is a
+citation for the parameters, not a claim that the model reproduces that
+machine. Planned-milestone item 1 must keep to these rules.
 
-**A change must keep the trade name off every curve, chooser entry and dashboard
-readout.** The trade name may appear only where the machine's list of what the
-model leaves out (`not_modelled`) is on screen beside it. The machine panel
-(`PL-WZVZ`) shows that list together with the machine's parameter set and a
-comparison table, so a trade name may appear in that table too. Planned-milestone
-item 1 must keep to these rules.
+Ordinary evidence can reopen the decision: a measurement, a cost the reasons
+below did not weigh, or a constraint that appears later.
 
 Three facts decide the question:
 
@@ -577,8 +574,7 @@ names.
 ## Question 7: what the second machine costs
 
 The design sets a target cost for adding a second machine in each of three
-cases, and only the first case is data entry. A strategy is a pure function that
-returns a rate. The closed set is this document's table of strategies.
+cases, and only the first case is data entry.
 
 **When a machine's delivery and removal strategies are already in the closed
 set, it needs one data file and nothing else.** The data file is the machine's
@@ -586,15 +582,16 @@ profile, one JSON file under `src/anesthesia_sim/data/machines/`. It names one
 strategy for each of the three slots, gives a source for every field, and has a
 non-empty list of what the simulator does not model for that machine
 (`not_modelled`). Adding the machine also takes a schema test and a row for it
-in the machine comparison (`PL-WZVZ`). The diff touches the data file and one
+in the comparison table (`PL-WZVZ`). The diff touches the data file and one
 test file. Nothing in `core/` or in any patient row changes. The physics needs
 no new test, because the matrix that describes it is already tested and a
 machine affects it only through the two rates.
 
 **A new strategy takes a design change, but a limited one.** The change adds the
-strategy's function, its registry entry and a row in the closed set. It also
-adds a proof that the returned rate is nonnegative, finite and constant across a
-step. The patient rows and the solver stay as they are.
+strategy's function, its registry entry and a row in its slot's table under
+§ "The closed set of behaviors". It also adds a proof that the returned rate is
+nonnegative, finite and constant across a step. The patient rows and the solver
+stay as they are.
 
 **A new profile field takes a design change that starts in the machine survey
 (`docs/machine-survey.md`).** Add the field there first, and state how it leads
@@ -603,7 +600,8 @@ the effect it has. Then add it to every existing profile. That last step is the
 cost: a field added for one machine belongs in the schema only if every profile
 can give it a value.
 
-The column check described under Question 2 can verify these costs.
+The script planned under Question 2 can verify these costs: it checks that every
+profile has the same set of fields.
 
 ## What this design does not decide
 
@@ -644,12 +642,13 @@ was retrieved and how deeply it was read.
 
 - Fukuda T, Fukunaga A, Toyooka H. *J Anesth.* 2006;20(4):268–273 — inlet
   position changes $`F_I/F_D`$ at a fixed volume, the measurement behind the
-  decline recorded above.
+  inlet-position decision above.
 - Hendrickx JF, De Cooman S, Deloof T, et al. *Anesth Analg.*
   2001;93(2):391–395 — cassette-vaporizer output against the dial setting at
   different flows.
 - Johnston RV, Andrews JJ, Deyo DJ, et al. *Anesth Analg.* 1994;79(3):548–552 —
-  the Tec 6 characterised from 1% to 18%, the source of the 18%.
+  the Tec 6 characterised from 1% to 18%, the source of desflurane's stored 18%
+  dial maximum.
 - Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. In: Schüttler J, Schwilden
   H, eds. *Modern Anesthetics.* Springer; 2008:451–470 — the Zeus's two dosing
   modes, the closed surplus gas valve, the gas module's sample draw, and the

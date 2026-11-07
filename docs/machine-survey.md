@@ -13,11 +13,11 @@ specification changes a computed or displayed value. A specification that change
 no such value is left out, or gets one line under § "Ruled out" if someone would
 otherwise raise it again.
 
-**This survey changes no code in `src/`.** Machine classes, a profile schema and
-interlocks belong to the design of the planned machine model (`PL-FG9D`). That
-design depends on this survey. The survey's last section lists what the design
-needs: which variables are per-machine *data*, and which are *behavior* that
-differs between machines.
+**The design of the planned machine model (`PL-FG9D`) builds on this survey.**
+The design covers the machine classes, a profile schema and interlocks. The
+survey's last section lists what the design needs: which variables are
+per-machine *data*, and which are *behavior* that differs between machines. The
+survey changes no code.
 
 ## The headline finding, because it decides the abstraction
 
@@ -62,8 +62,7 @@ service somewhere.
 
 **The table maps how machines differ, and is not a list of machines to build.**
 Together, its rows give the range of real behavior that the format of a machine
-profile must be able to express. A machine's operator or technical manual is
-sought only when that machine's profile is built (project owner, 2026-09-20).
+profile must be able to express.
 
 | Machine | In because | Axes it contributes |
 | --- | --- | --- |
@@ -89,9 +88,8 @@ reached. On 2026-09-19 the network used for this survey blocked `www.draeger.com
 `www.gehealthcare.com`, `www.iso.org`, `webstore.ansi.org`, `standards.iteh.ai`
 and every site tried that hosts copies of manuals. It could still reach
 `www.ncbi.nlm.nih.gov`, `link.springer.com`, `doi.org` and `search.worldcat.org`.
-That left three routes to sources: PubMed (through an MCP server), the project
-owner's private reference corpus, and direct identifier checks. The survey records
-values by these rules:
+That left three routes to sources: PubMed, the project owner's private reference
+corpus, and direct identifier checks. The survey records values by these rules:
 
 1. **A measured quantity is cited to the measurement.** The model uses quantities
    such as an inspired concentration, a time to target, and a vaporizer's output
@@ -161,8 +159,10 @@ designs.
 | Dräger Apollo, Fabius | unknown | unknown | — |
 
 Shin et al. report the apparatus volumes and the 1.2 L patient circuit. Their
-figures are tier 2, as explained above. The time constants are the volumes with
-the patient circuit divided by 4 L/min, the simulator's default fresh gas flow.
+figures are tier 2, a secondary synthesis
+(§ "How a value gets into this document"). The time constants are the volumes
+with the patient circuit divided by 4 L/min, the simulator's default fresh gas
+flow.
 
 **The stored 6.0 L is within 2% of the Primus's 5.9 L with a 1.2 L patient
 circuit, but only by coincidence.** The value predates this survey and was kept
@@ -196,9 +196,7 @@ chosen to be wide for a study validating the Gas Man simulator. Hoffmann et al. 
 0.3 to 6 L/min *in vitro*, into a 2 L test lung. They describe their settings as
 reflecting clinical conditions. Those settings include 4, 5 and 6 L/min, so if
 anything the paper places 4 L/min in the middle of practice rather than at its high
-end. A study's chosen flow range does not report practice. The data file
-`reference_circle_system.json` records the same caution for the 1 L/min in its
-De Wolf entry.
+end. A study's chosen flow range does not report practice.
 
 **The simulator keeps 4.0 L/min, labelled in the machine data file as a teaching
 default, not a clinical recommendation** (project owner, 2026-09-20, ratified, over
@@ -281,7 +279,7 @@ section of `docs/MODEL.md` cites them for this value. Nothing about desflurane
 itself sets the 18%, so a different maximum may apply to a vaporizer of another
 design or to a machine with an electronically controlled injector. The stored
 maximum therefore has to depend on the machine as well as on the agent. It is
-the first concrete case of the parameter-or-strategy question in `PL-FG9D`.
+the first concrete case of the data-or-behavior question in `PL-FG9D`.
 
 **Real vaporizers' dial increments are unknown.** The simulator's on-screen
 vaporizer dial is continuous (`PL-043`). If the simulator comes to model real
@@ -311,8 +309,7 @@ enters:
 - **Fresh gas mode.** The user sets a fresh gas agent concentration, and the
   vapour mixes with fresh gas before it enters the breathing system. *"In this
   dosing mode the agent dosage performance is equivalent to a conventional
-  vaporizer."* The model's existing term therefore describes this mode. A
-  simulator that tells the two modes apart needs nothing new for it.
+  vaporizer."* The model's existing term therefore describes this mode.
 - **Auto control mode.** Agent enters the breathing system through a separate
   inlet, and its delivery is *"independent of the FGF settings"*. A closed
   feedback loop adjusts the dose to reach an expiratory target.
@@ -411,8 +408,8 @@ to account for differences that their volume calculation did not explain.
 treats the circuit as a single well-mixed compartment, in which the inlet has no
 position. An "effective volume" calibrated to the observed kinetics would reproduce
 the curves, but it would attribute to volume a difference that volume did not
-cause. The comparison table (`PL-WZVZ`) would then print a number that looks
-sourced but that no measurement supports.
+cause. The comparison table between machines (`PL-WZVZ`) would then print a
+number that looks sourced but that no measurement supports.
 
 ### (b8) Flow bounds, minimum oxygen flow, and the hypoxic guard
 
@@ -489,7 +486,7 @@ about it first, and then about the sample flow.
 **Where the sample is scavenged, the loss is continuous and can be large.** At
 the fresh gas flows the literature now uses, such as 300 mL/min, a 200 mL/min
 sample is two thirds of the fresh gas. Today the model's circuit loses gas only
-through the fresh-gas exhaust, and a scavenged sample would be a second loss.
+through its exhaust, and a scavenged sample would be a second loss.
 
 **The survey found two sample flows.** Shin et al. sampled at the Y-piece at
 200 mL/min with a bench analyser, and state that *"the gas samples were not
@@ -528,8 +525,8 @@ that need a longer explanation are ruled out in bucket (b), above.
 - **Screens, layouts, alarms and alarm limits, menu structure, workflow.** They
   do not affect any value the simulator computes. They come back if a milestone
   reproduces a specific machine's interface. What the simulator's own display
-  may imply is set by the clinical-output standard in `CLAUDE.md` and by
-  `PL-WZVZ`, not by any machine's screen.
+  may imply is set by the clinical-output standard in `CLAUDE.md` and by the
+  work item for the machine panel (`PL-WZVZ`), not by any machine's screen.
 - **Pre-use self-test, checkout procedure, calibration and service intervals.**
   They decide whether a machine may be used, not what it delivers. They come
   back if a milestone models machine readiness or failure.
@@ -555,8 +552,8 @@ that need a longer explanation are ruled out in bucket (b), above.
 ## What `PL-FG9D` needs: data against behavior
 
 A difference between machines is data when a file can store it, and behavior
-when only code can express it. Two fit neither, and need a decision before
-implementation begins.
+when only code can express it. Two differences fit neither, and need a decision
+before implementation begins.
 
 **Data.** Each field below belongs in a validated, versioned file for each machine.
 
@@ -570,7 +567,7 @@ implementation begins.
 | Sidestream sample flow, and whether the sample returns | (b10) | Unknown for every machine |
 | Default fresh gas flow | (a2) | No machine publishes one |
 
-**Behavior.** For each of these differences, the code has a fixed set of
+**Behavior.** For each of these differences, the code needs a fixed set of
 alternatives, and each machine uses one.
 
 - **Whether the circuit exhaust runs at all** (b11). With the surplus valve
@@ -612,7 +609,7 @@ compartment, which has no place for these two differences.
 
 ## What is missing, and how the next session gets it
 
-Every value marked `unknown` above has the same fix: **a session that can reach
+Every value marked `unknown` above has the same fix: **someone who can reach
 manufacturer technical data, or a project owner who can supply it.** Try the
 private reference corpus first. It answered the vaporizer, injector, gas-module
 and closed-circuit questions outright.
@@ -627,8 +624,8 @@ The places to look are:
   Zeus IE: the technical data sections, for apparatus volume, flow ranges,
   minimum oxygen flow and sample gas flow. The Perseus manual was found at
   `draeger.com/Content/Documents/Content/IfU_Perseus_A500_SW_1.1n_EN_9054101.pdf`.
-  The outbound network rules for sessions refused the download on 2026-09-19,
-  and still refused connections to `draeger.com` and `www.draeger.com` on
+  The network used for this survey refused the download on 2026-09-19, and
+  still refused connections to `draeger.com` and `www.draeger.com` on
   2026-10-06.
 - GE *User's Reference Manual* for the Aisys CS², Avance and Carestation
   families, and the Aladin cassette's specification, for the same fields.
@@ -636,9 +633,8 @@ The places to look are:
   volume reflector's contribution to apparatus volume.
 - **ISO 80601-2-13:2022** (second edition, 2022-04) and its Amendment 1:2026,
   for what a workstation must guarantee about oxygen concentration and flow.
-  This survey does not state what the standard requires.
-- **ISO 5360:2016** (fourth edition, 2016-02-15), for agent-specific filling and
-  the desflurane exclusion.
+- **ISO 5360:2016** (fourth edition, 2016-02-15), for agent-specific filling,
+  and to confirm that it specifies no dimensions for desflurane.
 
 The comparison table (`PL-WZVZ`) takes its rows from this survey, so the sources
 above are where to look for each row it shows as `unknown`.
@@ -650,9 +646,7 @@ metadata only.** Every article below was retrieved from PubMed on 2026-09-19,
 through the PubMed MCP server, and its PMID, DOI, journal, volume, issue and
 pages were read from its PubMed record. For a paywalled article, that route gives
 only the abstract. Each DOI links the original. The one book chapter, by Meyer
-et al., came instead from the project owner's private reference corpus. The
-project's citation rule (`.claude/rules/citing-sources.md`) requires any source
-added to this list to say where it was found and how far it was read.
+et al., came instead from the project owner's private reference corpus.
 
 **Measurements of quantities this model computes (tier 1).**
 
@@ -791,13 +785,13 @@ selection criterion.**
   requirements for basic safety and essential performance of an anaesthetic
   workstation*, second edition, 2022-04; Amendment 1:2026.
 - ISO 5360:2016, *Anaesthetic vaporizers — Agent-specific filling systems*,
-  fourth edition, 2016-02-15. The edition and date are those that a CSA
-  adoption record gives for this standard.
+  fourth edition, 2016-02-15. The edition and date are those that a national
+  adoption record (CSA) gives for this standard.
 
 **Neither standard was read, and nothing in this document rests on what either
 requires.** Their identifiers come from catalogue and adoption records that a
-web search found. On 2026-09-19 the network gateway refused requests to
-`www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai`, and it still did on
-2026-10-06. The one query sent to `search.worldcat.org` on 2026-09-19 was
-answered but rate-limited. The two entries are pointers for anyone who can open
-the texts.
+web search found. On 2026-09-19 the network used for this survey refused
+requests to `www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai`, and it
+still did on 2026-10-06. The one query sent to `search.worldcat.org` on
+2026-09-19 was answered but rate-limited. The two entries are pointers for
+anyone who can open the texts.
