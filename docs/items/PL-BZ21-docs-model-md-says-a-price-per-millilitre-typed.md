@@ -3,12 +3,14 @@ id: PL-BZ21
 title: docs/MODEL.md says a price per millilitre typed as the bottle price makes the shown price per millilitre 100 to 1000 times the true one, in the cost section and in its hazard row, but that mistake makes it 100 to 250 times too low
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - a documentation misstatement of an error's direction; the screen still shows the far-off price per millilitre that catches the mistake, so no learner is misled while it waits
 added: 2026-11-04
+closed: 2026-11-07
+pr: 2054
 payoff: the cost section and its hazard row state each entry mistake's effect on the price per millilitre with the right direction and size
 verify: ! grep -qF 'Each of the first two mistakes makes that price 100' docs/MODEL.md
 ---
@@ -22,3 +24,9 @@ verify: ! grep -qF 'Each of the first two mistakes makes that price 100' docs/MO
 **Done when.** The cost section and the hazard row say that the first mistake makes the price per millilitre 100 to 250 times too low and the second makes it 100 to 1000 times too high, or that each puts it wrong by a factor of 100 to 1000.
 
 **Generator check.** Stock of `PL-B6YV`'s fact, whether a `docs/MODEL.md` sentence about what the model computes matches what it computes. The sentence dates from `PL-1P15`, before that head closed on 2026-11-02, so this is not a re-entry.
+
+**Closed 2026-11-07 by `PL-BSMF`.** The restructure cut the hazard row on entry
+mistakes to one sentence and a pointer to § "A cost at the reader's price", so
+the row no longer states a size. That section already said the first mistake
+makes the price per millilitre 100 to 250 times too low and the second 100 to
+1000 times too high.
