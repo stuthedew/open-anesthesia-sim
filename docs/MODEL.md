@@ -314,8 +314,7 @@ percent of one atmosphere. And $`\mathrm{MAC}_\%`$ is one sea-level percent
 divided by another.
 
 **More than anything else in the model, the vaporizer control depends on the
-ambient pressure being 760 mmHg.** The control is a dial setting, not a modeled
-gas concentration. A dial position means a partial pressure, the quantity that produces the anesthetic effect, only once the ambient pressure is known. At 760 mmHg, both classes of vaporizer deliver the
+ambient pressure being 760 mmHg.** At 760 mmHg, both classes of vaporizer deliver the
 same partial pressure at a given dial position, so no equation, stored value
 or displayed number here is wrong at sea level. Away from 760 mmHg, the two
 classes diverge in opposite directions, as § "Known limitations" describes.
@@ -640,32 +639,7 @@ factor of 1.058.
 
 **Converting an alveolar, venous or tissue amount at 20 °C overstates it by
 5.8 %** (§ "Known limitations", under § "One reference condition, where the
-model physically has two"). Those compartments are physically at 37 °C, and this
-model's partition coefficients were measured at 37 °C, so declaring 37 °C would
-make their amounts exact. The circuit's gas is at room temperature, so
-converting its amount is exact.
-
-The agent cost display is the only part of the simulator that converts an amount
-to liquid. It converts only the delivered agent, so no figure it shows carries
-the 5.8 % error. It reads the delivered amount and the vapour-to-liquid ratio of
-the agent in use from the same moment of the run, so it cannot pair one agent's
-vapour with another agent's ratio. Using desflurane's ratio would misstate
-sevoflurane by about 13 %. The same display multiplies the liquid figure by the
-reader's price to give a cost (§ "A cost at the reader's price").
-
-**The simulator derives each agent's vapour-to-liquid ratio, as the first table
-above does.** It stores the liquid density and the molar mass, each with its
-source, and the temperature at which the density was measured. It refuses to
-load a density measured at any temperature other than 20 °C, because it has no
-temperature correction. It computes the molar volume from the gas constant,
-20 °C and one standard atmosphere. Neither the molar volume nor the published
-constants are stored.
-
-A test checks the derived ratios against Biro's within 1 % and against Gas
-Man's within 0.5 %. It also computes the cost of the isoflurane delivered in
-the Gas Man Workbook's Exercises 14-1 and 14-2 with the derived ratio. Those
-costs must match the book's, allowing for rounding to the cent and for Gas
-Man's constant, which is rounded to a whole millilitre.
+model physically has two").
 
 The sources for this section are listed below, with the route by which each
 was read.
@@ -708,17 +682,6 @@ was read.
 and must never add gas fractions, dissolved blood concentrations and tissue
 concentrations directly. It works in litres unless the implementation document
 explicitly selects another consistent unit.
-
-Each agent's file in `data/agents/` stores the density as `liquid_density`,
-with its spread and measurement temperature, and the molar mass as
-`molar_mass_g_mol`. The `sources` entry for each says why no tier-1 source
-(§ "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
-`core/liquid_agent.py` and checked by
-`tests/reference/test_published_vapour_to_liquid.py`, within 1% of Biro's
-constants and within 0.5% of Gas Man's. The agent cost display reads the
-amount and the ratio from one snapshot of the run, which pairs the ratio with
-the running agent (`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other
-code under `src/` calls the conversion to liquid (`liquid_volume_ml`).
 
 ## Symbols
 
@@ -3810,15 +3773,8 @@ Three things move with it at that point:
 Until then, the circuit and the dial read the same number from the same file.
 
 **The three maxima come from two classes of vaporizer, which this model would need to tell apart
-only away from sea level.** Sevoflurane's 8% and isoflurane's 5% are the maxima of
-variable-bypass dials. Desflurane's 18% is the top of the Tec 6's range, and a Tec 6 is a heated
-gas–vapour blender. The model fixes ambient pressure at 760 mmHg (§ "Assumptions"). At that
-pressure, the same dial setting on either class gives the same partial pressure. So the model
-does not need to know which kind of device a limit came from. The classes would differ only at
-reduced ambient pressure, which is not modelled. See § "Known limitations".
-<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
-<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+only away from sea level** (§ "Assumptions", § "Known limitations"). So the model does not need
+to know which kind of device a limit came from.
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
 and both are presentation. First, it sets the starting position of the
@@ -3840,9 +3796,7 @@ Specifically, the model does **not**:
 - imply that an alveolar concentration equal to `mac_percent` corresponds to
   any particular clinical state in a particular patient.
 
-MAC is a population ED50 for immobility in response to a standardized stimulus. It varies with
-age, and other agents, opioids, temperature and patient factors modify it. None of these are
-modeled here. Presenting a single-agent alveolar concentration as if it indicated anesthetic
+Presenting a single-agent alveolar concentration as if it indicated anesthetic
 depth would be exactly the plausible but wrong clinical inference that the project's safety
 standard forbids. So the display shows a *ratio to* 1 MAC, written `×MAC`, and never a depth.
 § "MAC multiples as a display unit" gives the reasoning.
@@ -3901,9 +3855,6 @@ in `core/parameters.py` rejects an agent whose own vaporizer cannot deliver
 its 1 MAC. The 1-MAC start in `AgentUptakeSystem.for_agent()` depends on that
 check. Because `mac_percent` divides every displayed compartment value, a
 change to it falls under the safety-critical standard in `CLAUDE.md`.
-
-The project must not tag a release while scientific `TBD` values remain in
-this document. None remain as of this revision.
 
 ## Runtime controls
 
@@ -5951,10 +5902,7 @@ It must not:
   justifies, or show a value that the model does not resolve as though the
   model asserted it; or
 - predict when the simulated patient would wake, or display a
-  time-to-awakening figure of any kind. The MAC-awake reference is a labelled
-  population band because a per-patient prediction is a claim this model does
-  not support. A disclaimer beside such a number would not undo that claim,
-  because the number would be acted on and the disclaimer would not.
+  time-to-awakening figure of any kind (§ "MAC-awake as a chart reference").
 
 **Every trace and every readout names the substance it shows.** A chart trace
 shows one compartment of one substance, because a compartment fraction means
@@ -7366,9 +7314,8 @@ The band is ruled on both edges because no axis range that the chart can use
 gives it enough height to look like a band on its own. On the fixed axis range
 (`CHART_AXIS_TOP_MAC`, 3 ×MAC), it spans 3.33% of the plot height for
 sevoflurane and 4.20% for desflurane. A 2 MAC ceiling would make the band
-unambiguous, but would put the 1 MAC line at mid-plot and leave no room above it
-for the overpressure induction that the chart must be able to show. A 4 MAC
-ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
+unambiguous, but § "MAC multiples as a display unit" gives the reasons the
+ceiling is 3 MAC. A 4 MAC ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
 the vaporizer dial's maximum. A band ruled on its upper edge only, over an
 unruled fill, looks like a line with a shadow beneath it, whatever the fill's
 height. The two references would then no longer differ in shape. Two rules with
@@ -8731,6 +8678,28 @@ a long run it is several steps. No number of decimals can make a figure with a
 known bias of several steps read correctly, so the stored total keeps litres of
 vapour, as the accounting panel shows it.
 
+The agent cost display is the only part of the simulator that converts an amount
+to liquid. It converts only the delivered agent, so no figure it shows carries
+the 5.8 % error. It reads the delivered amount and the vapour-to-liquid ratio of
+the agent in use from the same moment of the run, so it cannot pair one agent's
+vapour with another agent's ratio. Using desflurane's ratio would misstate
+sevoflurane by about 13 %. The same display multiplies the liquid figure by the
+reader's price to give a cost (§ "A cost at the reader's price").
+
+**The simulator derives each agent's vapour-to-liquid ratio, as the first table
+in § "Agent amount" does.** It stores the liquid density and the molar mass, each with its
+source, and the temperature at which the density was measured. It refuses to
+load a density measured at any temperature other than 20 °C, because it has no
+temperature correction. It computes the molar volume from the gas constant,
+20 °C and one standard atmosphere. Neither the molar volume nor the published
+constants are stored.
+
+A test checks the derived ratios against Biro's within 1 % and against Gas
+Man's within 0.5 %. It also computes the cost of the isoflurane delivered in
+the Gas Man Workbook's Exercises 14-1 and 14-2 with the derived ratio. Those
+costs must match the book's, allowing for rounding to the cent and for Gas
+Man's constant, which is rounded to a whole millilitre.
+
 **For developers.** `app/formatting.py` keys each precision by the amount and
 the unit, in `AGENT_AMOUNT_DISPLAY_PRECISION`. Each entry is an
 `AgentAmountPrecision`, which holds the amount, the unit and the count shown. It
@@ -8748,6 +8717,19 @@ ratified, over keeping the tenth and over four significant figures, `PL-SP6H`).
 computes both counts from the stored densities.
 `test_a_unit_with_no_derived_precision_is_refused` enforces the refusal of the
 stored total in liquid.
+
+Each agent's file in `data/agents/` stores the density as `liquid_density`,
+with its spread and measurement temperature, and the molar mass as
+`molar_mass_g_mol`. The `sources` entry for each says why no tier-1 source
+(§ "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
+`core/liquid_agent.py` and checked in
+`tests/reference/test_published_vapour_to_liquid.py`, within 1% of Biro's
+constants (`test_the_derived_ratio_is_within_one_percent_of_biros_published_constant`)
+and within 0.5% of Gas Man's
+(`test_the_derived_ratio_is_within_half_a_percent_of_gas_mans_20_celsius_constant`). The agent cost display reads the
+amount and the ratio from one snapshot of the run, which pairs the ratio with
+the running agent (`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other
+code under `src/` calls the conversion to liquid (`liquid_volume_ml`).
 
 Concentration, flow, MAC multiples and the F_A/F_I ratio are each shown in one
 unit, so each keeps one count. If a reader is ever given a choice of unit for
@@ -11821,12 +11803,10 @@ unchanged. The evidence above favours an option, because an option can state
 its own uncertainty where a model's default behaviour cannot.
 
 **The stored MAC that the MAC-multiple display divides by limits that
-display.** Each agent's stored MAC is tier 3 under § "Source hierarchy", and
-"Delivery-limit and MAC parameters" measures the gap. Against Mapleson's
-age-40 meta-analytic values, the stored sevoflurane MAC is 10% low and the
-stored desflurane MAC is 10% high. The choice of MAC source alone therefore
-shifts a sevoflurane-versus-desflurane comparison in MAC multiples by about
-22%. The shift is consistent within an agent and changes no curve's shape or
+display.** Each agent's stored MAC is tier 3 under § "Source hierarchy".
+§ "Delivery-limit and MAC parameters" measures its gap from Mapleson's age-40
+meta-analytic values, and how much the choice of MAC source alone shifts a
+sevoflurane-versus-desflurane comparison in MAC multiples. The shift is consistent within an agent and changes no curve's shape or
 timing. It rescales one agent's MAC axis against another's. The gap is larger
 than either source's own confidence limits, so by the primary literature two
 agents at "1 MAC" are not equipotent to that precision. The interface displays
@@ -12571,7 +12551,7 @@ holds.
 A release is complete only when:
 
 - all parameter values and sources are present;
-- no scientific `TBD` markers remain;
+- no scientific `TBD` markers remain (none remain as of this revision);
 - simulated wash-in passes validation against published data for every agent
   and cohort;
 - mass balance closes within the documented tolerance;
