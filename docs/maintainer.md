@@ -27,9 +27,10 @@ every rule to the repository is what prevents it.
 
 **What the instructions keep** is the project's own state and nothing else.
 That is the Goal, the Order and its pause, the compaction rule, and a pointer
-to `.claude/skills/docket/modes/coordinator.md`. The mode file holds the
-coordination rules: the thread caps, which model each thread runs, what every
-brief says, where threads post and record, merging, and releases (project
+to `.claude/skills/docket/modes/coordinator.md`. The compaction rule is the one
+rule that lives only in the instructions, by your word of 2026-10-04. The mode
+file holds the coordination rules: the thread caps, how a thread's model is
+read from the `[models]` table, what every brief says, where threads post and record, merging, and releases (project
 owner, 2026-10-25, ratified, over keeping them in Project settings,
 `PL-NZC0`). `PL-PDVF` holds the cut-down text as it was written on 2026-10-03,
 and the table of where each rule went.
@@ -49,8 +50,8 @@ A rule you give in one of your own sessions already takes this route.
 
 A session cannot switch its own model, so the model is the owner's lever.
 
-**Reasoning-heavy work warrants the strongest available model at a high
-effort setting**, for both the change and the review of the final diff:
+**Reasoning-heavy work warrants the strongest available model**, for both the
+change and the review of the final diff:
 
 - architecture and design decisions;
 - new scientific-model design;
@@ -69,7 +70,16 @@ for each session. It prints one of two flags. The section
 **Whether a cheaper setting holds up is measured, not assumed.** The model
 review, `.claude/skills/model-review/SKILL.md`, scores closed items by how
 their work held up and brings its recommendations to you with their evidence.
-`docs/model-review.md` holds its trials and its dated findings (`PL-63CB`).
+It runs monthly, and after any generator or cluster appears (project owner,
+2026-10-19, ratified, over a weekly or a quarterly cadence, `PL-63CB`).
+`docs/model-review.md` holds its trials and its dated findings.
+
+**Price never justifies a less correct model or effort** (project owner,
+2026-10-19). Price, even a price of zero, does not justify a model or an effort
+level that may be less correct. You would rather pay for Opus and get correct
+work than take incorrect work from a cheaper model for free. So a cheaper model
+or a lower effort is used only where a measurement shows that it is no less
+correct at the task.
 
 ### Which model each flag means
 
@@ -78,11 +88,14 @@ default model and effort, and rules that override them for a kind of work,
 matched on an item's class, lane, feature, status, size, area or role. An area
 is a set of paths, such as the simulator's core or the interface. `bin/docket
 next` and `bin/docket show` print the model and effort it chooses beside each
-flag, and the headless worker and the model review tool read it too. To change
-a choice, edit the table; `subprojects/docket/README.md` § "The model table"
-has the format. `tools/model_home_check.py` refuses a model id written
-anywhere else, and `tools/config_home_check.py` holds the two copies that
-Claude Code reads to it. This section records why the table says what it
+flag, and the headless worker and `tools/model_doc_review.py` read it too. To
+change a choice, edit the table; `subprojects/docket/README.md` § "The model
+table" has the format. `tools/model_home_check.py` refuses a model id written
+anywhere else. Claude Code reads two copies of the table's values: the
+`effortLevel` key in `.claude/settings.json` holds the default effort, and the
+`model:` line of `.claude/agents/Explore.md` holds the `exploration` rule's
+model. `tools/config_home_check.py` fails when either copy differs from the
+table. This section records why the table says what it
 does.
 
 **A dated instance, not a rule** (`.claude/rules/expert-review.md`). What
@@ -126,7 +139,7 @@ true for Haiku 5.5, according to the models overview read on 2026-10-18:
    (`PL-W80S`). Haiku 5.5's window is 1M, the same as the other three models.
 3. **Haiku 4.5 did not take the effort parameter**, so § "Match effort to the
    standard the work is held to" below could not be followed on it. Haiku 5.5
-   takes the parameter, and Claude Code starts it at `medium`.
+   takes it.
 
 The choice of Sonnet still rests on the owner's asymmetry quoted above, not on
 a measurement. Anthropic describes Haiku 5.5 as "for high-volume,
@@ -157,6 +170,50 @@ placed by `workflow_paths` or `product_paths`, and its effort must be `S` or
 `not-delegable:`, which withholds it. Declining the offer and running the
 strongest model anyway is always available and never wrong. The flag exists
 so that the cheap case is visible, not so that it is taken.
+
+### Subagents run on the session's model and effort
+
+**Exploration subagents run on Opus**, by the project owner's decision of
+2026-10-17 (ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper
+model for quick lookups; `PL-2D28` carries the case). The project's own
+Explore definition, `.claude/agents/Explore.md`, writes `model: opus`, no
+`effort` line, `omitClaudeMd: true` and the read-only tools Read, Grep and
+Glob. Its `model:` is a copy of the `exploration` rule, as § "Which model each
+flag means" says. In an Opus session the `opus` alias resolves to the session's own
+model. In a Fable session on a Claude subscription it resolves to the Opus
+model the alias points to. That is what the built-in Explore did in both
+([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a model"
+and "Built-in subagents", read 2026-10-17). So the file changes no model.
+What it adds is a report footer that names what was searched and what was
+not, and the narrow tool set. A search runs at the session's effort level.
+Opus stays unless a measurement shows that a cheaper model is no less correct
+at the task (§ "Match model capability to the work"). A cloud session
+loads this definition. In an Opus 5.5 cloud session started after the
+definition merged, the Explore subagent's transcript records the
+definition's own system prompt. Every turn ran on `claude-opus-5-5` at the
+session's effort level (measured 2026-10-17, `PL-PTHZ`).
+
+**`CLAUDE_CODE_SUBAGENT_MODEL` is set nowhere in this repository.** It left the
+`env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`). It never
+chose the model for the built-in Explore and Plan subagents, which run on
+the main conversation's model. It was a default for any subagent that gets
+no model from anywhere else, such as `general-purpose` (subagents page,
+"Choose a model", read 2026-10-17). In a cloud session it did not even do
+that. It was unset in the Bash shell of four cloud sessions on 2026-10-01
+and 2026-10-17. And a `general-purpose` subagent started with no model ran
+on its parent's model (`PL-KLN5`, `PL-2D28`). In a local
+session whose folder is trusted, the variable would have put every
+`general-purpose` subagent on Haiku with no per-item judgment. That is what
+§ "Which model each flag means" rules out. So a subagent that names no model
+runs on the session's own model. A session does not ask for a cheaper model
+for any subagent unless the owner approves it for that task (project owner,
+2026-10-19, ratified, over asking for a cheaper model per call). `PL-2D28`
+reached the same answer for searches on 2026-10-17. The same rule
+applies to effort. A subagent runs at the session's own effort level unless
+the owner approves a lower one for that task (project owner, 2026-10-19).
+This rule covers subagents that copy values as well as those that search.
+On 2026-10-19, a session set Sonnet runners to work on the session ledger's
+values because of the old wording here, and the owner asked why.
 
 ### Why `opusplan` is not the default for the split here
 
@@ -211,9 +268,8 @@ level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
 
 **On Opus 5.5, every session opens at `high` for now, simulator and apparatus
 alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). Its
-home is the default effort in `docket.toml`'s `[models]` table (`PL-0XDM`).
-The `effortLevel` key in `.claude/settings.json` is the copy Claude Code
-reads, and `tools/config_home_check.py` fails when the two differ. So a
+home is the default effort in `docket.toml`'s `[models]` table, and Claude Code
+reads it from the copy that § "Which model each flag means" names. So a
 session the owner opens without choosing a level runs at the table's default. A level the owner picks when
 opening a session still wins over the file, because Claude Code ranks an
 explicit choice above settings (Claude Code docs, *Model configuration*,
@@ -224,8 +280,8 @@ gain from `xhigh` over `high` is small.
 The decision replaces two ratified records whose stated reason was cost. One
 set `high` for apparatus sessions (2026-10-17, `PL-SW0B`). The other set `max`
 for simulator sessions (2026-09-19, below). Cost alone never justifies a lower
-setting (project owner, 2026-10-19), so a session does not argue for `high` on
-cost. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of tasks at
+setting (§ "Match model capability to the work"), so a session does not argue
+for `high` on cost. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of tasks at
 `high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4 points
 for about 2.5 times the cost. The page calls its figures directional
 (*Optimizing for cost and intelligence*,
@@ -284,24 +340,18 @@ both arms. A session that starts work on a generator's cause runs the same
 command, under your rule of 2026-11-02 that such work runs at `xhigh`
 (`PL-WBW3`).
 
-Until 2026-10-24, the cloud environment's setup script drew the arm. That
-script runs only when the environment's snapshot is built, about once a week.
-So it put no session in either arm (`PL-8MZ9`). The `effort_trial.py` line in
-that script now does nothing, and you can remove it from the environment's
-settings.
+Until 2026-10-24, the cloud environment's setup script drew the arm, and it
+put no session in either arm (`PL-8MZ9`). § "Set up a Claude Code project's
+cloud environment" says how to remove its old line.
 
-The trial runs until the owner ends it. The monthly model review asks the
-owner whether to end it once both arms have adequate data. The review asks in
+The trial runs until the owner ends it. The model review asks the owner whether to end it once both arms have adequate data. The review asks in
 any case at its run on 2027-04-24, six months in (`PL-63CB` § "Effort
 monitoring").
 
 **Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
 at `max`** (project owner, 2026-09-19, ratified, over running every session at
-`max`). The split follows the two standards that `CLAUDE.md` already draws,
-rather than a new judgment. `.claude/rules/apparatus-standard.md` governs the
-apparatus paths that `CLAUDE.md` lists. It asks for working reliably rather
-than for specialist quality. `src/`, `tests/`, `docs/MODEL.md` and `README.md`
-are the opposite case, and the safety-critical standard applies to them.
+`max`). The split followed the two standards that `CLAUDE.md` draws, which
+§ "Safety-critical clinical-output standard" there sets out.
 
 Use `ultracode` deliberately, not by default. It is worth it for a design
 round, a safety-critical review, or a genuinely multi-angle problem. It is not
@@ -337,9 +387,8 @@ ledger stores each session once, and an item is joined to its sessions when
 the ledger is read (project owner, 2026-10-19, ratified, over model and effort
 fields on each closed item, `PL-70M6`).
 
-**The model review refreshes it monthly**, and after any generator or cluster
-appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
-cadence, `PL-63CB`). `.claude/skills/model-review/SKILL.md` § "Refresh the
+**The model review refreshes it each time it runs**; § "Match model capability
+to the work" gives its schedule. `.claude/skills/model-review/SKILL.md` § "Refresh the
 records first" has the steps. The review also refreshes `docs/ci-runs.tsv`,
 the CI run history, with `python3 tools/ci_runs.py refresh`, because GitHub
 deletes a workflow run 90 days after it ran (`PL-4SFQ`).
@@ -357,53 +406,6 @@ deletes a workflow run 90 days after it ran (`PL-4SFQ`).
   subagents queue behind the concurrency cap. The 1-hour cache write costs 2x
   rather than 1.25x. It pays back after two cache reads, and any subagent doing
   real work clears that many times over.
-- Exploration subagents run on Opus, by the project owner's decision of
-  2026-10-17 (ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper
-  model for quick lookups; `PL-2D28` carries the case). The project's own
-  Explore definition, `.claude/agents/Explore.md`, writes `model: opus`, no
-  `effort` line, `omitClaudeMd: true` and the read-only tools Read, Grep and
-  Glob. Its `model:` is a copy of the `exploration` rule in `docket.toml`'s
-  `[models]` table, and `tools/config_home_check.py` fails when the two
-  differ (`PL-0XDM`). In an Opus session the `opus` alias resolves to the session's own
-  model. In a Fable session on a Claude subscription it resolves to the Opus
-  model the alias points to. That is what the built-in Explore did in both
-  ([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a model"
-  and "Built-in subagents", read 2026-10-17). So the file changes no model.
-  What it adds is a report footer that names what was searched and what was
-  not, and the narrow tool set. A search runs at the session's effort level.
-  Correctness, not cost, settles the model question. The owner would rather
-  pay for Opus and get correct work than take incorrect work from a cheaper
-  model for free. So price is never the reason to choose a weaker model
-  (project owner, 2026-10-19). A session therefore never argues for a cheaper
-  model by trading correctness against cost. Opus stays unless a measurement
-  shows that a cheaper model is no less correct at the task. A cloud session
-  loads this definition. In an Opus 5.5 cloud session started after the
-  definition merged, the Explore subagent's transcript records the
-  definition's own system prompt. Every turn ran on `claude-opus-5-5` at the
-  session's effort level (measured 2026-10-17, `PL-PTHZ`).
-- `CLAUDE_CODE_SUBAGENT_MODEL` is set nowhere in this repository. It left the
-  `env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`). It never
-  chose the model for the built-in Explore and Plan subagents, which run on
-  the main conversation's model. It was a default for any subagent that gets
-  no model from anywhere else, such as `general-purpose` (subagents page,
-  "Choose a model", read 2026-10-17). In a cloud session it did not even do
-  that. It was unset in the Bash shell of four cloud sessions on 2026-10-01
-  and 2026-10-17. And a `general-purpose` subagent started with no model ran
-  on its parent's model (`PL-KLN5`, `PL-2D28`). In a local
-  session whose folder is trusted, the variable would have put every
-  `general-purpose` subagent on Haiku with no per-item judgment. That is what
-  § "Which model each flag means" rules out. So a subagent that names no model
-  runs on the session's own model. A session does not ask for a cheaper model
-  for any subagent unless the owner approves it for that task (project owner,
-  2026-10-19, ratified, over asking for a cheaper model per call). `PL-2D28`
-  reached the same answer for searches on 2026-10-17. The owner then added
-  the reason in their own words: price, even a price of zero, does not justify
-  a model that may be less correct (project owner, 2026-10-19). The same rule
-  applies to effort. A subagent runs at the session's own effort level unless
-  the owner approves a lower one for that task (project owner, 2026-10-19).
-  This rule covers subagents that copy values as well as those that search.
-  On 2026-10-19, a session set Sonnet runners to work on the session ledger's
-  values because of the old wording here, and the owner asked why.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
   new session, `PL-YJG1`). The session pushes everything first, so anything
@@ -425,41 +427,28 @@ deletes a workflow run 90 days after it ran (`PL-4SFQ`).
   cheaper by about that one read, as long as the work is pushed and nothing
   needs the pull-request watch. For an unrelated topic, start a fresh session
   instead. That is where a clean prompt beats a carried-over conversation.
-- **When you create a Claude Code project, set its cloud environment to
-  `Default` before you send it work.** The **New project** dialog asks only
-  for a name, a goal and context, and "Cloud threads use a default
-  Anthropic-hosted environment until you pick one in
-  **Project settings > Environment**"
-  ([Projects](https://code.claude.com/docs/en/claude-projects),
-  "Choose an environment for threads", read 2026-10-01). That environment
-  runs none of `Default`'s setup script. So each of its threads finds a `uv`
-  older than `pyproject.toml` requires, and no `libegl1`. The thread has to
-  repair both before `make check` will run (`PL-QKXZ`). Both projects so far
-  started in that environment. To fix it, open the project and click the gear
-  icon in its header to open **Project settings**. Go to **Environment**, and
-  set **Cloud environment** to **Default**. The setting saves as you change
-  it. The change applies to new threads only, so make it before the first
-  task. A thread can confirm the setting: `get_session` returns
-  `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
-- **Auto mode as your default applies only to the sessions on your Mac, and no
-  file in this repository can set it** (`PL-ZLS5`). Your
-  `"permissions": {"defaultMode": "auto"}` in `~/.claude/settings.json` is
-  the right place for it. A project file would be ignored without an error.
-  The documentation says that
-  "`permissions.defaultMode` values `auto` and `bypassPermissions` don't take
-  effect from project or local settings; set them in user or managed settings
-  instead, or pass `--permission-mode` for one session"
-  ([Settings](https://code.claude.com/docs/en/settings), "A value you set is
-  ignored", read 2026-10-18). A cloud session reads neither of your own files.
-  `~/.claude/settings.json` and `.claude/settings.local.json` are "not read.
-  Both stay on your machine" (same page, "Settings in cloud sessions"). So a
-  cloud session takes its mode from the menu instead: "You pick a cloud
-  session's permission mode from the mode dropdown, both when you create the
-  task and while the session runs"
-  ([Use Claude Code in the cloud](https://code.claude.com/docs/en/claude-code-on-the-web),
-  "Permission modes in cloud sessions", read 2026-10-18). A cloud session
-  that asks for permissions you thought you had turned off is in the mode its
-  dropdown names, so change the mode there.
+
+## Make auto mode the default on your Mac
+
+**Auto mode as your default applies only to the sessions on your Mac, and no
+file in this repository can set it** (`PL-ZLS5`). Your
+`"permissions": {"defaultMode": "auto"}` in `~/.claude/settings.json` is
+the right place for it. A project file would be ignored without an error.
+The documentation says that
+"`permissions.defaultMode` values `auto` and `bypassPermissions` don't take
+effect from project or local settings; set them in user or managed settings
+instead, or pass `--permission-mode` for one session"
+([Settings](https://code.claude.com/docs/en/settings), "A value you set is
+ignored", read 2026-10-18). A cloud session reads neither of the copies on your
+Mac: there, `~/.claude/settings.json` and `.claude/settings.local.json` are
+"not read. Both stay on your machine" (same page, "Settings in cloud sessions"). So a
+cloud session takes its mode from the menu instead: "You pick a cloud
+session's permission mode from the mode dropdown, both when you create the
+task and while the session runs"
+([Use Claude Code in the cloud](https://code.claude.com/docs/en/claude-code-on-the-web),
+"Permission modes in cloud sessions", read 2026-10-18). A cloud session
+that asks for permissions you thought you had turned off is in the mode its
+dropdown names, so change the mode there.
 
 ## What comes to you before it merges
 
@@ -629,8 +618,9 @@ app and reached `main` with no body. GitHub has acknowledged the defect since
 [#51016](https://github.com/orgs/community/discussions/51016). `PL-WFFX` has
 the measurements.
 
-- In the Mac's browser, check that the commit message box holds the pull
-  request's description before you confirm.
+- In the Mac's browser, the commit message box shows what will land, and
+  § "Bring a stale base in when you merge, with Update branch" has you check
+  it before you confirm.
 - Auto-merge is the safer route when nothing sets its message. All 49
   auto-merges armed that way by 2026-09-22 kept their body. The nine that
   lost their body had carried an explicitly empty message. Six of those nine
@@ -671,7 +661,8 @@ lands. So the update is yours to make, once, when you come to merge:
    under any session that is still working on it.
    A "Merge branch 'main' into ..." commit appears and the checks restart.
    If the box offers **Squash and merge** and no Update branch, the branch
-   is already current. Merge it as the section above says, and stop. If the
+   is already current. Click **Squash and merge**, check that the commit
+   message box holds the pull request's description, confirm, and stop. If the
    pull request is still a draft, leave it. The draft carries a session's
    claim, and GitHub will not merge it. That session marks it ready when the
    claimed item closes or is blocked (`PL-H14W`).
@@ -742,9 +733,9 @@ step 1 says for a branch that is already current.
 
 ## Give update-armed its token, and renew it
 
-On every push to `main`, `.github/workflows/update-armed.yml` brings `main`
-into each armed pull request that `main` has moved past (`PL-S5MF`). The update
-needs a token that only you can make. An update made with the workflow's own
+`update-armed.yml` keeps armed pull requests current, as § "Bring a stale base
+in when you merge, with Update branch" says. The update needs a token that only
+you can make. An update made with the workflow's own
 token starts the pull request's checks in a state that requires approval, so
 the checks would wait for you. Until the secret exists, each run lists what it
 would have updated and changes nothing.
@@ -834,15 +825,14 @@ left unused expires at the end of each billing cycle
 (https://support.claude.com/en/articles/17154008, read 2026-10-19).
 `tools/headless_worker.py` spends the credit on the items that
 `bin/docket delegable` lists (`PL-80R5`). Each run clones the repository and
-works one item on Opus 5.5, following `docs/worker.md`. It pushes a branch
+works one item, following `docs/worker.md`. It asks the `[models]` table for
+its model and effort with the role `worker`, which no rule names, so it takes
+the table's default (§ "Which model each flag means"). It pushes a branch
 named `claude/<id>-worker`. It then subtracts its reported cost from the
 figure for the credit left, which you give the runner at launch. The runner
 stops before a run that the credit left cannot cover. It also stops after any
 run that fails, because an empty credit, a lost connection or a sleeping Mac
-makes every later run fail too (`PL-44SP`). Every run uses the effort level
-in `.claude/settings.json`, which is `high`. That is the level that
-§ "Match effort to the standard the work is held to" sets for sessions
-(`PL-4N0K`). Run `tools/headless_worker.py` on your Mac, from a checkout of `main`, with
+makes every later run fail too (`PL-44SP`). Run `tools/headless_worker.py` on your Mac, from a checkout of `main`, with
 `claude` and `uv` installed. Start it through `uv run python`, never a bare
 `python3`. macOS's own `python3` is Xcode's Python 3.9, which is older than
 the 3.11 that the tools need. `uv run` also puts the project's Python first on
@@ -921,8 +911,8 @@ to run it once on the table's model, over dropping it. It sends one request per
 the data. The model reports statements in its section that contradict a stored
 value, another statement or their own units. A session then checks each one and
 files the confirmed ones. Run it on your Mac from a checkout of `main`, with the
-key exported as in § "Spend the monthly API credit on delegable items", steps 1
-to 3.
+key exported and the credit left read as in § "Spend the monthly API credit on
+delegable items", steps 1 to 4.
 
 1. `uv run python tools/model_doc_review.py estimate` prints the number of
    requests, the model and effort, and the most the batch could cost, and
@@ -930,7 +920,7 @@ to 3.
    every request using its full output allowance, so the bill should be well
    below it.
 2. `uv run python tools/model_doc_review.py submit --credit-left 197.72`, with
-   the figure from platform.claude.com/settings/billing, sends the batch. It
+   the figure from step 4 of that section, sends the batch. It
    refuses when the bound is more than the credit left. It prints a batch id
    that starts `msgbatch_`, and saves a manifest in
    `~/.local/state/open-anesthesia-sim/model-doc-review/`.
@@ -957,7 +947,7 @@ of two ways:
   sidebar, then **Run workflow** above the list of runs. Leave **Branch** on
   `main`, which the workflow requires, and click **Run workflow**. The log of
   its **tag** job ends with `Tagged VERSION and pushed it to origin.`
-- Or run `python3 tools/tag_release.py --apply` on the Mac, from a clone that is
+- Or run `uv run python tools/tag_release.py --apply` on the Mac, from a clone that is
   up to date with `main`. The script tags with your own credentials, because a
   tag that a session pushes is dropped without any error (`PL-N936`). It
   prints the same last line once `origin` holds the tag.
@@ -1012,7 +1002,28 @@ comment proposes. In that case the patch finds its own line already in
 place and stays silent. If the fix takes any other form, the patch prints a message at every
 session start saying that the line it rewrites is not there.
 
-## Give Projects threads the repository's hooks with one setup script
+## Set up a Claude Code project's cloud environment
+
+**1. When you create a Claude Code project, set its cloud environment to
+`Default` before you send it work.** The **New project** dialog asks only
+for a name, a goal and context, and "Cloud threads use a default
+Anthropic-hosted environment until you pick one in
+**Project settings > Environment**"
+([Projects](https://code.claude.com/docs/en/claude-projects),
+"Choose an environment for threads", read 2026-10-01). That environment
+runs none of `Default`'s setup script. So each of its threads finds a `uv`
+older than `pyproject.toml` requires, and no `libegl1`. The thread has to
+repair both before `make check` will run (`PL-QKXZ`). Both projects so far
+started in that environment. To fix it, open the project and click the gear
+icon in its header to open **Project settings**. Go to **Environment**, and
+set **Cloud environment** to **Default**. The setting saves as you change
+it. The change applies to new threads only, so make it before the first
+task. A thread can confirm the setting: `get_session` returns
+`environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
+
+**2. Give its threads the repository's hooks**, as the next subsection says.
+
+### Give Projects threads the repository's hooks with one setup script
 
 A Claude Projects thread does not load `.claude/settings.json`, so none of the
 repository's hooks run in it: not the guards, not the session-start digest and
@@ -1039,8 +1050,10 @@ To add it:
 2. At [claude.ai/code](https://claude.ai/code), open the environment selector,
    the first control under the message box. Under **Cloud**, hover over that
    environment's row and select the settings icon on its right.
-3. Select the **Setup script** row. Paste the script below at the end of what
-   the box already holds, and select **Save changes**.
+3. Select the **Setup script** row. If it holds a line that runs
+   `tools/effort_trial.py`, delete that line: it drew the effort trial's arm
+   until 2026-10-24 and now does nothing. Paste the script below at the end of
+   what the box already holds, and select **Save changes**.
 
 ```bash
 mkdir -p ~/.claude
@@ -1059,8 +1072,9 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 EOF
 ```
 
-Changes to the environment reach new threads, not the ones already running,
-and saving the script rebuilds the environment's cache. To check that it
+Changes to the environment reach new threads, not the ones already running.
+The setup script runs only when the environment's snapshot is built, about
+once a week, and saving the script rebuilds that cache. To check that it
 worked, ask a new thread to run `uv run pytest -q
 tests/unit/test_line_splits.py | tail -1`. The repository's
 gate-status guard refuses that command when the hooks are loaded. If the
