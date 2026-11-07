@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - filed after the gate froze, and a question of release or
 added: 2026-09-26
 payoff: A session reading the roadmap meets one answer for multi-substance - off the timeline until single-agent works, and the owner's condition for its return - instead of a pathway and a timeline that disagree.
 verify: ! grep -qE 'v0\.[0-9]+\.0 — multi-substance' ROADMAP.md && ! grep -q 'held with its count by' ROADMAP.md && grep -q 'workspaces all working' ROADMAP.md
+recurrences: 2026-11-07 PL-K6DG withdrawn 2026-11-07 PL-K6DG
 ---
 
 **Problem.** ROADMAP.md's Development pathway still says Phase 1 follows v0.4.0 unchanged, while the timeline places Phase 1's substance generalization at v0.9.0 behind four releases, which its own known-risk paragraph argues against
