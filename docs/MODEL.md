@@ -261,26 +261,10 @@ not a property of breathing systems in general. It makes the displayed
 $`F_A/F_I`$ ratio the textbook curve of inhaled-anesthetic uptake
 (§ "F_A/F_I as a displayed ratio").
 
-Symbols and the gas-phase cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx
-and De Wolf (pp. 161-162). They attribute the $`F_D - F_I`$ gradient to
-rebreathing (p. 169) and the $`F_I - F_A`$ gradient to uptake (p. 171), and
-describe the teaching role of the $`F_A/F_I`$ curve (p. 167) (Hendrickx JFA,
-De Wolf A. Special aspects of pharmacokinetics of inhalation anesthesia. In:
-Schüttler J, Schwilden H, eds. Modern Anesthetics. Handbook of Experimental
-Pharmacology 182. Springer, 2008:159-186).
-
-**The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
-is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where
-both appear in one expression, the tissue index is written out.
-
 **For developers.** Before extending the model to a multi-limb system, record
 the change in this document. Such a system separates inspired gas from mean
 circuit gas, as Lerou and Booij's three-part model does. The two would then be
 distinct states, and this model's single $`F_I`$ would no longer describe both.
-
-The case-only difference between $`F_I`$ and $`F_i`$ stays because both are
-standard in the literature. Renaming either would make this model's symbols
-disagree with every source a reader is likely to come from.
 
 ## Assumptions
 
@@ -301,9 +285,7 @@ Every value the model computes rests on these assumptions.
   and the concentration and second-gas effects. "Alveolar gas" gives the size of
   the error and what lifting the assumption would take.
 - Carrier gases do not affect agent kinetics.
-- Inspired gas is circuit gas. One modeled gas concentration, $`F_I`$, lies
-  between the vaporizer and the alveoli, because there is one perfectly mixed
-  circuit with no dead space and no separate limbs (see § "Model boundary").
+- Inspired gas is circuit gas (see § "Model boundary").
 - The breathing system is a semi-closed circle whose surplus gas valve is open.
   Exhaust outflow equals fresh-gas inflow at every instant, so one fresh gas
   flow, $`\dot V_F`$, is both the delivery rate and the removal rate (see
@@ -358,32 +340,10 @@ $$
 \dot V_{\mathrm{s}} = \frac{\dot V_{\mathrm{min}}}{60}
 $$
 
-The screen shows time in one form. The displayed clock, the time stamp on each
-recorded control change and the chart's axis ticks are all durations. Each part
-of a duration carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A part
-that is zero is left out. Tenths of a second appear only where there are some.
-
-The one exception is the time span that the chart draws. It is written out in
-words, such as `15 minutes` above an axis whose last tick reads `15m`. The
-reader picks that phrase from a selector and sees it again in a caption.
-§ "Displayed precision" sets the precision at which each form is shown.
-
 **For developers.** The per-second value of each flow is never stored because
 multiplying it by 60 can give a number that differs from the setting. The tissue
 flows formed from cardiac output share that difference. Settings rebuilt from
 per-second values could therefore describe a run that nobody set up.
-
-The displayed clock and the stamps use the axis's form because all three are on
-screen together. A control mark stamped `5400.0 s` on an axis reading `1h30m`
-would leave the reader to convert between the two by hand. At the supported
-24-hour run length, a clock in seconds would read `86400.0 s`. That figure shows
-false precision for a limit that this document states in hours. The tenths of
-a second are there so that a stamp identifies the simulation step at which it
-was taken.
-
-The span's wording does not have to fit in a tick's width, because neither the
-selector nor the caption is a tick label. § "The chart's time base" explains why
-the span is written in words.
 
 #### Simulated time is a count of steps, not a running total
 
@@ -500,13 +460,6 @@ partial-pressure-equivalent fraction. For example, $`F = 0.02`$ represents a 2%
 gas-phase concentration.
 <!-- not-restated: 2 % -->
 
-The gas-phase symbols follow the inhaled-anesthetic literature:
-$`F_D \rightarrow F_I \rightarrow F_A`$. The middle one, $`F_I`$, is the
-inspired fraction, taken from the gas in the breathing circuit. The circuit's
-quantities carry the subscript $`C`$: $`V_C`$ is its volume and $`M_C`$ is the
-amount of agent in it. § "Model boundary" above states the assumption that
-makes circuit gas and inspired gas one quantity, and what would break it.
-
 The vaporizer dial and MAC are given in percent of an atmosphere. The
 conversion between a fraction and a percent is:
 
@@ -527,17 +480,6 @@ which is also stored in percent.
 The conversion has only two uses. Where the equations need $`F_D`$, the model
 derives it from the dial's percent, both in the circuit and in the recorded
 settings. The screen converts for display.
-
-Besides percent, the screen can show a concentration as a multiple of 1 MAC of
-the agent in use:
-
-$$
-\text{MAC multiple} = \frac{100F}{\mathrm{MAC}_\%}
-$$
-
-The MAC multiple introduces no new state and defines no modeled quantity, and the model's own calculations never compute it.
-§ "MAC multiples as a display unit" states what a MAC multiple does and does
-not assert.
 
 A concentration fraction must always be finite and satisfy:
 
@@ -820,6 +762,25 @@ coefficient (Table 2). The review's Eq. (4) shows that the quantity is the
 tissue:blood coefficient. The full citation is in the reference list,
 `docs/references/README.md`.
 
+The gas-phase symbols follow the inhaled-anesthetic literature:
+$`F_D \rightarrow F_I \rightarrow F_A`$. The middle one, $`F_I`$, is the
+inspired fraction, taken from the gas in the breathing circuit. The circuit's
+quantities carry the subscript $`C`$: $`V_C`$ is its volume and $`M_C`$ is the
+amount of agent in it. § "Model boundary" above states the assumption that
+makes circuit gas and inspired gas one quantity, and what would break it.
+
+Symbols and the gas-phase cascade ($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx
+and De Wolf (pp. 161-162). They attribute the $`F_D - F_I`$ gradient to
+rebreathing (p. 169) and the $`F_I - F_A`$ gradient to uptake (p. 171), and
+describe the teaching role of the $`F_A/F_I`$ curve (p. 167) (Hendrickx JFA,
+De Wolf A. Special aspects of pharmacokinetics of inhalation anesthesia. In:
+Schüttler J, Schwilden H, eds. Modern Anesthetics. Handbook of Experimental
+Pharmacology 182. Springer, 2008:159-186).
+
+**The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
+is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where
+both appear in one expression, the tissue index is written out.
+
 **For developers.** Each Code cell is written `ClassName.accessor`. Where a
 symbol has no place of its own in the code, its Code cell shows an em dash
 followed by what the code reads instead. $`F_a`$ is the only such symbol.
@@ -831,10 +792,9 @@ defect.
 The code's names for the two tissue coefficients give both phases in order, as
 their symbols do.
 
-In § "Tissue compartments" below, the tissue capacity is
-$`V_i\lambda_{i:b}\lambda_{b:g}`$. The code computes it as the equivalent
-single multiplication $`V_i\lambda_{i:g}`$, because the agent data files store
-$`\lambda_{i:g}`$.
+The case-only difference between $`F_I`$ and $`F_i`$ stays because both are
+standard in the literature. Renaming either would make this model's symbols
+disagree with every source a reader is likely to come from.
 
 ## Tissue groups
 
@@ -844,20 +804,12 @@ Version v0.1.0 contains exactly three perfusion-limited tissue groups:
 - muscle; and
 - fat.
 
-Each group has:
-
-- a tissue volume $`V_i`$;
-- a fraction of cardiac output $`f_i`$;
-- a tissue blood flow $`Q_i = f_iQ`$, computed from the patient's cardiac
-  output $`Q`$ each time the flow is needed, and not stored with the group;
-- a tissue:gas partition coefficient $`\lambda_{i:g}`$, stored for each agent;
-- a tissue:blood partition coefficient $`\lambda_{i:b}`$, derived from the
-  tissue:gas coefficient and the patient's one blood:gas coefficient (the group stores no blood:gas coefficient);
-- a stored agent amount $`M_i`$; and
-- a derived partial-pressure-equivalent fraction $`F_i`$.
+Each group has the volume, fraction of cardiac output, blood flow, partition
+coefficients, stored agent amount and fraction that § "Symbols" lists for
+tissue group $`i`$.
 
 The fractions of cardiac output must satisfy $`f_i > 0`$ and $`\sum_i f_i = 1`$
-within a documented validation tolerance, so the three groups together receive
+within one part in a million million (`FLOW_FRACTION_TOLERANCE = 1e-12`), so the three groups together receive
 the whole cardiac output:
 
 $$
@@ -955,9 +907,8 @@ coefficient.
 
 ## Governing equations
 
-All flow terms below must be in liters per second. Flows that the user sees
-and enters are in liters per minute, so they are converted before they are
-used here.
+All flow terms below must be in liters per second, converted from the liters
+per minute that a run stores (§ "Time").
 
 ### Breathing circuit
 
@@ -1339,10 +1290,8 @@ meets the standard set in "Source hierarchy".
 
 ### Arterial blood
 
-In this model, $`F_a \equiv F_A`$ at every instant. The lung's exchange with
-blood is perfusion-limited, and the model has no shunt and one alveolar
-compartment, so all arterial blood has equilibrated with alveolar gas (see
-§ "Model boundary"). There is no equation for an arterial amount of agent, and
+In this model, $`F_a \equiv F_A`$ at every instant, for the reasons
+§ "Model boundary" gives. There is no equation for an arterial amount of agent, and
 no arterial capacity or time constant. Every equation below that contains
 $`F_a`$ uses the current alveolar fraction $`F_A`$ in its place.
 
@@ -3437,8 +3386,8 @@ publication of the same parameter set.** The stored value comes from the
 Workbook's own page-168 table, which gives the vessel-rich relative flow as
 0.76 (read at the source on 2026-09-06). Table 1 of De Wolf et al. 2012, the
 paper the twelve partition coefficients come from, prints 75.8, and
-75.8 + 18 + 6 = 99.8. The model requires the flow fractions to sum to 1 to
-within one part in a million million, so the published set could not be
+75.8 + 18 + 6 = 99.8. The model requires the flow fractions to sum to 1 within
+the tolerance that § "Tissue groups" gives, so the published set could not be
 stored as printed, even if it were preferred. That limit stays, because one
 loose enough to admit 99.8% would also admit a transcription error silently.
 The difference changes the vessel-rich time constant by 0.26%, below the
@@ -3674,7 +3623,7 @@ citation.
 
 **For developers.** `_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one`
 and `PatientCompartments.__post_init__` each reject a set of flow fractions
-whose sum lies outside `FLOW_FRACTION_TOLERANCE = 1e-12` of 1.0.
+whose sum lies outside `FLOW_FRACTION_TOLERANCE` of 1.0 (§ "Tissue groups").
 `default_fresh_gas_flow_l_min` is optional in a machine profile. A run built
 from a profile that omits it starts at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
 in `core/circuit.py`
@@ -6934,6 +6883,15 @@ on the left, titled `% of 1 atm`, and a MAC axis on the right, titled `×MAC`. I
 plots each trace once, in percent, and the MAC axis relabels that scale, so the
 two axes always agree about where a trace is.
 
+The MAC multiple of a concentration is its percent divided by 1 MAC of the
+agent in use:
+
+$$
+\text{MAC multiple} = \frac{100F}{\mathrm{MAC}_\%}
+$$
+
+The MAC multiple introduces no new state and defines no modeled quantity.
+
 The percent unit is `% of 1 atm`, not `vol %`, because `vol %` is a gas-phase
 volume fraction and only the circuit and alveolar compartments have one. The
 mixed-venous, vessel-rich, muscle and fat compartments hold a partial pressure,
@@ -8569,6 +8527,28 @@ chart's time base" gives the label form and the reason it differs from the
 clock's.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
+The screen shows time in one form. The displayed clock, the time stamp on each
+recorded control change and the chart's axis ticks are all durations. Each part
+of a duration carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A part
+that is zero is left out. Tenths of a second appear only where there are some.
+
+The one exception is the time span that the chart draws. It is written out in
+words, such as `15 minutes` above an axis whose last tick reads `15m`. The
+reader picks that phrase from a selector and sees it again in a caption.
+§ "Displayed precision" sets the precision at which each form is shown.
+
+**For developers.** The displayed clock and the stamps use the axis's form because all three are on
+screen together. A control mark stamped `5400.0 s` on an axis reading `1h30m`
+would leave the reader to convert between the two by hand. At the supported
+24-hour run length, a clock in seconds would read `86400.0 s`. That figure shows
+false precision for a limit that this document states in hours. The tenths of
+a second are there so that a stamp identifies the simulation step at which it
+was taken.
+
+The span's wording does not have to fit in a tick's width, because neither the
+selector nor the caption is a tick label. § "The chart's time base" explains why
+the span is written in words.
+
 **The chart is read for shape, so its resolution is coarser than the
 readouts'.** It plots the same percentages on a shared linear axis that runs
 from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
@@ -9803,7 +9783,7 @@ The simulator must always meet the following conditions:
 - all volumes are finite and positive;
 - fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are finite and nonnegative;
 - partition coefficients are finite and positive;
-- tissue flow fractions sum to one within tolerance;
+- tissue flow fractions sum to one within tolerance (§ "Tissue groups");
 - stored agent amounts remain finite and nonnegative;
 - derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
