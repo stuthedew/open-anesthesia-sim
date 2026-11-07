@@ -60,4 +60,12 @@ medical-device practice: IEC 62304:2006+A1:2015 § 5.8.2 and § 5.8.3 release
 software with known residual anomalies once each has been evaluated as
 carrying no unacceptable risk. The recommendation above, to keep the snapshot
 section's refusal as the rule, would pull those ten items into v0.7.0's list,
-most of them `docs/MODEL.md` traceability work. The answer is awaited.
+most of them `docs/MODEL.md` traceability work.
+**Answered 2026-11-07 at 22:09 UTC: yes, if recorded and checked (project
+owner, 2026-11-07, ratified, over keeping the snapshot section's refusal,
+which would pull the ten deferred safety and science items into v0.7.0's
+list).** A safety or science item may be deferred from the current gate when
+its record says, checked against the code, that no learner can see a wrong
+value now. The snapshot section's sentence that makes these two classes not
+deferrable changes to say so. `PL-C8N8`, the wording of the re-entry
+advisory in `tools/doc_check.py`, follows from this answer.

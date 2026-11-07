@@ -120,13 +120,13 @@ repeat. `PL-V82M` corrects what the exemption says the next release does.
    `tools/doc_check.py` fit `docs/apparatus.md`'s paragraphs on frozen-list
    counts and re-entry. Keep in the roadmap only what each guarantees, as the
    finding above says.
-3. Two questions are on cards to the project owner in the slice 3 thread,
-   unanswered when it stopped: `PL-GW0P` (recommended: a capture after the
-   freeze waits for the next list, as now) and `PL-8C8W` (recommended: a
-   safety or science entry may be deferred while its hazard is not live, if
-   the deferral is recorded and checked). Record each answer in its item.
-   `PL-C8N8`, the wording of `tools/doc_check.py`'s re-entry advisory, is a
-   tool fix to make once `PL-8C8W` is answered.
+3. The project owner answered both questions from slice 3 on 2026-11-07, and
+   each item records the answer: a finding filed after a freeze joins that
+   gate when its problem was present at the freeze (`PL-GW0P`), and a safety
+   or science item may be deferred if the deferral is recorded and checked
+   (`PL-8C8W`). Neither is a move, so this slice moves the deferral paragraphs
+   as they stand and leaves the rule change to those items. `PL-C8N8`, the
+   wording of `tools/doc_check.py`'s re-entry advisory, is now actionable.
 4. Then slices 5 to 9 in their blocked-by order: `PL-YNFS`, `PL-B6V1`,
    `PL-M3MV`, `PL-V8SJ`, `PL-4BCF`. Each brief holds what slice 3 left it.
    Each slice is one pull request, move and dedupe only, merged on green
