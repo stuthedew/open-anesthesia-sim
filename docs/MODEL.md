@@ -2410,6 +2410,12 @@ uses the smallest and largest step, and requires that no step needs a squaring. 
 profile with faster rates, such as a small patient, fails it on the day it ships, and its
 message says to widen the tolerance only by what the squarings add.
 
+**What would reopen the limits.** The 0.01 L volume limit was set at the adult supported flows.
+A patient profile with much smaller volumes would bring much smaller flows with it. A profile
+within ten times of that limit would need this measurement repeated at its own flows. So would
+an agent with a coefficient within ten times of either coefficient limit.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+
 **The 0.005 L alveolar compartment in § "What is not bounded this way", every volume
 below 0.01 L in the paragraphs that follow, and every circuit volume above 10 000 L can no longer
 be built.** Each is outside § "The numerical envelope". The measurements are
@@ -2420,7 +2426,8 @@ drives those refusals, with a matrix built to match.
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 **The numerics do eventually object, and that is a backstop rather than a
-bound.** The same measurement was continued downward at the shipped 0.1 s step.
+bound.** The 2026-09-06 measurement in § "What a wrong volume would be wrong for" was
+continued downward at the shipped 0.1 s step.
 An alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L halts the run through
 `AgentSimulationValidationError`. That error comes from the mass-balance
 guard, not from any declared domain. From $`10^{-11}`$ L down, the propagator
@@ -2432,7 +2439,7 @@ the refusal are the required "obvious failure rather than a plausible-looking
 number", but they arrive by accident of arithmetic. Neither is a limit that
 this document declares, and neither may be treated as one. They sit far below
 any volume a caller would pass by mistake, and they say nothing about the
-physiological question above. Circuit volume has no such point. It was
+physiological question that § "What a wrong volume would be wrong for" asks. Circuit volume has no such point. It was
 advanced up to $`10^{300}`$ L with accounting passing throughout.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
@@ -2480,12 +2487,6 @@ part in a million. The first change alone is not enough, because with the consta
 row exact a wrecked matrix is no longer zero, so only the limit refuses it.
 `tests/unit/test_agent_simulation_validation.py` holds the regression test for a case that
 the mass-balance check passed with every propagator entry wrong.
-
-**What would reopen the limits.** The 0.01 L volume limit was set at the adult supported flows.
-A patient profile with much smaller volumes would bring much smaller flows with it. A profile
-within ten times of that limit would need this measurement repeated at its own flows. So would
-an agent with a coefficient within ten times of either coefficient limit.
-<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **For developers.** `tissue_blood_partition_coefficient` builds the quotient as
 a `PartitionCoefficient`. `AgentParameters` holds both factors, so it checks the
@@ -4434,6 +4435,7 @@ branching, a branch's reset and the halt record all follow one rule:
   the step that reached a branch's fork. The record is worked out again against
   the current marks whenever it is read, as the mark outcomes are. So a mark
   removed and added back under another label is named by its new label.
+
 At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the
 opening still replaces the opening stretch, even after a branch was taken
@@ -11153,7 +11155,9 @@ sent.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 6 % -->
 
-**The result does not bear on § "Supported run length"**, which gives the full reasoning.
+**The result does not bear on § "Supported run length"**, which gives the full reasoning. The
+departures measured here come from the missing fourth compartment and from the fat group's own
+size, and both are present from the first hour to the last.
 
 **For developers.** The checks are in
 `tests/reference/test_late_washout_against_published_fits.py`. With these numbers, the
