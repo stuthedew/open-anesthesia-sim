@@ -1,28 +1,21 @@
 # Yasuda et al. 1991, Figure 2: the F_A/F_I curve during administration
 
-This note records the early wash-in values read from Figure 2 of the two
-Yasuda et al. 1991 papers, so that no later session has to read the figures
-again. The papers are held in the private corpus, and their citations are in
-`docs/references/README.md` § "Yasuda et al. 1991 — the two human kinetics
-papers". Only facts cross into this repository: values, their units, and
-where they sit. Neither figure is reproduced.
+This note gives the early wash-in values read from Figure 2 of the two Yasuda
+et al. 1991 papers. The citations are in `docs/references/README.md`
+§ "Yasuda et al. 1991 — the two human kinetics papers". Neither figure is
+reproduced, and the repository holds no copy of either paper.
 
-The values are used as reference values in
-`tests/reference/test_published_wash_in_and_elimination.py`
-(`PUBLISHED_WASH_IN_TIME_COURSE`). They are not stored model parameters.
-
-Route and depth: the private corpus, read on 2026-10-18 for `PL-R0NL`. The
-*Anesth Analg* paper's methods were read through its text layer, page 317, and
-its Figure 2 from the page image of page 320. The *Anesthesiology* paper has no
-text layer, so its methods were read from the page image of page 490 and its
-Figure 2 from the page image of page 493.
+The simulator's wash-in is checked against these values, which are not inputs
+to the model. As in the studies, the check holds the inspired fraction constant
+at the airway from the first breath, because the simulator's circuit would
+otherwise fill at its own time constant.
 
 ## What the figures show
 
 | Paper | Figure | Printed page | Cohort | Curves plotted |
 | --- | --- | --- | --- | --- |
 | *Anesth Analg* 1991;72:316-24 | 2 | 320 | 7 healthy men, 23 ± 3 yr, 72 ± 9 kg | N2O, sevoflurane, isoflurane, and desflurane and halothane from the other study |
-| *Anesthesiology* 1991;74:489-98 | 2 | 493 | 8 volunteers | N2O, desflurane, isoflurane, halothane |
+| *Anesthesiology* 1991;74:489-98 | 2 | 493 | 8 healthy men, 25 ± 5 yr, 76 ± 7 kg | N2O, desflurane, isoflurane, halothane |
 
 Each figure plots F_A/F_I, the end-tidal over the inspired fraction, as mean ±
 SD against minutes of administration from 0 to 30. Each SD is drawn as a bar on
@@ -30,9 +23,7 @@ one side of the marker only.
 
 The *Anesth Analg* figure's desflurane and halothane curves are not that
 study's data. They come from the *Anesthesiology* study and were "normalized"
-to the *Anesth Analg* isoflurane cohort (*Anesth Analg* page 320). So
-desflurane is read from the *Anesthesiology* figure, which plots its own
-cohort's measurements.
+to the *Anesth Analg* isoflurane cohort (*Anesth Analg* page 320).
 
 ## The protocol behind the curves
 
@@ -49,40 +40,21 @@ These facts are stated in both papers' methods (*Anesth Analg* page 317,
   6.5%.
 - End-tidal gas was sampled at the tracheal tube from the first five breaths
   and then at 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25 and 29 minutes.
-  The *Anesthesiology* paper puts about 50 ml of tubing between that port and
-  the non-rebreathing valve, and samples inspired gas at the valve.
+  The *Anesthesiology* paper reports about 50 ml of tubing between the sampling
+  port and the non-rebreathing valve, with inspired gas sampled at the valve.
 
-So the inspired fraction was the cylinder's from the first breath. The
-shipped simulator's circuit fills at its own time constant instead, which is
-why the test drives the model with F_I held at the airway.
+So the inspired fraction was the cylinder's from the first breath.
 
 ## How the values were read
 
-Both papers survive in the corpus as 300 dpi bilevel scans, and neither page
-has a text layer for the figure. The figure pages were extracted with
-`pdfimages` and read by a script, in four steps:
+**Every point read from a figure sits within 0.1 minute of a protocol sample
+time**, except the 7.5-minute points, which sit at 7.40 to 7.48 minutes. The
+last point of every curve sits at 30.0 minutes, although the protocol's last
+sample was at 29.
 
-1. **Axes.** A straight line was fitted to each axis. The scans are sheared:
-   on the *Anesthesiology* page the y-axis leans 0.82 degrees from vertical
-   and the x-axis 0.21 degrees from horizontal, and on the *Anesth Analg* page
-   0.36 and 0.06 degrees. So a point is read by projecting it to each axis
-   along the other axis's direction, not along the pixel grid.
-2. **Ticks.** Each tick mark's centre was found on its axis. Values between
-   ticks are interpolated linearly between the two nearest ticks, which
-   absorbs the scans' uneven tick spacing of up to 3 pixels.
-3. **Markers.** Each marker's centre was found by matching a template of its
-   shape: a filled disc for sevoflurane and desflurane, and a hollow square for
-   isoflurane.
-4. **Error bars.** Each bar was followed outward from the marker to its first
-   cap, and the SD is the distance from the marker's centre to the cap's
-   centre.
-
-Every marker then sits within 0.1 minute of a protocol sample time, except the
-7.5-minute points, which sit at 7.40 to 7.48. The last point of every curve
-sits at 30.0 minutes, although the protocol's last sample was at 29.
-
-**The reading error is about 0.006 in a mean.** The 30-minute points read this
-way can be compared with the values the papers' text states:
+**The reading error is about 0.006 in a mean F_A/F_I.** The table compares the
+30-minute points read from the figures with the values that the papers' text
+states:
 
 | Cohort | Read from Figure 2 | Stated in the text |
 | --- | --- | --- |
@@ -94,12 +66,36 @@ way can be compared with the values the papers' text states:
 A bar is hidden when it is shorter than the marker's radius, which is about
 0.011 in F_A/F_I on the *Anesthesiology* figure.
 
+**Where the figures were read.** Both papers were read on 2026-10-18 for
+`PL-R0NL`, from the project owner's own copies, kept outside this repository
+(the private corpus). Each is a 300 dpi black-and-white scan, and neither
+figure page has a text layer. The *Anesth Analg* paper's methods were read
+through its text layer, page 317, and its Figure 2 from the page image of page
+320. The *Anesthesiology* paper has no text layer at all, so its methods were
+read from the page image of page 490 and its Figure 2 from the page image of
+page 493.
+
+**How the figures were read.** Each figure was read in four steps:
+
+1. **Axes.** The scans are slightly sheared: on the *Anesthesiology* page the
+   y-axis leans 0.82 degrees from vertical and the x-axis 0.21 degrees from
+   horizontal, and on the *Anesth Analg* page 0.36 and 0.06 degrees. Each
+   point was read along the axes' true directions, correcting for the shear.
+2. **Ticks.** Values between tick marks were interpolated linearly between the
+   two nearest ticks, which corrects for the scans' uneven tick spacing.
+3. **Markers.** Each marker's centre was located: a filled disc for
+   sevoflurane and desflurane, and a hollow square for isoflurane.
+4. **Error bars.** The SD is the distance from the marker's centre to the
+   centre of its bar's cap.
+
 ## Values read
 
-F_A/F_I, mean and SD. "SD read at" is the sample time whose bar gave the SD.
-At 1 minute, three cohorts' bars are lost among overlapping marks near the
-axis. There the SD is the cohort's next readable bar, a stand-in and not a
-reading.
+The tables below give F_A/F_I as mean and SD. Each value is listed at its
+protocol sample time, so the markers read at 7.40 to 7.48 minutes are listed at
+7.5. "SD read at" is the sample time whose bar gave the SD. At 1 minute, three
+cohorts' bars are lost among overlapping marks near the axis. There the SD is
+the cohort's next readable bar, a stand-in and not a reading. The
+*Anesthesiology* figure plots no point at 1.5 or 2 minutes.
 
 **Sevoflurane, *Anesth Analg* Figure 2, page 320.**
 
@@ -131,8 +127,9 @@ reading.
 | 20 | 0.701 | 0.035 | 20 min |
 | 25 | 0.718 | 0.034 | 25 min |
 
-**Desflurane, *Anesthesiology* Figure 2, page 493.** This figure plots no point
-at 1.5 or 2 minutes. The 20-minute bar is hidden, so that point is not used.
+**Desflurane, *Anesthesiology* Figure 2, page 493.** The 20-minute point is
+not used, neither its mean nor its SD. Its bar is hidden, so its SD is known
+only to be less than about 0.011.
 
 | Minutes | Mean | SD | SD read at |
 | --- | --- | --- | --- |
@@ -146,8 +143,7 @@ at 1.5 or 2 minutes. The 20-minute bar is hidden, so that point is not used.
 | 20 | 0.899 | hidden | not used |
 | 25 | 0.900 | 0.020 | 25 min |
 
-**Isoflurane, *Anesthesiology* Figure 2, page 493.** This figure plots no point
-at 1.5 or 2 minutes.
+**Isoflurane, *Anesthesiology* Figure 2, page 493.**
 
 | Minutes | Mean | SD | SD read at |
 | --- | --- | --- | --- |
@@ -161,12 +157,14 @@ at 1.5 or 2 minutes.
 | 20 | 0.708 | 0.032 | 20 min |
 | 25 | 0.724 | 0.027 | 25 min |
 
-## What was not taken
+## Points and curves not read from the figures
 
 - The points before 1 minute. Each figure crowds the first-breath and
   0.75-minute markers against the y-axis, so which sample time a marker
   belongs to cannot be read reliably.
 - The nitrous oxide and halothane curves, which the simulator does not model.
-- The *Anesth Analg* figure's normalized desflurane curve, for the reason
-  above.
-- The 30-minute points, because the text states those values.
+- The *Anesth Analg* figure's normalized desflurane curve, because it replots
+  the *Anesthesiology* cohort.
+- The 30-minute points. The papers' text states those values, and the
+  simulator is checked against the stated values, which the two papers' own
+  notes record.

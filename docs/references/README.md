@@ -1,147 +1,34 @@
-# Source documents held on hand
+# Cited sources and their readings
 
-Full texts kept in the repository so a session can read the source rather than
-recall it, and the citations for sources this repository may not carry.
-**Being here promotes nothing.** `docs/MODEL.md` § "Source
-hierarchy: what may be cited as the authority for a value" decides what may be
-cited as the authority for a stored number, and a PDF sitting in this directory
-is evidence a session can open, not a tier in that hierarchy. Cite the work,
-never the file path.
+This directory records the sources the simulator is founded on. Each entry in
+§ "The documents" gives the full citation, with its DOI or PMID, which leads to
+the source. Extraction notes in this directory give each value taken from a
+source, with its page. The directory holds no full texts (§ "Redistribution").
+The project owner keeps copies in a private repository, the private corpus
+(§ "Where owner-supplied full texts live now").
 
-## Redistribution
+**Being listed here does not make a source the authority for a stored value.**
+The model document decides that. It ranks sources in three tiers
+(`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value"):
 
-**This repository is public.** A file here is therefore redistributed to
-anyone, and the only files that may sit in this directory are ones whose own
-licence permits that. Check a new file's licence before adding it; there is no
-directory-wide policy to inherit, and "the repository is private" is no longer
-available as the thing that makes personal use lawful.
+1. **Tier 1, primary measurement**: a study that measured the quantity in the
+   population and conditions the model represents. Only this tier may be the
+   authority for a stored value on its own strength.
+2. **Tier 2, secondary synthesis**: a review, textbook or monograph that
+   collects measurements without making one.
+3. **Tier 3, reference implementation**: another simulator's parameter set,
+   such as Gas Man's.
 
-**This directory currently holds no full texts**, only the records below.
-The one it did hold - VLDB's M4 aggregation paper, redistributable under
-CC BY-NC-ND 3.0 - was removed with the code that cited it (`PL-8LXM`,
-2026-09-08): this directory holds papers the code is founded on, and a paper
-nothing founds is a question a reader has to answer (project owner,
-2026-09-05). It is founded again since 2026-09-14 - the chart's drawing
-guarantee cites its result (`PL-GS3R`) - and lives in the private corpus below
-rather than here, by the project owner's decision, with its entry and reading
-note under "The documents".
-
-**Two publisher-copyright full texts were removed on 2026-09-06**, by the
-`git filter-repo` pass and force-push this section used to name as a
-prerequisite. They were kept here under the project owner's personal access
-while the repository was private; that stopped being the situation when
-`PL-XYRN` opened the go-public gate, and the removal did not happen with it.
-`PL-SHG5` carries what went wrong and what was rewritten.
-
-**That removal is not finished, and this is where its state is recorded.** The
-rewrite cleared `origin/main`, every branch and every tag, but GitHub's
-`refs/pull/*/head` are read-only to a repository owner and went on pointing at
-pre-rewrite commits. GitHub Support ticket 4733783, raised 2026-09-06, asks for
-those to be removed; Support replied on 2026-09-12 naming 90 pull requests and
-undertaking to delete their internal references. **Measured 2026-09-19, one
-remains.** A single pull head still serves both works, out of 631 pull refs on
-this repository — all 631 were checked, and no other carries either one. So
-both are still fetchable by anyone holding the commit hash, and the rewrite has
-narrowed the exposure rather than ended it. `PL-0SCG` names that ref, carries
-the command that re-measures it, and is where the closing date will be written.
-Until it closes, treat both works as still reachable from this public
-repository.
-
-Their entries stay below, without the files. The citations were always the
-part designed to survive such a removal, which is why they are recorded here
-in full rather than left implicit in the filenames — a reader who needs one of
-those sources can now reach it the way any other reader would, through the DOI.
-
-## Where owner-supplied full texts live now
-
-**A private companion repository: `stuthedew/open-anesthesia-sim-references`**
-(`PL-XJ5P`, decided by the project owner 2026-09-13). The rule above closed the
-only home this directory had for a source the project cannot otherwise reach,
-and put nothing in its place; this is what now stands there.
-
-It is *private*, which restores the premise the removed entries used to rest on
-— holding a publisher-copyright full text for personal use is not
-redistribution — without reopening it for this public repository. **Nothing
-about the rule above changes.** No publisher-copyright file may sit in this
-directory, and nothing is to be copied from the corpus into this repository.
-
-**What may cross back, and why it is a different act.** The citation, and the
-*facts* taken from the source: a value, its units, the table or page it sits on,
-what was measured and in what population. Facts are not copyrightable in the
-United States — *Feist Publications, Inc. v. Rural Telephone Service Co.*,
-499 U.S. 340, 344–45 (1991), holding that "facts are not copyrightable" and
-that copyright in a factual compilation is "thin", protecting only original
-selection and arrangement. Short quotation for scholarly commentary is
-separately supported by 17 U.S.C. § 107. Reproducing a table wholesale in its
-published arrangement is neither of those things, and is not needed.
-
-This is what the section above already says about citations — "the citations
-were always the part designed to survive such a removal" — extended from the
-citation to the numbers taken under it.
-
-**Reading a source from the corpus therefore owes an extraction note in this
-directory.** Without one the corpus is consulted once per *session* instead of
-once per *source*, and each later session re-reads the same PDF at full
-context; `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
-is that argument applied to literature. The obligation and its home are settled
-here.
-
-**What an extraction note contains** (`PL-Z3V5`, 2026-10-26). Write one note
-per source, as a Markdown file in this directory named for the first author,
-the year and the subject. A reading of one part that stands on its own, such as
-one figure read across two papers, may have a note of its own. A note gives,
-in this order:
-
-1. **The citation**, with its PMID or DOI, and a pointer to the source's entry
-   under "The documents" below.
-2. **The route and depth**: that it was read in the private corpus, whether
-   through the text layer or as page images, which printed pages, on what date,
-   and for which item.
-3. **The study** behind the values: who or what was measured, how many, and
-   the conditions a reader needs to judge whether a value fits this model.
-4. **Each value taken**: the quantity, its value with units and dispersion,
-   n, and its locator, meaning the printed page and the table, figure or
-   section. Say whether the source states the value or it was read from a
-   figure. A value read from a figure also carries the method and its reading
-   error.
-5. **Where the repository uses each value**, and its standing under
-   `docs/MODEL.md` § "Source hierarchy": adopted as the authority for a stored
-   value, with its tier, or used as a reference value in a test.
-6. **What was not taken**, and why, so a later session does not open the
-   source again to find out.
-
-A note records facts and short quotations. It never reproduces a table or a
-figure in its published arrangement. Where a fact is already recorded with its
-page in another file, the note names that file rather than copying the fact.
-`yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
-example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
-page images.
-Some sources already keep their readings inside their entry below, as the
-Gas Man Workbook does. Those readings stay there, and a later reading of such
-a source is added to its entry. Every other source gets a note file.
-
-**Two of its holdings are whole books**, added 2026-09-15 and split into
-section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
-both with entries below. Each lives in a folder of its own carrying a catalogue
-of its chapters, page ranges and identifiers, and that catalogue is what to read
-before opening a section — it will usually name the one file worth opening. A
-science question with no obvious paper behind it starts there rather than from
-memory.
-
-How a session attaches and reads the corpus — `add_repo`, the shallow clone,
-`poppler-utils` and `pdftotext -layout` — is in
-`.claude/rules/citing-sources.md`, which loads on this directory, so it is not
-repeated here. That file also says what to do when a terminal source is *not*
-among the holdings: the corpus is what the project owner has supplied, not the
-literature, and a miss means recording the gap and putting the reading to them.
+A tier 2 or tier 3 source can be the authority for a stored value only on a
+recorded decision.
 
 ## The documents
 
 ### Allott, Steward & Mapleson 1976 — halothane in individual dogs
 
-**Not held here. Held in the private corpus**, like every other owner-supplied
-full text; the corpus's own index carries the file name and checksum. Supplied
-by the project owner 2026-09-27.
+**Not held here. Held in the private corpus.** The project owner supplied it on
+2026-09-27.
 
 > Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the dog:
 > comparison of theory and measurement in individuals.* Br J Anaesth
@@ -168,11 +55,9 @@ results between them were not, beyond Table I.
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
-**Not held here. Held in the private corpus since 2026-10-25**, like every
-other owner-supplied full text, and the corpus's own index carries the file
-name and checksum. This repository held a copy until 2026-09-06, when it was
-removed as publisher-copyright material that this public repository may not
-redistribute; see "Redistribution" above.
+**Not held here. Held in the private corpus since 2026-10-25.** This repository
+held a copy until 2026-09-06, when it was removed as publisher-copyright material
+that this public repository may not redistribute (§ "Redistribution").
 
 > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
 > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
@@ -185,14 +70,15 @@ match it. The file's own XMP packet carries Wiley's legacy identifier for the
 same article, `10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI
 above is the one to cite.
 
-This is the closest published statement of what `docs/MODEL.md` specifies. It
-derives single-compartment and multicompartment models of inert gas transfer,
-develops transport between lungs, blood and other tissues from them, and
-compares the result against experimental studies in animals and humans — then
-treats the anesthetic gases specifically, deriving how transfer depends on
-solubility in blood and in each tissue. Read it when a compartment structure,
-a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
-being questioned or extended.
+This review is the closest published statement of what `docs/MODEL.md`
+specifies. It is tier 2 under `docs/MODEL.md` § "Source hierarchy: what may be
+cited as the authority for a value". It derives single-compartment and
+multicompartment models of inert gas transfer, and from them describes
+transport between lungs, blood and other tissues. It compares the result with
+experimental studies in animals and humans. It then treats the anesthetic
+gases, deriving how their transfer depends on solubility in blood and in each
+tissue. Read it when a compartment structure, a governing equation, or a
+solubility-driven assumption in `docs/MODEL.md` is being questioned or extended.
 
 Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
 "Parameter provenance" cites for the tissue:blood division (`PL-H536`,
@@ -200,8 +86,7 @@ Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
 own. The bracketed set, which matches the derived rows, is Eger and Shafer's
 (its ref 21: *Anesth Analg* 2005;101:688–96, PMID 16115976). The plain set is
 Fiserova-Bergerova and Diaz's (its ref 26: *Int Arch Occup Environ Health*
-1986;58:75–87, PMID 3721592). Neither paper is held. The review is tier 2 under
-`docs/MODEL.md` § "Source hierarchy".
+1986;58:75–87, PMID 3721592). Neither paper is held.
 
 Route and depth: full text, from the private corpus's copy on 2026-10-25.
 Table 2 and pp. 569–70 were read from the page images, and pp. 571 and 573–74
@@ -209,21 +94,21 @@ and the reference list through the corpus's text layer. The rest was not read.
 
 ### Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion
 
-**Not held here. Held in the private corpus**, like every other owner-supplied
-full text; the corpus's own index carries the file name and checksum. Supplied
-by the project owner 2026-09-27, after `PL-WMCJ` had recorded it as
-abstract-only.
+**Not held here. Held in the private corpus.** The project owner supplied it on
+2026-09-27, after the project had recorded it as read from its abstract only
+(`PL-WMCJ`).
 
 > Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
 > including intertissue diffusion to and from fat.* Anesth Analg
 > 2005;100(4):1020-33. PMID [15781517](https://pubmed.ncbi.nlm.nih.gov/15781517/),
 > DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
 
-A review, so tier 2 under `docs/MODEL.md` § "Source hierarchy", which counts a
-review as a secondary synthesis. PubMed types it as a review. It says its
-figures "illustrate concepts but are not necessarily precise (quantitative)
-reflections of the kinetics" (p. 1020). Its numbers come from elsewhere, Table
-3's time constants from the two Yasuda et al. 1991 papers below.
+It is a review, and PubMed classes it as one, so it is tier 2 under
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value". It says its figures "illustrate concepts but are not necessarily precise
+(quantitative) reflections of the kinetics" (p. 1020). Its numbers come from
+other studies. Table 3's time constants, for example, are those of the two
+Yasuda et al. 1991 papers below.
 
 **What has been taken from it, and where it is recorded.** For `PL-FBY3`,
 `docs/MODEL.md` § "Known limitations" takes Table 3's intertissue-diffusion
@@ -238,14 +123,13 @@ printed page, pp. 1020-33, is recovered in the corpus's text dump.
 
 ### Jugel et al. 2014 — M4 time series aggregation
 
-**Not held here.** Held in the private corpus,
-`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
-texts live now" above says how to attach. Its licence, CC BY-NC-ND 3.0 per the
-statement on its first page, would let this public repository carry it, and it
-did from 2026-09-04 until `PL-8LXM` removed it with the M4 decimation module
-on 2026-09-08 as a paper nothing then founded. Supplied again by the project
-owner on 2026-09-14 - the same bytes, by checksum - and placed in the private
-corpus by their decision, with every other owner-supplied full text.
+**Not held here. Held in the private corpus.** Its first page gives its licence,
+CC BY-NC-ND 3.0, which would let this public repository carry it. The
+repository held it from 2026-09-04 until 2026-09-08, when it was removed with
+the code that implemented its M4 method, because nothing then rested on the
+paper (`PL-8LXM`). The project owner supplied an identical copy on 2026-09-14
+and chose to keep it in the private corpus. Since then,
+`docs/MODEL.md` § "What the chart draws" cites its result again (`PL-GS3R`).
 
 > Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
 > Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
@@ -314,13 +198,9 @@ why.
 
 ### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*
 
-**Not held here.** A publisher-copyright monograph this public repository may
-not redistribute; see "Redistribution" above. It has no DOI and PubMed does
-not index monographs, so neither route this repository usually names reaches
-it. **It was reached by interlibrary loan**, which is the route
-`.claude/rules/citing-sources.md` now records — the project owner placed the
-request and the pages arrived inside a day because the request named the pages
-it needed.
+**Not held here.** It is a publisher-copyright monograph that this public
+repository may not redistribute (§ "Redistribution"). It has no DOI, and PubMed
+does not index monographs. **It was reached by interlibrary loan.**
 
 > Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed
 > Circuit*. Baltimore: Williams & Wilkins; 1981.
@@ -377,9 +257,7 @@ whose own four sources the book never measured.
 
 ### Philip — *Workbook for Gas Man*
 
-**Not held here. Held in the private corpus**,
-`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
-texts live now" above says how to attach. Supplied by the project owner
+**Not held here. Held in the private corpus.** The project owner supplied it on
 2026-09-15, split into five section PDFs. It is the manual distributed with the
 Gas Man program and carries no licence permitting redistribution, so it may not
 sit in this directory.
@@ -393,30 +271,25 @@ PubMed does not index software manuals, so there is nothing to check the
 citation against. Every field above is read off the title page and the
 preface's sign-off, 2026-09-15, which is all this entry asserts.
 
-**The title this repository cited until 2026-09-15 is not the one on the title
-page.** Every `sources` entry under `src/anesthesia_sim/data/` naming this
-document called it "Gas Man(R) Workbook and Laboratory Manual", which `PL-XTMB`
-took from the cover and from the original PDF's `/Title` and `/Author` fields.
-That string occurs zero times in the document's 209 pages of text, and the
-title page reads as quoted above. The corpus's section PDFs were rewritten by
-`pypdf` and carry no `/Title`, so the two cannot be reconciled from anything
-this project holds; a citation follows the title page, and `PL-9GP1` changed
-the data files to match.
+**Until 2026-09-15 the simulator's data files cited this document under a title
+that is not on its title page.** They called it "Gas Man(R) Workbook and
+Laboratory Manual", a title taken from the cover and from the original PDF's
+title and author fields (`PL-XTMB`). That title occurs nowhere in the document's
+209 pages of text. The citation above follows the title page, and the data files
+were changed to match (`PL-9GP1`).
 
-**Why this one is load-bearing.** Gas Man is this project's reference
-implementation, and the `sources` notes trace the reference patient's eleven
-parameters and all twelve stored partition coefficients to it. Until now the
-project had read only "a copy of the front matter and appendices supplied by
-the project owner"
-(`src/anesthesia_sim/data/patients/reference_adult.json`, 2026-09-06) — a
-route neither of the two in `.claude/rules/citing-sources.md`, recorded as a
-gap by `PL-XJ5P`. The whole document is now readable, which closes that gap.
-Three things found on reading it (`PL-9GP1`), none of which changes a stored
-value:
+**The data files trace the reference patient's eleven parameters and all twelve
+stored partition coefficients to this document**, the manual of this project's
+reference implementation. Until the whole document was supplied, the project
+had read only "a copy of the front matter and appendices supplied by the
+project owner" (`src/anesthesia_sim/data/patients/reference_adult.json`,
+2026-09-06). That partial reading was recorded as a gap (`PL-XJ5P`). Three
+things were found on reading that document, and none of them changes a stored
+value (`PL-9GP1`):
 
-- **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168** — the
-  table `src/anesthesia_sim/data/patients/reference_adult.json` already
-  cites — reads exactly as that file records it.
+- **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168.** The
+  reference patient's data file already cited this table, and the table reads
+  exactly as that file records it.
 - **Appendix C, "Gas Man System Defaults", pp. 171–72** is a verbatim listing
   of `GASMAN.INI`, and a second statement of the same parameter set: `Lambda`
   (blood/gas) and `VRG`, `MUS`, `FAT` (tissue/gas) per agent, matching all
@@ -517,14 +390,10 @@ liquid-injection section, Chapter 13's p. 127 and Chapter 14's pp. 132-141.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
-**Not held here. Held in the private corpus**,
-`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
-texts live now" above says how to attach. Removed from this public repository
-2026-09-06 as publisher-copyright material it may not redistribute; see
-"Redistribution" above. Supplied again by the project owner 2026-09-15, split
-into eight section PDFs, and placed in the corpus by their decision, with every
-other owner-supplied full text. Reachable from outside this project through the
-DOI.
+**Not held here. Held in the private corpus.** It was removed from this public
+repository on 2026-09-06 as publisher-copyright material that the repository may
+not redistribute (§ "Redistribution"). The project owner supplied it again on
+2026-09-15, split into eight section PDFs, and chose to keep it in the corpus.
 
 > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
 > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
@@ -595,8 +464,7 @@ that description and those cautions, and for no value.
 
 ### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
 
-**Not held here. Held in the private corpus**, like every other owner-supplied
-full text.
+**Not held here. Held in the private corpus.**
 
 > Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
 > isoflurane, and halothane in plastics and rubber composing a conventional
@@ -612,8 +480,7 @@ It was read in full on 2026-09-13 and checked again on 2026-10-26 for
 
 ### Yasuda et al. 1991 — the two human kinetics papers
 
-**Not held here. Held in the private corpus**, like every other owner-supplied
-full text; the corpus's own index carries the file names and checksums.
+**Not held here. Held in the private corpus.**
 
 > Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
 > Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
@@ -675,3 +542,124 @@ ratios, the study they come from and the methods fact behind its tissue
 coefficients are in
 `docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`,
 with their pages, read 2026-10-26 for `PL-Z3V5`.
+
+## Redistribution
+
+**This repository is public.** A file here is therefore redistributed to
+anyone, and the only files that may sit in this directory are ones whose own
+licence permits that. Check a new file's licence before adding it; there is no
+directory-wide policy to inherit, and "the repository is private" is no longer
+available as the thing that makes personal use lawful.
+
+**This directory currently holds no full texts.** The Jugel et al. 2014 entry
+in § "The documents" records the one it once held.
+
+**Two publisher-copyright full texts were removed on 2026-09-06**: Baker &
+Farmery 2011 and Schüttler & Schwilden 2008. They went by the
+`git filter-repo` pass and force-push this section used to name as a
+prerequisite. They were kept here under the project owner's personal access
+while the repository was private; that stopped being the situation when
+`PL-XYRN` opened the go-public gate, and the removal did not happen with it.
+`PL-SHG5` carries what went wrong and what was rewritten.
+
+**That removal is not finished, and this is where its state is recorded.** The
+rewrite cleared `origin/main`, every branch and every tag, but GitHub's
+`refs/pull/*/head` are read-only to a repository owner and went on pointing at
+pre-rewrite commits. GitHub Support ticket 4733783, raised 2026-09-06, asks for
+those to be removed; Support replied on 2026-09-12 naming 90 pull requests and
+undertaking to delete their internal references. **Measured 2026-09-19, one
+remains.** A single pull head still serves both works, out of 631 pull refs on
+this repository — all 631 were checked, and no other carries either one. So
+both are still fetchable by anyone holding the commit hash, and the rewrite has
+narrowed the exposure rather than ended it. `PL-0SCG` names that ref, carries
+the command that re-measures it, and is where the closing date will be written.
+Until it closes, treat both works as still reachable from this public
+repository.
+
+Their entries stay in § "The documents", without the files.
+
+## Where owner-supplied full texts live now
+
+**A private companion repository: `stuthedew/open-anesthesia-sim-references`**
+(`PL-XJ5P`, decided by the project owner 2026-09-13). The rule above closed the
+only home this directory had for a source the project cannot otherwise reach,
+and put nothing in its place; this is what now stands there. Its own index
+holds each file's name and checksum.
+
+It is *private*, because holding a publisher-copyright full text for personal
+use is not redistribution. The corpus changes nothing in § "Redistribution",
+and nothing is to be copied from the corpus into this repository.
+
+**What may cross back, and why it is a different act.** The citation, and the
+*facts* taken from the source: a value, its units, the table or page it sits on,
+what was measured and in what population. Facts are not copyrightable in the
+United States — *Feist Publications, Inc. v. Rural Telephone Service Co.*,
+499 U.S. 340, 344–45 (1991), holding that "facts are not copyrightable" and
+that copyright in a factual compilation is "thin", protecting only original
+selection and arrangement. Short quotation for scholarly commentary is
+separately supported by 17 U.S.C. § 107. Reproducing a table wholesale in its
+published arrangement is neither of those things, and is not needed. So a
+fact taken from a source stays in this repository with its citation, even
+where the source itself cannot.
+
+## Extraction notes
+
+**Reading a source from the corpus therefore owes an extraction note in this
+directory.** Without one the corpus is consulted once per *session* instead of
+once per *source*, and each later session re-reads the same PDF at full
+context; `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
+is that argument applied to literature. The obligation and its home are settled
+here.
+
+**What an extraction note contains** (`PL-Z3V5`, 2026-10-26). Write one note
+per source, as a Markdown file in this directory named for the first author,
+the year and the subject. A reading of one part that stands on its own, such as
+one figure read across two papers, may have a note of its own. A note gives,
+in this order:
+
+1. **The citation**, with its PMID or DOI.
+2. **The route and depth**: that it was read in the private corpus, whether
+   through the text layer or as page images, which printed pages, on what date,
+   and for which item.
+3. **The study** behind the values: who or what was measured, how many, and
+   the conditions a reader needs to judge whether a value fits this model.
+4. **Each value taken**: the quantity, its value with units and dispersion,
+   n, and its locator, meaning the printed page and the table, figure or
+   section. Say whether the source states the value or it was read from a
+   figure. A value read from a figure also carries the method and its reading
+   error.
+5. **Where the repository uses each value**, and its standing under
+   `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for
+   a value": adopted as the authority for a stored value, with its tier; used
+   as a reference value in a test; or cited in `docs/MODEL.md` for a
+   description or a caution, for no stored value.
+6. **What was not taken**, and why, so a later session does not open the
+   source again to find out.
+
+A note records facts and short quotations. It never reproduces a table or a
+figure in its published arrangement. Where a fact is already recorded with its
+page in another file, the note names that file rather than copying the fact.
+`yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
+example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
+page images.
+
+Some sources keep their readings inside their entry in § "The documents"
+instead: the Gas Man Workbook, Allott, Steward & Mapleson, Baker & Farmery,
+Eger & Saidman, Jugel et al., Lowe & Ernst, and Schüttler & Schwilden. For
+those, the entry is the whole record, and a later reading of the source is
+added to it. Every other source gets a note file.
+
+**Two of the corpus's holdings are whole books**, split into section PDFs so
+none exceeds 100 pages: Schüttler & Schwilden 2008, *Modern Anesthetics*, and
+the Gas Man Workbook, both with entries in § "The documents". Each lives in a folder of its own carrying a catalogue
+of its chapters, page ranges and identifiers, and that catalogue is what to read
+before opening a section — it will usually name the one file worth opening. A
+science question with no obvious paper behind it starts there rather than from
+memory.
+
+How a session attaches and reads the corpus — `add_repo`, the shallow clone,
+`poppler-utils` and `pdftotext -layout` — is in
+`.claude/rules/citing-sources.md`, which loads on this directory, so it is not
+repeated here. That file also says what to do when a terminal source is *not*
+among the holdings: the corpus is what the project owner has supplied, not the
+literature, and a miss means recording the gap and putting the reading to them.

@@ -199,3 +199,14 @@ first-breath and 0.75-minute markers crowd the axis. The early comparison
 runs only at the papers' own square-wave delivery, so the shipped circuit's
 filling is not part of it. Both papers gave nitrous oxide as background,
 which the model does not carry, and `docs/MODEL.md` says so.
+
+**How the Figure 2 values were read, for anyone repeating the reading** (moved
+here from `docs/references/yasuda-1991-figure-2-wash-in.md` on 2026-11-07,
+under `PL-QJD3`, because the note's reader is a clinician checking a value).
+The figure pages were extracted from the 300 dpi bilevel scans with
+`pdfimages` and read by a script. A straight line was fitted to each axis, and
+each point was read by projecting it to each axis along the other axis's
+direction, not along the pixel grid. Each tick mark's centre was found on its
+axis, which absorbs the scans' uneven tick spacing of up to 3 pixels. Each
+marker's centre was found by matching a template of its shape. Each error bar
+was followed outward from the marker to its first cap.
