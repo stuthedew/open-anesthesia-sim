@@ -3,7 +3,7 @@ id: PL-95SW
 title: Copy edit docs/MODEL.md with the fixed copy editor, section by section, outside the sections already rewritten for clinicians, keeping every value, marker and citation
 status: untriaged
 feature: repo-copy-edit
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-TDX0-docs-model-md-displayed-precision-gives-the.md
 added: 2026-11-07
 ---
 
