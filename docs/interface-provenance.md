@@ -14,8 +14,12 @@ the source.
 This file records the research behind the decision: what the project read of
 Blender, under what rules, what it established, and where it deliberately
 departs from Blender's design (§ "What this project adopts, diverges from, and
-refuses"). Those rules (§ "The study protocol") describe a good-faith way to
-study Blender's architecture for inspiration.
+refuses"). It exists because a session meeting the question cold otherwise
+either re-derives a full research round or guesses, and both have happened. It
+also answers a question the project owner asked directly on 2026-09-16: whether
+there is a good-faith way to study Blender's architecture for inspiration. There
+is, and the rules (§ "The study protocol") are narrow enough to be worth writing
+down once.
 
 To find where this project's own code goes, see the map of its layering in
 `docs/ARCHITECTURE.md`.
@@ -76,26 +80,29 @@ The study rests on what the GPL does and does not restrict:
   restricted.** Nobody has done any of these in this project, and nobody may.
   GPLv2 § 2 covers modification and names translation into another language.
   Rewriting a C++ function in Python is such a translation.
+- **Describing what was read, in this project's own words, is the
+  deliverable.** § "What Blender's window system is" was written that way.
 
-**§ "What Blender's window system is" describes what the study read, entirely in
-this project's own words.** This document gives file paths and the names of
-functions, structs and fields throughout, so that you can check a claim against
-Blender's source. Naming the function that implements a behaviour does not
-reproduce how that function is written.
+This document gives file paths and the names of functions, structs and fields
+throughout, so that you can check a claim against Blender's source. Naming the
+function that implements a behaviour does not reproduce how that function is
+written.
 
-**Check the license header of each file you read.** Blender's README says that
-the work as a whole is GPL-3.0 but that individual files may carry a different,
-compatible license. The binary ships under GPL-3.0-or-later. In the checkout
-used for this study, 2,092 files declare `GPL-2.0-or-later`, 10 unit-test files
-declare `Apache-2.0`, and 2 files declare `GPL-3.0-or-later`
+**Check the license header of each file you read.** The tree is mixed, which the
+usual shorthand "Blender is GPL" hides. Blender's README says that the work as a
+whole is GPL-3.0 but that individual files may carry a different, compatible
+license. The binary ships under GPL-3.0-or-later. In the checkout used for this
+study, 2,092 files declare `GPL-2.0-or-later`, 10 unit-test files declare
+`Apache-2.0`, and 2 files declare `GPL-3.0-or-later`
 (`source/blender/editors/uvedit/uvedit_clipboard_graph_iso.cc` and its header
 file).
 
 ### The prose is the encumbered half, not the source
 
 Blender's documentation licence sounds weaker than its source code licence, but
-it is the one that applies to this repository. Reading the GPL source code is
-not copying, while pasting documentation prose into `ROADMAP.md` or `docs/` is.
+it is the one that applies to this repository. This is the constraint most
+likely to be got backwards. Reading the GPL source code is not copying, while
+pasting documentation prose into `ROADMAP.md` or `docs/` is.
 
 The Blender Manual and the Blender Developer Documentation are both licensed
 **CC-BY-SA 4.0**, a share-alike licence. The Developer Documentation includes
@@ -127,10 +134,11 @@ are tiled without overlapping, each shows a view whose kind can be swapped, and
 a set of panes is saved as a named workspace. § "Attribution" gives the credit,
 and says where else it appears.
 
-This project's own provenance standard asks for the attribution to Blender. The
-law does not require anyone to attribute an idea, because copyright does not
-cover procedures, processes, methods of operation or concepts
-(17 U.S.C. § 102(b)).
+This project's own provenance standard asks for the attribution to Blender, and
+the attribution answers the spirit of the project owner's question in the
+introduction rather than its letter. The law does not require anyone to
+attribute an idea, because copyright does not cover procedures, processes,
+methods of operation or concepts (17 U.S.C. § 102(b)).
 
 The more abstract the part taken from Blender, the safer it is in law. The layout
 above is a method of operation. A one-for-one translation of Blender's structs
@@ -218,12 +226,14 @@ exactly as a hidden one. It collapses the region's rectangle (`winrct`) to zero
 size, so the region takes no space and draws nothing.
 
 **Nothing in Blender reads a region type's minimum size.** The region type
-`ARegionType` declares a minimum size, `minsizex` and `minsizey`, and a preferred
-size, `prefsizex` and `prefsizey`, in the header file
+`ARegionType` declares a minimum size, `minsizex` and `minsizey`, and a
+preferred size, `prefsizex` and `prefsizey`, in the header file
 `source/blender/blenkernel/BKE_screen.hh`. A reader of that file alone would
-conclude that the container honours a minimum size that an editor states. Yet the
-two minimum-size fields occur exactly once in the whole checkout, in their
-declaration.
+conclude that the container honours a minimum size that an editor states. Yet
+the two minimum-size fields occur exactly once in the whole checkout, in their
+declaration. They are vestigial. This is the clearest illustration in the study
+of why the reading was widened from headers to implementation. An earlier pass
+read headers only, and the header alone gives the wrong answer here.
 
 Blender reads only the preferred size, and mainly when a region first opens.
 Even then it is a starting value, not a constraint. For a header, a footer or an
@@ -232,6 +242,12 @@ region type asked for (`region_rect_recursive`, in
 `source/blender/editors/screen/area.cc`).
 
 ### An editor is isolated by convention, not by construction
+
+This is where the expectation that the research set out to test was
+**falsified**, and it is the most consequential correction in this document. The
+expectation was that an editor cannot read its own position, its neighbours, or
+what else is open. That property would make interchangeability structural rather
+than aspirational.
 
 Blender's editors can read their own position, their neighbours and what else is
 open. They are interchangeable only because their contract does not depend on
@@ -276,12 +292,14 @@ between them. Blender allows a layout to keep two such borders.
 
 **Moving unconnected aligned borders needs the Shift key held.** In
 `source/blender/editors/screen/screen_ops.cc`, the area-move command passes the
-Shift state (`event->modifier & KM_SHIFT`) as its `extend` argument when the user
-drags. Its non-interactive path (`exec`) passes `false`. The extended selection
-(`screen_geom_select_extended_edge`) takes every vertex within tolerance of the
-dragged coordinate, connected or not. It runs only when `extend` is set and a
-check on the edge (`screen_geom_edge_can_extend`) allows it. A helper lets the
-user turn the extended selection on or off during a drag (`area_move_reinit`).
+Shift state (`event->modifier & KM_SHIFT`) as its `extend` argument when the
+user drags. Its non-interactive path (`exec`) passes `false`. The extended
+selection (`screen_geom_select_extended_edge`) takes every vertex within
+tolerance of the dragged coordinate, connected or not. It runs only when
+`extend` is set and a check on the edge (`screen_geom_edge_can_extend`) allows
+it. A helper lets the user turn the extended selection on or off during a drag
+(`area_move_reinit`). That helper is the clearest evidence that the extended
+selection is a mode the user enters, not the default.
 
 **Merging aligned edges is a separate command on a right-click menu.** The merge
 function (`screen_geom_edge_aligned_merge`) has only one caller, `area_edge_merge_exec`.
@@ -311,16 +329,17 @@ closes the remainders (`screen_area_join_ex`, using `screen_area_trim`).
 ### Persistence, and what happens when an editor is missing
 
 Blender saves a layout and the editors in it with separate code. Blender writes
-the layout (`bScreen`) with the rest of the file. Each editor type supplies
-functions that write and read its data (`SpaceType`'s `blend_write` and
+the layout (`bScreen`, an ID block) with the rest of the file. Each editor type
+supplies functions that write and read its data (`SpaceType`'s `blend_write` and
 `blend_read_data`, in `source/blender/blenkernel/BKE_screen.hh`). The layout
 code calls those functions and never looks inside an editor.
 
 **When a file names an editor type that the running build does not have, Blender
-substitutes a 3D viewport for the missing editor.** The area keeps its
-rectangle, and no error or warning names the editor that was lost. An editor
-type can be missing because it was removed or renamed, because it belongs to an
-add-on that is no longer installed, or because a newer Blender wrote the file.
+substitutes a 3D viewport for the missing editor.** This is the finding in this
+section that matters. The area keeps its rectangle, and no error or warning
+names the editor that was lost. An editor type can be missing because it was
+removed or renamed, because it belongs to an add-on that is no longer installed,
+or because a newer Blender wrote the file.
 
 On reading a file, Blender looks up each area's editor type
 (`ED_area_and_region_types_init` in `source/blender/editors/screen/area.cc`
@@ -331,8 +350,9 @@ says that it sets up a known editor type when a file with an unknown one is
 loaded. The only guard is an assertion that the substitution itself worked
 (`BLI_assert`), and assertions compile out of release builds.
 
-Blender warns only about the commonest cause, a file written by a newer Blender.
-Blender's file reader (`readfile.cc`) sets a forward-compatibility flag when it
+The first reading of this overstated Blender's silence. Blender warns about the
+commonest cause, a file written by a newer Blender. Blender's file reader
+(`readfile.cc`) sets a forward-compatibility flag on the main database when it
 loads such a file. The status bar then shows a persistent version indicator in a
 warning colour, and saving over the file opens a dialog saying that a newer
 version of Blender saved it. These warnings say only that data may have been
@@ -412,9 +432,10 @@ implements either. Blender reads `SpaceType::keymapflag` in
 `source/blender/editors/screen/area.cc`, and no editor sets it. Every assignment
 to `keymapflag` in the tree is to the field of the same name on `ARegionType`.
 
-**An editor draws its own header**, as the script editor's header region type
-shows. The container supplies no title bar, and the area that holds the editor
-only allocates the rectangle that the container computes. This project's
+**An editor draws its own header.** It declares a header region type alongside
+its main one, with its own draw callback, as the script editor's header region
+type shows. The container supplies no title bar, and the area that holds the
+editor only allocates the rectangle that the container computes. This project's
 contract should likewise leave a View's chrome to the View.
 
 ## The measurement: what Blender's own shipped layouts actually contain
@@ -425,17 +446,19 @@ The project had to decide whether to store its layout as Blender's
 neighbouring areas share those points. The tree is the structure Qt provides,
 and the roadmap already named it (`ROADMAP.md` item 34).
 
-The question worth answering is whether **the layouts that Blender ships use
-any arrangement that only the graph can represent**. The answer comes from
-counting such arrangements in those layouts. Judged by expressive power alone,
-the graph always wins, because it can represent every layout that the tree
-can, and more.
+Arguing the choice from the two representations' expressive power is a trap. The
+graph always wins on that test, because it can represent every layout that the
+tree can, and more, so the argument ends before it has weighed anything. The
+question worth answering is narrower: **does Blender, in the layouts it actually
+ships, use the power that the graph has and the tree does not?** That is a
+count, and it was taken rather than estimated.
 
 ### The threshold, stated before the count
 
 The splitter tree is judged against the thresholds below, which were written
-down before any counting code was run. They apply to the screens of Blender's
-eleven default workspaces.
+down before any counting code was run, as `.claude/rules/expert-review.md`
+§ "Name the number that would change your mind, then go and count it" asks. They
+apply to the screens of Blender's eleven default workspaces.
 
 - **A — non-slicing.** Can each screen be divided into its areas by recursive
   full-span cuts (a *slicing floorplan*)? The minimal non-slicing arrangement
@@ -463,11 +486,11 @@ it. The set of default workspaces has been stable across that range, but the
 gap remains.
 
 The rectangle of each area was read from every screen in the package's startup
-data (`bpy.data.screens`). Each screen was reduced to an exact integer grid
-and tested for all three properties. Every possible slicing decomposition of a
-screen was enumerated, and the screen was judged on the best one. The
-rectangles show how the areas are arranged, but not Blender's own vertex and
-edge objects, which the `bpy` package does not expose.
+data (`bpy.data.screens`). Each screen was reduced to an exact integer grid and
+tested for all three properties. Every possible slicing decomposition of a
+screen was enumerated, and the screen was judged on the best one. The rectangles
+show how the areas are arranged, but not Blender's own vertex and edge objects,
+which RNA, the data layer that the `bpy` package reads, does not expose.
 
 ### The result
 
@@ -506,16 +529,19 @@ handles that move independently.
 
 ### What would have made this the wrong measurement
 
-The count treated Blender's thirty-two default workspaces as a stand-in for
+The count treated Blender's thirty-two shipped workspaces as a stand-in for
 "layouts a professional tiling interface actually needs", and found no
 non-slicing layout among them. A layout is slicing when a sequence of cuts can
-produce it, each cut running across the whole of one area. The stand-in would
-be wrong if Blender's designers chose the defaults to be *teachable* rather than
-to exercise Blender's shared-vertex graph. The test of the stand-in was set
-before the count: whether a user can reach layouts that the defaults avoid.
+produce it, each cut running across the whole of one area. The stand-in would be
+wrong if Blender's designers chose the defaults to be *teachable* rather than to
+exercise Blender's shared-vertex graph. The test of the stand-in was set before
+the count: whether a user can reach layouts that the defaults avoid.
 
 **By that test the defaults are the wrong stand-in.** A user can reach a
-non-slicing layout in six ordinary operations.
+non-slicing layout in six ordinary operations. This was found by trying to
+falsify the opposite. The hypothesis was that a split's running across one area
+only, and a join's needing a full shared edge, would confine a user to slicing
+layouts, and the hypothesis is wrong.
 
 **The count is still correct, but a nested-splitter tree is strictly less
 expressive than Blender's graph.** What fails is the stronger claim that
@@ -565,14 +591,16 @@ this document, gives the pages and how they were fetched.
 
 ### Blender's reason for non-overlapping is not this project's reason
 
-Blender is good evidence that a subdivided window is workable and pleasant at
-scale, and no evidence for this project's safety argument. Blender avoids
-overlapping windows by default for visibility and efficiency. The roadmap rules
-out silently covering a value on the dashboard (`ROADMAP.md` item 34). A covered
-value is a misread value, which the safety-critical standard in `CLAUDE.md`
-treats as a safety failure. This project's argument rests on that reasoning and
-on the set of values that must always be displayed (`docs/MODEL.md`
-§ "Minimum displayed outputs").
+This is the most important finding about Blender's stated reasoning, and it is a
+negative one. Blender is good evidence that a subdivided window is workable and
+pleasant at scale, and no evidence at all for this project's safety argument.
+Blender avoids overlapping windows by default for visibility and efficiency. The
+roadmap rules out silently covering a value on the dashboard (`ROADMAP.md` item
+34). A covered value is a misread value, which the safety-critical standard in
+`CLAUDE.md` treats as a safety failure. This project's argument rests on that
+reasoning and on the set of values that must always be displayed
+(`docs/MODEL.md` § "Minimum displayed outputs"). Citing Blender in support of it
+would be citing a different argument that reaches a similar-looking conclusion.
 
 The Design Paradigms page of Blender's Human Interface Guidelines bases
 non-overlapping on visibility and window management. A user should see the
@@ -586,12 +614,13 @@ blender.org. The guidelines page does not contain that phrase. The paper gives
 efficiency as the reason: time an artist spends managing windows is time not
 spent on the work.
 
-The guidelines page states non-overlapping as a **default**, not as an invariant.
-The same paragraph says that Blender also supports several windows and screens,
-and names their uses: multi-monitor setups, animated windows, render output, and
-individual cases where an overlap helps. A project that cites Blender as
-precedent for an absolute rule against covering a value claims more than Blender
-says. This project's rule is narrower and firmer than Blender's default.
+The guidelines page states non-overlapping as a **default**, not as an
+invariant. The same paragraph says that Blender also supports several windows
+and screens, and names their uses: multi-monitor setups, animated windows,
+render output, and individual cases where an overlap helps. A project that cites
+Blender as precedent for an absolute rule against covering a value claims more
+than Blender says. This project's rule is narrower and firmer than Blender's
+default, which is the right way round, but the rule is this project's own.
 
 **Non-Overlapping** is often treated as one idea with **Non-Blocking** and
 **Non-Modal**, but each of the three has its own reason. The guidelines page
@@ -599,8 +628,9 @@ lists them first among its eight paradigms. Non-blocking means that no tool or
 option locks the user out of the rest of the application. Blender does not pop
 up a request that must be filled in before something runs. Where a task such as
 a render does block, the page asks that the blocking be shown clearly and that
-the user can leave the task at once. Non-modal is described in
-§ "There is no mode-awareness doctrine to borrow".
+the user can leave the task at once. Non-modal is described in § "There is no
+mode-awareness doctrine to borrow", because the first version of this section
+described it wrongly.
 
 ### "Non-overlapping" is narrower than it sounds, and the source proves it
 
@@ -611,16 +641,19 @@ may float, with a predicate that identifies them, rather than a judgement for
 each widget.
 
 No page that was read states a general principle about what may overlap an
-editor. The guidelines name regions as the third level of subdivision, inside
-an editor, and say nothing about whether a region may float. Blender's line
-therefore has to be inferred from its practice, which the source code shows.
+editor. The guidelines name regions as the third level of subdivision, inside an
+editor, and say nothing about whether a region may float. Blender's line
+therefore has to be inferred from its practice, which the source code shows. The
+practice is clear, and it corrects a reading this project was at risk of
+carrying: Blender's non-overlap guarantee is about areas, not about everything.
 
-**Inside one area, regions overlap by default.** A toolbar, sidebar or header
-floats translucently over the main region of its own area. The redo panel is a
-floating region type. A user preference controls the overlap
-(`USER_REGION_OVERLAP`, in `DNA_userdef_types.h`). The field that stores the
-preference (`uiflag2`) is initialised with the overlap switched on. A Blender
-function arbitrates between overlapping regions (`region_overlap_fix`, in
+**Inside one area, regions overlap by default.** What follows was verified in
+the source rather than inferred. A toolbar, sidebar or header floats
+translucently over the main region of its own area. The redo panel is a floating
+region type. A user preference controls the overlap (`USER_REGION_OVERLAP`, in
+`DNA_userdef_types.h`). The field that stores the preference (`uiflag2`) is
+initialised with the overlap switched on. A Blender function arbitrates between
+overlapping regions (`region_overlap_fix`, in
 `source/blender/editors/screen/area.cc`). Blender's region definitions include a
 region type for a heads-up display (`RGN_TYPE_HUD`) and an alignment that makes
 a region float (`RGN_ALIGN_FLOAT`), both in `DNA_screen_types.h`.
@@ -650,12 +683,14 @@ than a decision procedure**, organised mostly by **scope of effect**:
   popover.
 
 The Regions page of Blender's Manual describes the toolbar and the sidebar. The
-toolbar, on the left, holds a set of interactive tools. The sidebar, on the
-right, holds panels of settings for the objects in the editor and for the editor
-itself. The guidelines' Sidebar Tabs page calls for as few tabs as possible, and
-for an existing tab to be reused rather than a new one added. The Layouts page
-asks for the most important and most used widgets to be the easiest to reach,
-but applies that request only within a panel, not to the choice of region.
+toolbar, on the left, holds a set of interactive tools. The first version of
+this section called those tools "gizmo-driven". No page read says that, so the
+word was withdrawn. The sidebar, on the right, holds panels of settings for the
+objects in the editor and for the editor itself. The guidelines' Sidebar Tabs
+page calls for as few tabs as possible, and for an existing tab to be reused
+rather than a new one added. The Layouts page asks for the most important and
+most used widgets to be the easiest to reach, but applies that request only
+within a panel, not to the choice of region.
 
 One principle from Blender matters more to this project than the placement rules
 above: context ranks above tools, which § "Adopted" applies to the simulator.
@@ -675,6 +710,8 @@ Blender's Manual and guidelines leave two gaps:
    says that at least one region is always visible. It calls that region the
    main region and the most prominent part of the editor, and says its purpose
    differs by editor. The guidelines' Main Region heading has no text under it.
+   The first version of this section said that the main region had no role
+   at all, which was too strong.
    The main region matters to this project because a user can hide every other
    region, the header included, each from its own context menu.
 2. **There is no list of what may not go in a header.** The guidelines do say
@@ -687,8 +724,9 @@ Blender's Manual and guidelines leave two gaps:
 
 ### Workspace and Screen are two concepts because one was doing two jobs
 
-Blender's split between a workspace and its screen layout applies to this
-simulator, as § "Adopted" sets out.
+This is the clearest and best-evidenced of the rationale findings. Blender's
+split between a workspace and its screen layout applies to this simulator, as
+§ "Adopted" sets out.
 
 In Blender versions before 2.8, the screen layout mixed workflow settings with
 layout settings. The write-up of the Blender 2.8 user-interface workshop reports
@@ -702,18 +740,19 @@ workspace can be appended from another `.blend` file. The Developer
 Documentation's Screen page describes the level below. A screen (`bScreen`)
 holds the arrangement of areas and regions in one window and records which
 window it belongs to. A workspace reaches its screen through an intermediate
-object (`WorkSpaceLayout`). None of the pages read on 2026-10-25 confirms that
-Blender's interface renamed the screen "layout".
+object (`WorkSpaceLayout`). The first version of this section said that
+Blender's interface renamed the screen "layout". None of the pages read on
+2026-10-25 confirms it.
 
 A Blender workspace carries more than an arrangement. The Manual's Workspaces
-page lists a workspace's settings: a mode that it switches to when activated,
-an optional pinned scene (Pin Scene), and an optional add-on filter. Current
+page lists a workspace's settings: a mode that it switches to when activated, an
+optional pinned scene (Pin Scene), and an optional add-on filter. Current
 versions add two settings for the video sequencer. A workspace can also hold
 *several* screens. The Screen page gives one reason: a window shows one screen
 at a time, and Maximize Area creates a second screen that holds only the
 maximized editor. That screen is closed afterwards, and the first shows again.
-None of the pages read confirms that opening a temporary window adds a hidden
-screen.
+The first version of this section also said that opening a temporary window adds
+a hidden screen. None of the pages read confirms it.
 
 Pin Scene is an opt-in exception to Blender's rule that interface and data stay
 separate. The workshop write-up states that rule. It first put the active scene
@@ -724,11 +763,12 @@ Manual says that it takes effect when the user enables it.
 ### There is no mode-awareness doctrine to borrow
 
 Blender has no doctrine for keeping the user aware of the current mode, so this
-project must design its own. The project's safety standard needs one, because
-it requires that a user can never be wrong about what state the application is
-in, or about what context a displayed value belongs to. Only one rule from
-Blender's interface guidelines carries over: each editor's header stays visible
-except in rare, well-reasoned cases.
+project must design its own. The project's safety standard needs one, because it
+requires that a user can never be wrong about what state the application is in,
+or about what context a displayed value belongs to. The re-read found more than
+the first version of this section did, but the conclusion holds. Only one rule
+from Blender's interface guidelines carries over: each editor's header stays
+visible except in rare, well-reasoned cases.
 
 **Blender's Non-Modal paradigm asks that input stay consistent and
 predictable**, so that common mouse and keyboard methods do not change meaning
@@ -741,9 +781,10 @@ complexity makes some modes unavoidable, and sorts them into three kinds:
   transform tools;
 - temporary modes, which end as soon as the user stops acting.
 
-Non-Modal is not mainly about avoiding blocking. Two separate paradigms on the
-same guidelines page deal with that: select-then-operate, and adjusting an
-operation after it has run.
+The first version of this section said that Non-Modal was mainly about not
+blocking, which was wrong. That description belonged to select-then-operate and
+to adjusting an operation after it has run, which are separate paradigms on the
+same page.
 
 **Blender does name the hazard of an unnoticed mode.** Reynish's 2008 paper
 grounds non-modality in Jef Raskin's argument from *The Humane Interface*: a
@@ -756,13 +797,13 @@ guidelines' "Anatomy of an Editor" page says that editors are in effect modes,
 so each must be clearly distinguishable from the others. That page names the
 header as what helps users tell editors apart.
 
-**Blender's guidelines answer the hazard of an unnoticed mode by removing modes
-or narrowing their scope, not by keeping the current mode visible.** The
-guidelines have a page titled "Modal Interfaces", but when it was read on
-2026-10-25, its only content was the heading "Preventing Mode Errors vs.
-Consistency". In practice, Blender has strong mode-awareness devices: the mode
-selector in the header, and a keymap and shading that change with the mode.
-None of the pages read presents them as a deliberate answer to the hazard.
+**Blender answers the hazard of an unnoticed mode by removing modes or narrowing
+their scope, not by keeping the current mode visible.** The guidelines have a
+page titled "Modal Interfaces", but when it was read on 2026-10-25, its only
+content was the heading "Preventing Mode Errors vs. Consistency". In practice,
+Blender has strong mode-awareness devices: the mode selector in the header, and
+a keymap and shading that change with the mode. None of the pages read presents
+them as a deliberate answer to the hazard.
 
 ### Where Blender says the model does not apply
 
@@ -773,10 +814,12 @@ application, so the model applies to it.
 Dalai Felinto lists the constraints of a standalone tablet in "Beyond Mouse &
 Keyboard", a post on the Blender Developers Blog dated 24 July 2025. They are a
 single full-screen window, little screen space, and no keyboard or mouse by
-default. The post calls for more task-oriented interfaces with lower
-information density. Its mockups run Blender in a single area, with temporary
-context shown in floating regions. Felinto says that this design partly
-contrasts with the non-overlapping model, and calls it a good compromise.
+default. The post calls for more task-oriented interfaces with lower information
+density. Its mockups run Blender in a single area, with temporary context shown
+in floating regions. Felinto says that this design partly contrasts with the
+non-overlapping model, and calls it a good compromise. So the area model is a
+desktop model by Blender's own account, and not only by implication, as the
+first version of this section had it.
 
 Blender documents its other exceptions to the model as behaviour, not as limits
 with a stated reason. Its temporary windows, for example, are named and
@@ -798,24 +841,27 @@ project rule requires these words (`.claude/rules/ui-areas.md`).
 
 **A workspace and a layout are separate levels.** A workspace is a task-level
 object, and a layout is the geometry of the areas in one window. Blender split
-them in version 2.8. The roadmap calls for a workspace to pin which **run** it
-shows (`ROADMAP.md` item 34), much as a Blender workspace can pin a scene. If a
-workspace were only a layout, it would have nowhere to keep that run. Blender's
-Pin Scene is an opt-in exception to its own rule that interface and data stay
-separate (§ "Workspace and Screen are two concepts because one was doing two
-jobs"). A design that cites Pin Scene as precedent should say that Pin Scene is
-an opt-in exception. The exception changes no decision for this simulator,
-because pinning a run to a workspace has a reason of its own (`PL-7Z84`).
+them in version 2.8, and that split is what makes the behaviour that
+`ROADMAP.md` item 34 wants possible at all. The roadmap calls for a workspace to
+pin which **run** it shows (`ROADMAP.md` item 34), much as a Blender workspace
+can pin a scene. If a workspace were only a layout, it would have nowhere to
+keep that run. Blender's Pin Scene is an opt-in exception to its own rule that
+interface and data stay separate (§ "Workspace and Screen are two concepts
+because one was doing two jobs"). A design that cites Pin Scene as precedent
+should say that Pin Scene is an opt-in exception. The exception changes no
+decision for this simulator, because pinning a run to a workspace has a reason
+of its own (`PL-7Z84`).
 
 **The area owns the geometry, and the view owns none.** This boundary between
-the container and the view is the cleanest part of Blender's design, and the
-most transferable. A view is given its rectangle and never stores, computes or
-asks for one.
+the container and the view is the strongest and cleanest part of Blender's
+design, and the most transferable. A view is given its rectangle and never
+stores, computes or asks for one.
 
 **Each view serializes itself.** The layout layer saves a workspace without
 knowing what any area holds, such as an F_A/F_I chart. In Blender, each editor
 also saves and loads its own data (`SpaceType.blend_write` and
-`blend_read_data`).
+`blend_read_data`). That delegation is the right answer to how a workspace saves
+without the layout code knowing what an area holds.
 
 **Each area keeps a stack of the views previously open in it.** Switching the
 area to another view and back restores the first view's state. The roadmap's
@@ -844,9 +890,10 @@ backs this decision (`PL-3J2P`,
 **From version 1 of the format, a saved file's root holds one or more windows,
 each with a tree of its own.** This was decided on 2026-09-16, when roadmap item
 34 was planned across two releases, with break-out into further windows in the
-second. Break-out has not been planned for any release since 2026-09-26, but it
-remains wanted. Adding windows to the root later would mean migrating files in
-which learners have already saved their workspaces.
+second. Break-out has not been planned for any release since 2026-09-26, and the
+reason for this decision still applies, because break-out is still wanted, only
+not soon. Adding windows to the root later would mean migrating files in which
+learners have already saved their workspaces.
 
 **This project's one window opens maximized, so every area gets the most room
 the screen has** (`PL-Z4K6`; project owner, 2026-09-27, ratified, over raising
@@ -856,7 +903,8 @@ and window controls stay. Starting in full screen was rejected to keep them
 tenths of the screen (`PL-005`). Blender opens its window maximized. Its window
 code sets the default window state (`GHOST_WINDOW_STATE_DEFAULT`) to maximized
 (`GHOST_kWindowStateMaximized`), and sizes the default geometry to the main
-screen (`wm_window.cc`, read through the GitHub mirror on 2026-09-27).
+screen (`wm_window.cc`, read at source through the GitHub mirror on 2026-09-27,
+since the Manual's page was not reachable from the container).
 
 **Ctrl+PgUp and Ctrl+PgDn step through the workspaces, and wrap round**
 (`PL-M352`). They follow the order in which the workspace tabs are drawn.
@@ -870,13 +918,13 @@ sources were read on 2026-10-19.
 
 **The occupant of an Area is called a View here, not an Editor** (project owner,
 2026-09-17, ratified - chosen over keeping Blender's `Editor`, and over
-`Component` and `Widget`). In Blender the word `Editor` fits, because its editors
-mostly *edit*, as the 3D viewport and the text editor do. This project's
-Views are the concentration graph, the compartment table, the MAC readout and
-the control panel. One takes input, and the rest display modelled values.
-Calling the displays editors would tell the user they can change values that
-they cannot, and the clinical-output standard in `CLAUDE.md` treats that as a
-presentation defect rather than a naming preference.
+`Component` and `Widget`). In Blender the word `Editor` fits, because its
+editors mostly *edit*, as the 3D viewport, the dope sheet and the text editor
+do. This project's Views are the concentration graph, the compartment table, the
+MAC readout and the control panel. One takes input, and the rest display
+modelled values. Calling the displays editors would tell the user they can
+change values that they cannot, and the clinical-output standard in `CLAUDE.md`
+treats that as a presentation defect rather than a naming preference.
 
 `Widget` was unavailable because `QWidget` is the base class of every View, and
 `Component` was rejected as vaguer, though not wrong. Eclipse, the closest
@@ -884,7 +932,8 @@ precedent, separates editors, which follow an open-save-close document
 lifecycle, from views, which do not. Its Perspective is Blender's Workspace. But
 in Eclipse, having several instances is a property of editors, and this project
 needs several Views of one kind in a single Workspace. So neither framework's
-term carries over whole (the comparison is in `PL-GPYV`).
+term carries over whole, which is the cause of this divergence (the comparison
+is in `PL-GPYV`).
 
 **A missing or unknown View kind must fail loudly.** Blender silently
 substitutes a 3D viewport, and the interface looks normal (§ "Persistence, and
@@ -913,18 +962,23 @@ minimum-size contract at all"). That is a defensible answer for a 3D content
 tool, where a hidden sidebar costs a user one keystroke. In this project it is
 directly unsafe. Here, a set of displayed values is unconditional: no Workspace
 may remove them, and nothing may cover them (`docs/MODEL.md` § "Minimum
-displayed outputs"). Where any other display cannot fit, the interface must say
-so rather than quietly shrink it away. The unconditional set sits outside the
-area system. As restated on 2026-09-16, each top-level window keeps its own
-unconditional region, holding the invariant tier and the run that window shows.
-The per-substance tier appears once, in a main window that cannot be closed
-while another window is open. The rule that nothing may cover these values has
+displayed outputs"). Silently collapsing one of those values is exactly the
+failure that the unconditional set exists to prevent. Where any other display cannot fit,
+the interface must say so rather than quietly shrink it away. The unconditional
+set sits outside the area system. As restated on 2026-09-16, when the project
+settled what a broken-out window owes the display, each top-level window keeps
+its own unconditional region outside its own area system, holding the invariant
+tier and the run that window shows. The per-substance tier appears once, in a
+main window that cannot be closed while another window is open. The rule that
+nothing may cover these values is `docs/MODEL.md`'s and is cited rather than
+restated here, so the safety rule stays stated in one place. So is the rule's
 one limit: an application can observe its own windows, but not what another
 application has drawn over them.
 
 **An Area has a minimum size, and says so when it cannot be given it.** Blender
-honours no minimum size that an editor states (§ "An editor cannot refuse a size, and there is no
-minimum-size contract at all"). Here, an Area that cannot be given the size its
+honours no minimum size that an editor states
+(§ "An editor cannot refuse a size, and there is no minimum-size contract at
+all"). Here, an Area that cannot be given the size its
 View needs says so rather than collapsing it, and a border drag stops where an
 Area beside the moved line reaches its minimum size (`PL-K285`).
 
@@ -932,9 +986,10 @@ Area beside the moved line reaches its minimum size (`PL-K285`).
 hands each editor a context through which it can reach the window, the screen
 and every other Area, and § "An editor is isolated by convention, not by
 construction" counts the editors that do. Here, each View should be handed what
-it draws and given no route to its container, so that Views stay
-interchangeable. Isolation is cheap to build now and expensive to add later,
-which is why the project's rule file for interface areas
+it draws and given no route to its container at all, so that Views stay
+interchangeable by construction. That is a deliberate narrowing of Blender's
+contract, not a copy of it. Isolation is cheap to build now and expensive to add
+later, which is why the project's rule file for interface areas
 (`.claude/rules/ui-areas.md`) already asks for it in Views written before the
 area system exists.
 
@@ -947,22 +1002,24 @@ the shape of Blender's contract for an editor (`SpaceType`), a struct of
 metadata and function pointers, for its own contract (`PL-TH35`). A contract
 built that way collects members that nothing implements and fields that nothing
 sets, and the design does not make them visible. § "What an editor must
-implement" lists the ones in Blender's. Recheck this project's contract for a
-View against the Views that implement it.
+implement" lists the ones in Blender's. A contract of this project's own should
+be small. Recheck this project's contract for a View against the Views that
+implement it, rather than only adding to it.
 
-**A drag moves every border on the dragged line, as in Blender.** Blender's
-default drag moves the whole chain (§ "How a layout is built, and how far the
-operations reach"), while a handle in a tree of splitters moves only itself.
-§ "The result" counts where the two differ in Blender's shipped Workspaces, at a
-four-way junction. The layout model keeps its tree rather than adopting
-Blender's graph of shared vertices. On a drag, it moves together every border
-that is collinear with the dragged one and adjacent to it. Because a tree has no
-vertices to share, the layout model finds the dragged line from where the
-borders lie (`LayoutModel.borders()`, `PL-1FT6`). One difference remains: here,
-two borders that a drag brings into line are one line from then on. Blender's
-border drag merges no vertices and removes only duplicate edges
-(`area_move_exit` in `screen_ops.cc`, `blender/blender` `main`, read
-2026-10-12), so its two edges stay two until the user merges them on purpose.
+**A drag moves every border on the dragged line, as in Blender.** This recovers
+the one thing that the tree loses against Blender's graph. Blender's default
+drag moves the whole chain (§ "How a layout is built, and how far the operations
+reach"), while a handle in a tree of splitters moves only itself. § "The result"
+counts where the two differ in Blender's shipped Workspaces, at a four-way
+junction. The layout model keeps its tree rather than adopting Blender's graph
+of shared vertices. On a drag, it moves together every border that is collinear
+with the dragged one and adjacent to it. Because a tree has no vertices to
+share, the layout model finds the dragged line from where the borders lie
+(`LayoutModel.borders()`, `PL-1FT6`). One difference remains: here, two borders
+that a drag brings into line are one line from then on. Blender's border drag
+merges no vertices and removes only duplicate edges (`area_move_exit` in
+`screen_ops.cc`, `blender/blender` `main`, read 2026-10-12), so its two edges
+stay two until the user merges them on purpose.
 
 **Every other border keeps its place in the window.** Blender moves only the
 vertices flagged as on the dragged line (`area_move_apply_do` in
@@ -1012,13 +1069,14 @@ collapsed below its minimum size (`PL-K285`). Each Area's menu also lists
 its borders under Resize, and choosing one gives that border the focus
 (`PL-M352`).
 
-**The Layout menu opens from the tab strip, not from a menu bar.** Blender's
-top bar holds its menus and its Workspace tabs in one row. A separate menu bar
-would cost this window a row of height on Windows and Linux, where the charts
-already needed 70 to 80 px more height on the 1366 by 700 laptop reference
-(`PL-QLZ5`). The Layout menu lists every Workspace, steps to the previous or
-next one, and holds the current Workspace's rename, duplicate, reset and delete
-(`PL-M352`).
+**The Layout menu opens from the tab strip, not from a menu bar.** Blender's top
+bar holds its menus and its Workspace tabs in one row. A separate menu bar would
+cost this window a row of height on Windows and Linux, where the charts already
+needed 70 to 80 px more height on the 1366 by 700 laptop reference (`PL-QLZ5`).
+The Layout menu lists every Workspace, steps to the previous or next one, and
+holds the current Workspace's rename, duplicate, reset and delete (`PL-M352`).
+`PL-M352` first built it as a button at the strip's right end, after "+", and
+`PL-R5G4` removed the button.
 
 **The menus open on a right-click, as in Blender, and no header carries a menu
 button** (project owner, 2026-10-19, ratified, over keeping a button in each
@@ -1044,8 +1102,9 @@ in the header, as Blender keeps its Editor Type selector first in every header.
 **Ctrl and a corner drag swap two Areas, as in Blender.** The user holds Ctrl
 while pressing an Area's corner, then releases over any other Area in the
 window, and the two need not be side by side (Blender Manual: "Areas", section
-"Swapping Contents", read 2026-10-19). While the user drags, a preview outlines
-both Areas (`PL-R5G4`). The Area menu's "Swap with" makes the same swap.
+"Swapping Contents", read 2026-10-19). `PL-R5G4` added the gesture, with a
+preview that outlines both Areas while the user drags. The Area menu's "Swap
+with" makes the same swap.
 
 ### Refused
 
@@ -1062,26 +1121,30 @@ reason" sets out.
 ## Attribution
 
 This project's workspace, area and editor model is based on Blender's, studied
-from its published source and its design documentation. Blender is developed
-by the Blender Foundation and its contributors. Its source is licensed
+from its published source and its design documentation. Blender is developed by
+the Blender Foundation and its contributors. Its source is licensed
 GPL-2.0-or-later per file, and the work as a whole is licensed GPL-3.0-or-later.
-The Blender Documentation Team writes the Blender Manual, and the Blender
-Developer Documentation Team writes the Blender Developer Documentation. Both
-are licensed CC-BY-SA 4.0.
+The Blender Manual is licensed CC-BY-SA 4.0 by the Blender Documentation Team,
+and the Blender Developer Documentation by the Blender Developer Documentation
+Team.
 
 **No Blender code is used in this project, and none of Blender's documentation
 is reproduced here.** What was taken is a design, described in this project's
 own words.
 
 `ROADMAP.md` item 34 records this origin, and `README.md` § "Acknowledgements"
-has credited Blender for it since v0.6.0 (`PL-RTG9`).
+has credited Blender for it since v0.6.0 (`PL-RTG9`). v0.6.0, "the layout is the
+reader's", is the release in which the shipped interface became this model.
+Until then the attribution lived only here, because a README sentence saying the
+interface is modelled on Blender's would have described software that did not
+exist.
 
 ## Pages read on 2026-10-25
 
-Each page was downloaded whole with `curl` through a proxy and read as text. On
-2026-10-25, `projects.blender.org` refused to serve its pages to a client that
-does not run JavaScript, so task T91536 and commit `4cf4bb2664` were read
-through that forge's public API, at
+Each page was downloaded whole with `curl` through this environment's proxy and
+read as text. On 2026-10-25, `projects.blender.org` refused to serve its pages
+to a client that does not run JavaScript, so task T91536 and commit `4cf4bb2664`
+were read through that forge's public API, at
 https://projects.blender.org/api/v1/repos/blender/blender/.
 
 - Human Interface Guidelines, Design Paradigms:
