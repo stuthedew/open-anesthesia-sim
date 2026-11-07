@@ -202,10 +202,8 @@ circuit and the patient form a closed path in which gas recirculates. The model
 has no metabolism or other chemical destruction of the agent.
 
 **The breathing circuit is semi-closed.** The exhaust runs whenever fresh gas
-flows, at exactly the fresh-gas rate. In closed-circuit operation, the fresh gas
-flow is titrated down to the patient's uptake, or a machine mode shuts the
-surplus gas valve outright. The model's equations do not describe that
-operation, whose balance of agent in and out differs. § "Breathing circuit"
+flows, at exactly the fresh-gas rate. The model's equations do not describe
+closed-circuit operation, whose balance of agent in and out differs. § "Breathing circuit"
 explains this limit and estimates its size, and § "Known limitations" lists it.
 
 **Exchange with blood is perfusion-limited.** Agent moves between blood and
@@ -1339,9 +1337,6 @@ $$
 
 A machine with its surplus gas valve shut sends no agent to the exhaust. It
 needs a different model. See § "Breathing circuit".
-
-**For developers.** Turning down a coefficient does not make this model fit
-such a machine.
 
 ### Stored amount
 
@@ -5146,12 +5141,10 @@ origin, which is that no source has been adopted for it.
 them.** `AlveolarCompartment` has no default for its gas volume or its ventilation, and
 `BreathingCircuit` has none for its volume or its vaporizer maximum. Every shipped run is
 built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent, patient
-and machine files and passes them on. The fresh gas flow keeps a default,
-`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, because a machine profile may state no startup
-flow, and a run built from such a profile opens at that constant. Its authority is the
-teaching-default reason recorded in the flow's provenance row, not a published source.
-`test_the_flow_default_matches_the_shipped_machine_file` checks that the constant equals
-the file's value. `test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
+and machine files and passes them on. The fresh gas flow keeps a default for a machine
+profile that states no startup flow (§ "Source hierarchy: what may be cited as the
+authority for a value" gives its reason, its constant and its tests).
+`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
 `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` check that a shipped run
 gets the file's values. The serious failure would be a change that stopped `for_agent()`
 reading a file. Every provenance row in this table would then silently describe a file
@@ -12033,9 +12026,7 @@ this model computes. Two published figures sit either side of the stored
 value, **and they are not evidence of the same kind.** The first is Lowe and
 Ernst's cardiac-output relation, the upstream source that the Gas Man Workbook
 names, read at the source. It gives $`0.2M^{3/4}`$ for a body mass $`M`$ in
-kg, which is 4.84 L/min at 70 kg. It is **derived, not measured**: Brody's
-1945 interspecies oxygen-consumption allometry divided by an arteriovenous
-oxygen content difference that is assumed constant across mammals
+kg, which is 4.84 L/min at 70 kg. It is **derived, not measured**
 (§ "Parameter provenance" gives the derivation). The second is Cattermole et
 al.'s **measured** median of 5.51 L/min, from 686 subjects in the 50–75 kg
 band that this patient sits in.
