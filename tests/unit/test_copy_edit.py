@@ -307,6 +307,8 @@ def two_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 #: A meaning check's reply that finds nothing lost in one passage.
 SAME = "[1] same\n\nThe edit says everything the original said.\n"
+#: The replies of one round of meaning checks that all find nothing lost.
+PANEL_SAME = [SAME] * copy_edit.CHECK_PANEL
 
 
 def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
@@ -318,13 +320,14 @@ def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n\nCut a repeat.\n"
     third = "[1] keep\n\nNo fault found.\n"
     monkeypatch.setenv(
-        "FAKE_REPLIES", json.dumps([FIRST.partition("**[2]")[0], second, third, SAME, "unused"])
+        "FAKE_REPLIES",
+        json.dumps([FIRST.partition("**[2]")[0], second, third, *PANEL_SAME, "unused"]),
     )
 
     reply, counts = copy_edit.run(request, reads=tmp_path / "reads")
 
     asked = json.loads(two_reads.read_text(encoding="utf-8"))
-    assert len(asked) == 4
+    assert len(asked) == 3 + copy_edit.CHECK_PANEL
     assert copy_edit.SECOND_READ in asked[1]
     assert "    1 > First edit of one." in asked[1]
     assert "    1 > Second edit." in asked[2]
@@ -335,7 +338,8 @@ def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
         "copy_edit: read 10 tokens, wrote 3, 1 turns, $0.50; "
         "second read: read 10 tokens, wrote 3, 1 turns, $0.50; "
         "third read: read 10 tokens, wrote 3, 1 turns, $0.50; "
-        "meaning check 1: read 10 tokens, wrote 3, 1 turns, $0.50"
+        "meaning check 1: read 10 tokens, wrote 3, 1 turns, $0.50; "
+        "meaning check 1, reader 2: read 10 tokens, wrote 3, 1 turns, $0.50"
     )
     assert (tmp_path / "reads" / "second-reply.txt").read_text(encoding="utf-8") == second
 
@@ -346,11 +350,11 @@ def test_an_audit_that_returns_the_same_text_ends_the_reads(
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
     same = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps([same, same, SAME, "unused"]))
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([same, same, *PANEL_SAME, "unused"]))
 
     copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 3
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 2 + copy_edit.CHECK_PANEL
 
 
 def test_a_passage_that_never_settles_stops_at_max_reads(
@@ -359,11 +363,13 @@ def test_a_passage_that_never_settles_stops_at_max_reads(
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
     edits = [f"[1] rewrite\n\n```\nEdit {n}.\n```\n" for n in range(1, 7)]
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits[: copy_edit.MAX_READS] + [SAME]))
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits[: copy_edit.MAX_READS] + PANEL_SAME))
 
     reply, _ = copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == copy_edit.MAX_READS + 1
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == (
+        copy_edit.MAX_READS + copy_edit.CHECK_PANEL
+    )
     assert rejected_prose.rewrites(reply) == {1: (f"Edit {copy_edit.MAX_READS}.",)}
 
 
@@ -377,12 +383,12 @@ def test_an_audit_whose_reply_cannot_be_read_is_left_out_and_the_earlier_reads_k
     cut_off = "the end of a reply whose verdicts were lost\n"
     monkeypatch.setenv(
         "FAKE_REPLIES",
-        json.dumps(["[1] rewrite\n\n```\nFirst.\n```\n", second, cut_off, SAME, "unused"]),
+        json.dumps(["[1] rewrite\n\n```\nFirst.\n```\n", second, cut_off, *PANEL_SAME, "unused"]),
     )
 
     reply, counts = copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 4
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 3 + copy_edit.CHECK_PANEL
     assert rejected_prose.rewrites(reply) == {1: ("Second edit.",)}
     assert "Notes from the third read:" not in reply
     assert "third read: reply unreadable, so it was left out ([1] has no verdict)" in counts
@@ -628,42 +634,72 @@ def test_a_statement_the_meaning_check_finds_lost_is_restored_and_checked_again(
     request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
     restored = "[1] rewrite\n\n```\nOne must hold.\n```\n\nPut back the requirement.\n"
+    round_one = [LOST_ONE, *PANEL_SAME[1:]]
     monkeypatch.setenv(
-        "FAKE_REPLIES", json.dumps([first, "[1] keep\n", LOST_ONE, restored, SAME, "unused"])
+        "FAKE_REPLIES",
+        json.dumps([first, "[1] keep\n", *round_one, restored, *PANEL_SAME, "unused"]),
     )
 
     reply, counts = copy_edit.run(request, reads=tmp_path / "reads")
 
     asked = json.loads(two_reads.read_text(encoding="utf-8"))
-    assert len(asked) == 5
+    restore = 2 + copy_edit.CHECK_PANEL
+    assert len(asked) == restore + 1 + copy_edit.CHECK_PANEL
     assert copy_edit.MEANING_CHECK in asked[2]
     assert "    1 > First edit of one." in asked[2]
     assert "Old one must hold." in asked[2].partition(copy_edit.BEFORE)[2]
-    assert copy_edit.RESTORE_READ in asked[3]
-    assert "The requirement became a description." in asked[3].partition(copy_edit.LOST)[2]
-    assert "    1 > One must hold." in asked[4]
+    assert asked[3] == asked[2]
+    assert copy_edit.RESTORE_READ in asked[restore]
+    assert "The requirement became a description." in asked[restore].partition(copy_edit.LOST)[2]
+    assert "    1 > One must hold." in asked[restore + 1]
     assert rejected_prose.rewrites(reply) == {1: ("One must hold.",)}
     assert "Notes from the restore 1 read:" in reply
+    assert "Notes from meaning check 1, reader 2:" in reply
     assert "Notes from meaning check 2:" in reply
     assert "Meaning check:" not in reply
     assert "restore 1 read: read 10 tokens" in counts
     assert (tmp_path / "reads" / "meaning-1-reply.txt").read_text(encoding="utf-8") == LOST_ONE
+    assert (tmp_path / "reads" / "meaning-1-2-reply.txt").read_text(encoding="utf-8") == SAME
 
 
-def test_a_passage_that_still_loses_a_statement_after_the_last_check_is_kept_as_it_was(
+def test_a_statement_that_only_the_second_check_finds_lost_is_restored(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Runs of one check on one edit find different losses, so each round pools its checks."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
+    first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
+    restored = "[1] rewrite\n\n```\nOne must hold.\n```\n"
+    round_one = [*PANEL_SAME[1:], LOST_ONE]
+    monkeypatch.setenv(
+        "FAKE_REPLIES",
+        json.dumps([first, "[1] keep\n", *round_one, restored, *PANEL_SAME, "unused"]),
+    )
+
+    reply, _ = copy_edit.run(request)
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    restore = 2 + copy_edit.CHECK_PANEL
+    assert copy_edit.RESTORE_READ in asked[restore]
+    assert "The requirement became a description." in asked[restore].partition(copy_edit.LOST)[2]
+    assert rejected_prose.rewrites(reply) == {1: ("One must hold.",)}
+
+
+def test_a_passage_that_still_loses_a_statement_after_the_last_round_is_kept_as_it_was(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
     replies = [first, "[1] keep\n"]
-    for _ in range(copy_edit.MAX_CHECKS - 1):
-        replies += [LOST_ONE, first]
-    monkeypatch.setenv("FAKE_REPLIES", json.dumps([*replies, LOST_ONE, "unused"]))
+    for _ in range(copy_edit.MAX_CHECK_ROUNDS - 1):
+        replies += [LOST_ONE] * copy_edit.CHECK_PANEL + [first]
+    replies += [LOST_ONE] * copy_edit.CHECK_PANEL
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([*replies, "unused"]))
 
     reply, _ = copy_edit.run(request)
 
-    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == 2 * copy_edit.MAX_CHECKS + 1
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == len(replies)
     assert reply.startswith("[1] keep\n")
     assert rejected_prose.rewrites(reply) == {}
     refused = reply.partition("Meaning check:")[2].partition("Notes from")[0]
@@ -683,7 +719,7 @@ def test_a_meaning_check_whose_reply_cannot_be_read_keeps_every_edited_passage_a
     reply, counts = copy_edit.run(request)
 
     assert reply.startswith("[1] keep\n")
-    assert "Meaning check 1's reply could not be read" in reply
+    assert "The reply of meaning check 1 could not be read" in reply
     assert "meaning check 1: reply unreadable" in counts
 
 

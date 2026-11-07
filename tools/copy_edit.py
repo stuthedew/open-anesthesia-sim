@@ -31,14 +31,14 @@ that rewrote it, else `[N] keep`. Every read's notes follow.
 (`PL-F0Q2`). The copy editor's own audits passed about 120 statements that its
 line edit of `docs/MODEL.md` had lost or weakened: a requirement restated as a
 description, a limiting word such as "only" cut, a list item or a scope clause
-dropped, a stated reason cut. So a fresh run, with the instructions in
-`.claude/agents/meaning-check.md`, reads each original sentence against the
-edit, using the list that the copy editor's own instructions give under
-`NEVER_LOSES`. Each statement it finds lost goes back to the copy editor in a
-restore read, and the check runs again, up to `MAX_CHECKS` checks in all. A
-passage that still loses a statement after the last check is printed as
-`[N] keep`, with what it lost under "Meaning check:", so no rewrite that
-weakens the original reaches a file.
+dropped, a stated reason cut. So `CHECK_PANEL` fresh runs, with the
+instructions in `.claude/agents/meaning-check.md`, each read every original
+sentence against the edit, using the list that the copy editor's own
+instructions give under `NEVER_LOSES`. Each statement that any of them finds
+lost goes back to the copy editor in a restore read, and the checks run again,
+up to `MAX_CHECK_ROUNDS` rounds. A passage that still loses a statement after
+the last round is printed as `[N] keep`, with what it lost under "Meaning
+check:", so no rewrite that weakens the original reaches a file.
 
 Before the reply is printed, a check compares each rewrite with the rows it
 replaces (`check_code`). It refuses a rewrite that changes code, a fenced
@@ -173,18 +173,24 @@ RESTORE_READ = (
     f'the first edit follows the passages, under "{BEFORE}", and what a separate check '
     f'found the edit lost follows that, under "{LOST}".'
 )
-#: The most meaning checks one request gets: one after the copy editor's reads,
-#: and one after each restore read. The checks stop early when one finds nothing
-#: lost. A later check can find a loss that an earlier check missed, or one that
-#: a restore read caused. On `docs/MODEL.md` § "Supported run length", each of
-#: three checks found a different statement, and the third had been lost since
-#: the first edit. The limit was then three, so that statement never got a
-#: restore read and the whole section was kept unedited (`PL-F0Q2`). Five
-#: checks allow four restore reads. A check and a restore read together cost
-#: about half of the copy editor's first read on the same section. A lower
-#: limit keeps more passages unedited, and a higher one spends more reads on a
-#: passage whose restores keep failing.
-MAX_CHECKS = 5
+#: How many separate meaning checks read each version of the edit. Runs of
+#: one check on one edit find different statements lost: on
+#: `docs/MODEL.md` § "Supported run length", four runs on the same edit found
+#: one or two each of the four statements that it had lost, and no run found
+#: all four (`PL-F0Q2`). So each version goes to two checks, a statement that
+#: either finds lost goes back to the copy editor, and an edit passes only
+#: when both find nothing. A third check would cost one more read each round.
+CHECK_PANEL = 2
+#: The most rounds of meaning checks one request gets: one round after the
+#: copy editor's reads, and one after each restore read. The rounds stop early
+#: when no check finds anything lost. A later round can find a statement that
+#: an earlier round missed, or one that a restore read lost. Five rounds allow
+#: four restore reads, which is how many the edit above needed with one check
+#: a round. A round of two checks and a restore read together cost about the
+#: copy editor's first read on the same section. A lower limit keeps more
+#: passages unedited, and a higher one spends more reads on a passage whose
+#: restores keep failing.
+MAX_CHECK_ROUNDS = 5
 # regex: a meaning check's verdict line, such as "[3] lost"
 CHECK_VERDICT_RE = re.compile(r"^[\s*_`]*\[(\d+)\][*_`]*\s*(same|lost)\b", re.IGNORECASE)
 
@@ -629,7 +635,7 @@ def merge(
     check: Callable[[int, Sequence[str]], CodeCheck] | None = None,
     names: Sequence[str] | None = None,
     lost: Mapping[int, str] | None = None,
-    checks: Sequence[str] = (),
+    checks: Sequence[tuple[str, str]] = (),
 ) -> str:
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
@@ -641,8 +647,8 @@ def merge(
     check also lists each code name a rewrite dropped. A passage in `lost`
     becomes `[N] keep` too, with what the meaning check found it lost under
     "Meaning check:". The notes of every read follow, then those of each
-    meaning check in `checks`, so that every cut, move, query and finding is
-    kept. Raises `Refused` where a reply does not give each passage one
+    meaning check in `checks`, under its label, so that every cut, move, query
+    and finding is kept. Raises `Refused` where a reply does not give each passage one
     verdict, or a rewrite has no text.
     """
     lost = {} if lost is None else lost
@@ -694,8 +700,8 @@ def merge(
         out += ["Meaning check:", "", *meant]
     for name, reply in zip(names, replies, strict=True):
         out += [f"Notes from the {name} read:", "", notes(reply), ""]
-    for index, reply in enumerate(checks, start=1):
-        out += [f"Notes from meaning check {index}:", "", notes(reply), ""]
+    for label, reply in checks:
+        out += [f"Notes from {label}:", "", notes(reply), ""]
     merged = "\n".join(out).rstrip("\n")
     try:
         verdicts(merged, count)
@@ -853,35 +859,43 @@ def meaning_check(
     replies: list[str],
     names: list[str],
     counts: list[str],
-) -> tuple[dict[int, str], list[str]]:
+) -> tuple[dict[int, str], list[tuple[str, str]]]:
     """Check each edit in `current` against its original, and have the copy editor restore losses.
 
-    `checker` reads the request `text` with the edits in `current`, and lists
-    what each one lost. Where it lists anything, `editor` gets a restore read
-    (`restore_request`), whose rewrites update `current` and join `replies`
-    under a name in `names`. The check then runs again, up to `MAX_CHECKS`
-    checks in all. Each run's counts join `counts`. Returns what the last check
-    found still lost, by passage, and every check's reply. A check whose reply
-    cannot be read counts as finding every edited passage lost, because nothing
-    then shows that the edit kept the original's meaning. A restore read whose
-    reply cannot be read changes nothing.
+    In each round, `CHECK_PANEL` separate runs of `checker` read the request
+    `text` with the edits in `current`, and each lists what each edit lost.
+    Where any of them lists anything, `editor` gets a restore read
+    (`restore_request`) with every finding, and its rewrites update `current`
+    and join `replies` under a name in `names`. The checks then run again, up
+    to `MAX_CHECK_ROUNDS` rounds. Each run's counts join `counts`. Returns what
+    the last round found still lost, by passage, and every check's label and reply. A
+    check whose reply cannot be read counts as finding every edited passage
+    lost, because nothing then shows that the edit kept the original's
+    meaning. A restore read whose reply cannot be read changes nothing.
     """
     count = passage_count(text)
-    checks: list[str] = []
+    checks: list[tuple[str, str]] = []
     lost: dict[int, str] = {}
-    for index in range(1, MAX_CHECKS + 1):
+    for index in range(1, MAX_CHECK_ROUNDS + 1):
         asked = edited_request(text, current, MEANING_CHECK)
-        reply, reply_counts = checker.read(asked, f"meaning-{index}", reads)
-        counts.append(f"meaning check {index}: {reply_counts.removeprefix('copy_edit: ')}")
-        try:
-            found = meaning_findings(reply, count)
-        except ValueError as error:
-            counts.append(f"meaning check {index}: reply unreadable ({error})")
-            reason = f"Meaning check {index}'s reply could not be read ({error})."
-            return {number: reason for number in current}, checks
-        checks.append(reply)
-        lost = {number: found[number] for number in sorted(found) if number in current}
-        if not lost or index == MAX_CHECKS:
+        found: dict[int, list[str]] = {}
+        for reader in range(1, CHECK_PANEL + 1):
+            label = f"meaning check {index}" + (f", reader {reader}" if reader > 1 else "")
+            name = f"meaning-{index}" + (f"-{reader}" if reader > 1 else "")
+            reply, reply_counts = checker.read(asked, name, reads)
+            counts.append(f"{label}: {reply_counts.removeprefix('copy_edit: ')}")
+            try:
+                findings = meaning_findings(reply, count)
+            except ValueError as error:
+                counts.append(f"{label}: reply unreadable ({error})")
+                reason = f"The reply of {label} could not be read ({error})."
+                return {number: reason for number in current}, checks
+            checks.append((label, reply))
+            for number in sorted(findings):
+                if number in current:
+                    found.setdefault(number, []).append(findings[number])
+        lost = {number: "\n\n".join(found[number]) for number in sorted(found)}
+        if not lost or index == MAX_CHECK_ROUNDS:
             break
         name = f"restore {index}"
         restore, restore_counts = editor.read(
