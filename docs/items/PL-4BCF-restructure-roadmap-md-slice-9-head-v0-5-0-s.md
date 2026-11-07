@@ -7,7 +7,7 @@ status: blocked
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-W0TS, PL-LVN8
+blocked-by: PL-V8SJ
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
@@ -29,7 +29,9 @@ added: 2026-11-07
   The own-work passages belong in the sibling § "Declined to Gate 2, because this milestone's own work created them" (3221-3249). Give the rest a heading that says what it holds, such as "Declined to Gate 2, each on its stated ground", with a subheading for each triage pass. Keep the opening "Declined to Gate", because the checker reads it (4819-4827), and update citations such as 5718-5729.
 - Written for another reader, an owner's decision (3221-5219): about 2,000 rows record Gate 1's dispositions item by item, and the reader deciding a release does not act on them. v0.6.0 moved its own 43 such records onto the items on 2026-09-23 (6409-6413). § "Recording it" says completed sections keep these subsections (7885-7905), so moving them to the items or to a history file is the project owner's call.
 
-**Waits on `PL-LVN8`.** The outline read leaves the 2,000 rows to the project owner: § "Recording it" says completed sections keep these subsections as the record of their period, while the writing rule puts decision history in the item. If the rows move to the items, this slice moves them and keeps one line per ground in the roadmap, and most of the chapter reads' findings below no longer apply. If they stay, this slice applies finding 6's headings and the chapter reads' findings. Keep the heading opening "Declined to Gate" either way, because older citations name it.
+**Answered 2026-11-07 in `PL-LVN8`: the rows move to the items.** Each disposition moves to its item's brief as a dated paragraph, and the roadmap keeps one line per ground with the ids. The rest of this paragraph is the question as it was put.
+
+The outline read leaves the 2,000 rows to the project owner: § "Recording it" says completed sections keep these subsections as the record of their period, while the writing rule puts decision history in the item. If the rows move to the items, this slice moves them and keeps one line per ground in the roadmap, and most of the chapter reads' findings below no longer apply. If they stay, this slice applies finding 6's headings and the chapter reads' findings. Keep the heading opening "Declined to Gate" either way, because older citations name it.
 
 **The findings inside each chapter, as the chapter reads gave them.** Each chapter read also ended with an outline of one line per paragraph, which is left out here and kept in the shared folder. Each read is quoted whole, as a block, so that its quotations of the roadmap are not taken for this item's own claims.
 
@@ -406,3 +408,11 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Moved by slice 2 (`PL-P0C5`), 2026-11-07.** The sentence the outline read
+quotes as § "Recording it" now sits at the end of § "Deferring to the next
+gate": "Until `PL-WD5Z`, a deferral was an id named in a `###` subsection headed
+`Declined`, `Deferred` or `Sequenced`. [...] Completed sections keep those
+subsections, because they are the record of that period." The project owner's
+answer in `PL-LVN8` moves v0.5.0's dispositions to the items, so this slice also
+rewrites that last sentence to say where the records went.

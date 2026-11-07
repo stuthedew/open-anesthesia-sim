@@ -109,7 +109,7 @@ def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, l
 # --- the version table ------------------------------------------------------
 
 # Which version the project is *on* is stated in three places that must agree:
-# the version file, one row of this table, and the prose heading below it. The
+# the version file, one row of this table, and the `Current baseline:` heading. The
 # grammar of the row is read here for the same reason the timeline's is - two
 # copies of it would drift, and the drift would be in the one document that
 # says which release is current.

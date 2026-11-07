@@ -131,3 +131,14 @@ implements this should say so where the rule is written.
 4. v0.5.0's `### Declined to Gate 2 ...` subsection re-grounds `PL-7Z84`,
    `PL-9LNF`, `PL-NWTM` and `PL-W54S` on the new rule rather than on deferral,
    and every count `doc_check` holds to that list moves with them.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "The gate
+is a snapshot, not a moving target" carried this record of the decision until
+then. The project owner's answer in `PL-LVN8` sends decision history to the
+item that holds it.
+
+> This was also the only one of the three options that ends in a state a
+> session can actually reach. The other two options leave
+> `tools/doc_check.py`'s corrected safety-class advisory lit against items
+> that nobody can dispose of. That is the defect `CLAUDE.md` names: a check
+> that "fires every run without changing a decision".

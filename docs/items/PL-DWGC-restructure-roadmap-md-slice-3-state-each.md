@@ -3,13 +3,15 @@ id: PL-DWGC
 title: Restructure ROADMAP.md, slice 3: state each versioning rule once under § "Versioning decision", and keep each timeline and version row to what the step or release is, with a pointer to its section
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-W0TS
+blocked-by: PL-P0C5
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+payoff: a reader deciding what a release holds finds each versioning rule stated once, and each version row says in one sentence what the release changed, with the rest in that release's cut item
+verify: ! grep -qE '^\| v[0-9]+\.[0-9]+\.[0-9]+ \|.{600,}' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 3: state each versioning rule once under § "Versioning decision", and keep each timeline and version row to what the step or release is, with a pointer to its section
@@ -28,7 +30,7 @@ added: 2026-11-07
 - Work merged after a cut: "anything that merges on main after this cut ... ships inside the v0.6.16 tag. It is described in the next release" (341-343) repeats 202-245. It belongs in § "Versioning decision", and the baseline keeps nothing.
 - The version table and the sections: row 160 (v0.6.16) restates § "Current baseline" (279-343), and rows 65, 91, 101 and 144 restate their milestone sections. Each row keeps one sentence and points at its section.
 
-**Queries filed separately.** `PL-HXJJ` (the "two halves" of the versioning test), `PL-S2LW` (v0.8.0 given to a milestone section that does not exist), `PL-8G3F` (91 entries against 87 of 90) and `PL-TW3Q` (v0.2.8's 38 entries against 37). Finding 53, the owner's test drive missing from v0.7.0's definition of done, is applied in slice 5 (`PL-YNFS`). Chapter read 2's finding that each version row should keep one sentence, with the rest moved out, is decided by the answer in `PL-LVN8`. If the project owner agrees to it, the release procedure in `.claude/skills/docket/modes/release.md` changes in the same slice, because each cut writes a row and would otherwise grow the table back.
+**Queries filed separately.** `PL-HXJJ` (the "two halves" of the versioning test), `PL-S2LW` (v0.8.0 given to a milestone section that does not exist), `PL-8G3F` (91 entries against 87 of 90) and `PL-TW3Q` (v0.2.8's 38 entries against 37). Finding 53, the owner's test drive missing from v0.7.0's definition of done, is applied in slice 5 (`PL-YNFS`). Chapter read 2's finding that each version row should keep one sentence, with the rest moved out, is decided by the answer in `PL-LVN8`. If the project owner agrees to it, the release procedure in `.claude/skills/docket/modes/release.md` changes in the same slice, because each cut writes a row and would otherwise grow the table back. [Answered 2026-11-07: he chose to move both. The release procedure already says a row is one sentence, a change made the day he answered, so this slice trims the existing rows and moves each row's remainder to its release's cut item.]
 
 **The findings inside each chapter, as the chapter reads gave them.** Each chapter read also ended with an outline of one line per paragraph, which is left out here and kept in the shared folder. Each read is quoted whole, as a block, so that its quotations of the roadmap are not taken for this item's own claims.
 
@@ -233,3 +235,36 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Next steps, written when slice 2 closed (2026-11-07).** The thread that did
+slice 2 stopped before this slice for length, not for the work, so a fresh
+session picks it up.
+
+1. Start from `main` once slice 2 (`PL-P0C5`, #2059) has merged, and claim this
+   item. Read `PL-P0C5`'s brief first: its outcome record says what moved where.
+2. The row numbers in the findings are `ROADMAP.md` at `aff76df1`. Slices 1 and
+   2 moved sections, so find each passage by the words a finding quotes. The
+   version table sits under § "Versioning decision" → "Version table".
+3. The project owner's answer in `PL-LVN8` (2026-11-07) applies: each version
+   row keeps one sentence on what the release changed for a learner, with its
+   item count, and the rest of the row moves verbatim to that release's cut
+   item. A row usually names the previous release's cut item, as in "`PL-Y3XK`
+   is the v0.4.34 cut". Quote each moved remainder at the end of the cut item's
+   brief, under a line naming this slice, as slice 2 did.
+4. The `verify:` command fails while any version row runs to 600 characters or
+   more. On 2026-11-07 the 122 rows ran from 96 to 14,419 characters.
+5. Slice 2's reviewers found that the commonest meaning change was cutting both
+   copies of a repeated fact as repeats of each other. After each dedupe, check
+   that the surviving copy exists. Also check every "above", "below", "this
+   section" and pronoun whose sentence moved.
+6. Before marking the pull request ready, compare `bin/docket wave --no-fetch`,
+   `bin/docket gate --no-fetch`, `bin/docket check` and
+   `python3 tools/doc_check.py check` before and after, then give two reviewers
+   the old and new file, one for position-dependent words and one for every
+   changed line and moved passage. `tools/doc_check.py` checks some version-row
+   counts against the gate lists, so run it after each batch of rows.
+7. If the trim does not fit one session's budget, split it into two pull
+   requests by release series (v0.0 to v0.4, then v0.5 and v0.6), and rewrite
+   this `verify:` for the first.
+8. `ROADMAP.md` is not on the owner's read list, so `bin/docket arm` answers
+   "arm" and the pull request merges on green.

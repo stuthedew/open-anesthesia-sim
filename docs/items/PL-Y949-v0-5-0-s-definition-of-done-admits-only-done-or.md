@@ -97,3 +97,18 @@ release — that is `PL-S5Q9`'s finding and the rider must not weaken it.
 `deferred to a later gate`, which appears nowhere in `ROADMAP.md` today. That is
 the only wording constraint — everything around it is the implementing session's
 to write.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` beat 3 of §
+"The cadence" carried this record of the decision until then. The project
+owner's answer in `PL-LVN8` sends decision history to the item that holds it.
+
+> Gate 1's last entry, `PL-WZVZ`, is deferred to Gate 2 on exactly these
+> terms. Yet v0.5.0's bullet admits only `done` or `dropped`. So a session
+> running that cut would have had to choose between two things. It could drop
+> a `safety`-classed entry whose hazard is real but not yet live, or it could
+> hold the release. `PL-F0L8` records one occasion when the bullet was
+> already treated as exhaustive, and `dropped` was chosen to stay inside it.
+> Gate 2 freezes the day v0.5.0 ships and inherits that entry. So a gate with
+> a deferral in it is the normal case, not something special to this gate.
+> This would be an instance rather than a rule only if no later gate ever
+> deferred an entry, and Gate 2 already falsifies that.

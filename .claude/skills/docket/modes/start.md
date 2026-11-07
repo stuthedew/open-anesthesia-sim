@@ -266,7 +266,8 @@ tree as it is now, and take one of three outcomes:
 - **Gone.** Drop it with the evidence as the reason: `bin/docket set <id>
   --status dropped --reason "..." --closed DATE`, where the reason says what
   was checked and what showed the problem no longer exists. A dropped item
-  clears as surely as a fixed one; `ROADMAP.md` § "What counts" counts both.
+  clears as surely as a fixed one; `ROADMAP.md` § "The cadence" beat 3 counts
+  both.
 
 **A touched path that is no longer there is a question, not the answer.** A
 problem can move with its code rather than leave with it. In five Java
