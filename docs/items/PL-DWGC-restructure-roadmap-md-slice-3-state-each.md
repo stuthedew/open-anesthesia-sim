@@ -268,3 +268,43 @@ session picks it up.
    this `verify:` for the first.
 8. `ROADMAP.md` is not on the owner's read list, so `bin/docket arm` answers
    "arm" and the pull request merges on green.
+
+**Part 1, the version table (`#2061`, 2026-11-07).** This slice is landing in
+two pull requests, as step 7 above allows, because the table alone changed 97
+item files.
+
+- Of the 122 rows, 115 now keep only their first sentence. The rest of each
+  row is quoted word for word at the end of its release's cut item, under a
+  line naming this slice. Rows for v0.2.3 to v0.3.9 had no cut item, so
+  `PL-1K0L` holds theirs. A script checked that each row's kept sentence and
+  its moved remainder join back into the old row exactly.
+- The header now reads `| Version | Status | What the release holds | Items |
+  Details |`, so the item count shows on the page instead of in a fifth cell
+  GitHub dropped. The Details cell names the item that holds the row's
+  remainder. The Status column stays, because the release tools read
+  "Completed" and "current baseline" in it.
+- `.claude/skills/docket/modes/release.md` now says a new row writes its count
+  in the Items cell and its cut item in the Details cell.
+- `PL-FV7G` closed, because its stale clause left the roadmap with the v0.4.14
+  row's remainder. Seven open queries that quote row text (`PL-392N`,
+  `PL-9857`, `PL-T5R7`, `PL-8G3F`, `PL-1BVB`, `PL-HXJJ`, `PL-H6T7`) now say
+  which cut item holds it.
+- Chapter read 2's findings that part 1 applied: the column headings, the item
+  count shown twice, the table cells written for another reader, the five
+  sentences repeated row after row, and the comment that sat below the table
+  (it moved with v0.5.3's text to `PL-CY4F`). The finding that the table be
+  split into one table per series is not applied: `docket.roadmap` reads the
+  first table under § "Versioning decision" as the whole version table, so a
+  split would hide every later series from the release tools.
+- Four rows still run past 600 characters (v0.6.12 at 695, v0.6.13 at 821,
+  v0.6.14 at 698, v0.6.15 at 751), because their one sentence is that long.
+  Shortening a sentence is the line edit's (`PL-YRY3`), so the `verify:` is
+  rewritten when this item closes.
+
+**Next steps for part 2.** Claim this item again on the branch after `#2061`
+merges, then apply the remaining findings of chapter reads 1 to 5: the
+versioning rules stated once, the baseline, the release-tag section's order and
+subheadings, and § "The plan" and its timeline cells. The tool passages in the
+release-tag section are slice 4's (`PL-G6DP`). Record each finding as applied,
+deferred with its reason, or answered, then rewrite the `verify:` on the call
+that closes this item.
