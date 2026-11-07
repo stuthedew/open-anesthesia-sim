@@ -27,9 +27,10 @@ data/  --loaded by-->  core/  --read by-->  app/
   toolkit, no wall-clock time, and no I/O beyond reading the packaged JSON
   files in `data/`. Every quantity it produces is deterministic for identical
   inputs.
-- **`app/`** is the PySide6 user interface. It only reads immutable snapshots
-  from `core/`, through a thin controller, and renders them. It forwards user
-  input back as setter calls.
+- **`app/`** is the PySide6 user interface. It never performs a physiological
+  or unit calculation itself. It only reads immutable snapshots from `core/`,
+  through a thin controller, and renders them. It forwards user input back as
+  setter calls.
 - **`layout/`** is the area layout as a value. A window is divided into
   **Areas**, and each Area holds one **View**: a widget such as a chart or the
   setting controls. Any View can occupy any Area. A **Workspace** is a named
@@ -52,16 +53,14 @@ data/  --loaded by-->  core/  --read by-->  app/
 Three rules rest on this layering, and this section is where the first one is
 stated. The first rule is that simulation code stays independent of the UI
 toolkit. `tools/import_boundary_check.py` rejects a toolkit import under
-`core/` and a `core/` import of `app/`. The rule was a `CLAUDE.md` bullet
-until `PL-ZYHX` retired the bullet in favour of that check on 2026-10-17. The
-second rule is that the interface never performs a physiological or unit
-calculation itself, and no simulation calculation belongs in a UI callback.
+`core/` and a `core/` import of `app/`. The rule was a `CLAUDE.md` bullet until
+`PL-ZYHX` retired the bullet in favour of that check on 2026-10-17. The second
+rule is that no simulation calculation belongs in a UI callback.
 `.claude/rules/ui-calculations.md` states that rule, and it loads with every
 file under `app/`. The third rule is that model parameters live in validated,
-versioned data files and never as executable code. `CLAUDE.md`
-§ "Architecture and development discipline" keeps that rule, and the
-parameter loader rejects a formula where a number is expected (§ "Data files
-(`data/`)").
+versioned data files and never as executable code. `CLAUDE.md` § "Architecture
+and development discipline" keeps that rule, and the parameter loader rejects a
+formula where a number is expected (§ "Data files (`data/`)").
 
 **What the import check rejects.** Under `core/`, it rejects `PySide6`,
 `pyqtgraph`, `numpy` and any import of `app/`. Under `layout/`, it rejects
@@ -140,7 +139,7 @@ src/anesthesia_sim/
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
 │   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
-│   └── main.py                     # PySide6 entry point (§ "How a learner takes one, and how a comparison ends" and the two User state chapters); the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
+│   └── main.py                     # PySide6 entry point (§ "What a branch is, and what it shares with its parent" and the two User state chapters); the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 ├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
 │   ├── sizing.py                   # how a layout is drawn in whole pixels: each Area held at its View's need, its siblings giving way, and which Areas are too small and held at their floor instead, a size that fits the header and the too-small notice at the width the Area is drawn at (PL-K285, PL-Y65Q, PL-16BG); pure functions of a tree and an extent
@@ -164,7 +163,8 @@ src/anesthesia_sim/
 `data/` holds versioned, schema-validated parameter files (JSON) with
 citations. The files come in three kinds: the agent, the patient, and the
 machine in front of them. Every scientific constant that a shipped run uses
-comes from one of these files. § "Where new code belongs" says how to add one.
+comes from one of these files. § "Where new code belongs" says how to add a
+profile.
 
 Each value belongs in exactly one of three directories, by what it describes:
 
@@ -179,13 +179,10 @@ Filing a machine parameter in a patient file would misstate where it comes from
 `AgentUptakeSystem.for_agent()` passes each value explicitly, so no shipped
 path uses a compartment's field default. The defaults are still written in
 `core/`, so that a unit can be constructed bare. A test pins each default to
-the data file that is its authority. A value written only in `core/` would be
-invisible to `tools/doc_check.py`'s provenance walk, which can only see a
-constant that has entered a data file.
-
-`data/workspaces/` holds the shipped Workspaces. These are layout rather than
-parameters: `layout/shipped.py` reads them, and nothing in `core/` does. §
-"User state: the saved Workspaces" describes the shipped set.
+the data file that is its authority. The machine file and the first of those
+pins came from `PL-4YY1`. A value written only in `core/` would be invisible to
+`tools/doc_check.py`'s provenance walk, which can only see a constant that has
+entered a data file.
 
 Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
@@ -227,6 +224,11 @@ stored value, file by file and in total (`python3 tools/source_tier_counts.py`).
 Its output gives the counts that `docs/MODEL.md` states, but the script does not
 check them. It never blocks a change, by the project owner's decision
 recorded on `PL-9LXK`.
+
+`data/workspaces/` holds the shipped Workspaces. These are layout rather than
+parameters: `layout/shipped.py` reads them, and nothing in `core/` does, so
+nothing above in this chapter applies to them. § "User state: the saved
+Workspaces" describes the shipped set.
 
 ## Data flow
 
@@ -380,21 +382,21 @@ definition is the run and the samples were a second copy of it. What the
 chart draws now is what `drawn_window` evaluates. Nothing exists behind those
 states that could disagree with them.
 
-Drawing that full record on every frame is what made the render payload grow
-with the run's length. The run no longer keeps a record to draw.
+Drawing that full sample history on every frame is what made the render payload
+grow with the run's length. The run no longer keeps a sample history to draw.
 `core/run_definition.py` returns the state at any instant in closed form. So
 the view asks the controller for the states at the instants it is about to plot
 (`SimulationController.drawn_window`), and there is nothing to subset. The
-amount of data that crosses that boundary is therefore limited by the display,
-not by the length of the run. Which
-instants those are is a presentation-correctness concern. A chart that stepped
-over a control change would show a curve the simulation never produced. So the
-rules that place the instants are stated in `docs/MODEL.md` §
-"What the chart draws" and are tested on their own. The evaluated instants are
-anchored to an absolute grid measured from the case's zero, rather than to
-their position within the window. So a window that follows the run keeps every
-column it had and gains at most one (`RunDefinition.evaluate_anchored`,
-`PL-Q197`, `PL-2FM6`).
+amount of data that passes from the controller to the view is therefore limited
+by the display, not by the length of the run. Which instants those are is a
+presentation-correctness concern. A chart that stepped over a control change
+would show a curve the simulation never produced. So the rules that place the
+instants are stated in `docs/MODEL.md` § "What the chart draws" and are tested
+on their own. The evaluated instants are anchored to an absolute grid measured
+from the case's zero, rather than to their position within the window. So a
+window that follows the run keeps every column it had and gains at most one
+(`RunDefinition.evaluate_anchored`). `PL-Q197` set this rule for recorded
+samples, and `PL-2FM6` carried it over to evaluated columns.
 
 `app/chart_frame.py` is the layer above that anchored evaluation. It holds the
 rule of one column per pixel and that rule's minimum column count
@@ -408,23 +410,25 @@ six compartment traces are drawn in percent, and the wash-in ratio in its own
 dimensionless unit.
 
 `app/run_view.py` and `app/simulation_view.py` read only the snapshot and
-`drawn_window`. A `RunView` builds one run's controls, and it wires the
-slider and button callbacks through `_apply_setting` to the controller's
-setters. The `SimulationView` drives the charts that every run shares.
-Each transformation that they do apply is a module of its own (§ "Package
-map" gives each module's role). That is because
-each one is a question of presentation *correctness* rather than of layout,
-and each must be readable and testable with no toolkit loaded.
+`drawn_window`. A `RunView` builds one run's controls, and it wires the slider
+and button callbacks through `_apply_setting` to the controller's setters. The
+`SimulationView` drives the charts that every run shares. Each transformation
+that they apply is a module of its own: `app/formatting.py`,
+`app/chart_frame.py` with `app/qt_chart.py`, `app/dashboard_frame.py` with
+`app/qt_widgets.py`, `app/control_timeline.py`, `app/playback.py` and
+`app/wash_in.py`. § "Package map" gives each one's role. Each is a module of
+its own because each one is a question of presentation *correctness* rather
+than of layout, and each must be readable and testable with no toolkit loaded.
 
 `app/formatting.py` uses the resolutions that `docs/MODEL.md` § "Displayed
 precision" derives.
 
 Three of the transformation modules answer correctness questions, for reasons
-worth stating. In `app/control_timeline.py`, the control record is faithful to
-the run, and a drag of one slider appears in it as several settings. So
-collapsing that drag into one displayed act is a claim about what the user did.
-It is not a tidier rendering of what the model saw. In `app/wash_in.py`, the
-wash-in quotient has a domain. It is undefined before any agent reaches the
+worth stating. `app/control_timeline.py` reads a control record that is
+faithful to the run, in which a drag of one slider appears as several settings.
+So collapsing that drag into one displayed act is a claim about what the user
+did. It is not a tidier rendering of what the model saw. In `app/wash_in.py`,
+the wash-in quotient has a domain. It is undefined before any agent reaches the
 circuit, and above 1 it stops being a wash-in fraction. So the module returns
 the value and the reason together, and the chart draws the trace in segments
 that break where the domain does. `docs/MODEL.md` § "F_A/F_I as a displayed
@@ -483,18 +487,18 @@ Five things in `app/controller.py` implement a branch:
   `_branch_from`. Only the place where the fork may be taken differs. So a
   setting that the learner changed on the trunk while it stood there is on the
   branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
-  because the fork is the clock. So a caller has no float with which to name
-  an instant the run has not reached. Nor can anyone confuse the instant a
-  learner *marked* with the step instant the run actually stopped on. The
-  method refuses a running trunk, a failed one, and one standing at its
-  opening. It also refuses one at the supported run length, where a branch
-  would have no step to take. `here_fork_point` returns its result from the
-  same check, so an offer built from it cannot disagree with `resumed_here`.
-  The crossing that the branch opens on is the crossing of the step it stands
-  on. That crossing is computed again from the marks as they are at each read,
-  in the same way for every branch. So a mark added inside the halting step
-  counts as passed on the branch, just as it does on the trunk (`PL-2N43`,
-  `PL-XV0D`).
+  because the fork is the clock. So a caller has no float with which to name an
+  instant the run has not reached. Nor can anyone confuse the instant a learner
+  *marked* with the step instant the run actually stopped on. The method
+  refuses a running trunk, a failed one, and one standing at its opening
+  (§ "Failures and halts" says what a failed run and a halt are). It also
+  refuses one at the supported run length, where a branch would have no step to
+  take. `here_fork_point` returns its result from the same check, so an offer
+  built from it cannot disagree with `resumed_here`. The crossing that the
+  branch opens on is the crossing of the step it stands on. That crossing is
+  computed again from the marks as they are at each read, in the same way for
+  every branch. So a mark added inside the halting step counts as passed on the
+  branch, just as it does on the trunk (`PL-2N43`, `PL-XV0D`).
 - `SimulationController.resumed_at_mark(bookmark)` makes a branch at a time
   bookmark that the trunk has passed. The run may have halted there, or the
   learner may have marked the instant after the clock went past it (`PL-W4XQ`).
@@ -729,23 +733,23 @@ is a property of the display, not of the model:
   its fork, while the lock stays exactly where it was.
 
 **No agent may be chosen while two runs are shown** (`PL-QRD1`). A branch's
-`set_agent` refuses outright, so its `RunView` shows the agent chip in place
-of the selector. The trunk's `set_agent` *succeeds*, which is the worse case.
-The switch restarted the trunk, but `BranchedCase` went on listing a branch of
-a run that no longer existed. `assemble_chart_frame` then refused the frame
-over the shared MAC axis. So `_halt_every_run` failed both runs because of an
-input to one of them. The trunk's selector is therefore locked while a
-comparison is shown too (project owner, 2026-09-20, ratified, over keeping the
-selector live and growing `RunView._confirm_new_case`'s dialog a clause about
-the branches it would orphan). This follows the preference in
-`.claude/rules/expert-review.md` for an interface that prevents the error over
-one that reports it afterwards. The decision was ratified rather than
-specified, because the case put to the owner was a session's own
-recommendation. So ordinary evidence is enough to put it back to them: a
-learner who wants to change agent mid-comparison, a measurement, or a cost
-the case did not carry. `dashboard_frame.transport` carries all three locks
-and names the longest-lasting one that applies. So the chip never sends a
-reader to Pause for a lock that Pause cannot lift.
+`set_agent` refuses outright, so its `RunView` shows the agent chip in place of
+the selector. The trunk's `set_agent` *succeeds*, which is the worse case. The
+switch restarted the trunk, but `BranchedCase` went on listing a branch of a
+run that no longer existed. `assemble_chart_frame` then refused the frame over
+the shared MAC axis. So `SimulationView._halt_every_run`, which halts every run
+(§ "Failures and halts"), failed both runs because of an input to one of them.
+The trunk's selector is therefore locked while a comparison is shown too
+(project owner, 2026-09-20, ratified, over keeping the selector live and
+growing `RunView._confirm_new_case`'s dialog a clause about the branches it
+would orphan). This follows the preference in `.claude/rules/expert-review.md`
+for an interface that prevents the error over one that reports it afterwards.
+The decision was ratified rather than specified, because the case put to the
+owner was a session's own recommendation. So ordinary evidence is enough to put
+it back to them: a learner who wants to change agent mid-comparison, a
+measurement, or a cost the case did not carry. `dashboard_frame.transport`
+carries all three locks and names the longest-lasting one that applies. So the
+chip never sends a reader to Pause for a lock that Pause cannot lift.
 
 ### What a branch comparison asserts, and which part of it is structural
 
@@ -787,10 +791,10 @@ what it does not" is where it is argued.
 
 ## Failures and halts
 
-**Failure direction:** every failure that `core/` reports is a subclass of
+Every failure that `core/` reports is a subclass of
 `AnesthesiaSimulationError` (`core/exceptions.py`), never a bare
 `ValueError`. That lets the interface recognise a simulation failure and act
-on it. The hierarchy has two branches, which mean different things and get
+on it. The hierarchy has two kinds, which mean different things and get
 different treatment:
 
 - `SimulationConfigurationError` means that a value was rejected before it
@@ -978,12 +982,14 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   The save writes a temporary file beside the target and `fsync`s it. It then
   copies the current file to `workspaces.json.previous`, so that one prior
   generation survives. Finally it `os.replace`s the target, and makes a best
-  effort to `fsync` the directory. The module that writes a user's file
-  (`user_files.py`) takes every step but the copy, for both stores. As a result,
-  only a crash in the middle of the replace can leave the current file torn. A
-  failed save raises `WorkspaceFileError`, which names the path and the reason.
-  The error is reported where the action was invoked, on the line under the
-  Workspace tabs, where `app/workspace_tabs.py` shows what the store reported.
+  effort to `fsync` the directory. Both stores take the temporary file's write
+  and `fsync`, and the directory's `fsync`, from the module that writes a
+  user's file (`user_files.py`). Each store calls `os.replace` itself, and only
+  the Workspaces store makes the copy. As a result, only a crash in the middle
+  of the replace can leave the current file torn. A failed save raises
+  `WorkspaceFileError`, which names the path and the reason. The error is
+  reported where the action was invoked, on the line under the Workspace tabs,
+  where `app/workspace_tabs.py` shows what the store reported.
 - **The shipped set** that the store falls back to is three Workspaces in
   `data/workspaces/`, one JSON file each, in the saved file's format
   (`PL-KXTL`). In `layout/shipped.py`, they are read by the same code that
@@ -1295,34 +1301,31 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   colour is declared with `qt_widgets.declare_interface_colours` instead,
   never with a stylesheet (`.claude/rules/ui-color.md`).
 - A new chart series, or a change to how one is drawn → two modules. What the
-  series *claims* goes in `app/chart_frame.py`. How pyqtgraph paints it goes
-  in `app/qt_chart.py`. A new *compartment* trace is declared in
+  series *claims* goes in `app/chart_frame.py`. How pyqtgraph paints it goes in
+  `app/qt_chart.py`. A new *compartment* trace is declared in
   `chart_frame.COMPARTMENT_TRACES`. That table writes four things as one
-  record: the quantity the trace draws, how it is drawn, the legend words
-  that name it, and the gloss its hover text carries. The table belongs to
-  the chart, not to any one run. `assemble_chart_frame` reads it once per
-  run, for the substance that the run's snapshot names. The run is recorded
-  under that substance's identifier. `ChartFrame.visible` is the dashboard's
+  record: the quantity the trace draws, how it is drawn, the legend words that
+  name it, and the gloss its hover text carries. The table belongs to the
+  chart, not to any one run. `assemble_chart_frame` reads it once per run, for
+  the substance that the run's snapshot names. The run is recorded under that
+  substance's identifier. `ChartFrame.visible` is the dashboard's
   `CompartmentSelection`. The legend shows that selection and asks to change
-  it, but does not hold it (`PL-VN6M`). Once more than one run is on the
-  chart, `ChartFrame.visible` is that selection narrowed by
-  `compared_compartments` to `COMPARED_COMPARTMENT_CAP`. So
-  `app/qt_chart.py` keeps one curve per run per trace and moves each curve to
-  match. Nothing is edited directly. The *width* of a curve comes from
-  `chart_frame.run_trace_style`, not from the table. While two runs are
-  drawn, that width is the run's own channel. The table records what a
-  compartment looks like, so a new trace declares no width for a run. A
-  series that draws no state of the run stays out of that table by
-  construction. Examples are a clinical reference and a control mark. Such a
-  series must meet a labelling requirement instead. `docs/MODEL.md`
-  § "Interface boundary" sets that requirement in place of the drawn-point
-  rule. A reference is placed by `app/chart_frame.py` and drawn by
-  `app/qt_chart.py`, and it is deliberately not in the table, because a
-  reference reads no state of the run. A control mark is a third kind of
-  series on the same terms, for a stronger version of the same reason. It
-  draws no value at all, only a simulated time, and it is likewise outside
-  the table. A trace of a *derived* quantity with a domain, such as the wash-in
-  ratio, also stays out of the table. The table binds a line to one
-  `RecordedSeries`. A value that is sometimes absent has no such series to
-  bind to. Such a trace must state its domain instead, in `docs/MODEL.md` and
-  at the point of display.
+  it, but does not hold it (`PL-VN6M`). Once more than one run is on the chart,
+  `ChartFrame.visible` is that selection narrowed by `compared_compartments` to
+  `COMPARED_COMPARTMENT_CAP`. So `app/qt_chart.py` keeps one curve per run per
+  trace and moves each curve to match. Nothing is edited directly. The *width*
+  of a curve comes from `chart_frame.run_trace_style`, not from the table.
+  While two runs are drawn, that width is the run's own channel. The table
+  records what a compartment looks like, so a new trace declares no width for a
+  run. A series that draws no state of the run stays out of that table by
+  construction. Examples are a clinical reference and a control mark. A
+  reference is placed by `app/chart_frame.py` and drawn by `app/qt_chart.py`,
+  and it reads no state of the run. A control mark is a third kind of series,
+  for a stronger version of the same reason: it draws no value at all, only a
+  simulated time. A series outside the table must meet a labelling requirement
+  instead. `docs/MODEL.md` § "Interface boundary" sets that requirement in
+  place of the drawn-point rule. A trace of a *derived* quantity with a domain,
+  such as the wash-in ratio, also stays out of the table. The table binds a
+  line to one `RecordedSeries`. A value that is sometimes absent has no such
+  series to bind to. Such a trace must state its domain instead, in
+  `docs/MODEL.md` and at the point of display.
