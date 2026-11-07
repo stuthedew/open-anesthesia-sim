@@ -1,25 +1,22 @@
 # Targ, Yasuda & Eger 1989: anesthetic solubility in a circuit's plastics and rubber
 
-This note records the facts this repository takes from one paper, with the
-page each sits on, so that no later session has to read the paper again for
-them. The paper is held in the private corpus. Only facts and short quotations
-cross into this repository. No table is reproduced.
+This note gives each fact the simulator takes from one paper, with its page.
 
 > Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
 > isoflurane, and halothane in plastics and rubber composing a conventional
 > anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID
 > [2764290](https://pubmed.ncbi.nlm.nih.gov/2764290/). PubMed gives no DOI.
 
-`docs/references/README.md` § "Targ, Yasuda & Eger 1989 — anesthetic
-solubility in a circuit's plastics and rubber" carries this citation.
+I-653 is the code name desflurane carried before it had its name.
 
 This is the **circuit** paper. Its companion, Yasuda, Targ & Eger, *Anesth
 Analg* 1989;69(3):370-3, PMID 2774233, has the same authors in another order
 and ends "in human tissues". That one is the source of the tissue
-coefficients. I-653 is the code name desflurane carried before it had its
-name.
+coefficients, which each agent's data file records, and which `docs/MODEL.md`
+§ "v0.2.0: isoflurane and desflurane" checks against the paper.
 
-Route and depth: the private corpus, through the paper's text layer, printed
+Route and depth: the project owner's own copy, kept outside this repository
+(the private corpus), through the paper's text layer, printed
 pages 218 to 222 and the reference list on page 224. First read in full on
 2026-09-13. The facts below were checked against the text layer again on
 2026-10-26 for `PL-N701`.
@@ -47,31 +44,30 @@ pages 218 to 222 and the reference list on page 224. First read in full on
 | The order of the components' partition coefficients | halothane > isoflurane > sevoflurane > desflurane, from 7.5 min to 9 weeks | Results, page 220 |
 | The "ideal" wash-in and washout line drawn against the data | % change = 100[1 − e^(−(V̇/Vs)t)], with V̇ the inflow and Vs the system volume | Figures 3 and 5, desflurane's wash-in and washout, pages 221 and 222 |
 | The authors' reading for desflurane | absorption "by circuit components or soda lime should not hinder induction of or recovery from anesthesia" | Abstract, page 218 |
-| The authors' reference 10 | Yasuda N, Targ AG, Eger EI 2nd, *Anesthesiology* 1988;69:A615, a conference abstract on the same tissue measurements | References, page 224 |
-
-The plastic/gas and rubber/gas coefficients of Table 1 that this repository
-uses are in `docs/MODEL.md` § "Known limitations", in the entry on the inert
-circuit. They are not repeated here.
+| The authors' reference 10 | Yasuda N, Targ AG, Eger EI 2nd, *Anesthesiology* 1988;69:A615, a conference abstract reporting the same tissue measurements, not a separate measurement | References, page 224 |
+| Each plastic or rubber component's partition coefficient against gas | not repeated here | Table 1, page 220 |
 
 ## Where the repository uses them
 
-- **The 9860 ml volume** is recorded and not adopted, in
-  `src/anesthesia_sim/data/machines/reference_circle_system.json` and in
-  `docs/MODEL.md` beside `circuit_volume_l`. The measured system included the
-  reservoir bag that stood in for the lungs, so the volume bounds the
-  circuit's volume and cannot replace it (`PL-QBKQ`).
+No stored value rests on this paper: none of its facts is adopted as the
+authority for a stored value (`docs/MODEL.md` § "Source hierarchy: what may be
+cited as the authority for a value" defines adoption).
+
+- **The 9860 ml volume** is recorded in the reference circle system's data
+  file (`src/anesthesia_sim/data/machines/reference_circle_system.json`) and
+  in `docs/MODEL.md` beside the circuit volume (`circuit_volume_l`). The
+  measured system included the reservoir bag that stood in for the lungs, so
+  the volume bounds the circuit's volume and cannot replace it (`PL-QBKQ`).
 - **The desflurane reading and the ideal line** are why `docs/MODEL.md` §
   "Desflurane's residual, and why the parameter file was not changed" strikes
   circuit-wall absorption as a cause of desflurane's residual (`PL-XWCY`).
 - **Table 1's coefficients and their order** support the inert-circuit entry
-  in `docs/MODEL.md` § "Known limitations". The model's inert circuit is most
-  nearly true for desflurane and least true for halothane (`PL-LS3H`).
-- **Reference 10** settled that the 1988 abstract is a preliminary report of
-  the 1989 tissue paper, not a separate measurement. Each agent file under
-  `src/anesthesia_sim/data/agents/` records that (`PL-8GJ6`).
-
-None of these is adopted as the authority for a stored value, so the adoption
-rules of `docs/MODEL.md` § "Source hierarchy" do not apply.
+  in `docs/MODEL.md` § "Known limitations", which gives the coefficients. The
+  model's inert circuit is most nearly true for desflurane and least true for
+  halothane (`PL-LS3H`).
+- **Reference 10**: each agent's data file (under
+  `src/anesthesia_sim/data/agents/`) records that the 1988 abstract is a
+  preliminary report of the 1989 tissue paper (`PL-8GJ6`).
 
 ## What was not taken
 
@@ -79,5 +75,4 @@ rules of `docs/MODEL.md` § "Source hierarchy" do not apply.
   grease, which are not parts of the circuit this model describes.
 - The partition coefficients' approach to equilibrium (Figures 1 and 2), and
   the soda lime results for sevoflurane. The model has no absorber chemistry.
-- The wash-in and washout curves' individual points. Only the comparison with
-  the ideal line was used.
+- The wash-in and washout curves' individual points.
