@@ -214,7 +214,9 @@ under (`PL-JLYG`).
 **A version-table row is one sentence** (project owner, 2026-11-07, ratified, over
 keeping the long rows, `PL-LVN8`). It says what the release changed for a
 learner, with its item count. The rest of the release's record goes in its
-cut item, where the decisions behind it already live.
+cut item, where the decisions behind it already live. The count goes in the
+row's Items cell, written as `N items` or `1 item`, and the cut item's id goes in its
+Details cell (`PL-DWGC`).
 
 **Prove "nothing computational moved" with a command, not by reading the
 diff.** A baseline section that says so rests first on the tree objects:

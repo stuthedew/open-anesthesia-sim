@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-06S3-cut-v0-5-40-from-the-1-item-finished-since-v0-5.md, docs/items/PL-06YW-cut-v0-4-26-from-the-94-finished-items-the-qt.md, docs/items/PL-0F33-cut-v0-5-23-from-the-214-items-finished-since.md, docs/items/PL-10D6-cut-v0-4-13-the-provenance-chain-read-end-to.md, docs/items/PL-1BL8-cut-v0-5-30-from-the-3-items-finished-since-v0.md, docs/items/PL-1K0L-hold-the-rest-of-each-version-table-row-for-v0.md, docs/items/PL-1V3X-cut-v0-4-24-the-release-where-core-settled-what.md, docs/items/PL-21GJ-cut-v0-6-4-from-the-32-items-finished-since-v0.md, docs/items/PL-2FHP-cut-v0-6-6-from-the-7-items-finished-since-v0-6.md, docs/items/PL-2JYB-cut-v0-6-12-from-the-6-items-finished-since-v0.md, docs/items/PL-2KC7-cut-v0-5-16-from-the-5-items-finished-since-v0.md, docs/items/PL-2YSL-cut-v0-4-23-the-release-where-standing.md, docs/items/PL-38HD-cut-v0-5-6-from-the-twelve-items-finished-since.md, docs/items/PL-3XWZ-cut-v0-5-5-from-the-fifteen-items-finished.md, docs/items/PL-3Z9X-cut-v0-4-14-the-five-ways-bin-docket-verify.md, docs/items/PL-43Z5-cut-v0-6-8-from-the-15-items-finished-since-v0.md, docs/items/PL-47SP-cut-v0-5-14-from-the-17-items-finished-since-v0.md, docs/items/PL-4B1G-cut-v0-5-0-from-the-78-items-finished-since-v0.md, docs/items/PL-4KKR-cut-v0-4-21-the-release-where-the-stored.md, docs/items/PL-4KSZ-cut-v0-5-4-from-the-sixteen-items-finished.md, docs/items/PL-5VR1-cut-the-v0-4-6-release-provenance-read-at-the.md, docs/items/PL-5VTL-cut-v0-5-41-from-the-6-items-finished-since-v0.md, docs/items/PL-5ZLQ-cut-v0-5-12-from-the-131-items-finished-since.md, docs/items/PL-647D-cut-the-v0-4-0-release-the-teachable-case.md, docs/items/PL-6BP6-cut-v0-4-19-the-release-where-three-questions.md, docs/items/PL-6JG7-cut-v0-5-34-from-the-4-items-finished-since-v0.md, docs/items/PL-6KXN-cut-v0-5-37-from-the-1-item-finished-since-v0-5.md, docs/items/PL-7HDY-cut-the-v0-4-2-release-the-apparatus-patch-that.md, docs/items/PL-7NJ2-cut-v0-5-36-from-the-2-items-finished-since-v0.md, docs/items/PL-80PZ-cut-v0-6-16-from-the-11-items-finished-since-v0.md, docs/items/PL-84MH-cut-v0-5-19-from-the-items-finished-since-v0-5.md, docs/items/PL-8543-cut-v0-5-8-from-the-seven-items-finished-since.md, docs/items/PL-8B6Z-cut-v0-6-15-from-the-98-items-finished-since-v0.md, docs/items/PL-8BDX-cut-v0-6-10-from-the-12-items-finished-since-v0.md, docs/items/PL-8D7L-cut-v0-6-9-from-the-95-items-finished-since-v0.md, docs/items/PL-9354-cut-v0-5-42-from-the-1-item-finished-since-v0-5.md, docs/items/PL-9CS6-cut-v0-6-0-from-the-64-items-finished-since-v0.md, docs/items/PL-9F3H-cut-v0-5-24-from-the-79-items-finished-since-v0.md, docs/items/PL-9FMV-cut-v0-4-16-the-release-where-one-quantity.md, docs/items/PL-9MK6-cut-v0-5-13-from-the-18-items-finished-since-v0.md, docs/items/PL-BKDP-a-v0-4-8-tag-exists-on-the-commit-that-closed.md, docs/items/PL-CKZL-cut-v0-5-32-from-the-2-items-finished-since-v0.md, docs/items/PL-CY4F-cut-v0-5-3-from-the-eleven-items-finished-since.md, docs/items/PL-D89D-cut-v0-4-20-the-release-where-four-stored.md, docs/items/PL-DRRG-cut-v0-5-11-from-the-16-items-finished-since-v0.md, docs/items/PL-F1SZ-cut-v0-4-35-from-the-16-items-finished-since-v0.md, docs/items/PL-G7RD-cut-v0-4-25-from-the-ten-finished-items.md, docs/items/PL-G803-cut-v0-5-18-from-the-10-items-finished-since-v0.md, docs/items/PL-GHDF-cut-v0-5-35-from-the-2-items-finished-since-v0.md, docs/items/PL-GL5P-decide-whether-to-cut-v0-4-29-from-the-5-items.md, docs/items/PL-H1GH-cut-the-v0-4-7-release-the-supported-run-length.md, docs/items/PL-HFQ9-cut-v0-5-27-from-the-5-items-finished-since-v0.md, docs/items/PL-HHCD-cut-v0-5-17-from-the-20-items-finished-since-v0.md, docs/items/PL-HP95-cut-v0-4-33-from-the-9-items-finished-since-v0.md, docs/items/PL-J7Y7-cut-the-v0-4-1-release-the-apparatus-patch.md, docs/items/PL-JYTJ-cut-v0-5-2-from-the-work-finished-since-v0-5-1.md, docs/items/PL-KDDS-cut-v0-6-11-from-the-14-items-finished-since-v0.md, docs/items/PL-KNWP-cut-v0-5-7-from-the-seventeen-items-finished.md, docs/items/PL-KXW1-cut-v0-5-22-from-the-3-items-finished-since-v0.md, docs/items/PL-L3JB-cut-v0-4-9-the-release-where-the-checks-were.md, docs/items/PL-L7RV-cut-v0-5-26-from-the-44-items-finished-since-v0.md, docs/items/PL-LSN3-cut-v0-6-7-from-the-11-items-finished-since-v0.md, docs/items/PL-MHYG-cut-v0-4-22-the-release-where-what-this-project.md, docs/items/PL-NLXK-cut-v0-5-10-from-the-8-items-finished-since-v0.md, docs/items/PL-PZGY-cut-v0-6-13-from-the-22-items-finished-since-v0.md, docs/items/PL-R3Y3-cut-v0-4-11-the-release-where-the-interface-s.md, docs/items/PL-R498-cut-v0-5-9-from-the-27-items-finished-since-v0.md, docs/items/PL-R4ZC-cut-v0-5-21-from-the-51-items-finished-since-v0.md, docs/items/PL-R5VS-cut-v0-4-31-from-the-14-finished-items-since-v0.md, docs/items/PL-SVZD-cut-v0-5-28-from-the-70-items-finished-since-v0.md, docs/items/PL-SW0D-cut-v0-4-30-from-the-8-items-finished-since-v0.md, docs/items/PL-SXBQ-cut-v0-4-17-the-release-where-core-said-what-it.md, docs/items/PL-T2LH-cut-v0-4-28-from-the-58-finished-items-since-v0.md, docs/items/PL-T343-cut-v0-6-14-from-the-5-items-finished-since-v0.md, docs/items/PL-T6F9-cut-v0-4-15-the-release-where-the-checks.md, docs/items/PL-TC7Y-cut-v0-6-3-from-the-20-items-finished-since-v0.md, docs/items/PL-TM9J-cut-v0-4-27-from-the-6-finished-items-since-v0.md, docs/items/PL-TNTK-cut-v0-5-38-from-the-1-item-finished-since-v0-5.md, docs/items/PL-TT19-cut-v0-5-25-from-the-39-items-finished-since-v0.md, docs/items/PL-V065-cut-v0-5-1-from-the-work-finished-since-v0-5-0.md, docs/items/PL-V3GD-cut-v0-4-32-from-the-4-items-finished-since-v0.md, docs/items/PL-VL8G-cut-v0-5-31-from-the-11-items-finished-since-v0.md, docs/items/PL-VLZT-cut-v0-4-10-the-release-where-the-apparatus.md, docs/items/PL-VR27-cut-the-v0-4-5-release-going-public-finished.md, docs/items/PL-VRQ9-cut-v0-5-39-from-the-1-item-finished-since-v0-5.md, docs/items/PL-WHG6-cut-v0-4-18-the-release-where-the-project.md, docs/items/PL-WQJS-cut-v0-5-33-from-the-11-items-finished-since-v0.md, docs/items/PL-WSJJ-cut-v0-5-20-from-the-5-items-finished-since-v0.md, docs/items/PL-XMCT-cut-v0-6-1-from-the-9-items-finished-since-v0-6.md, docs/items/PL-XVCG-cut-the-v0-4-4-release-the-exact-matrix.md, docs/items/PL-Y0W6-cut-the-v0-4-3-release-the-ci-cost-and-public.md, docs/items/PL-Y3XK-cut-v0-4-34-from-the-15-items-finished-since-v0.md, docs/items/PL-YBQM-cut-v0-5-29-from-the-61-items-finished-since-v0.md, docs/items/PL-Z4T7-cut-v0-6-2-from-the-16-items-finished-since-v0.md, docs/items/PL-Z7DZ-cut-v0-6-5-from-the-4-items-finished-since-v0-6.md, docs/items/PL-ZZTF-cut-v0-5-15-from-the-26-items-finished-since-v0.md, .claude/skills/docket/modes/release.md, docs/items/PL-392N-roadmap-md-gives-a-30-day-case-s-control.md, docs/items/PL-9857-roadmap-md-s-v0-6-0-section-says-gate-2-s.md, docs/items/PL-T5R7-roadmap-md-s-v0-5-0-required-scope-says-pl-y5wr.md, docs/items/PL-8G3F-roadmap-md-s-v0-7-0-frozen-list-headings-count.md, docs/items/PL-1BVB-roadmap-md-s-planned-milestone-catalogue-still.md, docs/items/PL-HXJJ-roadmap-md-s-baseline-and-version-rows-test.md, docs/items/PL-H6T7-roadmap-md-uses-apparatus-lane-and-generator-or.md
 blocked-by: PL-P0C5
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
@@ -268,3 +268,81 @@ session picks it up.
    this `verify:` for the first.
 8. `ROADMAP.md` is not on the owner's read list, so `bin/docket arm` answers
    "arm" and the pull request merges on green.
+
+**Part 1, the version table (`#2061`, 2026-11-07).** This slice is landing in
+two pull requests, as step 7 above allows, because the table alone changed 97
+item files.
+
+- Of the 122 rows, 115 now keep only their first sentence. The rest of each
+  row is quoted word for word at the end of its release's cut item, under a
+  line naming this slice. Rows for v0.2.3 to v0.3.9 had no cut item, so
+  `PL-1K0L` holds theirs. A script checked that each row's kept sentence and
+  its moved remainder join back into the old row exactly.
+- The header now reads `| Version | Status | What the release holds | Items |
+  Details |`, so the item count shows on the page instead of in a fifth cell
+  GitHub dropped. The Details cell names the item that holds the row's
+  remainder. The Status column stays, because the release tools read
+  "Completed" and "current baseline" in it.
+- `.claude/skills/docket/modes/release.md` now says a new row writes its count
+  in the Items cell and its cut item in the Details cell.
+- `PL-FV7G` closed, because its stale clause left the roadmap with the v0.4.14
+  row's remainder. Seven open queries that quote row text (`PL-392N`,
+  `PL-9857`, `PL-T5R7`, `PL-8G3F`, `PL-1BVB`, `PL-HXJJ`, `PL-H6T7`) now say
+  which cut item holds it.
+- Chapter read 2's findings that part 1 applied: the column headings, the item
+  count shown twice, the table cells written for another reader, the five
+  sentences repeated row after row, and the comment that sat below the table
+  (it moved with v0.5.3's text to `PL-CY4F`). The finding that the table be
+  split into one table per series is not applied: `docket.roadmap` reads the
+  first table under § "Versioning decision" as the whole version table, so a
+  split would hide every later series from the release tools.
+- Four rows still run past 600 characters (v0.6.12 at 695, v0.6.13 at 821,
+  v0.6.14 at 698, v0.6.15 at 751), because their one sentence is that long.
+  Shortening a sentence is the line edit's (`PL-YRY3`), so the `verify:` is
+  rewritten when this item closes.
+
+**Review of part 1 (2026-11-07).** Two reviewers compared the old and new
+text. Both found that all 122 rows join back into the old rows exactly. What
+they found, and what was done:
+
+- Moved text that said "this file", "this document" or "above" meant
+  `ROADMAP.md` and now sits in an item. Each of the six places now carries the
+  file in brackets, and one quote that meant the timeline's `v0.4.1` row says
+  so. A quote in `PL-XVCG` that said "this document" for equations that are in
+  `docs/MODEL.md` now names that file.
+- 65 quotes cite a section by name only. Each lead-in now says whose section
+  it is, `ROADMAP.md`'s or `docs/MODEL.md`'s.
+- Five quotes open by pointing back at the row's first sentence ("The second
+  half of that..."). Their lead-ins now quote that sentence.
+- Three places in the roadmap pointed at row text that has left the table:
+  item 29's note on v0.2.8's and v0.4.4's rows, a v0.5.0 out-of-scope bullet
+  on the v0.4.26 row, and § "Recording it" on counts dated to a release. Each
+  now points at the item that holds the text.
+- Four more open items quote moved row text (`PL-WZVZ`, `PL-M3MV`, `PL-YNFS`,
+  `PL-B6V1`), and three of the seven notes said the whole row moved. Each now
+  says where the rest of the row is.
+- The Items cell gives a count for 22 rows whose old text gave none. Those
+  counts come from each release's notes file, which
+  `check_release_row_item_count` holds the cell to, so they are kept. The
+  column exists so that every row shows its count.
+- Eight kept sentences do not say what their release changed (v0.2.9, v0.3.4,
+  v0.3.5, v0.3.8, v0.3.9, v0.4.1, v0.4.4 and v0.4.5). Choosing another
+  sentence is rewording, so `PL-YRY3` takes them. v0.4.4's matters most: its
+  row no longer shows that a displayed value moved in that release.
+- The rule that a release's own cut item ships in no release was stated in
+  about 45 rows and is now stated nowhere in the roadmap, and § "Release tags
+  and release notes" still says the next release names that cut. Filed as
+  `PL-V82M`. Of the other four sentences repeated row after row, the reserved
+  numbers are stated once in part 2, "both halves" is the query in `PL-HXJJ`,
+  and the last two were history of each release.
+- The release procedure now says a one-item row reads `1 item`. Two comments,
+  in `docket/roadmap.py` and `tools/doc_check.py`, no longer say that older
+  rows have no count cell. `PL-R3Y3` says it cut v0.4.12 as well as v0.4.11.
+
+**Next steps for part 2.** Claim this item again on the branch after `#2061`
+merges, then apply the remaining findings of chapter reads 1 to 5: the
+versioning rules stated once, the baseline, the release-tag section's order and
+subheadings, and § "The plan" and its timeline cells. The tool passages in the
+release-tag section are slice 4's (`PL-G6DP`). Record each finding as applied,
+deferred with its reason, or answered, then rewrite the `verify:` on the call
+that closes this item.
