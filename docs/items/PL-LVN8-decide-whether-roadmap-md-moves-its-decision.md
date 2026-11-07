@@ -1,10 +1,12 @@
 ---
 id: PL-LVN8
 title: Decide whether ROADMAP.md moves its decision history to the items, starting with each release's long version-table entry and v0.5.0's 2,000 rows of gate dispositions, and keeps one line for each
-status: untriaged
+status: done
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-07
+verify: grep -q 'A version-table row is one sentence' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** Decide whether ROADMAP.md moves its decision history to the items, starting with each release's long version-table entry and v0.5.0's 2,000 rows of gate dispositions, and keeps one line for each
@@ -30,4 +32,8 @@ added: 2026-11-07
 
 **Why the choice is the owner's.** It reverses a sentence of § "Recording it" and changes what every later release cut writes, and the outline read names it the owner's call.
 
-**Done when.** The answer is recorded below this question, with its date, and slices 3 and 9 carry it out.
+**Done when.** The answer is recorded below this question, with its date. Slices 3 (`PL-DWGC`) and 9 (`PL-4BCF`) carry it out, and their items record the answer.
+
+**Answer: option 1, move both (project owner, 2026-11-07, ratified, over moving only v0.5.0's dispositions and over keeping both).** He chose it on the decision card at 20:10 UTC. Each version row keeps one sentence on what the release changed for a learner, with its item count, and the rest of the row moves to the release's cut item. Each v0.5.0 disposition moves to its item's brief as a dated paragraph, and the roadmap keeps one line per ground with the ids. The release procedure's change took effect the same day: `.claude/skills/docket/modes/release.md` now says a version-table row is one sentence. The sentence of § "Recording it" that keeps completed sections' dispositions as the record of their period is reversed in slice 9.
+
+**Generator check.** A question for the project owner, answered here. No mechanism produced it, so nothing is recorded as a generator.
