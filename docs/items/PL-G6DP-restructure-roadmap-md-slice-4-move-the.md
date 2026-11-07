@@ -134,3 +134,83 @@ repeat. `PL-V82M` corrects what the exemption says the next release does.
 
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. § "Keeping the toolchain current", the release-tag account and every tool passage it names were in `ROADMAP.md` at `817a4d88`.
+
+**Mapped 2026-11-07, before any edit; the thread stopped for length.** The
+branch is `claude/project-thread-qy7auz` at the claim, with draft pull request
+`#2064`. Nothing is edited yet. Re-capture the four baselines (`bin/docket
+wave`, `gate`, `check`, `tools/doc_check.py check`) from this branch before
+editing. Line numbers are `ROADMAP.md` at `adf623bf`. For each passage the map
+names where its fact already lives, so most moves are deletions:
+
+1. § "Keeping the toolchain current" (524-583) moves whole, word for word, to
+   `docs/maintainer.md` as a level-2 section. A good place is after § "Run
+   tag-release yourself where a session cannot". Only closed items and
+   `docs/pr-bodies/239.md`, a record, cite the heading.
+2. § "Release tags and release notes", first subsection. Delete "This section
+   deliberately does not restate ... which it twice was not." and the two
+   `tools/doc_check.py` sentences after it. The comment above `TAGS_MARK_RE` in
+   `tools/doc_check.py` and `docs/apparatus.md` ("A completed release for which
+   git holds no tag is an error") hold both. "As a result, `git describe` ..."
+   still follows from the first sentence. Delete the paragraph "A version that
+   has genuinely gone out untagged ... There are none." The same comment holds
+   the rule, and the first sentence already says no completed version is
+   untagged. Delete the `v0.5.3` sentence (`PL-YKSD`'s brief holds it) and the
+   three `pyproject.toml` sentences (`docs/apparatus.md` holds them). Keep
+   "**One version shipped with a stale version file**" and the rest of its
+   paragraph inside this subsection, because `check_tags` reads that claim
+   only between "**Tags.**" and the next heading.
+3. § "Where and when the tag is made". Keep the first three sentences. Delete
+   the rest: `docs/apparatus.md` holds the workflow (its `tag_release.py`
+   line) and the silence and the release refusal (its "Tags *are* compared"
+   paragraph), and `PL-R7C0`'s brief holds the `PL-8HJ2` history.
+4. § "What a tag ships that its notes may not name". Delete the
+   `check_tag_span_covers_its_notes` sentence (`docs/apparatus.md`'s
+   `doc_check.py` line holds it) and the two sentences from "The claim this
+   section makes is about navigation only". Keep both exemptions and the
+   `PL-JLYG` sentence, since nothing else holds it.
+5. § "Why nothing reconciles". The last three sentences ("So `bin/docket
+   check` raises an advisory ...") move to the docket README beside "That is
+   the absorb route `checks._check_cut_window` advises". The README lacks only
+   "The advisory names what the base has taken in since the cut and both
+   dispositions", so add that clause there.
+6. § "Deferring to the next gate", paragraph "**Record a deferral on the item,
+   not in this document.**" (959-976). Keep "`bin/docket check` fails an open
+   debt item that the current gate neither places nor defers (`PL-WD5Z`)" as
+   the roadmap's guarantee. Delete the `bin/docket set` sentence, the
+   error-message clause, the two "outside the plan" sentences, "A section may
+   state the grounds ... no tool reads that prose" (the section's first bullet
+   already allows a gate section to set out its reasons) and "Each way in
+   which that second store disagreed ...". The README's § "`deferred-from:`
+   records which gate excused an item, and why" holds every one of them.
+7. § "What a frozen entry may take in", "**What a frozen entry waits on has
+   three homes**": no tool sentence is left, and the `check_gate_reentries`
+   sentence is already gone. Nothing to move.
+8. v0.7.0 § "Deferred from this gate" (1346-1357) and v0.6.0's (about
+   9165-9180): delete the `bin/docket check` and `bin/docket wave` sentences.
+   The README's deferral section holds them, and § "Deferring to the next
+   gate" keeps the guarantee.
+9. v0.5.0 (completed). "**`bin/docket wave` still prints all thirteen ...**"
+   (about 6214-6222) and "**What reads this, and what reads past it.**" (about
+   6420-6426): the README's § "A debt gate is computed, not transcribed" holds
+   the mechanism (the `blocked-by` split). Move the v0.5.0 instance, the three
+   port items and "do not fix the count", to `PL-SL70`'s brief, whose title is
+   this case. Then fix the pointer "§ "What reads this, and what reads past
+   it" below" (about 6404). "**It is inside this section rather than beside it
+   because the checker used to read only one.**" (about 7699-7707) describes
+   `_declined_ids`, which `PL-WD5Z` retired. `PL-82B0`'s brief holds the
+   history, so delete it. Check the paragraph after it ("This section
+   deliberately does not record how many dispositions it holds ...
+   `check_gate_counts`") against `docs/apparatus.md`'s frozen-list count
+   paragraph, too.
+10. v0.6.0 (completed). In "**Two kinds of group, and only the second is a
+    precondition.**" (about 8681), the `wave` and `gate` sentences (`PL-RFHH`)
+    and the `PL-J6HP` sentence are held by the README (the `Required scope`
+    carve-out paragraph). The lane sentences repeat § "Recording it" word for
+    word. In "**What reads this, and what reads past it.**" (about 8815), the
+    deferral counting and the check's refusal are in the README's paragraph
+    beginning "Before that split". Read the `PL-18BD` and `PL-0H5D` history
+    against those items' briefs before deleting it.
+
+Then two blind reviewers compare old and new text (one for words that depend
+on position, one sentence by sentence), and `bin/docket wave`, `gate`,
+`check` and `tools/doc_check.py check` must match the baselines.
