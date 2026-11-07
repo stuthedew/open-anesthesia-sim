@@ -49,3 +49,14 @@ row numbers are `ROADMAP.md` at `aff76df1`; find each passage by its words.
     Definition of done, Explicitly out of scope), in § "Writing a milestone
     entry".
 12. Cut the narration about the text itself that the moves left behind.
+
+**From `PL-DWGC` part 1 (2026-11-07).** Eight version-table rows keep a first
+sentence that does not say what the release changed: v0.2.9, v0.3.4, v0.3.5
+and v0.4.1 say only what did not change, and v0.3.8, v0.3.9, v0.4.4 ("**The
+code is the model.**") and v0.4.5 ("**Going public, finished.**") are too
+general to tell. Each needs a sentence on what changed for a learner, taken
+from the rest of its row in the item the Details cell names. v0.4.4 comes
+first: its row no longer shows that a displayed value moved in that release,
+because the operator split was replaced by an exact step. Four rows also still
+run past 600 characters as one sentence (v0.6.12 to v0.6.15).
+

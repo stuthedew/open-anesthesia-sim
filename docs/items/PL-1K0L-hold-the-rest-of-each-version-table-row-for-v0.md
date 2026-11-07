@@ -63,7 +63,7 @@ generator.
 
 **v0.3.0, moved from `ROADMAP.md`'s version table on 2026-11-07 (`PL-DWGC`).**
 
-> This cut carries the last two gate entries: the render loop stopped rebuilding what it could move (6.3x cheaper frame), and `BreathingCircuit` stopped defaulting to one agent's vaporizer maximum. No new capability, and no equation, parameter or numerical method changed; see the versioning exception above for why it is a minor.
+> This cut carries the last two gate entries: the render loop stopped rebuilding what it could move (6.3x cheaper frame), and `BreathingCircuit` stopped defaulting to one agent's vaporizer maximum. No new capability, and no equation, parameter or numerical method changed; see the versioning exception above [`ROADMAP.md` § "Versioning decision"] for why it is a minor.
 
 **v0.3.1, moved from `ROADMAP.md`'s version table on 2026-11-07 (`PL-DWGC`).**
 

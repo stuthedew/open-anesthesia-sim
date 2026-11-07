@@ -124,7 +124,8 @@ BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_P
 # The cell after the milestone that says how many items a release shipped,
 # such as `| 5 items |`. The release session writes it by hand from the same
 # items as the notes file, and `doc_check.check_release_row_item_count` holds the
-# two to each other (`PL-S9X7`). Older rows carry no such cell.
+# two to each other (`PL-S9X7`). Every row has the cell since `PL-DWGC`; it is
+# empty for the releases before v0.2.3, which have no notes file.
 ITEM_COUNT_RE = re.compile(r"^(?P<count>\d+) items?$")
 
 

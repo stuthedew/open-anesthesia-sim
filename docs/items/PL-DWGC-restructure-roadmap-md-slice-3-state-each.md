@@ -301,6 +301,44 @@ item files.
   Shortening a sentence is the line edit's (`PL-YRY3`), so the `verify:` is
   rewritten when this item closes.
 
+**Review of part 1 (2026-11-07).** Two reviewers compared the old and new
+text. Both found that all 122 rows join back into the old rows exactly. What
+they found, and what was done:
+
+- Moved text that said "this file", "this document" or "above" meant
+  `ROADMAP.md` and now sits in an item. Each of the six places now carries the
+  file in brackets, and one quote that meant the timeline's `v0.4.1` row says
+  so. A quote in `PL-XVCG` that said "this document" for equations that are in
+  `docs/MODEL.md` now names that file.
+- 65 quotes cite a section by name only. Each lead-in now says whose section
+  it is, `ROADMAP.md`'s or `docs/MODEL.md`'s.
+- Five quotes open by pointing back at the row's first sentence ("The second
+  half of that..."). Their lead-ins now quote that sentence.
+- Three places in the roadmap pointed at row text that has left the table:
+  item 29's note on v0.2.8's and v0.4.4's rows, a v0.5.0 out-of-scope bullet
+  on the v0.4.26 row, and § "Recording it" on counts dated to a release. Each
+  now points at the item that holds the text.
+- Four more open items quote moved row text (`PL-WZVZ`, `PL-M3MV`, `PL-YNFS`,
+  `PL-B6V1`), and three of the seven notes said the whole row moved. Each now
+  says where the rest of the row is.
+- The Items cell gives a count for 22 rows whose old text gave none. Those
+  counts come from each release's notes file, which
+  `check_release_row_item_count` holds the cell to, so they are kept. The
+  column exists so that every row shows its count.
+- Eight kept sentences do not say what their release changed (v0.2.9, v0.3.4,
+  v0.3.5, v0.3.8, v0.3.9, v0.4.1, v0.4.4 and v0.4.5). Choosing another
+  sentence is rewording, so `PL-YRY3` takes them. v0.4.4's matters most: its
+  row no longer shows that a displayed value moved in that release.
+- The rule that a release's own cut item ships in no release was stated in
+  about 45 rows and is now stated nowhere in the roadmap, and § "Release tags
+  and release notes" still says the next release names that cut. Filed as
+  `PL-V82M`. Of the other four sentences repeated row after row, the reserved
+  numbers are stated once in part 2, "both halves" is the query in `PL-HXJJ`,
+  and the last two were history of each release.
+- The release procedure now says a one-item row reads `1 item`. Two comments,
+  in `docket/roadmap.py` and `tools/doc_check.py`, no longer say that older
+  rows have no count cell. `PL-R3Y3` says it cut v0.4.12 as well as v0.4.11.
+
 **Next steps for part 2.** Claim this item again on the branch after `#2061`
 merges, then apply the remaining findings of chapter reads 1 to 5: the
 versioning rules stated once, the baseline, the release-tag section's order and

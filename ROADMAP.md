@@ -1005,7 +1005,7 @@ said "5 done and 9 remaining as of 2026-08-26", while one of the nine it named
 had already been closed. `bin/docket wave` reads a frozen list against
 `docs/items/` and reports the split. So the answer is computed from the same
 files that anyone would use to check it. A count dated to a release, as the
-version table and § "Current baseline" give, stays.
+cut items and § "Current baseline" give, stays.
 
 Since 2026-10-24, a gate section does not name the lane each entry is worked
 in. `bin/docket gate` and `bin/docket picks` print the lane, because a lane
@@ -2353,7 +2353,8 @@ That is exactly the argument that the v0.3.0 exception made, and that
 exception says it is not a precedent. The release row and the baseline
 section are where a change gets pointed at. v0.2.8's row already records
 why the split was kept over an exact matrix exponential. This release's
-row records why it no longer is.
+row records why it no longer is. Both reasons are now in the items those
+rows' Details cells name, `PL-1K0L` for v0.2.8 and `PL-XVCG` for v0.4.4.
 
 Nine items carry this step: `PL-GS5X` and `PL-X9KD` under
 `numerical-domain`, six under `core-domain-language`, and `PL-X2XX`.
@@ -4946,8 +4947,8 @@ why. `PL-B9PY` is not moved, for the reason given in its entry above.
   built. But `fork_at`, `fork_points_s` and `branches` have no caller outside
   `app/controller.py`, so nothing in the interface creates the second run that
   the overlay draws. The display shipped ahead of the capability it displays.
-  The id and the reasoning are in the v0.4.26 row of § "Versioning decision",
-  and deliberately not here. `docket next` reads this heading, so an id named
+  The id and the reasoning are in the cut item that the v0.4.26 row of
+  § "Versioning decision" names in its Details cell, and deliberately not here. `docket next` reads this heading, so an id named
   under it is treated as out of scope.
 - **The branched run.** v0.5.0's bookmarks and forking belong to that
   milestone, and this one does not touch them. **Its comparison *display* is
