@@ -1,10 +1,13 @@
 ---
 id: PL-QJD3
 title: Restructure the docs/references/ notes and index as the copy editor's structure read proposes, so a clinician checking a stored value meets what the paper backs first and each fact once
-status: untriaged
+status: done
 feature: repo-copy-edit
 touches: docs/references/
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2046
+verify: grep -q '^# Cited sources and their readings' docs/references/README.md && grep -q '^## Values recorded from the paper' docs/references/katoh-1993-anesth-analg-mac-awake-washout.md
 ---
 
 **Problem.** Restructure the docs/references/ notes and index as the copy editor's structure read proposes, so a clinician checking a stored value meets what the paper backs first and each fact once
@@ -38,3 +41,9 @@ to apply the structure read before the line edit for these files.
 The structure read's queries that the repository could answer were answered in
 the text. The four it could not are filed as `PL-FQFP`, `PL-56DQ`, `PL-JSBW`
 and `PL-5XRK`.
+
+The closing prose review read the 41 changed passages and rewrote 35. Its rewrite of the index's "Extraction notes" section was not taken, because it cut rules for writing notes that `.claude/rules/citing-sources.md` does not hold (the licence check before adding a file, rewriting history with `git filter-repo`, reading PDF metadata).
+
+**Done when.** Each note opens with what its paper backs, states each fact once, and every stored value and page it records is still there.
+
+**Generator check.** The owner asked for this work (2026-11-05, "copy edit entire repo", and "Structure first" for these files). It is one area of a repository-wide copy edit, not a defect, so no mechanism caused it.
