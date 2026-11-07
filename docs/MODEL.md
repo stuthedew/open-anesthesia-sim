@@ -1769,7 +1769,8 @@ only be a declared limit whose error is measured and stated.
 
 **The tolerance, in percentage points of one atmosphere.** These figures are absolute
 concentrations, not counts of the readout's last digit. How many decimals the readout shows is
-a display choice (§ "Displayed precision"), and it must not affect the model. The table gives
+a display choice, and it must not affect the model (§ "Why the readouts show two decimals",
+note for developers). The table gives
 the worst error over all three agents at the shipped 0.1 s step, caused by a control change
 that lands one step late:
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
@@ -1782,9 +1783,9 @@ that lands one step late:
 
 These figures are judged against the model's own parameter uncertainty, which
 comes before both the step and the display. One standard deviation of a single
-measured partition coefficient displaces a displayed compartment by
-$`9\times10^{-4}`$ to $`6.8\times10^{-2}`$ pp (Yasuda et al. 1989, with the
-measurement in § "Displayed precision"). So at 0.1 s, the timing error of an
+measured partition coefficient displaces a displayed compartment by at most
+$`6.8\times10^{-2}`$ pp (§ "Why the readouts show two decimals" tabulates the shift
+for each coefficient). So at 0.1 s, the timing error of an
 ordinary control action is about a tenth of one parameter SD. In that
 sense the step is fine enough.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
@@ -6142,13 +6143,14 @@ in the desflurane dial-down case stays below half the readout's resolution
 <!-- not-restated: 2 % -->
 
 Bounding the gap at a peak or a trough by the readout's resolution is
-deliberate. It does not break the rule of § "Supported simulation step" that the
-readout's number of decimals must not feed back into the model. That rule is why
+deliberate. It does not break the rule that the readout's number of decimals must
+not feed back into the model (§ "Why the readouts show two decimals", note for
+developers). That rule is why
 the step tolerance and the supported ranges are stated in absolute percentage
 points. This bound is about the chart, in the units that the readout shows. The
-two-decimal readout itself follows from the model's fidelity
-(§ "Displayed precision"): one published SD of a partition coefficient displaces
-a compartment by 8.7e-4 to 6.8e-2 percentage points.
+two-decimal readout itself follows from the model's fidelity, which
+§ "Why the readouts show two decimals" measures as the shift that one published
+SD of a partition coefficient causes in a displayed compartment.
 
 The one-pixel guarantee works in pixel columns, as Jugel, Jerzak, Hackenbroich
 and Markl do for recorded data: they prove that a line chart is fixed by at
@@ -8071,7 +8073,8 @@ negative value that reaches the display means that something upstream is wrong.
 The display refuses it rather than showing it as a plausible small positive
 reading.
 
-**For developers.** Nothing in `core/` reads the decimal count.
+**For developers.** The readout's decimal count must not feed back into the
+model, and nothing in `core/` reads it.
 `MAXIMUM_SIMULATION_STEP_S` is a tolerance in seconds, the supported input
 ranges are intervals in L/min, and "Supported simulation step" and "Supported
 input ranges" derive both without reference to the readout. No `Fraction` can
@@ -8183,10 +8186,10 @@ reasons.**
   numbers of decimal places, digits of different place value would sit in the
   same position, and someone scanning the row would misjudge a value by a factor of ten. That is a property of the reading task, whatever the solver does.
 - **The effect of parameter uncertainty varies much less across the row than the
-  values do.** The one-SD displacements tabulated above run from
-  $`8.7\times10^{-4}`$ to $`6.8\times10^{-2}`$ percentage points across all six
-  compartments and all four coefficients. That is a spread of less than two
-  orders of magnitude, on a row whose *values* span four. One number of decimal
+  values do.** The one-SD displacements tabulated in
+  § "Why the readouts show two decimals" spread over less than two orders of
+  magnitude across all six compartments and all four coefficients, on a row
+  whose *values* span four. One number of decimal
   places therefore fits all six readouts. It is set by the compartments where
   the displacement is largest, so it is conservative where the displacement is
   smaller.
@@ -8997,9 +9000,10 @@ likely to be written down, it floats over a chart whose whole subject is a
 patient, and it is read without the readout panel's five other compartments,
 which show that a within-run comparison is on offer.
 
-**The below-resolution form is required here.** At 1 MAC sevoflurane, fat stays
-below 0.01% for the first thirteen minutes, and muscle for the first two. Those
-minutes are the slow-compartment wash-in that the chart exists to show. `<0.01%`
+**The below-resolution form is required here.** Fat and muscle stay below 0.01%
+for the first minutes of a run, for the times that § "Why the readouts show two
+decimals" gives under its lower limit. Those minutes are the slow-compartment
+wash-in that the chart exists to show. `<0.01%`
 says what is known. A number there would claim a resolution the model does not
 have, on the compartment where a reader is least able to notice.
 
