@@ -750,8 +750,8 @@ $$
 0 \leq F \leq 1
 $$
 
-**The range is checked once, when a concentration is created.** A percent must
-be finite and lie from 0 to 100. The model treats a fraction and a percent as
+**The range is checked once, when a concentration is created.** A fraction must
+be finite and lie from 0 to 1, and a percent must be finite and lie from 0 to 100. The model treats a fraction and a percent as
 different kinds of number, and rejects one where the other is wanted. Every
 place that stores a concentration accepts only a checked value.
 
@@ -902,8 +902,8 @@ factor of 1.058.
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
 
 **Converting an alveolar, venous or tissue amount at 20 °C overstates it by
-5.8 %** (§ "Known limitations", under § "The model uses one reference condition where
-the physics has two"). Those compartments are physically at 37 °C, and this
+5.8 %** (§ "Known limitations", under § "One reference condition, where the
+model physically has two"). Those compartments are physically at 37 °C, and this
 model's partition coefficients were measured at 37 °C, so declaring 37 °C would
 make their amounts exact. The circuit's gas is at room temperature, so
 converting its amount is exact.
@@ -976,10 +976,11 @@ Each agent's file in `data/agents/` stores the density as `liquid_density`,
 with its spread and measurement temperature, and the molar mass as
 `molar_mass_g_mol`. The `sources` entry for each says why no tier-1 source
 (§ "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
-`core/liquid_agent.py` and checked against the published constants by
-`tests/reference/test_published_vapour_to_liquid.py`. The agent cost display
-reads the ratio from the snapshot of the run
-(`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other
+`core/liquid_agent.py` and checked by
+`tests/reference/test_published_vapour_to_liquid.py`, within 1% of Biro's
+constants and within 0.5% of Gas Man's. The agent cost display reads the
+amount and the ratio from one snapshot of the run, which pairs the ratio with
+the running agent (`SimulationSnapshot.agent_vapour_per_liquid`). A unit test fails if any other
 code under `src/` calls the conversion to liquid (`liquid_volume_ml`).
 
 ## Symbols
@@ -2021,8 +2022,8 @@ Exhausted agent does not, because it depends on the inspired fraction as that fr
 It is $`\dot V_F\int F_I\,dt`$ along the coupled solution. The step matrix that advances the
 fractions also computes it, which meets requirement 4 of § "Numerical method".
 
-On 2026-09-06, the largest amount of agent left unaccounted for was 1.0e-12 L for sevoflurane and
-2.4e-12 L for isoflurane, and as a share of the agent handled it was at most 9.2e-13 for every
+On 2026-09-06, the largest amount of agent left unaccounted for was 1.0e-12 L for sevoflurane,
+2.4e-12 L for isoflurane and 1.3e-11 L for desflurane, and as a share of the agent handled it was at most 9.2e-13 for every
 agent. Conservation is built into the matrix. Because the arithmetic is done in fractions, each
 transfer's equal-and-opposite terms cancel only to within rounding.
 
@@ -4123,7 +4124,7 @@ The simulator must always meet the following conditions:
 - partition coefficients are finite and positive;
 - tissue flow fractions sum to one within tolerance;
 - stored agent amounts remain finite and nonnegative;
-- derived partial-pressure-equivalent fractions remain in the range 0 to 1;
+- derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
 - internal transfers remove and add equal amounts;
 - changing a setting does not reset dynamic state;
@@ -4138,8 +4139,8 @@ The simulator must always meet the following conditions:
 
 **For developers.** The simulator must also meet these conditions on its time steps:
 
-- identical runs produce exactly the same state and run definition, however
-  the steps were grouped in real time;
+- identical runs produce identical state and run definition, element for
+  element, however the steps were grouped in real time;
 - simulated time is the number of completed steps times the run's step length;
 - a step is refused when its length is outside the allowed range
   (`MINIMUM_SIMULATION_STEP_S` to `MAXIMUM_SIMULATION_STEP_S`) or differs
@@ -4150,6 +4151,8 @@ The simulator must always meet the following conditions:
 ## Required tests
 
 ### Preserved circuit reference tests
+
+The v0.0.2 analytic wash-in and washout tests must remain unchanged and continue to pass.
 
 With no patient ventilation, tests check that the simulated circuit washes in and out as
 
@@ -12091,7 +12094,7 @@ ventilation, the perfusion fractions and MAC by age should move together, or
 none of them should.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
-**The model uses one reference condition where the physics has two.** The
+**One reference condition, where the model physically has two.** The
 unit of agent amount is the litre at 20 °C and 760 mmHg, dry
 (§ "Agent amount"). Nothing here converts between conditions, so a litre in
 the circuit and a litre in the alveoli are added as equals, though as volumes
@@ -12136,7 +12139,7 @@ on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS Formulation 1995 for
 the Thermodynamic Properties of Ordinary Water Substance for General and
 Scientific Use.* J Phys Chem Ref Data 2002;31(2):387–535,
 doi:10.1063/1.1461829). The conventional 47 of the alveolar gas equation is
-that value rounded. Of the 760 mmHg available, 47 mmHg is water and 713 mmHg
+that value rounded, and the two agree to 0.3 %. Of the 760 mmHg available, 47 mmHg is water and 713 mmHg
 is left to everything else. A dry inspired fraction $`F_I`$ therefore occupies
 $`F_I \times 713`$ mmHg rather than $`F_I \times 760`$. That is a dilution of
 47/760, or 6.2 % of an atmosphere, before any uptake has occurred. Put the
