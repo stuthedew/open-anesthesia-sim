@@ -355,10 +355,13 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     rule, prompt = tmp_path / "rule.md", tmp_path / "prompt.md"
+    check_prompt = tmp_path / "check.md"
     rule.write_text(READERS, encoding="utf-8")
     prompt.write_text(PROMPT, encoding="utf-8")
+    check_prompt.write_text("Check the edit for meaning.\n", encoding="utf-8")
     monkeypatch.setattr(new_prose, "RULE", rule)
     monkeypatch.setattr(new_prose, "PROMPT", prompt)
+    monkeypatch.setattr(new_prose, "CHECK_PROMPT", check_prompt)
     root = _root(
         tmp_path / "tree", {"jargon-2026-11-02-a.md": _entry(), "jargon-2026-11-02-b.md": _entry()}
     )
@@ -386,6 +389,29 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
 
     assert main(["show"], root=root) == 0
     assert capsys.readouterr().out.startswith(READERS.rstrip("\n"))
+
+
+def test_a_run_keys_on_the_meaning_check_prompt_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The meaning check can turn a rewrite into a keep, so changing its prompt needs a new run."""
+    rule, prompt, check_prompt = (tmp_path / name for name in ("rule.md", "prompt.md", "check.md"))
+    rule.write_text(READERS, encoding="utf-8")
+    prompt.write_text(PROMPT, encoding="utf-8")
+    check_prompt.write_text("Check the edit for meaning.\n", encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    monkeypatch.setattr(new_prose, "PROMPT", prompt)
+    monkeypatch.setattr(new_prose, "CHECK_PROMPT", check_prompt)
+    root = _root(tmp_path / "tree", {"jargon-2026-11-02-a.md": _entry()})
+    reply = tmp_path / "reply.md"
+    reply.write_text(_reply("rewrite", words=MIN_WORDS + 1), encoding="utf-8")
+    assert main(["record", str(reply)], root=root) == 0
+    assert main(["check"], root=root) == 0
+    capsys.readouterr()
+
+    check_prompt.write_text("Check the edit for meaning, word by word.\n", encoding="utf-8")
+    assert main(["check"], root=root) == 1
+    assert "no run of the set used the current prompt" in capsys.readouterr().err
 
 
 def test_rewrites_takes_the_first_block_after_each_rewrite_verdict() -> None:

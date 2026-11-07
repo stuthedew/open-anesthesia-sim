@@ -65,10 +65,10 @@ The tool has three commands.
 - `record REPLY` reads the copy editor's whole reply from the file REPLY and
   finds its "[N] keep" or "[N] rewrite" verdict for each entry. It writes one
   record to `docs/prose-review/runs/`, holding the reply, the entries in the
-  order `show` numbered them, and a SHA-256 hash of the prompt and of the reader
-  table's rows for each entry's file. It refuses a reply that gives an entry no
-  verdict, or two different ones, so a reply cut short is never recorded. Only
-  this tool writes those records.
+  order `show` numbered them, a SHA-256 hash of the copy editor's prompt and the
+  meaning check's, and a hash of the reader table's rows for each entry's file.
+  It refuses a reply that gives an entry no verdict, or two different ones, so a
+  reply cut short is never recorded. Only this tool writes those records.
 - `check` runs in `make check` and in CI. It exits 1 when an entry does not
   parse, names a kind that `FAILURE_KINDS` does not hold, or names a file that
   no row of the reader table names. It also exits 1 when a kind holds more than
@@ -574,6 +574,18 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     return problems
 
 
+def prompts() -> str:
+    """The copy editor's prompt followed by the meaning check's, which a run of the set uses.
+
+    A run keys on both, because the meaning check refuses a rewrite that loses a
+    statement, and the refusal turns that entry's verdict into a keep
+    (`PL-F0Q2`).
+    """
+    return "".join(
+        path.read_text(encoding="utf-8") for path in (new_prose.PROMPT, new_prose.CHECK_PROMPT)
+    )
+
+
 def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -585,7 +597,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     )
     args = parser.parse_args(argv)
     table = new_prose.rule_table()
-    prompt = new_prose.PROMPT.read_text(encoding="utf-8")
+    prompt = prompts()
     if args.command == "check":
         problems = check(root, prompt, table)
         for problem in problems:
