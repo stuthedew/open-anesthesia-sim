@@ -211,6 +211,11 @@ release's notes, for a closing pull request inside that release's tag span
 that its notes never name. The error prints each line and the heading it goes
 under (`PL-JLYG`).
 
+**A version-table row is one sentence** (project owner, 2026-11-07, ratified, over
+keeping the long rows, `PL-LVN8`). It says what the release changed for a
+learner, with its item count. The rest of the release's record goes in its
+cut item, where the decisions behind it already live.
+
 **Prove "nothing computational moved" with a command, not by reading the
 diff.** A baseline section that says so rests first on the tree objects:
 compare `git rev-parse vA.B.C:src/anesthesia_sim/core` with `HEAD`'s, and the
