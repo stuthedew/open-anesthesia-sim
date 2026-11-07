@@ -7,7 +7,7 @@ status: blocked
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-W0TS
+blocked-by: PL-M3MV
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---

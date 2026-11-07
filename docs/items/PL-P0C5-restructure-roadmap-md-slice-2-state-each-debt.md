@@ -3,13 +3,14 @@ id: PL-P0C5
 title: Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-W0TS
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+payoff: a reader finds each debt-gate and development rule stated once, in its own section, and each milestone section points there instead of restating it
+verify: grep -q '^### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
