@@ -4981,8 +4981,8 @@ results.
 its test trajectories across everything these ranges allow. Its worst disagreement with
 the independent solution comes on a trajectory that holds cardiac output at zero.
 Narrowing a range would take that worst case out of reach, and widening one would admit
-trajectories that were never measured. Either way, that test must be re-measured
-(§ "What a setting outside the range costs" below). Three tests stop a range from changing
+trajectories that were never measured. Either way, that test must be re-measured,
+as the paragraph above says. Three tests stop a range from changing
 unnoticed. `test_envelope_limits_match_the_supported_input_ranges` restates all six flow
 limits and fails if the model moves one.
 `test_displayed_resolution_and_shipped_step_match_the_interface` does the same for the
@@ -7245,8 +7245,9 @@ The band is ruled on both edges because no axis range that the chart can use
 gives it enough height to look like a band on its own. On the fixed axis range
 (`CHART_AXIS_TOP_MAC`, 3 ×MAC), it spans 3.33% of the plot height for
 sevoflurane and 4.20% for desflurane. A 2 MAC ceiling would make the band
-unambiguous, but § "MAC multiples as a display unit" gives the reasons the
-ceiling is 3 MAC. A 4 MAC ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
+unambiguous, but would put the 1 MAC line at mid-plot and leave no room above it
+for the overpressure induction that the chart must be able to show
+(§ "MAC multiples as a display unit"). A 4 MAC ceiling would shrink the band to 2.50%, as on the earlier axis, whose top was
 the vaporizer dial's maximum. A band ruled on its upper edge only, over an
 unruled fill, looks like a line with a shadow beneath it, whatever the fill's
 height. The two references would then no longer differ in shape. Two rules with
@@ -11639,9 +11640,10 @@ extent of sevoflurane's metabolism. Within those 24 hours:
 - the third omission, the fourth compartment of the intertissue-diffusion
   note, carries the largest term in the measured washout over most of the
   supported span. All else equal, the modelled tail
-  therefore falls faster than the measurement from about the third hour. That
-  note gives where the shipped tail falls below the published mean curves, and
-  by how much.
+  therefore falls faster than the measurement from about the third hour.
+  § "The first 24 hours of elimination against the published mean curves" gives
+  where the shipped tail falls below the published mean curves, and by how
+  much.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
