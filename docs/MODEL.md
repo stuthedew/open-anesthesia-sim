@@ -4424,16 +4424,10 @@ branching, a branch's reset and the halt record all follow one rule:
   instant. No later change merges into a copied entry or removes it, and a
   change the learner makes at the fork is recorded after the copies.
 - **A reset branch keeps its settings and the entries it opened with.** It
-  reopens at the fork on the same provenance. Its timeline opens with the
-  entries from its first opening, followed by each setting that differs from
-  the one the branch opened under. An opened entry records where the branch
-  began, not something done to it since. So when the trunk's Reset asks before
-  discarding the branch, an opened entry does not count as work the branch
-  would lose (`RunRecord.opened_with`). Every later entry does count. That
-  includes a setting that the learner changed and kept through a reset, and a
-  dial that the learner set back to the trunk's value from before its change
-  at the fork. The branch opened at what the dial said, so setting the dial
-  back is the learner's own change.
+  reopens at the fork on the same provenance. An opened entry records where the
+  branch began, not something done to it since. § "Reset behavior" gives what
+  the timeline of a reset branch holds, and § "Discarding a run, and the questions that guard it"
+  says which entries count when the trunk's Reset asks before discarding it.
 - **The halt record names the marks as they are.** A run's halt record lists
   the marks crossed by the step it stopped on: the step that halted a trunk, or
   the step that reached a branch's fork. The record is worked out again against
@@ -5479,6 +5473,8 @@ parameters. It must also set the delivered concentration to 1 MAC of the new
 agent rather than keep the old agent's percentage, because the same percentage
 is a different clinical depth for each agent.
 
+## Discarding a run, and the questions that guard it
+
 Beginning a new run **discards the current one**. All a user has to look back
 at is the run's definition, its timeline of control changes and the simulated
 time it reached. Nothing in the simulator saves them, and there is no undo. So
@@ -5506,7 +5502,10 @@ outlive its trunk. When a branch has run past its fork, or has had a control
 change since then, the trunk's Reset says what that branch holds and asks before
 it discards any run. Setting a dial back to a value the trunk had before the
 fork is still a control change, because the branch started from what the dial
-said at the fork. The trunk's Reset also asks about a branch when the simulator
+said at the fork. When the trunk's Reset asks before discarding a branch, an
+opened entry does not count as work the branch would lose
+(`RunRecord.opened_with`). Every later entry does count. That includes a
+setting that the learner changed and kept through a reset. The trunk's Reset also asks about a branch when the simulator
 cannot tell what that branch holds. Any other branch is discarded without a
 question.
 
@@ -5830,7 +5829,7 @@ It must not:
   showed the whole run;
 - present a run halted by a failure as though it were paused;
 - discard a run that holds recorded state without stating what will be lost
-  and asking the user to confirm, as "Agent-change behavior" requires;
+  and asking the user to confirm, as "Discarding a run, and the questions that guard it" requires;
 - display a concentration at a finer resolution than "Displayed precision"
   justifies, or show a value that the model does not resolve as though the
   model asserted it; or
@@ -6420,7 +6419,7 @@ Branches fork from a run called the trunk, which holds its place from when the
 dashboard opens. A branch holds its place from its fork until it is dropped.
 Resetting a run and changing its agent both keep the number, because both start
 the run afresh in the same place, after any confirmation that
-§ "Agent-change behavior" asks for. No number is given out twice in a session,
+§ "Discarding a run, and the questions that guard it" asks for. No number is given out twice in a session,
 so a branch taken after a dropped one is "Run 3", never a second "Run 2". A
 Workspace can be pinned to a run, so that it shows that run. If a name were
 reused, a Workspace pinned to the dropped run would find a new run of that name
