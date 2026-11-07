@@ -3,13 +3,15 @@ id: PL-G6DP
 title: Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/maintainer.md
 blocked-by: PL-DWGC
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+payoff: a reader of the roadmap finds what each release holds without the toolchain policy or an account of what the release tools read, and the sessions that run those tools find that account in the workflow documentation
+verify: ! grep -qE '^#+ Keeping the toolchain current' ROADMAP.md && grep -qF 'Nothing upgrades on a schedule' docs/maintainer.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
