@@ -10,14 +10,15 @@ and a patient model that tracks several substances at once.
 
 The survey is not an inventory. Beside each specification, it states how that
 specification changes a computed or displayed value. A specification that changes
-no such value is left out, or gets one line under § "Ruled out" if someone would
-otherwise raise it again.
+no such value is left out, or gets one line under § "Ruled out", written once for
+the whole survey rather than per machine, if someone would otherwise raise it
+again.
 
 **The design of the planned machine model (`PL-FG9D`) builds on this survey.**
-The design covers the machine classes, a profile schema and interlocks. The
-survey's last section lists what the design needs: which variables are
-per-machine *data*, and which are *behavior* that differs between machines. The
-survey changes no code.
+The design covers the machine classes, a profile schema and interlocks.
+§ "What `PL-FG9D` needs: data, behavior, and what is neither" lists what the
+design needs: which variables are per-machine *data*, which are *behavior* that
+differs between machines, and which fit neither. The survey changes no code.
 
 ## The headline finding, because it decides the abstraction
 
@@ -26,7 +27,7 @@ machines, and the evidence for that is direct rather than inferred.** Two
 results, both in-patient or in-bench measurements of quantities this model
 computes:
 
-- Shin et al. measured time to a target sevoflurane concentration on three
+- Shin et al. (Shin 2017) measured time to a target sevoflurane concentration on three
   Dräger workstations and computed each one's circuit volume and time constant.
   The Perseus A500 and the Zeus IE came out at 3.3 L and 3.2 L, and 6.6 min
   against 6.4 min at 0.5 L/min fresh gas flow — effectively the same circuit on
@@ -34,7 +35,7 @@ computes:
   significantly. The authors attribute the residue to the position of the fresh
   gas inlet relative to the patient, the presence of a fresh-gas-decoupling
   system, the ventilator drive, and the vaporizer's delivery mode.
-- Fukuda et al. moved nothing but the **fresh gas inlet** — from between the
+- Fukuda et al. (Fukuda 2006) moved nothing but the **fresh gas inlet** — from between the
   inspiratory valve and the absorber to between the inspiratory valve and the
   patient — on fixed machines, and the inspired/delivered ratio of isoflurane
   and of sevoflurane rose significantly during low-flow anesthesia. $`F_I/F_D`$
@@ -45,10 +46,8 @@ So a machine profile that is a volume and a set of bounds is falsified by the
 data before it is written. That does not mean the profile must carry topology —
 it means the abstraction has to decide, explicitly, either to carry it or to
 state that machines differing only in topology are indistinguishable in this
-model. `PL-WZVZ` is what makes that decision visible: a difference shown on a
-curve and attributed to a trade name, when the parameter that produced it is
-not in the model at all, is a presentation-safety failure under `CLAUDE.md`'s
-clinical-output standard.
+model. § "What `PL-FG9D` needs: data, behavior, and what is neither" sets out
+that decision under (b7).
 
 ## The machines surveyed, and why those
 
@@ -64,10 +63,7 @@ the set does not already cover.
 Each row earns its place by contributing an axis the others do not, so the set
 as a whole is the range of real behavior a machine profile's schema has to be
 able to express. Nothing here commits the project to eight profiles, and a
-machine's presence below is not a claim that it will be built. The reference
-material follows the same rule: a machine's operator or technical manual is
-sought as that machine's profile is built, one at a time, rather than gathered
-in bulk ahead of the milestone (project owner, 2026-09-20).
+machine's presence below is not a claim that it will be built.
 
 | Machine | In because | Axes it contributes |
 | --- | --- | --- |
@@ -96,23 +92,24 @@ than papered over.** Measured 2026-09-19 by the method
 `www.draeger.com`, `www.gehealthcare.com`, `www.iso.org`, `webstore.ansi.org`,
 `standards.iteh.ai` and every manual-hosting mirror tried, while
 `www.ncbi.nlm.nih.gov`, `link.springer.com`, `doi.org` and `search.worldcat.org`
-answered. The three routes that remain are the PubMed MCP server, the project
+answered, though `search.worldcat.org` rate-limited the one query put to it. On
+2026-10-06 the gateway still refused `draeger.com`, `www.draeger.com`,
+`www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai`. The three routes that remain are the PubMed MCP server, the project
 owner's private reference corpus, and direct identifier checks. So:
 
-1. **A measured quantity is cited to the measurement.** Where a peer-reviewed
+1. **A measured quantity is cited to the measurement, which is tier 1.** Where a peer-reviewed
    study measured the thing the model uses — an inspired concentration, a time
    to target, a vaporizer's output against its dial — that study is the
    authority, and it is a stronger one than a manual would have been. This is
    `docs/MODEL.md`'s own source hierarchy applied unchanged: a primary
    measurement outranks a specification sheet, and a specification sheet is not
    a measurement.
-2. **A figure a paper carries but did not measure is marked as such.** Shin et
-   al. print the three Dräger apparatus volumes and cite them onward to sources
-   this session could not open. They are recorded here as tier 2 — a secondary
-   synthesis — and not as measurements, because that is what they are.
+2. **A figure a paper carries but did not measure is marked as such.** It is
+   recorded here as tier 2 — a secondary synthesis — and not as a measurement,
+   because that is what it is. Shin et al.'s three Dräger apparatus volumes are
+   the example, and their entry in § "Sources" says why.
 3. **A manufacturer's own technical account is used where one is held, and
-   quoted.** The private reference corpus
-   (`stuthedew/open-anesthesia-sim-references`) holds *Modern Anesthetics*,
+   quoted.** The private reference corpus holds *Modern Anesthetics*,
    whose chapter on inhalational dosing technology is written by five Dräger
    authors and describes the vaporizers, the injector, the gas module and the
    Zeus breathing system directly. It is a textbook chapter and therefore
@@ -121,9 +118,9 @@ owner's private reference corpus, and direct identifier checks. So:
    brief asked for.
 4. **A standard is named by number, title, edition and date only, and the route
    is stated because it is a weak one.** The texts were not reachable and
-   neither were the ISO catalogue pages; the edition and date below come from
-   **national adoption records surfaced by a web search**, which this project's
-   own rule says is not a source. So this document states what each standard
+   neither were the ISO catalogue pages, so the editions and dates come from
+   **national adoption records surfaced by a web search**, which § "Sources"
+   records beside the two entries. So this document states what each standard
    *is* and never what a clause requires. Every claim that would need the text
    is marked as a gap.
 5. **Anything else is `unknown`.** An unknown apparatus volume is a machine that
@@ -539,8 +536,7 @@ the same one with a small exhaust.
 
 ## Ruled out
 
-One line each, written once for the whole survey rather than per machine, and
-each with the condition that would bring it back. A rule-out that wanted a
+Each line gives the condition that would bring it back. A rule-out that wanted a
 paragraph was moved up into bucket (b) instead.
 
 - **Screens, layouts, alarms and alarm limits, menu structure, workflow.** They
@@ -568,7 +564,7 @@ paragraph was moved up into bucket (b) instead.
   *this* survey's scope rather than out of the model's concerns.
 - **Data export, record-keeping and network integration.** No path to a value.
 
-## What `PL-FG9D` needs: data against behavior
+## What `PL-FG9D` needs: data, behavior, and what is neither
 
 The evidence, not taste, decides where the line falls. A difference between machines is data when a file can store it, and behavior when only code can express it. Two differences fit neither, and need a decision
 before implementation begins.
@@ -597,7 +593,8 @@ alternatives, and each machine uses one.
   stream through a bypass, or is injected directly into the circle
   independently of fresh gas flow. The two routes need different equations.
   The Zeus anesthesia machine has both. Its manufacturer describes the fresh
-  gas mode as equivalent to a conventional vaporizer.
+  gas mode as equivalent to a conventional vaporizer (Meyer et al., quoted
+  in (b3)).
 - **Who runs the control loop** (b4). A manually dialled machine takes $`F_D`$
   and $`\dot V_F`$ as inputs. An automated machine produces both as the outputs
   of parallel feedback controllers, one of which runs its own simplified patient
@@ -613,8 +610,12 @@ alternatives, and each machine uses one.
 compartment, which has no place for these two differences.
 
 - **Fresh gas inlet position and internal topology** (b7) measurably change
-  $`F_I/F_D`$. Choose option 1 or 2, and record the choice in the work item
-  (`PL-FG9D`):
+  $`F_I/F_D`$ (Fukuda 2006, under § "The headline finding, because it decides
+  the abstraction"). `PL-WZVZ` is what makes the decision visible: a difference
+  shown on a curve and attributed to a trade name, when the parameter that
+  produced it is not in the model at all, is a presentation-safety failure
+  under `CLAUDE.md`'s clinical-output standard. Choose option 1 or 2, and
+  record the choice in the work item (`PL-FG9D`):
   1. Represent them with a multi-compartment circuit. The closest existing plan
      is `ROADMAP.md` planned-milestone item 39.
   2. Leave them out, and say so wherever a machine is chosen.
@@ -629,12 +630,14 @@ compartment, which has no place for these two differences.
 
 Every value marked `unknown` above has the same fix: **someone who can reach
 manufacturer technical data, or a project owner who can supply it.** Try the
-private reference corpus first. It answered the vaporizer, injector, gas-module
-and closed-circuit questions outright.
+private reference corpus first (rule 3 under § "How a value gets into this
+document"). It answered the vaporizer, injector, gas-module and closed-circuit
+questions outright.
 
 **Seek each unknown value one at a time, only when a machine profile needs it**
-(project owner, 2026-09-20). Ask for that machine's manual then. No unknown value
-here blocks the machine abstraction.
+(project owner, 2026-09-20). Ask for that machine's operator or technical manual
+then, rather than gathering manuals in bulk ahead of the machine milestone. No
+unknown value here blocks the machine abstraction.
 
 The places to look are:
 
@@ -642,17 +645,17 @@ The places to look are:
   Zeus IE: the technical data sections, for apparatus volume, flow ranges,
   minimum oxygen flow and sample gas flow. The Perseus manual was found at
   `draeger.com/Content/Documents/Content/IfU_Perseus_A500_SW_1.1n_EN_9054101.pdf`.
-  The network used for this survey refused the download on 2026-09-19, and
-  still refused connections to `draeger.com` and `www.draeger.com` on
-  2026-10-06.
+  The network used for this survey refused the download on 2026-09-19.
 - GE *User's Reference Manual* for the Aisys CS², Avance and Carestation
   families, and the Aladin cassette's specification, for the same fields.
 - Getinge *User's Manual* for the FLOW-i, for the same fields and for the
   volume reflector's contribution to apparatus volume.
-- **ISO 80601-2-13:2022** (second edition, 2022-04) and its Amendment 1:2026,
-  for what a workstation must guarantee about oxygen concentration and flow.
-- **ISO 5360:2016** (fourth edition, 2016-02-15), for agent-specific filling,
-  and to confirm that it specifies no dimensions for desflurane.
+- **ISO 80601-2-13:2022** and its Amendment 1:2026, for what a workstation
+  must guarantee about oxygen concentration and flow.
+- **ISO 5360:2016**, for agent-specific filling, and to confirm that it
+  specifies no dimensions for desflurane.
+- Hendrickx and De Wolf's 2018 review, *The anesthesia workstation: quo vadis?*
+  (§ "Sources"), as the review to read first.
 
 The comparison table (`PL-WZVZ`) takes its rows from this survey, so the sources
 above are where to look for each row it shows as `unknown`.
@@ -670,6 +673,10 @@ corpus and says so.
 
 **Measurements of quantities this model computes (tier 1).**
 
+- Biro P. [The effect of fresh-gas decoupling on respiratory volume. Dräger
+  Sulla 808V anesthesia ventilator]. *Anaesthesist.* 1997;46(11):949–952.
+  PMID 9490582; [DOI 10.1007/s001010050491](https://doi.org/10.1007/s001010050491).
+  English abstract read; article in German.
 - Fukuda T, Fukunaga A, Toyooka H. Site of fresh gas inlet and ratios of the
   delivered fraction and inspired fraction of inhaled isoflurane and sevoflurane
   in low-flow anesthesia. *J Anesth.* 2006;20(4):268–273.
@@ -705,10 +712,6 @@ corpus and says so.
   **Full text read** (PMC5248460). Carries the three Dräger apparatus volumes
   with onward citations this session could not reach; those figures are tier 2
   here, while its times to target are its own measurement.
-- Biro P. [The effect of fresh-gas decoupling on respiratory volume. Dräger
-  Sulla 808V anesthesia ventilator]. *Anaesthesist.* 1997;46(11):949–952.
-  PMID 9490582; [DOI 10.1007/s001010050491](https://doi.org/10.1007/s001010050491).
-  English abstract read; article in German.
 
 **Model-relevant behavior and machine description (tier 2, or device
 description).**
@@ -735,22 +738,13 @@ description).**
 - Hendrickx JFA, De Wolf AM. The anesthesia workstation: quo vadis? *Anesth
   Analg.* 2018;127(3):671–675.
   PMID 29239956; [DOI 10.1213/ANE.0000000000002688](https://doi.org/10.1213/ANE.0000000000002688).
-  Metadata only; the full text was not reachable. Named here as the review a
-  later session should read first, not cited for any figure.
+  Metadata only; the full text was not reachable. Not cited for any figure;
+  § "What is missing, and how the next session gets it" names it as the review
+  to read first.
 - Jain RK, Swaminathan S. Anaesthesia ventilators. *Indian J Anaesth.*
   2013;57(5):525–532.
   PMID 24249886; [DOI 10.4103/0019-5049.120150](https://doi.org/10.4103/0019-5049.120150).
   Abstract read; open access.
-- Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and
-  devices for inhalational anesthetic drug dosing. In: Schüttler J, Schwilden H,
-  eds. *Modern Anesthetics.* Handbook of Experimental Pharmacology vol. 182.
-  Berlin: Springer; 2008:451–470. **Read at full text 2026-09-19 from the
-  private reference corpus** (`stuthedew/open-anesthesia-sim-references`,
-  section dump `modern_anesthetics/08_Part_IV_Ch5-6_Index`); every passage
-  quoted above is from printed pages 453–468, and the page each sits on is
-  recoverable from the dump's page markers. Written by Dräger authors, so for
-  device description it is the manufacturer's own account; it remains tier 2
-  for any measured quantity.
 - Kalmar AF, Van Der Vekens N, De Rydt F, Allaert S, Van De Velde M, Mulier J.
   Minimizing sevoflurane wastage by sensible use of automated gas control
   technology in the Flow-i workstation: an economic and ecological assessment.
@@ -762,14 +756,21 @@ description).**
   Design bounds what it may be cited for: a retrospective of one centre's
   records, 25 cases per group, on Flow-i workstations alone, comparing AGC
   speed settings against a fixed 2 L/min group and a manual minimal-flow group.
-  So it is a recommendation about what practice should be, and evidence that
-  2 L/min is the conventional comparator — not a measurement of what flows are
-  used.
+  § "(a2)" says what that design lets it show about practice.
 - Križmarić M, Maver U, Zdravković M, Mekiš D. Effects of the reservoir bag
   disconnection on inspired gases during general anesthesia: a simulator-based
   study. *BMC Anesthesiol.* 2021;21(1):32.
   PMID 33522905; [DOI 10.1186/s12871-021-01256-2](https://doi.org/10.1186/s12871-021-01256-2).
   Abstract read.
+- Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and
+  devices for inhalational anesthetic drug dosing. In: Schüttler J, Schwilden H,
+  eds. *Modern Anesthetics.* Handbook of Experimental Pharmacology vol. 182.
+  Berlin: Springer; 2008:451–470. **Read at full text 2026-09-19 from the
+  private reference corpus** (`stuthedew/open-anesthesia-sim-references`,
+  section dump `modern_anesthetics/08_Part_IV_Ch5-6_Index`); every passage
+  quoted above is from printed pages 453–468, and the page each sits on is
+  recoverable from the dump's page markers. Rule 3 under § "How a value gets
+  into this document" says what it may be cited for.
 
 **Evidence a machine was in service and studied, used only for the selection
 criterion.**
@@ -785,8 +786,9 @@ criterion.**
   Abstract read; identifiers and the 0.3–6 L/min bench protocol re-confirmed
   against the PubMed record 2026-09-20 (`PL-NM7X`). No PubMed Central full text,
   and a check of the private reference corpus the same day did not find it. It
-  is an *in vitro* study into a 2 L test lung and is **not** evidence about
-  clinical practice; § "(a2)" records that it was once cited as such here.
+  is an *in vitro* study into a 2 L test lung. § "(a2)" says why it is **not**
+  evidence about clinical practice, and records that it was once cited as such
+  here.
 - Jakobsson P, Lindgren M, Jakobsson JG. Wash-in and wash-out of sevoflurane in
   a test-lung model: a comparison between Aisys and FLOW-i. *F1000Res.*
   2017;6:389.
@@ -810,11 +812,10 @@ criterion.**
   fourth edition, 2016-02-15. The edition and date are those a CSA adoption
   record states for the standard it adopts.
 
-**Neither was read, and the route to both was a web search.** On 2026-09-19
-`www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai` were all refused at
-the gateway, as they still were on 2026-10-06, and `search.worldcat.org`
-answered but rate-limited the one query put to it. So
-these two entries record identifiers taken from catalogue and adoption records
-surfaced by a search, which `.claude/rules/citing-sources.md` is explicit is not
-a source. They are here as pointers for a session that can open the texts, and
-nothing in this document rests on what either standard requires.
+**Neither was read, and the route to both was a web search**, because the
+standards bodies' sites could not be reached (§ "How a value gets into this
+document" records which sites, and when). So these two entries record
+identifiers taken from catalogue and adoption records surfaced by a search,
+which `.claude/rules/citing-sources.md` is explicit is not a source. They are
+here as pointers for a session that can open the texts, and nothing in this
+document rests on what either standard requires.

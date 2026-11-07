@@ -3,7 +3,7 @@ id: PL-3MTS
 title: Restructure docs/machine-survey.md as the copy editor's structure read proposes
 status: untriaged
 feature: machine-docs-structure
-touches: docs/machine-survey.md
+touches: docs/machine-survey.md, docs/items/PL-8ZD7-docs-machine-survey-md-answer-the-close-out.md
 added: 2026-11-07
 ---
 
@@ -41,3 +41,47 @@ Structure:
 
 **Done when.** Each finding above is applied or recorded as declined with its reason, and each query is answered or filed.
 
+
+**Generator check.** Work the owner asked for: the copy edit of every human-facing document (2026-11-05), with each document's structure applied before any more line editing (2026-11-07). The edit to `PL-8ZD7` updates its citations of headings this restructure and `PL-39ZK` renamed.
+
+## What the restructure did (2026-11-07)
+
+The restructure moved and de-duplicated text and renamed one heading. It did not line edit: the copy editor is paused until `PL-F0Q2` merges (project owner, 2026-11-07), and the line edit then runs on the sections changed here. A blind comparison of each section's old and new text checked that no statement was lost.
+
+**Outline findings, in the order above.**
+
+1. Rerun the read of § "The variables": declined, because the copy editor is paused. The likely repeats it names were checked by hand instead. Shin et al.'s volumes now have one full statement, the (a1) table, plus the Shin entry in § "Sources" for their tier; rule 2 points to that entry, and the headline keeps the two figures its argument uses (the query on them is filed). The Tec 6 desflurane maximum of 18% is stated in (b2), and the Data table cites it as a status. The labels (a1), (a2) and (b1) to (b11) are the headings of § "The variables", which comes before the two sections that use them. § "(a2)" already states each judgment that § "Sources" repeated, so those entries now point to it.
+2. The one-line rule: applied. The introduction says "written once for the whole survey rather than per machine", and § "Ruled out" keeps only that each line gives the condition that would bring it back.
+3. The pointer in the introduction: applied. It names the section by its heading and mentions the third class.
+4. The heading at row 581: applied, "What `PL-FG9D` needs: data, behavior, and what is neither". `PL-8ZD7` cites it under the new name, and no other live file cited it.
+5. Shin et al.'s volumes: filed in `PL-8ZD7`. `PL-H47Y` already records that Shin et al. took the three volumes from Dräger's instructions-for-use manuals.
+6. Facts the headline lacks: applied in part. The headline now cites "Shin 2017" and "Fukuda 2006", as the table does. Naming the machines is filed in `PL-8ZD7`, because the table names the Dräger Fabius and (b7) says "two decoupling-style machines", so the paper has to say which two.
+7. The decision in two places: applied. The safety reason (`PL-WZVZ`, the clinical-output standard) moved into the (b7) entry of § "What `PL-FG9D` needs". The headline keeps what the finding means for a machine profile, and a pointer.
+8. (b7)'s unsourced "measurably change": applied, with a pointer to Fukuda 2006 in the headline.
+9. What the comparison table is: filed in `PL-8ZD7`.
+10. Dates for "this session": filed in `PL-8ZD7`.
+11. Manuals sought one at a time: applied. The decision, with its tag whole, is in § "What is missing, and how the next session gets it", and names "the machine milestone". The table paragraph keeps nothing of it.
+12. Biro 1997 and the Fabius: filed in `PL-8ZD7`.
+13. US presence against the inclusion rule: filed in `PL-8ZD7`.
+14. Which sites could be reached: applied. § "How a value gets into this document" now holds the 2026-09-19 record, the `search.worldcat.org` rate limit and the 2026-10-06 re-check. The Perseus manual entry keeps its address and the 2026-09-19 refusal, and the standards paragraph in § "Sources" points back.
+15. Tier 1: applied. Rule 1 names it.
+16. Shin et al.'s tier: applied. Rule 2 states the rule and points to the Shin entry, which holds the reason.
+17. The Meyer et al. chapter in three places: applied. Rule 3 keeps what the chapter covers, why it is the manufacturer's account, and its tier, and no longer gives the corpus address. The § "Sources" entry keeps the citation, the address, the date, the section dump and the pages, and points to rule 3 for what it may be cited for. The missing-data section keeps "try the corpus first", the questions it answered, and a pointer to rule 3.
+18. Rule 4 against § "Sources": applied in part. Rule 4 keeps what a standard is named by, that no clause's requirement is stated, and that a claim needing the text is marked as a gap, and points to § "Sources" for how the identifiers were found. Declined: dropping "nothing in this document rests on what either standard requires" from § "Sources". The ninth chapter read keeps it as the reader's limitation.
+19. The full standard identifiers: applied in § "What is missing". (b8) and (b9) keep each standard's number and title, which their argument uses.
+20. "The one place where the document names a standard": no longer applies. The line edit (`#2048`) removed that sentence.
+21. The source for circuit component absorption: filed in `PL-8ZD7`.
+22. The manufacturer's description of the Zeus's fresh gas mode: answered and applied. It is Meyer et al., quoted in (b3), and the entry now says so. The Meyer entry gives the pages, 453–468.
+23. Judgments in § "Sources" that belong in (a2): applied. (a2) already states all three, so the Kalmar and Hoffmann entries now point to it, and the Candries entry already did. Declined: moving the record that Hoffmann et al. was once cited as evidence of practice into `PL-NM7X`. The audit of the line edit (`PL-B7V7`) restored that record to (a2) on purpose.
+24. The review to read first: applied. It is now a line in § "What is missing", and the § "Sources" entry keeps "metadata only" and "not cited for any figure".
+
+**Per-chapter findings.** Applied: Biro now leads its group of § "Sources" and Meyer follows Križmarić, so each group is in alphabetical order by first author.
+
+Declined, with the reason:
+
+- Moving session history (the brief, the routes, which hosts answered) out of the document. The outline read places that record in § "How a value gets into this document", and moving it to an item is a judgment for the line edit.
+- Cuts of a sentence stated only once, repetitions inside one paragraph, merged reasons in § "Ruled out", new headings ("Circuit volume alone does not explain differences between machines", "Machine features the model leaves out", "Fields marked unknown, and where to find their values"), and a new opening paragraph for § "What `PL-FG9D` needs". These are wording changes for the line edit.
+- Reordering the headline (consequence first), § "Ruled out" and the bullets of § "What `PL-FG9D` needs". The outline read kept these orders.
+- Moving the comparison-table sentence to the start of § "What is missing". It closes the list it refers to.
+
+The chapter reads' queries that this restructure did not answer are filed in `PL-8ZD7`.
