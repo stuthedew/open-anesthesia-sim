@@ -10220,6 +10220,68 @@ Neither condition validates the elimination a user watches, and no test claims
 that it does. The elimination this simulator runs is the rebreathing one. What
 is asserted about it is the regression pin above.
 
+**A band of one standard deviation tests a plausible individual, not the
+cohort mean.** A deterministic model compared against a cohort *mean* would
+conventionally be judged against the standard error of that mean (SEM),
+$`\text{SD}/\sqrt{n}`$. For these cohorts that band is 2.6 to 2.8 times
+narrower. This section makes the weaker claim on purpose. It asks only whether
+the model is a **plausible individual** drawn from the published cohort.
+Desflurane's wash-in sits at +0.79 SD, which is +2.2 SEM. So it passes this
+claim and would fail a claim about the mean. A passing wash-in must not be
+restated as "reproduces the published mean", because no test here tests that.
+
+**Four caveats limit how strongly a pass may be stated.** The first two apply
+to both directions. The last two apply only to the elimination comparison. All
+four belong beside any statement of this result, wherever it is restated.
+
+1. *The published subjects were breathing nitrous oxide.* Both protocols ran
+   65–70% N₂O at the same time as the potent agents. So the measured curves
+   carry a second-gas effect that this model cannot reproduce. "Known
+   limitations" excludes nitrous oxide, simultaneous gases, and concentration
+   and second-gas effects. "Assumptions" states that carrier gases are assumed
+   not to affect kinetics. The comparison is therefore not perfectly matched,
+   and the mismatch runs in a direction that is not obviously conservative.
+2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
+   partition coefficients being tested descend from the same lineage as the
+   measurements they are tested against (see § "Parameter provenance"). A pass
+   shows that this implementation reproduces the intent of its parameter set.
+   It does not show that the parameter set is independently right. That is
+   weaker than "validated against a human measurement", and it must not be
+   described as more. The intent itself is least reliable in the wash-in
+   direction, which is where this comparison looks. Gas Man's own published
+   agreement with patients is materially worse during wash-in than during
+   maintenance (see § "Known limitations").
+3. *The breathing systems differ, and by more than the measurement's own
+   spread.* The paragraphs above measure the difference at 3.5 to 4.2
+   published standard deviations per cohort. Any statement that this model
+   eliminates more slowly than these volunteers did has to carry this caveat,
+   because most of that difference comes from a rebreathing circuit rather than from a
+   patient.
+4. *This model has no metabolism, and it has no counterpart to the fourth
+   compartment that human washout needs. Neither omission matters over five
+   minutes.* Over five minutes of elimination, metabolism is negligible for all three agents,
+   and the papers bound it. They report recovery, the agent recovered during elimination
+   divided by the agent taken up. Recovery was 101 ± 7% for sevoflurane and 101 ± 6% for
+   isoflurane in the first study, and 105 ± 25% for desflurane and 102 ± 13% for isoflurane in
+   the second. Halothane gave 64 ± 9%, so the same method does detect a metabolized agent. The
+   papers' elimination curves over several days must not be added to this comparison. Over
+   days, the missing metabolism is no longer negligible. Nor is the fat group's blood flow,
+   which § "Known limitations" weighs against two human sources that disagree about its
+   direction. The measured tail also moves beyond what this model can follow within the 24
+   hours for which a run is supported, long before days have passed. Every washout that these
+   papers fitted needed a fourth compartment between muscle and fat, which this model lacks. On
+   the published mean coefficients, that compartment's term is the largest in the measured
+   curve for most of the supported span (the intertissue-diffusion note under § "Known
+   limitations" gives the hours). At five minutes, that term is about one part in twenty of what remains. A comparison over those
+   hours would measure an omission rather than a parameter. So the gap over those hours is
+   measured beside this comparison and is not part of it. § "The first 24 hours of elimination
+   against the published mean curves" records its size and direction hour by hour, and claims
+   no agreement.
+
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+<!-- not-restated: 6 % -->
+
 **For developers.** The test is `tests/reference/test_published_wash_in_and_elimination.py`.
 It checks the five-minute elimination ratio against a stored value to $`1\times10^{-4}`$ absolute,
 and its failure message gives the distance from each published mean. No tolerance is wide enough
@@ -10593,68 +10655,6 @@ So one candidate is left, the published value itself, and no measurement availab
 project can settle it. **No candidate is claimed as the cause.** The cause of the residual is
 not identified. What is known is its sign, its size, and the nine candidates in the table
 above, with what ruled each of them out.
-
-**A band of one standard deviation tests a plausible individual, not the
-cohort mean.** A deterministic model compared against a cohort *mean* would
-conventionally be judged against the standard error of that mean (SEM),
-$`\text{SD}/\sqrt{n}`$. For these cohorts that band is 2.6 to 2.8 times
-narrower. This section makes the weaker claim on purpose. It asks only whether
-the model is a **plausible individual** drawn from the published cohort.
-Desflurane's wash-in sits at +0.79 SD, which is +2.2 SEM. So it passes this
-claim and would fail a claim about the mean. A passing wash-in must not be
-restated as "reproduces the published mean", because no test here tests that.
-
-**Four caveats limit how strongly a pass may be stated.** The first two apply
-to both directions. The last two apply only to the elimination comparison. All
-four belong beside any statement of this result, wherever it is restated.
-
-1. *The published subjects were breathing nitrous oxide.* Both protocols ran
-   65–70% N₂O at the same time as the potent agents. So the measured curves
-   carry a second-gas effect that this model cannot reproduce. "Known
-   limitations" excludes nitrous oxide, simultaneous gases, and concentration
-   and second-gas effects. "Assumptions" states that carrier gases are assumed
-   not to affect kinetics. The comparison is therefore not perfectly matched,
-   and the mismatch runs in a direction that is not obviously conservative.
-2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
-   partition coefficients being tested descend from the same lineage as the
-   measurements they are tested against (see § "Parameter provenance"). A pass
-   shows that this implementation reproduces the intent of its parameter set.
-   It does not show that the parameter set is independently right. That is
-   weaker than "validated against a human measurement", and it must not be
-   described as more. The intent itself is least reliable in the wash-in
-   direction, which is where this comparison looks. Gas Man's own published
-   agreement with patients is materially worse during wash-in than during
-   maintenance (see § "Known limitations").
-3. *The breathing systems differ, and by more than the measurement's own
-   spread.* The paragraphs above measure the difference at 3.5 to 4.2
-   published standard deviations per cohort. Any statement that this model
-   eliminates more slowly than these volunteers did has to carry this caveat,
-   because most of that difference comes from a rebreathing circuit rather than from a
-   patient.
-4. *This model has no metabolism, and it has no counterpart to the fourth
-   compartment that human washout needs. Neither omission matters over five
-   minutes.* Over five minutes of elimination, metabolism is negligible for all three agents,
-   and the papers bound it. They report recovery, the agent recovered during elimination
-   divided by the agent taken up. Recovery was 101 ± 7% for sevoflurane and 101 ± 6% for
-   isoflurane in the first study, and 105 ± 25% for desflurane and 102 ± 13% for isoflurane in
-   the second. Halothane gave 64 ± 9%, so the same method does detect a metabolized agent. The
-   papers' elimination curves over several days must not be added to this comparison. Over
-   days, the missing metabolism is no longer negligible. Nor is the fat group's blood flow,
-   which § "Known limitations" weighs against two human sources that disagree about its
-   direction. The measured tail also moves beyond what this model can follow within the 24
-   hours for which a run is supported, long before days have passed. Every washout that these
-   papers fitted needed a fourth compartment between muscle and fat, which this model lacks. On
-   the published mean coefficients, that compartment's term is the largest in the measured
-   curve for most of the supported span (the intertissue-diffusion note under § "Known
-   limitations" gives the hours). At five minutes, that term is about one part in twenty of what remains. A comparison over those
-   hours would measure an omission rather than a parameter. So the gap over those hours is
-   measured beside this comparison and is not part of it. § "The first 24 hours of elimination
-   against the published mean curves" records its size and direction hour by hour, and claims
-   no agreement.
-
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-<!-- not-restated: 6 % -->
 
 **For developers.**
 `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination` checks the
