@@ -116,3 +116,11 @@ recorded pull requests, every one numbered 3 to 105, from before the
 convention. And a truncated clone declines rather than reporting, because a
 span it cannot walk and one whose notes are genuinely short are identical from
 inside it.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-G6DP`).** `ROADMAP.md` § "What a tag ships that its notes may not name" carried these sentences until then. In the quotes, "the section" is a notes file's `### also inside this tag's span` section, "such work" is work inside a tag's span that the cut did not stamp, "each exemption" is one of the two kinds of span exempt from carrying that section (a release's own cut pull request, and the newest tag's span until the next release's notes exist), and "this section" is that roadmap section.
+
+> `tools/doc_check.py`'s `check_tag_span_covers_its_notes` fails `make check` on the next span that includes such work and lacks the section.
+
+> Each exemption has a reason, and neither is there to keep the check quiet.
+
+> The claim this section makes is about navigation only. It stops being true the moment either mechanism behind it changes: the tag going on the merge commit, or the notes being rendered at the cut.

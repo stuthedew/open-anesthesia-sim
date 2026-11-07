@@ -3,12 +3,14 @@ id: PL-YNFS
 title: Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-G6DP
 added: 2026-11-07
+payoff: a reader of v0.7.0's section finds what the release holds and every capture admitted after the cut in one place, and its definition of done says v0.7.0 is cut only after the owner has test-driven main
+verify: grep -qF '### Captures after the cut' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
