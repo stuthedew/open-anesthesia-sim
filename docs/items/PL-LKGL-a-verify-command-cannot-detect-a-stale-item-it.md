@@ -119,3 +119,10 @@ measurement behind it.
 The rejected churn advisory and its numbers stay recorded above so it is not
 rebuilt.
 
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "Sweep
+the frozen list for staleness" carried this record of the decision until then.
+The project owner's answer in `PL-LVN8` sends decision history to the item that
+holds it.
+
+> A churn advisory was built and measured against that pass's verdicts. It
+> was rejected because `partly` churns *less* than `yes` (`PL-LKGL`).

@@ -226,3 +226,15 @@ read and left: it is a dated decision's reasoning, and its point - that the
 entry is workable only once v0.6.0's scope lands - does not rest on where gate
 work ships. `subprojects/docket/src/docket/plan.py` argues from the old rule in
 a comment and is outside this item's `touches`, so it is filed as `PL-QVSN`.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "How gate
+work is released" carried this record of the decision until then. The project
+owner's answer in `PL-LVN8` sends decision history to the item that holds it.
+
+> The sentence that used to be here said that no interim release is cut
+> partway through clearing. It told sessions to decline `docket release`'s
+> offer, or else see the gate work scatter across patch releases. Every gate
+> has been worked the other way. Gate 0 closed across the v0.2.6 to v0.3.0
+> patch series. At v0.4.32 on 2026-09-20, `bin/docket wave` treated 172 of
+> the 175 entries that Gate 1 then contained as clear. v0.5.1 through v0.5.14
+> shipped 67 of Gate 2's 190.

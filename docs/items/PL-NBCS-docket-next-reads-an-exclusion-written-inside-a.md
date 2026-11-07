@@ -234,3 +234,12 @@ item), `subprojects/docket/README.md` (read, and **edited**: its
 scope` list is "invisible", which is still true of the *ranking* and now
 misleading about the *parse*, so the bullet names `excluded_ids`, the check
 reading it, and `PL-6P9Y` as what would make it speak in placement).
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "Writing
+a milestone entry" carried this record of the decision until then. The project
+owner's answer in `PL-LVN8` sends decision history to the item that holds it.
+
+> The stage-3 exclusion in v0.4.0 put `PL-B9PY` into v0.4.0's `scope_ids`.
+> While v0.4.0 was the anchor, `docket next` told every session that Gate-1
+> work was what v0.4.0 was waiting on. It stated this as a fact, and it named
+> the milestone.
