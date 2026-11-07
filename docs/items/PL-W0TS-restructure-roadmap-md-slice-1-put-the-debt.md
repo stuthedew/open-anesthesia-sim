@@ -3,12 +3,14 @@ id: PL-W0TS
 title: Restructure ROADMAP.md, slice 1: put the debt-gate and development rules and the next release ahead of the shipped milestones, mark v0.6.0 completed, and give the version table, the release-tag rules and each planned milestone a heading
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, subprojects/docket/src/docket/roadmap.py
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2058
 payoff: a reader meets each debt-gate rule before the milestone sections that apply it, and finds the release being built before the shipped history
 verify: grep -q '^### Version table$' ROADMAP.md && grep -q '^## Completed: v0.6.0 ' ROADMAP.md
 ---
@@ -34,3 +36,15 @@ verify: grep -q '^### Version table$' ROADMAP.md && grep -q '^## Completed: v0.6
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Outcome (2026-11-07).** All five findings are applied.
+
+1. The level-2 sections now run: § "Current baseline", § "Versioning decision", § "The plan", § "Development rules for scientific milestones", § "Keeping the toolchain current", § "The debt gate", § "v0.7.0 - the schematic", § "Development pathway", § "Planned milestones", then the completed milestones from v0.1.0 to v0.6.0. The finding's order did not place § "Keeping the toolchain current". It stays between the development rules and the debt gate, where it already sat, until slice 4 (`PL-G6DP`) moves it out of the roadmap.
+2. The Phase 0 record is the first subsection of § "The debt gate", headed "Phase 0, which the debt gate replaced". § "Development pathway" keeps the bold Phase 0 line and a one-sentence pointer. Inside the record, `§ "The debt gate" above is the mechanism` became "The debt gate is the mechanism", because the record now sits in that section.
+3. The heading is "Completed: v0.6.0 - the layout is the reader's". The three same-file citations that the documentation check matched by heading prefix now carry "Completed:". Citations written as `ROADMAP.md` § "v0.6.0 - the layout is the reader's" in `docs/MODEL.md`, `src/`, `.claude/rules/ui-areas.md`, `tools/import_boundary_check.py` and the item briefs are left as they are. The check matches a citation qualified by its file by containment, and other files cite v0.5.0 the same way, without "Completed:".
+4. § "Versioning decision" has "### Version table" and "### Release tags and release notes". The paragraph on v0.0.3 moved from the end of the release-tag rules to just after the version table, because it is about version numbers.
+5. Each of the 43 planned milestones has a heading, "### N. name", and its text became ordinary paragraphs. The headings' names are placeholders chosen in this slice. The closing paragraph "None of items 1-43 mix..." and the paragraph about an earlier item 1, which sat after item 31, moved into the section's introduction. That paragraph now opens "An earlier item 1", because it sits directly above the current item 1. § "Development pathway" now says "The numbered items below are the catalogue", because the list became headings.
+
+The reorder turned 15 "above" or "below" pointers around, and each was corrected. A script checked every § citation that sits beside a direction word, and the two reviewers checked the uncited ones. The comment in `subprojects/docket/src/docket/roadmap.py` that placed the baseline heading below the version table now names the heading without a direction.
+
+**Checked.** `bin/docket wave`, `bin/docket gate` and `bin/docket check` print the same output before and after. `tools/doc_check.py check` prints the same output except for the line number of one advisory that moved. Two reviewers compared the old and new text. They found 11 changes of meaning, all of them positional or a heading that dropped a qualifier its item depends on, and each was corrected. One suggestion was not taken: item 1's heading keeps "with interlocks", because it matches the item's first sentence and the name § "Development pathway" uses for it.

@@ -3,13 +3,14 @@ id: PL-P0C5
 title: Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-W0TS
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+payoff: a reader finds each debt-gate and development rule stated once, in its own section, and each milestone section points there instead of restating it
+verify: grep -q '^### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
@@ -146,3 +147,11 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Next steps, written when slice 1 closed (2026-11-07).** The thread that filed this feature stopped after slice 1 for length, not for the work, so a fresh session picks this item up.
+
+1. Start from `main` once slice 1 (`PL-W0TS`, #2058) has merged, and claim this item.
+2. The row numbers in the findings above are `ROADMAP.md` at `aff76df1`. Slice 1 moved whole sections: § "The debt gate" and § "Development rules for scientific milestones" now sit after § "The plan", and the completed milestones sit last. Inside each section the rows kept their order, so find each passage by the words a finding quotes.
+3. Whether the findings that move decision history into an item are applied is decided by the project owner's answer in `PL-LVN8`, which was put to him on a card on 2026-11-07. If that question is still open, apply the rest and record here which findings it leaves unapplied.
+4. Before marking the pull request ready: compare the output of `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` before and after the change. Check every § citation that sits beside "above" or "below" against where its heading now is, because a move can turn a pointer around (slice 1 found 15). Then give two reviewers the old and new file: one checks every word whose meaning depends on position, and the other checks every changed line and every new heading. Slice 1's two reviewers found 11 changes of meaning between them, with little overlap.
+5. `ROADMAP.md` is not on the owner's read list, so `bin/docket arm` answers "arm" and the pull request merges on green.
