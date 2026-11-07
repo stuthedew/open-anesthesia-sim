@@ -377,3 +377,7 @@ about 8.4 ms per frame once the hypothetical settings are memoised, and about
 with what the run later draws to 6.6e-14 relative on alveolar.
 `PREVIEW_REGION_COLOR` is the `MUTED` alias, not a new colour, so
 `tools/contrast_check.py` needed no entry.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 frozen list carried these sentences in its paragraph "`PL-5B1N` clears in this gate" until then. "That blocker" is `blocked-by: v0.7.0`, "this section" is v0.7.0's frozen list as written on 2026-10-25, and "the second group" is the entries cleared before v0.7.0's implementation begins. The item has since closed with its build, which the roadmap now says instead.
+
+> That blocker cleared when this section was written. So the item is `ready` again, and it is worked with the rest of the second group.

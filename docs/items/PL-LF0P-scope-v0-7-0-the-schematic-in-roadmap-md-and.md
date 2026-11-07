@@ -42,3 +42,13 @@ and `make check` is green.
 
 **Generator check.** None: scoping a milestone is a beat of the cadence, and
 nothing here produces findings of its own.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section carried these four passages until then. The first ended the opening paragraph's sentence "The rest of this section was decided in the scoping round without being put to the project owner", and "Those" in the second sentence of that quote means the choices of look, wording or placement. The second ended the paragraph on what Gas Man's Picture shows. The third ended the paragraph on containers drawn to scale, and "The measurement" is the model run that gave fat 493 L of gas equivalent and the 1 to 7 px widths. The fourth followed "Frozen 2026-10-25, the day this milestone was scoped" in the frozen list's first paragraph.
+
+> because each remaining choice either had one clearly better option or concerned look, wording or placement. Those are placeholders while structure and function are being built.
+
+> Item 27 now says so.
+
+> The measurement used `AgentUptakeSystem.for_agent` on the shipped parameter files, on 2026-10-25.
+
+> v0.6.0 shipped on 2026-10-20. § "The debt gate" -> "The cadence" names two days, and the later of them is the scoping day.

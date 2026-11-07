@@ -907,47 +907,62 @@ field that the store already records.
 ## v0.7.0 - the schematic
 
 This milestone is planned-milestone item 27, the compartment schematic, with
-item 28, agent cost, beside it. `PL-LF0P` scoped it on 2026-10-25. Two choices
-went to the project owner. First, the schematic's containers fill to tension,
-as in Gas Man. They are labelled with their amounts, and a bar shows each
-compartment's share of the agent (project owner, 2026-10-25, ratified, over
-containers drawn to scale and over Gas Man's Picture as it is). Second, item
-28 is built here rather than left unscheduled (project owner, 2026-10-25,
-ratified, over leaving it out and deferring its four entries to Gate 4). The
+item 28, agent cost, beside it. `PL-LF0P` scoped it on 2026-10-25. The
 schematic and the agent cost readout are each a View of their own, which any
-Area can hold. The project owner confirmed this in the same round. The rest of
-this section was decided in the scoping round without being put to the
-project owner, because each remaining choice either had one clearly better
-option or concerned look, wording or placement. Those are placeholders while structure
-and function are being built.
+Area can hold. The project owner confirmed this in the scoping round. Two
+choices went to the project owner:
 
-**What Gas Man's Picture shows, read at the source.** The Gas Man Workbook's
-Figure 2-1 (printed p. 11) draws the circuit, the alveoli, arterial blood, the
-vessel-rich group, muscle, fat and venous blood as containers of one width.
-Each one fills "to a height representing partial pressure or tension in that
-compartment" (printed p. 11). The only amounts it shows are two totals in
-litres, Uptake and Delivered. A setting turns these into money. Appendix E
-(printed p. 188) gives the Picture's purpose as "viewing and manipulating the
-state of an experiment at a given point in its evolution", and says "the
-compartment schematic helps you visualize the relationships between
-compartment tensions". So Gas Man's Picture shows where the tension is. It
-does not show where the agent is, and that is the lesson planned-milestone
-item 27 was written for. Item 27 now says so.
+1. The schematic's containers fill to tension, as in Gas Man. They are
+   labelled with their amounts, and a bar shows each compartment's share of
+   the agent (project owner, 2026-10-25, ratified, over containers drawn to
+   scale and over Gas Man's Picture as it is).
 
-**Drawing each container to scale does not rescue it in this model.** A
-container whose width is its capacity holds an amount equal to its filled
-area. Mapleson's electric analogue rests on the same relation, q = C·v. A
-condenser's charge equals its capacitance times its voltage (Mapleson WW,
-*J Appl Physiol* 1963;18(1):197-204, https://doi.org/10.1152/jappl.1963.18.1.197,
-read from the private reference corpus, equations 5 and 6). But this model's
-capacities span almost three orders of magnitude. For sevoflurane, fat holds
-493 L of gas equivalent and venous blood 0.79 L, a ratio of about 620. In a
-View 600 px wide, drawn to scale, fat takes about 500 px. The circuit, the
-alveoli, venous blood and the vessel-rich group take between 1 and 7 px each.
-Isoflurane and desflurane give the same picture. The measurement used
-`AgentUptakeSystem.for_agent` on the shipped parameter files, on 2026-10-25.
+   **Gas Man's Picture shows where the tension is. It does not show where the
+   agent is, and that is the lesson planned-milestone item 27 was written
+   for.** The Gas Man Workbook's Figure 2-1 (printed p. 11) draws the circuit,
+   the alveoli, arterial blood, the vessel-rich group, muscle, fat and venous
+   blood as containers of one width. Each one fills "to a height representing
+   partial pressure or tension in that compartment" (printed p. 11). The only
+   amounts it shows are two totals in litres, Uptake and Delivered. A setting
+   turns these into money. Appendix E (printed p. 188) gives the Picture's
+   purpose as "viewing and manipulating the state of an experiment at a given
+   point in its evolution", and says "the compartment schematic helps you
+   visualize the relationships between compartment tensions".
+
+   **Drawn to scale, four of the six containers would be between 1 and 7 px
+   wide in a 600 px View.** A container whose width is its capacity holds an
+   amount equal to its filled area. Mapleson's electric analogue rests on the
+   same relation, q = C·v. A condenser's charge equals its capacitance times
+   its voltage (Mapleson WW, *J Appl Physiol* 1963;18(1):197-204,
+   https://doi.org/10.1152/jappl.1963.18.1.197, read from the private
+   reference corpus, equations 5 and 6). But this model's capacities span
+   almost three orders of magnitude. For sevoflurane, fat holds 493 L of gas
+   equivalent and venous blood 0.79 L, a ratio of about 620. In a View 600 px
+   wide, drawn to scale, fat takes about 500 px. The circuit, the alveoli,
+   venous blood and the vessel-rich group take between 1 and 7 px each.
+   Isoflurane and desflurane give the same picture (computed from the shipped
+   parameter files on 2026-10-25, `PL-LF0P`).
+
+2. Item 28 is built here rather than left unscheduled (project owner,
+   2026-10-25, ratified, over leaving it out and deferring its four entries to
+   Gate 4).
+
+The rest of this section was decided in the scoping round without being put to
+the project owner. Look, wording and placement are placeholders while
+structure and function are being built.
 
 ### Goal
+
+The end state is as follows. A learner places the compartment schematic in any
+Area. For each displayed run, the schematic shows the circuit, the alveoli,
+venous blood and the three tissue groups, in the order the agent reaches them.
+Each fills to its tension on one shared scale, as in Gas Man. Each is labelled
+with its amount of agent vapour. A bar shows each compartment's share of all
+the agent the run holds, so fat's share grows on screen while its tension
+stays near zero. A second View, the agent cost View, shows the delivered agent
+in millilitres of liquid equivalent, and in money at a price the reader sets.
+Every number on it is the number that the rest of the interface gives for the
+same run at the same instant, and the View says that its values are modelled.
 
 The interface draws tension and almost nothing else. The concentration chart
 and the readouts give each compartment's partial pressure, in % atm and as a
@@ -962,61 +977,30 @@ agent. The table below was measured on this model, with sevoflurane held at a
 
 Fat's trace sits within a few pixels of zero on the chart for that whole time.
 `PL-H5DV` measured the same pattern for all three agents, and the hours that
-fat takes to overtake muscle. As things stand on 2026-10-25, there are four
-gaps:
+fat takes to overtake muscle.
+
+As things stand on 2026-10-25, there are three gaps:
 
 - **No surface says where the agent is.** The only amounts on screen are the
   agent accounting View's delivered, exhausted and stored totals, in litres of
   vapour. That View is a check that the model conserves mass. The project owner
   called it "not info the user really needs or cares to see" (2026-09-16,
   recorded in `PL-B396`).
-- **The amounts exist and are not passed on.** Each compartment in `core/`
-  stores its own `agent_amount_l`. `SimulationSnapshot` in
-  `src/anesthesia_sim/app/controller.py` carries only their total,
-  `stored_agent_l`. Nothing was left out by mistake. `ROADMAP.md` § "Designed
-  for forking" declined per-compartment amounts until a consumer needed them,
-  and this milestone is that consumer.
 - **No View draws how the compartments connect.** The chart puts six traces on
   one axis. Nothing shows that agent passes from the circuit to the alveoli,
   then to the blood and on to each tissue, driven by the difference in
   tension. That relationship is what Gas Man's Picture exists to show.
-- **Nothing says what the agent cost.** The delivered total appears only in
-  litres of vapour, inside the mass-conservation check. A clinician buys and
-  fills agent as liquid, and the low-flow lesson of planned-milestone item 28
-  is about money.
+- **Nothing says what the agent cost.** A clinician buys and fills agent as
+  liquid, and the low-flow lesson of planned-milestone item 28 is about money.
 
-The end state is as follows. A learner places the compartment schematic in any
-Area. For each displayed run, the schematic shows the circuit, the alveoli,
-venous blood and the three tissue groups, in the order the agent reaches them.
-Each fills to its tension on one shared scale, as in Gas Man. Each is labelled
-with its amount of agent vapour. A bar shows each compartment's share of all
-the agent the run holds, so fat's share grows on screen while its tension
-stays near zero. A second View, the agent cost View, shows the delivered agent
-in millilitres of liquid equivalent, and in money at a price the reader sets.
-Every number on it is the number that the rest of the interface gives for the
-same run at the same instant, and the View says that its values are modelled.
+**The amounts exist and are not passed on.** Each compartment in `core/`
+stores its own `agent_amount_l`. `SimulationSnapshot` in
+`src/anesthesia_sim/app/controller.py` carries only their total,
+`stored_agent_l`. Nothing was left out by mistake. `ROADMAP.md` § "Designed
+for forking" declined per-compartment amounts until a consumer needed them,
+and this milestone is that consumer.
 
 ### Debt gate: the frozen list
-
-**Frozen 2026-10-25, the day this milestone was scoped.** v0.6.0 shipped on
-2026-10-20. § "The debt gate" -> "The cadence" names two days, and the later of
-them is the scoping day. Every open item that counts as debt under § "The debt
-gate" above is on this list. The list shows the store as it was at the cut:
-`origin/main` at `0947408`, with this milestone's own items added. Only one
-open entry of v0.6.0's list is not debt: `PL-5B1N`. It is on this list too,
-because a freeze carries over every open entry of the previous list
-(`PL-JV5Q`). One item was untriaged at the cut. That item was `PL-HDRN`, filed
-on 2026-10-24 with `PL-TDV9`'s pull request. It asks `bin/docket arm` to hold a
-simulator pull request whose blind review passes never ran. An untriaged item
-carries no class, so the class filter cannot read it. `PL-HDRN` was then
-classed `infra`, which is not debt, and #1767 closed it the same day. So it is
-not on this list.
-
-**`PL-4LS8` joined the list on 2026-10-31, after the freeze.** It held the
-one question that `PL-5B1N`'s build left open: whether a preview curve may
-draw at 1 px. `PL-5B1N` closed with its build, and the open part of a frozen
-entry stays on the list rather than leaving it. `PL-4LS8` closed the same day
-with the 2 px floor kept.
 
 **Two groups, and only the second must clear before this milestone's
 implementation begins.** The first group is debt that this milestone's own
@@ -1028,91 +1012,44 @@ is deferred as § "Deferring to the next gate" says.
 milestone instead.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` came onto
 this list deferred from v0.6.0, because no release scheduled planned-milestone
 item 28 (`PL-DB64`). This milestone schedules item 28. So the Required scope
-below names all four, and they are in the first group. `PL-YRLM` held the
-question of when to schedule item 28, and it closed with that answer.
-`PL-B396` is now also classed `safety`, because it builds a unit conversion
-that is displayed.
+below names all four, and they are in the first group. `PL-B396` is now also
+classed `safety`, because it builds a unit conversion that is displayed.
 
-**`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on the terms of
-§ "Deferring to the next gate".** Both wait on machine selection, which no
-release schedules. `PL-WZVZ` waits on `PL-TBMK`, a second machine profile, and on
+**`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on the terms of § "Deferring
+to the next gate".** Both wait on machine selection, which no release
+schedules. `PL-WZVZ` waits on `PL-TBMK`, a second machine profile, and on
 `PL-4TWW`, the surface that selects between profiles. `PL-B4P7` waits on
 `PL-2FZ9`, which loads a profile by id. Through `PL-2FZ9`, it also waits on a
 second profile reaching a run. Checked against the tree at `0947408`, neither
 hazard is live. `src/anesthesia_sim/data/machines/` holds one profile,
 `reference_circle_system.json`, and nothing in `src/` selects between profiles.
 So no displayed value can be attributed to the wrong machine, and no run can
-open at another machine's flow. Each item's `deferred-from: v0.7.0` says so.
-Gate 2 deferred `PL-WZVZ` for the same reason, the same unmet condition
-(`PL-DB64`, project owner, 2026-09-27, ratified, over keeping it on the list to
-hold the gate open). `PL-B4P7` was captured after Gate 2's freeze and waits on
-the same condition. So the scoping round gave both items the same disposition,
-without putting the question to the owner again.
+open at another machine's flow. Gate 2 deferred `PL-WZVZ` for the same reason,
+the same unmet condition (`PL-DB64`, project owner, 2026-09-27, ratified, over
+keeping it on the list to hold the gate open). `PL-B4P7` was captured after
+Gate 2's freeze and waits on the same condition. So the scoping round gave both
+items the same disposition, without putting the question to the owner again.
 
-**`PL-5B1N` clears in this gate.** It is the preview a control draws while it
-is grabbed and not yet released. v0.6.0's gate deferred it to Gate 3
-(`PL-YBFB`) with `blocked-by: v0.7.0`. That blocker cleared when this section
-was written. So the item is `ready` again, and it is worked with the rest of
-the second group.
-
-**`PL-P319` joined this list on 2026-10-26, after the freeze, beside
-`PL-GCGX`.** `PL-GCGX` closed on #1863 with all of its work done except
-naming the base MAC that Katoh 1993 measured its sevoflurane and isoflurane
-fractions against. That part needs the full paper, which no session can
-fetch, and it moved to `PL-P319`. Deferring it instead would need its hazard
-to be not live, and it is live: nobody can yet check how far those two bands
-sit from the source. So the remainder stays on the list, and this gate waits
-on the project owner adding the paper to the reference corpus.
-
-**Six captures joined this list on 2026-10-31, after the freeze.** They are
-`PL-9B1M`, `PL-D88N`, `PL-QVBR`, `PL-PTDZ`, `PL-000W` and `PL-D1LR`, each
-classed `safety` or `science`. § "Deferred from this gate" admitted such a
-capture rather than deferring it. `PL-R4Y2`'s triage placed them, and deferred
-the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
-
-**`PL-SP6H` joined this list on 2026-11-04, after the freeze.** It is classed
-`safety`. The agent cost View showed the delivered total in millilitres of
-liquid to 0.1 mL, and in long runs at a high delivered concentration that
-step was finer than the figure's uncertainty supports. The hazard was live, so
-§ "Deferred from this gate" admitted the item rather than deferring it. Its
-fix is whole millilitres, which the project owner chose on 2026-11-04.
-
-**`PL-0P3F` joined this list on 2026-11-04, after the freeze.** It is classed
-`science`. A blind review of `PL-SP6H` found that the accounting panel's 0.1 L
-step rests on shifts measured only at 1 MAC with the reference flows. At each
-agent's dial maximum and 10 L/min, one count of 0.1 L falls to about an eighth
-of an SD by 24 h, at the fine end of the band the section allows. The panel
-shows that step at every setting, so the gap is live and the item is admitted
-rather than deferred.
-
-**36 captures joined this list on 2026-11-07, after the freeze** (`PL-GW0P`).
-34 of them had been deferred because they were filed after the freeze, and
-`PL-GW0P` and `PL-8C8W` had not yet been triaged. The project owner ruled that
-a capture joins when the problem it describes was already present at the
-freeze, as § "Which findings re-enter the gate" says. Each item's brief records
-what the check against `817a4d88` found. `PL-GW0P` and `PL-8C8W` closed the
-same day. Eight of the 36 stay deferred to the next gate on the terms of
-§ "Deferring to the next gate", and each item's `deferred-from:` says why.
-`PL-J1ZM` waits on four untriaged findings that no release schedules.
-`PL-19W8`, `PL-5C1H`, `PL-5L84`, `PL-H94Q`, `PL-JP7P`, `PL-MCQ5` and `PL-86VL`
-are classed `safety` or `science`, and the check found that no learner can see
-a wrong value now (`PL-8C8W`). `PL-8W1B`, `PL-TDX0` and `PL-KG6S` are also
-classed `safety` or `science` and are not deferred. A learner can misread a
-tension from `PL-8W1B`'s containers today. The fat and muscle tissue:gas SDs
-that the agent files store are far wider than the SDs `PL-TDX0` says the
-section's table used, so a displayed digit may be finer than its uncertainty,
-and `PL-KG6S`'s ratios are taken from that table. Seven other captures stay
-deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
-`PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
+**Frozen 2026-10-25, the day this milestone was scoped.** Every open item that
+counts as debt under § "The debt gate" above is on this list. The list shows
+the store as it was at the cut: `origin/main` at `0947408`, with this
+milestone's own items added.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
-requires this sweep before any entry on the list is worked. The reason is that
-a `verify:` command tests for the fix and never for the fault. Each of the 24
+requires this sweep before any entry on the list is worked. Each of the 24
 entries open at the time was checked against the tree. None described a
 problem that no longer reproduces, so none was dropped. Three briefs asked for
 more work than is left. One entry waited on less than its record said, and two
 waited on more. Each entry's brief carries its dated verdict, and `PL-F2NX`'s
 brief has the tally.
+
+**`PL-5B1N` clears in this gate.** It is the preview a control draws while it
+is grabbed and not yet released. Only one open entry of v0.6.0's list is not
+debt: `PL-5B1N`. It is on this list too, because a freeze carries over every
+open entry of the previous list (`PL-JV5Q`). v0.6.0's gate deferred it to Gate
+3 (`PL-YBFB`) with `blocked-by: v0.7.0`. `PL-5B1N` closed with its build, and
+§ "Captures after the cut" records `PL-4LS8`, which held the one question that
+build left open.
 
 **Cleared by v0.7.0 itself - 9 entries**
 
@@ -1126,7 +1063,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 118 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 118 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1247,11 +1184,12 @@ brief has the tally.
 - PL-KG6S (S) docs/MODEL.md § "Displayed precision" bounds the last displayed digit at 'between about a seventh of one parameter SD and seven times it' and calls one SD 'one to seven counts', but its own table's fat tissue:gas row, 8.7e-4 to 6.7e-3 pp, is 0.09 to 0.67 counts, which puts the digit at 1.5 to 11.5 SDs; no row gives the 'seven times' end, so the bound should be restated from the table or limited to the rows it comes from (found by PL-J37P's blind review)
 - PL-MCQ5 (M) Hold the numeric paragraphs in docs/MODEL.md's required-test sections (published wash-in and elimination, independent solution) to named tests
 
-### Deferred from this gate
+### Captures after the cut
 
-An open debt item captured after the cut joins this list when § "Which
+An open debt item captured after the cut joins the frozen list when § "Which
 findings re-enter the gate" says it re-enters: its problem was present at the
-freeze, or it falls under one of that section's exceptions (`PL-GW0P`). A
+freeze, or it falls under one of that section's exceptions (`PL-GW0P`). The
+open part of a frozen entry stays on the list rather than leaving it. A
 capture that an entry waits on is either let onto the list beside that entry,
 or the entry is deferred with it (`PL-D388`). Each deferred item records
 `deferred-from: v0.7.0 - <why>`. The triage pass that classes the item writes
@@ -1268,50 +1206,104 @@ step. The head and its two other members, `PL-06LS` and `PL-XST1`, are not
 head that `PL-R4Y2`'s defect review recorded on 2026-10-25, over `PL-6RJ0`,
 `PL-3B34` and `PL-HF4B`. Its guard requires values shown together on the run
 screen to come from one state, and each member is a `safety` entry already on
-this list. It was first given `deferred-from:`, which a `safety` item could not
-then take. Since `PL-8C8W` one may, but only on the terms of § "Deferring to
-the next gate".
+the frozen list.
+
+**`PL-P319` joined the frozen list on 2026-10-26, after the freeze, beside
+`PL-GCGX`.** `PL-GCGX` closed on #1863 with all of its work done except
+naming the base MAC that Katoh 1993 measured its sevoflurane and isoflurane
+fractions against. That part needs the full paper, which no session can
+fetch, and it moved to `PL-P319`. Deferring it instead would need its hazard
+to be not live, and it is live: nobody can yet check how far those two bands
+sit from the source. So the remainder stays on the list, and this gate waits
+on the project owner adding the paper to the reference corpus.
+
+**`PL-4LS8` joined the frozen list on 2026-10-31, after the freeze.** It held
+the one question that `PL-5B1N`'s build left open: whether a preview curve may
+draw at 1 px. `PL-4LS8` closed the same day with the 2 px floor kept.
+
+**Six captures joined the frozen list on 2026-10-31, after the freeze.** They
+are `PL-9B1M`, `PL-D88N`, `PL-QVBR`, `PL-PTDZ`, `PL-000W` and `PL-D1LR`, each
+classed `safety` or `science`. `PL-R4Y2`'s triage placed them, and deferred the
+other two captures it triaged, `PL-9Z74` and `PL-93LV`.
+
+**`PL-SP6H` joined the frozen list on 2026-11-04, after the freeze.** It is
+classed `safety`. The agent cost View showed the delivered total in millilitres
+of liquid to 0.1 mL, and in long runs at a high delivered concentration that
+step was finer than the figure's uncertainty supports. The hazard was live, so
+the rule above admitted the item rather than deferring it. Its fix is whole
+millilitres, which the project owner chose on 2026-11-04.
+
+**`PL-0P3F` joined the frozen list on 2026-11-04, after the freeze.** It is
+classed `science`. A blind review of `PL-SP6H` found that the accounting
+panel's 0.1 L step rests on shifts measured only at 1 MAC with the reference
+flows. At each agent's dial maximum and 10 L/min, one count of 0.1 L falls to
+about an eighth of an SD by 24 h, at the fine end of the band the section
+allows. The panel shows that step at every setting, so the gap is live and the
+item is admitted rather than deferred.
+
+**36 captures joined the frozen list on 2026-11-07, after the freeze**
+(`PL-GW0P`). 34 of them had been deferred because they were filed after the
+freeze, and `PL-GW0P` and `PL-8C8W` had not yet been triaged. The project owner
+ruled that a capture joins when the problem it describes was already present at
+the freeze, as § "Which findings re-enter the gate" says. Each item's brief
+records what the check against `817a4d88` found. `PL-GW0P` and `PL-8C8W` closed
+the same day. Eight of the 36 stay deferred to the next gate on the terms of
+§ "Deferring to the next gate", and each item's `deferred-from:` says why.
+`PL-J1ZM` waits on four untriaged findings that no release schedules.
+`PL-19W8`, `PL-5C1H`, `PL-5L84`, `PL-H94Q`, `PL-JP7P`, `PL-MCQ5` and `PL-86VL`
+are classed `safety` or `science`, and the check found that no learner can see
+a wrong value now (`PL-8C8W`). `PL-8W1B`, `PL-TDX0` and `PL-KG6S` are also
+classed `safety` or `science` and are not deferred. A learner can misread a
+tension from `PL-8W1B`'s containers today. The fat and muscle tissue:gas SDs
+that the agent files store are far wider than the SDs `PL-TDX0` says the
+section's table used, so a displayed digit may be finer than its uncertainty,
+and `PL-KG6S`'s ratios are taken from that table. Seven other captures stay
+deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
+`PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
 
 ### Required scope
 
+#### The compartment schematic
+
 1. **The specification, before anything is drawn** (queue item `PL-2881`).
    `docs/MODEL.md` gains a subsection under § "Minimum displayed outputs".
-   The subsection says what the schematic asserts and what it does not. A
-   fill height is the compartment's modelled tension, on the same scale for
-   every container of one run. An amount is the compartment's modelled agent,
-   in the unit § "Agent amount" defines. The amount is named as vapour, so
-   that nobody reads it as liquid. The subsection sets, once for the whole
-   interface, how a vapour amount and a liquid-equivalent amount name their
-   units. The schematic labels its amounts in millilitres of vapour. The agent
-   cost View gives millilitres of liquid equivalent. About 183 mL of
-   sevoflurane vapour come from 1 mL of liquid (§ "Agent amount"), so neither
-   may show a bare "mL". The subsection says what the share bar shows: each
-   compartment's amount as a share of all the agent the run holds, circuit
-   included. It derives the displayed precision of a per-compartment amount in
-   § "Displayed precision". That precision does not come from the run totals'
-   entry in `AGENT_AMOUNT_DISPLAY_PRECISION`, which was derived for the three
-   totals. At that entry's resolution of 0.1 L, venous blood and the alveoli read
-   0.0 L for a whole hour at 1 MAC. The subsection adds two rows to the hazard
-   table in
-   § "Reasonably foreseeable misuse, and the hazards the presentation carries".
-   One row is for a height read as an amount. The other is for a vapour amount
-   read as liquid. The subsection also records why no container
-   is drawn for arterial blood. This model gives arterial blood no amount of
-   its own, because $`F_a \equiv F_A`$ (§ "Blood compartments"). A container
-   drawn for arterial blood would show agent that the model does not hold.
 
-2. **Each compartment's amount on the snapshot** (queue item `PL-KFTM`).
+   - The subsection says what the schematic asserts and what it does not. A
+     fill height is the compartment's modelled tension, on the same scale for
+     every container of one run. An amount is the compartment's modelled
+     agent, in the unit § "Agent amount" defines. The amount is named as
+     vapour, so that nobody reads it as liquid.
+   - The subsection sets, once for the whole interface, how a vapour amount
+     and a liquid-equivalent amount name their units. The schematic labels its
+     amounts in millilitres of vapour. The agent cost View gives millilitres
+     of liquid equivalent. About 183 mL of sevoflurane vapour come from 1 mL
+     of liquid (§ "Agent amount"), so neither may show a bare "mL".
+   - The subsection says what the share bar shows: each compartment's amount
+     as a share of all the agent the run holds, circuit included.
+   - The subsection derives the displayed precision of a per-compartment
+     amount in § "Displayed precision". That precision does not come from the
+     run totals' entry in `AGENT_AMOUNT_DISPLAY_PRECISION`, which was derived
+     for the three totals. At that entry's resolution of 0.1 L, venous blood
+     and the alveoli read 0.0 L for a whole hour at 1 MAC.
+   - The subsection adds two rows to the hazard table in
+     § "Reasonably foreseeable misuse, and the hazards the presentation carries".
+     One row is for a height read as an amount. The other is for a vapour
+     amount read as liquid.
+   - The subsection also records why no container is drawn for arterial
+     blood. This model gives arterial blood no amount of its own, because
+     $`F_a \equiv F_A`$ (§ "Blood compartments"). A container drawn for
+     arterial blood would show agent that the model does not hold.
+
+2. **Each compartment's amount passed to the display** (queue item `PL-KFTM`).
    `SimulationSnapshot` carries the six compartments' amounts beside their
    tensions. Each amount is read from that compartment's `agent_amount_l` in
-   `core/`. The amounts travel as one record per compartment rather than as
-   six more flat floats. That way v0.8.0 can key the same record by substance
+   `core/`. The amounts travel as one record per compartment rather than as six
+   more flat floats. That way v0.8.0 can key the same record by substance
    instead of adding fields. `stored_agent_l` stays `core/`'s one sum of the
    amounts, and a test holds the record's amounts equal to it to the last bit.
-   Summing the record again in `app/` would have been a second sum of the same
-   fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01). No equation
-   changes. `core/` already computes every amount, and this item only
-   passes the amounts on. A test compares each amount at stated instants with
-   an oracle independent of `core/`, as `.claude/rules/test-oracles.md`
+   No equation changes. `core/` already computes every amount, and this item
+   only passes the amounts on. A test compares each amount at stated instants
+   with an oracle independent of `core/`, as `.claude/rules/test-oracles.md`
    requires.
 
 3. **The schematic View** (queue item `PL-RNYV`). The schematic is one
@@ -1339,12 +1331,14 @@ the next gate".
    the bar carries the amount. In this model, containers drawn to scale cannot
    carry it.
 
-5. **A shipped Workspace that places it** (queue item `PL-PR1W`).
+5. **A shipped Workspace that places the schematic** (queue item `PL-PR1W`).
    The schematic is already reachable from every Workspace through the View
    chooser. One shipped Workspace places it beside the concentration chart.
    A learner then meets tension over time and where the agent is now side by
    side, without having to build that layout first. Which Workspace places it
    is a placeholder decision.
+
+#### Agent cost, in liquid and in money
 
 6. **The constants a liquid figure is derived from** (queue item `PL-KZ99`).
    The agent's parameter file stores each agent's molar mass. It also stores
@@ -1353,11 +1347,10 @@ the next gate".
    derived from these values in one place. It is checked against Biro's and
    Gas Man's published constants.
 
-7. **The precision of each unit** (queue item `PL-0S0V`). `docs/MODEL.md`
-   § "Displayed precision" derives a precision for each quantity and each
-   unit. The reason is that a unit the reader chooses makes precision depend
-   on both.
-
+7. **A displayed precision for each quantity and unit** (queue item `PL-0S0V`).
+   `docs/MODEL.md` § "Displayed precision" derives a precision for each
+   quantity and each unit. The reason is that a unit the reader chooses makes
+   precision depend on both.
 8. **The agent cost View** (queue item `PL-B396`). The agent cost View is a
    View of its own, which any Area can hold. By default it shows the delivered
    agent in millilitres of liquid equivalent. If the reader chooses, it shows
@@ -1366,17 +1359,18 @@ the next gate".
    (`PL-H4N8`). The agent accounting View keeps litres of vapour, because it
    is a check that the model conserves mass.
 
-9. **What a reader's price carries** (queue item `PL-VJZK`). `docs/MODEL.md`
-   § "A cost at the reader's price" states what a stored price carries,
-   including its currency and the date on which it applied. It also states
-   what a cost readout shows beside the cost: the modelled liquid volume that
-   the cost multiplies, the price it used, and words saying that the price is
-   the reader's rather than an authoritative figure.
+9. **What a stored price records, and what a cost readout shows beside it**
+   (queue item `PL-VJZK`). `docs/MODEL.md` § "A cost at the reader's price"
+   states what a stored price carries, including its currency and the date on
+   which it applied. It also states what a cost readout shows beside the cost:
+   the modelled liquid volume that the cost multiplies, the price it used, and
+   words saying that the price is the reader's rather than an authoritative
+   figure.
 
 10. **A preferences file** (queue item `PL-93B3`). The price and the cost
     View's unit belong to the reader, not to a layout. So they are kept in a
     versioned preferences file separate from the Workspaces, as `PL-MQHN`
-    decided. `app/preferences.py` is that store (`PL-93B3`, 2026-11-01).
+    decided.
 
 11. **The cost in money** (queue item `PL-1P15`). The agent cost View shows
     the delivered agent's cost at a price per agent that the reader sets. The
@@ -1384,18 +1378,21 @@ the next gate".
     institution. When no price is set, the View says so instead of showing a
     cost.
 
-12. **The copy editor, fixed, and the rewrites it holds** (queue items
-    `PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`, `PL-XT53` and `PL-YVL0`).
-    The project owner added this to v0.7.0 (project owner, 2026-11-04 20:12Z:
-    "At the copy editor stuff to .7"). The copy editor is the review that
-    every rewrite of `docs/MODEL.md` passes through. It keeps text that its
-    reader does not need, and lengthens some of it, so `PL-HGZS` records it as
-    a live generator. The copy editor is fixed and stress-tested first. Then
-    the five `docs/MODEL.md` rewrites it blocks are made, so that the sections
-    a learner reads beside the schematic, the agent cost View and the other
-    displays are written for a clinician.
+#### The copy editor
+
+12. **Fix the copy editor, then make the five `docs/MODEL.md` rewrites that
+    wait on it** (queue items `PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`,
+    `PL-XT53` and `PL-YVL0`). The project owner added this to v0.7.0 on
+    2026-11-04. The copy editor is the review that every rewrite of
+    `docs/MODEL.md` passes through. It keeps text that its reader does not
+    need, and lengthens some of it. The copy editor is fixed and
+    stress-tested first. Then the five `docs/MODEL.md` rewrites it blocks are
+    made, so that the sections a learner reads beside the schematic, the agent
+    cost View and the other displays are written for a clinician.
 
 ### Definition of done
+
+**The compartment schematic**
 
 - A learner can put the compartment schematic in any Area from its View
   chooser, in every Workspace, and one shipped Workspace places it.
@@ -1405,8 +1402,13 @@ the next gate".
 - Each container fills to that compartment's modelled tension, on one scale
   for every container of the run. Each is labelled with its tension and its
   amount, and the amount is named as vapour.
-  A bar shows each compartment's share of the agent the run holds. Each
+- A bar shows each compartment's share of the agent the run holds. Each
   segment is named in text, and the shares add up to the whole.
+- The schematic says on its face that its values are modelled. Its amounts are
+  given at the precision that `docs/MODEL.md` § "Displayed precision" derives
+  for them.
+- `tools/contrast_check.py` covers every colour the schematic draws. Each
+  container is named in text, so no compartment is told apart by colour alone.
 - Every number the schematic shows is the number the rest of the interface
   gives for the same run at the same instant. A test asserts that each tension
   equals the readout's, and that the amounts add up to the agent accounting
@@ -1417,32 +1419,47 @@ the next gate".
 - The schematic never shows a state the run has left. A test drives a reset,
   an agent change, a branch, a return to a mark, and compare mode on and off.
   After each one, it checks that every label matches the snapshot.
-- The schematic says on its face that its values are modelled. Its amounts are
-  given at the precision that `docs/MODEL.md` § "Displayed precision" derives
-  for them.
-- `tools/contrast_check.py` covers every colour the schematic draws. Each
-  container is named in text, so no compartment is told apart by colour alone.
-- Nothing a learner could do on v0.6.0 is lost, checked against v0.6.0's own
-  definition of done.
+
+**The agent cost View**
+
 - A learner can place the agent cost View in any Area. They can read the
   delivered agent in millilitres of liquid equivalent or in litres of vapour,
   with the unit named on the value. Once they set a price, the View shows the
-  cost with the price's currency and date. An end-to-end test checks the
-  liquid figure against an independently computed conversion. It checks the
-  cost against that figure times the price.
+  cost with the price's currency and date.
+- An end-to-end test checks the liquid figure against an independently
+  computed conversion. It checks the cost against that figure times the price.
 - The price and the unit survive a restart, in a preferences file separate
   from every Workspace.
+
+**The copy editor**
+
 - The copy editor cuts text that its reader does not need and keeps good
   text as it is, as `PL-HGZS`'s stress test judges. The five `docs/MODEL.md`
   rewrites that waited on it have merged.
+
+**The whole release**
+
+- Nothing a learner could do on v0.6.0 is lost, checked against v0.6.0's own
+  definition of done.
 - `make check` is green, and `docs/MODEL.md`, `docs/ARCHITECTURE.md` and
   `README.md` describe the interface that exists.
+- v0.7.0 is cut only after the project owner has test-driven `main`.
 
 ### Explicitly out of scope for v0.7.0
 
+- **Any change to the governing equations or parameters.** The model already
+  computes every amount that the schematic draws. The only change under
+  `src/anesthesia_sim/data/` is the two constants per agent that Required
+  scope entry 6 stores. Only the agent cost View reads them.
+- **The View catalogue** - planned-milestone item 36. This milestone adds the
+  schematic View and the agent cost View. It does not decide which of today's
+  surfaces become Views.
+
+#### The schematic View
+
 - **Controls on the schematic - not yet, rather than never.** Gas Man lets the
-  reader set the vaporizer, fresh gas flow, ventilation and cardiac output,
-  and inject liquid, from the Picture itself. Here the settings stay in the
+  reader set the vaporizer, fresh gas flow, ventilation and cardiac output
+  from the Picture itself. Here the settings stay in the
   parameter controls View, so for now each setting has one control. A control
   on the schematic would be a second way to change the same setting, and that
   needs its own design round.
@@ -1453,26 +1470,21 @@ the next gate".
   alveolar ventilation and cardiac output as bars. The parameter controls
   View already states all three. Drawing them a second time belongs with the
   controls above.
-- **Containers drawn to scale.** The measurement above shows that four of the
-  six containers are between 1 and 7 px wide in a 600 px View. A filled area
-  therefore cannot show the amount here. The share bar shows the amount
-  instead.
+- **Containers drawn to scale.** The measurement in § "v0.7.0 - the schematic"
+  shows that four of the six containers are between 1 and 7 px wide in a 600 px
+  View. A filled area therefore cannot show the amount here. The share bar
+  shows the amount instead.
 - **More than one agent on one schematic.** Gas Man keeps one Picture for each
   agent. This model holds one substance at a time until v0.8.0. That release
   will key the per-compartment record by substance.
 - **Showing a past instant.** The schematic shows the current instant of the
   run, as the readouts do. Drawing it at an instant picked on the chart first
   needs a way to scrub through a run, and no release schedules one.
-- **The View catalogue** - planned-milestone item 36. This milestone adds the
-  schematic View and the agent cost View. It does not decide which of today's
-  surfaces become Views. So `PL-L6QR`, which waits on item 36, now waits on
-  v0.8.0 instead.
 - **The visual pass** - planned-milestone item 33, on the `v0.6.x` track.
   Until then, the schematic's look is a placeholder.
-- **Any change to the governing equations or parameters.** The model already
-  computes every amount that the schematic draws. The only change under
-  `src/anesthesia_sim/data/` is the two constants per agent that Required
-  scope entry 6 stores. Only the agent cost View reads them.
+
+#### The agent cost View
+
 - **A shipped price, or a price list.** A price goes stale, and it differs
   from one institution to another. So the reader sets it, as Required scope
   entry 11 says.
@@ -1480,12 +1492,12 @@ the next gate".
   a candidate unit with the same shape as money. Like money, it needs a stored
   factor for each agent, from a source that can go stale. No source has been
   read for it, and it waits for a decision of its own.
-- **The rest of a preferences workflow.** Required scope entry 10 builds the
-  file and what this milestone stores in it. Save, Revert and Load Factory
-  Preferences (`PL-GL5X`) are not part of this milestone.
 - **Uptake as a headline figure.** Gas Man pairs Uptake with Delivered.
   `PL-DWHV` records that this model computes uptake but does not show it
   anywhere. Showing it is a display of its own, not part of the cost.
+- **The rest of a preferences workflow.** Required scope entry 10 builds the
+  file and what this milestone stores in it. Save, Revert and Load Factory
+  Preferences (`PL-GL5X`) are not part of this milestone.
 
 ## Development pathway
 
