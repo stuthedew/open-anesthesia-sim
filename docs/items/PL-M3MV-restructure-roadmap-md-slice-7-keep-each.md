@@ -387,3 +387,30 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The rest of the v0.4.31 row (its "47/760") is now in `PL-R5VS`'s brief, the v0.4.0 row's in `PL-647D`'s, and the v0.5.14 row's in `PL-47SP`'s.
+
+**Left for this slice by `PL-DWGC` (2026-11-07).**
+
+- The paragraph under § "The timeline" that opens "Row 5's internal ordering
+  put forking and comparison ahead of save/load and replay" belongs in
+  § "Development pathway". Its lasting fact is that v0.5.0 departs from the
+  Phase 3 sequence, and it puts save/load (item 9) and the replay control (item
+  10) out of v0.5.0's scope. Place it where this slice's new order of the
+  pathway puts Phase 3. The rest of the paragraph is history and repeats row
+  5. Its "these four items" names six (8, 9, 10, 11, 12 and 26), so say which
+  four.
+- Item 29's *Version* paragraph still says a number the roadmap has given to a
+  milestone section is withheld (`PL-KQHN`). § "Versioning decision" now
+  states that rule, so the paragraph keeps a pointer when this slice moves item
+  29's shipped record.
+- § "Planned milestones" opens by saying each item has no goal, required scope
+  or definition of done until it is promoted. § "Project roadmap" says what a
+  milestone needs, so that sentence keeps only a pointer.
+- Part 1 of slice 3 moved several decisions about planned items out of the
+  version rows into the cut items: item 35 kept as an option a user turns on
+  (v0.4.17's row, now in `PL-SXBQ`), item 34's ordering rule (v0.4.27,
+  `PL-TM9J`), item 28's agent cost and item 24's preferences gate (v0.4.29,
+  `PL-GL5P`), item 39 (v0.4.31, `PL-R5VS`), items 1 and 40 cut back to "the
+  framework alone" (v0.4.35, `PL-F1SZ`), and item 27's fat claim (v0.5.9,
+  `PL-R498`). Check that each planned item's entry states its own.

@@ -99,3 +99,11 @@ multi-substance to v0.9.0. The proposal's remedy - 74 lines restating
 `ROADMAP.md` and `CLAUDE.md` in a new file - was not adopted.
 
 <!-- absent: docs/PLANNING.md -->
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "The planning model: a rolling wave" carried these sentences until then. The restructure keeps there the rule that no second plan is kept and why a generated view is not one, and moves the example and the reach of the first waves here. In the quote, "this section" is that section of `ROADMAP.md`, and "this prohibition" is its rule that no second plan of releases is kept. § "What MVP means here" is also `ROADMAP.md`'s. The comment below tells `tools/doc_check.py` that `docs/PLANNING.md` is named on purpose and does not exist.
+
+> § "What MVP means here" was the outer boundary of the first waves, and the project reached it on 2026-09-21.
+
+> Pull requests #59 and #60 are the example. They were an external proposal, closed unmerged on 2026-08-26, and they are the source of this section's vocabulary. Their `docs/PLANNING.md` stated this prohibition. The same file also restated the order as v0.3.0, v0.4.0, v0.5.0, v0.6.0 the schematic and v0.7.0 multi-substance. Four days later v0.2.8 was inserted ahead of that order. By 2026-09-16 the schematic had moved to v0.8.0 and multi-substance to v0.9.0. On 2026-09-26 both moved back one release when break-out came off the timeline.
+
+<!-- absent: docs/PLANNING.md -->

@@ -3,13 +3,15 @@ id: PL-G6DP
 title: Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/maintainer.md
 blocked-by: PL-DWGC
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+payoff: a reader of the roadmap finds what each release holds without the toolchain policy or an account of what the release tools read, and the sessions that run those tools find that account in the workflow documentation
+verify: ! grep -qE '^#+ Keeping the toolchain current' ROADMAP.md && grep -qF 'Nothing upgrades on a schedule' docs/maintainer.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 4: move the toolchain policy to docs/maintainer.md, and the account of what the release tools read to the workflow documentation, keeping in the roadmap what each guarantees
@@ -50,3 +52,84 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Left for this slice by `PL-DWGC` (2026-11-07).** Slice 3 reordered
+`ROADMAP.md` § "Release tags and release notes" under four subheadings and
+left these to this slice, because each leads into a sentence about the tools:
+
+- "This section deliberately does not restate which versions those are ...
+  which it twice was not" is decision history and moves to an item. It leads
+  into "Instead, `tools/doc_check.py` checks ...", so the two move together.
+- The v0.5.3 incident ("`v0.5.3` was pushed before its release merged ...",
+  `PL-YKSD`) goes to `PL-YKSD`. It leads into "So `tools/doc_check.py` also
+  reads the `pyproject.toml` ...".
+- "Failing on the window would turn `make check` red ... (PL-R7C0)" goes to
+  `PL-8HJ2` and `PL-R7C0`.
+- "The claim this section makes is about navigation only. It stops being true
+  the moment either mechanism behind it changes ..." goes. The first sentence
+  describes the text, and the two mechanisms go with the tool text.
+- The rule for writers ("A version that has genuinely gone out untagged is
+  named in a bold sentence here ...") goes with the check's documentation.
+  `tools/doc_check.py` reads both bold claims, the untagged count and "**One
+  version shipped with a stale version file**", only between "**Tags.**" and
+  the next heading, so they must stay in the first subsection or the check
+  must change with them.
+
+Keep in the roadmap the exemption that a release's own cut pull request is
+inside its own span. Slice 3 cut the other copy of that convention as a
+repeat. `PL-V82M` corrects what the exemption says the next release does.
+
+**Next steps, written when the thread that ran slice 3 stopped for length
+(2026-11-07).** Nothing of this slice is built yet. What that thread found:
+
+1. Start from `origin/main` once `#2062` (slice 3, part 2) has merged.
+   Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`,
+   `bin/docket check` and `tools/doc_check.py check` before editing, and
+   compare after.
+2. The passages, found by their words now that slices 1 to 3 moved them:
+   - § "Keeping the toolchain current" (the whole section) goes to
+     `docs/maintainer.md` as a level-2 section. Only closed items cite its
+     heading, and nothing runs a closed item's `verify:` (the docket README,
+     § "A closed item's command is a record, and it is not rewritten"), so
+     `PL-QSWS`'s closed command needs no change. The Flet error is `PL-BYHS`.
+   - § "Release tags and release notes": the passages the note above lists.
+     The tool accounts fit the docket README's § "Releases are mechanical",
+     or `docs/apparatus.md` beside `tools/doc_check.py`.
+   - v0.5.0's § "Sequenced past v0.5.0, so not clearable before it begins":
+     "`bin/docket wave` still prints all thirteen as ..." and "**What reads
+     this, and what reads past it.**".
+   - v0.5.0's § "Declined to Gate 2 on the refilling-queue ground": "**It is
+     inside this section rather than beside it because the checker used to
+     read only one.**" (`_declined_ids`).
+   - v0.6.0's § "Debt gate: the frozen list": "**Two kinds of group, and only
+     the second is a precondition.**" and "**What reads this, and what reads
+     past it.**".
+   - v0.6.0's and v0.7.0's § "Deferred from this gate": the paragraph that
+     opens "An open debt item that was captured after the cut" and the one
+     that opens "An open debt item captured after the cut is deferred".
+     `PL-GW0P`, below, is a question about the rule they state; the move
+     does not depend on its answer.
+   - § "The gate is a snapshot, not a moving target": "**What a frozen entry
+     waits on has three homes**" and "`check_gate_reentries` in
+     `tools/doc_check.py` reads both fields for this reason."
+   - § "Recording it": "**Record a deferral on the item, not in this
+     document.**".
+   The tool accounts for `bin/docket wave`, `gate` and `check` fit the docket
+   README's § "A debt gate is computed, not transcribed" and § "`deferred-from:`
+   records which gate excused an item, and why"; those for
+   `tools/doc_check.py` fit `docs/apparatus.md`'s paragraphs on frozen-list
+   counts and re-entry. Keep in the roadmap only what each guarantees, as the
+   finding above says.
+3. The project owner answered both questions from slice 3 on 2026-11-07, and
+   each item records the answer: a finding filed after a freeze joins that
+   gate when its problem was present at the freeze (`PL-GW0P`), and a safety
+   or science item may be deferred if the deferral is recorded and checked
+   (`PL-8C8W`). Neither is a move, so this slice moves the deferral paragraphs
+   as they stand and leaves the rule change to those items. `PL-C8N8`, the
+   wording of `tools/doc_check.py`'s re-entry advisory, is now actionable.
+4. Then slices 5 to 9 in their blocked-by order: `PL-YNFS`, `PL-B6V1`,
+   `PL-M3MV`, `PL-V8SJ`, `PL-4BCF`. Each brief holds what slice 3 left it.
+   Each slice is one pull request, move and dedupe only, merged on green
+   after two reviewers compare old and new text: one for words that depend
+   on position, one sentence by sentence.
+

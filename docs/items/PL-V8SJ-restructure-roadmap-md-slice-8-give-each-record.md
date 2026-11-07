@@ -619,3 +619,11 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Left for this slice by `PL-DWGC` (2026-11-07).** The timeline's v0.5.0 row
+still lists the seven Required-scope items that shipped before v0.5.0 (five in
+v0.4.25, `PL-8PSW` in v0.4.26 and `PL-MN4J` in v0.4.28). The structure read
+puts them in v0.5.0's own section. The v0.4.26 section's sentence "A rewrite of
+5 133 lines with its own goal, required scope, definition of done and
+out-of-scope list is a milestone by this file's own test" restates what
+§ "Project roadmap" says a milestone needs, and can keep only its point.

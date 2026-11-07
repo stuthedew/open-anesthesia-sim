@@ -5483,10 +5483,11 @@ def check_release_row_item_count(root: Path, report: Report) -> None:
     The release session writes both from the same items, by hand, so nothing
     else says whether they agree. On 2026-10-18 all 45 rows that carry a count
     agreed with their notes (`PL-S9X7`). A row with no count cell, or a
-    version with no notes file, is skipped, since the older releases have
-    neither. The notes are counted by `notes_ids` on the claimed half of the
-    file, as `docket.release.notes_by_version` counts them, so a pointer
-    bullet naming another release's item is not counted here either.
+    version with no notes file, is skipped: the releases before v0.2.3 have no
+    notes file, and their count cell is empty. The notes are counted by
+    `notes_ids` on the claimed half of the file, as
+    `docket.release.notes_by_version` counts them, so a pointer bullet naming
+    another release's item is not counted here either.
     """
     roadmap_name = roadmap_path(root)
     roadmap = root / roadmap_name

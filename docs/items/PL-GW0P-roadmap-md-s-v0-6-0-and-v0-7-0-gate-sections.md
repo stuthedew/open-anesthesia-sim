@@ -58,3 +58,23 @@ v0.6.0's "that test returns no", which misreads the test.
 **Generator check.** The cause is a rule stated in more than one place, with
 the copies drifting apart. That is the cause the `roadmap-structure` feature
 removes, so the feature is the fix and no new generator head is recorded.
+
+**Put to the project owner on 2026-11-07.** The thread finishing the roadmap
+restructure asked, on a decision card, whether cleanup filed after a list froze
+waits for the next list. **Recommendation (that thread's, the same as above):
+it waits, as now.** About 45 items filed since Gate 3 froze on 2026-10-25 stay
+on v0.8.0's list. Only a `P0`, a live safety or science problem, a fix a frozen
+entry needs, or friction every entry pays joins v0.7.0. The other reading
+gives v0.7.0's list no point at which it closes.
+**Answered 2026-11-07 at 22:09 UTC: join if present at the freeze (project
+owner, 2026-11-07, chosen over the recommendation that a post-freeze capture
+waits for the next list).** A finding filed after a gate froze joins that
+gate's list when the problem it describes was already present at the freeze,
+whatever its capture date. § "Which findings re-enter the gate" states the
+rule. The v0.6.0 and v0.7.0 paragraphs under "Deferred from this gate", and
+the triage practice of writing `deferred-from: ... filed after the gate
+froze`, change to match. The work that follows: state the rule once in § "The
+debt gate"; point both gate sections at it; check whether `bin/docket gate`,
+`bin/docket check` or `tools/doc_check.py` defer by capture date; and
+re-triage the open debt items deferred from v0.7.0 for being filed after the
+freeze, adding to v0.7.0's list each whose problem was present on 2026-10-25.

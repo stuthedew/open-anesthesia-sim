@@ -22,3 +22,5 @@ added: 2026-11-07
 **Why it matters.** The gate count is how the roadmap says how close v0.7.0 is to being cut. Two counts of the same list disagree by one entry.
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The v0.6.15 and v0.6.16 rows' gate counts are now in `PL-8B6Z`'s and `PL-80PZ`'s briefs. The baseline's copy is unchanged.
