@@ -105,3 +105,19 @@ notes may not name" uses "the tag's span" without defining it. The definition,
 the commits that `git describe --contains` resolves to a release tag, left with
 the sentence now quoted in `PL-J3ZK`.
 
+
+**Left for this line edit by slice 5 (`PL-YNFS`), 2026-11-07.** Each finding of chapter reads 35 to 41 below needs a sentence reworded, which a move-only slice does not do. `PL-YNFS` quotes the reads whole; find each passage in § "v0.7.0 - the schematic" by its words.
+
+1. "A setting turns these into money" is Gas Man's model of agent cost, inside the paragraph on tension. Its "these" names the two totals of the sentence before it, so moving it needs the totals named.
+2. The section heading leaves out agent cost. A rename changes the citations of § "v0.7.0 - the schematic" in `src/`, `tests/` and `docs/MODEL.md` with it.
+3. The Goal table "was measured on this model", and the out-of-scope entry on containers drawn to scale cites "The measurement". Both are model runs, not measurements.
+4. Gap 1's bold lead, "No surface says where the agent is", may repeat the Goal's opening claim. Keep one.
+5. The Goal's "**The amounts exist and are not passed on.**" paragraph and Required scope entry 2 are written for a developer. The reader needs four points: the model tracks each compartment's amount, the interface received only the total, § "Designed for forking" waited for a feature that needed the amounts, and this milestone is that feature. The code names go to `PL-KFTM`.
+6. The frozen list cites the deferral term (§ "Deferring to the next gate") in three places and states it in words in none. State it once in the first paragraph.
+7. The `PL-P319`, `PL-SP6H` and `PL-0P3F` paragraphs in § "Captures after the cut" repeat their list entries. Each could keep only why it joined and the decision it carries. The `PL-P319` paragraph's "this gate waits on the project owner adding the paper" is stale, because `PL-P319` closed.
+8. The Gate 4 paragraph retells Gate 2's deferral in three sentences. One sentence can keep the owner's earlier decision with its tag whole, and say that the question was not put to him again.
+9. In § "Captures after the cut", "Both were split from the generator head `PL-58D7` when its design round chose ..." and "It is the generator head that `PL-R4Y2`'s defect review recorded ..." are history for those items. Each paragraph needs only what its items bound or guard.
+10. Required scope entry 1 restates what entries 3, 4 and 8 build: the fill height, the share bar ("circuit included"), the units, and why arterial blood has no container. Give each one home and point to it from the other. Entry 1's `AGENT_AMOUNT_DISPLAY_PRECISION` and entry 3's file paths go to `PL-2881` and `PL-RNYV`.
+11. Required scope entry 12 states its point last. Entries 9 and 10 rely on entry 11's reader-set price, which comes after them.
+12. The definition of done names checks by their internal names: "an oracle independent of `core/`", `tools/contrast_check.py`, "`PL-HGZS`'s stress test" and `make check`. Say what each guarantees.
+13. The out-of-scope entries on controls and on gauges make one point: showing or changing a setting in a second place waits for one design round. Merge them. The entries that point at Required scope entries 6, 8, 10 and 11 could state the short fact in place.
