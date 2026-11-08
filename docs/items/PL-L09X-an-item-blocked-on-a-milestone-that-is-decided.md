@@ -144,3 +144,7 @@ since `v0.5.1` was scoped.
 can be read from the roadmap, a second field would be a second place to state
 it and a second thing to keep true - and the roadmap's `Required scope` is
 where a reader already looks to find out what a milestone carries.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this as the first of two paragraphs on why the port took a section of its own. "This heading" is that section's heading, and "the number below" is v0.4.26. The section keeps the second paragraph, the reason that still applies.
+
+> **Why it takes a section, which no patch in this project ever has, and how the reason has changed.** The first reason was mechanical. `blocked-by: vX.Y.Z` resolves only against a version that the roadmap *places*, and a patch-track row is not a version. Without a section, `PL-GS3R`, a `P1` `safety`-classed item, would have sat at the top of `bin/docket next` as startable work. Only a paragraph in its brief would have guarded it (`PL-L09X`). **That reason is spent as of 2026-09-14.** Every item that waited on this port now names the port *item* that does the work: `PL-G59B` for the chart, `PL-25KS` for the dashboard and `PL-L9RD` for the theme. `PL-3355`'s brief had already argued for that shape, and `PL-16ZC` already used it. Nothing resolves against this heading any more. So the number below is free to move without dragging a `blocked-by` field with it.
