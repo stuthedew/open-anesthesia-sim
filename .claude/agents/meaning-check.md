@@ -40,7 +40,10 @@ For each edited passage:
 
 Report a statement when the edit:
 
-- cuts it, and the passage nowhere still says it in full;
+- cuts it, and the passage nowhere still says it in full. A sentence cut as a
+  repeat of another counts as said in full only when the sentence kept gives
+  every fact the cut one gave: what a source found as well as what it
+  measured, and each value, limit and qualifier;
 - weakens or strengthens it: a requirement becomes a description, advice or a
   permission; a limiting word goes; a range loses an end; a list loses an
   item or its count changes;

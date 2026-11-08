@@ -164,7 +164,12 @@ does not know this repository's names either.
    says. A statement the reader can do without goes, even when
    it is true and well written. Each cut has one of four reasons:
    - **Repeats.** It repeats a fact that another sentence gives, in the passage
-     or in the section. Quote that sentence.
+     or in the section. Quote that sentence. Two sentences repeat each other
+     only when the one you keep gives every fact that the one you cut gives.
+     "The study found clearance linear over the doses given" is not repeated
+     by "The study measured clearance over the doses given", because the
+     second drops what the study found. Keep the fuller sentence, or move the
+     missing fact into the one you keep.
    - **The reader can do without it.** This reader would understand and act
      the same way without it. Say why. Common cases are how a value was derived
      or measured, decision history (who decided, when, and what was rejected),
