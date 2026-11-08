@@ -3,12 +3,14 @@ id: PL-B6V1
 title: Restructure ROADMAP.md, slice 6: give each v0.6.0 decision one home in its Required scope, and gather v0.6.0's captures after the cut in one section
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-YNFS
 added: 2026-11-07
+payoff: a reader of v0.6.0's section finds each decision once, in its Required scope, and every capture admitted after the cut in one section
+verify: ! grep -qF '### Deferred from this gate' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 6: give each v0.6.0 decision one home in its Required scope, and gather v0.6.0's captures after the cut in one section
@@ -341,3 +343,14 @@ added: 2026-11-07
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Nearly every repeat in the v0.6.0 section was in `ROADMAP.md` at `817a4d88`. One sentence, on the re-reading that corrected three claims (`PL-PV5Q`), came later (`767b1e13`, 2026-10-25 20:09).
 
 **Done by slice 4 (`PL-G6DP`), 2026-11-07.** Slice 4 moved v0.6.0's "**What reads this, and what reads past it.**" out of `ROADMAP.md`: `subprojects/docket/README.md` § "The plan reports its own position" states how `bin/docket wave` and `bin/docket check` read a deferral, and `PL-18BD`'s brief quotes the paragraph. In "**Two kinds of group, and only the second is a precondition.**" it cut the `bin/docket wave` and `gate` sentence (`PL-RFHH`) and moved the `PL-CNCF` and `PL-PGZF` history to `PL-J6HP`'s brief, so "the three groups" now reads "the three lane groups". In "**What this gate defers is not a group ...**" the bold lead no longer names `bin/docket wave`, and the sentences on how `wave` once read a deferral from a `blocked-by` chain were cut, since the README holds them with `PL-D388`. Row 5835, "`wave` counts a deferred entry separately from what this gate can clear", stays, as this brief asks. In § "Deferred from this gate" the `bin/docket check` and `wave` sentences were cut; § "Deferring to the next gate" keeps the check's guarantee. "What `bin/docket wave` reads" (rows 5999-6010) is untouched and stays this slice's.
+
+**Next steps, written 2026-11-08 when the thread that ran slices 4 and 5 passed its spend budget.** Slice 5 (`PL-YNFS`, #2065) is the model to follow; its brief's "What this slice did" records each finding's fate under *Applied*, *Not applied, with the reason*, *Queries the tree answers*, *Queries filed*, *Review* and *Checked*.
+
+1. Claim this item on `claude/project-thread-qy7auz` once #2065 has merged, after bringing `origin/main` in (no force push is needed after a squash merge).
+2. Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` (under `uv run python` with `UV_SYSTEM_CERTS=true`) before any edit, and compare after.
+3. Make the moves with one script of exact replacements, each asserted to match once. Search only inside the v0.6.0 section, because headings such as `### Definition of done` repeat in every milestone.
+4. What the tools read: the walker ends a subsection only at a `###` heading, so `####` subheadings inside one are safe. The frozen list's count-carrying group lines must stay bold lines ending "- N entries", which `tools/doc_check.py` counts; a heading may carry no count. Keep the Required scope numbers, which other text cites. Renaming v0.6.0's `### Deferred from this gate` to `### Captures after the cut` is this item's `verify:`.
+5. Quote each sentence of decision history word for word into its item, under "**Moved from `ROADMAP.md` on DATE (`PL-B6V1`).**" with a lead-in that glosses every word whose meaning depends on its old position. A sentence another file already holds needs no quote; name that file in the record.
+6. Rewording findings go to `PL-YRY3` as a numbered list, as slices 2 and 5 did. Queries that need the author go to one new item under `roadmap-structure`, as `PL-71H3` does for v0.7.0.
+7. Have two reviewers compare the old and new section, one for words that depend on position and one sentence by sentence, giving each the quoted passages too. Slice 5's reviewers found one lost sentence and eleven shifts of meaning, all fixed before the pull request was ready.
+8. Close the item before pushing: the push hook refuses an open item whose `verify:` passes. Then run `bin/docket verify --self PL-B6V1`, arm, and merge on green. Set slice 7 (`PL-M3MV`) `ready` with a `verify:` that fails until its work is done.

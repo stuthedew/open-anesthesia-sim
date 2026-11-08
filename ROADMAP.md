@@ -929,26 +929,27 @@ choices went to the project owner:
    point in its evolution", and says "the compartment schematic helps you
    visualize the relationships between compartment tensions".
 
-   **Drawn to scale, four of the six containers would be between 1 and 7 px
-   wide in a 600 px View.** A container whose width is its capacity holds an
-   amount equal to its filled area. Mapleson's electric analogue rests on the
-   same relation, q = C·v. A condenser's charge equals its capacitance times
-   its voltage (Mapleson WW, *J Appl Physiol* 1963;18(1):197-204,
-   https://doi.org/10.1152/jappl.1963.18.1.197, read from the private
-   reference corpus, equations 5 and 6). But this model's capacities span
-   almost three orders of magnitude. For sevoflurane, fat holds 493 L of gas
-   equivalent and venous blood 0.79 L, a ratio of about 620. In a View 600 px
-   wide, drawn to scale, fat takes about 500 px. The circuit, the alveoli,
-   venous blood and the vessel-rich group take between 1 and 7 px each.
-   Isoflurane and desflurane give the same picture (computed from the shipped
-   parameter files on 2026-10-25, `PL-LF0P`).
+   **Drawn to scale, four of this model's six containers would be between 1 and
+   7 px wide in a 600 px View.** A container whose width is its capacity holds
+   an amount equal to its filled area. Mapleson's electric analogue rests on
+   the same relation, q = C·v. A condenser's charge equals its capacitance
+   times its voltage (Mapleson WW, *J Appl Physiol* 1963;18(1):197-204,
+   https://doi.org/10.1152/jappl.1963.18.1.197, read from the private reference
+   corpus, equations 5 and 6). But this model's capacities span almost three
+   orders of magnitude. For sevoflurane, fat holds 493 L of gas equivalent and
+   venous blood 0.79 L, a ratio of about 620. In a View 600 px wide, drawn to
+   scale, fat takes about 500 px. The circuit, the alveoli, venous blood and
+   the vessel-rich group take between 1 and 7 px each. Isoflurane and
+   desflurane give the same picture. These figures were computed from the
+   shipped parameter files on 2026-10-25 (`PL-LF0P`).
 
 2. Item 28 is built here rather than left unscheduled (project owner,
    2026-10-25, ratified, over leaving it out and deferring its four entries to
    Gate 4).
 
 The rest of this section was decided in the scoping round without being put to
-the project owner. Look, wording and placement are placeholders while
+the project owner, because each remaining choice either had one clearly better
+option or concerned look, wording or placement. Those are placeholders while
 structure and function are being built.
 
 ### Goal
@@ -979,26 +980,25 @@ Fat's trace sits within a few pixels of zero on the chart for that whole time.
 `PL-H5DV` measured the same pattern for all three agents, and the hours that
 fat takes to overtake muscle.
 
-As things stand on 2026-10-25, there are three gaps:
+As things stand on 2026-10-25, there are four gaps:
 
 - **No surface says where the agent is.** The only amounts on screen are the
   agent accounting View's delivered, exhausted and stored totals, in litres of
   vapour. That View is a check that the model conserves mass. The project owner
   called it "not info the user really needs or cares to see" (2026-09-16,
   recorded in `PL-B396`).
+- **The amounts exist and are not passed on.** Each compartment in `core/`
+  stores its own `agent_amount_l`. `SimulationSnapshot` in
+  `src/anesthesia_sim/app/controller.py` carries only their total,
+  `stored_agent_l`. Nothing was left out by mistake. `ROADMAP.md` § "Designed
+  for forking" declined per-compartment amounts until a consumer needed them,
+  and this milestone is that consumer.
 - **No View draws how the compartments connect.** The chart puts six traces on
   one axis. Nothing shows that agent passes from the circuit to the alveoli,
   then to the blood and on to each tissue, driven by the difference in
   tension. That relationship is what Gas Man's Picture exists to show.
 - **Nothing says what the agent cost.** A clinician buys and fills agent as
   liquid, and the low-flow lesson of planned-milestone item 28 is about money.
-
-**The amounts exist and are not passed on.** Each compartment in `core/`
-stores its own `agent_amount_l`. `SimulationSnapshot` in
-`src/anesthesia_sim/app/controller.py` carries only their total,
-`stored_agent_l`. Nothing was left out by mistake. `ROADMAP.md` § "Designed
-for forking" declined per-compartment amounts until a consumer needed them,
-and this milestone is that consumer.
 
 ### Debt gate: the frozen list
 
@@ -1008,12 +1008,18 @@ Required scope names. The milestone clears that debt itself, as § "Debt inside
 the milestone's own scope" says. The second group clears first, unless an entry
 is deferred as § "Deferring to the next gate" says.
 
-**The four entries v0.6.0's gate deferred for item 28 are cleared by this
-milestone instead.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` came onto
-this list deferred from v0.6.0, because no release scheduled planned-milestone
-item 28 (`PL-DB64`). This milestone schedules item 28. So the Required scope
-below names all four, and they are in the first group. `PL-B396` is now also
-classed `safety`, because it builds a unit conversion that is displayed.
+**Frozen 2026-10-25, the day this milestone was scoped.** Every open item that
+counts as debt under § "The debt gate" above is on this list. The list shows
+the store as it was at the cut: `origin/main` at `0947408`, with this
+milestone's own items added.
+
+**Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
+requires this sweep before any entry on the list is worked. Each of the 24
+entries open at the time was checked against the tree. None described a
+problem that no longer reproduces, so none was dropped. Three briefs asked for
+more work than is left. One entry waited on less than its record said, and two
+waited on more. Each entry's brief carries its dated verdict, and `PL-F2NX`'s
+brief has the tally.
 
 **`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on the terms of § "Deferring
 to the next gate".** Both wait on machine selection, which no release
@@ -1030,19 +1036,6 @@ keeping it on the list to hold the gate open). `PL-B4P7` was captured after
 Gate 2's freeze and waits on the same condition. So the scoping round gave both
 items the same disposition, without putting the question to the owner again.
 
-**Frozen 2026-10-25, the day this milestone was scoped.** Every open item that
-counts as debt under § "The debt gate" above is on this list. The list shows
-the store as it was at the cut: `origin/main` at `0947408`, with this
-milestone's own items added.
-
-**Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
-requires this sweep before any entry on the list is worked. Each of the 24
-entries open at the time was checked against the tree. None described a
-problem that no longer reproduces, so none was dropped. Three briefs asked for
-more work than is left. One entry waited on less than its record said, and two
-waited on more. Each entry's brief carries its dated verdict, and `PL-F2NX`'s
-brief has the tally.
-
 **`PL-5B1N` clears in this gate.** It is the preview a control draws while it
 is grabbed and not yet released. Only one open entry of v0.6.0's list is not
 debt: `PL-5B1N`. It is on this list too, because a freeze carries over every
@@ -1050,6 +1043,13 @@ open entry of the previous list (`PL-JV5Q`). v0.6.0's gate deferred it to Gate
 3 (`PL-YBFB`) with `blocked-by: v0.7.0`. `PL-5B1N` closed with its build, and
 § "Captures after the cut" records `PL-4LS8`, which held the one question that
 build left open.
+
+**The four entries v0.6.0's gate deferred for item 28 are cleared by this
+milestone instead.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` came onto
+this list deferred from v0.6.0, because no release scheduled planned-milestone
+item 28 (`PL-DB64`). This milestone schedules item 28. So the Required scope
+below names all four, and they are in the first group. `PL-B396` is now also
+classed `safety`, because it builds a unit conversion that is displayed.
 
 **Cleared by v0.7.0 itself - 9 entries**
 
@@ -1223,15 +1223,16 @@ draw at 1 px. `PL-4LS8` closed the same day with the 2 px floor kept.
 
 **Six captures joined the frozen list on 2026-10-31, after the freeze.** They
 are `PL-9B1M`, `PL-D88N`, `PL-QVBR`, `PL-PTDZ`, `PL-000W` and `PL-D1LR`, each
-classed `safety` or `science`. `PL-R4Y2`'s triage placed them, and deferred the
-other two captures it triaged, `PL-9Z74` and `PL-93LV`.
+classed `safety` or `science`. The rule at the head of this section admitted
+such a capture rather than deferring it. `PL-R4Y2`'s triage placed them, and
+deferred the other two captures it triaged, `PL-9Z74` and `PL-93LV`.
 
 **`PL-SP6H` joined the frozen list on 2026-11-04, after the freeze.** It is
 classed `safety`. The agent cost View showed the delivered total in millilitres
 of liquid to 0.1 mL, and in long runs at a high delivered concentration that
 step was finer than the figure's uncertainty supports. The hazard was live, so
-the rule above admitted the item rather than deferring it. Its fix is whole
-millilitres, which the project owner chose on 2026-11-04.
+the rule at the head of this section admitted the item rather than deferring
+it. Its fix is whole millilitres, which the project owner chose on 2026-11-04.
 
 **`PL-0P3F` joined the frozen list on 2026-11-04, after the freeze.** It is
 classed `science`. A blind review of `PL-SP6H` found that the accounting
@@ -1301,7 +1302,9 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
    more flat floats. That way v0.8.0 can key the same record by substance
    instead of adding fields. `stored_agent_l` stays `core/`'s one sum of the
    amounts, and a test holds the record's amounts equal to it to the last bit.
-   No equation changes. `core/` already computes every amount, and this item
+   Summing the record again in `app/` would have been a second sum of the same
+   fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01). No equation
+   changes. `core/` already computes every amount, and this item
    only passes the amounts on. A test compares each amount at stated instants
    with an oracle independent of `core/`, as `.claude/rules/test-oracles.md`
    requires.
@@ -1359,7 +1362,7 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
    (`PL-H4N8`). The agent accounting View keeps litres of vapour, because it
    is a check that the model conserves mass.
 
-9. **What a stored price records, and what a cost readout shows beside it**
+9. **What a stored price records, and what a cost readout shows beside the cost**
    (queue item `PL-VJZK`). `docs/MODEL.md` § "A cost at the reader's price"
    states what a stored price carries, including its currency and the date on
    which it applied. It also states what a cost readout shows beside the cost:
@@ -1382,8 +1385,8 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
 
 12. **Fix the copy editor, then make the five `docs/MODEL.md` rewrites that
     wait on it** (queue items `PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`,
-    `PL-XT53` and `PL-YVL0`). The project owner added this to v0.7.0 on
-    2026-11-04. The copy editor is the review that every rewrite of
+    `PL-XT53` and `PL-YVL0`). The project owner added this to v0.7.0 (project
+    owner, 2026-11-04). The copy editor is the review that every rewrite of
     `docs/MODEL.md` passes through. It keeps text that its reader does not
     need, and lengthens some of it. The copy editor is fixed and
     stress-tested first. Then the five `docs/MODEL.md` rewrites it blocks are
