@@ -12,7 +12,7 @@ added: 2026-09-20
 closed: 2026-09-20
 pr: 810
 payoff: the newest 30 findings become rankable by bin/docket next, so the project stops computing every priority answer over a queue that excludes them
-verify: grep -q '^> \*\*Fifteen more from the 2026-09-20 triage pass over the thirty untriaged' docs/items/PL-NQKP-triage-the-35-untriaged-captures-29-workflow.md
+verify: grep -qF 'from the 2026-09-20 triage pass over the thirty untriaged' ROADMAP.md
 ---
 
 **Problem.** Triage the 35 untriaged captures: 29 workflow-lane items need fields and a run verify: command, and the 6 that landed from the #784 adversarial review need a v0.5.0 gate disposition instead
