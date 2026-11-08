@@ -1621,7 +1621,11 @@ An earlier item 1 (isoflurane and desflurane) has been promoted into a fully sco
 milestone and delivered as v0.2.0, so it no longer appears here. See
 § "Completed: v0.2.0" below. Further volatile agents beyond isoflurane and
 desflurane remain an unscoped later idea: halothane, enflurane, ether and
-xenon. Nitrous oxide is not among them, because items 6-7 below cover it.
+xenon. Halothane is clinically obsolete, but it has reasonable modern
+published data. Enflurane, ether, and xenon are harder to source because
+their data are sparser. Each of these three should get its own provenance
+check before it is added. None of the three should be assumed available just
+because the Gas Man reference simulator shows it. Nitrous oxide is not among them, because items 6-7 below cover it.
 The idea will be added back here as its own item once someone is ready to
 scope it.
 
@@ -2957,9 +2961,8 @@ Prove that the v0.1.0 patient model (circuit, alveolar, tissue, and venous
 compartments, with the governing equations in `docs/MODEL.md`) is generic
 across agents rather than specific to sevoflurane. Do this by adding
 isoflurane and desflurane as two more validated, data-driven volatile agents,
-each with independent reference cases. No governing equation changes in this
-milestone. It adds only new per-agent data and the loading capability to
-select among agents.
+each with independent reference cases. This milestone adds only new
+per-agent data and the loading capability to select among agents.
 
 ### Required scope
 
@@ -2980,10 +2983,7 @@ select among agents.
   `tests/reference/test_sevo_patient.py`.
 - Document the parameter provenance of both new agents in `docs/MODEL.md`.
   Also note any agent-specific numerical considerations worth recording, such
-  as desflurane's low blood:gas solubility, even though they do not change
-  the governing equations.
-- Preserve the v0.0.2 circuit and v0.1.0 sevoflurane reference tests
-  unchanged.
+  as desflurane's low blood:gas solubility.
 
 ### Definition of done
 
@@ -3000,32 +3000,6 @@ v0.2.0 is complete only when all of the following are true:
 - Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
   pass.
 
-### Explicitly out of scope for v0.2.0
-
-- A UI control for selecting which agent is running. Agent switching and
-  interlock behavior belong to the anesthesia-machine milestone (item 1 in
-  § "Planned milestones" above). This milestone only needs the model to be
-  able to run as isoflurane or desflurane. It does not need to offer that
-  choice in the interface yet. (This was recorded as the milestone's scope
-  when it was tagged. A basic picker was in fact added afterwards, in commit
-  `00791b1`. The picker restarts the run rather than switching agents
-  mid-run. So the interlock and residual-washout work that this milestone
-  excluded is still outstanding.)
-- Physics specific to the vaporizer as a delivery device, such as
-  desflurane's need for a heated, pressurized vaporizer. This milestone
-  models uptake and distribution only, not the delivery device.
-- Halothane, enflurane, ether, or xenon. These are a stretch goal further in
-  the future, beyond this milestone. Halothane is clinically obsolete, but it
-  has reasonable modern published data. Enflurane, ether, and xenon are
-  harder to source because their data are sparser. Each of these three should
-  get its own provenance check before it is added. None of the three should be
-  assumed available just because the Gas Man reference simulator shows it.
-- Nitrous oxide. It is not a halogenated volatile, so it is out of scope
-  here. Items 6-7 in § "Planned milestones" above cover it separately.
-- Any change to the v0.1.0 governing equations themselves. This milestone
-  proves that the equations are agent-generic. It does not change them from
-  one agent to another.
-
 All the criteria above were met when the milestone was tagged.
 `isoflurane.json` and `desflurane.json` load through the same
 `load_agent_parameters(agent_id)` path, which was added for this milestone.
@@ -3035,6 +3009,25 @@ covers directional solubility and mass-balance closure for both new agents.
 The parameter provenance table in `docs/MODEL.md` and the document's new
 "v0.2.0: isoflurane and desflurane" subsection record where both agents'
 parameters came from.
+
+### Explicitly out of scope for v0.2.0
+
+- A UI control for selecting which agent is running. Agent switching and
+  interlock behavior belong to the anesthesia-machine milestone (item 1 in
+  § "Planned milestones" above). (This was recorded as the milestone's scope
+  when it was tagged. A basic picker was in fact added afterwards, in commit
+  `00791b1`. The picker restarts the run rather than switching agents
+  mid-run. So the interlock and residual-washout work that this milestone
+  excluded is still outstanding.)
+- Physics specific to the vaporizer as a delivery device, such as
+  desflurane's need for a heated, pressurized vaporizer. This milestone
+  models uptake and distribution only, not the delivery device.
+- Halothane, enflurane, ether, or xenon. These are a stretch goal further in
+  the future, beyond this milestone. § "Planned milestones" records them as an
+  unscoped later idea, with what sourcing each needs.
+- Nitrous oxide. It is not a halogenated volatile, so it is out of scope
+  here. Items 6-7 in § "Planned milestones" above cover it separately.
+- Any change to the v0.1.0 governing equations themselves.
 
 ## Completed: v0.2.8 - the workflow works
 
