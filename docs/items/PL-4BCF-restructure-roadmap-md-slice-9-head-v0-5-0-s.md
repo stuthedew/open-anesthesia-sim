@@ -8,7 +8,6 @@ classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-V8SJ
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
 
@@ -416,3 +415,7 @@ gate": "Until `PL-WD5Z`, a deferral was an id named in a `###` subsection headed
 subsections, because they are the record of that period." The project owner's
 answer in `PL-LVN8` moves v0.5.0's dispositions to the items, so this slice also
 rewrites that last sentence to say where the records went.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. v0.5.0's dispositions were in `ROADMAP.md` at `817a4d88`. The two `absent:` markers behind one query came later (`fa0bf928`, 2026-11-04).
+
+**Done by slice 4 (`PL-G6DP`), 2026-11-07.** Slice 4 moved these passages out of `ROADMAP.md`, so the words that findings above quote no longer match there. "`bin/docket wave` still prints all thirteen ..." and v0.5.0's "**What reads this, and what reads past it.**" are quoted in `PL-SL70`'s brief, and the pointer to the second now says so. "It is inside this section rather than beside it ..." (`_declined_ids`) is quoted in `PL-82B0`'s brief, and the `check_gate_counts` sentence after it was cut, because `docs/apparatus.md` says what that check reads. The sentence that followed now names the placement paragraph instead of "the sentence above". "The two readings agree. `bin/docket wave` reports ..." is still in the roadmap, in `PL-WZVZ`'s paragraph. Record the findings that act on the moved passages as applied by slice 4.

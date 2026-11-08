@@ -102,3 +102,7 @@ names `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK`, with two new items:
 `PL-1P15` for the cost in money at a reader-set price, and `PL-93B3` for the
 preferences file that keeps the price. `PL-B396` no longer waits on this item,
 so it closes.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 frozen list carried this sentence in its paragraph on the four entries v0.6.0's gate deferred for planned-milestone item 28. "That answer" is that v0.7.0 schedules item 28.
+
+> `PL-YRLM` held the question of when to schedule item 28, and it closed with that answer.

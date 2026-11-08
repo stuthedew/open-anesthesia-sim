@@ -6934,10 +6934,11 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     refused it, so `PL-MN4J` and four `anticipated` area-model findings - each
     deferred in v0.5.0's `### Declined to Gate ...` subsection with its reason
     written out - advised on every `make check` under text that named no
-    remedy it would accept. The refusal is the correct half: "The gate is a
-    snapshot" ends by making `safety` and `science` not deferrable, and the
-    frozen list takes a post-freeze re-entry with its date, as this gate's own
-    `PL-GS3R` shows. It was the offer that had to go.
+    remedy it would accept. The refusal is the correct half: § "Deferring to
+    the next gate" defers a `safety` or `science` entry only while it stays on
+    the frozen list (`PL-8QMD`, `PL-8C8W`), and the frozen list takes a
+    post-freeze re-entry with its date, as this gate's own `PL-GS3R` shows. It
+    was the offer that had to go.
 
     `PL-83LS` then took the four out of this check's reach entirely, on their
     `anticipated` class rather than on their deferral - the test below pins
@@ -6962,7 +6963,7 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
 def test_an_anticipated_safety_item_is_quiet(tmp_path: Path) -> None:
     """`PL-83LS`'s carve-out: an unbuilt hazard is not debt this gate can clear.
 
-    `ROADMAP.md` § "The gate is a snapshot, not a moving target" makes an
+    `ROADMAP.md` § "What counts" makes an
     `anticipated` `safety` or `science` finding not debt until the milestone
     that creates the hazard builds it (project owner, 2026-09-16, ratified).
     Ten area-model findings were in exactly this state and could take neither

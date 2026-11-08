@@ -54,8 +54,7 @@ transcribe its entries into the one group with the rest (`PL-JV5Q`, `PL-8QMD`).
 list**: the milestone's own `Required scope`, a place on the list beside the
 entry, or a deferral of the entry on beat 3's terms, written `bin/docket set
 <id> --deferred-from "vX.Y.Z - <why>"` with the hazard's state for a `safety`
-or `science` entry (`ROADMAP.md` § "The gate is a snapshot, not a moving
-target"). A class-computed list is not closed under its own prerequisites, and
+or `science` entry (`ROADMAP.md` § "Deferring to the next gate"). A class-computed list is not closed under its own prerequisites, and
 `bin/docket check` refuses an entry waiting on work none of the three holds
 (`PL-D388`).
 

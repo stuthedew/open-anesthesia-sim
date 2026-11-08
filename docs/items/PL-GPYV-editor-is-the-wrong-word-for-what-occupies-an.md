@@ -208,3 +208,7 @@ permanent", and `checks._check_release_notes` matches ids rather than titles,
 so nothing depends on rewriting them. Rewriting a shipped release's prose to
 match a vocabulary decided afterwards would falsify the record - most sharply
 for `PL-H620`, whose entry records the owner *choosing* Blender's word.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" gave these two sentences among its reasons for the word View. The section keeps the decision with its tag; `.claude/rules/ui-areas.md` § "Where the vocabulary is fixed" keeps why `Widget` and `Component` were refused and the Eclipse comparison.
+
+> `View` restores `PL-C842`'s own `view_kind`. It is already the word that `app/run_view.py` and `app/simulation_view.py` use, and it collides with no Qt class used here.

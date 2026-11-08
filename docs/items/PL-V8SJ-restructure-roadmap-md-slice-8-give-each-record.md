@@ -8,7 +8,6 @@ classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-M3MV
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
 
@@ -627,3 +626,5 @@ puts them in v0.5.0's own section. The v0.4.26 section's sentence "A rewrite of
 5 133 lines with its own goal, required scope, definition of done and
 out-of-scope list is a milestone by this file's own test" restates what
 § "Project roadmap" says a milestone needs, and can keep only its point.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Every record the item cites was in `ROADMAP.md` at `817a4d88`. Later edits in its range changed only wording.

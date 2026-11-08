@@ -193,3 +193,7 @@ the structure and function are developed. So the heading line's wording and
 placement are not settled design. The requirement under it is: `docs/MODEL.md`
 still requires the delivered concentration and the 1 MAC divisor to be on
 screen in every layout.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Goal" ended its third gap, the required values sitting inside the container about to become live, with this sentence. "Today's code" is the code on 2026-09-16, when the milestone was scoped and no Area could be closed.
+
+> A session looking at today's code would treat `.claude/rules/ui-areas.md` rule 5 as already satisfied, because nothing can be closed yet.

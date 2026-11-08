@@ -257,3 +257,7 @@ published apparatus" in `docs/MODEL.md`, and two docstrings outside this item's
 files. They were listed before deciding. Each is standard domain usage, and
 none states what `circuit_volume_l` holds, so they are not this hazard and no
 item was filed for them.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s v0.5.0 section, § "Declined to Gate 2 on the refilling-queue ground", carried this paragraph after its record of this item's drop on 2026-09-20. The v0.5.0 section now keeps a pointer to § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut", which records the reopening with its decision tag. "The profile" is the reference circle-system profile's provenance note.
+
+> **The refutation was itself the misreading, and `PL-TBMX` is open again** (project owner, 2026-09-27, ratified, over building `PL-HGB6` as written). The profile's phrase "the apparatus alone" contrasted the stored volume with Targ et al.'s system plus the bag that stood in for the lung. That system's corrugated limbs and Y-piece were inside what it measured. So the phrase meant without the lung, not without the patient circuit, as `PL-TBMX`'s rewording of it now says. The model has one gas compartment in front of the patient, which leaves the limbs nowhere else to be. `PL-HGB6` was re-scoped to keep the assembled-total meaning in `docs/machine-abstraction.md`. `PL-TBMX` joined v0.6.0's frozen list as a post-freeze `safety` entry.

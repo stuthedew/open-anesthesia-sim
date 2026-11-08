@@ -7,7 +7,7 @@ status: needs-decision
 classes: defect
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tests/unit/test_formatting.py
-deferred-from: v0.7.0 - the inconsistency is in a reason only: the cost is shown coarser than the band requires, which claims nothing false, so no learner is misled while it waits
+deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04
 payoff: every agent amount and the cost beside it are judged against one limit, so the section gives no reason its own rule contradicts
 verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.md
@@ -29,3 +29,5 @@ verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.m
 **Done when.** The paragraph that opens "A cost is shown to three significant figures" judges the cost's count of figures against the same limit as the other agent amounts, in the form the owner chooses, and `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost` computes that limit.
 
 **Generator check.** Stock of `PL-B6YV`'s fact. The paragraph dates from `PL-1P15`, before that head closed on 2026-11-02, so this is not a re-entry.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate, and its `deferred-from:` names the commit that began it. The cost display and its three-significant-figures paragraph came with `7baae320` (2026-11-02).

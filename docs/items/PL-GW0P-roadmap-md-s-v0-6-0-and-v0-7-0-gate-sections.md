@@ -1,10 +1,17 @@
 ---
 id: PL-GW0P
 title: ROADMAP.md's v0.6.0 and v0.7.0 gate sections defer a debt item captured after the cut by its capture date, while the snapshot rule re-admits any finding whose problem was present at the freeze, however late it was filed
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, subprojects/docket/README.md, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2063
+payoff: a debt item filed after a gate froze joins that gate when its problem was already there, so v0.7.0's list holds every problem present at its freeze
+verify: grep -qF 'Being filed after the freeze is not such a' ROADMAP.md && ! grep -qF 'An open debt item captured after the cut is deferred to the next gate' ROADMAP.md
 ---
 
 **Problem.** Two parts of `ROADMAP.md` give different answers for a debt item
@@ -78,3 +85,31 @@ debt gate"; point both gate sections at it; check whether `bin/docket gate`,
 `bin/docket check` or `tools/doc_check.py` defer by capture date; and
 re-triage the open debt items deferred from v0.7.0 for being filed after the
 freeze, adding to v0.7.0's list each whose problem was present on 2026-10-25.
+
+**Applied 2026-11-07.** § "Which findings re-enter the gate" already stated the
+rule, so it gains this answer's decision tag, and the presumption paragraph
+says that being filed after the freeze is not a reason to defer a
+presence-qualifying finding. v0.7.0's § "Deferred from this gate" now says a
+capture joins the list when its problem was present at the freeze, and points
+at that section. v0.6.0's paragraph is the record of a shipped gate, so it
+keeps its reading and adds one sentence saying this item replaced it. The
+docket README's example of a `deferred-from:` value gave "captured after the
+freeze, and not safety or science" as a ground, and now gives a new problem.
+`bin/docket gate`, `bin/docket check` and `tools/doc_check.py` read
+`deferred-from:` and the frozen list, and none of them reads an item's
+`added:` date, so no tool deferred by capture date.
+
+**Re-triaged 2026-11-07.** The 41 open debt items deferred from v0.7.0 for
+being filed after the freeze were each checked against `817a4d88`, and each
+brief records what the check found. 34 join v0.7.0's frozen list, and so do
+this item and `PL-8C8W`, which had not been triaged. The other seven stay
+deferred, because their problems began after the freeze. ROADMAP.md's v0.7.0
+section names the eight joiners that stay deferred and why. Two review passes
+the same day corrected three verdicts. `PL-Z6FR` and `PL-HXF0` describe
+disagreements that began after the freeze, so they stay deferred. `PL-KG6S`'s
+not-live finding rested on the table that `PL-TDX0` questions, so it joins
+undeferred. Two items were not re-checked. `PL-SG93` is classed `infra`, which
+is not debt, so no gate holds it. `PL-BZ21` is held by #2054. Its deferral
+reason predates this rule, and its problem probably began with `7baae320`
+(2026-11-02), after the freeze, so its reason should say that when its branch
+next changes it.

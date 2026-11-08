@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: area-layout-sizing
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
-deferred-from: v0.7.0 - a layout defect found after the gate cleared; a later patch takes it
 added: 2026-11-01
 payoff: a border drag stops where the neighbouring Area reaches the size it needs, so the stored layout matches what is drawn
 verify: grep -q 'def test_a_drag_into_a_nested_split_stops_at_the_drawn_need' tests/integration/test_layout_adapter.py
@@ -23,3 +22,5 @@ reenters: PL-16BG
 **Done when.** `_fits` reads each Area's drawn size from the apportionment the splitters draw. A test with a nested split, and one with a neighbour held wider than its share, shows the drag stopping where the neighbour reaches its least size. The two tests that pin the handle-width stop are rewritten to the new stop.
 
 **Generator check.** An instance of `PL-16BG`'s fact, filed the day that head closed: the size an Area is drawn at. `_fits` is one more reader that works the drawn size out for itself (`reenters: PL-16BG`).
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `AreaLayout._fits` already estimated an Area's drawn size as its share less one handle at `817a4d88` (`281045a3`, 2026-10-19), and Areas held wider than their share existed (`8ae7824c`).

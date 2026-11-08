@@ -7,7 +7,7 @@ status: ready
 classes: defect
 feature: owner-ask-by-state
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
-deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the workflow lane, not safety or science
+deferred-from: v0.7.0 - a new problem: owner_ask_guard began appending to every thread message with a4f1c1f5 (2026-11-04), after the freeze
 added: 2026-11-04
 payoff: after the owner says merge, thread messages stop repeating the read or merge ask he has already answered
 verify: grep -q 'def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered' subprojects/docket/tests/test_cli.py
@@ -42,3 +42,5 @@ on 2026-11-04. That item made the guard append the line to every message about
 a waiting pull request, and the append should have stopped once the owner
 answered. It is recorded against `PL-X4MD` and not `PL-TLPH`, because
 `PL-TLPH`'s fix, refusing an ask that lacks the recorded line, held here.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate, and its `deferred-from:` names the commit that began it. `owner_ask_guard.py` existed at `817a4d88` but appended nothing. The append came with `a4f1c1f5` (2026-11-04).
