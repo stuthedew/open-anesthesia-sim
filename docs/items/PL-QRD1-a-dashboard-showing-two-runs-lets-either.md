@@ -164,3 +164,7 @@ for it.
 **Reversing it is small and local**, which is why it was implemented rather
 than asked about: `dashboard_frame.transport`'s `comparing` branch and the one
 line in `SimulationView._rename_runs` that writes it are the whole of it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this at the end of `PL-VKJW`'s Required-scope entry, after its two dispositions: a second fork is refused while a comparison is shown, and a branch's `RunView` shows the running-agent chip in place of the agent dropdown. "The second disposition" is the second of those, and "the two" are both.
+
+> The second disposition also settles the question `PL-QRD1` asked, which is why that item asked for the two to be decided together.

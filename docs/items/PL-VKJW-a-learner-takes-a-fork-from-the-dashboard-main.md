@@ -147,3 +147,9 @@ its defect reachable.
    dropdown, so no control on screen refuses every input it accepts.
 4. Tests cover all three, including the run added after construction, and
    `make check` passes.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in this item's Required-scope entry, "A learner takes the fork, and the dashboard comes to hold the branch", as it was scoped on 2026-09-20. "The four entries above" are the entries before it that build a branch: `PL-J2TD`, `PL-TFX5`, `PL-B8MK` with `PL-TYWQ`, and `PL-Z3W6`. The entry keeps that it was the entry the milestone was missing, its tag, and that it delivers the Goal sentence.
+
+> `main()` builds a `BranchedCase` rather than a bare controller. `SimulationView` gains a path that adds a `RunView` after construction. One control offers `BranchedCase.fork_points_s` and calls `fork_at`.
+
+> The four entries above build every part of a branch, but none of them is reachable. Nothing in `src/` constructs a `BranchedCase`, and `SimulationView` freezes its set of runs at construction.

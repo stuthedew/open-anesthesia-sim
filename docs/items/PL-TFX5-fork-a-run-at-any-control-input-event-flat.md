@@ -204,3 +204,7 @@ points at has been rewritten under it.
 **Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this warning at the end of its Goal's paragraph on the change to `core/`, after "This is what makes a branch's history before the branch point *the same object* as its parent's history, rather than a reproduction. Item 12 requires that property." "The property" is that one, and item 12 is forking, which this item built.
 
 > It is also the property where it is easiest to write a test that passes for the wrong reason.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in this item's Required-scope entry, "A run forks at any control-input event". "This entry" is that entry, and "the entry below" is "A bookmark is a forkable instant" (`PL-B8MK` and `PL-TYWQ`). The entry keeps the sentence that names where the bookmark clause went.
+
+> **Split 2026-09-14** (project owner). Until the fork was built, this entry read "at any control-input event **or bookmark**". The bookmark half turned out not to be unbuilt work but a *refused* operation. A bookmark's instant is not in general a keyframe. The keyframe-only rule that `PL-J2TD` landed deliberately admits no other opening point. On the 120 s two-change run that the fork tests use, 3 of the 1 201 instants where a halt could land are keyframes. This entry keeps what shipped.
