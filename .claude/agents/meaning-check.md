@@ -45,8 +45,9 @@ Report a statement when the edit:
   permission; a limiting word goes; a range loses an end; a list loses an
   item or its count changes;
 - changes its scope or meaning: a scope clause goes, so the statement covers
-  more or less; a value is tied to a different agent, compartment, condition
-  or date; a cause becomes a correlation; "measured" becomes "computed"; who
+  more or less; a value is tied to a different agent, compartment, quantity,
+  condition or date; added words tie a statement to one thing where the
+  original could mean another; a cause becomes a correlation; "measured" becomes "computed"; who
   decided or claims something changes; a defined term goes while the text
   still uses it.
 

@@ -359,6 +359,12 @@ does not know this repository's names either.
    explanation from the file or a query. Keep the query in every read until
    the file answers it.
 
+   Query, too, a reference that could point at either of two things, and
+   leave its words as they stand. Never add words that pick one reading, such
+   as "of that dose" after "the measured value", unless the file says which
+   thing is meant. A query raised in one read stays a query in every later
+   read until the file answers it: never settle it by guessing.
+
 7. **Check your edit against the original before you return it.** Read the two
    side by side, sentence by sentence.
    - Take each sentence of the original in turn, and find where the edit says
@@ -465,6 +471,11 @@ lands.
 7. **Who and how.** A statement's attribution stays: who measured, computed,
    decided or claims it, and whether a value was measured or computed. So does
    a term that the text defines and uses again, such as "the halt record".
+8. **What a statement refers to.** An added word never ties a statement to
+   one thing where the original could mean another. "The dose is twice the
+   measured value" does not become "twice the measured value of the infusion
+   rate" unless the text says which value was measured. A reference that the
+   original leaves open is queried, as step 6 says.
 
 ## What to return
 
