@@ -207,3 +207,7 @@ mechanism was written as a rule about the project** - after `PL-T86Q` (floating
 recorded as permanently refused) and this item's own strip recommendation
 (proposed before counting what it must carry). `PL-GDB0` captures the pattern
 rather than leaving it as three separate corrections.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 34, "Blender's window management as the model for the interface". In it, "this item" means item 34, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood.
+
+> *What is refused is silent occlusion, not floating* (project owner, 2026-09-15, correcting this paragraph's first form). **Floating is deliberately not foreclosed.** The option to take a tiled area out into a floating one is wanted later. This milestone simply does not build it yet. The first version of this paragraph recorded floating panels as "not admitted". That was a permanent refusal, and it was the writing session's overreach rather than a decision anybody took. Tiled first is only the order of work. It is not a rule that floating is never allowed.

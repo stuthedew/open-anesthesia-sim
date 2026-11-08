@@ -121,3 +121,11 @@ work belonging to the interface pass rather than to a consolidation. What was
 named instead is every set that was already half-named: the type scale, the
 selector widths, the legend swatches and the three stroke widths that sat bare
 beside their own named colour and dash pattern. `PL-ZHV6` carries the rest.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Development pathway" -> Phase 2, an interface that can drive the machine, gave this reason after saying that the phase opened by consolidating the display constants that item 24 names as its prerequisite. "That work" and "it" are that consolidation. Planned-milestone item 24 keeps that `PL-2CS8` did it in v0.4.11.
+
+> That work came first for two reasons. Item 24 already named it, and every control added before it spreads the same scattered defaults further. `PL-2CS8` landed it in v0.4.11.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 24, "Preferences panel". In it, "this item" means item 24, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 24 keeps that this item consolidated the constants in `v0.4.11`.
+
+> *The consolidation that this item named as its prerequisite has landed, and the work that replaces it has a different shape* (`PL-YD6X`). The prerequisite said to fold the UI and display constants into one module, rather than adding a fourth scattered location. Those constants were then scattered across `app/theme.py`, `app/simulation_view.py`'s module-level constants, and the defaults duplicated between `core/*.py` dataclasses and `app/controller.py`. `PL-2CS8` did that consolidation in `v0.4.11`. `app/theme.py` is now the one location. `app/controller.py` declares no module-level constant and no `core/` default of its own. What `app/simulation_view.py` still declares is Qt layout policy, such as stretch factors and object names, rather than anything a reader would set.
