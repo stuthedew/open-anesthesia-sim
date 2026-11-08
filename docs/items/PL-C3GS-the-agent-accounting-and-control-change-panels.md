@@ -102,3 +102,7 @@ stored widget and constructing one with nothing in the names saying which
 (`PL-KZR1`). The new integration test holds the live heading labels against
 `isVisible` and `isAncestorOf` the sidebar, so that orphaning them is caught
 here even while `PL-N67T` is open.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), at the end of this item's entry, whose line gives its size as `M`. It was found, with `PL-TSZM`, while `PL-25DD` was being implemented; `PL-TSZM` holds that record.
+
+> `M` rather than `S` because the headings are built inline in `build_sidebar_panels` rather than held on the instance, so naming the run there needs the plumbing `set_run_name` has.

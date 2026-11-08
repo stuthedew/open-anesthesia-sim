@@ -133,3 +133,5 @@ their "Done when" is the guard answering from every version the roadmap names
 ahead, and a row with no section still binds nothing (`PL-VFD8`'s v0.6.0).
 `PL-B5DW` captures the one thing the sweep found: `docket status`'s plan header
 still calls the anchor "the step the project is on".
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

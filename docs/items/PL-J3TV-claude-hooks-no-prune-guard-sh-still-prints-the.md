@@ -108,3 +108,13 @@ No test was added: the change is message text, the 215 hook tests pass
 unchanged, and this item's `verify:` asserts the added string. The skill's
 copy of the recipe predates `PL-X8SV` too, and still hands every remote
 deletion to the owner; that is `PL-ZZHZ`, filed rather than widened here.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground".
+
+> **And one from the re-judging pass over those same clusters** (2026-09-21). `PL-J3TV` is the live half of `PL-8T3Z`. `PL-PT7M` dropped `PL-8T3Z` under the closed-brief clause of `.claude/rules/citation-drift.md`, because that item asked for the `touches` of a `done` item to be corrected. The finding underneath it is still real. `.claude/hooks/no-prune-guard.sh` still prints the three-command restart recipe that `PL-K2C8` replaced. It prints that recipe at the one moment when a session is certainly about to run it, which is when the hook refuses a prune. It is debt here because it is a `defect`. It is wholly in the workflow lane, since it is a hook message that no reader of the simulator ever sees. It was captured fifteen days after this gate froze. The arithmetic above about the refilling queue is unchanged. `PL-G8TR` is already on this list for the same file and the same message, so whoever takes either item should take both.
+
+<!-- absent: .claude/hooks/no-prune-guard.sh -->
+
+> - PL-J3TV (S) `.claude/hooks/no-prune-guard.sh` still prints the pre-`PL-K2C8` three-command restart recipe, so the incomplete version survives in the louder of the two places
+
+<!-- absent: .claude/hooks/no-prune-guard.sh -->

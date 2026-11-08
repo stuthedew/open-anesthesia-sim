@@ -118,3 +118,5 @@ now search `.claude/skills/docket/` and still fail correctly. Three line-number
 citations turned out to have drifted onto unrelated passages already - the check
 could only see that the line existed, not that it was the right one - and are
 re-anchored to sections.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-BNYF`.

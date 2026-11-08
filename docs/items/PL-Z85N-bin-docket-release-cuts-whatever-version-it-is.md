@@ -60,3 +60,5 @@ hands over a command filing a release item under it. A roadmap that exists but
 cannot be read refuses the cut rather than skipping the question, as an
 unreadable tag list does. `subprojects/docket/tests/` covers the refusal - the
 brief first named `tests/unit/`, where the release command has no tests.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

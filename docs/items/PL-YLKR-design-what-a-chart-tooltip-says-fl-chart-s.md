@@ -127,3 +127,7 @@ per-point strings on Flet, onto a pause-transition frame already measured at
 71.9 ms and 90 KiB, against one format callable under pyqtgraph. `README.md`
 moves to `PL-YVHK` with the implementation, because it cannot say the affordance
 exists until it does.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), at the end of the paragraph "`PL-YLKR` is here for what the tooltip may imply rather than for what it says." The `PL-YVHK` paragraph of the group "Added 2026-09-14 under the unconditional safety/science exception" states the same point: the design landed on v0.4.x and building it against pyqtgraph remains.
+
+> The design does not depend on the toolkit and survives the port. Only its implementation moves.

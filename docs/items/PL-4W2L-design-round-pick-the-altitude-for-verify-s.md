@@ -283,3 +283,7 @@ round predicted - `9123d386`, `9ab8f283`, `be403fc7`, `dfc39bfd`, `eb160b54`,
 `ec66c397`, `efd3598c`. No difference from the recorded count to explain.
 Under 3.11, 32 of the commits read at least one file line by line, and none
 of them changed the verdict.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". The paragraph that disposed of it counts it among its entries without naming it, and is quoted in `PL-G21K`'s brief.
+
+> - PL-4W2L (M) design round: pick the altitude for `verify`'s assertion check before the next of its three open items is worked, since six fixes have each uncovered the next

@@ -42,3 +42,5 @@ at the timeline's numbers, which is the wrong file for this case. Predates
 carries, and the assertion in
 `subprojects/docket/tests/test_roadmap.py::test_a_milestone_row_the_version_has_passed_without_a_release_is_reported`
 that pins the current wording moves with it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2P9L`.

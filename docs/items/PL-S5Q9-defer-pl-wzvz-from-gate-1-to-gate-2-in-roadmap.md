@@ -60,3 +60,7 @@ deferred.
 
 **Explicitly not this item.** Changing `PL-WZVZ`'s own front matter, removing it
 from the frozen list, or doing any of its work.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in its § "Definition of done", after the criterion that every item of Gate 1's frozen list outside the milestone's Required scope is done, dropped with its reason, or deferred to a later gate. "The last of these routes" is deferral. v0.5.0's § "Sequenced past v0.5.0, so not clearable before it begins" records the deferral of `PL-WZVZ` (make an inter-machine difference attributable).
+
+> `PL-WZVZ`, which `PL-S5Q9` deferred to Gate 2, is the one entry that takes the last of these routes;

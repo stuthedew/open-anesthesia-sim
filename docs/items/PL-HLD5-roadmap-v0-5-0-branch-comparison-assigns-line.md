@@ -115,3 +115,7 @@ out, for the reasons in the candidate list above.
 trace-against-trace 3:1 is stricter than SC 1.4.11 actually requires. It is the
 premise `PL-GVXP`'s palette search rests on, and it could not be checked from
 this environment.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in `PL-8PSW`'s Required-scope entry, in the note "Which run carries the width offset was settled when it was built (`PL-8PSW`, 2026-09-16, project owner)". "The entry above" is `PL-Z3W6`'s, which requires a branch to reproduce its parent element-wise up to the branch point. The note keeps the decision, that the first run is drawn wider, and points to `docs/MODEL.md` § "The six compartment traces", which carries it.
+
+> `PL-HLD5` had assumed that the two curves are merely adjacent. They are not. The entry above requires a branch to reproduce its parent element-wise up to the fork. So before the branch point the two curves coincide exactly, and whichever is thicker hides the other entirely over that stretch. Widening rather than narrowing also keeps every trace at 2 px or wider. A 1 px antialiased line renders lighter than its declared colour. It then falls below the 3:1 minimum contrast that `.claude/rules/ui-color.md` treats as an error.

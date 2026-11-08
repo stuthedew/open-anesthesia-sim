@@ -74,3 +74,5 @@ another module are both reported (the tool before this change reported neither,
 0 findings each), and a write on an identity control is quiet and counted. The
 shipped tree reads 0 property-write colourings, as the brief said it would.
 `.claude/rules/ui-color.md` now names the property route beside the other two.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-9TNJ`.

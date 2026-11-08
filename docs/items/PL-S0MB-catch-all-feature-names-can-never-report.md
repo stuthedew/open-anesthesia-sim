@@ -149,3 +149,5 @@ satisfy them) is the same kind as `PL-8LDF` and sits in `model-spec-accuracy`;
 it was not one of the three names' members, so it stays where it is. The
 `docket` skill's capture mode now names the retired list where it tells a
 session to pitch a name at what completes.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

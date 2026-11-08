@@ -59,3 +59,5 @@ satisfying the command as written would have re-created this item's own defect,
 a `blocked-by` naming an item that has already closed. The blocker taken instead
 is `PL-1FT6` (build the `LayoutModel`), which is open and is genuinely what the
 View contract waits on.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

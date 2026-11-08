@@ -258,3 +258,17 @@ it cannot be deferred past it. The choice - lock the trunk's selector too, or
 keep it live and grow the confirmation dialog a clause about the branches it
 orphans - is in `PL-VKJW`'s brief with a recommendation to lock, and is the
 project owner's.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this at the end of the opening paragraph of its § "Required scope", which counts nineteen items in three groups. "The nineteenth item" is `PL-VKJW`, whose entry keeps "Added 2026-09-20 (project owner, 2026-09-20, `PL-XJ37`)". "The Goal sentence" is the Goal's end state: a learner runs a case, marks the decision point, forks the case there, manages the two branches differently, and reads both on one time axis.
+
+> The nineteenth item was added on 2026-09-20 (`PL-XJ37`), when the project owner settled that forking is what v0.5.0 is. By then every mechanism that the Goal sentence depends on had shipped, but no shipped entry point called any of it. So the milestone could have closed with every other entry done and a learner still unable to take a branch.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in its out-of-scope list, in the bullet "More than two runs displayed at once, and the selector that would choose which two (project owner, 2026-09-20, `PL-XJ37`)". "This bullet" is that one, "this milestone" is v0.5.0, and "the fork-control entry in Required scope" is `PL-VKJW`'s, whose first disposition refuses a second fork while a comparison is shown. The bullet keeps the stable order, that a comparison is always of a branch against the trunk, why the selector was declined, that adding it later is additive, and a pointer to that entry.
+
+> The comparison is specified for a trunk and one branch, and `MAX_DISPLAYED_RUNS` stays 2. N branches may exist. `BranchedCase.branches` returns them in a stable order, chosen so that a later selector does not renumber the branch a learner is looking at. But **Selecting which two runs are displayed** is not built here. So this milestone never compares one branch directly against another.
+
+> The sentence this bullet replaced read "N branches may exist and be selected between". That sentence stated a permitted future as though it were scope. The part of it worth keeping is that adding the selector later is additive rather than a rework.
+
+> **What that defers is a consequence that the fork-control entry in Required scope settles rather than discovers.** Without a selector, a learner who forks twice has no way to say which branch is shown. So a second fork is refused while a comparison is displayed, rather than silently replacing the branch on the chart.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

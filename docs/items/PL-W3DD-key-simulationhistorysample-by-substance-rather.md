@@ -141,3 +141,9 @@ than trusting this sentence.
 
 Nothing here is invalidated: the substance-keying decision is independent of the
 numerical method, and v0.4.1 changes no equation or parameter.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this in this item's Required-scope entry and in its "Landed 2026-09-05" note. "This record" is `SimulationHistorySample`, "the bullet" is the scoped entry, and "the change" is keying the history by substance. "Promoted below to "Designed for forking"" referred to that section of v0.4.0, which states the same reason in one bullet. The entry keeps its first two sentences and points to that section, and the landed note keeps its opening sentence, "Nothing displayed changed", and its pointer to `docs/MODEL.md` § "Interface boundary".
+
+> It matters because item 12 (forking, promoted below to "Designed for forking") writes its element-wise reproducibility proof directly against this record's shape. Reshaping the record *after* that proof exists would mean reworking a safety property that is already validated, instead of doing a plain refactor. Nitrous oxide (planned item 6) needs a second substance in the same record. The MAC readout then becomes a fold over the record's substances rather than a rewrite.
+
+> The bullet names only the record. But a row keyed by substance, on top of a store keyed by compartment alone, would have had to refuse or pool a second substance. That is the half-migration the change exists to avoid. So `RunHistory` is keyed by `RecordedSeries`, which names a substance and a quantity. Its substances are fixed when it is built, and a sample with any other set of substances is refused. The wash-in stretches are per substance, for the same reason that the quotient is. A chart trace is bound to a `RecordedSeries` rather than to a bare quantity. The trace is paired with the agent that the drawing frame's own snapshot names.

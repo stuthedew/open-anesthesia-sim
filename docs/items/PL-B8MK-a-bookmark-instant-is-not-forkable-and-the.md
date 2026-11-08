@@ -231,3 +231,7 @@ two conditions a branch satisfies, a bookmark fork cannot satisfy both, and a
 reader meeting the unqualified pair would conclude a bookmark fork is
 impossible rather than that one condition was always the special case of a
 weaker one.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in the Required-scope entry "A bookmark is a forkable instant" (`PL-B8MK` and `PL-TYWQ`). "That item" is this one, and "too" and "that second route" compared the route that shipped with recording a keyframe where the run halts. The entry keeps the route that shipped, and that marking a run leaves the trunk element-for-element the case it would have been unmarked.
+
+> That item measures two routes, and the obvious one is the worse. Recording a keyframe where the run halts makes the branch exact against the trunk it forked from. But it also moves that trunk's own later results away from what the case would have given unmarked, so marking a run changes it. Opening the branch's definition at the keyframe *before* the bookmark costs the trunk nothing, and it is exact too. **Shipped 2026-09-20 on that second route**

@@ -72,3 +72,5 @@ cheapest place to group them.
 **A cheap fix exists.** Match each removed assertion against the added lines
 after normalising whitespace and argument lists, and report only those with no
 counterpart - the same comparison this item's own diff was audited by hand with.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

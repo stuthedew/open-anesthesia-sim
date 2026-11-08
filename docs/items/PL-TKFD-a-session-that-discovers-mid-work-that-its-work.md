@@ -158,3 +158,5 @@ them. The advisory `verify` prints on a branch-side declaration still says the
 line had to reach the base before the branch's first commit and that triage is
 the only pass that can write it; changing that string changes a pinned
 assertion, so it is filed as `PL-PLV0` rather than fixed here.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

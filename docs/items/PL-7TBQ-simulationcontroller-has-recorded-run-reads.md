@@ -78,3 +78,5 @@ selector with the agent chip, so the false confirmation described above cannot
 be reached from the dashboard today. The property was still wrong against its
 own docstring, and the fix is for whichever reader asks it about a branch
 next.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

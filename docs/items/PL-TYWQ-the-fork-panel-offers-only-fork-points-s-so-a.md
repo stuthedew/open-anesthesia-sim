@@ -196,3 +196,7 @@ halted distinction on the plain value (45.3 s marked, 45.4 s halted) and
 `tests/integration/test_simulation_view.py` pins it end to end through the panel
 (80.05 s marked, 80.1 s halted), so a rewrite that reintroduces the refused
 claim fails rather than merely looking different.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in the Required-scope entry "A bookmark is a forkable instant", in the note "The interface half is `PL-TYWQ` and shipped 2026-09-21". "That list" is `BranchedCase.fork_points_s`, the trunk's keyframes, which the fork panel `PL-VKJW` landed on 2026-09-20 offered. The note keeps how the second control behaves, with its tag.
+
+> A bookmark halt deliberately adds nothing to that list, because recording no keyframe is the whole of what makes the route safe. So for a day the capability existed in the model, but the control did not offer it. A learner could mark 45 s, be stopped at 45 s, and still be offered only induction and the control events.

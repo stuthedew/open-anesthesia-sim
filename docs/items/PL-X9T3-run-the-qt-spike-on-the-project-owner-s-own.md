@@ -121,3 +121,7 @@ looks at the shipped settings.
 further. A model and chip would make the absolute figures reproducible; the
 ratios within one machine are what the decision rests on, and they do not need
 it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" opened with this, after "Scoped 2026-09-10, following `PL-QXSB`'s decision on the same day." "The owner then chose to move" means moving the interface from Flet to Qt. The section keeps the scoping date and `PL-QXSB`.
+
+> `PL-55DH` built the spike, and `PL-X9T3` measured it on the project owner's own machine. The owner then chose to move.
