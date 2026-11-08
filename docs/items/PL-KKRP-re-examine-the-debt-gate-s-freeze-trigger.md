@@ -100,3 +100,5 @@ answer in `PL-LVN8` sends decision history to the item that holds it.
 > Under the cadence in "The debt gate", Gate 2 would freeze as this milestone is scoped. Gate 2 is meant to collect *v0.5.0's* findings, and v0.5.0 has not been implemented. So a gate frozen today would be empty by construction, and it would then refuse the findings it exists for.
 
 > **This is now the first of two instances rather than a one-off.** v0.6.0 was scoped on 2026-09-16 under the same reasoning. `PL-KKRP` records both instances, and beat 2 of § "The cadence" writes down the exception's condition, so that the argument is not re-derived for each milestone.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Not debt against this gate, and recorded so that they do not look deferred". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

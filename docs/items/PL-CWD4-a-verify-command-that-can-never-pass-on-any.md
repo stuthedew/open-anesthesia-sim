@@ -142,3 +142,5 @@ nothing to fire on, 0 of 125 commands on 2026-10-03. A second open item whose
 `grep` names a path that has since moved reopens this, with the replay's
 `grep` exit-2 report as the build. Closed on this record in the design round's
 own pull request, with no build thread.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2P9L`.

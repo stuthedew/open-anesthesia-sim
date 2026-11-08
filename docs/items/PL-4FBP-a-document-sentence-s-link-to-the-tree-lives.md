@@ -374,3 +374,7 @@ stood at 200,000 tokens when the answer came.**
    and `check_resident_instructions` together. Nothing else was stale: every
    other live mention is of a different check, and the rest are release records
    dated by their own section under clause 4.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "Not wholly apparatus, but unable to change what a reader of the simulator sees". This item is also named in paragraphs quoted in the brief of `PL-VX5H`.
+
+> - PL-4FBP (M) Fifteen items repair a document sentence whose link to the tree lives only in the reader's head: decide whether an assertion must name what it asserts — closed in v0.4.28

@@ -89,3 +89,5 @@ belongs" bullet at `:919-925` tells a panel author to ask
 `SimulationController.drawn_window(start_s, stop_s, columns)` for the span it
 draws and names `RecordedSeries` as the address of one trace. `python3
 tools/doc_check.py check` reports 0 errors.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

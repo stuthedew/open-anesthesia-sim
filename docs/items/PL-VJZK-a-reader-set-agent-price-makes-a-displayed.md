@@ -107,3 +107,5 @@ The hazard table gained two rows, each declaring `no test yet (`PL-1P15`)`.
 tests. The commissioned `verify:` command, `grep -qi 'currency'`, matched any
 mention of the word. It is replaced by a check for the subsection's heading
 and for "ISO 4217", which fails on `main` at `adc93274` and passes here.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "`anticipated`, with no milestone yet to place them in". The paragraphs that name it are quoted in the briefs of `PL-0S0V` and `PL-KZ99`.

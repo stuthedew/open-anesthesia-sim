@@ -125,3 +125,5 @@ both say the *alveolar trace was* `#18A999`, which is past tense and still
 true. `docs/MODEL.md:5706` describes `ACCENT`'s role rather than its value and
 needed nothing. `tests/unit/test_contrast_check.py:138` uses the string in an
 identity assertion where any colour would do.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Sequenced past v0.5.0, so not clearable before it begins", as one of the five entries the Qt port carries. That section's table keeps its row. The paragraphs that named it are quoted in the brief of `PL-3355`.

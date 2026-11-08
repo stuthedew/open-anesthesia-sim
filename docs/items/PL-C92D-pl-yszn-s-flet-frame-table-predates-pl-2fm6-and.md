@@ -92,3 +92,7 @@ gap"*, which stopped being true when this item was re-scoped on 2026-09-12. A
 reader following that sentence would have gone looking for three comparable
 rows that are never going to exist, on a Flet tree `PL-7SVX` deletes. No
 measurement was taken, per the re-scope.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "Waiting on the Qt port, on 2026-09-12". This item is also named in paragraphs quoted in the briefs of `PL-7SVX` and `PL-DG84`.
+
+> - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row — closed in v0.4.26

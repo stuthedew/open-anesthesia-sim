@@ -58,3 +58,5 @@ which is one tree and one answer per id however many refs carry it. So it is
 asked once per id, between the two - which is also what keeps the promotion at
 one `git show` per id rather than one per carrier, and is why the brief's "judge
 each" overstates it by one test.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2BZY`.

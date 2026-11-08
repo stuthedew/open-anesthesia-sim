@@ -277,3 +277,9 @@ would hard-fail on the 29 sites it exists to find.
 quotation it reported reads in the section-mark form, no quotation of prose was
 converted, no closed brief was edited, the check runs inside `make check`, and
 `make check` is green.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". Its paragraphs also dispose of entries that they count without naming: `PL-B8V1`, `PL-LBR6`, `PL-MSFB` and `PL-YTDN`.
+
+> **Five more from the 2026-09-13 triage pass**, which folded in the captures left behind by the stale-name batch of Gate 1 and by the v0.4.15 cut. They rest on the same ground as the thirty before them, and no new argument is owed. Each was found after the 2026-09-06 freeze, each is `P2` or `P3`, and none is `safety` or `science`. All five are apparatus: two `docket` command defects, a sweep for filename drift, a pair of stale workarounds in checks, and the citation-form conversion that `PL-V13T` left open. None can affect a reader of the simulator, which is the test on which the first twenty-nine were declined.
+
+> - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation

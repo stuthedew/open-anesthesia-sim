@@ -72,3 +72,5 @@ was the work. `test_a_version_named_ahead_of_the_current_one_is_reserved` pins
 that arrangement - the gate open, the step on the patch track, the beat's
 milestone two rows past the port - beside the existing test for the cleared-gate
 one.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-9TNJ`.

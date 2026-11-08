@@ -56,3 +56,5 @@ obligation on a command - it goes green only for what *this* item's work
 creates - and the work is as briefed whichever way `PL-6TP8`'s shape half is
 answered: each of the four names a clause only its own work satisfies, and the
 no-op `import_boundary_check.py` clause goes.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-9TNJ`.

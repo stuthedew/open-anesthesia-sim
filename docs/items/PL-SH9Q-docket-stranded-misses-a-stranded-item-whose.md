@@ -89,3 +89,5 @@ three as unrelated work, and they sat in two different features
 (`parallel-sessions` and `stranded-item-edits`). They are ranked together by
 `PL-BHVM`'s `root-cause-of:` and now grouped together as well; the group closes
 when `stranded` makes that comparison.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-554Q`.

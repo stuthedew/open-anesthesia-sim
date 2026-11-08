@@ -80,3 +80,7 @@ Measured after: `PL-9HDH`'s `reason:` parses to 731 characters where it parsed
 to 63, and 11 of the 12 files round-trip byte-stable. The twelfth, `PL-CPLD`,
 differs by a blank line `render_item` adds after the front-matter fence, which
 the original parser did too - a canonicalisation, not a loss.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". The paragraph that disposed of it counts it among its entries without naming it, and is quoted in `PL-NQKP`'s brief.
+
+> - PL-5B39 (M) `parse_item` silently truncates a multi-line front-matter value at its first line, and `rewrite_item` then deletes the rest from the file

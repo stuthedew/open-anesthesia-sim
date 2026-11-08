@@ -138,3 +138,5 @@ carrying real unmerged prose, among them a ratified project-owner decision on
 it rests on is 2 reopenings in 1,377 items across this store's whole history,
 both in one commit - replayed over all 889 commits touching `docs/items/` on
 `main`. A branch reopening an item the base closed is what it would hide.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.
