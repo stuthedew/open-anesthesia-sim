@@ -78,7 +78,7 @@ keeps the pair *measured* equal to the pair *rendered*. All three run in `make
 check` and in `.github/workflows/quality.yml`. Nothing checks the dash patterns,
 which is why that cell says so.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 24, "Preferences panel". In them, "this item" means item 24, and "above" and "below" point within that section as it then stood. Item 24 keeps the rule and its table.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 24, "Preferences panel". In them, "this item" means item 24, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 24 keeps the rule and its table.
 
 > *What the panel must never make editable, and the test that decides it* (`PL-QBX0`, 2026-09-19). Until that date, this gate named `data/**/*.json` and nothing else. That is one location rather than a criterion, and both the agent-identification colours and the contrast-checked palette sit outside it. **What decides is the guarantee a value carries, never the file it happens to live in.** Suppose something outside the panel enforces a safety, standards-conformance or accessibility guarantee on a constant's value. Then that constant is out of the panel's reach, wherever it is declared. An enumeration cannot carry that rule, and this one has already been wrong once. So the table below lists the instances known on that date, and the criterion governs whatever is added after it.
 

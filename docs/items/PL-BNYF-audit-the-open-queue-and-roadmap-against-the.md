@@ -152,3 +152,7 @@ than a session's, so it is raised rather than written in.
 outputs" (read; its second-window half is what `PL-W54S` now carries),
 `docs/interface-provenance.md`, `docs/ARCHITECTURE.md` § "Where new code
 belongs", `.claude/rules/ui-areas.md`. `make doc-check` passes.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 33, "The interface pass". In it, "this item" means item 33, "that list" is item 33's opening list of what the pass decides, and "here" means that entry. Item 33 keeps the paragraph under the label "*Arrangement belongs to item 34*"; the label's record that the list once named "layout" is kept here.
+
+> *Arrangement is not on that list, and the word that used to be was "layout"* (corrected 2026-09-16, `PL-BNYF`). Item 34's entire content is which areas exist, where they sit, and what a reader may do to them. This item decides how the contents of those areas look. The two were separable on 2026-09-08, when this item was written against one fixed screen. They are not separable any more. Under item 34 the arrangement belongs to the *reader*, so it is not something a design pass can decide once.

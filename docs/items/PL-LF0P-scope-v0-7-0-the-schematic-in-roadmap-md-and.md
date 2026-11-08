@@ -51,7 +51,7 @@ nothing here produces findings of its own.
 
 > v0.6.0 shipped on 2026-10-20. § "The debt gate" -> "The cadence" names two days, and the later of them is the scoping day.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 27, "Schematic compartment view". In them, "this item" means item 27, and "above" and "below" point within that section as it then stood. Item 27 keeps its goal and a pointer to v0.7.0's scope.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 27, "Schematic compartment view". In them, "this item" means item 27, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 27 keeps its goal and a pointer to v0.7.0's scope.
 
 > Add a schematic compartment view alongside the graph, after the interactive "Picture" of the Gas Man reference simulator. Gas Man draws the circuit, the alveoli and the blood and tissue groups as containers of one width. Each container is filled "to a height representing partial pressure or tension in that compartment" (Gas Man Workbook, Figure 2-1, printed p. 11). So its Picture shows where the tension is. Until 2026-10-25 this entry said that the containers were drawn to scale and filled with agent, which the Workbook does not say. This view adds what Gas Man leaves out: each container's amount, and a bar showing each compartment's share of the agent. **Scheduled in v0.7.0** (project owner, 2026-10-25, ratified, over containers drawn to scale and over Gas Man's Picture as it is). § "v0.7.0 - the schematic" has the scope.
 

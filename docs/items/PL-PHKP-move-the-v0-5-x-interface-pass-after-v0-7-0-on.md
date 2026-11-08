@@ -49,7 +49,7 @@ un-absorption paragraph naming the row), planned-milestone item 33's placement
 paragraphs; `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form
 mockups" and the item-34 scoping thread that recorded this as open.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 33, "The interface pass". In them, "this item" means item 33, and "above" and "below" point within that section as it then stood. Item 33 keeps its placement and the reason for it.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 33, "The interface pass". In them, "this item" means item 33, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 33 keeps its placement and the reason for it.
 
 > *This resumes a shelved thread rather than opening a new one.* `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form mockups" records a mockup round. The round was explored and then shelved on the owner's call, and the note closes with "Do not resume this without the project owner asking again". That condition is now met. The note reasons that a mature UI could not be designed on the functionality then available. That reasoning was written against v0.1.0, so it is a statement about that baseline and not about today. The principle beside it is that UI/UX ambition follows the maturity of the scientific core. That principle is what places this item after MVP. Per the note, the three artefacts from that round are explicitly not a starting point.
 

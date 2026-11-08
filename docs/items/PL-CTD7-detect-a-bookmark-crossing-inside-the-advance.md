@@ -256,7 +256,7 @@ Where the pieces went:
 **Not built here, and not in scope:** forking *at* a halt is `PL-B8MK`, which
 this unblocks.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 26, "Run bookmarks". In them, "this item" means item 26, and "above" and "below" point within that section as it then stood. § "Completed: v0.5.0 - the case you can branch" holds the shipped crossing detection and its outcomes.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 26, "Run bookmarks". In them, "this item" means item 26, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. § "Completed: v0.5.0 - the case you can branch" holds the shipped crossing detection and its outcomes.
 
 > *Required properties.* Crossings are tested on every simulation step, not once per rendered frame. A test per frame overshoots by a whole frame's worth of simulated time. The faster the playback multiplier, the worse the overshoot. The same bookmark would then halt at a different concentration depending on how fast the user was running. The displayed halt value would not be the value that was asked for. That is a presentation-correctness failure of the kind that `CLAUDE.md` treats as safety-critical. It would also break the reproducibility of any branch taken from that bookmark.
 

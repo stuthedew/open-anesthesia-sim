@@ -94,6 +94,6 @@ resolvable expression or states why the symbol has no denotation, the column is
 present for the rows `PL-212V` adds, `make check` passes, and no modelled value
 changed.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 29, "Make core/ read like the domain". In it, "this item" means item 29, and "above" and "below" point within that section as it then stood.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 29, "Make core/ read like the domain". In it, "this item" means item 29, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood.
 
 > **What "reads like the domain" means concretely.** It is not a mapping from symbol to identifier, which was the shape guessed at here before the pass was measured. Identifiers in this project carry their unit or kind (`alveolar_ventilation_l_min`), which a bare symbol cannot do. The compartment object already supplies the subscript, so $`F_A`$ in code is `alveoli.<accessor>` rather than any single identifier. The mapping is therefore from a symbol to an **expression**. It is kept as a fourth column of `docs/MODEL.md` § "Symbols" (`PL-H46J`), which makes the pass both finite and checkable. Beside it sits one name per modelled quantity. `core/` currently gives the partial-pressure-equivalent fraction eight names across four compartments, and `PL-9SH6` collapses them to one.

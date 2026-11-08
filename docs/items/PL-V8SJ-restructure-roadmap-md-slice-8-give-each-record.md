@@ -3,12 +3,14 @@ id: PL-V8SJ
 title: Restructure ROADMAP.md, slice 8: give each record of the milestones v0.1.0 to v0.5.0 one home in its own section, apart from v0.5.0's gate dispositions
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-M3MV
 added: 2026-11-07
+payoff: a reader checking why v0.1.0 to v0.5.0 took the shape they did finds each record once, in that milestone's own section, and the copies that disagree with an outcome are gone
+verify: ! grep -qF 'so the port dissolves the defect rather than fixing' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 8: give each record of the milestones v0.1.0 to v0.5.0 one home in its own section, apart from v0.5.0's gate dispositions
@@ -628,3 +630,15 @@ out-of-scope list is a milestone by this file's own test" restates what
 § "Project roadmap" says a milestone needs, and can keep only its point.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Every record the item cites was in `ROADMAP.md` at `817a4d88`. Later edits in its range changed only wording.
+
+**Next steps, written 2026-11-08 by the thread that ran slice 7.** Slice 7 (`PL-M3MV`) is the model to follow; its brief's "What this slice did" records each finding's fate under *Applied*, *Not applied, with the reason*, *Queries the tree answers* and *Queries filed*, then *Review* and *Checked*.
+
+1. Bring `origin/main` in once slice 7's pull request has merged, and claim this item.
+2. Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` (under `uv run python` with `UV_SYSTEM_CERTS=true`) before any edit, and compare after. Keep a frozen copy of `ROADMAP.md` from before the first edit.
+3. Search only inside § "Completed: v0.1.0" to § "Completed: v0.5.0", and leave v0.5.0's gate dispositions to slice 9 (`PL-4BCF`). v0.5.0's § "Sequenced past v0.5.0, so not clearable before it begins" is a gate disposition, and its table is the index the outline read keeps.
+4. Slice 7 moved item 25's five rates into v0.4.0's `PL-SN2C` entry and pointed v0.5.0's `PL-LPLD` entry at the class `MacTarget` in `app/bookmarks.py`; the catalogue's items 8, 11, 12, 25 and 26 now point to these sections, so a record moved out of them must leave its pointer target in place.
+5. Quote each sentence of decision history word for word into its item, under "**Moved from `ROADMAP.md` on DATE (`PL-V8SJ`).**" with a lead-in that glosses every word whose meaning depends on its old position. Keep a table's rows on separate quoted lines. A sentence another file already holds needs no quote; name that file in the record.
+6. Before the reviews, list every sentence of the old sections that the new file lacks, by normalising whitespace and searching for each sentence, and route each one: kept elsewhere in the file, held by a named file, or quoted in an item.
+7. Rewording findings go to `PL-YRY3` as a numbered list. Queries that need the author go to one new item under `roadmap-structure`, as `PL-NTHF` does for slice 7.
+8. Two reviewers compare old and new, one for words that depend on position and one sentence by sentence, each given the frozen copies and the diff of the item files.
+9. Close the item before pushing: the push hook refuses an open item whose `verify:` passes. Then run `bin/docket verify --self PL-V8SJ`, arm, and merge on green. Set slice 9 (`PL-4BCF`) `ready` with a `verify:` of an admitted shape (`! grep -qF` for a sentence the work removes) that fails until its work is done.

@@ -167,7 +167,7 @@ left for the reclassification to describe.
 
 > **This is the model's current position, not a closed question.** [...] `PL-8GV5` records how this was decided. The measurements here are a session's, and the direction is the project owner's (2026-09-13).
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 35, "Optional model of anaesthesia's effect on cardiac output and regional perfusion". In them, "this item" means item 35, and "above" and "below" point within that section as it then stood. Item 35 keeps the framing and points to `docs/MODEL.md` § "Known limitations" for the measurements.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 35, "Optional model of anaesthesia's effect on cardiac output and regional perfusion". In them, "this item" means item 35, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 35 keeps the framing and points to `docs/MODEL.md` § "Known limitations" for the measurements.
 
 > *Framing (project owner, 2026-09-13).* This is recorded as a possible future feature to consider, not as a settled exclusion. `PL-8GV5` proposed closing the question outright. The owner agreed with the substance for now, which is that the model keeps perfusion fixed. The owner also directed that the feature stay on this list as an option.
 

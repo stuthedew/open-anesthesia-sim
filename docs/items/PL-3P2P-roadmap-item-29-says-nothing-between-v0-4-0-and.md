@@ -69,7 +69,7 @@ one milestone section is not a recurring case, and `CLAUDE.md`'s gate is
 whether it will genuinely run again. `PL-GLBF` already covers the general
 problem of hand-maintained subset counts in this file.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 29, "Make core/ read like the domain". In them, "this item" means item 29, and "above" and "below" point within that section as it then stood. Item 29 keeps the placement and that the step was pinned immediately ahead of v0.5.0.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 29, "Make core/ read like the domain". In them, "this item" means item 29, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 29 keeps the placement and that the step was pinned immediately ahead of v0.5.0. "This paragraph" in the second quote is the first quote, which until 2026-09-06 said "Nothing between v0.4.0 and v0.7.0 touches `core/`".
 
 > The first half of the placement moved, and the cost of the old placement is worth recording. When it was placed between v0.3.0 and v0.4.0, this unscoped pass over `core/` was the gate on the whole teachable-case milestone. It bought nothing there. v0.4.0 changes no equation, parameter or numerical method, so the fluency that the pass exists to provide is not exercised until items 6 and 7. The pass therefore sits immediately after v0.4.0, as the `v0.4.x` row of "The timeline". That keeps the benefit as early as the remaining constraint allows.
 

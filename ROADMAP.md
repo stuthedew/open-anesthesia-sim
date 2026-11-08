@@ -414,7 +414,7 @@ to clear the ground that the feature releases are built on:
 | — | **MVP complete** | **Reached 2026-09-21, with v0.5.0.** A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away). Planned-milestone item 34's entry carries the count, and the rule that round produced, which ended when this release shipped item 34's View contract and view registry. | 4 L, 16 M, 3 S |
-| — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, and item 43 records the count. | — |
+| — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, whose brief records the count. | — |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
@@ -1651,18 +1651,6 @@ is that no surveyed machine publishes a startup flow, so a per-machine field
 would force every profile to invent one. The default's *value* is still an
 open question, and it belongs to `PL-NM7X`.
 
-**Two queue items scoped this one. They were sequential, and both are
-done.** The design depended on the survey, because the extension points
-are the axes of real variation that affect a number. Designing them first
-would have been guessing. Three items wait behind those two items rather
-than behind this prose. `PL-8PS6` (fresh gas flow range is a machine
-property) and `PL-WZVZ` (make an inter-machine difference attributable) are
-carved out of Gate 1 for that reason. `PL-WZVZ` is the surface that keeps a
-machine's effect on a curve attributable to a named parameter. `PL-439V`
-(make the Tec 6 the concrete second device class) is answered by the
-design's dial-mapping slot. All three now wait on this milestone being
-implemented, rather than on a design that does not exist.
-
 **The survey is done and is `docs/machine-survey.md`.** `PL-4DCG` surveyed
 the machines in current clinical use for the variables that change a
 simulated result. The survey records which variables affect a number, which
@@ -1673,7 +1661,10 @@ not account for the measured differences between machines. So a profile
 that is a volume and a set of bounds is already falsified. Second, the
 position of the fresh gas inlet changes the inspired/delivered ratio at a
 fixed volume. A single well-mixed circuit compartment cannot represent that
-effect.
+effect. So this milestone has to choose, on the record, among three options.
+It can represent internal topology. It can state that machines differing
+only in topology are indistinguishable here. Or it can route the question
+into the per-compartment gas-phase model at item 39.
 
 **The design is done and is `docs/machine-abstraction.md`.** `PL-FG9D`
 designed the base abstraction: what a module is, what the base type owns and
@@ -1703,6 +1694,18 @@ blank page. The scope statement's own test is the design's stated cost
 target. A machine whose delivery and removal are already in the closed set
 is one data file under `src/anesthesia_sim/data/machines/`. It needs no
 change to `core/` and no new test of the physics.
+
+**Two queue items scoped this one. They were sequential, and both are
+done.** The design depended on the survey, because the extension points
+are the axes of real variation that affect a number. Designing them first
+would have been guessing. Three items wait behind those two items rather
+than behind this prose. `PL-8PS6` (fresh gas flow range is a machine
+property) and `PL-WZVZ` (make an inter-machine difference attributable) are
+carved out of Gate 1 for that reason. `PL-WZVZ` is the surface that keeps a
+machine's effect on a curve attributable to a named parameter. `PL-439V`
+(make the Tec 6 the concrete second device class) is answered by the
+design's dial-mapping slot. All three now wait on this milestone being
+implemented, rather than on a design that does not exist.
 
 #### 2. Agent switching with residual washout
 
@@ -1748,7 +1751,9 @@ change to fresh gas flow, the vaporizer dial, ventilation and cardiac
 output is stamped with the simulated time at which it took effect.
 *The timeline shipped in halves: recording in v0.4.0 (`PL-DR1Z`), and the
 replay driver in v0.5.0. § "Completed: v0.4.0 - the teachable case" →
-"Designed for forking" says why it comes first.*
+"Designed for forking" says why it comes first for forking, and
+§ "Development pathway" → "Phase 3 — reproducibility and comparison" says
+why save/load and replay need it.*
 
 #### 9. Scenario save and load
 
@@ -1778,7 +1783,8 @@ identically. *Shipped in v0.5.0 - see § "Completed: v0.5.0 - the case you
 can branch" below, which holds the flat trunk with N branches, forking at
 any control-input event, and the element-wise reproducibility test.*
 
-*Branch points.* Bookmarks (item 26) remain useful as the *named,
+*Branch points (project owner, 2026-08-25; `PL-TFX5` quotes the decision).*
+Bookmarks (item 26) remain useful as the *named,
 threshold-triggered* subset of branch points that a learner can
 fast-forward to and fork from repeatably. They are not the only subset that
 qualifies. Even so, a snapshot policy should still be keyed on the bookmark
@@ -1794,7 +1800,8 @@ can then diverge *before* the branch point. That divergence is subtle,
 and it will not show up in a nominal test. It also destroys the one thing
 forking is for, because a learner reading the comparison cannot see it.
 This note named three causes, and two of them are closed as of PL-VM40
-(v0.4.0's Required scope). What is left is a different step size, which
+(v0.4.0's Required scope). § "Completed: v0.4.0 - the teachable case" →
+"Designed for forking" lists all three. What is left is a different step size, which
 `docs/MODEL.md` § "The reproducibility guarantee" states it does not cover.
 Also left is whatever a branch restores from a stored point rather than
 resimulating. If exactness is unreachable, the divergence must be bounded,
@@ -1810,7 +1817,7 @@ reconstructing a 3-hour run from t=0 takes about 1 s, and reconstructing 24
 hours takes about 8 s. What is *not* cheap is the per-step concentration
 history, which item 21 covers.
 
-### Patient models (items 13-19)
+### Patient and drug models (items 13-19)
 
 #### 13. IV pharmacokinetic and effect-site models
 
@@ -1876,7 +1883,8 @@ ranges, and similar display settings).
 
 *Prerequisite: a settings store that can be written and saved.* `PL-2CS8`
 consolidated the UI and display constants that this item named as its
-prerequisite in `v0.4.11`. `app/theme.py` is now the one location.
+prerequisite in `v0.4.11`. The prerequisite said to fold the UI and display
+constants into one module, rather than adding a fourth scattered location. `app/theme.py` is now the one location.
 
 What genuinely remains is not a fourth location to fold in. `app/theme.py`
 is a module of constants bound at import time. A panel that *writes* a
@@ -1967,14 +1975,17 @@ leaving it unscheduled and deferring its four entries to Gate 4).
 `initial + delivered = exhausted + currently stored`. Cost is what left the
 bottle, which is what the vaporizer added: `delivered_agent_l`.
 `exhausted_agent_l` is what has left the *circuit*. It understates delivered
-by exactly `currently_stored_agent_l`. On the exhausted basis, 1 against
-8 L/min at a fixed dial shows 18.4:1, 15.3:1 and 13.4:1 at 15, 30 and 60
+by exactly `currently_stored_agent_l`. Measured on 2026-09-19 with
+`AgentUptakeSystem.default()` (a reference adult, sevoflurane held at a
+fixed 1 MAC dial, and a 0.1 s step), on the exhausted basis 1 against
+8 L/min shows 18.4:1, 15.3:1 and 13.4:1 at 15, 30 and 60
 minutes, where delivered is exactly 8:1. That overstates the saving by as
 much as 2.3x. The Gas Man reference simulator bills delivered agent too
 (Workbook Appendix, printed p. 174: `Cost = DELIVERED Flow x Cost/mL
 vapor`). So does this project's own `docs/MODEL.md`.
 
-*Prerequisite: a vapour-to-liquid ratio, now stored for each agent.*
+*Prerequisite: a vapour-to-liquid ratio for each agent, now derived from
+stored constants.*
 `delivered_agent_l` is measured in litres of vapour, and a bottle holds
 millilitres of liquid. So a figure in money or in bottles needs a
 vapour-to-liquid ratio. `PL-KZ99` (2026-10-26) stored each agent's molar
@@ -1990,7 +2001,7 @@ curve in mass form, and it is worth drawing. It is simply not the
 economics, and nothing here may relabel either line as waste. `PL-B396`
 chooses that display and what the cost figure looks like.
 
-### Code that reads like the physiology (item 29)
+### Code that reads like the domain (item 29)
 
 #### 29. Make core/ read like the domain
 
@@ -2046,7 +2057,8 @@ That is exactly the argument that the v0.3.0 exception made, and that
 exception says it is not a precedent. The release row and the baseline
 section are where a change gets pointed at.
 
-*Scope (project owner, 2026-09-03).*
+*Scoped, then re-scoped the same day (project owner, 2026-09-03); the three
+open questions are answered.*
 
 **Naming alone could not meet that bar, which is what the re-scope
 found.** So the operator split was replaced by the exact matrix exponential
@@ -2201,9 +2213,8 @@ value that the safety standard refuses. Second, an edited composition is
 a covariate set that nobody sourced. So the supported-range refusal
 below applies to the edit control exactly as it applies to the input.
 Accepting a hand-entered composition outside the parameter set's domain
-is the same failure as extrapolating to it. The interface's only patient is
-the single hard-coded `data/patients/reference_adult.json`. There is no
-case-settings surface today. So this paragraph names an intended surface, not an
+is the same failure as extrapolating to it. There is no case-settings
+surface today. So this paragraph names an intended surface, not an
 existing one.
 
 *MAC basis (project owner, 2026-09-02).* In the release that adds age,
@@ -2226,7 +2237,7 @@ release note, not a new input field. It lands after `PL-DHV7` (MAC
 multiples as a display unit). An age-adjusted MAC with no MAC unit to
 show it in changes nothing a learner sees.
 
-*Open questions for scoping.*
+*Left for scoping: a suggestion, and cutoffs not yet researched.*
 
 *A suggestion for scoping rather than a decision: prefer measured
 weight-banded normal ranges to an allometric formula for the default
@@ -2363,8 +2374,8 @@ item 24 gives. So re-picking the chart palette cannot buy what it appears
 to. A session that attempts it is solving a problem that has no solution in
 that channel.
 
-*The Qt port changed nothing visual* (project owner, 2026-09-16, ratified,
-on `PL-L9RD`). Measured after it landed, the port changed no palette entry,
+*Returned from the Qt port, which changed nothing visual* (project owner,
+2026-09-16, ratified, on `PL-L9RD`). Measured after it landed, the port changed no palette entry,
 type size, padding or radius at all. Every dashboard surface is now an
 independent widget with its own spacing and density, and that is what
 makes one pass over them possible at all. This item inherits none of the
@@ -2426,8 +2437,11 @@ value is a misread value, and `CLAUDE.md`'s standard treats a misread value
 as a safety failure rather than an inconvenience. See the Blender Manual,
 "Interface → Window System → Areas" and "→ Workspaces".
 
-*The views are item 36, and this item is tested on two existing views*
-(project owner, 2026-09-15). There is one refinement. A container
+*The views are item 36, which comes after the layout* (project owner,
+2026-09-15). The ordering is also the sound one, not only
+the owner's preference. A view's contract is whatever the area system
+requires of its contents. So views built first are built against today's
+fixed layout and then rewritten. There is one refinement. A container
 abstraction that only a single view exercises has not really been
 exercised. So this item validates against **two** views that already
 exist, rather than against any new one. § "Completed: v0.4.26 - the
@@ -2443,7 +2457,8 @@ nested `QSplitter`s with the handles inert, and this item is what makes the
 handles live. § "Completed: v0.4.26 - the interface moves to Qt" →
 "Required scope" item 2 carries this.
 
-*Item 34 follows v0.5.0* (project owner, 2026-09-16, ratified on `PL-NMTF`,
+*Item 34 follows v0.5.0, split at break-out* (project owner, 2026-09-16,
+ratified on `PL-NMTF`,
 over the two alternatives put with it: inserting item 34 ahead of v0.5.0,
 which renumbers a scoped milestone, and shipping it undivided with
 break-out inside). Item 34 goes **after v0.5.0** rather than before it, on
@@ -2566,7 +2581,8 @@ deliberately the rigid version while the layout apparatus is built, and it
 is expected to be revisited as the apparatus matures. The occlusion rule is
 the part that must survive a revision.
 
-*The last workspace cannot be deleted, and a workspace can pin its run.*
+*Two precedents from Blender's source: the last workspace cannot be
+deleted, and a workspace can pin its run.*
 Both precedents come from the source. Blender refuses to delete the last
 workspace. It enforces this minimum structurally rather than by a warning,
 which is the same shape `PL-WLWY` settled for the minimum display. A
@@ -2723,6 +2739,14 @@ This was raised on 2026-09-19 from `PL-MPWP` (project owner, 2026-09-19,
 ratified, over filing it as a queue item to be worked). It is intent,
 and scoping it is a later decision.
 
+*Nothing displayed today depends on it, which is why this is intent
+rather than debt.* Every concentration the interface shows is a
+dimensionless fraction, and every partition coefficient is a ratio. So
+the trajectories, the mass-balance identity and the MAC multiples do not
+change with the condition that the unit names. The condition matters to
+a reader only where an amount leaves the unit. That happens in the
+liquid-equivalent consumption figure that item 28 plans.
+
 *Its own item because two recorded limitations already end here.*
 `docs/MODEL.md` § "Known limitations" has two notes that both stop at the
 same unbuilt change. The note "One reference condition, where the model
@@ -2740,14 +2764,6 @@ Correcting the water half alone is what that note explicitly warns
 against. Applying 713/760 to the inspired term, while the partition
 coefficients keep an unrecorded gas-phase basis, moves all four
 validated wash-in ratios outside their published spread.
-
-*Nothing displayed today depends on it, which is why this is intent
-rather than debt.* Every concentration the interface shows is a
-dimensionless fraction, and every partition coefficient is a ratio. So
-the trajectories, the mass-balance identity and the MAC multiples do not
-change with the condition that the unit names. The condition matters to
-a reader only where an amount leaves the unit. That happens in the
-liquid-equivalent consumption figure that item 28 plans.
 
 #### 40. An anesthesia machine as a config file
 
@@ -2777,7 +2793,7 @@ own `id` and `display_name`. A second profile put in that directory today
 is ignored by the runtime and passes the unit suite unnoticed. This item
 ends that state.
 
-*It is separable from item 1 only while it changes no rate.*
+*It stays separate from item 1 while it changes no rate.*
 `docs/machine-abstraction.md` establishes that a machine affects the
 model only through two rates and one volume. All three are in the
 breathing circuit's row of the system matrix, and none of them touches a
@@ -2786,7 +2802,7 @@ rate. It declares where a rate would come from and leaves the rates where
 they are. As soon as a profile needs to *compute* a rate differently, the
 work belongs to item 1, and this split no longer applies.
 
-*Scope constraints, both of which are what keeps it cheap.* The item
+*One profile and no machine chooser.* The item
 ships one profile and no machine chooser. A comparison surface belongs to
 `PL-WZVZ`, and it waits behind item 34's View contract anyway. A second
 profile plus a selection surface is what would make `PL-WZVZ`'s
@@ -2801,7 +2817,7 @@ control (item 5), fresh gas decoupling and ventilator drive, and internal
 circuit topology. Internal circuit topology was declined, and item 39
 reverses that.
 
-*A machine is one data file plus one provenance row per number.* The
+*Each machine also needs a provenance row for each number.* The
 design document's target "One data file and nothing else" cannot be
 reached under this project's checks. `tools/doc_check.py` requires a
 provenance row in `docs/MODEL.md` for every leaf number in every data

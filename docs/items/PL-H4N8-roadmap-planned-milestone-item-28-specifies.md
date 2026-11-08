@@ -213,7 +213,7 @@ instead of Biro's composite constant. It was `blocked-by: PL-S6WW`, and
 describing the work, so a later session finds the item instead of filing a
 second one - which is `PL-TZ7T`'s failure mode arriving through prose.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 28, "Agent cost". In them, "this item" means item 28, and "above" and "below" point within that section as it then stood. Item 28 keeps that cost is computed from delivered agent, and points here.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 28, "Agent cost". In them, "this item" means item 28, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 28 keeps that cost is computed from delivered agent, and points here.
 
 > Add agent cost, from the delivered-agent amount that the model already tracks. The economic argument for low fresh gas flow is a standard teaching point. It is currently the one lesson in this class of simulator that the application has the numbers for and does not draw. This item depends on nothing. It was kept out of the v0.4.0 scope because it is an addition rather than a prerequisite. **Scheduled in v0.7.0** (project owner, 2026-10-25, ratified, over leaving it unscheduled and deferring its four entries to Gate 4). § "v0.7.0 - the schematic" has the scope.
 

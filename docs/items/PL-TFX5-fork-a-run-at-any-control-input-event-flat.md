@@ -195,7 +195,7 @@ it.**" - the second frame it described was removed the same day, along with
 `drawn_window`. What this item delivered is unchanged; only the paragraph it
 points at has been rewritten under it.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 12, "Simulation forking". In them, "this item" means item 12, and "above" and "below" point within that section as it then stood. § "Completed: v0.5.0 - the case you can branch" holds the flat trunk and forking at any control-input event.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 12, "Simulation forking". In them, "this item" means item 12, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. § "Completed: v0.5.0 - the case you can branch" holds the flat trunk and forking at any control-input event.
 
 > *Scope (project owner, 2026-08-25).* Flat, not a tree: one trunk run with N branches taken from points on it. Sub-forks of forks are deliberately out of scope. They multiply without bound and buy little over re-branching from the trunk.
 
