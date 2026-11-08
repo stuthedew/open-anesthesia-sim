@@ -74,3 +74,7 @@ they are excluded; every count `check_gate_counts` reads agrees; and
 
 **Found.** Answering the project owner's "status of gate" on 2026-09-07, by
 comparing the queue's classes against the ids written into `ROADMAP.md`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), in the group "Added 2026-09-07 under the unconditional safety/science exception — 11 entries". "The eleven" are that group's entries, "the two groups above" are the groups that added entries on the freeze day, 2026-09-06, and "this list" is Gate 1's frozen list. The paragraph keeps its bold opening and the advisory that now names any open `safety`- or `science`-classed item the section does not place.
+
+> The procedure existed, and it had been run twice on the freeze day itself, in the two groups above. What was missing was anything that reconciles the classes in the queue against this list. So `bin/docket wave` reported 84 open of 121. That count was arithmetically correct against what was written. But it left out every open `P1` the project had, because `docket check` pins `safety` and `science` to the top band, and this list therefore contained none of them.

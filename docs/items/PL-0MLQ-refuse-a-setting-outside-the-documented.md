@@ -120,3 +120,7 @@ Under the exact step, that readout is right to the last digit. It is a precise
 concentration for a patient whose cardiac output is twenty times any human's.
 That is the worse of the two failures, not the better one, because nothing
 about the display invites doubt.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this under § "Debt gate: the frozen list", in the note "One entry admitted 2026-09-02, having been missed rather than deferred", which is about this item. "The list" is Gate 0's frozen list, and "the exception" is the re-entry of `safety`- and `science`-classed findings into the gate whenever they were captured. The note keeps its bold opening, which says the item was missed rather than deferred.
+
+> Leaving it out was an oversight, not a judgement. Recording that matters because another reading is possible. A later reader might find a `safety`-classed continuation of a frozen entry missing from the list, and take its absence for a deliberate deferral. It was not one. In any case, the exception is written so that it cannot be deferred.

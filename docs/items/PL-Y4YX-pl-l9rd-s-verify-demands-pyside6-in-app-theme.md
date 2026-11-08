@@ -182,3 +182,7 @@ rather than 18, rule 2 still reading the 2 call-time agent colourings.
 where `transport_button_stylesheet`'s docstring now is, since read at the old
 path its command would have passed with its work undone. The stale check name
 in that docstring moved verbatim, because correcting it is `PL-R7C4`'s.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in the paragraph that left open where the Qt styling layer lives. "Here" is that paragraph, then before the section's Goal. "This milestone" is v0.4.26. The paragraph is now a bullet of the section's out-of-scope list.
+
+> The question is named here rather than under `Required scope` deliberately. Naming an id in that list *places* it in this milestone, and the owner approved un-absorbing the interface pass, not a refactor of where styling lives.

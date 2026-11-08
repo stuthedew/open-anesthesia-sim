@@ -170,3 +170,19 @@ situation that, once the edit is made, does not exist.
 decision at all is `PL-HGN6`: the line between their decisions and a session's
 is consequence, not what the answer rests on, and this question's blast radius
 was one section's phrasing.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), before its first group. "The milestone" is v0.5.0, "the document" is `ROADMAP.md`, "the three ids below" and "the entries" are `PL-2FM6`, `PL-8LXM` and `PL-GVXP`, and "that heading" and "the note under that heading" are the group "Cleared by the `v0.4.x` track, ahead of this gate" and the note beneath it. The three entries sit under those headings, so the section keeps nothing of this.
+
+> **Reconciled 2026-09-19 (`PL-C4RS`).** Three entries sat under headings that said the opposite of what the milestone's own scope said about them. § "Debt inside the milestone's own scope" makes `Required scope` the test. So the document gave two answers to a question that it says has only one. After this pass, the three ids below sit under headings that agree with `Required scope`, and each placement is stated rather than implied:
+
+> - `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation path) are under § "Cleared by the `v0.4.x` track, ahead of this gate". They have also left `Required scope`. The note under that heading had already recorded this on 2026-09-08: "Required scope below drops to sixteen items". But the entries were never removed, so the two structures had disagreed ever since. Prose under `Required scope` now records what v0.5.0 required of these two items, and that the patch track shipped it. Prose there does not place an item in the scope.
+
+> - `PL-GVXP` (separate the six chart traces by more than colour) is under § "Cleared before v0.5.0 begins, the product lane" and is not in `Required scope`. It never was an entry there. It was only cited inside the prose of the `PL-8PSW` entry. On 2026-09-19, `PL-HWW1` made a declaration, rather than a mention, the record of membership. So the disagreement ended when the parsing changed, not through an edit to this document.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this in the paragraph "Two more were required here and are already done (`PL-C4RS`, 2026-09-19)" of its § "Required scope". "That deletion" is `PL-2FM6`'s deletion of `RunHistory`, "the move" is the two items' move into the `v0.4.x` track on 2026-09-08, "the frozen gate" is Gate 1, "the heading that says so" is its group "Cleared by the `v0.4.x` track, ahead of this gate", and "this section" is v0.5.0's § "Required scope". The paragraph keeps what the two items deleted and that they shipped in the `v0.4.x` track. The `PL-T691` entry states the closed form.
+
+> That deletion is where `PL-011`'s dropped growth debt was actually paid.
+
+> A sampler that computes any window in closed form has nothing to decimate.
+
+> That is the move whose own note said "Required scope below drops to sixteen items". They sit on the frozen gate under the heading that says so. They are named here without a declaration slot, deliberately. The milestone required them and the patch track cleared them, and neither fact means that this section places them.

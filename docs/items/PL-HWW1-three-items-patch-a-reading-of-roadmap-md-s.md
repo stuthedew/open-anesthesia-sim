@@ -257,3 +257,11 @@ them.
 not: one of its three ids (`PL-GVXP`) left `Required scope` with the narrowing
 and is reconciled, and the other two are unchanged and still want the prose
 judgment that item reserves. Re-briefed rather than closed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in Required-scope item 4, the two checks that read the theme. "The slot" is that item's list of ids, and "this entry" is item 4.
+
+> These items moved into the slot on 2026-09-19, when `PL-HWW1` made a declaration the record of membership. The three items are the re-pointings this entry describes, and they are the three that the release stamped `v0.4.26`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** From Required-scope item 8, the queued fixes, after "The queued fixes named below (queue items `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), under the rule stated there." "This sentence" is that one, "that heading" is § "Fixes this port carries, and why that is not scope creep", and "this milestone" is v0.4.26.
+
+> On 2026-09-19 the six moved from this sentence into the declaration slot, which is where `PL-HWW1` put membership. They are still named here, and not only under that heading, because `MilestoneStates.ships_with` reads `Required scope` and nothing else. That read is what separates two meanings of the same field, `blocked-by: <this milestone's version>`. One meaning is *ships with this milestone*, and the other is *waits for it to be scoped*. Telling them apart this way is the relation that `PL-L09X` costed. The roadmap already carries that relation, so it is not a field anyone writes twice.

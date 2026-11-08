@@ -96,3 +96,7 @@ entries, 22 ids, 12 cleared and 9 open — the count it could not previously
 reach, because it reads the recorded entries against `docs/items/` and an entry
 nobody wrote down cannot be counted. That is the half of this defect that was
 invisible, and the `verify:` command above is the check that it stays fixed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this under § "Debt gate: the frozen list", in the note on PL-0MLQ, the entry admitted on 2026-09-02 after being missed. "The failure" is that the entry was left off Gate 0's frozen list, "here" is that list, and "the gate" is Gate 0. The note keeps the paragraph's first sentence and its pointer to this item.
+
+> The failure was invisible to the tool as well as to the reader. `bin/docket wave` computes the gate's split by reading the entries recorded here against `docs/items/`. So it cannot count an entry that was never written down, and the gate reported one entry fewer than its real size for three days. This is the failure mode that the following phrase describes: "a gate nobody wrote down is a gate that gets renegotiated". Here it arrived through omission rather than through argument. PL-Y4Q4 records the diagnosis.

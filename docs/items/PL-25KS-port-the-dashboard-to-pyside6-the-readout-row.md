@@ -210,3 +210,7 @@ is, not a recollection of the reply. The other numbers were never cited.
   Both citations pair it with `PL-Y4YX` rather than `PL-25KS`, which moved the
   composers into `app/stylesheets.py`. Cited in `app/qt_widgets.py`'s and
   `app/run_view.py`'s module docstrings.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in its account of the port's move ahead of v0.5.0 on 2026-09-14, after the count of v0.5.0's eight open Required-scope ids against the surface the port rewrote. "The milestone" is v0.5.0, and "the surviving side" is the code the port left untouched. The section keeps the count and the three grounds the move was taken on.
+
+> Exactly three modules imported Flet: `app/main.py`, `app/simulation_view.py` and the chart-series module. From `PL-9KDK` until `PL-25KS`, `tools/import_boundary_check.py` limited `flet` and `flet_charts` to those three modules between them. `PL-25KS` freed all three and confined both packages to no module at all. The check's unused-allowance error then asks each port commit that frees a module to drop that module's entry. The milestone's landed work all sits on the surviving side: `PL-T691`'s score, `PL-J2TD`'s keyframe opening, `PL-TFX5`'s fork and `PL-B9PY`'s decomposition.

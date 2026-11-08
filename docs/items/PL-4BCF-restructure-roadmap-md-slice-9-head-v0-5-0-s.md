@@ -3,12 +3,14 @@ id: PL-4BCF
 title: Restructure ROADMAP.md, slice 9: head v0.5.0's gate dispositions by the ground each was decided on
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 blocked-by: PL-V8SJ
 added: 2026-11-07
+payoff: a reader checking how a v0.5.0 gate entry was disposed of finds the disposition in that item's brief, and the roadmap keeps one line under the ground it was decided on
+verify: ! grep -qF '| `PL-NGF7` | dissolved by it |' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 9: head v0.5.0's gate dispositions by the ground each was decided on
@@ -419,3 +421,13 @@ rewrites that last sentence to say where the records went.
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. v0.5.0's dispositions were in `ROADMAP.md` at `817a4d88`. The two `absent:` markers behind one query came later (`fa0bf928`, 2026-11-04).
 
 **Done by slice 4 (`PL-G6DP`), 2026-11-07.** Slice 4 moved these passages out of `ROADMAP.md`, so the words that findings above quote no longer match there. "`bin/docket wave` still prints all thirteen ..." and v0.5.0's "**What reads this, and what reads past it.**" are quoted in `PL-SL70`'s brief, and the pointer to the second now says so. "It is inside this section rather than beside it ..." (`_declined_ids`) is quoted in `PL-82B0`'s brief, and the `check_gate_counts` sentence after it was cut, because `docs/apparatus.md` says what that check reads. The sentence that followed now names the placement paragraph instead of "the sentence above". "The two readings agree. `bin/docket wave` reports ..." is still in the roadmap, in `PL-WZVZ`'s paragraph. Record the findings that act on the moved passages as applied by slice 4.
+
+**Next steps, written 2026-11-08 by the thread that ran slice 8.** Slice 8 (`PL-V8SJ`) and slice 7 (`PL-M3MV`) are the models to follow. Each brief's "What this slice did" records every finding's fate under *Applied*, *Not applied, with the reason*, *Queries the tree answers* and *Queries filed*, then *Review* and *Checked*.
+
+1. Bring `origin/main` in once slice 8's pull request has merged, and claim this item.
+2. Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` (under `uv run python` with `UV_SYSTEM_CERTS=true`) before any edit, and compare after. Keep a frozen copy of `ROADMAP.md` from before the first edit.
+3. Search only inside v0.5.0's gate dispositions, from § "Debt gate: the frozen list" to the end of § "Declined to Gate 2 on the refilling-queue ground". Slice 8 left Gate 1's frozen-list group lines, entry wording and the heading "Debt gate: the frozen list" alone, because `tools/doc_check.py` reads the group counts and `bin/docket wave` reads that heading; this slice should do the same.
+4. Slice 8 moved `PL-NGF7`'s outcome into v0.4.26's `PL-NGF7` bullet, which now says the item closed `done` in v0.4.26 (#621) and points to Gate 1's § "Deferred to v0.4.26, because the port dissolves the defect". The copies left for this slice are the § "Sequenced past v0.5.0" table row ("dissolved by it | before v0.5.0, as `dropped`") and "**Dissolved by the port — 1.**".
+5. Slice 8 already quoted the decision history of eleven Gate 1 notes (`PL-C4RS`, `PL-4RBD`, `PL-YXXG`, `PL-KTKP`, `PL-36R4`, `PL-QXSB`, `PL-RFLN`, `PL-YLKR`, `PL-DZFJ`, `PL-TSZM` and `PL-C3GS`) into those items. Their remaining notes keep a decision and a pointer.
+6. Quote each sentence of decision history word for word into its item, under "**Moved from `ROADMAP.md` on DATE (`PL-4BCF`).**", with a lead-in that glosses every word whose meaning depends on its old position. Leave a finding that needs a sentence reworded to `PL-YRY3`, and file author queries in `PL-VM1Q`.
+7. Before the pull request is marked ready, two reviewers compare the old and new text passage by passage for any change of meaning, one for words that depend on position and one sentence by sentence.
