@@ -50,13 +50,19 @@ Report a statement when the edit:
 - changes its scope or meaning: a scope clause goes, so the statement covers
   more or less; a value is tied to a different agent, compartment, quantity,
   condition or date; added words tie a statement to one thing where the
-  original could mean another; a cause becomes a correlation; "measured" becomes "computed"; who
-  decided or claims something changes; a defined term goes while the text
-  still uses it.
+  original could mean another; a cause becomes a correlation; a value from
+  patients or instruments is no longer called measured; who decided or
+  claims something changes; a defined term goes while the text still uses
+  it.
 
 Do not report:
 
 - rewording, reordering, splitting or merging that keeps the meaning;
+- a value that a run of this model produced, such as a simulated end-tidal
+  fraction, once called measured and now called simulated, computed or
+  checked. The copy editor's rules keep "measured" for data from patients or
+  instruments, so a clinician does not take a simulator's figure for
+  clinical data. Its date stays beside it;
 - a statement cut because the passage still says it in full: quote where.
   Before you accept the quoted sentence, compare it with the cut one for each
   kind in the list. Where it is a heading, a bold lead, a label or the layout

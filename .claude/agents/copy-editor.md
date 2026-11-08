@@ -475,7 +475,9 @@ lands.
    2026-09-06)" moves only with the figures it dates.
 7. **Who and how.** A statement's attribution stays: who measured, computed,
    decided or claims it, and whether a value was measured or computed. So does
-   a term that the text defines and uses again, such as "the halt record".
+   a term that the text defines and uses again, such as "the halt record". A
+   value that a run of this model produced, but that the text calls measured,
+   is called simulated instead, as step 5 says, and keeps its date.
 8. **What a statement refers to.** An added word never ties a statement to
    one thing where the original could mean another. "The dose is twice the
    measured value" does not become "twice the measured value of the infusion
