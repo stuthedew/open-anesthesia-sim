@@ -3051,8 +3051,7 @@ faults does. The merge path does not wait for CI. The release script stops
 halfway. And `docket next` ranks work that the current milestone excludes.
 
 This release is a patch by the ordinary rule under § "Versioning decision"
-above. It crosses no capability boundary and adds nothing to the simulator. It
-changes no equation, parameter, numerical method, unit or displayed value.
+above. It crosses no capability boundary.
 Gate 0's minor-version exception is not extended to this release, and the
 release does not need it.
 
@@ -3067,24 +3066,16 @@ closes and what it does not. Each entry records its own outcome when it
 closes, as § "The cadence" above describes.
 
 **It is a frozen scope, not a fourth gate in the cadence.** The first group
-below is debt as the section "What counts" defines it, and every entry in it
+below is debt as § "What counts" defines it, and every entry in it
 is classed `defect`. The second group is new workflow capability. That section
 says explicitly that new workflow capability is *not* debt and does not hold
-a gate closed. The list is recorded under a heading named "Debt gate" because
-`bin/docket wave` reads that subsection. A release records a gate to say that
-it comes ahead of a gate that is already open. The beat then follows the
-release rather than contradicting it (queue item `PL-NSN9`, a self-gating
-milestone reporting the wrong beat). The numbered gates are unaffected. Gate 0
+a gate closed. The numbered gates are unaffected. Gate 0
 is still recorded under v0.4.0 below, and it still binds v0.4.0. It becomes the
 nearest gate again as soon as this release ships.
 
-The number of closed entries is **not recorded here**, for the reason
-§ "Recording it" gives.
-
-Nor is the list's *size* restated in prose here, for the same reason. The size
-is stated in the group headings below and in the two table rows that name this
-release. `tools/doc_check.py` enforces that those three statements match the
-entries.
+The list's *size* is not restated in prose here, for the reason
+§ "Recording it" gives. The size is stated in the group headings below and in
+the two table rows that name this release.
 
 *The loop is visibly broken without these — twenty-two entries:*
 
@@ -3194,8 +3185,7 @@ entries.
   instructions a session reads — one of the six pieces of machinery the goal
   names — and it fires after every merged pull request, several times a session.
   The "workable here" limit below excludes a finding *nothing in the tree can
-  close*; this one closes with a repository edit and is marked `not-delegable`
-  only because confirming it means ending a session.
+  close*; this one closes with a repository edit.
 - PL-HDY6 (S) The scope reader counts any id a milestone's section names, so
   `docket next` reports an id the section names *to exclude* as in scope for
   the current step. Admitted 2026-09-01 under the scope test, after the four
@@ -3295,7 +3285,7 @@ exists to fix a specific set of problems. Shipping an entry known to be
 half-fixed would preserve the list's length but defeat its purpose.
 
 This is not a new rule. It is the correct reading of
-"The gate is a snapshot, not a moving target". That section already says that
+§ "The gate is a snapshot, not a moving target". That section already says that
 a finding which continues or completes an item inside the frozen list belongs
 to the same list. When the section was first written, this paragraph said the
 opposite, and it was wrong.
@@ -3305,9 +3295,7 @@ scope decides membership. The completion rule above is one case of the scope,
 not the test itself. This release's scope is the goal stated at the top of
 this section. That goal is a development loop reliable enough to run two long
 milestones through. The loop has to be reliable across the machinery the goal
-names: the merge path, the release script, the queue's ranking, the
-session-start digest, the type-check and lint gates, and the instructions a
-session reads before it does anything. A finding that a *named* piece of that machinery misfires is inside
+names. A finding that a *named* piece of that machinery misfires is inside
 this scope, however late it is found. That is true whether or not it completes
 an entry. It belongs in the scope because leaving it out would ship a release
 titled "the workflow works" while the workflow it names does not work.
@@ -3330,48 +3318,12 @@ finding whose cause is outside this repository is captured and left off the
 list, however well it fits. The reason is that nothing in the tree could close
 such an entry, so the entry would keep the gate open forever.
 
-A finding classed `safety` or `science` goes to Gate 0 rather than here. It
-concerns the simulator, which this release does not touch. A `P0` finding is a
+A finding classed `safety` or `science` goes to Gate 0 rather than here. A `P0` finding is a
 hotfix on its own branch under the `docket` skill, and it joins no list.
-
-**Four entries were added under the completion rule: PL-J295, PL-KWC1,
-PL-XCYB and PL-WFJ9, all listed above.** The rest were added under the scope
-test rather than this rule. Each of them is marked as such in the list, with
-the date and the reasoning. The scope test is described below this rule.
-
-PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found
-while PL-ZQ9C was being handed to a session, during a check of whether that
-item's proposed migration was feasible. PL-XCYB makes the difference between a
-provenance check that is right and one that fails loudly against correct data.
-The failure would happen in the environment where most sessions run. Shipping
-PL-ZQ9C without PL-XCYB would close an entry that was known to be half-fixed.
-The rule above exists to prevent that outcome. So the two are worked together
-and closed together.
-
-PL-WFJ9 is the same case one step later. It was found by the entry it
-completes, rather than before that entry. Widening the type-check gate to
-`subprojects/docket/src` made the suppressions in `render.py` visible for the
-first time. Those suppressions are why the widened gate passes over that file.
-PL-020 could be reported closed without PL-WFJ9. That is exactly the
-half-fixed close the rule prevents. The gate would assert that docket's source
-is checked, while the digest and `status` renderers were not checked. Those
-renderers are the first thing a session reads, and they give the answer to
-"what next". So PL-WFJ9 is worked with PL-020 rather than behind it.
 
 PL-68XK (check that a recorded commit hash resolves) is a different case, and
 this rule does *not* admit it. It predates the freeze, and it was left out of
-the approved list deliberately. It was still entangled with PL-ZQ9C, so its
-brief was refreshed rather than worked. What the refresh had to say changed
-once PL-ZQ9C landed, and later the question closed entirely. When PL-ZQ9C
-landed, `pr:` sat beside `commit:` and made `commit:` optional. That narrowed PL-68XK
-from "validate the field that makes a closure traceable" to a smaller job. The
-smaller job was to require that a `commit` value, when present, resolves.
-PL-T63T then settled a question one step upstream, which was what the field
-should record at all. The project owner chose to retire the field, because 21
-of the 42 hashes that could be checked resolved nowhere. PL-68XK was dropped
-with the field, because there is no longer a field for it to validate. The
-shallow-checkout discipline that PL-XCYB built is unaffected, and it still
-serves the `pr:` check.
+the approved list deliberately. `PL-68XK` records why it was dropped.
 
 ### Definition of done
 
@@ -3382,8 +3334,7 @@ serves the `pr:` check.
 - The two entries that change repository configuration rather than the tree
   are PL-J786 (a green `checks` run required before merge) and PL-S4M2
   (squash-merge). Both are confirmed in effect on a real pull request, not
-  merely described as done. No command in this repository can verify either
-  of them, which is why both are marked `not-delegable`.
+  merely described as done.
 - No equation, parameter, numerical method, unit or displayed value has
   changed, and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass
   unaltered. Three entries are permitted to reach into `src/` and `tests/`, and each
@@ -3393,36 +3344,19 @@ serves the `pr:` check.
   finding for Gate 0 and a scoped item of its own. It is not this release's
   work.
 
-**Two of the three counts above are deliberately left to the reader**
-(`PL-GLBF`, 2026-09-13). The count "Seven entries are marked `not-delegable`"
-is checked by `tools/doc_check.py`. It can be checked because `not-delegable:`
-is a field on each item, and the number is a query over that field. The two
-counts in the bullets above are not checked. The nearest field is a near miss
-rather than a gap. `touches:` records the files an item is *expected to
-change*. These sentences record the scope an item is *permitted to reach*.
-Take the second count's own three ids. A checker over `touches:` computes two,
-where the correct answer is three. `PL-ZN0N` declares `pyproject.toml` and
-nothing else, yet it may still annotate `noqa` directives in `src/`. A check
-built on `touches:` would fail a correct sentence, which is worse than no
-check. Both counts are safe to leave unchecked for a second reason, which
-applies only here. This list is frozen and every id on it is closed, so
-neither number can drift again. The same shape in a *live* section could
-drift. That is a separate question, and this note does not settle it.
-
 ### Explicitly out of scope for v0.2.8
 
-- Anything on Gate 0's frozen list, which is recorded under v0.4.0 below. This
+- Anything on Gate 0's frozen list. This
   release does not touch that gate, and clearing it is still what v0.3.0
   ships.
 - Any simulator change at all: `src/anesthesia_sim/core/`,
   `src/anesthesia_sim/app/`, and the scientific content of `docs/MODEL.md`. A
   release whose whole claim is that the loop is now reliable cannot also be
   the one that moves the model.
-- Workflow capability beyond the entries on that list. That means new tools,
-  better tools, or an idea this release made someone think of. The queue holds
+- Workflow capability beyond the entries on that list, which § "Debt gate:
+  the frozen list" calls new scope. The queue holds
   more process items than this release ships, and they wait for the next
-  release. The scope test admits a defect in machinery that the goal already
-  names, and none of these is such a defect. A release that absorbs
+  release. A release that absorbs
   every workflow idea raised while it runs never ships.
 
 ## Completed: v0.3.0 - the foundation
