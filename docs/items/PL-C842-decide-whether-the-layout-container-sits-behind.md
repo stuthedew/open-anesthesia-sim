@@ -291,3 +291,11 @@ recommendation above as the record of what was decided and why.
 first code it binds is `PL-25KS`'s container. If the project owner wants the
 widget tree to be the source of truth after all, reopen this and item 34's
 paragraph goes with it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" carried these two sentences in its paragraph defining Area, View and Workspace. "This section" is that v0.6.0 section, and "the container" is the layout container this item recommended.
+
+> `PL-C842` wrote `Pane` and `view_kind` while it recommended the container. This section supersedes `Pane` and nothing else in `PL-C842`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Required scope" entry 2, the adapter, gave these sentences in its measurement of `QSplitter.saveState()` for a three-pane splitter, re-measured on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16. The entry keeps the 35 bytes, that the state records no widget identity, and that a three-pane state restores into a two-pane splitter and returns `True`.
+
+> The bytes hold the magic number `0xff`, format version 1, the sizes, then `childrenCollapsible`, `handleWidth`, `opaqueResize` and orientation. The same three children in reverse order save byte-identical state. A two-pane state restores into a three-pane splitter, returns `True`, and leaves the third pane at zero.
