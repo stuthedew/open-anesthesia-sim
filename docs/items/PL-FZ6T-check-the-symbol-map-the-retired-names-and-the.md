@@ -135,3 +135,6 @@ table — a renamed heading or a renamed column — are both reported rather tha
 passed over, because a rule that inspects nothing otherwise reports success
 indistinguishable from the real thing.
 
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 29, "Make core/ read like the domain". In it, "this item" means item 29, and "above" and "below" point within that section as it then stood.
+
+> **How much of the bar is decidable.** There are three rules, and all of them are mechanical. Every Code cell resolves to a real attribute. The retired accessor names never reappear. A partition-coefficient identifier names both phases in order (`PL-FZ6T`). A unit-suffix check was considered and rejected. The suffixes are already near-universal, so the check would be a pure ratchet whose vocabulary needs maintaining. What remains a matter of judgment is the question that the bar is written as: would a reader who knows the domain guess this?

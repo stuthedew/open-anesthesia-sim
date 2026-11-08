@@ -151,3 +151,7 @@ legend-rendering change independent of everything above.
 wash-in plot's single trace takes `ALVEOLAR_COLOR`, so it inherited the 2.93:1
 and is fixed at the source; the linkage that says the trace is the alveolar
 compartment did not have to be broken to get there.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 33, "The interface pass". In it, "this item" means item 33, and "above" and "below" point within that section as it then stood. Item 33 keeps the three constraints and points to item 24 for the measured ceiling.
+
+> *Three constraints on any palette, recorded here so scoping does not rediscover them.* `tools/contrast_check.py` parses every module under `app/` with `ast` (`PL-BXB2`). It requires every declared pair to meet WCAG 2.2 AA under four vision models. It fails the build on a renamed or undeclared colour constant. So a restyle is also a `REQUIREMENTS` rewrite, in the same change, per `.claude/rules/ui-color.md` judgment 1. The three ISO 5360:2016 Table 2 agent colours are fixed and not available to move (judgment 4). A palette has to live with them, and keep them legible on whatever surface it puts behind them. Trace separation is carried by dash pattern, not by colour. `PL-GVXP` measured the pairwise ceiling at about 1.48, once each of six traces must also clear 3:1 against the panel. So re-picking the chart palette cannot buy what it appears to. A session that attempts it is solving a problem that has no solution in that channel.

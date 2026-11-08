@@ -332,3 +332,7 @@ constraint.
 **Moved from docs/MODEL.md on 2026-11-04.** From § "Known limitations", the cardiac-output note, when `PL-9331` took the decision history out of that section:
 
 > **The fixed value is kept, on the project owner's decision of 2026-09-08** (`PL-YKSM`). The reason is structural rather than a preference between those two numbers. The asymmetry is still worth stating, because the number being declined is the weaker of the two.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 30, "Patient factors". In it, "this item" means item 30, and "above" and "below" point within that section as it then stood. Item 30 keeps the coupled-package rule and the arithmetic.
+
+> This is recorded here, and not only in `docs/MODEL.md` "Known limitations" and in `reference_adult.json`'s Cattermole note. Those two places are where a reader of the stored *value* meets it. It is recorded here because the session that scopes this milestone reads this item. The failure it guards against has two parts. That session might scope weight as "cardiac output becomes a function of weight", which is exactly the change `PL-YKSM` examined and refused. It might then ship a paediatric patient whose kinetics are wrong in the most-taught direction. The trade is one paragraph now against a rebuild later.

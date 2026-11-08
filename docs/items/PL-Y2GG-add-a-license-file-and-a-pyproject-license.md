@@ -37,3 +37,7 @@ licence, and the README names it.
 **Where.**
 
 **Done when.**
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Phase 0, which the debt gate replaced" gave this reason in its table of Phase 0's closing conditions, in the cell for "no item left at `needs-decision`", state on 2026-08-25. "It" is this item, the license choice, which had been moved to `needs-decision` that day. The cell keeps that the condition was met and was unmet again the same day when this item moved.
+
+> PL-Y2GG (the license choice) was moved *to* `needs-decision` because it holds a decision only the project owner can make, and recording that is more honest than a `ready` nobody can act on.

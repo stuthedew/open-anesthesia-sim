@@ -144,3 +144,9 @@ or saves them, and no menu restores the shipped ones: `PL-DWHG`. Two defects
 found while the tests were moved to the new page are filed: the hover box runs
 off a short plot (`PL-9BVQ`), and the page lays the Areas out at a stale size
 hint (`PL-PHPZ`).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 34, "Blender's window management as the model for the interface". In them, "this item" means item 34, and "above" and "below" point within that section as it then stood. § "Completed: v0.6.0 - the layout is the reader's" -> "Required scope" entries 13 and 14 hold the workspaces and docking operations v0.6.0 built.
+
+> **Docking** is the manual's word for the corner-drag operations. The set of operations is larger than "split and join". Dragging from an area corner can join two areas, split one, or do both at once. Dragged into the middle of a second area, it *replaces* that area. Areas can also swap. Adjacent areas swap through the border's Area Options, and any two areas in a window swap through Ctrl-LMB from a corner. Resizing is a border drag. Modifier keys snap the border, or move aligned borders together with it.
+
+> *What a preset differs in, by example* (project owner, 2026-09-15). One example is an induction workspace with the concentration graph zoomed in. Another is a big-picture workspace to switch to during maintenance. The learner can also create workspaces for themselves. The default shape is a central graph of the compartments with the other views arranged around it. The learner can rearrange that default shape too.

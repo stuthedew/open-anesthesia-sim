@@ -39,3 +39,7 @@ whether they want that line, and does not write it.
 **Done when** either `ROADMAP.md` carries a planned-milestone line for a
 per-compartment gas-phase model, or this item is dropped with the project
 owner's reason for leaving the two notes pointing at nothing.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 39, "Gas-phase conditions for each compartment". In it, "this item" means item 39, and "above" and "below" point within that section as it then stood.
+
+> *Its own item because two recorded limitations already end here.* `docs/MODEL.md` § "Known limitations" has two notes that both stop at the same unbuilt change. The note "One reference condition, where the model physically has two" sizes the temperature half. The alveolar, venous and tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The note "The modeled alveoli are dry, and real ones are saturated at 47 mmHg" sizes the water half at 47/760. Each note says that removing its limitation is outside the current milestone. Neither note had anywhere to point for the change that would remove it. So a reader asking whether it will be fixed got no answer. The next session to meet either note worked out the same conclusion again.

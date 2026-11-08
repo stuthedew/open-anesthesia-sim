@@ -212,3 +212,21 @@ instead of Biro's composite constant. It was `blocked-by: PL-S6WW`, and
 `PL-S6WW` is now done, so it is ready to promote. Item 28 names it rather than
 describing the work, so a later session finds the item instead of filing a
 second one - which is `PL-TZ7T`'s failure mode arriving through prose.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 28, "Agent cost". In them, "this item" means item 28, and "above" and "below" point within that section as it then stood. Item 28 keeps that cost is computed from delivered agent, and points here.
+
+> Add agent cost, from the delivered-agent amount that the model already tracks. The economic argument for low fresh gas flow is a standard teaching point. It is currently the one lesson in this class of simulator that the application has the numbers for and does not draw. This item depends on nothing. It was kept out of the v0.4.0 scope because it is an addition rather than a prerequisite. **Scheduled in v0.7.0** (project owner, 2026-10-25, ratified, over leaving it unscheduled and deferring its four entries to Gate 4). § "v0.7.0 - the schematic" has the scope.
+
+> *Until 2026-09-19 the first sentence of this item said "the exhausted-agent amount", and that is the wrong quantity* (`PL-H4N8`). `core/agent_simulation_validation.py` enforces the accounting identity `initial + delivered = exhausted + currently stored`. With `initial` at zero, delivered *is* the total. The exhausted and stored amounts only say where that agent is at this instant. Cost is what left the bottle, which is what the vaporizer added: `delivered_agent_l`. `exhausted_agent_l` is what has left the *circuit*. It understates delivered by exactly `currently_stored_agent_l`. The two converge only at full washout, because this model has no metabolism and no chemical degradation, per `docs/MODEL.md` § "Assumptions". That eventual convergence is what makes the wrong basis look plausible.
+
+> The Gas Man reference simulator bills delivered agent too (Workbook Appendix, printed p. 174: `Cost = DELIVERED Flow x Cost/mL vapor`). So does this project's own `docs/MODEL.md`. Its "Known limitations" entry on the 20 °C reference already calls the delivered total "the figure that means cost". The old sentence was the only document that said otherwise.
+
+> *What the wrong basis would have cost.* These figures were measured on 2026-09-19 with `AgentUptakeSystem.default()`: a reference adult, sevoflurane held at a fixed 1 MAC dial, and a 0.1 s step. Each cell gives the percentage by which exhausted falls below delivered:
+
+> | fresh gas flow | 15 min | 30 min | 60 min |
+> | --- | --- | --- | --- |
+> | 1.0 L/min | 63.7% low | 53.8% low | 45.7% low |
+> | 4.0 L/min (the shipped default) | 28.6% low | 21.4% low | 16.9% low |
+> | 8.0 L/min | 16.2% low | 11.8% low | 9.1% low |
+
+> The error is worst early, which is the phase that the low-flow lesson is about. It is also worst at *low* flow. So it distorts the very comparison that the lesson *is*, rather than shifting both arms of it together. At a fixed dial, delivered is proportional to flow, so 1 against 8 L/min is exactly 8:1 at all three times. On the exhausted basis the same pair shows 18.4:1, 15.3:1 and 13.4:1. That overstates the saving by as much as 2.3x. A teaching display that flatters its own lesson is worse than one that understates it. `PL-H4N8` carries the method. It also carries the caveat that a fixed dial is not the equal-alveolar-concentration comparison that a real low-flow protocol makes.
