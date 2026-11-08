@@ -169,3 +169,7 @@ tree; `PL-PDP6` records that its sibling `check_gate_reentries` has none.
 dated group heading, or carries a recorded reason for deferring to Gate 2; and
 a check exists that reports the same class of silence without deciding it, at a
 place and cadence where its output changes a decision rather than accumulating.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), in the paragraph "Thirteen are admitted, and the boundary is `docket.toml`'s own (project owner, 2026-09-08)", under the group "Added 2026-09-08 under the presence rule". "That split" is the one between the thirteen product-lane and both-halves items admitted and the twenty-nine workflow-lane items declined.
+
+> That split is a fact recorded in the files, not a judgment made again for each item. It uses the same reading of `workflow_paths` that separates two sessions, and that is what makes it reviewable.

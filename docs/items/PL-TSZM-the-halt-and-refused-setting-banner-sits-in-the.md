@@ -109,3 +109,9 @@ never the thing that failed here.
 channel that does not depend on stacking order, held by
 `test_the_halt_and_refusal_banners_name_their_run` in
 `tests/integration/test_simulation_view.py`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), in the group "Added 2026-09-21 under the unconditional safety/science exception — 2 entries", which holds this item and `PL-C3GS`. "Both" are those two items, "the `#784` review" is the adversarial review that found `PL-25DD`, and "the rule above" is the rule that a `safety` finding re-enters the gate whatever its presence. The paragraph keeps that both are admitted for the same two reasons as `PL-25DD`, whose entry gives them.
+
+> Both were found while implementing `PL-25DD` above, not by the `#784` review.
+
+> First, the rule above makes `safety` not deferrable whatever the result of the presence test. Second, this gate's own Required scope created the hazard, because `PL-VKJW` made two runs reachable from a shipped entry point for the first time. The widgets predate the freeze, but their ambiguity does not.

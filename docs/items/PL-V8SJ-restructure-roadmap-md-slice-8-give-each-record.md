@@ -10,7 +10,7 @@ touches: ROADMAP.md
 blocked-by: PL-M3MV
 added: 2026-11-07
 payoff: a reader checking why v0.1.0 to v0.5.0 took the shape they did finds each record once, in that milestone's own section, and the copies that disagree with an outcome are gone
-verify: ! grep -qF 'recorded so it is not re-litigated' ROADMAP.md
+verify: ! grep -qF 'bullet replaced read "N branches may exist' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 8: give each record of the milestones v0.1.0 to v0.5.0 one home in its own section, apart from v0.5.0's gate dispositions
