@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: repo-copy-edit
-touches: .claude/agents/copy-editor.md, tools/copy_edit.py, .claude/agents/meaning-check.md, tests/unit/test_copy_edit.py, docket.toml, docs/apparatus.md, docs/prose-review/README.md, .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, docs/prose-review/rejected/, docs/prose-review/runs/
+touches: .claude/agents/copy-editor.md, tools/copy_edit.py, .claude/agents/meaning-check.md, tests/unit/test_copy_edit.py, docket.toml, docs/apparatus.md, docs/prose-review/README.md, .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tools/rejected_prose.py, tests/unit/test_rejected_prose.py, docs/prose-review/rejected/, docs/prose-review/runs/, docs/items/PL-4BGX-docs-model-md-s-paragraph-on-the-two-classes-of.md
 deferred-from: v0.7.0 - captured after the freeze; workflow tooling, worked now at P1 because the owner paused the remaining copy edits until it lands, and nothing the schematic release ships waits on it
 added: 2026-11-07
 payoff: a passage the copy editor rewrites keeps every requirement, limit, list count, scope and reason the original stated, so the paused copy edits of the repository can resume
