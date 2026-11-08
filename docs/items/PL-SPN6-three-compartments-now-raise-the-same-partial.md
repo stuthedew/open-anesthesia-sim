@@ -137,4 +137,4 @@ one. Asserted as a prefix rather than as five literal sentences so it survives
 `PL-T137` adding the rejected value to the same message. All four fail against
 the pre-fix source and pass against this one.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "A naming or placement decision that gives no wrong value either way". The paragraphs that name it are quoted in the brief of `PL-6KNM`.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Not wholly apparatus, but unable to change what a reader of the simulator sees". The paragraphs that name it are quoted in the brief of `PL-6KNM`.

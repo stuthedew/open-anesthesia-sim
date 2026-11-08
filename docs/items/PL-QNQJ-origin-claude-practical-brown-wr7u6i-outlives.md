@@ -12,7 +12,7 @@ added: 2026-09-20
 closed: 2026-09-20
 pr: 754
 payoff: the debt gate keeps the reason PL-ZM48 was declined instead of filing it under a ground it does not meet, and the last superseded ref goes without taking prose main never had
-verify: grep -qF 'after the freeze and declined with it' ROADMAP.md
+verify: grep -qF 'after the freeze and declined with it' docs/items/PL-ZM48-docs-worker-md-records-remote-branch-deletion.md
 ---
 
 **Problem.** `origin/claude/practical-brown-wr7u6i` outlives `PL-66Z5` by

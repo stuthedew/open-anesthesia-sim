@@ -867,8 +867,10 @@ gate neither places nor defers
 grounds that its deferrals share, as v0.6.0's section does, but no tool reads
 that prose. Until `PL-WD5Z`, a deferral was an id named in a `###` subsection
 headed `Declined`, `Deferred` or `Sequenced`. v0.5.0's section keeps those
-subsections as one line per ground, and each disposition's text is in its
-item's brief (project owner, 2026-11-07, ratified, `PL-LVN8`).
+subsections: the `Sequenced` one keeps its table, and the others keep a
+sentence or one line per ground. Each disposition's text is in its item's
+brief (project owner, 2026-11-07, ratified, over keeping them here,
+`PL-LVN8`).
 
 ### Recording it
 
@@ -4120,9 +4122,9 @@ that, it sat after MVP, which is where it was placed when it was scoped. The
 question put was whether v0.5.0's work would have to be redone after the port.
 
 **Counted rather than answered from the shape of the question.** This is the
-same method that § "Sequenced past v0.5.0" used on 2026-09-14, when the general
-form of this question was asked about the gate entries. v0.5.0 has eight open
-Required-scope ids. **One** is wholly inside the surface this port rewrites:
+same method that `PL-16ZC`'s brief records Gate 1 using on 2026-09-14, when the
+general form of this question was asked about the gate entries. v0.5.0 has
+eight open Required-scope ids. **One** is wholly inside the surface this port rewrites:
 `PL-8PSW`, the two-branch overlay. Two have a slice there: `PL-RD3B` and
 `PL-LPLD`, and the durable halves of both are in `app/controller.py`. Five
 never touch it at all: `PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9` and
@@ -5176,98 +5178,109 @@ was deferred to v0.4.26 and closed `done` there (#621).
 
 ### Sequenced past v0.5.0, so not clearable before it begins
 
-The frozen list sequenced these entries behind the Qt port. The port moved
-ahead of v0.5.0 on 2026-09-14 (project owner, 2026-09-14, on `PL-RKWB`), so
-most of them cleared before v0.5.0 began. Each entry's disposition, with its
-reasons, moved to its item's brief on 2026-11-08 (`PL-4BCF`), on the project
+The frozen list sequenced these entries past v0.5.0, most of them behind the Qt
+port. The port moved ahead of v0.5.0 on 2026-09-14 (project owner, 2026-09-14,
+on `PL-RKWB`), so most of them became clearable before v0.5.0 began. The table
+is the one this section carried from that day. Each entry's disposition, with
+its reasons, moved to its item's brief on 2026-11-08 (`PL-4BCF`), on the project
 owner's answer in `PL-LVN8`.
 
 | Entry | Relation to the port | Now clears |
 | --- | --- | --- |
 | `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`, `PL-W8DQ` | carried by it | before v0.5.0 |
 | `PL-GS3R`, `PL-YVHK` | sequenced behind it, both `P1` `safety` | before v0.5.0 |
-| `PL-NGF7` | dissolved by it | closed `done` in v0.4.26 (#621) |
+| `PL-NGF7` | dissolved by it | before v0.5.0, as `dropped` |
 | `PL-16ZC` | deferred past it | before v0.5.0, behind `PL-G59B` |
-| `PL-8PS6`, `PL-WZVZ` | behind the machine-abstraction design round, which has happened (`PL-8G48`) | `PL-8PS6` inside this gate; `PL-WZVZ` in Gate 2 (project owner, 2026-09-20, on `PL-S5Q9`) |
+| `PL-8PS6`, `PL-WZVZ` | behind a design round the roadmap places nowhere | unchanged |
 | `PL-2K1R` | rides it, added after the freeze | before v0.5.0 |
-| `PL-Z34C` | none: its completion is a standing condition, not work (project owner, 2026-09-20, ratified) | when the grandfathered set reaches zero |
+
+Since then, `PL-NGF7` closed `done` in v0.4.26 (#621) rather than `dropped`. The
+design round happened (`PL-8G48`, 2026-09-20): `PL-8PS6` became ordinary gate
+work and closed `done` in v0.4.34, and `PL-WZVZ` was deferred to Gate 2 (project
+owner, 2026-09-20, on `PL-S5Q9`). `PL-Z34C` joined this section on 2026-09-20
+(project owner, ratified, over keeping it on the frozen list), because its
+completion is a standing condition, not a piece of work.
 
 ### Declined to Gate 2 on the refilling-queue ground
 
 Each entry's disposition, with its reasons, moved to its item's brief on
 2026-11-08 (`PL-4BCF`), on the project owner's answer in `PL-LVN8`. A paragraph
-that disposed of several entries is quoted whole in one of
-their briefs, and each other entry's brief names where. Each line below names
-the ground that its entries' dispositions rested on. An entry on the first line
-rests on the ground this heading names: pulling it in "would recreate the
-refilling-queue problem the debt gate replaced Phase 0 to solve" (project
-owner, 2026-09-08).
+that disposed of several entries is quoted whole in one brief: one of theirs, or
+that of the triage pass it names. Each other entry's brief names where. Each
+line below names the ground that its entries' dispositions rested on. An entry
+on the first line rests on the ground this heading names (project owner,
+2026-09-08): pulling it in "would recreate the refilling-queue problem the debt
+gate replaced Phase 0 to solve".
 
 - **The refilling-queue ground**: `PL-087W`, `PL-0HPV`, `PL-0KQP`, `PL-0M32`,
   `PL-0MLZ`, `PL-0PJG`, `PL-12P8`, `PL-13PB`, `PL-162Y`, `PL-188T`, `PL-1BS2`,
-  `PL-1RTM`, `PL-1T6T`, `PL-1X2C`, `PL-245B`, `PL-28HG`, `PL-2BZY`, `PL-2DTK`,
-  `PL-2GQW`, `PL-2M4X`, `PL-2M5T`, `PL-2MD9`, `PL-2T03`, `PL-2XM2`, `PL-316G`,
-  `PL-34BG`, `PL-3BYK`, `PL-3DN1`, `PL-3DXV`, `PL-3LLZ`, `PL-3V6C`, `PL-483K`,
-  `PL-4FD2`, `PL-4HKS`, `PL-4L49`, `PL-4PC5`, `PL-4Q9B`, `PL-4RHP`, `PL-4V6B`,
-  `PL-4W2L`, `PL-4ZK8`, `PL-5B39`, `PL-5B88`, `PL-5MFL`, `PL-61MD`, `PL-65HT`,
-  `PL-69JZ`, `PL-6BDX`, `PL-6G8T`, `PL-6T44`, `PL-6TN8`, `PL-6TP8`, `PL-6YL1`,
-  `PL-6YWK`, `PL-6YYR`, `PL-73G8`, `PL-73P0`, `PL-73ZN`, `PL-77SV`, `PL-7CSP`,
-  `PL-7K2C`, `PL-7NKD`, `PL-7RTN`, `PL-7TVT`, `PL-7XNX`, `PL-7XTS`, `PL-879R`,
-  `PL-8JQQ`, `PL-8MJ3`, `PL-8P6D`, `PL-8T3Z`, `PL-8T83`, `PL-99YZ`, `PL-9KP5`,
-  `PL-9KSY`, `PL-9LXK`, `PL-9TNJ`, `PL-B11M`, `PL-B396`, `PL-B5DW`, `PL-B8V1`,
-  `PL-BGMK`, `PL-BHBZ`, `PL-BHVM`, `PL-BMY5`, `PL-BX1C`, `PL-BXB2`, `PL-C4RS`,
-  `PL-C6XD`, `PL-C97K`, `PL-CNCF`, `PL-CNJH`, `PL-CWD4`, `PL-CY8B`, `PL-D0K3`,
-  `PL-D1NT`, `PL-D1RT`, `PL-DBGT`, `PL-DG84`, `PL-DK8Y`, `PL-DMNX`, `PL-F48B`,
-  `PL-F933`, `PL-FCM3`, `PL-FT3M`, `PL-FWJF`, `PL-FX0K`, `PL-G21K`, `PL-G424`,
-  `PL-G6J5`, `PL-G8TR`, `PL-GJPD`, `PL-H6VQ`, `PL-H9GV`, `PL-HJZW`, `PL-HX5C`,
-  `PL-J3TV`, `PL-J3WK`, `PL-J45M`, `PL-J870`, `PL-JBRC`, `PL-JTHW`, `PL-JW39`,
-  `PL-JW9J`, `PL-JXVD`, `PL-K1WS`, `PL-K5PW`, `PL-K82G`, `PL-KF0T`, `PL-KFWL`,
-  `PL-KNHX`, `PL-KRS6`, `PL-KSCW`, `PL-L09X`, `PL-L4KX`, `PL-LBR6`, `PL-LBW5`,
-  `PL-LF2C`, `PL-LKGL`, `PL-LKGW`, `PL-LN3T`, `PL-LPWK`, `PL-LSR0`, `PL-LT77`,
-  `PL-M21Q`, `PL-MBTZ`, `PL-MFM4`, `PL-MM7F`, `PL-MSFB`, `PL-N2PP`, `PL-NF6N`,
-  `PL-NGBM`, `PL-NJ9M`, `PL-NWSK`, `PL-P4XB`, `PL-P757`, `PL-PNW6`, `PL-PQQ2`,
-  `PL-Q664`, `PL-Q8RQ`, `PL-QJQL`, `PL-QMC0`, `PL-QNYF`, `PL-QSGX`, `PL-QV5Y`,
-  `PL-R0P3`, `PL-R0Q0`, `PL-R77L`, `PL-RBMK`, `PL-RR1N`, `PL-RWBV`, `PL-RY2R`,
-  `PL-S0MB`, `PL-S8JT`, `PL-SCB4`, `PL-SMN4`, `PL-STC4`, `PL-SY1J`, `PL-SYG4`,
-  `PL-SZJ2`, `PL-T441`, `PL-T7VS`, `PL-T86P`, `PL-T8PT`, `PL-TDBT`, `PL-TGFY`,
-  `PL-TKFD`, `PL-TNB6`, `PL-TP5M`, `PL-TTMF`, `PL-V53R`, `PL-V8QG`, `PL-VFD8`,
-  `PL-VJFQ`, `PL-VJPJ`, `PL-VKGJ`, `PL-VYK1`, `PL-VZYS`, `PL-W3Q5`, `PL-W7WL`,
-  `PL-W80S`, `PL-WG7Q`, `PL-WHQS`, `PL-WNQT`, `PL-WTXB`, `PL-WVJ0`, `PL-WZBX`,
-  `PL-X3NY`, `PL-XD3C`, `PL-XMNC`, `PL-XQGH`, `PL-XZD0`, `PL-Y1L0`, `PL-Y1LD`,
-  `PL-Y31G`, `PL-Y4YX`, `PL-Y5JX`, `PL-Y5ZB`, `PL-YD6X`, `PL-YKXQ`, `PL-YNYK`,
-  `PL-YRYR`, `PL-YS9F`, `PL-YTDN`, `PL-Z5FG`, `PL-Z6M3`, `PL-Z85N`, `PL-ZPDM`.
+  `PL-1T6T`, `PL-1X2C`, `PL-245B`, `PL-28HG`, `PL-2BZY`, `PL-2DTK`, `PL-2GQW`,
+  `PL-2M4X`, `PL-2M5T`, `PL-2MD9`, `PL-2T03`, `PL-2XM2`, `PL-316G`, `PL-34BG`,
+  `PL-3BYK`, `PL-3DN1`, `PL-3DXV`, `PL-3LLZ`, `PL-3V6C`, `PL-483K`, `PL-4FD2`,
+  `PL-4HKS`, `PL-4L49`, `PL-4PC5`, `PL-4Q9B`, `PL-4RHP`, `PL-4V6B`, `PL-4W2L`,
+  `PL-4ZK8`, `PL-5B39`, `PL-5B88`, `PL-5MFL`, `PL-61MD`, `PL-65HT`, `PL-69JZ`,
+  `PL-6BDX`, `PL-6G8T`, `PL-6T44`, `PL-6TN8`, `PL-6TP8`, `PL-6YL1`, `PL-6YWK`,
+  `PL-6YYR`, `PL-73G8`, `PL-73P0`, `PL-73ZN`, `PL-77SV`, `PL-7K2C`, `PL-7NKD`,
+  `PL-7RTN`, `PL-7TVT`, `PL-7XNX`, `PL-7XTS`, `PL-879R`, `PL-8JQQ`, `PL-8MJ3`,
+  `PL-8P6D`, `PL-8T3Z`, `PL-8T83`, `PL-9KP5`, `PL-9KSY`, `PL-9LXK`, `PL-9TNJ`,
+  `PL-B11M`, `PL-B396`, `PL-B5DW`, `PL-B8V1`, `PL-BGMK`, `PL-BHBZ`, `PL-BHVM`,
+  `PL-BMY5`, `PL-BX1C`, `PL-BXB2`, `PL-C4RS`, `PL-C6XD`, `PL-C97K`, `PL-CNJH`,
+  `PL-CWD4`, `PL-CY8B`, `PL-D0K3`, `PL-D1NT`, `PL-D1RT`, `PL-DBGT`, `PL-DG84`,
+  `PL-DK8Y`, `PL-DMNX`, `PL-F48B`, `PL-F933`, `PL-FCM3`, `PL-FT3M`, `PL-FWJF`,
+  `PL-FX0K`, `PL-G21K`, `PL-G424`, `PL-G6J5`, `PL-G8TR`, `PL-GJPD`, `PL-H6VQ`,
+  `PL-H9GV`, `PL-HJZW`, `PL-HX5C`, `PL-J3TV`, `PL-J3WK`, `PL-J45M`, `PL-J870`,
+  `PL-JBRC`, `PL-JTHW`, `PL-JW39`, `PL-JW9J`, `PL-JXVD`, `PL-K1WS`, `PL-K5PW`,
+  `PL-K82G`, `PL-KF0T`, `PL-KFWL`, `PL-KNHX`, `PL-KRS6`, `PL-KSCW`, `PL-L09X`,
+  `PL-L4KX`, `PL-LBR6`, `PL-LBW5`, `PL-LF2C`, `PL-LKGL`, `PL-LKGW`, `PL-LN3T`,
+  `PL-LPWK`, `PL-LSR0`, `PL-LT77`, `PL-M21Q`, `PL-MBTZ`, `PL-MFM4`, `PL-MM7F`,
+  `PL-MSFB`, `PL-N2PP`, `PL-NF6N`, `PL-NGBM`, `PL-NJ9M`, `PL-NWSK`, `PL-P4XB`,
+  `PL-P757`, `PL-PNW6`, `PL-PQQ2`, `PL-Q664`, `PL-QJQL`, `PL-QMC0`, `PL-QNYF`,
+  `PL-QSGX`, `PL-QV5Y`, `PL-R0P3`, `PL-R0Q0`, `PL-R77L`, `PL-RBMK`, `PL-RR1N`,
+  `PL-RWBV`, `PL-RY2R`, `PL-S0MB`, `PL-S8JT`, `PL-SCB4`, `PL-SMN4`, `PL-STC4`,
+  `PL-SY1J`, `PL-SYG4`, `PL-SZJ2`, `PL-T441`, `PL-T7VS`, `PL-T86P`, `PL-T8PT`,
+  `PL-TDBT`, `PL-TGFY`, `PL-TKFD`, `PL-TNB6`, `PL-TP5M`, `PL-TTMF`, `PL-V53R`,
+  `PL-V8QG`, `PL-VFD8`, `PL-VJFQ`, `PL-VJPJ`, `PL-VKGJ`, `PL-VYK1`, `PL-VZYS`,
+  `PL-W3Q5`, `PL-W7WL`, `PL-W80S`, `PL-WG7Q`, `PL-WHQS`, `PL-WNQT`, `PL-WTXB`,
+  `PL-WVJ0`, `PL-WZBX`, `PL-X3NY`, `PL-XD3C`, `PL-XMNC`, `PL-XQGH`, `PL-XZD0`,
+  `PL-Y1L0`, `PL-Y1LD`, `PL-Y31G`, `PL-Y4YX`, `PL-Y5JX`, `PL-Y5ZB`, `PL-YD6X`,
+  `PL-YKXQ`, `PL-YNYK`, `PL-YRYR`, `PL-YS9F`, `PL-YTDN`, `PL-Z5FG`, `PL-Z6M3`,
+  `PL-Z85N`, `PL-ZMGR`, `PL-ZPDM`.
 - **Waiting on the Qt port, on 2026-09-12**: `PL-7SVX`, `PL-C92D`, `PL-SQJ1`,
   `PL-ZG5J`.
+- **Nothing is blocked on it, and its number must be re-taken on the ported
+  tree**: `PL-CNCF`.
 - **A decision that the Qt port or its interface pass makes once**: `PL-3JP0`,
   `PL-HKTB`, `PL-5B1N`, `PL-KRZW`, `PL-Z4K6`.
 - **Nothing misleads anybody in the meantime**: `PL-5B1N`, `PL-QYBW`, `PL-7CRY`.
 - **Not wholly apparatus, but unable to change what a reader of the simulator
   sees**: `PL-0VFF`, `PL-880Z`, `PL-N32Y`, `PL-HWW1`, `PL-4FBP`, `PL-CM40`,
-  `PL-DHJ7`, `PL-HCTF`, `PL-LPH9`, `PL-WPDB`.
+  `PL-DHJ7`, `PL-HCTF`, `PL-LPH9`, `PL-WPDB`, `PL-SPN6`.
 - **A naming or placement decision that gives no wrong value either way**:
-  `PL-BQ46`, `PL-KL2Q`, `PL-6KNM`, `PL-BDNB`, `PL-SPN6`, `PL-JQY1`.
+  `PL-BQ46`, `PL-KL2Q`, `PL-6KNM`, `PL-BDNB`, `PL-JQY1`.
 - **Waiting on an answer that holding v0.5.0 open would not produce**:
-  `PL-N32Y`, `PL-VV6N`, `PL-V67Q`, `PL-7RYB`, `PL-NLP4`, `PL-KND7`, `PL-WFFX`,
-  `PL-KQHN`.
+  `PL-N32Y`, `PL-V67Q`, `PL-7RYB`, `PL-NLP4`, `PL-KND7`, `PL-WFFX`, `PL-KQHN`,
+  `PL-DHJ7`.
+- **It cannot be worked until a count outside the list is taken**: `PL-VV6N`.
 - **Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule
   defers it on its own terms**: `PL-HGB6`, `PL-QW19`, `PL-HNWX`, `PL-09G9`,
   `PL-YFXG`, `PL-ZMGR`, `PL-6QZP`, `PL-PFK1`, `PL-Z9K5`, `PL-9PD6`, `PL-D584`,
   `PL-J4NW`, `PL-7K8Y`, `PL-DMDF`, `PL-SH9Q`, `PL-WXX8`, `PL-PGZF`, `PL-ZM48`,
-  `PL-WFFX`, `PL-1K9G`.
-- **Introduced by this milestone's own implementation work**: `PL-59WB`,
-  `PL-7TBQ`, `PL-7TXJ`, `PL-CZTR`, `PL-JFYT`, `PL-LLBV`, `PL-NC62`, `PL-SM5V`,
-  `PL-XJ37`, `PL-08CR`, `PL-FPY2`.
+  `PL-WFFX`, `PL-1K9G`, `PL-KRZW`, `PL-VV6N`.
+- **The gate had done its job on 2026-09-16, so admitting them would re-open a
+  cleared gate**: `PL-1RTM`, `PL-7CSP`, `PL-99YZ`, `PL-Q8RQ`.
+- **Introduced by work done while clearing this gate or implementing this
+  milestone**: `PL-59WB`, `PL-7TBQ`, `PL-7TXJ`, `PL-CZTR`, `PL-JFYT`, `PL-LLBV`,
+  `PL-NC62`, `PL-SM5V`, `PL-XJ37`, `PL-08CR`, `PL-FPY2`.
 - **Waiting on planned-milestone item 34's area system, which v0.6.0 then
   scoped**: `PL-TH35`, `PL-VN6M`, `PL-NMTF`, `PL-7Z84`, `PL-9LNF`, `PL-NWTM`,
-  `PL-W54S`, `PL-K285`, `PL-904Y`, `PL-G5SX`, `PL-50PZ`, `PL-JSY5`, `PL-Y04W`,
-  `PL-L8RN`.
+  `PL-W54S`, `PL-L8RN`.
 - **Moved into v0.5.0's own Required scope (project owner, 2026-09-16, ratified,
   on `PL-R7XK`)**: `PL-MN4J`.
 - **`anticipated`, with no milestone yet to place them in**: `PL-0S0V`,
   `PL-VJZK`, `PL-KZ99`.
 - **Not debt against this gate, and recorded so that they do not look
   deferred**: `PL-J0F7`, `PL-TCR5`, `PL-QRD1`, `PL-KKRP`, `PL-NDKC`, `PL-TQFB`,
-  `PL-TBMX`.
+  `PL-TBMX`, `PL-K285`, `PL-904Y`, `PL-G5SX`, `PL-50PZ`, `PL-JSY5`, `PL-Y04W`.
 
 ### Required scope
 

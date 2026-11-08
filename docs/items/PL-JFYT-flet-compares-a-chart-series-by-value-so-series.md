@@ -93,4 +93,4 @@ module and its tests are deleted, and the port's tests read items by identity
 (`ConcentrationChart.drawn_points(run, quantity)` addresses a run's own curve).
 Nothing remains for this item to guard.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by this milestone's own implementation work". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

@@ -271,4 +271,4 @@ project owner's.
 
 > **What that defers is a consequence that the fork-control entry in Required scope settles rather than discovers.** Without a selector, a learner who forks twice has no way to say which branch is shown. So a second fork is refused while a comparison is displayed, rather than silently replacing the branch on the chart.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by this milestone's own implementation work". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

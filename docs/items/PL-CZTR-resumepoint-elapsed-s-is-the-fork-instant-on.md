@@ -72,4 +72,4 @@ before. The `elapsed_s` parameters of `resumed_at`, `fork_at`,
 duration name and are left to their own item, `PL-BT2J`, since renaming a
 public parameter is a decision this one did not take.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by this milestone's own implementation work". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.
