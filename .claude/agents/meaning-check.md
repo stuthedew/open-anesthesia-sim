@@ -52,7 +52,9 @@ Report a statement when the edit:
   condition or date; added words tie a statement to one thing where the
   original could mean another; a general word becomes a narrower term that
   the text uses nearby, such as "an alarm" becoming "a low-flow alarm", where
-  the text does not say that the two are the same; a cause becomes a
+  the text does not say that the two are the same; a sentence moved to a place
+  where a pointing word in it, such as "these figures" or "the table above",
+  now points at something else; a cause becomes a
   correlation; a value from
   patients or instruments is no longer called measured; who decided or
   claims something changes; a defined term goes while the text still uses

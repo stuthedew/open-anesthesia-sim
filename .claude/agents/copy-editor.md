@@ -484,8 +484,12 @@ lands.
    rate" unless the text says which value was measured. Nor is a general word
    swapped for a narrower term that the text uses nearby: "an alarm that
    stopped the run" does not become "a low-flow alarm that stopped the run"
-   unless the text says that every such alarm is a low-flow alarm. A reference
-   that the original leaves open is queried, as step 6 says.
+   unless the text says that every such alarm is a low-flow alarm. A sentence
+   that moves keeps what its pointing words point at. Where "these figures",
+   "the table above" or "this limit" would point at something else in the
+   sentence's new place, name what it pointed at: "this limit", moved to
+   follow a paragraph on a second limit, becomes "the upper flow limit". A
+   reference that the original leaves open is queried, as step 6 says.
 
 ## What to return
 
