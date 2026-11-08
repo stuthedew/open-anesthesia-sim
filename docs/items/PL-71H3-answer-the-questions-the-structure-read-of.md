@@ -5,6 +5,7 @@ status: untriaged
 touches: ROADMAP.md
 feature: roadmap-structure
 added: 2026-11-07
+recurrences: 2026-11-08 PL-NTHF
 ---
 
 **Problem.** Answer the questions the structure read of ROADMAP.md's v0.7.0 section left for its author: which choices the owner made, what the Goal table's figures date from, and the terms the section never defines
