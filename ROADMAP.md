@@ -3321,8 +3321,8 @@ such an entry, so the entry would keep the gate open forever.
 A finding classed `safety` or `science` goes to Gate 0 rather than here. A `P0` finding is a
 hotfix on its own branch under the `docket` skill, and it joins no list.
 
-PL-68XK (check that a recorded commit hash resolves) is a different case, and
-this rule does *not* admit it. It predates the freeze, and it was left out of
+PL-68XK (check that a recorded commit hash resolves) is not admitted by
+the completion rule. It predates the freeze, and it was left out of
 the approved list deliberately. `PL-68XK` records why it was dropped.
 
 ### Definition of done
@@ -3364,7 +3364,7 @@ the approved list deliberately. `PL-68XK` records why it was dropped.
 ### Goal
 
 Clear the inherited backlog, so that feature work starts from a codebase whose
-known defects are closed rather than carried forward. After it, the simulator
+known defects are closed rather than carried forward. After this release, the simulator
 does what it did before, but correctly.
 Its verification gate is widened to cover the inputs that the interface can
 actually reach. Its failure path can no longer leave partial state behind.
@@ -3798,7 +3798,8 @@ v0.4.0 is complete only when all of the following are true:
   non-alveolar compartment does not claim, the reproducibility guarantee
   above, and the interface's new obligations.
 - The v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference
-  tests remain unchanged and passing.
+  tests remain unchanged and passing. No equation, parameter or numerical
+  method has changed.
 - Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
   pass.
 
@@ -3834,8 +3835,8 @@ v0.4.0 is complete only when all of the following are true:
 today, and do the interface pass once on the way.**
 
 The measured case is in `docs/WORKING_NOTES.md` under "Measured on real
-hardware", and none of it is about speed. The lag that this question was opened
-on is gone. The owner reports that the Flet build is no longer noticeably slow
+hardware", and none of it is about speed. The lag that the toolkit question (`PL-QXSB`)
+was opened on is gone. The owner reports that the Flet build is no longer noticeably slow
 after `PL-2FM6`. Four grounds remain:
 
 - **Input latency** is 0.85-2.46 ms p90, against Flet's 20-30 ms, and latency
@@ -3846,8 +3847,8 @@ after `PL-2FM6`. Four grounds remain:
   route out of 0.26 MAC of chord error is more columns. More columns cost
   49.4 ms of a 200 ms budget on Qt. On Flet, the diff alone costs about 78 ms for
   the same columns, before its client renders anything.
-- **`PL-2QMK`** is exercised here rather than argued. The spike writes a PNG of
-  the running interface in the very container where Flet's renderer cannot
+- **`PL-2QMK`** is exercised here rather than argued. The Qt spike (`PL-55DH`) writes a
+  PNG of the running interface in the very container where Flet's renderer cannot
   load. Most of `presentation-safety` waits on that ability.
 - **Headroom** is needed for the schematic (planned-milestone item 27). The
   schematic is a second large visual surface, on a toolkit that charges for
@@ -3914,7 +3915,7 @@ after `PL-2FM6`. Four grounds remain:
    out-of-scope list covers the styling-layer question that this port
    deliberately leaves open.
 
-   *It absorbed planned-milestone item 33, and no longer does* (project owner,
+   *This port absorbed planned-milestone item 33, and no longer does* (project owner,
    2026-09-16, on `PL-L9RD`). The argument was that restyling a dashboard that is
    about to be rewritten is the same work done twice. Porting rewrites
    `theme.py`, every layout and every density decision regardless. So palette,
@@ -3949,7 +3950,7 @@ after `PL-2FM6`. Four grounds remain:
    predates the port.
 8. **The queued fixes named below** (queue items `PL-3355`, `PL-Q4VH`,
    `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), under the rule stated there.
-   `PL-HWW1` records why they are named here as well as there.
+   `PL-HWW1` records why they are named here as well as in the declaration slot.
 
 ### Fixes this port carries, and why that is not scope creep
 
@@ -4249,7 +4250,7 @@ in a run can be computed without stepping the run to that time. This is what
 makes a branch's history before the branch point *the same object* as its
 parent's history, rather than a reproduction. Item 12 requires that property.
 
-Beneath those three gaps sits a fourth problem, which is a debt rather than a
+Beneath the three gaps above sits a fourth problem, which is a debt rather than a
 gap: the run's sample store has no size limit. `PL-011` was dropped on
 2026-09-05 on the promise that the score architecture would remove that store
 rather than put a limit on it. A comparison holds two runs. So this is the
@@ -4285,6 +4286,7 @@ freeze. Any of them that the triage pass classes as debt re-enters this gate
 rather than waiting for Gate 2. The list below records what could be decided
 on the day. A re-entering item is added to it with the date and the reason,
 exactly as v0.4.0's three post-freeze notes record theirs.
+
 **How the third group is meant to be worked.** The third group splits almost
 evenly between the two lanes that `docket.toml` declares. The two halves share
 no files, so they are worked at the same time in two sessions rather than
@@ -4341,8 +4343,8 @@ joining the gate.
 
 **`PL-YDKJ` is here as a consequence of `PL-2FM6`, not as a nineteenth
 Required-scope entry** (moved 2026-09-08, `PL-YXXG`). It now carries
-`blocked-by: PL-2FM6`, because `PL-2FM6` replaces the inputs that `PL-YDKJ`
-depends on. `PL-YXXG` records the reasoning.
+`blocked-by: PL-2FM6`, so no check has to work out that dependency from the
+prose again. `PL-YXXG` records the reasoning.
 
 **Cleared before v0.5.0 begins, the product lane — 39 entries**
 
@@ -4471,7 +4473,7 @@ milestone's Required scope, so all eight clear before implementation begins.
 Five are in the product lane or apply to both halves, and three are in the
 workflow lane.
 
-**The hole is closed, and it cost eight entries.** Three of them,
+**The hole the freeze left is closed, and it cost eight entries.** Three of them,
 `PL-NBWP`, `PL-NBCJ` and `PL-B1WW`, are `P1` `safety` or `science` findings.
 They concern the step size, the control resolution of the playback burst, and
 the oracle of the reference gate. That is the class of finding this rule
@@ -7198,7 +7200,8 @@ unchanged too.
   bullets down assume that a branch resumes this way. The work is internal. It
   adds no user-facing replay control, which stays in planned item 10, behind
   item 9's save/load.
-  `docs/MODEL.md` § "The canonical evaluation rule" carries the measurements.
+  `docs/MODEL.md` § "The canonical evaluation rule" carries the measurements
+  behind this entry's narrowing and its change of mechanism.
 - **Time bookmarks and MAC targets, as two separately listed collections**
   (queue item PL-LPLD). This follows the shape of the Gas Man reference
   simulator, and that shape sets the minimum scope. The minimum is an absolute
@@ -7223,8 +7226,8 @@ unchanged too.
   taken at that point.
 - **A run forks at any control-input event** (queue item PL-TFX5), flat rather
   than as a tree: one trunk with N branches, and no sub-forks. The branch
-  carries its parent's agent and patient rather than choosing them again. The
-  bookmark clause is now the entry below, behind the two items that build a
+  carries its parent's agent and patient rather than choosing them again. Its
+  former "or bookmark" clause is now the entry below, behind the two items that build a
   bookmark and its halt.
 - **A bookmark is a forkable instant** (queue items `PL-B8MK` and `PL-TYWQ`),
   so a branch can be
@@ -7241,8 +7244,8 @@ unchanged too.
 
   **The interface half is `PL-TYWQ` and shipped 2026-09-21.** `PL-VKJW` landed
   the fork panel on 2026-09-20, on a different branch. That panel offered only
-  `BranchedCase.fork_points_s`, which lists the trunk's keyframes. It is now a **second control** beside that selector. It
-  appears on the panel only while the trunk is standing on the halt, and it is
+  `BranchedCase.fork_points_s`, which lists the trunk's keyframes. Forking at the halt is now a **second
+  control** beside the panel's fork-point selector. It appears on the panel only while the trunk is standing on the halt, and it is
   labelled with the instant at which the branch will open (project owner,
   2026-09-21, ratified, over one list that grows a row while the run is
   halted). The reason is that a row that arrives and leaves changes the
@@ -7350,9 +7353,8 @@ v0.5.0 is complete only when:
   parent element-wise at every sampled point up to the branch point, and a test
   asserts this;
 - a bookmark halts the run on the step that crosses it, at every playback
-  multiplier, and a test asserts this;
-- a threshold that is never reached ends in a distinct, visible outcome rather
-  than in silence;
+  multiplier, and a test asserts this. A threshold that is never reached ends
+  in a distinct, visible outcome rather than in silence;
 - two branches can be read on one time axis. Every curve is attributable to
   its run and to the settings that produced it, with no readout, label, legend
   entry or reference band ambiguous as to which run it describes;
@@ -7407,7 +7409,8 @@ v0.5.0 is complete only when:
   branches (project owner, 2026-08-25).
 - More than two runs displayed at once, **and the selector that would choose
   which two** (project owner, 2026-09-20, `PL-XJ37`). `BranchedCase.branches`
-  returns the branches in a stable order. But **Selecting which two runs are
+  returns the branches in a stable order, chosen so that a later selector does
+  not renumber the branch a learner is looking at. But **Selecting which two runs are
   displayed** is not built here. A comparison is always of a branch against
   the trunk. The milestone also does not return to a branch the learner has
   left.
@@ -7416,9 +7419,8 @@ v0.5.0 is complete only when:
   one. The display is capped at two runs under either answer. So a selector
   buys the *choice* of pair, not more curves, and branch-against-branch was
   judged not to be a teaching case for a first release. Adding the selector
-  later is additive rather than a rework, because the branches keep a stable
-  order. The fork-control entry in Required scope settles what happens when a
-  learner forks twice.
+  later is additive rather than a rework. The Required-scope entry for the
+  control that calls `fork_at` settles what happens when a learner forks twice.
 - Scenario save/load (item 9), including persisting bookmarks or branches
   across a restart, and a user-facing deterministic replay control (item 10).
   Only the resimulation driver that replay needs is in scope.

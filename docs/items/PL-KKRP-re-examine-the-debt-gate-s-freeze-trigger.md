@@ -95,7 +95,7 @@ answer in `PL-LVN8` sends decision history to the item that holds it.
 > the `v0.4.x` track, and a patch freezes no gate, so it says nothing about
 > the trigger.
 
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in the paragraph "Gate 2's freeze is deferred, deliberately, and moving this port did not disturb it." "This milestone" and "this port" are v0.4.26. The paragraph keeps that Gate 2 freezes when v0.5.0 ships and that the port's findings go to it.
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in the paragraph "Gate 2's freeze is deferred, deliberately, and moving this port did not disturb it." "This milestone" and "this port" are v0.4.26. "Today" is 2026-09-14. The paragraph keeps that Gate 2 freezes when v0.5.0 ships and that the port's findings go to it.
 
 > Under the cadence in "The debt gate", Gate 2 would freeze as this milestone is scoped. Gate 2 is meant to collect *v0.5.0's* findings, and v0.5.0 has not been implemented. So a gate frozen today would be empty by construction, and it would then refuse the findings it exists for.
 
