@@ -69,3 +69,7 @@ v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
 **Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section, § "Explicitly out of scope for v0.7.0", carried this sentence in its entry on the View catalogue, planned-milestone item 36, until then. This item's `blocked-by: v0.8.0` holds the current fact.
 
 > So `PL-L6QR`, which waits on item 36, now waits on v0.8.0 instead.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s v0.6.0 section, § "Explicitly out of scope for v0.6.0", carried this sentence in its entry on the View catalogue, planned-milestone item 36. This item's `blocked-by: v0.8.0` holds the current fact.
+
+> Queue item `PL-L6QR` is the queue audit that re-runs once item 36 is scoped.

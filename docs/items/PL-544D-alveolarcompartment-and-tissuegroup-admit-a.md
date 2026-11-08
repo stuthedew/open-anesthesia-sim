@@ -79,3 +79,7 @@ setter and `advance`, 100% branch coverage of both modules, and some 400,000
 replica pairs and 60,000 real advances across capacities from 2^-16 to 2^16
 finding no amount carried past capacity by rounding. What it found and this
 item does not fix is on `PL-19Y0`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded `PL-544D` and `PL-V2HC` together, and followed them with this sentence. "Both" are those two items.
+
+> Both were found during `PL-7DJK`.

@@ -154,3 +154,6 @@ balance cases.
 **Found and filed:** `PL-XWFP`, the patient compartments' closed forms
 reporting uptake as a return at flows below 3e-13 L/min.
 
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded this item, the circuit's closed form reporting a negative exhaust from 1e-15 to 1e-6 L/min, with this sentence.
+
+> It was found while fixing `PL-B26Y`.

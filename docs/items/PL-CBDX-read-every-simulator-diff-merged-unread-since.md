@@ -61,3 +61,7 @@ it.
 - `#933` (`PL-9RFP`): apparatus test only (`test_doc_check.py`), verify's git reads. Nothing.
 - `#932` (`PL-R808`): apparatus test only (`test_left_behind_check.py`). Nothing.
 - `#924` (`PL-7TVT` and five more): apparatus test only (`test_open_pull_requests.py`). Nothing.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" (until 2026-11-08 "Deferred from this gate") recorded this item among the `safety` and `science` captures placed on the frozen list, with this sentence. "The list" is v0.6.0's frozen list.
+
+> It was split from `PL-SQTR` on the owner's answer, and like `PL-WMCJ` it is on the list.
