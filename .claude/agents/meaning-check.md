@@ -50,7 +50,10 @@ Report a statement when the edit:
 - changes its scope or meaning: a scope clause goes, so the statement covers
   more or less; a value is tied to a different agent, compartment, quantity,
   condition or date; added words tie a statement to one thing where the
-  original could mean another; a cause becomes a correlation; a value from
+  original could mean another; a general word becomes a narrower term that
+  the text uses nearby, such as "an alarm" becoming "a low-flow alarm", where
+  the text does not say that the two are the same; a cause becomes a
+  correlation; a value from
   patients or instruments is no longer called measured; who decided or
   claims something changes; a defined term goes while the text still uses
   it.

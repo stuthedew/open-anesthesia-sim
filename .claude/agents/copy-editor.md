@@ -481,8 +481,11 @@ lands.
 8. **What a statement refers to.** An added word never ties a statement to
    one thing where the original could mean another. "The dose is twice the
    measured value" does not become "twice the measured value of the infusion
-   rate" unless the text says which value was measured. A reference that the
-   original leaves open is queried, as step 6 says.
+   rate" unless the text says which value was measured. Nor is a general word
+   swapped for a narrower term that the text uses nearby: "an alarm that
+   stopped the run" does not become "a low-flow alarm that stopped the run"
+   unless the text says that every such alarm is a low-flow alarm. A reference
+   that the original leaves open is queried, as step 6 says.
 
 ## What to return
 
