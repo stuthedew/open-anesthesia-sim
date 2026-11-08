@@ -3,12 +3,13 @@ id: PL-M3MV
 title: Restructure ROADMAP.md, slice 7: keep each planned milestone to its intent and what remains, and move each shipped or scheduled record to its milestone section or item
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-blocked-by: PL-B6V1
 added: 2026-11-07
+payoff: a reader choosing what to build next finds each planned milestone stating only what is still wanted, with each shipped decision in its milestone's section
+verify: ! grep -qF 'Reopened and re-affirmed, 2026-09-17' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 7: keep each planned milestone to its intent and what remains, and move each shipped or scheduled record to its milestone section or item
@@ -415,3 +416,14 @@ added: 2026-11-07
   `PL-R498`). Check that each planned item's entry states its own.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. The planned-milestone catalogue's scoping records and repeats were in `ROADMAP.md` at `817a4d88`. One cited test name came later (`d930f5ae`, 2026-11-02).
+
+**Next steps, written 2026-11-08 by the thread that ran slice 6.** Slice 6 (`PL-B6V1`, #2066) is the model to follow. Its brief's "Next steps" list applies here step for step with this item's id, and its "What this slice did" shows the record to write.
+
+1. Bring `origin/main` in once #2066 has merged, and claim this item on the thread's branch.
+2. Capture `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` before any edit, and compare after.
+3. Search only inside § "Planned milestones" and the rows and paragraphs the findings name, because headings and phrases repeat across milestones.
+4. Item 34 takes the other half of slice 6's outline findings 22 to 25. v0.6.0's Required scope now states each of these once: the break-out reservations and the schema-migration reason (entry 1), the Qt splitter state (entry 2), the per-window region (entry 7), and the shipped Workspaces (entry 13). Item 34's tiled half keeps a pointer to those entries. Its own copies are quoted into items or cut where v0.6.0 holds them. Chapter read 48 also bears on item 34.
+5. v0.6.0's old § "Deferred from this gate" is now § "Captures after the cut"; cite it by that name.
+6. Rewording findings go to `PL-YRY3`, and queries that need the author go to one new item under `roadmap-structure`.
+7. Two reviewers compare old and new, one for words that depend on position and one sentence by sentence. Slice 6's reviewers found one lost paragraph and about a dozen shifts of meaning.
+8. Close the item before pushing, then run `bin/docket verify --self PL-M3MV`, arm, and merge on green. Set slice 8 (`PL-V8SJ`) `ready` with a `verify:` that fails until its work is done.

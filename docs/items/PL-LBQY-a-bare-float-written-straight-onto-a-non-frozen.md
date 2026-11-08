@@ -131,7 +131,3 @@ in; and a test in `tests/unit/test_supported_ranges.py` named
 `test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write` pins it
 for all three flows. A dial written past the vaporizer maximum stays
 `PL-BBMG`'s.
-
-**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded this item with `PL-LLMN` and `PL-Z0T3`. After describing this item's finding, a bare `float` written onto a flow field and kept by a Reset, it said:
-
-> That finding was raised as a decision, which was answered the same day in favour of a write guard.
