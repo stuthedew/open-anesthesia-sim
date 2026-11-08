@@ -165,3 +165,5 @@ since changed.** It read no head as `generator: live` on 2026-10-03; on
 simulator's half by that file's own two-standards list and the product lane by
 `touches`, built on the owner's answer above rather than on standing approval.
 So it was built rather than held.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-4V6B`.

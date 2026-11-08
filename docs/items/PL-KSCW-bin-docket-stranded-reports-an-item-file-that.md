@@ -151,3 +151,5 @@ the day it was built; with it, 7.
 `PL-SH9Q`'s `verify:` named `test_stranded_reports_an_item_modified_only_on_a_branch`
 before that test existed. It exists now, in `subprojects/docket/tests/test_vcs.py`,
 and pins the `origin/claude/wizardly-maxwell-dyzpjt` shape that item recorded.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-Y4D6`.

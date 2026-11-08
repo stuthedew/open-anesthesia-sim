@@ -155,3 +155,5 @@ built rather than dropped. What was built, and the calls inside it:
   written, now per family. `PL-SSQW`'s open brief quoted the old exact-equality
   check as the tree's only precedent, and is repaired in this commit to
   describe the per-family window.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-77G2`.

@@ -277,3 +277,9 @@ gained the tests, `docs/ARCHITECTURE.md`, the rule that governs this module,
 `PL-PGZF`'s brief and `PL-HWNG`'s `feature:` line. The grep was rewritten once
 more after the reviews, when `_WindowPropagators.formed` became `used`, since it
 holds the propagators a window found kept as well as those it formed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". This item is also named in paragraphs quoted in the briefs of `PL-RWBV` and `PL-PGZF`.
+
+> **`PL-CNCF` is the one to watch, and it is deferred with that said.** Its 6.2 ms is the frame cost that *survives* the port. That cost is the score evaluation, with no toolkit in it. So unlike its neighbours it does not dissolve, and it is the number that sizes `PL-GS3R`'s chord-width rule. It is deferred because nothing is blocked on it today, and because the number needs re-taking on the ported tree anyway. It is not deferred because it is small.
+
+> - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x

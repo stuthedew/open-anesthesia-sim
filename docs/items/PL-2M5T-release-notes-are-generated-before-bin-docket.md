@@ -39,3 +39,5 @@ recording before the notes are generated, or by the notes resolving the number
 the way `bin/docket record` does rather than reading a field that is not yet
 written. `docs/releases/v0.4.22.md` is repaired as part of it, or the item
 records why a shipped release's notes are left as they stand.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

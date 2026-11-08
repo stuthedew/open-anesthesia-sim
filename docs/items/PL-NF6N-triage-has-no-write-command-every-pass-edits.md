@@ -71,3 +71,9 @@ since `docket new` already owns the store-writing half.
 **Done when.** The question above is answered: either the command exists with
 tests, or this is `dropped` with the reasoning recorded - that hand-editing
 plus `docket check` is sufficient and the wrapper is upkeep without a payer.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground".
+
+> **One more from the session that answered `PL-69JZ` and `PL-L09X`** (2026-09-12). `PL-NF6N` asks whether triage should have a write command, instead of every pass editing item front matter by hand. It lies wholly in the workflow lane and rests on the same refilling-queue ground as the first thirty. It is also a question about whether a mechanism is worth building at all. That kind of question is the most likely to be answered "no", and the least likely to be worth holding a gate open for.
+
+> - PL-NF6N (M) Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code — dropped 2026-09-19

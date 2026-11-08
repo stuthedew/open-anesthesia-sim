@@ -47,3 +47,5 @@ between 2026-09-13 and today, which is the repair-as-started policy working
 without a campaign; the contract records the mechanism that catches the next
 one - an open item whose command passes is an error the replay reports the
 moment it happens. Recorded so the question is not re-raised at fifteen.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-4V6B`.

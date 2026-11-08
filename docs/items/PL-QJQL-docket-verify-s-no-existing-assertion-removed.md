@@ -48,3 +48,5 @@ check being wrong about what an assertion is, which is why they share
 line in a `.py` file is reported as an assertion removed, prose containing those
 words is still not, and `subprojects/docket/tests/test_verify.py` drives both
 directions.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-3BYK` and `PL-XQGH`.

@@ -84,3 +84,5 @@ because they are not on screen until the reader opens it.
 **Left to later items.** A break-out window (`ROADMAP.md` planned-milestone
 item 34) has to be added to the walk when it is built, and the docstring says
 so. `PL-G5SX` (tests over the real interface) asserts through this predicate.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

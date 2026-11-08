@@ -163,3 +163,5 @@ clause and 10 more for the re-wrap around it, 58 in all, where the round
 estimated 38; the commit message names the growth as a false claim exchanged
 for a true one, as the answer asked. No other `CLAUDE.md` edit was open to
 batch it with.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-0C6W`.

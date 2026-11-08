@@ -125,3 +125,5 @@ equivalent pure agent gas". `docs/MODEL.md` § "Displayed precision" carries
 the derivation and withdraws the sentence that had justified six decimals
 (the residual is visible only on the lines that print it in scientific
 notation). `test_agent_amounts_precision` pins the form.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Sequenced past v0.5.0, so not clearable before it begins", as one of the five entries the Qt port carries. That section's table keeps its row. The paragraphs that named it are quoted in the brief of `PL-3355`.

@@ -109,3 +109,5 @@ and the trunk is left untouched), `test_a_patient_mismatch_names_the_tissue_grou
 (muscle volume), and `test_a_branch_rebuilt_under_another_mac_is_refused`
 (the second gap). All three fail on the previous controller; the last fails
 with "DID NOT RAISE".
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by this milestone's own implementation work". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

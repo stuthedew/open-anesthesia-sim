@@ -103,3 +103,5 @@ would meet this guard if it handed over the mark's own value. So the fix this
 brief named, snapping once at the boundary that accepts the typed value, is
 written into `PL-W4XQ` rather than built here against a door that does not
 exist. The guard stays exact, as this brief asked.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by this milestone's own implementation work". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

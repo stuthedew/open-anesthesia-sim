@@ -91,3 +91,7 @@ error, not a CI gap: a session asking for `get_status` rather than
 `get_check_runs` sees "pending, none" on a green pull request. It is recorded
 here rather than as a line in `docs/worker.md`, which a worker reads before
 its first edit and never at the moment anyone checks a pull request's CI.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". No paragraph there named it apart from this entry line, so it rested on the section's opening ground, which is quoted in `PL-36R4`'s brief.
+
+> - PL-7RTN (M) An open pull request can carry no check runs at all, so a branch merges with nothing having gated it

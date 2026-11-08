@@ -160,3 +160,5 @@ opened in a fixed window, a scrolling page that grows, and the minimum size
 hint equal to the model's sum. The adapter's older tests now run at 800 px,
 since a quarter of 400 px is narrower than an Area's header (177 px
 offscreen).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

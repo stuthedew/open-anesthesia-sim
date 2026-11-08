@@ -57,3 +57,5 @@ The test then failed with "after a split, these are not on screen:
 The widening drag is shorter than the narrowing one because of `PL-4L8B`.
 It still passes after `PL-L59K` gave each chart its own time window, merged
 from `main` on 2026-10-19.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

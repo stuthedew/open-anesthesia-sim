@@ -219,3 +219,5 @@ route the brief could not see was to stop the cost being paid at all, and the
 sketched module-scoped copytree is refuted rather than deferred: it is more
 code, it buys single-digit milliseconds per test once the commit is cheap, and
 it pays for them with the one property these tests cannot give up.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-CSV0`.

@@ -53,3 +53,5 @@ the rule by signature - never pass a `QByteArray` where Qt's C++ signature takes
 `QByteArray *` - and records upstream's stance on pointer arguments, which a
 report would have to answer. A tracker query found no report of the trap;
 PYSIDE-232, which a web search surfaced, is a different bug fixed in 2018.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Not debt against this gate, and recorded so that they do not look deferred". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

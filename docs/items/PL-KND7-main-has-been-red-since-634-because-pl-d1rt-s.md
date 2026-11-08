@@ -180,3 +180,7 @@ settled the mechanism. A reader wanting either is served.
 asserting an **absence** is satisfiable by anyone who deletes the string. That is
 `PL-879R`'s (`docket check` advises on a command's outcome, never its shape), now
 with three instances behind it: `PL-Y1W6`, `PL-D1RT` and `PL-C4RS`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "Waiting on an answer that holding v0.5.0 open would not produce".
+
+> `PL-KND7` joins them. It was filed the same day and waits on the same kind of answer. `main` has been red since `52205f6`, because two decisions of record overtook `PL-D1RT`'s `Done when.`. One decision un-absorbed the interface pass (`PL-L9RD`), and the other moved that pass after item 34 (`PL-PHKP`). So what becomes of `PL-D1RT` is for the project owner to decide, not a session. `PL-KND7` is in the workflow lane and affects no reader of the simulator.

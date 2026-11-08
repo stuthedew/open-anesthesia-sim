@@ -181,3 +181,5 @@ handles keep the host's surface" (which closes `PL-05M4`), and `ROADMAP.md`'s
 "the splitter handles are inert today", in the three places it is said in the
 present tense. The two dated places in `ROADMAP.md` that name `inert_splitter`
 as it stood on 2026-09-16 are left as written.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the brief of `PL-NMTF`.

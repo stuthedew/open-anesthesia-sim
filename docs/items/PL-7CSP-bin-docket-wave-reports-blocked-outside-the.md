@@ -81,3 +81,5 @@ line splits the same way. Neither is counted as clearable, so the gate closes
 exactly when it did. Pinned by
 `test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced`
 and `test_a_blocker_placed_at_or_after_the_gate_is_not_sequenced_ahead_of_it`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-2T03` and `PL-0C6W`.

@@ -52,3 +52,5 @@ was the edit", which stopped being true with the delete; it now says the naming
 is right for a new item. Four docstrings outside `touches` still give a
 `write_item` rename as the reason for their guard, and are `PL-PZR9` rather
 than edited here.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-CSV0`.

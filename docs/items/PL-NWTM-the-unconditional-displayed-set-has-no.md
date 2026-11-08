@@ -197,3 +197,5 @@ screen in every layout.
 **Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Goal" ended its third gap, the required values sitting inside the container about to become live, with this sentence. "Today's code" is the code on 2026-09-16, when the milestone was scoped and no Area could be closed.
 
 > A session looking at today's code would treat `.claude/rules/ui-areas.md` rule 5 as already satisfied, because nothing can be closed yet.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the brief of `PL-NMTF`.
