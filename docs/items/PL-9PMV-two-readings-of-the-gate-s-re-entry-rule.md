@@ -88,3 +88,7 @@ readings agreed.
 **Done when.** `ROADMAP.md` states one re-entry rule, the two passages agree,
 the entry notes beneath the frozen list cite the single form, and PL-WB0X's
 placement follows from it rather than from a judgment call.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.3.0 - the foundation" carried this in its out-of-scope list. "This bullet" is that list's entry excluding items captured after Gate 0 froze. The entry now keeps the exclusion and points to § "The gate is a snapshot, not a moving target", which states the re-admission rule.
+
+> - Any item captured after Gate 0 was frozen whose problem did not already exist at the freeze. A finding that *was* present re-enters by the presumption in "The gate is a snapshot, not a moving target". So does anything at `P0` or classed `safety`/`science`, whether it was present or not. This bullet used to name only the `P0`/`safety`/`science` half. That made it narrower than "The gate is a snapshot" and than step 4 of "The cadence". Those two agreed with each other, and this bullet did not (queue item PL-9PMV).

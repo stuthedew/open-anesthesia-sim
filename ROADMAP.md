@@ -3364,16 +3364,14 @@ the approved list deliberately. `PL-68XK` records why it was dropped.
 ### Goal
 
 Clear the inherited backlog, so that feature work starts from a codebase whose
-known defects are closed rather than carried forward. This release adds no
-capability. After it, the simulator does what it did before, but correctly.
+known defects are closed rather than carried forward. After it, the simulator
+does what it did before, but correctly.
 Its verification gate is widened to cover the inputs that the interface can
 actually reach. Its failure path can no longer leave partial state behind.
 
 Its contents are exactly Gate 0's items that fall outside the teachable case's
 own scope. Those are the items listed under § "Debt gate: the frozen list" in
-the v0.4.0 section below. The release has no scope of its own to specify,
-which is why this section is short. The frozen list *is* the specification,
-and nothing may be added to it
+the v0.4.0 section below. Nothing may be added to that list
 (see § "The gate is a snapshot, not a moving target").
 
 It is a minor release rather than a patch, by a deliberate exception that is
@@ -3387,9 +3385,9 @@ alone.
 - `make check` passes: `ruff format`, `ruff check`, `mypy`, `pytest`,
   `docket check`, and `tools/doc_check.py`.
 - No equation, parameter, or numerical method has changed, and the v0.0.2
-  circuit and v0.1.0 sevoflurane reference tests still pass unaltered. The
-  two safety items on the list tighten a verification bound and make the step
-  transactional. Neither is licensed to change a modelled value. If either
+  circuit and v0.1.0 sevoflurane reference tests still pass unaltered. Neither
+  of the two safety items the Goal describes is licensed to change a modelled
+  value. If either
   turns out to require one, that is a finding for the next gate and a scoped
   item of its own, not this release's work.
 
@@ -3397,14 +3395,8 @@ alone.
 
 - Anything in the v0.4.0 milestone's Required scope, including the six gate-0
   items that the milestone clears itself.
-- Any item captured after Gate 0 was frozen whose problem did not already
-  exist at the freeze. A finding that *was* present re-enters by the
-  presumption in "The gate is a snapshot, not a moving target". So does
-  anything at `P0` or classed `safety`/`science`, whether it was present or
-  not. This bullet used to name only the `P0`/`safety`/`science` half. That
-  made it narrower than "The gate is a snapshot" and than step 4 of
-  "The cadence". Those two agreed with each other, and this bullet did not
-  (queue item PL-9PMV).
+- Any item captured after Gate 0 was frozen, except the findings that
+  § "The gate is a snapshot, not a moving target" re-admits.
 - New capability of any kind. A release whose whole claim is "the ground is
   now solid" cannot also be the one that moves the ground.
 
@@ -3514,6 +3506,21 @@ under § "What counts":*
   every session to run `bin/docket triage`, which did not exist. Added after
   the freeze; see below.
 
+*Documentation, performance, and the one decision that is the project
+owner's:*
+
+- PL-Z4GF **and PL-SWFM** (S) — **both done** (commits `d40ff83`, `6e19632`).
+  One entry holding two ids: PL-Z4GF closed the README half of its original
+  scope, and the remainder — this file's own duplicated v0.2.3 table row and
+  stale "Current baseline" heading — surfaced later under the separate id
+  PL-SWFM. Per "The gate is a snapshot, not a moving target" and its presence
+  rule above (project owner, 2026-08-25), that problem was already inside
+  this frozen scope, so it cleared here rather than at the next gate,
+  regardless of which id or session it surfaced under.
+- PL-010 (S) Stop rebuilding render objects on every frame
+- PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
+  `d40ff83`).
+
 **Two entries added 2026-08-30 under the presence rule, both cleared in the
 same batch that added them.** The rule in "The gate is a snapshot, not a moving
 target" says that a finding re-enters this gate when the problem it describes
@@ -3551,15 +3558,8 @@ review that re-enter it:
   milestone's out-of-scope list names these classes as ones that re-enter the
   gate, whenever they were captured.
 
-PL-NV9W was added three entries later than the others. The delay is worth
-recording because it shows where the rule is easy to miss. The review proposed
-the item at `P2`, which would have left it outside the exception. But
-`docket check` refuses to place a `safety`-classed item below `P1`, so
-triaging it honestly raised its priority. *That* is what brought it inside
-this rule. The consequence was followed through once the project owner
-confirmed the priority. So classing a finding correctly can change, as a side
-effect, whether the finding belongs to the gate. That is something to check at
-triage, not only at capture.
+PL-NV9W was added three entries later than the others. `PL-NV9W` records
+why.
 
 Unlike the two entries above, these four do add to the work that the gate has
 left, by four items. That is the rule working as intended, not the gate being
@@ -3583,24 +3583,13 @@ captured on 2026-08-30, the same day that those four were admitted by exactly
 this rule. Yet this file named it nowhere: not here, not in v0.3.0's
 out-of-scope list, and not among the ten findings deferred to Gate 1.
 
-Leaving it out was an oversight, not a judgement. Recording that matters
-because another reading is possible. A later reader might find a
-`safety`-classed continuation of a frozen entry missing from the list, and
-take its absence for a deliberate deferral. It was not one. In any case, the
-exception is written so that it cannot be deferred.
-
 The pairing rule under § "What a frozen entry may take in" says that an entry
 is worked together with the entry it completes, not after it. That rule cannot
 be met here, because PL-VP7N, the entry that PL-0MLQ continues, shipped in
 v0.2.7. So PL-0MLQ is listed as its own entry.
 
-The failure was invisible to the tool as well as to the reader.
-`bin/docket wave` computes the gate's split by reading the entries recorded
-here against `docs/items/`. So it cannot count an entry that was never written
-down, and the gate reported one entry fewer than its real size for three days.
-This is the failure mode that the following phrase describes:
-"a gate nobody wrote down is a gate that gets renegotiated". Here it arrived
-through omission rather than through argument. PL-Y4Q4 records the diagnosis.
+The failure was invisible to the tool as well as to the reader. PL-Y4Q4
+records the diagnosis.
 
 Like the four above, this entry adds to the work that the gate has left, by
 one `M` item. To match, the step-2 size in "The timeline" moves from
@@ -3619,39 +3608,20 @@ problem. The gate replaced Phase 0 to solve that problem.
 
 **That deferral stands and is not reopened here: none of this item shipped in
 v0.3.0.** What was settled on 2026-09-02 (project owner) is where the rest of
-the item goes. Its brief stated three placements that could not all be true at
-once. The first was stage 1 before PL-DHV7, which ships in v0.4.0. The second
-was the whole item at Gate 1, which ships inside v0.5.0. The third was
-"a `v0.3.x` patch step". PL-4C41 was filed against that contradiction. The
-resolution is to split the item rather than to pick one of the three, because
-one item cannot sit in two milestones. Stages 1 and 2 are the two pure-module
-extractions. They are named in v0.4.0's Required scope above, where they gate
+the item goes. `PL-WB0X` records the placements that were weighed. Stages 1
+and 2 are the two pure-module extractions. They are named in v0.4.0's Required
+scope below, where they gate
 that milestone's MAC unit and its chart work. Stage 3, the `SimulationView`
 decomposition proper, is now queue item PL-B9PY. It stays at Gate 1, inside
 v0.5.0, where the only thing that requires it is v0.5.0's two-runs-at-once
 comparison.
 
-*Documentation, performance, and the one decision that is the project
-owner's:*
-
-- PL-Z4GF **and PL-SWFM** (S) — **both done** (commits `d40ff83`, `6e19632`).
-  One entry holding two ids: PL-Z4GF closed the README half of its original
-  scope, and the remainder — this file's own duplicated v0.2.3 table row and
-  stale "Current baseline" heading — surfaced later under the separate id
-  PL-SWFM. Per "The gate is a snapshot, not a moving target" and its presence
-  rule above (project owner, 2026-08-25), that problem was already inside
-  this frozen scope, so it cleared here rather than at the next gate,
-  regardless of which id or session it surfaced under.
-- PL-010 (S) Stop rebuilding render objects on every frame
-- PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
-  `d40ff83`).
-
-**Cleared by v0.4.0 itself (6 items).** Each appears in Required scope above:
+**Cleared by v0.4.0 itself (6 items).** Each appears in Required scope below:
 PL-DHV7 (MAC as a displayed unit), PL-VM40 (simulated time from a step count),
 PL-F52R (the MAC-awake reference band), PL-ZRSP (the F_A/F_I trace), PL-R3KB
 (agent selection discarding a run) and PL-011 (bounding the concentration
 history). PL-011 was cleared by being `dropped` on 2026-09-05, with its reason
-recorded. Beat 3 of "The cadence" accepts that as clearing, and the Required scope above
+recorded. Beat 3 of "The cadence" accepts that as clearing, and the Required scope below
 sets it out in full. Six of six.
 
 Findings made while clearing this gate go to Gate 1. The exceptions are `P0`
@@ -3663,8 +3633,7 @@ findings and `safety`/`science` findings, which re-enter this gate.
   PL-VM40). Today `SimulationState.elapsed_s` accumulates
   `+= simulation_step_s` on each step. Derive it from an integer step counter
   instead, and fix the step at 0.1 s. The run loop advances a fixed number of
-  steps per tick and never catches up to the wall clock. A slow machine runs
-  slower, but it does not run differently.
+  steps per tick and never catches up to the wall clock.
 
   *Landed 2026-09-04.* `SimulationState` holds the step count and the size of
   the step it is taking, and reports `elapsed_s` as their product.
@@ -3720,49 +3689,22 @@ findings and `safety`/`science` findings, which re-enter this gate.
 - **A recorded control-input timeline** (queue item PL-DR1Z). Every change to
   the fresh gas flow, the vaporizer dial, alveolar ventilation or cardiac
   output is stamped with the simulated time at which it took effect. Each
-  change is held with the state it describes and marked on the chart. This is
-  the recording half of planned-milestone item 8, not the replay half. The
+  change is held with the state it describes and marked on the chart. The
   changes are recorded as `(simulated_time, control, value)` entries rather
-  than as a fixed struct of named controls. Nitrous oxide (planned item 6)
-  adds a control that this milestone cannot list in advance. When it lands, a
-  struct would need a new field, and every past sample would have to be
-  migrated or left with a meaningless default. A tuple form costs nothing
-  today and needs no such migration later.
+  than as a fixed struct of named controls. `PL-DR1Z` records why.
 
   *Landed 2026-09-04 as a frozen `ControlChange` record rather than a literal
-  tuple, preserving the property this paragraph asks for.* The migration
-  argument is about a struct with **one field per control**. A record with one
-  `control` field that holds a stable identifier has the same immunity:
-  nitrous oxide adds an identifier and migrates nothing. The record also
-  carries what the entry actually needs, which is more than three values. The
-  item's own brief requires the old value as well as the new one. The
-  implementation adds the history index from which the mark is placed, the
-  unit that both values are in, and the adjustment that a drag's several
-  settings belong to. A bare 3-tuple could not hold those, and it would have
-  had to grow into an unnamed 7-tuple. See
+  tuple, preserving the property this paragraph asks for.* `PL-DR1Z` records
+  why the record keeps that property. See
   `docs/MODEL.md` § "The control-input timeline".
 - **`SimulationHistorySample` keyed by substance, not by six flat named
   compartment floats** (queue item PL-W3DD). There is exactly one substance
-  today, so this changes the representation, not the behavior. It matters
-  because item 12 (forking, promoted below to "Designed for forking") writes
-  its element-wise reproducibility proof directly against this record's
-  shape. Reshaping the record *after* that proof exists would mean reworking
-  a safety property that is already validated, instead of doing a plain
-  refactor. Nitrous oxide (planned item 6) needs a second substance in the
-  same record. The MAC readout then becomes a fold over the record's
-  substances rather than a rewrite.
+  today, so this changes the representation, not the behavior. § "Designed for
+  forking" below says why it matters.
 
   *Landed 2026-09-05. The change applied to the store and the chart's binding
-  as well as to the record.* The bullet names only the record. But a row keyed
-  by substance, on top of a store keyed by compartment alone, would have had
-  to refuse or pool a second substance. That is the half-migration the change
-  exists to avoid. So `RunHistory` is keyed by `RecordedSeries`, which names a
-  substance and a quantity. Its substances are fixed when it is built, and a
-  sample with any other set of substances is refused. The wash-in stretches
-  are per substance, for the same reason that the quotient is. A chart trace
-  is bound to a `RecordedSeries` rather than to a bare quantity. The trace is
-  paired with the agent that the drawing frame's own snapshot names. Nothing
-  displayed changed. See `docs/MODEL.md` § "Interface boundary".
+  as well as to the record.* `PL-W3DD` records how. Nothing displayed changed.
+  See `docs/MODEL.md` § "Interface boundary".
 - **Changing agent becomes an explicit new case** rather than a selector
   that silently discards the run and its history (queue item PL-R3KB).
 - **A MAC-awake reference band** on the chart (queue item PL-F52R). It shows a
@@ -3778,17 +3720,9 @@ findings and `safety`/`science` findings, which re-enter this gate.
 
   *Not landed, and not deferred either: dropped 2026-09-05, the day of the
   cut.* This is the one Required-scope entry that the milestone shipped
-  without. It is recorded here rather than removed, because nobody can audit
-  a scope list afterwards if its unmet entries are simply deleted.
+  without. `PL-011` records how it was dropped.
 
-  The entry left the release at `needs-decision`, was carried nominally to
-  v0.4.1, and was closed the same day. The design round that followed the cut
-  settled it in the one direction that nobody had costed. The score
-  architecture **removes** this store rather than bounding it. Once state is a
-  closed-form function of the run's control-input timeline (`PL-T691`), the
-  controller keeps a score plus one keyframe per control event. That is about
-  140 KiB for a 30-day ICU case, against the 3.16 GB that this entry existed
-  to bound. `PL-2FM6` deletes `RunHistory` outright. Deciding an eviction rule
+  `PL-2FM6` deletes `RunHistory` outright. Deciding an eviction rule
   for a store that is about to be deleted spends a decision for nothing. So
   the question was retired rather than answered. `PL-011`'s measurements are
   kept in `PL-T691`'s brief.
@@ -3801,7 +3735,7 @@ findings and `safety`/`science` findings, which re-enter this gate.
   simulated day takes 8 minutes and 110 MB. A simulated week takes 34 minutes
   and roughly 770 MB. Until `PL-T691` and `PL-2FM6` land, that growth is
   unbounded and nothing tracks it. That is the cost of dropping the entry
-  rather than deferring it, and it is recorded here so that it is visible.
+  rather than deferring it.
 
 - **A documentation sweep** (queue item PL-RCTQ). It covers the sections of
   `docs/MODEL.md` on the interface boundary, the minimum displayed outputs and
@@ -3855,8 +3789,7 @@ v0.4.0 is complete only when all of the following are true:
 - Every control change during a run is recorded with the simulated time at
   which it took effect, and is visible on the chart.
 - The recorded history is keyed by substance rather than by flat named
-  compartment floats. So item 12's reproducibility proof is written against a
-  shape that a second substance will not change (queue item PL-W3DD).
+  compartment floats (queue item PL-W3DD).
 - Changing agent cannot discard a run unless the user is told what will be
   lost and confirms.
 - The MAC-awake band and the F_A/F_I trace each show, at the point of
@@ -3865,8 +3798,7 @@ v0.4.0 is complete only when all of the following are true:
   non-alveolar compartment does not claim, the reproducibility guarantee
   above, and the interface's new obligations.
 - The v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference
-  tests remain unchanged and passing. No equation, parameter or numerical
-  method has changed.
+  tests remain unchanged and passing.
 - Ruff formatting and linting, strict mypy, pytest, and GitHub Actions all
   pass.
 

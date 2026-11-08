@@ -72,3 +72,7 @@ still filling the row exactly), verified by rendering at 1024, 1280 and 1440.
 At 1280 and above every label is on one line. At 1024 it wraps again, along
 with three labels that already wrapped there before this change; `PL-8M05`
 carries that.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this under § "Debt gate: the frozen list", in the note on the four entries added on 2026-08-30 from an outside review. "The others" are PL-VP7N, PL-SLHS and PL-9Y42, "the exception" and "this rule" are the re-entry of `safety`- and `science`-classed findings into Gate 0, and "the gate" is Gate 0. The note keeps the paragraph's first sentence and points here.
+
+> PL-NV9W was added three entries later than the others. The delay is worth recording because it shows where the rule is easy to miss. The review proposed the item at `P2`, which would have left it outside the exception. But `docket check` refuses to place a `safety`-classed item below `P1`, so triaging it honestly raised its priority. *That* is what brought it inside this rule. The consequence was followed through once the project owner confirmed the priority. So classing a finding correctly can change, as a side effect, whether the finding belongs to the gate. That is something to check at triage, not only at capture.
