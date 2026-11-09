@@ -3,11 +3,13 @@ id: PL-D42Z
 title: docs/machine-abstraction.md's (b11) row calls delivery unchanged under a shut surplus gas valve, where the fresh gas flow stops being a free input and becomes an output
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: circuit-boundary-docs
 touches: docs/machine-abstraction.md
 added: 2026-09-20
+closed: 2026-11-09
+pr: 2074
 payoff: an implementer pairing a closed_circuit removal with fresh_gas_bypass is told the flow becomes an output, instead of reading a table row that calls delivery unchanged
 verify: grep -qE '^\| \(b11\).*uptake' docs/machine-abstraction.md
 ---
@@ -48,3 +50,11 @@ on", the four-row behavior table; § "The closed set of behaviors", the
 **Done when.** The table's (b11) row says what a shut valve does to the flow
 that feeds delivery, rather than only to the removal rate, and the
 `closed_circuit` row names the second thing an implementation of it owes.
+
+**Done 2026-11-09.** The (b11) row of `docs/machine-abstraction.md` now says
+the delivery formula is unchanged but $`\dot V_F`$ becomes an output, the
+patient's total uptake. A paragraph after the removal table says what an
+implementation of `closed_circuit` owes besides the removal rate: computing the
+fresh gas flow from total uptake, which needs a patient who consumes oxygen and
+a variable alveolar volume. It points at `docs/MODEL.md` § "Breathing circuit"
+for the arithmetic.

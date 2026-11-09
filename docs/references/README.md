@@ -446,9 +446,14 @@ four chapters are the ones this project would reach for first:
 Route and depth, as `.claude/rules/citing-sources.md` requires: the corpus's
 section PDFs, read with `pdftotext -layout` on 2026-09-15 for the front matter,
 the full table of contents and every section's boundary pages, plus PubMed
-metadata and abstracts for all 22 chapters. **No chapter has been read at full
-text**, so nothing here may yet be cited for a value. Three pages have been
-read since. For `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
+metadata and abstracts for all 22 chapters. **Meyer et al.'s chapter is the
+one chapter read at full text.** The machine survey read it on 2026-09-19 from
+the corpus's section dump `modern_anesthetics/08_Part_IV_Ch5-6_Index`, and
+`docs/machine-survey.md` § "Sources" records the route and the pages quoted.
+`docs/MODEL.md` § "Breathing circuit" cites it for the Zeus's surplus gas valve
+(`PL-WJNS`). No other chapter has been read at full text, so no other chapter
+may yet be cited for a value. Three pages of another chapter have been read
+since. For `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
 Eger's five-compartment model adds a lung and an "intertissue diffusion"
 compartment, "hypothesized to be fat adjacent to well-perfused tissues", citing
 Carpenter et al. 1986; and p. 166, which reads Yasuda et al.'s fourth

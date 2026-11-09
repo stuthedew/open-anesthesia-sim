@@ -77,7 +77,7 @@ machine that the survey found separates them:
 | Survey entry | Delivery | Removal |
 | --- | --- | --- |
 | (b3) direct injection into the circle | independent of $`\dot V_F`$ | unchanged |
-| (b11) surplus gas valve closed | unchanged | zero |
+| (b11) surplus gas valve closed | same formula, but $`\dot V_F`$ becomes an output: the patient's total uptake | zero |
 | (b10) sidestream sample, not returned | unchanged | $`\dot V_F + \dot V_S`$ |
 | (b1) dial is not the delivered concentration | $`F_D`$ is a function, not the dial | unchanged |
 
@@ -212,6 +212,15 @@ The removal strategy sets $`\dot m_{\mathrm{out}}`$:
 | --- | --- | --- | --- |
 | `fresh_gas_displacement` | $`\dot V_F + \dot V_S`$ | today's model, plus (b10) | implemented, with $`\dot V_S = 0`$ |
 | `closed_circuit` | $`\dot V_S`$ | (b11), surplus valve shut | not implemented |
+
+An implementation of `closed_circuit` owes a second thing besides the removal
+rate. With the surplus gas valve shut, the fresh gas flow equals the patient's
+total uptake, so it must compute $`\dot V_F`$ instead of taking it from the
+dial. Paired with `fresh_gas_bypass` at a dialled flow, the vaporizer keeps
+adding agent at that flow, and the run gives a plausible curve and a wrong
+number. Computing the total uptake needs a patient who consumes oxygen and a
+variable alveolar volume, which this model does not have (`docs/MODEL.md`
+§ "Breathing circuit").
 
 The sample draw $`\dot V_S`$ is *data* rather than a third strategy, because
 one expression covers all three of the survey's sampling configurations: a

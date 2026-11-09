@@ -3,11 +3,13 @@ id: PL-H47Y
 title: docs/machine-survey.md section (a1) says Shin et al.'s three Draeger apparatus volumes cite sources nobody could open; the full text names them as Draeger's instructions-for-use manuals (refs 12-14), says the 1.2 L is a Hudson RCI circuit, and its sums leave the set-up's 3 L reservoir bag out - the table should say so, as PL-TBMX's rule in docs/MODEL.md now does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: machine-profile-framework
 touches: docs/machine-survey.md
 added: 2026-10-04
+closed: 2026-11-09
+pr: 2074
 payoff: a machine-profile author sent to the survey learns that Shin et al.'s volumes are Draeger's own manual figures and that the with-circuit totals leave out a 3 L bag, which would otherwise nearly double a Perseus A500's circuit time constant
 verify: grep -qF 'Hudson RCI' docs/machine-survey.md && grep -qF '3 L reservoir bag' docs/machine-survey.md && ! grep -qF 'onward citations this session could not reach' docs/machine-survey.md
 ---
@@ -57,3 +59,14 @@ time constants built on it, leave the set-up's 3 L reservoir bag out.
 al. 2008, the Dräger-authored *Modern Anesthetics* chapter, which may be an
 openable source for the same volumes where the manuals are not. Check it
 before citing it.
+
+**Done 2026-11-09.** The reference list was read through NCBI efetch on
+2026-11-09: refs 12 to 14 are Dräger Medical's instructions for use for the
+Primus IE (2014), the Perseus A500 (2013) and the Zeus IE (2015). The full text
+confirms the Hudson RCI circuit (Teleflex) of 1.2 L, the 3 L reservoir bag, and
+a sum that leaves the bag out. `www.draeger.com` was still refused at CONNECT on
+2026-11-09, so the manuals stay unread. The survey's second point under § "How
+a value gets into this document", the (a1) table header and paragraph, and the
+Shin et al. entry under § "Sources" now say so. The lead about Meyer et al.
+(ref 15) as an openable source for the volumes was not checked, and nothing
+cites it.

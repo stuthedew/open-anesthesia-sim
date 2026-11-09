@@ -3,11 +3,13 @@ id: PL-DVTV
 title: docs/references/README.md says no Modern Anesthetics chapter has been read at full text, but Meyer et al. was read on 2026-09-19 and is now cited in docs/MODEL.md
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: circuit-boundary-docs
 touches: docs/references/README.md
 added: 2026-09-20
+closed: 2026-11-09
+pr: 2074
 payoff: a session checking the provenance of docs/MODEL.md's new Meyer citation finds the reading recorded, instead of a standing refusal that would read it as unsourced
 verify: grep -q 'PL-WJNS' docs/references/README.md
 ---
@@ -39,3 +41,8 @@ entry.
 **Done when.** The entry records that Meyer et al.'s chapter has been read at
 full text, with the date and the route, and the blanket sentence is narrowed to
 the chapters that genuinely have not been read.
+
+**Done 2026-11-09.** `docs/references/README.md` § "Schüttler & Schwilden
+2008" now says Meyer et al.'s chapter is the one chapter read at full text, on
+2026-09-19 from the corpus's section dump, cited in `docs/MODEL.md` § "Breathing
+circuit" (`PL-WJNS`). The blanket sentence now covers the other chapters only.

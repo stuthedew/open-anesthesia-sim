@@ -108,9 +108,11 @@ document by these rules:
    measurement outranks a specification sheet, and a specification sheet is not
    a measurement.
 2. **A figure a paper carries but did not measure is marked as such.** Shin et
-   al. print the three Dräger apparatus volumes and cite them onward to sources
-   this session could not open. They are recorded here as tier 2, a secondary
-   synthesis, and not as measurements.
+   al. print the three Dräger apparatus volumes and cite Dräger's instructions
+   for use for each machine (their refs 12 to 14). Those manuals are still
+   unread, because the network this project's sessions run on refuses
+   `www.draeger.com` (checked 2026-11-09). The volumes are recorded here as
+   tier 2, a secondary synthesis, and not as measurements.
 3. **A manufacturer's own technical account is used where one is held, and
    quoted.** The private reference corpus holds *Modern Anesthetics*,
    whose chapter on inhalational dosing technology is written by five Dräger
@@ -157,7 +159,7 @@ single most-taught point about a circle system and the model already carries it.
 this figure on the two most recent Dräger designs and roughly equal to it on the
 older one, once a disposable patient circuit is added:
 
-| Machine | Apparatus incl. absorber, excl. patient circuit | With a 1.2 L patient circuit | $`\tau_C`$ at 4 L/min |
+| Machine | Apparatus incl. absorber, excl. patient circuit | With a 1.2 L Hudson RCI circuit, without the 3 L reservoir bag | $`\tau_C`$ at 4 L/min |
 | --- | --- | --- | --- |
 | Dräger Primus | 4.7 L | 5.9 L | 89 s |
 | Dräger Perseus A500 | 2.1 L | 3.3 L | 50 s |
@@ -166,9 +168,13 @@ older one, once a disposable patient circuit is added:
 | Getinge FLOW-i | unknown | unknown | — |
 | Dräger Apollo, Fabius | unknown | unknown | — |
 
-The apparatus figures and the 1.2 L circuit are Shin et al.'s, tier 2 as
-explained above; the right-hand column is arithmetic on them at this
-simulator's own default flow. **So machine choice moves the circuit time
+The apparatus figures are Shin et al.'s, taken from Dräger's manuals and tier 2
+as explained above. The 1.2 L is the internal volume of the Hudson RCI
+breathing circuit (Teleflex) in Shin et al.'s set-up. Their with-circuit sum is
+"the internal volume of AM + the volume of breathing circuit 1.2 L", which
+leaves out the set-up's 3 L reservoir bag, and so do the with-circuit column and
+the time constants built on it. The right-hand column is arithmetic on them at
+this simulator's own default flow. **So machine choice moves the circuit time
 constant by a factor of about 1.8 at any given flow** — which is a visible
 difference in the first two minutes of every run.
 
@@ -713,9 +719,12 @@ corpus and says so.
   rate and type of anesthesia machine on time to reach target sevoflurane
   concentration. *BMC Anesthesiol.* 2017;17(1):10.
   PMID 28103806; [DOI 10.1186/s12871-016-0294-y](https://doi.org/10.1186/s12871-016-0294-y).
-  **Full text read** (PMC5248460). Carries the three Dräger apparatus volumes
-  with onward citations this session could not reach; those figures are tier 2
-  here, while its times to target are its own measurement.
+  **Full text read** (PMC5248460; reference list read through NCBI efetch,
+  2026-11-09). Carries the three Dräger apparatus volumes, cited to Dräger's
+  instructions for use for the Primus IE (2014), the Perseus A500 (2013) and the
+  Zeus IE (2015), its refs 12 to 14. Those manuals are unread because
+  `www.draeger.com` was refused on 2026-11-09, so the volumes are tier 2 here. Its times to
+  target are its own measurement.
 
 **Model-relevant behavior and machine description (tier 2, or device
 description).**
