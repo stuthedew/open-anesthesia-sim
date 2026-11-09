@@ -859,9 +859,10 @@ silent inside a Qt slot as a modelling failure is.
 that the controller does not step itself, such as a setting, goes through
 `halt_at_supported_limit()`. A run that steps onto the supported run length
 meets no exception. `SimulationController.advance()` halts it on the step that
-arrives there, and the snapshot reads the limit from the run's own state. So a
-run that is forked or reset onto that step is also treated as stopped there
-(`PL-5291`).
+arrives there, and the snapshot reads the limit from the run's own state
+(`PL-5291`). No branch or Reset lands on the limit, because `_resume_point`
+rejects a fork there, as § "What a branch is, and what it shares with its
+parent" says (`PL-VHQX`).
 
 `fail()` sets a third run state. The snapshot carries it as `failure_reason`,
 and the dashboard renders it as "Stopped — simulation error" with a banner over
