@@ -3,11 +3,13 @@ id: PL-XRZW
 title: ROADMAP.md's v0.4.26 section calls Gate 2's freeze an exception and a second instance, while § "The cadence" says the freeze trigger changed on 2026-10-03, so no exception remains, and that v0.4.26 was counted as a second exception in error
 priority: P3
 effort: S
-status: untriaged
+status: dropped
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-09
+reason: The restructure removed both passages: v0.4.26's section now says only that Gate 2 freezes when v0.5.0 ships, which agrees with the cadence's later-of-two-days trigger, and neither 'Second instance' nor 'counted as a second exception in error' remains in ROADMAP.md.
 ---
 
 **Problem.** ROADMAP.md's v0.4.26 section calls Gate 2's freeze an exception and a second instance, while § "The cadence" says the freeze trigger changed on 2026-10-03, so no exception remains, and that v0.4.26 was counted as a second exception in error
@@ -23,3 +25,7 @@ added: 2026-11-07
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. v0.4.26's "first of two instances" and the later sentence calling v0.4.26 a patch were both in `ROADMAP.md` at `817a4d88`.
+
+**Checked 2026-11-09:** `grep -n -i 'second instance\|second exception\|in error' ROADMAP.md` finds neither passage. v0.4.26's section now says only that Gate 2 freezes when v0.5.0 ships, which agrees with § "The cadence": a gate freezes on the later of its milestone's scoping and its predecessor's ship.
+
+**Generator check.** None owed: the fault no longer exists, so the item is dropped.

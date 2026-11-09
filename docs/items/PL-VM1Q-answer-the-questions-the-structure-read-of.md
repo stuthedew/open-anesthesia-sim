@@ -1,10 +1,15 @@
 ---
 id: PL-VM1Q
 title: Answer the questions the structure read of ROADMAP.md's v0.1.0 to v0.5.0 records left for their author: missing outcomes of completed releases, counts that disagree, contradictions between passages, and terms never defined
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-08
+payoff: The completed-release records settle the questions they are read for, instead of reading as open or giving counts that disagree.
+verify: grep -qE '^\*\*Answers' docs/items/PL-VM1Q-*.md
 ---
 
 **Problem.** Answer the questions the structure read of ROADMAP.md's v0.1.0 to v0.5.0 records left for their author: missing outcomes of completed releases, counts that disagree, contradictions between passages, and terms never defined
@@ -53,3 +58,11 @@ added: 2026-11-08
 38. v0.5.0's Required scope uses "frozen gate", "declaration slot", "path-scoped rule", "selector", "running-agent chip" and "the Goal sentence" without defining them.
 39. v0.5.0's definition of done: what is `PL-WZVZ` in words, what are beat 3's terms for a deferral, is "a threshold" a bookmark, and how are the one-axis comparison and the memory bound checked? What do `docket check` and `tools/doc_check.py` cover, in words?
 40. v0.5.0's out-of-scope list: what is Gate 2 (does § "The cadence" define it)? What range of one-decimal times and what date stand behind "refuses 35.5%", and what is "the whole-step fork guard"? What is "the area system", "the act this milestone is named for", and "the fit-run scale"? Which item records the 2026-09-21 decision, so the owner's quotation and the count can move there? Which are the four kept items?
+
+**Why it matters.** The completed-release sections are the record a later session reads to learn why the code is as it is. A release headed "Completed" that reads as open, or counts that disagree, make the record untrustworthy where it is meant to settle questions.
+
+**Done when.** Each question has an answer recorded in this brief, under an `**Answers.**` heading, taken from the version table, the release's cut item, git history or the item named. Where no record holds an answer, the brief says so. The answer that belongs in `ROADMAP.md` is written there by the line edit (`PL-YRY3`) or by its own commit.
+
+**Sorted 2026-11-09: whose each question is.** All forty are a session's. Each asks what a shipped release did, which record holds a decision, which of two counts is right, or how a passage should be worded. The version table, the cut items, `git log -S` and the items named answer the first three kinds, and wording is a session's call. None asks what the project is for or what a learner should see, so none needs the owner.
+
+**Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.

@@ -1,9 +1,15 @@
 ---
 id: PL-LG78
 title: docs/maintainer.md § "Keeping the toolchain current", moved from ROADMAP.md, still carries its structure read's findings: its main point comes last in its first paragraph, two sentences repeat its lead, how each drift.yml job works and the decision history belong elsewhere, the shuffled-order check fits neither its heading nor its lead, and its heading promises upgrades it says do not happen
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
 feature: maintainer-guide-structure
+touches: docs/maintainer.md, .github/workflows/drift.yml
 added: 2026-11-07
+payoff: the owner learns from the section's first lines what happens when a dependency or Python moves and what a red scheduled run means
+verify: ! grep -qF 'The current pins are correct today' docs/maintainer.md
 ---
 
 **Problem.** docs/maintainer.md § "Keeping the toolchain current", moved from ROADMAP.md, still carries its structure read's findings: its main point comes last in its first paragraph, two sentences repeat its lead, how each drift.yml job works and the decision history belong elsewhere, the shuffled-order check fits neither its heading nor its lead, and its heading promises upgrades it says do not happen
@@ -24,3 +30,11 @@ added: 2026-11-07
 **Queries the tree answers.** "The gate" and `quality.yml` are the checks every pull request must pass before it merges, which `.github/workflows/quality.yml` runs. A failed run reaches the owner through the session-start digest, which names each `drift.yml` job whose newest result on `main` is not a pass (`tools/main_ci_status.py`, `PL-JTWV`). `PL-QSWS` holds the decision against automated bumps, and `PL-ZBJ0` is the evidence about broad automation. `PL-BYHS` is the Flet error in the same paragraph.
 
 **Done when.** Each finding above is applied, or recorded here with the reason it was not, and no statement of the section is lost.
+
+**Checked 2026-11-09:** § "Keeping the toolchain current" in `docs/maintainer.md` is unchanged since the move. Its first body paragraph still ends with "The failure being guarded against is not a stale pin", and the section still holds "The current pins are correct today" and "Automated bumps were considered and rejected".
+
+**Why it matters.** The owner reads this section to learn what happens when a dependency or Python moves. Its main point comes last, and the job details push down what a red run means for him.
+
+**Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep (chapter read 43), carried into `docs/maintainer.md` word for word by `PL-G6DP`.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88 the section's text was in `ROADMAP.md` ("The current pins are correct today; the point is knowing ..."), with the same order and repeats that the structure read found. `PL-G6DP` moved it to `docs/maintainer.md` later without changing it, so the problem was present. The item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it and it stays off the frozen list.

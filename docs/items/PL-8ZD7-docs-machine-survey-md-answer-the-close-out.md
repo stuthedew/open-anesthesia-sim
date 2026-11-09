@@ -1,9 +1,15 @@
 ---
 id: PL-8ZD7
 title: docs/machine-survey.md: answer the close-out copy editor's queries (contradictions and unstated reading depth)
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: defect, docs
 feature: machine-docs-structure
+touches: docs/machine-survey.md
 added: 2026-11-07
+payoff: a clinician or contributor checking a machine value against the survey finds a source and a reading depth for each entry, and no choice asked for that was already made
+verify: ! grep -qF 'Choose option 1 or 2' docs/machine-survey.md
 ---
 
 **Problem.** The close-out copy edit of docs/machine-survey.md (`PL-3K13`, 2026-11-07) raised the
@@ -24,7 +30,7 @@ Where the restructure in `PL-3MTS` would remove or move the sentence, do this
 item with it or after it.
 
 **Done when.** Each query below is either fixed in docs/machine-survey.md or answered here as
-not a defect, with the reason.
+not a defect, with the reason. In particular, the inlet-position entry no longer asks the reader to "Choose option 1 or 2": it points to the choice that `docs/machine-abstraction.md` § "Fresh gas inlet position is not modelled" records.
 
 ## Queries
 
@@ -86,3 +92,11 @@ The structure read of 2026-11-05 raised queries, and the restructure of 2026-11-
 - Biro 1997's tier: § "Sources" lists Biro under "Measurements of quantities this model computes (tier 1)". Biro measured minute volume with and without fresh gas decoupling, and § "(b5)" says that effect changes no simulated value, because ventilation is a patient setting in this model. Should the entry move to the device-description group? (Raised by the restructure's blind review, 2026-11-07.)
 
 The structure read's other per-chapter queries are in the project's shared files, under `v0.7.0/repo-copy-edit/runs/docs-machine-survey-md/structure/chapter-*.txt`, on the lines that begin "Query". Most ask for a term to be explained where it is first used, or for a citation beside a value. Read each one against the restructured text: some no longer apply.
+
+**Checked 2026-11-09:** after the restructure (`PL-3MTS`, done), a sample of the queries still applies to `docs/machine-survey.md`. "Choose option 1 or 2, and record the choice in the work item (`PL-FG9D`)" is still at row 623, though `docs/machine-abstraction.md` § "Fresh gas inlet position is not modelled" records that choice. "This is the only survey entry that affects an equation" is still at row 536. Rows 190 and 135 still name "the accuracy table" and "bucket" without saying where or what. § "(b2)" still gives the sevoflurane 8.0% and isoflurane 5.0% maxima with no source in the survey (the data files cite one, as a manufacturer specification). The Bashraheel, Jakobsson, Leijonhufvud and Zumsande entries still give no reading depth. One query no longer applies: `grep -n 'how far' docs/machine-survey.md` finds no sentence claiming every entry says how far its source was read. So the item still holds, and the session that works it reads each query against the current text.
+
+**Why it matters.** A clinician or a contributor checks a stored machine value against this survey. An entry with no reading depth, a value with no source, or a choice the document asks for that was already made sends that reader to the wrong conclusion or to no source at all.
+
+**Generator check.** One-off: queries from the `docs/machine-survey.md` copy edit and structure read (`PL-3K13`, `PL-3MTS`).
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/machine-survey.md` already has "the one entry that reaches an equation" (row 545), "bucket" with no definition (row 134), "the accuracy table's default-flow" column with no location (row 189), "No machine publishes one" (row 596), and the Bashraheel entry with no reading depth (row 791). Some individual queries may concern wording added after the freeze; the item as a whole was present. So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.

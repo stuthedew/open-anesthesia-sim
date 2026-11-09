@@ -8,7 +8,7 @@ classes: defect
 feature: copy-editor
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
 blocked-by: PL-TG6P, PL-DH17, PL-HNNH, PL-TTBF
-deferred-from: v0.7.0 - waits on PL-TG6P, PL-DH17, PL-HNNH and PL-TTBF, four untriaged copy-editor findings that no release schedules, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
+deferred-from: v0.7.0 - waits on PL-TG6P, PL-DH17, PL-HNNH and PL-TTBF, four copy-editor findings whose problems are new since the freeze and which no release schedules, so it is deferred with them on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
 verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md

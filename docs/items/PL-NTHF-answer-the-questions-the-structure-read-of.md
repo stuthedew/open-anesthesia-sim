@@ -1,10 +1,15 @@
 ---
 id: PL-NTHF
 title: Answer the questions the structure read of ROADMAP.md's Development pathway and Planned milestones left for their author: Phase 0's decision record, contradictions between catalogue entries, and figures with no date or unit
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-08
+payoff: The pathway and the planned-milestone catalogue stop contradicting each other, and each figure in them carries its date and unit.
+verify: grep -qE '^\*\*Answers' docs/items/PL-NTHF-*.md
 ---
 
 **Problem.** Answer the questions the structure read of ROADMAP.md's Development pathway and Planned milestones left for their author: Phase 0's decision record, contradictions between catalogue entries, and figures with no date or unit
@@ -36,5 +41,17 @@ added: 2026-11-08
 21. The introduction says "None of items 1-43 mix scientific-core and UI/tooling concerns". Item 37 owes a parameter file and a display, and item 43 covers the simulator, its documents and the apparatus. Does the sentence still hold?
 22. Item 43 says `PL-K88Z`'s inventory sizes the work "before the row is scoped". Is the row scoped now?
 
+**Why it matters.** § "Development pathway" and § "Planned milestones" are what the owner reads to decide what comes next. Contradictions between entries, and figures with no date or unit, make each entry need checking before it can be relied on.
+
 **Done when.** Each question is answered in `ROADMAP.md`, or in the item that records the decision, and the answer is recorded here.
 
+**Sorted 2026-11-09: whose each question is.** Every question is a session's, because the tree, git history or an item record answers it, or because it is wording:
+
+- Questions 1 to 3: `git log -S` on `ROADMAP.md` finds who wrote each sentence, and when. Where no item records the decision, say so and file one.
+- Questions 4 to 8, 10, 15, 19 to 21: wording, or a fact the roadmap or the named item already records (`PL-5XG1` for questions 5 and 6, `docs/interface-provenance.md` for question 15, item 1's account of item 39 for question 20).
+- Question 9: `src/anesthesia_sim/app/theme.py` records the 1.48 spacing.
+- Questions 13, 14, 17, 18, 22: the item store, the version table and `docs/interface-provenance.md`. `PL-7J96` was dropped and `PL-2QMK` closed, which also feeds `PL-1BVB`.
+- Question 16: item 31 has no phase or release, so it is unscheduled intent. Placing it would be a new decision, and nobody has asked for one.
+- Questions 11 and 12 concern how item 30 will work. They are recorded as open for item 30's own scoping round, and they are not a question of the roadmap's wording now.
+
+**Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
