@@ -3,11 +3,13 @@ id: PL-GSPR
 title: docs/ARCHITECTURE.md's package map says blood.py, tissue.py and circuit.py advance their own amounts, but § 'Data flow' says one exact propagation advances the whole coupled system; the map may be stale (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: architecture-md-structure
 touches: docs/ARCHITECTURE.md
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor looking for how a run advances goes to the one exact propagation, not to per-compartment methods that no run calls
 verify: grep -qF 'not how a run advances' docs/ARCHITECTURE.md
 reenters: PL-4FBP

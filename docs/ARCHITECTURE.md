@@ -101,11 +101,11 @@ src/anesthesia_sim/
 │   ├── alveolar.py                # alveolar gas compartment
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
-│   ├── exponential_approach.py    # the first-order approach to a held input that blood.py and tissue.py advance their amount by, and circuit.py its fraction, which is what the circuit stores: formed from the value held for a step closing up to half the gap and from the equilibrium beyond, exact at zero flow and at a full approach
+│   ├── exponential_approach.py    # the first-order approach to a held input, each compartment's own closed-form step in the advance methods of blood.py, tissue.py and circuit.py; not how a run advances, which is AgentUptakeSystem.advance alone: formed from the value held for a step closing up to half the gap and from the equilibrium beyond, exact at zero flow and at a full approach
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
-│   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
+│   ├── uptake_system.py      # couples circuit + alveoli + patient; AgentUptakeSystem.advance is a run's step, one exact propagation of the whole system
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
