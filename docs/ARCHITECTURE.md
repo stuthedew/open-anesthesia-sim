@@ -242,13 +242,13 @@ Workspaces" describes the shipped set.
 **Startup / parameter loading:**
 
 ```text
-data/agents/sevoflurane.json                ──┐
+data/agents/<agent_id>.json                 ──┐
 data/patients/reference_adult.json          ──┤
 data/machines/reference_circle_system.json  ──┴─> core/parameters.py
                                         (parse + validate schema, units, ranges)
                                         │
                                         ▼
-                          AgentUptakeSystem.default()
+                      AgentUptakeSystem.for_agent(agent_id)
                           (circuit + alveoli + patient compartments)
                                         │
                                         ▼

@@ -3,11 +3,13 @@ id: PL-HLTR
 title: docs/ARCHITECTURE.md's startup diagram builds the system with AgentUptakeSystem.default(), but § 'Layering' and § 'Data flow' say for_agent() builds it from the data files; one is stale (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: architecture-md-structure
 touches: docs/ARCHITECTURE.md
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor following the startup diagram lands on the constructor that startup actually calls
 verify: ! grep -qF 'AgentUptakeSystem.default()' docs/ARCHITECTURE.md
 reenters: PL-4FBP
