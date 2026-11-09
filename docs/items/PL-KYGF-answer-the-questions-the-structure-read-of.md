@@ -3,7 +3,7 @@ id: PL-KYGF
 title: Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
 priority: P3
 effort: M
-status: untriaged
+status: needs-decision
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md

@@ -3,7 +3,8 @@ id: PL-8RFG
 title: docs/MODEL.md uses 'gate' for four different checks (step-refinement, independent-solution, published-data and release), so a clinician cannot tell them apart; give each its own name (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05

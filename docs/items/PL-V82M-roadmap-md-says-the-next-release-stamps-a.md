@@ -3,7 +3,8 @@ id: PL-V82M
 title: ROADMAP.md says the next release stamps a release's own cut pull request every time, but since PL-KRS6 a cut item ships in no release, and the version rows that stated that rule are now one sentence each
 priority: P2
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-11-07

@@ -7,7 +7,7 @@ status: ready
 classes: docs
 feature: repo-copy-edit
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
+deferred-from: v0.7.0 - not present at the freeze (817a4d88) or now: the loss is from a copy-editor test run of 2026-11-09, in no commit
 added: 2026-11-09
 payoff: the next line edit of docs/MODEL.md can reword the clinician's sentence about tiny steps without losing the developer's fact that the code accepts them silently
 verify: grep -qiF 'raises no exception' docs/MODEL.md
@@ -33,3 +33,5 @@ The clinician's point survives: the model gives no sign that these steps are wro
 **Done when.** The note for developers of § "Supported simulation step" states that the step function raises no exception at any of the tabulated steps, and that from about 10⁻¹⁶ s down a step changes nothing and still returns normally. The clinician's sentence can then be reworded without losing the fact. Putting it in the note now, ahead of the line edit, is this session's choice of where the fix goes. It meets the owner's decision that the fix is made in `docs/MODEL.md`, and does not wait for a rerun of the copy editor.
 
 **Generator check.** One-off: a single loss in a copy-editor test run. The brief's own condition for a copy-editor rule, a second loss of this kind, has not occurred. No head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88 and on cfd4a4b6 the sentences are intact. The loss happened only in a copy-editor test run of 2026-11-09 under `PL-F0Q2`, and no commit carries it. The deferral stays with that reason.

@@ -3,7 +3,7 @@ id: PL-71H3
 title: Answer the questions the structure read of ROADMAP.md's v0.7.0 section left for its author: which choices the owner made, what the Goal table's figures date from, and the terms the section never defines
 priority: P2
 effort: M
-status: untriaged
+status: needs-decision
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md

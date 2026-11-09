@@ -3,7 +3,8 @@ id: PL-32QH
 title: docs/MODEL.md § 'Status' calls the simulator not a medical device, while § 'Intended use' says the safety class settles no device status and the section claims no regulatory status; decide which claim stands (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05

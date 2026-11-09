@@ -3,7 +3,8 @@ id: PL-PNH2
 title: ROADMAP.md's timeline does not say what its Size column counts or as of when, whether rows 1 and 2, the v0.4.x track and Gate 3 have shipped or cleared, how v0.5.0's sixteen items square with its 20 ids and undated 185 entries, or what 'Row 11 is the intended order' covers
 priority: P2
 effort: M
-status: untriaged
+status: ready
+classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07

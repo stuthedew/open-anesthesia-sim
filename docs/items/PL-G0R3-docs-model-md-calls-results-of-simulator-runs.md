@@ -7,7 +7,6 @@ status: ready
 classes: defect, safety, docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze; not live: checked 2026-11-09, the word is in docs/MODEL.md prose only, and the interface labels every readout and hover value as modelled, not measured, so no learner can see a wrong value now
 added: 2026-11-05
 payoff: a clinician checking the model against published patient data can tell every model result from a real measurement, as the interface already requires
 verify: ! grep -qF 'the measured value at five minutes was 0.30 to 0.32' docs/MODEL.md && ! grep -qF 'These values were measured on 2026-09-07' docs/MODEL.md
@@ -22,3 +21,5 @@ verify: ! grep -qF 'the measured value at five minutes was 0.30 to 0.32' docs/MO
 **Done when.** Every use of "measured" in `docs/MODEL.md` that describes a result of running this simulator says "computed", "simulated" or "from a run" instead. "Measured" stays only for quantities measured in patients, in tissue or on equipment, and for timings and sizes measured on the software or the screen, such as a frame's cost or a window's width in pixels. The two validation-section sentences quoted above are reworded.
 
 **Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. The fact is which values in the document were measured in the world and which were computed by the model. No head's `misread:` states it, and no check reads it.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` § "Published wash-in and elimination validation test" already called model results measured: the elimination table was headed "measured 2026-09-06 and re-measured 2026-09-07", and the inspired fraction "is 0.29 at the highest supported flow and measured at 0.30 to 0.32 at five minutes". The problem belongs on v0.7.0's frozen list, and the deferral is removed.

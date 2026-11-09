@@ -1054,7 +1054,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 118 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 158 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1174,6 +1174,46 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-JP7P (M) Hold the numeric paragraphs in docs/MODEL.md's interface sections (hover readout, MAC-awake, MAC multiples, time base, control-input record and five smaller sections) to named tests
 - PL-KG6S (S) docs/MODEL.md § "Displayed precision" bounds the last displayed digit at 'between about a seventh of one parameter SD and seven times it' and calls one SD 'one to seven counts', but its own table's fat tissue:gas row, 8.7e-4 to 6.7e-3 pp, is 0.09 to 0.67 counts, which puts the digit at 1.5 to 11.5 SDs; no row gives the 'seven times' end, so the bound should be restated from the table or limited to the rows it comes from (found by PL-J37P's blind review)
 - PL-MCQ5 (M) Hold the numeric paragraphs in docs/MODEL.md's required-test sections (published wash-in and elimination, independent solution) to named tests
+- PL-97S1 (S) Two citations name docs/MODEL.md's Known-limitations note 'One reference condition, where the model physically has two' without the section mark (core/liquid_agent.py:41 and ROADMAP.md:2759), so the doc check cannot see them, and the MODEL.md copy edit, which rewords that bold lead, would leave both pointing at nothing
+- PL-G0R3 (M) docs/MODEL.md calls results of simulator runs 'measured' in at least twelve chapters, which a clinician can read as patient or instrument data; say 'simulated' or 'from a run' and keep 'measured' for real measurements (copy editor structure read, 2026-11-05)
+- PL-GW26 (S) docs/MODEL.md § "MAC multiples as a display unit" has two wrong statements: the 1.39x rescale it gives for a desflurane against a sevoflurane wash-in is the isoflurane against desflurane figure (desflurane against sevoflurane is 4.00/3.00 = 1.33x), and "which a ceiling of 2 could not do" says a 2 x MAC ceiling would put the 1 MAC line on the frame, when it puts it at half height
+- PL-HR4T (S) docs/MODEL.md § 'Intended use' lists extreme-preserving decimation as an interface safety feature, but § 'Interface boundary' says the chart evaluates the run at column instants and selects no recorded extremes; one is stale (copy editor structure read, 2026-11-05)
+- PL-HVLD (S) docs/MODEL.md heading 'The run is that record, and every state is derived from it' says the run is the control-input record, while its rows describe the run definition and § 'The control-input timeline' treats the two as separate records (copy editor structure read, 2026-11-05)
+- PL-G1J9 (S) docs/ARCHITECTURE.md § 'Layering' says app/ never performs a unit calculation, but § 'Data flow' and the package map say chart_frame.py, formatting.py and agent_cost.py convert units; one statement is wrong (copy editor structure read, 2026-11-05)
+- PL-GSPR (S) docs/ARCHITECTURE.md's package map says blood.py, tissue.py and circuit.py advance their own amounts, but § 'Data flow' says one exact propagation advances the whole coupled system; the map may be stale (copy editor structure read, 2026-11-05)
+- PL-HLTR (S) docs/ARCHITECTURE.md's startup diagram builds the system with AgentUptakeSystem.default(), but § 'Layering' and § 'Data flow' say for_agent() builds it from the data files; one is stale (copy editor structure read, 2026-11-05)
+- PL-2WBR (S) docs/interface-provenance.md cites Blender's Copyright Rules handbook with no address or reading date, and the list of pages read leaves it out (copy editor structure read, 2026-11-05)
+- PL-41CR (S) docs/interface-provenance.md says the blender.org hosts answered a probe on 2026-09-26, then says wm_window.cc was read through the GitHub mirror on 2026-09-27 because the Manual page was not reachable; which is right? (copy editor structure read, 2026-11-05)
+- PL-68M1 (M) docs/interface-provenance.md § 'What the code cannot answer' draws four conclusions for this project (a named set of things that may float, the header staying visible, modes, no tablets) that the adopts-diverges-refuses list has no entry for: adopted, open, or only advice? (copy editor structure read, 2026-11-05)
+- PL-GPTN (S) docs/interface-provenance.md's Prune entry still says this project's View contract 'should take the shape of Blender's' SpaceType (PL-TH35) and that the project 'should plan to prune such hooks and fields', but PL-TH35 is done: app/view_contract.py defines the View protocol and test_view_contract deletes any member with no call site, so the recommendation reads as open work that has shipped
+- PL-QXYW (S) docs/interface-provenance.md says a reader can never be wrong about what context a displayed value belongs to, in two places, and neither names the document that sets the requirement (copy editor structure read, 2026-11-05)
+- PL-Y9F0 (S) docs/interface-provenance.md says a View's chrome is the View's business and the Area only allocates the rectangle, but each Area has a header with the Area menu and the View chooser: does the View or the Area own the header? (copy editor structure read, 2026-11-05)
+- PL-ZD8Y (S) docs/interface-provenance.md says Shift moves a border alone here, the reverse of Blender, only in the keyboard entry; the border-chain entry says nothing about Shift, and no divergence is recorded (copy editor structure read, 2026-11-05)
+- PL-37N4 (L) docs/machine-abstraction.md: answer the close-out copy editor's queries (contradictions, unnamed items, missing citations)
+- PL-8ZD7 (L) docs/machine-survey.md: answer the close-out copy editor's queries (contradictions and unstated reading depth)
+- PL-5XRK (S) docs/references/yasuda-1991-figure-2-wash-in.md: neither Anesth Analg table has a 1.5-minute row, though the protocol sampled at 1.5 minutes and only the Anesthesiology figure is said to plot no point there; say why (copy editor structure read, 2026-11-07)
+- PL-GZFR (M) docs/maintainer.md is addressed to the owner but instructs sessions in about a dozen places (owner-ask records, the Auto-merge trailer, worker-run review, the effort-trial reply); check each also stands where sessions read it, then leave here only what it guarantees the owner (copy editor structure read, 2026-11-07)
+- PL-M8Z7 (S) docs/maintainer.md describes hooks acting in every session (effort trial, owner-ask guard, merge guard, stop hook patch), but its setup-script section says a Projects thread runs none of them until that script is added; say whether they act in a Projects thread today (copy editor structure read, 2026-11-07)
+- PL-N8G4 (S) The chart's limit of 24 control marks (MAX_CHART_CONTROL_MARKS) and the change list's limit of 12 lines (MAX_LISTED_ADJUSTMENTS) carry no recorded reason: say why each is that number and what changing it would do
+- PL-33FM (S) ROADMAP.md gives Gate 0's size as nine items, as twenty items deep and as 21 frozen entries
+- PL-PNH2 (M) ROADMAP.md's timeline does not say what its Size column counts or as of when, whether rows 1 and 2, the v0.4.x track and Gate 3 have shipped or cleared, how v0.5.0's sixteen items square with its 20 ids and undated 185 entries, or what 'Row 11 is the intended order' covers
+- PL-V82M (S) ROADMAP.md says the next release stamps a release's own cut pull request every time, but since PL-KRS6 a cut item ships in no release, and the version rows that stated that rule are now one sentence each
+- PL-71H3 (M) Answer the questions the structure read of ROADMAP.md's v0.7.0 section left for its author: which choices the owner made, what the Goal table's figures date from, and the terms the section never defines
+- PL-KYGF (M) Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
+- PL-0YR1 (S) docs/MODEL.md § MAC-awake as a chart reference says the three fractions 'sit in a narrow range, so each agent carries its own value', but a narrow range argues for one shared fraction; the stated reason does not support the choice
+- PL-32QH (S) docs/MODEL.md § 'Status' calls the simulator not a medical device, while § 'Intended use' says the safety class settles no device status and the section claims no regulatory status; decide which claim stands (copy editor structure read, 2026-11-05)
+- PL-3807 (S) docs/MODEL.md § 'What the published-data gate can and cannot resolve' counts the sign of the elimination disagreement as part of the published-data gate, but § 'Release gate' says the elimination comparison is not part of the release check; decide which elimination checks a release must pass (copy editor structure read, 2026-11-05)
+- PL-4BGX (S) docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
+- PL-52KB (S) docs/MODEL.md has five broken section pointers: Desflurane's residual sends the reader to a sensitivity run 'under Parameter provenance' (it is in 'What the published-data gate can and cannot resolve'); Known limitations says the Yasuda citation is in 'Parameter provenance'; two pointers name headings that do not exist ('The chart's vertical range is denominated in MAC, and fixed', 'Why the axis is fixed rather than fitted'); 'Mass-balance test' cites 'the release tolerances documented above' with no section (copy editor structure read, 2026-11-05)
+- PL-8RFG (S) docs/MODEL.md uses 'gate' for four different checks (step-refinement, independent-solution, published-data and release), so a clinician cannot tell them apart; give each its own name (copy editor structure read, 2026-11-05)
+- PL-DPY1 (S) docs/MODEL.md says the main window cannot be closed while another window is open, then that closing it closes the others; a reader cannot tell which is the requirement for break-out windows
+- PL-DQD8 (S) docs/MODEL.md's paragraph saying 'always' does not mean the disclaimer is in view on every screen today is stale since PL-NNML fixed the scrolling page, and it points to a gap the paragraphs above no longer state
+- PL-FRRQ (S) The Yasuda notes in the three agent data files judge the stored tissue:gas coefficients by whether a measured value rounds to them ("rounding to the stored precision explains only two", "2.04 does not round to"); the project owner said on 2026-11-09 'I wouldn't round coefficients', and MODEL.md now gives each difference as a percentage, so the notes should say the same
+- PL-2BG1 (S) MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
+- PL-11Z9 (S) The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
+- PL-FCYQ (M) No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
+- PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
+- PL-BLN0 (L) Sentences in docs/MODEL.md, docs/ARCHITECTURE.md and docs/interface-provenance.md that restate how the code or the interface behaves go stale when the code changes, because nothing ties a free-prose sentence to the code it describes
 
 ### Captures after the cut
 
@@ -1252,6 +1292,31 @@ section's table used, so a displayed digit may be finer than its uncertainty,
 and `PL-KG6S`'s ratios are taken from that table. Seven other captures stay
 deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
 `PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
+
+**40 captures joined the frozen list on 2026-11-09, after the freeze.** The
+triage pass of 2026-11-09 checked each one against `817a4d88`, and each brief
+records what it found. For 38 of them the problem was already present at the
+freeze, so they re-enter as § "Which findings re-enter the gate" says. They are
+`PL-97S1`, `PL-G0R3`, `PL-GW26`, `PL-HR4T`, `PL-HVLD`, `PL-G1J9`, `PL-GSPR`,
+`PL-HLTR`, `PL-2WBR`, `PL-41CR`, `PL-68M1`, `PL-GPTN`, `PL-QXYW`, `PL-Y9F0`,
+`PL-ZD8Y`, `PL-37N4`, `PL-8ZD7`, `PL-5XRK`, `PL-GZFR`, `PL-M8Z7`, `PL-N8G4`,
+`PL-33FM`, `PL-PNH2`, `PL-V82M`, `PL-71H3`, `PL-KYGF`, `PL-0YR1`, `PL-32QH`,
+`PL-3807`, `PL-4BGX`, `PL-52KB`, `PL-8RFG`, `PL-DPY1`, `PL-DQD8`, `PL-FRRQ`,
+`PL-2BG1`, `PL-FCYQ` and `PL-BLN0`. `PL-71H3` and `PL-KYGF` hold questions
+for the project owner, and they count as debt while they wait at
+`needs-decision`. The same pass filed `PL-BLN0`, the generator head for
+document sentences that restate the code and go stale. It completes entries
+already on the list, such as `PL-G1J9` and `PL-HR4T`. The other two captures, `PL-11Z9` and `PL-RJN9`, are new problems in the agent cost
+View, which arrived on 2026-11-02, after the freeze. Both are classed
+`safety`, so they re-enter whether or not their problem was present.
+`PL-11Z9`'s hazard is live: the View does not say that its figures are
+modelled, so a learner can take them for measurements today.
+
+`PL-FCYQ` and `PL-RJN9` stay on the list but are deferred to the next gate, on
+the terms of § "Deferring to the next gate". The check found that neither
+hazard is live, so no learner can see a wrong value now. `PL-RJN9`'s captions
+still name the temperature and pressure that the conversion uses. Each item's
+`deferred-from:` says why it is deferred.
 
 ### Required scope
 

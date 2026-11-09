@@ -3,7 +3,8 @@ id: PL-33FM
 title: ROADMAP.md gives Gate 0's size as nine items, as twenty items deep and as 21 frozen entries
 priority: P2
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07

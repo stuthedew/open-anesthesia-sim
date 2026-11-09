@@ -3,7 +3,8 @@ id: PL-DPY1
 title: docs/MODEL.md says the main window cannot be closed while another window is open, then that closing it closes the others; a reader cannot tell which is the requirement for break-out windows
 priority: P2
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05

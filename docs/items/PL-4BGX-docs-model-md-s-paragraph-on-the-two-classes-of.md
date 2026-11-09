@@ -3,7 +3,8 @@ id: PL-4BGX
 title: docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
 priority: P2
 effort: S
-status: untriaged
+status: ready
+classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07

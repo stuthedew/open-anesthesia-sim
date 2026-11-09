@@ -7,7 +7,6 @@ status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-08
 payoff: the specification reads as one edited document in the project's US spelling, while every quoted interface label still matches the screen
 verify: ! grep -qF 'modelled fractions with that solution' docs/MODEL.md && ! grep -qF 'The vapour-to-liquid ratio is derived' docs/MODEL.md
@@ -36,3 +35,5 @@ paragraph) also asks for "gas-vapor blender", the source's term.
 **Done when.** `docs/MODEL.md`'s own prose uses US spelling throughout (modeled, vapor, liter, behavior). Text quoted from the interface, from a source or from a code name stays exactly as written there. Whether the interface's own labels change to US spelling is a separate item, and so is a check that refuses British forms. That check is captured, not built, while a workflow-lane generator is live.
 
 **Generator check.** One-off: a spelling inconsistency found by a copy-editor debug run. No head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` already mixed the spellings: `grep -o -i` counts modelled 39 against modeled 27, and vapour 24. The item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it: it stays off the frozen list and needs no deferral.

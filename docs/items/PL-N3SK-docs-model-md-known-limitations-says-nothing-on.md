@@ -7,7 +7,7 @@ status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
+deferred-from: v0.7.0 - not present at the freeze (817a4d88): the sentence became false with 26eb4e39 (#1932), the milestone's own agent cost View
 added: 2026-11-05
 payoff: the reference-condition limitation says which liquid figures are on screen and why none carries its 5.8% error, so a change that would show a converted store meets the reason it is refused
 verify: ! grep -qF 'invisible in everything the simulator shows today' docs/MODEL.md
@@ -23,3 +23,5 @@ reenters: PL-4FBP
 **Done when.** The note says that the cost display shows delivered and exhausted agent in millilitres of liquid, which convert exactly, and that it refuses the stored total, which would read 5.8% high. It points to § "Agent amounts in millilitres, and the cost". No sentence in `docs/MODEL.md` describes the liquid figure as planned or unshown.
 
 **Generator check.** `PL-4FBP`'s fact: the link between a document sentence and the tree fact it restates, here a limitation note that `PL-SP6H`'s display change left behind. `PL-4FBP` closed on 2026-09-19, so this is an instance filed after its head closed, recorded as `reenters: PL-4FBP`.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88 the sentence "It is invisible in everything the simulator shows today" was true, because no liquid figure was on screen. It became false with `26eb4e39` (#1932, `PL-B396`), which added the agent cost View as v0.7.0's own milestone work. The deferral stays with that reason.

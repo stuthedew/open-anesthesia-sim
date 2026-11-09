@@ -7,7 +7,6 @@ status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, .claude/rules/run-is-its-definition.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-05
 payoff: a developer looking for the record every displayed state is computed from is sent to the run definition, not to the control-input timeline
 verify: ! grep -qF 'The run is that record, and every state is derived from it' docs/MODEL.md
@@ -22,3 +21,5 @@ verify: ! grep -qF 'The run is that record, and every state is derived from it' 
 **Done when.** The heading names the run definition, for example "A run is stored as its settings and keyframes, and every state is computed from them". Its four citations are updated in the same change, and the text says in one sentence how the run definition and the control-input timeline differ.
 
 **Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. A heading's pronoun pointed at the wrong record after the sections around it were reordered. No head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` already had the heading "The run is that record, and every state is derived from it" directly under "### The control-input record". The problem belongs on v0.7.0's frozen list, and the deferral is removed.

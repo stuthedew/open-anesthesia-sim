@@ -3,7 +3,8 @@ id: PL-2BG1
 title: MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
 priority: P1
 effort: S
-status: untriaged
+status: ready
+classes: safety, defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07

@@ -7,7 +7,6 @@ status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-05
 payoff: the safety-class section names the chart feature the safety argument actually rests on, so a reviewer checks the right code
 verify: ! grep -qF 'extreme-preserving decimation is a safety feature' docs/MODEL.md
@@ -23,3 +22,5 @@ reenters: PL-4FBP
 **Done when.** § "Software safety classification" names the chart's current safety feature, that the run is evaluated at each drawn instant and every control change is a drawn instant (§ "Interface boundary"), in place of the extreme-preserving decimation. No sentence in `docs/MODEL.md` describes decimation as current behaviour.
 
 **Generator check.** `PL-4FBP`'s fact: the link between a document sentence and the tree fact it restates, here a sentence about the interface that `PL-GS3R` changed without updating it. `PL-4FBP` closed on 2026-09-19, so this is an instance filed after its head closed, recorded as `reenters: PL-4FBP`.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` § "Software safety classification: Class C, for the whole application" already listed "the extreme-preserving decimation" among the interface's safety features, though `PL-GS3R` had replaced decimation on 2026-09-14. The problem belongs on v0.7.0's frozen list, and the deferral is removed.

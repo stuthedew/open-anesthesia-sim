@@ -7,7 +7,7 @@ status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
+deferred-from: v0.7.0 - not present at the freeze (817a4d88): the conflicting modal time constants came with 9ed29de4 (#1909)
 added: 2026-11-05
 payoff: a reader meeting 42 h in one chapter and 46 h in another learns that both are right and which kind each is, and can check the run-length argument against the table
 verify: ! grep -qF 'fat group has a time constant of about 42 h' docs/MODEL.md && ! grep -qF 'muscle group has a time constant of about 135 min' docs/MODEL.md && ! grep -qF "muscle's time constant for sevoflurane is about 135 min" docs/MODEL.md
@@ -22,3 +22,5 @@ verify: ! grep -qF 'fat group has a time constant of about 42 h' docs/MODEL.md &
 **Done when.** Each of the three places that give 135 min and 42 h calls them the tissue's own time constant and points to the equation in § "Tissue uptake and return". § "Alveolar gas" or one of those places says in one sentence that the coupled system's slowest terms, 172 min and 46 h at the default flows, are longer for the reason above.
 
 **Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. Two kinds of time constant are given under one name. No head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, `docs/MODEL.md` gave 135 min and 42 h, but not the coupled system's 10 300 s and 167 000 s. Those came with `9ed29de4` (#1909, modal time constants), which created the unlabelled pair. The deferral stays with that reason.

@@ -1,9 +1,15 @@
 ---
 id: PL-37N4
 title: docs/machine-abstraction.md: answer the close-out copy editor's queries (contradictions, unnamed items, missing citations)
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: defect, docs
 feature: machine-docs-structure
+touches: docs/machine-abstraction.md
 added: 2026-11-07
+payoff: a contributor adding a second machine follows a design with no internal contradiction and a citation for every source, so the profile they write stores no second flow floor and meets every condition the solver needs
+verify: grep -qE '^- Lerou' docs/machine-abstraction.md
 ---
 
 **Problem.** The close-out copy edit of docs/machine-abstraction.md (`PL-3K13`, 2026-11-07) raised the
@@ -24,7 +30,7 @@ Where the restructure in `PL-39ZK` would remove or move the sentence, do this
 item with it or after it.
 
 **Done when.** Each query below is either fixed in docs/machine-abstraction.md or answered here as
-not a defect, with the reason.
+not a defect, with the reason. In particular, § "Sources" gains an entry, beginning "- Lerou", for Lerou and Booij's model, which the inlet-position entry cites.
 
 ## Queries
 
@@ -78,3 +84,11 @@ The structure read of 2026-11-05 raised these. The document's restructure on 202
 - The route for a new strategy: Question 2 gives one route for a new closed-set member and for a new schema field. In that route, the survey gains an entry first, then the document, then the machine. Question 7 repeats that order only for a new field, and its new-strategy case does not say that the survey comes first. Should Question 7 state the order for both, so that Question 2 can point there?
 
 The remaining per-chapter queries are in the project's shared files, under `v0.7.0/repo-copy-edit/runs/docs-machine-abstraction-md/structure/chapter-*.txt`, on the lines that begin "Query". Most ask for a term to be explained where it is first used, or for an item, a milestone or a source to be named. Read each one against the restructured text: some no longer apply. In particular, the document now names the design's item, `PL-FG9D`, and the pointer to § "The run owns its opening conditions" resolves, because the documentation check (`tools/doc_check.py`) treats a bold opening phrase as a section.
+
+**Checked 2026-11-09:** after the restructure (`PL-39ZK`, closed 2026-11-09), a sample of the queries still applies to `docs/machine-abstraction.md`. Row 42 still says a machine adds two rates and one volume "and nothing else anywhere in the model". Row 46 still says "Everything the survey found falls under one of the three", though § "Fresh gas inlet position is not modelled" says the model cannot represent inlet position. The heading "Two admissibility conditions, both structural" still sits over "The three conditions below" and a list of three, and no file cites the heading. Lerou and Booij are still cited in the inlet-position entry with no entry in § "Sources". § "Sources" still opens "Every source below is cited in `docs/machine-survey.md`", and `grep -n Targ docs/machine-survey.md` finds nothing. The schema table still lists `minimum_total_flow_l_min` and `minimum_oxygen_flow_l_min`, which § "What is built so far" says were not built. Some queries no longer apply: the document now names its item, `PL-FG9D`, and no "The item asks" sentence remains. So the item still holds, and the session that works it reads each query against the current text.
+
+**Why it matters.** This document is the design a contributor follows to add a second machine. A contradiction in it leads to a profile that stores a second flow floor, or to a machine admitted on two conditions when the solver needs three. A source with no citation cannot be checked.
+
+**Generator check.** One-off: queries from the `docs/machine-abstraction.md` copy edit and structure read (`PL-3K13`, `PL-39ZK`).
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/machine-abstraction.md` already has the heading "Two admissibility conditions, both structural" (row 88) beside "this design's three admissibility conditions" (row 636), Lerou and Booij cited with no source entry (row 517), and "Every source below is cited in `docs/machine-survey.md`" (row 651) over a Targ entry (row 671) that the survey of that tree does not list. So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.

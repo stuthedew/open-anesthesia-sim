@@ -1,9 +1,15 @@
 ---
 id: PL-11Z9
 title: The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
-status: untriaged
-touches: src/anesthesia_sim/app/agent_cost.py, ROADMAP.md
+priority: P1
+effort: S
+status: ready
+classes: safety, defect
+touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/qt_agent_cost.py, tests/unit/test_agent_cost.py, ROADMAP.md
 added: 2026-11-07
+payoff: a learner reading the agent cost View is told on its face that the amount and the cost are modelled, so a prediction is not read as what a real vaporizer used
+verify: grep -q 'def test_the_cost_view_says_its_amount_and_cost_are_modelled' tests/unit/test_agent_cost.py
+reenters: PL-B396
 ---
 
 **Problem.** The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
@@ -15,3 +21,11 @@ added: 2026-11-07
 **Done when.** The agent cost View says on its face, in words, that its amount and its cost are modelled, and a test asserts it. v0.7.0's Definition of done names the condition for the cost View as it does for the schematic.
 
 **Found by** `PL-YNFS` (slice 5 of the `ROADMAP.md` restructure, 2026-11-07), while answering the structure read's queries against the tree. Filed rather than fixed, because it changes interface wording on the safety-critical path. It is a `safety` finding for triage to class and place on the gate.
+
+**Checked 2026-11-09:** No string in `src/anesthesia_sim/app/agent_cost.py` or `src/anesthesia_sim/app/qt_agent_cost.py` says "modelled" or "modeled" (`grep -n -i "modell\?ed"`). `ROADMAP.md`'s v0.7.0 Definition of done still asks the modelled statement only of the schematic ("The schematic says on its face that its values are modelled").
+
+**Why it matters.** A learner who reads "Liquid used by the vaporizer" as the liquid a real vaporizer used takes a predicted value for a measurement, and the cost beside it carries the same error. The safety-critical standard asks that a predicted value never be shown so that it could be taken for a measurement. `PL-B396`'s Done-when asked for this figure to be "labelled as liquid equivalent and as modelled", and it closed on 2026-11-02 without the modelled label.
+
+**Generator check.** A re-entry of `PL-B396`, closed 2026-11-02, within 30 days, whose Done-when named this label. The fact is which displayed values say on their face that they are modelled; no head states it. Work it with `PL-RJN9`, which changes the same captions.
+
+**Gate, 2026-11-09.** The problem is new: `src/anesthesia_sim/app/agent_cost.py` did not exist at `817a4d88`, the commit that froze Gate 3, and arrived with `PL-B396` on 2026-11-02. The hazard is live: the View shows the unlabelled figure today, so the item cannot be deferred and joins v0.7.0's frozen list under § "Captures after the cut". `bin/docket set` refuses a `safety` class until `ROADMAP.md` places the item, so `classes: safety, defect` and `status: ready` were written in the commit that added the entry.

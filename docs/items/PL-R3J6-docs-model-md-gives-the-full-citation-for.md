@@ -7,7 +7,6 @@ status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-07
 payoff: each source has one full citation carrying its reading record, so a reader checking a value never has to compare two copies to find the complete one
 verify: ! grep -qE '^  doi:10\.1213/00000539-199103000-00007\.$' docs/MODEL.md && ! grep -qE '^  doi:10\.1097/00000542-199103000-00017\.$' docs/MODEL.md
@@ -33,3 +32,5 @@ every reading record and page number.
 **Done when.** Each of the four sources is cited in full once, at the place that keeps its reading record and page numbers. Every other mention gives the authors and year and points to that place. A required-tests subsection keeps the journal locator or PMID that its paragraph check needs. For Yasuda 1991 this means the bullet list under § "Published wash-in and elimination validation test" gives way to that pointer, and its table rows keep their locators. No reading record or page number is lost.
 
 **Generator check.** One-off: a finding from the `docs/MODEL.md` restructure (`PL-BSMF`, finding 49), declined there because shortening a citation is rewording. No head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` already gave both Yasuda 1991 papers in full twice (PMIDs 1994760 and 2001028) and Hendrickx and De Wolf in full twice. The item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it: it stays off the frozen list and needs no deferral.

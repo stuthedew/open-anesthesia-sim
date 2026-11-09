@@ -7,7 +7,6 @@ status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-04
 payoff: the MAC axis's ceiling of 3 is defended by a true reason, so no later session lowers it to 2 on the strength of a false one
 verify: ! grep -qF 'which a ceiling of 2 could not do' docs/MODEL.md
@@ -24,3 +23,5 @@ verify: ! grep -qF 'which a ceiling of 2 could not do' docs/MODEL.md
 **Done when.** The clause "which a ceiling of 2 could not do" is removed from the sentence about the 1 MAC line, or attached to the overpressure-range sentence that it belongs to. The paragraph then gives a true reason for not choosing a ceiling of 2.
 
 **Generator check.** One-off: a finding the copy editor raised as a query while it was being debugged. It is a wrong statement of chart arithmetic in prose, and no head's `misread:` states that fact.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` § "MAC multiples as a display unit" already said the 3 x MAC ceiling puts the 1 MAC line "inside the plot rather than on its frame, which a ceiling of 2" could not do, and it also carried the 1.39x rescale sentence. The problem belongs on v0.7.0's frozen list, and the deferral is removed.

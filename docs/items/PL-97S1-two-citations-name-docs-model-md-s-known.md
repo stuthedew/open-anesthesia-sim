@@ -7,7 +7,6 @@ status: ready
 classes: defect, docs
 feature: repo-copy-edit
 touches: src/anesthesia_sim/core/liquid_agent.py, ROADMAP.md
-deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-09
 payoff: a rename of the Known-limitations note on the reference condition is caught by the doc check, so the liquid-agent docstring never points a developer at a note that no longer exists
 verify: ! grep -qF '"Known limitations", "One reference' src/anesthesia_sim/core/liquid_agent.py && ! grep -qF 'The note "One reference condition' ROADMAP.md
@@ -25,3 +24,5 @@ reenters: PL-93LV
 **Checked 2026-11-09:** On cfd4a4b6, `grep -rn 'One reference condition' --include=*.md --include=*.py .` finds the lead in `docs/MODEL.md`'s § "Known limitations", one citation in `docs/MODEL.md` § "Agent amount" with the section mark, and the two unmarked citations this item names. They are the module docstring of `src/anesthesia_sim/core/liquid_agent.py` and `ROADMAP.md`'s item that sizes the temperature half of the reference-condition change. The lead still reads as before, so both pointers resolve today. `PL-1VXY`, which applies the chapter reads, and the later line edit can both reword it.
 
 **Generator check.** `PL-4FBP`'s fact: the link between a document sentence and the tree fact it restates, here a pointer the doc check cannot read because it lacks the section mark. `PL-93LV` fixed the same shape for the third citation of this lead and closed on 2026-11-02, within 30 days, and its fix did not reach these two. Recorded as `reenters: PL-93LV`.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present in part. At 817a4d88, `ROADMAP.md` already named the note "One reference condition, where the model physically has two" without the section mark. The docstring of `src/anesthesia_sim/core/liquid_agent.py` came later, with `c95177a6` (#1866, `PL-KZ99`). The problem belongs on v0.7.0's frozen list, and the deferral is removed.
