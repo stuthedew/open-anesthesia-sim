@@ -1005,10 +1005,11 @@ recommendation and the evidence).
 for an editor (`SpaceType`) is a struct of metadata and function pointers. It
 has hooks that nothing implements and a field that nothing assigns, and the
 design gives no sign that they are unused (§ "What an editor must implement").
-This project's contract for a View should take the shape of Blender's (`PL-TH35`),
-and the project should plan to prune such hooks and fields. A contract of this
-project's own should be small. Recheck the contract for a View against the Views
-that implement it, rather than only adding to it.
+This project's contract for a View is the `View` protocol in
+`app/view_contract.py` (`PL-TH35`). It is pruned by a test:
+`test_every_member_of_the_contract_has_a_call_site_in_the_adapter` fails on any
+member that `app/area_layout.py` never calls, so the contract cannot keep a hook
+that nothing uses.
 
 **A drag moves every border on the dragged line, as in Blender.** Blender's
 default drag moves the whole chain of borders (§ "How a layout is built, and how
