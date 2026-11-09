@@ -3663,35 +3663,36 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
 class BranchedCase:
     """One case, held as the run that happened and the branches taken from it.
 
-    `SimulationController.resumed_at` makes a branch, and this class makes a
-    *case* of the runs that result. That relationship is what v0.5.0 exists to
-    assert: two curves on one axis are one patient under two managements, not
-    two patients. Without an object that holds the relationship, the
-    controllers returned by two `resumed_at` calls are indistinguishable from
-    two unrelated sessions. Each knows the instant it opened at
-    (`opened_from`), but none knows that the others opened from the same run.
+    `SimulationController.resumed_at` makes a branch, and this class groups the
+    runs that result into a *case*. The case records the relationship that
+    v0.5.0 exists to assert: two curves on one axis are one patient under two
+    managements, not two patients. Without an object that holds the
+    relationship, the controllers returned by two `resumed_at` calls are
+    indistinguishable from two unrelated sessions. Each knows the instant it
+    opened at (`opened_from`), but none knows that the others opened from the
+    same run.
 
-    **The case is flat by construction, not by refusal** (`PL-TFX5`, project
-    owner, 2026-08-25). It has one trunk with N branches. Sub-forks of forks
-    are deliberately excluded, because they multiply without bound and offer
-    little over branching again from the trunk. Every fork here is taken
-    from the trunk, so this class cannot express a branch of a branch at all,
-    rather than declining one. `resumed_at` still refuses one, because a
-    caller that holds a branch can call it directly. The two guards answer
-    different questions. That one says *this run* cannot be forked. This one
-    says there is no second generation to fork from. An interface in which
-    the error cannot be expressed is the stronger of the two. The weaker
-    guard is kept as well, because it covers the route around this class.
+    **A case is flat by construction** (`PL-TFX5`, project owner, 2026-08-25).
+    It has one trunk with N branches. Branches of a branch are excluded
+    deliberately, because they multiply without bound and offer little over
+    branching again from the trunk. Every branch is taken from the trunk, so
+    this class cannot express a branch of a branch at all, and has nothing to
+    refuse. `resumed_at` still refuses to fork a branch, because a caller that
+    holds a branch can call `resumed_at` on it directly and bypass this class.
+    That refusal says that *this run* cannot be forked, while this class says
+    that there is no second generation to fork from. Of the two guards, an
+    interface in which the error cannot be expressed is the stronger.
 
     **Two branches may be taken at the same instant, deliberately.** That is
     the comparison the milestone is named for, one decision point and two
     managements, so nothing here makes a fork point unique.
 
-    **It computes nothing and advances nothing.** Running, pausing, settings
-    and stepping stay on the controllers, one per run. This class holds which
-    runs there are and how they are related, so a view can loop over them and
-    a reader can attribute a curve to one of them. It does not depend on Qt,
-    for the same reason that the rest of `app/` outside the view does not.
+    **A case computes nothing and advances nothing.** Running, pausing,
+    settings and stepping stay on the controllers, one per run. This class
+    holds which runs there are and how they are related, so a view can loop
+    over them and a reader can attribute a curve to one of them. It does not
+    depend on Qt, for the same reason that the rest of `app/` outside the view
+    does not.
     """
 
     def __init__(self, trunk: SimulationController) -> None:

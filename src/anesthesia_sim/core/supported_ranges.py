@@ -1,192 +1,203 @@
 """The closed intervals the shipped model is supported over, and the guards that enforce them.
 
-This module declares five intervals. Four of them bound a *setting*, and three
-of those four are flows: `FreshGasFlow`, `AlveolarVentilation` and
-`CardiacOutput`, below. Each flow is checked once, when it is built as its
-type. Every signature and record field that holds a flow after that point
-takes the type, so no other code makes the check and no entry point has to
-remember it (`PL-0YYV`). The fourth setting, the delivered concentration, is
+This module declares five intervals. Four of them bound a *setting*. Three of
+those settings are flows, each with its own type below: fresh gas flow
+(`FreshGasFlow`), alveolar ventilation (`AlveolarVentilation`) and cardiac
+output (`CardiacOutput`). Each flow is checked against its interval once, when
+it is built as its type. The fourth setting, the delivered concentration, is
 checked when a caller changes it.
 
 The fifth interval bounds the *run*: the span of elapsed simulated time over
 which the model is claimed to represent a patient. It is checked as each step
 is taken, because a run reaches its length rather than having it set. It is
 also checked where a run is *handed* a point on that span instead of reaching
-it: a state built part-way through a run, or a run definition's opening or its
-reach. There, the value handed in is what is wrong. Otherwise the run length is
-the same kind of statement as the four settings, and it lives here for that
-reason.
+it: a state built part-way through a run, or a run definition's opening or
+reach, the two instants that bound it. There, a refusal means that the value
+handed in is wrong. Otherwise the run length is the same kind of statement as
+the four settings, and it lives here for that reason.
 
-`docs/MODEL.md` § "Supported input ranges" is the specification. This module
-holds the numbers, so that every path that can change a setting is bounded by
-the same guard, rather than relying on the interface's sliders to stay inside
-the domain. Those paths are the core, the controller, the interface, a
-notebook and a test.
-
-**Why the model declares these and not the interface.** The sliders' maxima
-look like presentation choices, and they once were. Until this module existed,
+**The model declares the intervals it is supported over, not the interface.**
+`docs/MODEL.md` § "Supported input ranges" is the specification, and argues
+each interval. This module holds the numbers so that every path that can change
+a setting meets the same guard, and no path relies on the interface's sliders
+to keep the setting inside its interval. Those paths are the core, the
+controller, the interface, a notebook and a test. The sliders' maxima look like
+presentation choices, and they once were. Until this module existed,
 `app/simulation_view.py` was the only statement of the supported range, and
 `AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and simulated.
 
-The intervals belong to the model because of **physiological applicability,
-not numerical error** (`PL-X9KD`). This module used to give a different
-reason. The shipped operator split had a first-order coefficient that grew
-with the flows. So, far enough outside these intervals, a displayed number was
-wrong by a margin that the interface could not show. That method is retired.
-The exact propagator solves the governing equations at any flows at all, so a
-cardiac output of 1000 L/min now gives an *arithmetically correct* result. It
-is a correct result to a question that physiology does not ask. These
-intervals are the range over which three things are claimed to represent a
-patient at all: the lumped three-group compartment structure, the reference
-adult's fixed volumes, and the constant-coefficient partition model. Outside
-them the equations still solve, but their solution represents no patient.
-`docs/MODEL.md` § "Supported input ranges" argues each interval.
+**The intervals belong to the model because they are set by physiological
+applicability, not by numerical error** (`PL-X9KD`). This module once gave a
+numerical reason. The operator split it shipped with had a first-order error
+coefficient that grew with the flows, so far enough outside these intervals a
+displayed number was wrong by a margin the interface could not show. That method
+is retired. The exact propagator solves the governing equations at any flow, so
+a cardiac output of 1000 L/min now gives an arithmetically correct result to a
+question that physiology does not ask. The intervals are the range over which
+three parts of the model are claimed to represent a patient: the lumped
+three-group compartment structure, the reference adult's fixed volumes, and the
+constant-coefficient partition model. Outside them the equations still solve,
+but their solution represents no patient.
 
-The reference gates are driven at this envelope's corner. That follows from
-declaring the envelope, and it is not evidence for it. The gate trajectories
-are built from these constants, so they would follow the interval wherever it
-was put.
+The reference gates are driven at the corner of the envelope that these
+intervals bound, because the envelope is declared here. Driving them there is
+no evidence for the envelope: the gates' trajectories are built from this
+module's constants, so they would follow an interval wherever it was put.
 
-**Refused, not clamped.** `BreathingCircuit` enforces the vaporizer maximum
-the same way, for the same reason: a silently clamped setting would simulate,
-display and chart a value that the caller did not ask for.
+**A value outside an interval is refused, not clamped.** A silently clamped
+setting would simulate, display and chart a value that the caller did not ask
+for. The breathing circuit (`BreathingCircuit`) refuses a concentration above
+the vaporizer maximum for the same reason.
 
-The fourth control, the delivered concentration, has two upper limits. Its
-real limit is the vaporizer's calibrated maximum. That maximum is
-agent-specific, so it lives on `BreathingCircuit` as instance state rather
-than as a constant here. The second limit is `MAXIMUM_INPUT_FRACTION`, below.
-It is not a physiological claim but a numerical one, and it bounds the opening
-state of the coupled system too.
+**The delivered concentration has two upper limits.** Its real limit is the
+vaporizer's calibrated maximum. That maximum is agent-specific, so it lives on
+the breathing circuit as instance state rather than as a constant here. The
+second limit is `MAXIMUM_INPUT_FRACTION`, below. It is a numerical limit, not a
+physiological claim.
 
-**The coupled model's inputs stop at 0.99 of the ambient pressure** (`PL-9B1M`). A
-fraction of the ambient pressure is checked to lie from 0 through 1 wherever it
-is built, including every fraction that a step or an evaluation computes.
-Rounding in the coupled step can carry a computed fraction a little above the
-largest fraction that the step started from. So a state at the very top of the
-range, with every compartment at 1, could not be stepped. A step rounded one
-fraction to 1.0000000000349965, the check refused it, and the run halted for a
-rounding error. The path that produces displayed values computed 1.000033 from
-the same state. No shipped vaporizer's maximum comes near 100% of the ambient
-pressure, so no supported run needs a state that close to 1. The fix is
-therefore to stop the inputs short of 1 rather than to widen the check (project
-owner, 2026-10-31, ratified, over a fraction check that accepts a value slightly
-above 1). The delivered concentration must be at or below
-`MAXIMUM_INPUT_FRACTION`, and so must every fraction in the state that the
-stepped system starts from. The model conserves agent, so no computed fraction
-then exceeds that ceiling by more than the propagator's error. That error grows
-with the number of times `core/matrix_exponential.py` squares the propagator.
-The largest excess measured across the envelope's corners was 3.3e-5, and
-`docs/MODEL.md` § "The numerical envelope" gives the measurement.
+**The coupled model's inputs stop at 0.99 of the ambient pressure** (`PL-9B1M`).
+The delivered concentration must be at or below `MAXIMUM_INPUT_FRACTION`, and so
+must every fraction in the state that the coupled model starts from. A fraction
+of the ambient pressure is checked to lie from 0 through 1 wherever it is
+built, including every fraction that a step or an evaluation computes. Rounding
+in the coupled step can carry a computed fraction a little above the largest
+fraction that the step started from. So a state at the very top of the range,
+with every compartment at 1, could not be stepped. A step rounded one fraction
+to 1.0000000000349965, the check refused it, and the run halted for a rounding
+error. The path that produces displayed values computed 1.000033 from the same
+state. No shipped vaporizer's maximum comes near 100% of the ambient pressure,
+so no supported run needs a state that close to 1. The fix is therefore to stop
+the inputs short of 1 rather than to widen the check (project owner,
+2026-10-31, ratified, over a fraction check that accepts a value slightly above
+1).
+
+The model conserves agent, so with every input at or below the 0.99 ceiling, no
+computed fraction exceeds it by more than the propagator's error. That error
+grows with the number of times the propagator is squared
+(`core/matrix_exponential.py`). The largest excess in simulated runs across the
+envelope's corners was 3.3e-5, and `docs/MODEL.md` § "The numerical envelope"
+reports those runs.
+
+**Fresh gas flow has a second bound, set by the machine and held outside this
+module** (`PL-8PS6`). What a *machine* can deliver differs between machines: its
+flowmeters, its minimum flow, and whether it supports minimal-flow or
+closed-circuit flow. So that bound is read from a validated machine profile
+under `data/machines/` into the breathing circuit
+(`BreathingCircuit.deliverable_fresh_gas_flow_range`), for the same reason that
+the vaporizer maximum lives there. The interval below belongs to the model
+alone: it is the range over which the lumped compartment structure is claimed
+to represent a patient. The effective limit on fresh gas flow is the
+intersection of the two intervals, and a value outside either is refused with
+that interval's own message.
+
+The two bounds are kept apart for safety. If they were merged, a second profile
+whose flowmeter goes up to 15 L/min would widen the envelope past the corner at
+which the reference gates were driven, without any statement in this module
+changing. The result would be a number produced outside everything that was
+verified, and indistinguishable on screen from one inside it. The converse fails
+the same way. Take a machine with no true off position, whose minimum flow is
+0.5 L/min. It would either be impossible to represent, or it would move the
+model's lower bound for every other machine. The shipped
+`reference_circle_system` profile declares no range at all, so the model's
+interval is the only bound today. `docs/MODEL.md` § "Supported input ranges"
+gives both bounds and what separates them.
 
 **Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
-`PL-51B7`). `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are
-`float` subclasses whose constructors call the guards below. The reasons are
-the ones that `core/simulation_step.py` gives for `SimulationStep`. A `NewType`
-is erased at run time and proves nothing about a range, and a frozen record
-would put a field access into every equation. In the arithmetic, each flow is
-the number itself. Arithmetic on a flow returns a plain `float`, so a quantity
-derived from a flow does not claim a range check that it never passed. A
-tissue's share of cardiac output and the litres per second that the equations
-use are examples.
+`PL-51B7`). The three flow types are `float` subclasses whose constructors call
+the guards below. Once a flow is built, every signature and record field that
+holds it takes the type, so no other code makes the check and no entry point
+has to remember it. The reasons for a subclass are the ones given for the
+simulation step's type (`SimulationStep`, `core/simulation_step.py`): a
+`NewType` is erased at run time and proves nothing about a range, and a frozen
+record would put a field access into every equation. In the arithmetic, each
+flow is the number itself. Arithmetic on a flow returns a plain `float`, so a
+quantity derived from a flow does not claim a range check that it never
+passed. A tissue's share of cardiac output and the litres per second that the
+equations use are examples.
 
-When the three flows were checked by hand at each entry point, every
-compartment checked them and no settings record did. A `RunDefinition` built
-from such a record ran a cardiac output of 1000 L/min (`PL-HSFV`). A record
-whose fields take the types cannot be built holding such a value. `mypy`
-checks `src/` and not `tests/`, and it accepts a value typed `Any`. So each
-place that *stores* a flow first calls `require_fresh_gas_flow`,
-`require_alveolar_ventilation` or `require_cardiac_output`, which refuse a
-bare `float` as the programming error it is. For a compartment, that place is
-the write to its flow field, whoever makes it. `BreathingCircuit`,
-`AlveolarCompartment` and `PatientCompartments` each refuse the write in
-`__setattr__` before the field changes. So the constructor, the setter and an
-assignment that bypasses both all meet one check, and no snapshot can copy a
-flow that nobody built (`PL-LBQY`, which found that such an assignment was
-caught only by the next step). `UptakeEquationSettings` checks its three flows
-as it is built. The layers that forward a flow, `AgentUptakeSystem` and
-`app/controller.py`, take the type and check nothing.
+A record whose fields take the types cannot be built holding a flow
+outside its interval. When the three flows were checked by hand at each entry
+point, every compartment checked them and no settings record did. A run
+definition (`RunDefinition`) built from a settings record that did not check
+its flows ran a cardiac output of 1000 L/min (`PL-HSFV`).
+
+Each place that *stores* a flow first calls that flow's type check, which
+refuses a bare `float` as a programming error (`require_fresh_gas_flow`,
+`require_alveolar_ventilation`, `require_cardiac_output`). The check is made at
+run time because `mypy` checks `src/` and not `tests/`, and it accepts a value
+typed `Any`. For a compartment, the place that stores a flow is the write to its
+flow field, whoever makes it. The breathing circuit, the alveolar compartment
+(`AlveolarCompartment`) and the patient compartments (`PatientCompartments`)
+each refuse the write in `__setattr__` before the field changes. So the
+constructor, the setter and an assignment that bypasses both all meet one
+check, and no snapshot can copy a flow that was never built through its guard.
+Such an assignment used to be caught only by the next step (`PL-LBQY`). The
+settings record for the uptake equations (`UptakeEquationSettings`) checks its
+three flows as it is built. The layers that forward a flow take the type and
+check nothing: `AgentUptakeSystem` and `app/controller.py`.
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
-`PL-51B7`). `CaseInstant` is a `float` subclass built only through
-`require_supported_case_instant`, for the same reasons as the flows. It accepts
-the same inputs as they do: an `int` or a `float` and nothing else, with minus
-zero stored as zero (`core/checked_number.py`, `PL-7N8P`). Every operation that
-opens, moves, marks or branches a run, or that stores one of its keyframes,
-takes a `CaseInstant`. That covers `RunDefinition`'s opening, reach and
+`PL-51B7`). A case instant is a point in a run's elapsed simulated time. Its
+type, `CaseInstant`, is a `float` subclass built only through its guard
+(`require_supported_case_instant`), for the same reasons as the flows. Like
+them, it accepts an `int` or a `float` and nothing else, and stores minus zero
+as zero (`core/checked_number.py`, `PL-7N8P`). Every operation takes a
+`CaseInstant` if it opens, moves, marks or branches a run, or if it stores one
+of the run's keyframes. That covers `RunDefinition`'s opening, reach and
 keyframes, the marks in `app/bookmarks.py`, and the instant at which a branch
-is taken. `SimulationState.elapsed_s` returns one. The control record's
-instants are `CaseInstant` too: the instant of each change
-(`app/control_record.py`) and the start and end of each adjustment
-(`app/control_timeline.py`, `PL-RCYZ`). The instants at which a run
-is only *read* stay a `float`: `RunDefinition`'s `state_at` and a drawn
-window's bounds. The run's own opening and reach, which are both checked
-instants, bound these instants and refuse what falls outside. That check is a
-relation between the instant and the run, so it belongs to the run.
+is taken. The simulation state returns its elapsed time as one
+(`SimulationState.elapsed_s`). The control record's instants are `CaseInstant`
+too: the instant of each change (`app/control_record.py`) and the start and end
+of each adjustment (`app/control_timeline.py`, `PL-RCYZ`).
 
-`StepCount` is an `int` subclass. It checks what a count can be checked for
-on its own: that it is whole and nonnegative. How many steps a run may
-complete depends on the step at which it takes them, so `SimulationState`
-keeps checking the pair. A bare value is refused at run time in two places.
-`require_case_instant` refuses it where `Keyframe`, `TimeBookmark` or
-`BookmarkCrossing` stores an instant, or where a run is opened at or moved to
-one. `require_step_count` refuses it where `SimulationState` stores its
-count. Code that only passes either value on checks nothing. A value built as
-another checked quantity is refused as the swapped argument it is. Both the
-constructor and the stored-value check refuse it, through the one record of
-the checked types in `core/checked_number.py` (`PL-979Z`).
+The instants at which a run is only *read* stay a `float`: `RunDefinition`'s
+`state_at` and a drawn window's bounds. The run refuses such an instant when it
+falls outside the run's own opening and reach, which are both checked instants.
+That check relates the instant to the run, so it belongs to the run.
 
-**Fresh gas flow has a second bound of the same shape, and it is not here**
-(`PL-8PS6`). What a *machine* can deliver differs between machines: its
-flowmeters, its minimum flow, and whether it supports minimal-flow or
-closed-circuit flow. That bound is read from a validated machine profile under
-`data/machines/` into `BreathingCircuit.deliverable_fresh_gas_flow_range`, for
-the same reason that the vaporizer maximum lives there. The interval below
-belongs to the model alone: it is the range over which the lumped compartment
-structure is claimed to represent a patient. The effective limit on the
-control is the intersection of the two intervals, and each refuses a value in
-its own words.
+The step count's type, `StepCount`, is an `int` subclass. It checks what can be
+known from the count alone: that the count is whole and nonnegative. How many
+steps a run may complete depends on how long each step is, so the simulation
+state (`SimulationState`) still checks the count and the step length together.
 
-Keeping the two bounds apart is a matter of safety, not tidiness. If they were
-merged, a second profile whose flowmeter goes up to 15 L/min would widen the
-domain over which the reference gates were driven, without any statement in
-this module changing. The result would be a number produced outside
-everything that was verified, and indistinguishable on screen from one inside
-it. The converse fails the same way. Take a machine with no true off position,
-whose minimum flow is 0.5 L/min. It would either be impossible to represent,
-or it would move the model's lower bound for every other machine. The shipped
-`reference_circle_system` profile declares no range at all, so this interval
-is the only bound today. `docs/MODEL.md` § "Supported input ranges" carries
-both claims and what separates them.
+A bare number in place of a case instant or a step count is refused at run
+time in two places. One check (`require_case_instant`) refuses it where
+`Keyframe`, `TimeBookmark` or `BookmarkCrossing` stores an instant, or where a
+run is opened at or moved to one. The other (`require_step_count`) refuses it
+where the simulation state stores its count. Code that only passes either value
+on checks nothing. A value built as another checked quantity is refused as a
+swapped argument. Both the constructor and the stored-value check refuse it,
+through the one list of checked types in `core/checked_number.py` (`PL-979Z`).
 
-`SimulationState` counts the steps a run takes, and it is what refuses the
-step that would cross the run-length bound. A compartment neither counts
-steps nor refuses one, because a compartment advanced alone has no run length
-whose end it could pass. `SimulationState` refuses the step that would cross the boundary
-rather than raising after crossing it. So a run that stops here ends on a
-completed step, at a simulated time inside the supported span.
+The simulation state counts the steps a run takes, and refuses a step that
+would cross the run-length bound rather than raising after crossing it. So a
+run that stops at the bound ends on a completed step, at a simulated time
+inside the supported span. A compartment neither counts steps nor refuses one,
+because a compartment advanced alone has no run length whose end it could pass.
 
-Two more guards refuse a point on the span that is handed in rather than
-reached. `require_supported_step_count` covers a `SimulationState` built
-part-way through a run. `require_supported_case_instant`, through which every
-`CaseInstant` is built, covers the instants at which a run opens, to which it
-is moved, and at which it is marked. A branch is both kinds, because it is
-built where its parent stood. So these two guards refuse a branch taken past
-the span before anything uses it (`PL-BMY5`, `PL-73ZN`).
-`require_supported_step_count` is built on the same `maximum_step_count`
-as the step's guard. So, whatever the step, the count on which a run stops at
-the limit is exactly the last count at which a state may be built. That count
-is decided by the simulated time it lands at. So
-`require_supported_case_instant` accepts the instant at which a run stops, and
-refuses the instant one step later (`PL-8H2R`).
+Two more guards check a point on the span that is handed in rather than
+reached. One covers a simulation state built part-way through a run
+(`require_supported_step_count`). The other covers the instants at which a run
+opens, to which it is moved, and at which it is marked
+(`require_supported_case_instant`). A branch meets both guards, because it is
+built where its parent stood. So the two guards refuse a branch taken past the
+span before anything uses it (`PL-BMY5`, `PL-73ZN`).
 
-Widening any interval is a safety-critical change, not a convenience, but the
-work it takes has changed. Argue that the compartment structure still
-represents a patient over the wider range. Re-run the reference gates at the
-new corner. Revise `docs/MODEL.md` §§ "Supported input ranges" and
-"Independent-solution test" together. Widening no longer requires re-deriving
-the displayed resolution or the supported simulation step. Both used to
-depend on the splitting coefficient measured here, and that link is cut:
-neither is now derived from anything measured over this envelope.
+The guard for a state built part-way through a run uses the same maximum step
+count (`maximum_step_count`) as the guard on each step. So, whatever the length
+of the step, the count on which a run stops at the bound is exactly the last
+count at which a state may be built. That count is decided by the simulated
+time it lands at, so the guard on case instants accepts the instant at which a
+run stops, and refuses the instant one step later (`PL-8H2R`).
+
+Widening any interval is a safety-critical change, not a convenience. Argue
+that the compartment structure still represents a patient over the wider range.
+Re-run the reference gates at the new corner. Revise
+`docs/MODEL.md` §§ "Supported input ranges" and "Independent-solution test"
+together. Widening no longer requires re-deriving the displayed resolution or
+the supported simulation step. Both used to depend on the splitting coefficient
+measured over this envelope, and neither is now derived from anything measured
+over it.
 """
 
 from __future__ import annotations

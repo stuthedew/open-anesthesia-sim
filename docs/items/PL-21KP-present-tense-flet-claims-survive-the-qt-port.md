@@ -63,11 +63,11 @@ on Flet", and a comment in `app/control_timeline.py` above the ASCII arrow
 names "The Flutter client this interface renders in". The rewrite kept both
 as they were, because changing a fact was outside that item.
 
-**Two more, folded in from `PL-3TWT` on 2026-10-25.** `tests/unit/test_chart_time_base.py`
-line 4 says its subject is checkable "without constructing a Flet interface".
-`tests/integration/test_sevo_controller.py` lines 22 and 23 cite
-`app/simulation_view.SIMULATION_STEP_S`, which that module no longer defines,
-and say the value is restated "because that module needs Flet". Both files are
-already in this item's `touches`.
+**Two more stale Flet mentions in the tests, folded in from `PL-3TWT` on 2026-10-25.**
+`tests/unit/test_chart_time_base.py` line 4 says its subject is checkable
+"without constructing a Flet interface". `tests/integration/test_sevo_controller.py`
+lines 22 and 23 cite `app/simulation_view.SIMULATION_STEP_S`, which that module
+no longer defines, and say the value is restated "because that module needs
+Flet". Both files are already in this item's `touches`.
 
-**Done 2026-11-09.** The present-tense claims still in the tree were corrected: `core/__init__.py` and `BranchedCase` now say they do not depend on Qt, `app/formatting.py` and `app/wash_in.py` say they import no interface toolkit (both import from the core, so "independent of the scientific core" went too), and the `control_timeline.py` comment dates the missing arrow glyph to the Flutter client before the port. `app/__init__.py`, the `FLOW_DISPLAY_DECIMALS` comment and `format_case_discard_warning` had already been corrected by other work. The five test modules cite `tests/integration/test_simulation_view.py`, and the three "Flet interface" phrases name the Qt interface. `tests/integration/test_sevo_controller.py` now imports `SIMULATION_STEP_S` from `app/dashboard_frame.py`, which needs no display, so its restated copy and the comment naming `app/simulation_view` went. The `verify:` excluded `test_ignore_check.py`, a file that does not exist; the fixture string the brief keeps is in `test_type_ignore_check.py`, so the command now excludes that file.
+**Done 2026-11-09.** The present-tense claims still in the tree were corrected. `core/__init__.py` and `BranchedCase` now say they do not depend on Qt. `app/formatting.py` and `app/wash_in.py` say they import no interface toolkit. Both import from the core, so their docstrings no longer call them "independent of the scientific core". The `control_timeline.py` comment says that the Flutter client used before the port lacked the arrow glyph. Other work had already corrected `app/__init__.py`, the `FLOW_DISPLAY_DECIMALS` comment and `format_case_discard_warning`. The five test modules cite `tests/integration/test_simulation_view.py`, and the three "Flet interface" phrases name the Qt interface. `tests/integration/test_sevo_controller.py` now imports `SIMULATION_STEP_S` from `app/dashboard_frame.py`, which needs no display, so its restated copy and the comment naming `app/simulation_view` went. The `verify:` command excluded `test_ignore_check.py`, a file that does not exist. The fixture string that the brief keeps is in `test_type_ignore_check.py`, so the command now excludes that file.

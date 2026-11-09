@@ -227,26 +227,27 @@ def menu_stylesheet() -> str:
 
 
 def transport_button_stylesheet() -> str:
-    """Start, Pause and Reset in both states: PANEL fill, MUTED edge, INK or MUTED label.
+    """Give Start, Pause and Reset a PANEL fill, MUTED edge and INK or MUTED label in both states.
 
-    These colours are declared rather than left to the platform style,
-    because leaving them to it caused `PL-DHBX`. A button that sets no
-    foreground takes one from the `ButtonText` role of Qt's palette, and that
-    role holds the *host appearance's* value rather than this interface's.
-    Under macOS Dark it is near-white, while every surface this interface
-    draws around the button stays in the light theme. So the labels became
-    white on white, and the run controls could not be read.
+    These colours are declared rather than left to the platform style, because
+    under macOS Dark that style made the run controls unreadable (`PL-DHBX`). A
+    button that sets no foreground takes one from the `ButtonText` role of Qt's
+    palette, and that role holds the *host appearance's* value rather than this
+    interface's. Under macOS Dark it is near-white, while every surface this
+    interface draws around the button stays in the light theme. So the labels
+    became white on white.
 
-    **Both states are declared, because the project owner's screenshots
-    showed the second state failing the same way.** The first fix declared
-    `:enabled` only. It left the disabled button entirely to the platform, on
-    `PL-NGF7`'s decision of 2026-09-16 and on the exemption in WCAG 2.2 SC
-    1.4.3 for text in an inactive component. On `0.4.26+g22bc6d82` the
-    disabled button was then the invisible one: Start while running, and
-    Pause while paused. That decision's case did not account for this cost.
+    **The disabled state is declared as well, because the project owner's
+    screenshots showed the disabled button failing as the enabled one had.**
+    The first fix declared `:enabled` only. It left the disabled button
+    entirely to the platform, relying on a decision of 2026-09-16 (`PL-NGF7`)
+    and on the exemption in WCAG 2.2 SC 1.4.3 for text in an inactive
+    component. On `0.4.26+g22bc6d82` the disabled button was then the
+    invisible one: Start while running, and Pause while paused. The reasoning
+    behind the 2026-09-16 decision did not account for an invisible button.
     Under a dark host appearance, the platform's disabled grey is not merely
-    low in contrast. It is absent. An exemption from a contrast *minimum*
-    does not permit a control to disappear.
+    low in contrast but absent. An exemption from a contrast *minimum* does not
+    permit a control to disappear.
 
     So the disabled label is `MUTED`, which is **5.00:1 on PANEL**. That
     fully meets the 4.5:1 that SC 1.4.3 requires for normal text, so no
@@ -257,17 +258,18 @@ def transport_button_stylesheet() -> str:
     requirements". Both were read on 2026-11-09 in the W3C's own repository,
     https://github.com/w3c/wcag at commit `c9ea04d4`
     (`guidelines/sc/21/non-text-contrast.html` and
-    `understanding/21/non-text-contrast.html`). The exemption permits low
-    contrast. It does not make an unavailable button invisible acceptable, so
-    the label meets the minimum outright.
+    `understanding/21/non-text-contrast.html`). That exemption, too, permits
+    low contrast and not an invisible button, so the label meets the minimum
+    outright.
 
-    **The two states are not told apart by colour alone.** Judgment 2 in
-    `.claude/rules/ui-color.md` asks for a second channel, and the row
-    already carries one in text. `_status_text`, beside these three buttons,
-    says "Running" or "Paused", and that state is what decides which button
-    is unavailable. `dashboard_frame.transport` derives both the word and the
-    unavailable button from the same flag. A reader who cannot tell INK from
-    MUTED can read the state from the word instead of from the buttons.
+    **The enabled and disabled states are not told apart by colour alone.**
+    The colour rules in `.claude/rules/ui-color.md` ask for a second channel
+    (judgment 2), and the row already carries one in text. The status text
+    beside these three buttons (`_status_text`) says "Running" or "Paused",
+    and that state decides which button is unavailable. Both the word and the
+    unavailable button are derived from the same flag by
+    `dashboard_frame.transport`. A reader who cannot tell INK from MUTED can
+    read the state from the word instead of from the buttons.
 
     The edge stays `MUTED` in both states, because the edge is what shows the
     control's boundary. The fill cannot show it, since `PANEL` on
@@ -276,8 +278,8 @@ def transport_button_stylesheet() -> str:
     Softening the edge for the disabled state would have added a second
     visual channel but lost the boundary.
 
-    `tools/contrast_check.py` measures all three pairs, and
-    `check_authored_disabled_colours_are_measured` enforces that. It accepts a
+    `tools/contrast_check.py` measures all three pairs. A check enforces this
+    (`check_authored_disabled_colours_are_measured`), and accepts a
     `:disabled` rule only from a function that a requirement cites.
     """
 

@@ -547,11 +547,11 @@ def test_each_tissue_row_is_that_group_s_balance() -> None:
         assert row[ALVEOLAR_FRACTION] == pytest.approx(washin_rate_s)
         assert row[state] == pytest.approx(-washin_rate_s)
 
-        # The model defines arterial blood as carrying the alveolar fraction
-        # (no shunt, one alveolar compartment, perfusion-limited exchange;
-        # docs/MODEL.md § "Model boundary"), so a tissue is driven by that
-        # fraction and by nothing else. It is not driven by the
-        # circuit, by mixed venous blood or by another tissue group.
+        # The model defines arterial blood as carrying the alveolar fraction:
+        # it assumes no shunt, one alveolar compartment and perfusion-limited
+        # exchange (docs/MODEL.md § "Model boundary"). A tissue is therefore
+        # driven by that fraction and by nothing else: not by the circuit, by
+        # mixed venous blood or by another tissue group.
         assert row[INSPIRED_FRACTION] == 0.0
         assert row[VENOUS_FRACTION] == 0.0
         assert row[UNIT_STATE] == 0.0

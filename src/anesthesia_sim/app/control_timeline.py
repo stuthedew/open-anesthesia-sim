@@ -299,15 +299,16 @@ def format_adjustment(adjustment: ControlAdjustment) -> str:
         when = f"{when}–{format_elapsed(adjustment.ended_at_s)}"
 
     label = CONTROL_INPUT_LABELS[adjustment.control]
-    # ASCII rather than U+2192. The Flutter client that drew the interface
-    # before the Qt port had no glyph for the arrow and drew a replacement box
-    # in its place. Whether every platform font that Qt uses carries the glyph
-    # has not been checked, so the arrow stays ASCII.
-    # The arrow shows the direction of the change, which is the one thing
-    # this line exists to state, so the reader would see that direction as a
-    # missing character. This was found by rendering the running app. No
-    # test in this repository would have caught it, because every assertion
-    # here compares strings produced by the same process, which has no fonts.
+    # The arrow (`_ARROW`) is ASCII rather than U+2192, because nobody has
+    # checked whether every platform font that Qt uses carries that glyph. The
+    # Flutter client that drew the interface before the port to Qt had no such
+    # glyph, and drew a replacement box in its place. The arrow shows the
+    # direction of the change, which is the one thing this line exists to
+    # state, so without the glyph the reader would see that direction as a
+    # missing character. The replacement box was found by rendering the
+    # running app. No test in this repository would have caught it, because
+    # every assertion here compares strings produced by the same process,
+    # which has no fonts.
     moved = (
         f"{format_control_value(adjustment.control, adjustment.from_value)}{_ARROW}"
         f"{format_control_value(adjustment.control, adjustment.to_value)}"

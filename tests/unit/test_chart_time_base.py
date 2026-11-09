@@ -2,14 +2,15 @@
 
 These tests check the ladder of widths, the two window rules and the tick
 placement without constructing the Qt interface. What the *interface* does with
-them is tested in `tests/integration/test_simulation_view.py`: which control selects a
-width, what the axis labels show, and what the caption claims.
+them is tested in `tests/integration/test_simulation_view.py`: which control
+selects a width, what the axis labels show, and what the caption claims.
 
-`PL-012` decided this design and `PL-SSBP` built it. Three of its
-requirements are properties rather than examples, so they are asserted over
-the whole ladder rather than at a chosen rung: the window is exactly as wide
-as the time base at every moment of every run, "Fit run" always contains the
-run, and the gridline interval is derived from the width rather than fixed.
+`PL-012` decided the window's design, and `PL-SSBP` built it. Three of the
+window's requirements are properties rather than examples: the window is exactly
+as wide as the time base at every moment of every run, "Fit run" always contains
+the run, and the gridline interval is derived from the width rather than fixed.
+These tests therefore check all three over the whole ladder, not at one chosen
+width.
 """
 
 import math
