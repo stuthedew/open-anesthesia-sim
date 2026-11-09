@@ -1,7 +1,7 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
 At close-out step 8 in `.claude/skills/docket/modes/close-out.md`, the copy
-editor reads each long passage that a branch changed and judges it for its
+editor reads each passage that a branch changed and judges it for its
 named reader. The copy editor's prompt is `.claude/agents/copy-editor.md`.
 
 The owner is the only clinician who reads this project's prose. When the owner
@@ -81,9 +81,8 @@ The tool has three commands.
   readers have no run, or none that read a gold-standard entry. It exits 1 as
   well when any one of their runs kept a rejected entry, rewrote one but kept
   its `fault`, flagged a gold-standard one, or wrote a rewrite that does not
-  parse as its file. Running the same
-  prompt again until a run passes therefore does not clear the failure: the
-  prompt has to change.
+  parse as its file. Running the same prompt again until a run passes
+  therefore does not clear the failure: the prompt has to change.
 
 **Which changes need a new run.** The prompt and the readers' rows tell the copy
 editor what to look for, so a change to either needs a new run. A new rejected
@@ -152,9 +151,9 @@ REJECTED_DIR = ROOT / "docs" / "prose-review" / "rejected"
 GOLD_DIR = ROOT / "docs" / "prose-review" / "gold"
 RUNS_DIR = ROOT / "docs" / "prose-review" / "runs"
 
-#: The front-matter keys an entry must have.
+#: The front-matter keys a rejected entry must have.
 ENTRY_KEYS = ("kind", "file", "rejected")
-#: The front-matter key an entry may add: the words the owner objected to.
+#: The front-matter key a rejected entry may add: the words the owner objected to.
 FAULT_KEY = "fault"
 #: The front-matter keys a gold-standard entry must have, and no others.
 GOLD_KEYS = ("file", "named")
@@ -171,8 +170,8 @@ VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
 # regex: a passage number in brackets inside free prose, with the emphasis and
 # code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
 MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
-#: Deletes emphasis and code marks: from an entry's `fault` and a rewrite before
-#: they are compared, and from a verdict line in `tools/prose_judge.py`.
+#: Deletes emphasis and code marks from an entry's `fault` and a rewrite before they
+#: are compared, and from a verdict line in `tools/prose_judge.py`.
 EMPHASIS = str.maketrans("", "", "*_`")
 
 

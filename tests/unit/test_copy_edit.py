@@ -629,7 +629,7 @@ LOST_ONE = """[1] lost
 def test_a_statement_the_meaning_check_finds_lost_is_restored_and_checked_again(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The check sees the edit and the original; the restore read sees what it found."""
+    """The check sees the edit and the original. The restore read sees what the check found."""
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
@@ -665,7 +665,7 @@ def test_a_statement_the_meaning_check_finds_lost_is_restored_and_checked_again(
 def test_a_statement_that_only_the_second_check_finds_lost_is_restored(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Runs of one check on one edit find different losses, so each round pools its checks."""
+    """Runs of one check on one edit find different losses, so each round pools their findings."""
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"

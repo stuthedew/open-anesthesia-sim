@@ -5,17 +5,18 @@ editor edit each passage that a branch changed, whatever its length, for the
 readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 `.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. Where the
 first read rewrites a passage, the tool starts a fresh run of the copy editor
-to audit that edit. It audits again while the last audit changed something,
-up to four reads. Experienced technical editors make at least two passes
-(`PL-HGZS`). A separate meaning check, `.claude/agents/meaning-check.md`, then
-compares each edited passage with its text before the edit. It sends each
-statement the edit lost back to the copy editor to restore. Each round of
-checks runs the check `CHECK_PANEL` times, set in `tools/copy_edit.py`,
-because separate runs on one edit find different losses. The tool keeps a
-passage as it was where a statement is still lost after the last of
-`MAX_CHECK_ROUNDS` rounds (`PL-F0Q2`). The tool merges the replies. Its
-`--reads DIR` option keeps each read's request and reply, so that what each
-audit changed can be judged on its own.
+to audit that edit, because experienced technical editors make at least two
+passes (`PL-HGZS`). It audits again while the last audit changed something,
+up to four reads. Its `--reads DIR` option keeps each read's request and
+reply, so that what each audit changed can be judged on its own.
+
+A separate meaning check then compares each edited passage with its text
+before the edit (`.claude/agents/meaning-check.md`). It sends each statement
+the edit lost back to the copy editor to restore. Each round of checks runs
+the check `CHECK_PANEL` times, set in `tools/copy_edit.py`, because separate
+runs on one edit find different losses. The tool keeps a passage as it was
+where a statement is still lost after the last of `MAX_CHECK_ROUNDS` rounds
+(`PL-F0Q2`). The tool merges the replies.
 
 This folder holds the paragraphs the copy editor must never pass again
 (`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
@@ -76,7 +77,7 @@ Optional: the version the owner accepted, once there is one.
 
 The `file` field decides which readers the copy editor judges the paragraph
 for, so it must be a file that a row of the reader table names. The paragraph
-must be one unit that `tools/new_prose.py` would review in that file.
+must be one unit that `tools/new_prose.py` would print from that file.
 
 Where the owner objected to particular words, add a `fault` field after
 `rejected`, holding those words exactly as the paragraph has them:

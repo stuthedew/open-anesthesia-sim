@@ -16,12 +16,12 @@ repository, even `claude -p --agent copy-editor` loads the resident
 instructions. The process's system prompt is the agent file's body, its one
 tool is Read, and it loads no settings file.
 
-The copy editor reads each request at least twice, as experienced technical
-editors do (project owner, 2026-11-04, ratified, `PL-HGZS`). When the first
-read rewrites a passage, a fresh run audits the edit. That run gets the same
-request, with each rewritten passage replaced by its edit. A line before the
-passages marks the request as a second read (`SECOND_READ`). The audit fixes
-what the earlier reads missed or introduced. Audits go on until one changes
+When the first read rewrites a passage, a fresh run audits the edit, because
+experienced technical editors make at least two passes (project owner,
+2026-11-04, ratified, `PL-HGZS`). That run gets the same request, with each
+rewritten passage replaced by its edit. A line before the passages marks the
+request as a second read (`SECOND_READ`). The audit fixes what the earlier
+reads missed or introduced. Audits go on until one changes
 nothing, up to `MAX_READS` reads in all (project owner, 2026-11-05, ratified,
 over exactly two reads). When the first read rewrites nothing, there is no
 audit. The printed reply gives each passage once, in the text of the last read
@@ -31,16 +31,16 @@ that rewrote it, else `[N] keep`. Every read's notes follow.
 (`PL-F0Q2`). The copy editor's own audits passed about 120 statements that its
 line edit of `docs/MODEL.md` had lost or weakened: a requirement restated as a
 description, a limiting word such as "only" cut, a list item or a scope clause
-dropped, a stated reason cut. So `CHECK_PANEL` fresh runs, with the
-instructions in `.claude/agents/meaning-check.md`, each read every original
-sentence against the edit, using the list that the copy editor's own
-instructions give under `NEVER_LOSES`. Each statement that any of them finds
-lost goes back to the copy editor in a restore read, and the checks run again,
-up to `MAX_CHECK_ROUNDS` rounds. A passage that still loses a statement after
-the last round is printed as `[N] keep`, with what it lost under "Meaning
-check:", so no rewrite that weakens the original reaches a file.
+dropped, a stated reason cut. So `CHECK_PANEL` fresh runs of the check each
+read every original sentence against the edit. Their instructions are those in
+`.claude/agents/meaning-check.md`, followed by the list that the copy editor's
+own instructions give under `NEVER_LOSES`. Each statement that any of them
+finds lost goes back to the copy editor in a restore read, and the checks run
+again, up to `MAX_CHECK_ROUNDS` rounds. A passage that still loses a statement
+after the last round is printed as `[N] keep`, with what it lost under "Meaning
+check:", so no rewrite in which a check still finds a loss reaches a file.
 
-Before the reply is printed, a check compares each rewrite with the rows it
+Before the reply is printed, a code check compares each rewrite with the rows it
 replaces (`check_code`). It refuses a rewrite that changes code, a fenced
 block, a heading or an HTML comment, that writes an HTML comment or a code
 name the passage does not hold, or that cuts a decision's tag without keeping
@@ -53,17 +53,18 @@ name a rewrite dropped and each comment it cut whole (project owner,
 `PL-HGZS`). With `--structure FILE`, the tool runs the structure read, which
 rewrites nothing. A short document gets one read. A long one gets one read per
 chapter, then one read of all the chapters' outlines. With `--sections FILE`,
-the tool then line-edits each section alone, each with its two reads. All of
-those requests come from `tools/new_prose.py`.
+the tool then line-edits each section alone, with the audits and meaning
+checks that every run has. All of those requests come from
+`tools/new_prose.py`.
 
-The `[models]` table in `docket.toml` chooses the model and effort for the role
-`copy-editor`. The runs are billed to the account that `claude` signs in with,
-as an Agent call would be.
+The `[models]` table in `docket.toml` chooses the model and effort for the
+roles `copy-editor` and `meaning-check`. The runs are billed to the account
+that `claude` signs in with, as an Agent call would be.
 
 Prints the reply on standard output and one line of counts on standard
 error. Exits 0 when the copy editor replied, and 1 with the reason when
-`claude` is missing, fails, times out or returns an error, or when a read's
-reply does not give each passage one verdict.
+`claude` is missing, fails, times out or returns an error, or when the first
+read's reply does not give each passage one verdict.
 """
 
 from __future__ import annotations
@@ -154,7 +155,7 @@ MAX_READS = 4
 #: The name of each read in order, used in its files and its notes.
 READ_NAMES = ("first", "second", "third", "fourth")
 
-#: The role that `docket.toml`'s `[models]` table is asked about for the meaning check.
+#: The meaning check's role in the `[models]` table of `docket.toml`.
 CHECK_ROLE = "meaning-check"
 #: The heading of the section in the copy editor's instructions that lists what
 #: an edit never loses. The meaning check is given the same section, so the
@@ -186,10 +187,10 @@ CHECK_PANEL = 2
 #: when no check finds anything lost. A later round can find a statement that
 #: an earlier round missed, or one that a restore read lost. Five rounds allow
 #: four restore reads, which is how many the edit above needed with one check
-#: a round. A round of two checks and a restore read together cost about the
-#: copy editor's first read on the same section. A lower limit keeps more
-#: passages unedited, and a higher one spends more reads on a passage whose
-#: restores keep failing.
+#: a round. A round of two checks and a restore read together cost about as
+#: much as the copy editor's first read on the same section. A lower limit
+#: keeps more passages unedited, and a higher one spends more reads on a
+#: passage whose restores keep failing.
 MAX_CHECK_ROUNDS = 5
 # regex: a meaning check's verdict line, such as "[3] lost"
 CHECK_VERDICT_RE = re.compile(r"^[\s*_`]*\[(\d+)\][*_`]*\s*(same|lost)\b", re.IGNORECASE)
@@ -640,16 +641,16 @@ def merge(
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
     `names` names each read in `replies`, in the same order, and by default
-    they are the first reads of `READ_NAMES`. Each passage gets
-    one verdict: the text of the last read that rewrote it, else `[N] keep`.
+    they are the first names in `READ_NAMES`. Each passage gets one verdict:
+    the text of the last read that rewrote it, else `[N] keep`.
     Where `check` is given, it refuses a rewrite that changed code, and the
     passage then becomes `[N] keep` with the reason under "Code check:". The
     check also lists each code name a rewrite dropped. A passage in `lost`
     becomes `[N] keep` too, with what the meaning check found it lost under
     "Meaning check:". The notes of every read follow, then those of each
     meaning check in `checks`, under its label, so that every cut, move, query
-    and finding is kept. Raises `Refused` where a reply does not give each passage one
-    verdict, or a rewrite has no text.
+    and finding is kept. Raises `Refused` where a reply does not give each
+    passage one verdict, or a rewrite has no text.
     """
     lost = {} if lost is None else lost
     names = READ_NAMES[: len(replies)] if names is None else names
@@ -787,9 +788,9 @@ def checker(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
     """The meaning check that `docket.toml` and the two agent files set up.
 
     Its instructions are `CHECK_PROMPT`'s body followed by the copy editor's
-    section `NEVER_LOSES`, the list both of them hold an edit to. Raises
-    `Refused` where `claude` is missing, no model is chosen, or the copy
-    editor's instructions hold no such section.
+    section `NEVER_LOSES`, so the check and the copy editor hold an edit to one
+    list. Raises `Refused` where `claude` is missing, no model is chosen, or
+    the copy editor's instructions hold no such section.
     """
     claude = shutil.which("claude")
     if claude is None:
