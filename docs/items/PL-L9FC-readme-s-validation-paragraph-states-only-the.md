@@ -3,11 +3,13 @@ id: PL-L9FC
 title: README's validation paragraph states only the wash-in half, so a reader takes a passing validation for the whole of what the Yasuda comparison found
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: project-introduction
 touches: README.md
 added: 2026-09-07
+closed: 2026-11-09
+pr: 2075
 verify: grep -qF 'F_{A0}' README.md && python3 tools/doc_check.py check
 ---
 
@@ -71,3 +73,13 @@ nowhere in `README.md` today (0 occurrences, measured) and which any honest
 statement of the second direction has to name. That leaves the wording to
 whoever writes it, which is the judgment this item is about, while still
 failing until the direction is actually stated.
+
+**Done 2026-11-09.** `README.md` now follows the wash-in result with two
+facts about the elimination half of the same test: the five-minute
+$`F_A/F_{A0}`$ comparison does not agree, because the model keeps more agent in
+the alveoli than every cohort, and most of that difference comes from the
+breathing circuit, since the model always rebreathes and the volunteers did
+not. A third sentence, added on the blind review's finding, says that with the
+circuit's effect removed desflurane then washes out faster than the volunteers.
+The numbers stay in `docs/MODEL.md` § "Published wash-in and elimination
+validation test", which the paragraph names.
