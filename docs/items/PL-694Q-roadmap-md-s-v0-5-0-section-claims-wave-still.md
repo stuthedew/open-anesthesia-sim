@@ -48,9 +48,9 @@ that can answer it live.
 
 **Done when.** The paragraph quotes what `bin/docket wave` prints for those
 entries with the date its reading was taken, cites this item, and drops the
-quoted string the command no longer produces - so a session checking the claim
-can check it against the command rather than against prose. Do not replace it
-with a fresh count stated as standing fact; that is the same defect one merge
+quoted string the command no longer produces. A session can then check the
+claim against the command rather than against prose. Do not replace it with a
+fresh count stated as standing fact, because that is the same defect one merge
 later.
 
-**Done 2026-11-09, by `PL-G6DP`.** On 2026-11-07 the restructure moved the paragraph out of `ROADMAP.md` into `PL-SL70`'s brief, where it is quoted as the text the roadmap carried until then. `ROADMAP.md` no longer tells a session to expect that output. The `verify:` command was rewritten to test only that the string is gone, since the paragraph it wanted dated no longer exists.
+**Done 2026-11-09, by `PL-G6DP`.** On 2026-11-07 that item's restructure of `ROADMAP.md` moved the paragraph into `PL-SL70`'s brief, which quotes it as the text the roadmap carried until then. `ROADMAP.md` no longer tells a session to expect that output. The `verify:` command was rewritten to test only that the string is gone, because the paragraph it required to be dated no longer exists.

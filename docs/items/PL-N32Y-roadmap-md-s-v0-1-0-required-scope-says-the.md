@@ -72,4 +72,4 @@ is green, `ROADMAP.md` names the stored form nowhere).
 
 > - PL-N32Y (S) ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
 
-**Done 2026-11-09.** v0.1.0's Required scope line keeps its wording and carries a dated note naming `tissue_gas_partition_coefficients` and the function that derives tissue:blood (`core/numerical_envelope.py`, `tissue_blood_partition_coefficient`; `TissueGroup` no longer holds it). § "Writing a milestone entry" now states the rule: a shipped release's Required scope line found wrong is annotated with a dated note, never rewritten.
+**Done 2026-11-09.** v0.1.0's Required scope line keeps its wording and carries a dated note naming `tissue_gas_partition_coefficients` and the function that derives tissue:blood, `tissue_blood_partition_coefficient` in `core/numerical_envelope.py`. `TissueGroup` no longer has that function. § "Writing a milestone entry" now states the rule: a shipped release's Required scope line found wrong is annotated with a dated note, never rewritten.

@@ -202,25 +202,26 @@ class Fraction(float, CheckedQuantity):
 
 
 class Percent(float, CheckedQuantity):
-    """The same quantity as a percent of one atmosphere, from 0 through 100,
-    checked against that range when built.
+    """A `Percent` stores `Fraction`'s quantity as a percent of one atmosphere,
+    from 0 through 100, and is checked against that range when built.
 
     A vaporizer dial reads in this form, and the agent data files store values
     in it, a MAC among them. No governing equation takes a percent. A MAC is
     stored as a percent because every shipped agent has a MAC below 100%. That
-    is an instance, not a rule. Nitrous oxide's MAC was measured at 1.04 atm
-    (Hornbein TF et al., Anesth Analg 1982;61(7):553-556; retrieved from
-    PubMed, PMID 7201254, and verified against the abstract 2026-10-05), and
-    `ROADMAP.md` plans that agent with the substance generalization, which no
-    release holds yet. `core/parameters.py`'s
-    `PositivePercent` already rejects its MAC at load. `app/chart_frame.py`'s
-    `assemble_chart_frame` builds the top of the chart's axis, three MACs, as a
-    `Percent`, so it rejects any agent whose MAC is above 33.3%. A dial's real
-    limit is the vaporizer maximum of the agent in use. That limit is not this
-    type's range but a relation between two percents, and it is checked where
-    both are stored (`core/validation.py`'s `require_within_vaporizer_maximum`).
-    A percent compares and computes as the `float` it was built from, and
-    arithmetic on it returns a plain `float`.
+    is a fact about these agents, not a rule. Nitrous oxide's MAC was measured
+    at 1.04 atm (Hornbein TF et al., Anesth Analg 1982;61(7):553-556;
+    retrieved from PubMed, PMID 7201254, and verified against the abstract
+    2026-10-05). `ROADMAP.md` plans that agent with support for more than one
+    substance at once, which no release includes yet. Nitrous oxide's MAC is
+    already rejected at load (`core/parameters.py`'s `PositivePercent`). The
+    chart builds the top of its axis, three MACs, as a `Percent`
+    (`app/chart_frame.py`'s `assemble_chart_frame`), so it rejects any agent
+    whose MAC is above 33.3%. A dial's real limit is the vaporizer maximum of
+    the agent in use. That limit is not this type's range but a relation
+    between two percents, and it is checked where both are stored
+    (`core/validation.py`'s `require_within_vaporizer_maximum`). A percent
+    compares and computes as the `float` it was built from, and arithmetic on
+    it returns a plain `float`.
 
     `name` labels the value in an error message, as it does for `Fraction`. A
     percent also stores minus zero as zero, and rejects a value that is not a

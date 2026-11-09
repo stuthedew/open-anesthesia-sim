@@ -51,7 +51,8 @@ correct, so the fix separates the two rather than rewriting the pair.
 
 **Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
 Separate the two ids and read `PL-J786`'s recorded reason. A release section is
-dated by its own version, so this is a record correction under clause 4 rather
-than a live claim to be linked.
+dated by its own version, so this is a record correction under clause 4
+(correct a dated record with a dated note, never rewrite it) rather than a live
+claim to be linked.
 
-**Done 2026-11-09.** The v0.2.8 definition-of-done line keeps its wording, as `PL-4FBP`'s clause 4 requires of a shipped release's section, and carries a dated note: only `PL-S4M2` shipped, and `PL-J786` was dropped on 2026-08-31 for the reason its item records (a private repository on GitHub Free, where a ruleset is not enforced). The `verify:` command, which wanted the sentence rewritten, was changed to look for the note.
+**Done 2026-11-09.** The v0.2.8 definition-of-done line keeps its wording, as `PL-4FBP`'s clause 4 requires of a shipped release's section, and carries a dated note: only `PL-S4M2` shipped, and `PL-J786` was dropped on 2026-08-31 for the reason its item records (a private repository on GitHub Free, where a ruleset is not enforced). The `verify:` command, which required the sentence to be rewritten, was changed to look for the note.
