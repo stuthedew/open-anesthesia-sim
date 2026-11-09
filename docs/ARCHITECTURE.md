@@ -181,13 +181,15 @@ Filing a machine parameter in a patient file would misstate where it comes from
 (`PL-4YY1`).
 
 When the code builds the compartments for an agent from the data files
-(`AgentUptakeSystem.for_agent()`), it passes each value explicitly, so no
-shipped path uses a compartment's field default. The defaults are still written
-in `core/`, so that a unit can be constructed bare. A test pins each default to
-the data file that is its authority. The machine file and the first of those
-pins came from `PL-4YY1`. A value written only in `core/` would be invisible to
-the check of where each value comes from (`tools/doc_check.py`), which sees
-only constants in data files.
+(`AgentUptakeSystem.for_agent()`), it passes each value explicitly. A
+compartment takes each value that a data file states as a required argument,
+with no default, so `core/` holds no second copy of it (`PL-M85T`). One
+default is left: the fresh gas flow a run opens at,
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`, for a machine
+file that states none. `test_the_flow_default_matches_the_shipped_machine_file`
+keeps it equal to the shipped machine file. A value written only in `core/`
+would be invisible to the check of where each value comes from
+(`tools/doc_check.py`), which sees only constants in data files.
 
 Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,

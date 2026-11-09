@@ -3,12 +3,14 @@ id: PL-6G7N
 title: docs/ARCHITECTURE.md § 'Layering' says compartment defaults stay in core/ so a unit can be built bare, but § 'Where new code belongs' says a data-file value is a required argument with no default; new code cannot follow both (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: architecture-md-structure
 touches: docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) the compartments still had defaults in core/ and the document held no required-argument rule; 1f0e8b1e (PL-M85T, 2026-10-25) removed the defaults and added the rule without updating the older paragraph
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor adding a compartment meets one rule for data-file values, the one the code and the single-source principle follow, and does not write a second copy of a value into core/
 verify: ! grep -qF 'so that a unit can be constructed bare' docs/ARCHITECTURE.md
 reenters: PL-4FBP
