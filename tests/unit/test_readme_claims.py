@@ -10,7 +10,6 @@ README stating the old value with every other check passing (`PL-GQWP`).
 Each test fails with a message that names the sentence to update.
 """
 
-import re
 from pathlib import Path
 
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
@@ -61,11 +60,10 @@ def test_the_readme_gives_the_selectable_time_base_range() -> None:
 def test_the_readme_names_exactly_the_shipped_agents() -> None:
     """The README's list of agents is the list of built-in agent files, by display name."""
 
-    match = re.search(r"one volatile agent at a time \(([^)]*)\)", README_TEXT)
-    assert match is not None, (
-        "README.md § 'The model' no longer lists the agents in its first sentence"
-    )
-    named = set(re.split(r", | or ", match.group(1)))
+    _, found, rest = README_TEXT.partition("one volatile agent at a time (")
+    assert found, "README.md § 'The model' no longer lists the agents in its first sentence"
+    listed, _, _ = rest.partition(")")
+    named = {name for part in listed.split(", ") for name in part.split(" or ")}
     shipped = {
         load_agent_parameters(agent_id).display_name.lower() for agent_id in AGENT_DATA_FILENAMES
     }
